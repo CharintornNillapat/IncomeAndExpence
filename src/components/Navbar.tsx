@@ -181,10 +181,10 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, onOpenQ
           </div>
         </div>
 
-        {/* Clean Navigation Tabs Bar - Completely hidden scrollbar with smooth swipe */}
+        {/* Desktop Navigation Tabs Bar (Hidden on mobile, uses MobileBottomNav instead) */}
         <nav 
-          aria-label="Main Navigation"
-          className="flex items-center gap-1 overflow-x-auto no-scrollbar [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden py-2 border-t border-stone-100 md:justify-start lg:justify-between"
+          aria-label="Desktop Navigation"
+          className="hidden sm:flex items-center gap-1 overflow-x-auto no-scrollbar py-2 border-t border-stone-100 md:justify-start lg:justify-between"
         >
           {navItems.map((item) => {
             const Icon = item.icon;

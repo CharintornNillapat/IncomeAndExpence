@@ -2,6 +2,7 @@ import React, { useState, lazy, Suspense } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FinanceProvider, useFinance } from './context/FinanceContext';
 import { Navbar, ActiveTab } from './components/Navbar';
+import { MobileBottomNav } from './components/MobileBottomNav';
 import { ViewLoadingFallback } from './components/ViewLoadingFallback';
 import { TransactionForm } from './components/TransactionForm';
 import { AuthModal } from './components/AuthModal';
@@ -54,12 +55,18 @@ const MainApp: React.FC = () => {
         onOpenAuth={() => setIsAuthModalOpen(true)}
       />
 
-      {/* Main Content Area with Suspense boundary */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-8">
+      {/* Main Content Area with Suspense boundary & bottom padding for mobile navigation */}
+      <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 py-4 sm:py-8 pb-24 sm:pb-8">
         <Suspense fallback={<ViewLoadingFallback />}>
           {renderActiveView()}
         </Suspense>
       </main>
+
+      {/* Mobile Fixed Bottom Navigation Bar (block sm:hidden) */}
+      <MobileBottomNav
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+      />
 
       {/* Auth Modal for Supabase Login / Register */}
       <AuthModal
@@ -70,8 +77,8 @@ const MainApp: React.FC = () => {
       {/* PWA Service Worker Update / Offline Prompt */}
       <ReloadPrompt />
 
-      {/* Footer */}
-      <footer className="border-t border-stone-200 bg-white py-6 mt-12 text-center text-xs text-stone-500">
+      {/* Footer (with safe bottom margin on mobile) */}
+      <footer className="border-t border-stone-200 bg-white py-6 mt-6 sm:mt-12 mb-16 sm:mb-0 text-center text-xs text-stone-500">
         <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
           <p>FinLife Tracker — Full-Stack Personal Finance & Holistic Lifestyle Management</p>
           <p className="text-stone-400 font-mono text-[11px]">Supabase Realtime Cloud Sync • Safe Math.js • Single-Tx Repayments</p>
