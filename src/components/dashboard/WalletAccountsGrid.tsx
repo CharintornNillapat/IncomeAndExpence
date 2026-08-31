@@ -40,20 +40,20 @@ export const WalletAccountsGrid: React.FC<WalletAccountsGridProps> = React.memo(
   onOpenWalletModal,
 }) => {
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between gap-3 bg-white p-4 sm:p-5 rounded-2xl border border-stone-200 shadow-2xs">
+    <div className="space-y-3 sm:space-y-4">
+      <div className="flex items-center justify-between gap-3 bg-white p-3.5 sm:p-5 rounded-2xl border border-stone-200 shadow-2xs">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-stone-900 text-white flex items-center justify-center shadow-xs">
-            <WalletIcon className="w-5 h-5 text-emerald-400" />
+          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-stone-900 text-white flex items-center justify-center shadow-xs shrink-0">
+            <WalletIcon className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-400" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h2 className="text-base font-bold text-stone-900">Your Wallets & Accounts</h2>
-              <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
+              <h2 className="text-sm sm:text-base font-bold text-stone-900">Your Wallets & Accounts</h2>
+              <span className="text-[10px] sm:text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
                 {wallets.length} Accounts
               </span>
             </div>
-            <p className="text-xs text-stone-500">
+            <p className="hidden sm:block text-xs text-stone-500">
               Balances across checking, cash, savings, and credit lines
             </p>
           </div>
@@ -61,7 +61,7 @@ export const WalletAccountsGrid: React.FC<WalletAccountsGridProps> = React.memo(
       </div>
 
       {/* Wallets Cards Grid with Stagger & Tap scale */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
         {wallets.map((wallet) => {
           const Icon = getWalletIcon(wallet.type);
           const percentOfNetWorth = totalNetWorth > 0 ? (wallet.balance / totalNetWorth) * 100 : 0;
@@ -70,7 +70,7 @@ export const WalletAccountsGrid: React.FC<WalletAccountsGridProps> = React.memo(
             <motion.div
               variants={itemVariants}
               whileHover={{ y: -3, transition: { duration: 0.15 } }}
-              whileTap={{ scale: 0.96 }}
+              whileTap={{ scale: 0.97 }}
               key={wallet.id}
               id={`dashboard-wallet-card-${wallet.id}`}
               onClick={() => onOpenWalletModal('OVERVIEW', wallet.id)}
@@ -83,34 +83,34 @@ export const WalletAccountsGrid: React.FC<WalletAccountsGridProps> = React.memo(
               />
 
               <div>
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-2.5">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-center gap-2.5 min-w-0">
                     <div
                       className="w-9 h-9 rounded-xl flex items-center justify-center text-white shrink-0 shadow-2xs"
                       style={{ backgroundColor: wallet.color }}
                     >
                       <Icon className="w-4 h-4" />
                     </div>
-                    <div>
-                      <h3 className="text-xs sm:text-sm font-bold text-stone-900 group-hover:text-stone-800 line-clamp-1">
+                    <div className="min-w-0 flex-1">
+                      <h3 className="text-sm font-bold text-stone-900 group-hover:text-stone-800 truncate">
                         {wallet.name}
                       </h3>
-                      <span className="text-[10px] font-semibold text-stone-400 uppercase tracking-wider block">
+                      <span className="text-[10px] font-semibold text-stone-400 uppercase tracking-wider block truncate">
                         {wallet.type.replace('_', ' ')}
                       </span>
                     </div>
                   </div>
 
-                  <div className="p-1 rounded-lg text-stone-300 group-hover:text-stone-700 group-hover:bg-stone-100 transition-colors">
+                  <div className="p-1 rounded-lg text-stone-300 group-hover:text-stone-700 group-hover:bg-stone-100 transition-colors shrink-0">
                     <ChevronRight className="w-4 h-4" />
                   </div>
                 </div>
 
-                <div className="mt-4">
+                <div className="mt-3.5 sm:mt-4">
                   <span className="text-[10px] font-bold uppercase tracking-wider text-stone-400 block">
                     Balance
                   </span>
-                  <div className="flex items-baseline gap-1.5 mt-0.5">
+                  <div className="flex items-baseline gap-1.5 mt-0.5 flex-wrap">
                     <span className={`text-xl sm:text-2xl font-black font-mono tracking-tight ${
                       wallet.balance < 0 ? 'text-rose-600' : 'text-stone-900'
                     }`}>
@@ -125,7 +125,7 @@ export const WalletAccountsGrid: React.FC<WalletAccountsGridProps> = React.memo(
                 </div>
               </div>
 
-              <div className="mt-4 pt-3 border-t border-stone-100">
+              <div className="mt-3.5 sm:mt-4 pt-3 border-t border-stone-100">
                 <div className="flex items-center justify-between text-[10px] text-stone-500 mb-1.5">
                   <span>Share of Total</span>
                   <span className="font-mono font-bold text-stone-700">
@@ -142,17 +142,18 @@ export const WalletAccountsGrid: React.FC<WalletAccountsGridProps> = React.memo(
                   />
                 </div>
 
-                <div className="flex items-center justify-between mt-3 pt-2 text-[11px]">
-                  <span className="text-stone-400 text-[10px]">Click to inspect</span>
+                <div className="flex items-center justify-between mt-2.5 pt-1 text-[11px]">
+                  <span className="text-stone-400 text-[10px]">Tap to inspect</span>
                   <button
+                    id={`wallet-quick-transfer-${wallet.id}`}
                     type="button"
                     onClick={(e) => {
                       e.stopPropagation();
                       onOpenWalletModal('TRANSFER', wallet.id);
                     }}
-                    className="inline-flex items-center gap-1 text-indigo-600 font-semibold hover:underline cursor-pointer"
+                    className="min-h-[44px] -my-2 inline-flex items-center gap-1 text-indigo-600 hover:text-indigo-700 font-semibold hover:underline cursor-pointer"
                   >
-                    <ArrowLeftRight className="w-3 h-3" />
+                    <ArrowLeftRight className="w-3.5 h-3.5" />
                     <span>Transfer</span>
                   </button>
                 </div>

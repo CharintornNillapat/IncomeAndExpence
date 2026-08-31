@@ -17,32 +17,32 @@ export const CashflowMetricsCards: React.FC<CashflowMetricsCardsProps> = React.m
   primarySymbol,
 }) => {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-5">
       {/* 1. Total Income Card */}
       <motion.div 
         whileHover={{ y: -2 }}
-        className="bg-white rounded-2xl border-2 border-emerald-200/80 p-6 sm:p-7 shadow-sm hover:shadow-md transition-all relative overflow-hidden flex flex-col justify-between"
+        className="bg-white rounded-2xl border-2 border-emerald-200/80 p-4 sm:p-6 shadow-sm hover:shadow-md transition-all relative overflow-hidden flex flex-col justify-between"
       >
         <div className="flex items-center justify-between">
           <span className="text-xs font-bold uppercase tracking-wider text-emerald-800 flex items-center gap-2">
             <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
             Total Income
           </span>
-          <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-100">
-            <ArrowDownLeft className="w-5 h-5 stroke-[2.5]" />
+          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-100">
+            <ArrowDownLeft className="w-4 h-4 sm:w-5 sm:h-5 stroke-[2.5]" />
           </div>
         </div>
-        <div className="mt-5">
-          <p className="text-3xl sm:text-4xl lg:text-5xl font-black font-mono tracking-tight text-emerald-600">
+        <div className="mt-3.5 sm:mt-5">
+          <p className="text-2xl sm:text-3xl lg:text-4xl xl:text-5xl font-black font-mono tracking-tight text-emerald-600">
             <AnimatedCounter
               value={incomeTotal}
               currencyPrefix={primarySymbol}
               duration={1.2}
             />
           </p>
-          <div className="flex items-center justify-between mt-3 text-xs">
-            <span className="text-stone-500 font-medium">Inflows across active accounts</span>
-            <span className="text-emerald-700 font-semibold bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-100">
+          <div className="flex items-center justify-between mt-2 sm:mt-3 text-xs">
+            <span className="hidden sm:inline text-stone-500 font-medium">Inflows across active accounts</span>
+            <span className="text-emerald-700 font-semibold bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-100 text-[11px]">
               + Inflow
             </span>
           </div>
@@ -52,28 +52,28 @@ export const CashflowMetricsCards: React.FC<CashflowMetricsCardsProps> = React.m
       {/* 2. Total Expense Card */}
       <motion.div 
         whileHover={{ y: -2 }}
-        className="bg-white rounded-2xl border-2 border-rose-200/80 p-6 sm:p-7 shadow-sm hover:shadow-md transition-all relative overflow-hidden flex flex-col justify-between"
+        className="bg-white rounded-2xl border-2 border-rose-200/80 p-4 sm:p-6 shadow-sm hover:shadow-md transition-all relative overflow-hidden flex flex-col justify-between"
       >
         <div className="flex items-center justify-between">
           <span className="text-xs font-bold uppercase tracking-wider text-rose-800 flex items-center gap-2">
             <span className="w-2.5 h-2.5 rounded-full bg-rose-500"></span>
             Total Expense
           </span>
-          <div className="w-10 h-10 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center border border-rose-100">
-            <ArrowUpRight className="w-5 h-5 stroke-[2.5]" />
+          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center border border-rose-100">
+            <ArrowUpRight className="w-4 h-4 sm:w-5 sm:h-5 stroke-[2.5]" />
           </div>
         </div>
-        <div className="mt-5">
-          <p className="text-3xl sm:text-4xl lg:text-5xl font-black font-mono tracking-tight text-rose-600">
+        <div className="mt-3.5 sm:mt-5">
+          <p className="text-2xl sm:text-3xl lg:text-4xl xl:text-5xl font-black font-mono tracking-tight text-rose-600">
             <AnimatedCounter
               value={expenseTotal}
               currencyPrefix={primarySymbol}
               duration={1.2}
             />
           </p>
-          <div className="flex items-center justify-between mt-3 text-xs">
-            <span className="text-stone-500 font-medium">Outflows & regular expenses</span>
-            <span className="text-rose-700 font-semibold bg-rose-50 px-2 py-0.5 rounded-md border border-rose-100">
+          <div className="flex items-center justify-between mt-2 sm:mt-3 text-xs">
+            <span className="hidden sm:inline text-stone-500 font-medium">Outflows & regular expenses</span>
+            <span className="text-rose-700 font-semibold bg-rose-50 px-2 py-0.5 rounded-md border border-rose-100 text-[11px]">
               − Outflow
             </span>
           </div>
@@ -83,7 +83,7 @@ export const CashflowMetricsCards: React.FC<CashflowMetricsCardsProps> = React.m
       {/* 3. Net Balance Card (Income - Expense) */}
       <motion.div 
         whileHover={{ y: -2 }}
-        className={`bg-white rounded-2xl border-2 p-6 sm:p-7 shadow-sm hover:shadow-md transition-all relative overflow-hidden flex flex-col justify-between ${
+        className={`bg-white rounded-2xl border-2 p-4 sm:p-6 shadow-sm hover:shadow-md transition-all relative overflow-hidden flex flex-col justify-between ${
           netBalance >= 0 ? 'border-emerald-300' : 'border-rose-300'
         }`}
       >
@@ -94,20 +94,20 @@ export const CashflowMetricsCards: React.FC<CashflowMetricsCardsProps> = React.m
             <span className={`w-2.5 h-2.5 rounded-full ${netBalance >= 0 ? 'bg-emerald-500' : 'bg-rose-500'}`}></span>
             Net Balance
           </span>
-          <div className={`w-10 h-10 rounded-xl flex items-center justify-center border ${
+          <div className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center border ${
             netBalance >= 0 
               ? 'bg-emerald-50 text-emerald-600 border-emerald-100' 
               : 'bg-rose-50 text-rose-600 border-rose-100'
           }`}>
             {netBalance >= 0 ? (
-              <TrendingUp className="w-5 h-5 stroke-[2.5]" />
+              <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5 stroke-[2.5]" />
             ) : (
-              <TrendingDown className="w-5 h-5 stroke-[2.5]" />
+              <TrendingDown className="w-4 h-4 sm:w-5 sm:h-5 stroke-[2.5]" />
             )}
           </div>
         </div>
-        <div className="mt-5">
-          <p className={`text-3xl sm:text-4xl lg:text-5xl font-black font-mono tracking-tight ${
+        <div className="mt-3.5 sm:mt-5">
+          <p className={`text-2xl sm:text-3xl lg:text-4xl xl:text-5xl font-black font-mono tracking-tight ${
             netBalance >= 0 ? 'text-emerald-700' : 'text-rose-600'
           }`}>
             {netBalance < 0 ? '-' : ''}
@@ -117,11 +117,11 @@ export const CashflowMetricsCards: React.FC<CashflowMetricsCardsProps> = React.m
               duration={1.2}
             />
           </p>
-          <div className="flex items-center justify-between mt-3 text-xs">
-            <span className="text-stone-500 font-medium">
+          <div className="flex items-center justify-between mt-2 sm:mt-3 text-xs">
+            <span className="hidden sm:inline text-stone-500 font-medium">
               {netBalance >= 0 ? 'Net positive surplus' : 'Net deficit'}
             </span>
-            <span className={`font-semibold px-2 py-0.5 rounded-md border ${
+            <span className={`font-semibold px-2 py-0.5 rounded-md border text-[11px] ${
               netBalance >= 0 
                 ? 'bg-emerald-50 text-emerald-700 border-emerald-100' 
                 : 'bg-rose-50 text-rose-700 border-rose-100'

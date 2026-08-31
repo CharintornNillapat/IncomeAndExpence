@@ -161,12 +161,12 @@ export const TransactionsView: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Header & Action Toolbar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-stone-200 shadow-2xs">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 bg-white p-4 sm:p-5 rounded-2xl border border-stone-200 shadow-2xs">
         <div>
           <h2 className="text-base font-bold text-stone-900">Transaction Management</h2>
-          <p className="text-xs text-stone-500">
+          <p className="hidden sm:block text-xs text-stone-500">
             CRUD operations with soft-delete safety, math parser, and 2-step CSV synchronization
           </p>
         </div>
@@ -177,7 +177,7 @@ export const TransactionsView: React.FC = () => {
             id="tx-export-csv-btn"
             type="button"
             onClick={() => exportTransactionsToCsv(transactions, wallets, categories)}
-            className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-stone-700 bg-stone-100 hover:bg-stone-200 rounded-xl transition-all cursor-pointer"
+            className="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-stone-700 bg-stone-100 hover:bg-stone-200 rounded-xl transition-all cursor-pointer"
           >
             <Download className="w-3.5 h-3.5" />
             <span>Export CSV</span>
@@ -188,10 +188,11 @@ export const TransactionsView: React.FC = () => {
             id="diary-export-json-btn"
             type="button"
             onClick={() => exportDiaryToJson(diaryEntries)}
-            className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-stone-700 bg-stone-100 hover:bg-stone-200 rounded-xl transition-all cursor-pointer"
+            className="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-stone-700 bg-stone-100 hover:bg-stone-200 rounded-xl transition-all cursor-pointer"
           >
             <FileText className="w-3.5 h-3.5 text-stone-500" />
-            <span>Export Diary (JSON)</span>
+            <span className="hidden sm:inline">Export Diary (JSON)</span>
+            <span className="sm:hidden">Diary</span>
           </button>
 
           {/* 2-Step Import CSV */}
@@ -199,10 +200,10 @@ export const TransactionsView: React.FC = () => {
             id="tx-import-csv-btn"
             type="button"
             onClick={() => setIsImportModalOpen(true)}
-            className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-xl border border-indigo-200 transition-all cursor-pointer"
+            className="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-xl border border-indigo-200 transition-all cursor-pointer"
           >
             <Upload className="w-3.5 h-3.5" />
-            <span>Import CSV (2-Step)</span>
+            <span>Import CSV</span>
           </button>
 
           {/* Add Transaction */}
@@ -210,16 +211,16 @@ export const TransactionsView: React.FC = () => {
             id="tx-open-add-modal-btn"
             type="button"
             onClick={() => setIsAddModalOpen(true)}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-stone-900 hover:bg-stone-800 rounded-xl shadow-xs transition-all cursor-pointer"
+            className="min-h-[44px] inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-stone-900 hover:bg-stone-800 rounded-xl shadow-xs transition-all cursor-pointer"
           >
-            <Plus className="w-4 h-4" />
+            <Plus className="w-4 h-4 text-emerald-400" />
             <span>Add Transaction</span>
           </button>
         </div>
       </div>
 
       {/* Filter & Search Bar */}
-      <div className="bg-white p-4 rounded-2xl border border-stone-200 shadow-2xs space-y-3">
+      <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-stone-200 shadow-2xs space-y-3">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
           {/* Search */}
           <div className="relative lg:col-span-2">
@@ -230,7 +231,7 @@ export const TransactionsView: React.FC = () => {
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Search description, amount, math..."
-              className="w-full pl-9 pr-3 py-2 text-xs rounded-xl border border-stone-200 focus:outline-none focus:border-stone-800"
+              className="w-full min-h-[44px] pl-9 pr-3 py-2 text-xs rounded-xl border border-stone-200 focus:outline-none focus:border-stone-800"
             />
           </div>
 
@@ -240,7 +241,7 @@ export const TransactionsView: React.FC = () => {
               id="tx-filter-wallet"
               value={selectedWalletId}
               onChange={(e) => setSelectedWalletId(e.target.value)}
-              className="w-full py-2 px-3 text-xs rounded-xl border border-stone-200 bg-white focus:outline-none focus:border-stone-800"
+              className="w-full min-h-[44px] py-2 px-3 text-xs rounded-xl border border-stone-200 bg-white focus:outline-none focus:border-stone-800"
             >
               <option value="ALL">All Wallets</option>
               {wallets.map((w) => (
@@ -257,7 +258,7 @@ export const TransactionsView: React.FC = () => {
               id="tx-filter-type"
               value={selectedType}
               onChange={(e) => setSelectedType(e.target.value)}
-              className="w-full py-2 px-3 text-xs rounded-xl border border-stone-200 bg-white focus:outline-none focus:border-stone-800"
+              className="w-full min-h-[44px] py-2 px-3 text-xs rounded-xl border border-stone-200 bg-white focus:outline-none focus:border-stone-800"
             >
               <option value="ALL">All Types</option>
               <option value="EXPENSE">Expense</option>
@@ -269,7 +270,7 @@ export const TransactionsView: React.FC = () => {
           </div>
 
           {/* Soft Delete Switch */}
-          <div className="flex items-center justify-between sm:justify-end gap-2 px-1">
+          <div className="flex items-center justify-between sm:justify-end gap-2 px-1 min-h-[44px]">
             <label htmlFor="tx-show-deleted" className="text-xs font-semibold text-stone-600 cursor-pointer">
               Show Soft Deleted
             </label>
@@ -288,14 +289,14 @@ export const TransactionsView: React.FC = () => {
       <div className="bg-white rounded-2xl border border-stone-200 shadow-2xs overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
-            <thead className="bg-stone-50 border-b border-stone-200 text-stone-500 uppercase tracking-wider font-semibold">
+            <thead className="bg-stone-50 border-b border-stone-200 text-stone-500 uppercase tracking-wider font-semibold text-[10px]">
               <tr>
-                <th className="py-3.5 px-4">Date</th>
-                <th className="py-3.5 px-4">Type & Details</th>
-                <th className="py-3.5 px-4">Wallet</th>
-                <th className="py-3.5 px-4">Category</th>
-                <th className="py-3.5 px-4 text-right">Amount</th>
-                <th className="py-3.5 px-4 text-center">Actions</th>
+                <th className="py-3 px-3 sm:px-4">Date</th>
+                <th className="py-3 px-3 sm:px-4">Details</th>
+                <th className="hidden md:table-cell py-3 px-4">Wallet</th>
+                <th className="hidden sm:table-cell py-3 px-4">Category</th>
+                <th className="py-3 px-3 sm:px-4 text-right">Amount</th>
+                <th className="py-3 px-2 sm:px-4 text-center">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-stone-100">
@@ -323,19 +324,19 @@ export const TransactionsView: React.FC = () => {
         </div>
 
         {/* Pagination Footer */}
-        <div className="flex items-center justify-between px-4 py-3 bg-stone-50 border-t border-stone-200 text-xs">
-          <span className="text-stone-500">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 bg-stone-50 border-t border-stone-200 text-xs">
+          <span className="text-stone-500 text-center sm:text-left text-[11px] sm:text-xs">
             Showing {filteredTransactions.length === 0 ? 0 : (currentPage - 1) * pageSize + 1} to{' '}
             {Math.min(currentPage * pageSize, filteredTransactions.length)} of {filteredTransactions.length} entries
           </span>
 
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1.5">
             <button
               id="tx-prev-page-btn"
               type="button"
               disabled={currentPage === 1}
               onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-              className="px-2.5 py-1 rounded border border-stone-200 bg-white text-stone-700 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+              className="min-h-[44px] px-3.5 py-1.5 rounded-xl border border-stone-200 bg-white text-stone-700 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer font-medium"
             >
               Previous
             </button>
@@ -347,7 +348,7 @@ export const TransactionsView: React.FC = () => {
               type="button"
               disabled={currentPage >= totalPages}
               onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-              className="px-2.5 py-1 rounded border border-stone-200 bg-white text-stone-700 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+              className="min-h-[44px] px-3.5 py-1.5 rounded-xl border border-stone-200 bg-white text-stone-700 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer font-medium"
             >
               Next
             </button>
