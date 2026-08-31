@@ -117,7 +117,7 @@ const MainApp: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-stone-100 text-stone-900 font-sans flex flex-col selection:bg-stone-900 selection:text-white">
+    <div className="min-h-screen bg-stone-100 dark:bg-stone-950 text-stone-900 dark:text-stone-100 font-sans flex flex-col selection:bg-stone-900 selection:text-white transition-colors duration-200">
       {/* Top Navbar */}
       <Navbar
         activeTab={activeTab}
@@ -165,10 +165,10 @@ const MainApp: React.FC = () => {
       <ReloadPrompt />
 
       {/* Footer (with safe bottom margin on mobile) */}
-      <footer className="border-t border-stone-200 bg-white py-6 mt-6 sm:mt-12 mb-16 sm:mb-0 text-center text-xs text-stone-500">
+      <footer className="border-t border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 py-6 mt-6 sm:mt-12 mb-16 sm:mb-0 text-center text-xs text-stone-500 dark:text-stone-400 transition-colors duration-200">
         <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
           <p>FinLife Tracker — Full-Stack Personal Finance & Holistic Lifestyle Management</p>
-          <p className="text-stone-400 font-mono text-[11px]">Supabase Realtime Cloud Sync • Safe Math.js • Single-Tx Repayments</p>
+          <p className="text-stone-400 dark:text-stone-500 font-mono text-[11px]">Supabase Realtime Cloud Sync • Safe Math.js • Single-Tx Repayments</p>
         </div>
       </footer>
 
@@ -180,7 +180,7 @@ const MainApp: React.FC = () => {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="fixed inset-0 z-50 bg-stone-900/60 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-4"
+            className="fixed inset-0 z-50 bg-stone-900/60 dark:bg-black/70 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-4"
             onClick={(e) => {
               if (e.target === e.currentTarget) setIsQuickAddOpen(false);
             }}
@@ -193,19 +193,19 @@ const MainApp: React.FC = () => {
               animate={{ y: 0, scale: 1, opacity: 1 }}
               exit={{ y: 40, scale: 0.96, opacity: 0 }}
               transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-              className="bg-white/95 backdrop-blur-xl rounded-t-3xl sm:rounded-2xl max-w-xl w-full max-h-[92vh] sm:max-h-[90vh] flex flex-col shadow-2xl border border-stone-200/80"
+              className="bg-white/95 dark:bg-stone-900/95 backdrop-blur-xl rounded-t-3xl sm:rounded-2xl max-w-xl w-full max-h-[92vh] sm:max-h-[90vh] flex flex-col shadow-2xl border border-stone-200/80 dark:border-stone-800"
             >
               {/* Mobile Sheet Handle */}
               <div className="sm:hidden pt-3 pb-1 flex justify-center cursor-pointer" onClick={() => setIsQuickAddOpen(false)}>
-                <div className="w-12 h-1.5 rounded-full bg-stone-300" />
+                <div className="w-12 h-1.5 rounded-full bg-stone-300 dark:bg-stone-700" />
               </div>
 
-              <div className="px-4 sm:px-6 py-3.5 sm:py-4 border-b border-stone-100/80 flex items-center justify-between">
+              <div className="px-4 sm:px-6 py-3.5 sm:py-4 border-b border-stone-100/80 dark:border-stone-800 flex items-center justify-between">
                 <div>
-                  <h3 id="quick-record-modal-title" className="text-base sm:text-lg font-bold text-stone-900">
+                  <h3 id="quick-record-modal-title" className="text-base sm:text-lg font-bold text-stone-900 dark:text-white">
                     Quick Record Transaction
                   </h3>
-                  <p className="text-xs text-stone-500 hidden sm:block">
+                  <p className="text-xs text-stone-500 dark:text-stone-400 hidden sm:block">
                     Add an expense, income, or wallet transfer instantly
                   </p>
                 </div>
@@ -214,7 +214,7 @@ const MainApp: React.FC = () => {
                   type="button"
                   id="close-quick-record-modal-btn"
                   onClick={() => setIsQuickAddOpen(false)}
-                  className="p-2 rounded-xl text-stone-400 hover:text-stone-700 hover:bg-stone-100 active:bg-stone-200 transition-colors cursor-pointer"
+                  className="p-2 rounded-xl text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 hover:bg-stone-100 dark:hover:bg-stone-800 active:bg-stone-200 transition-colors cursor-pointer"
                   aria-label="Close modal"
                 >
                   <X className="w-5 h-5" />

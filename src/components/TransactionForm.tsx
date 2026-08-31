@@ -96,16 +96,16 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
     <form
       id={`${formId}-form`}
       onSubmit={handleSubmit}
-      className="bg-white rounded-2xl border border-stone-200 shadow-xs p-4 sm:p-6 space-y-5"
+      className="bg-white dark:bg-stone-900 rounded-2xl border border-stone-200 dark:border-stone-800 shadow-xs p-4 sm:p-6 space-y-5 transition-colors"
     >
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-stone-100 pb-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-stone-100 dark:border-stone-800 pb-4">
         <div>
-          <h2 className="text-base sm:text-lg font-bold text-stone-900">Record Transaction</h2>
-          <p className="text-xs text-stone-500">Log an expense, income, transfer, or debt payment</p>
+          <h2 className="text-base sm:text-lg font-bold text-stone-900 dark:text-white">Record Transaction</h2>
+          <p className="text-xs text-stone-500 dark:text-stone-400">Log an expense, income, transfer, or debt payment</p>
         </div>
 
         {/* Transaction Type Segmented Toggle with mobile touch targets */}
-        <div className="grid grid-cols-4 sm:flex bg-stone-100 p-1 rounded-xl gap-1 w-full sm:w-auto">
+        <div className="grid grid-cols-4 sm:flex bg-stone-100 dark:bg-stone-800 p-1 rounded-xl gap-1 w-full sm:w-auto border border-stone-200 dark:border-stone-700">
           {(['EXPENSE', 'INCOME', 'TRANSFER', 'DEBT_REPAYMENT'] as TransactionType[]).map((t) => (
             <motion.button
               whileTap={{ scale: 0.95 }}
@@ -118,8 +118,8 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
               }}
               className={`py-2 px-2 sm:px-3 text-center text-xs font-semibold rounded-lg transition-all cursor-pointer truncate ${
                 type === t
-                  ? 'bg-white text-stone-900 shadow-xs'
-                  : 'text-stone-500 hover:text-stone-800'
+                  ? 'bg-white dark:bg-stone-700 text-stone-900 dark:text-white shadow-xs'
+                  : 'text-stone-500 dark:text-stone-400 hover:text-stone-800 dark:hover:text-stone-200'
               }`}
             >
               {t === 'DEBT_REPAYMENT' ? 'Debt' : t.charAt(0) + t.slice(1).toLowerCase()}
@@ -145,12 +145,12 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
       {/* 2. Smart Description Input with auto-tagging */}
       <div className="flex flex-col gap-1.5">
         <div className="flex items-center justify-between flex-wrap gap-1">
-          <label htmlFor={`${formId}-desc`} className="text-xs font-semibold uppercase tracking-wider text-stone-600">
+          <label htmlFor={`${formId}-desc`} className="text-xs font-semibold uppercase tracking-wider text-stone-600 dark:text-stone-300">
             Description / Note
           </label>
           {autoMatchedCategory && (
-            <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
-              <Sparkles className="w-3 h-3 text-emerald-600" />
+            <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-800 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded-md border border-emerald-200 dark:border-emerald-800">
+              <Sparkles className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
               Auto-categorized: <strong>{autoMatchedCategory}</strong>
             </span>
           )}
@@ -162,16 +162,16 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
             value={description}
             onChange={(e) => handleDescriptionChange(e.target.value)}
             placeholder="e.g., lunch with team or groceries"
-            className="w-full text-sm rounded-xl border border-stone-200 px-3.5 py-2.5 text-stone-800 placeholder:text-stone-400 focus:outline-none focus:border-stone-800 focus:ring-2 focus:ring-stone-200"
+            className="w-full text-sm rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 px-3.5 py-2.5 text-stone-800 dark:text-stone-100 placeholder:text-stone-400 dark:placeholder:text-stone-500 focus:outline-none focus:border-stone-800 dark:focus:border-stone-400 focus:ring-2 focus:ring-stone-200 dark:focus:ring-stone-700"
           />
         </div>
       </div>
 
       {/* Smart Auto-Fill Notification & Manual Toggle */}
       {isAutoParsed && (
-        <div className="flex items-center justify-between p-3 bg-emerald-50/60 rounded-xl border border-emerald-200/60 text-xs">
-          <div className="flex items-center gap-2 text-emerald-900">
-            <Sparkles className="w-4 h-4 text-emerald-600 shrink-0" />
+        <div className="flex items-center justify-between p-3 bg-emerald-50/60 dark:bg-emerald-950/40 rounded-xl border border-emerald-200/60 dark:border-emerald-800/60 text-xs">
+          <div className="flex items-center gap-2 text-emerald-900 dark:text-emerald-200">
+            <Sparkles className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
             <span>
               Applied <strong>{matchedCategoryObj?.name}</strong> • Paying from <strong>{selectedWallet?.name}</strong>
             </span>
@@ -179,7 +179,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
           <button
             type="button"
             onClick={() => setShowManualOverrides(!showManualOverrides)}
-            className="text-[11px] font-semibold text-emerald-800 hover:text-emerald-950 underline cursor-pointer flex items-center gap-1"
+            className="text-[11px] font-semibold text-emerald-800 dark:text-emerald-300 hover:text-emerald-950 dark:hover:text-emerald-100 underline cursor-pointer flex items-center gap-1"
           >
             <SlidersHorizontal className="w-3 h-3" />
             {showManualOverrides ? 'Hide details' : 'Edit details'}
@@ -193,14 +193,14 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {/* Source Wallet */}
             <div className="flex flex-col gap-1.5">
-              <label htmlFor={`${formId}-wallet`} className="text-xs font-semibold uppercase tracking-wider text-stone-600">
+              <label htmlFor={`${formId}-wallet`} className="text-xs font-semibold uppercase tracking-wider text-stone-600 dark:text-stone-300">
                 {type === 'TRANSFER' ? 'From Wallet' : 'Wallet'}
               </label>
               <select
                 id={`${formId}-wallet`}
                 value={walletId}
                 onChange={(e) => setWalletId(e.target.value)}
-                className="w-full text-sm rounded-xl border border-stone-200 px-3 py-2.5 bg-white text-stone-800 focus:outline-none focus:border-stone-800"
+                className="w-full text-sm rounded-xl border border-stone-200 dark:border-stone-700 px-3 py-2.5 bg-white dark:bg-stone-800 text-stone-800 dark:text-stone-100 focus:outline-none focus:border-stone-800 dark:focus:border-stone-400"
               >
                 {wallets.map((w) => (
                   <option key={w.id} value={w.id}>
@@ -213,14 +213,14 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
             {/* Destination Wallet for transfers OR Category for regular transactions */}
             {type === 'TRANSFER' ? (
               <div className="flex flex-col gap-1.5">
-                <label htmlFor={`${formId}-dest-wallet`} className="text-xs font-semibold uppercase tracking-wider text-stone-600">
+                <label htmlFor={`${formId}-dest-wallet`} className="text-xs font-semibold uppercase tracking-wider text-stone-600 dark:text-stone-300">
                   To Wallet
                 </label>
                 <select
                   id={`${formId}-dest-wallet`}
                   value={destinationWalletId}
                   onChange={(e) => setDestinationWalletId(e.target.value)}
-                  className="w-full text-sm rounded-xl border border-stone-200 px-3 py-2.5 bg-white text-stone-800 focus:outline-none focus:border-stone-800"
+                  className="w-full text-sm rounded-xl border border-stone-200 dark:border-stone-700 px-3 py-2.5 bg-white dark:bg-stone-800 text-stone-800 dark:text-stone-100 focus:outline-none focus:border-stone-800 dark:focus:border-stone-400"
                 >
                   {wallets
                     .filter((w) => w.id !== walletId)
@@ -233,7 +233,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
               </div>
             ) : (
               <div className="flex flex-col gap-1.5">
-                <label htmlFor={`${formId}-category`} className="text-xs font-semibold uppercase tracking-wider text-stone-600">
+                <label htmlFor={`${formId}-category`} className="text-xs font-semibold uppercase tracking-wider text-stone-600 dark:text-stone-300">
                   Category
                 </label>
                 <div className="relative">
@@ -244,7 +244,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
                       setCategoryId(e.target.value);
                       setAutoMatchedCategory(null);
                     }}
-                    className="w-full text-sm rounded-xl border border-stone-200 px-3 py-2.5 bg-white text-stone-800 focus:outline-none focus:border-stone-800"
+                    className="w-full text-sm rounded-xl border border-stone-200 dark:border-stone-700 px-3 py-2.5 bg-white dark:bg-stone-800 text-stone-800 dark:text-stone-100 focus:outline-none focus:border-stone-800 dark:focus:border-stone-400"
                   >
                     {categories.map((c) => (
                       <option key={c.id} value={c.id}>
@@ -259,7 +259,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
 
           {/* 4. Date Picker */}
           <div className="flex flex-col gap-1.5">
-            <label htmlFor={`${formId}-date`} className="text-xs font-semibold uppercase tracking-wider text-stone-600">
+            <label htmlFor={`${formId}-date`} className="text-xs font-semibold uppercase tracking-wider text-stone-600 dark:text-stone-300">
               Transaction Date
             </label>
             <input
@@ -267,7 +267,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
               type="date"
               value={date}
               onChange={(e) => setDate(e.target.value)}
-              className="w-full text-sm rounded-xl border border-stone-200 px-3.5 py-2.5 bg-white text-stone-800 focus:outline-none focus:border-stone-800"
+              className="w-full text-sm rounded-xl border border-stone-200 dark:border-stone-700 px-3.5 py-2.5 bg-white dark:bg-stone-800 text-stone-800 dark:text-stone-100 focus:outline-none focus:border-stone-800 dark:focus:border-stone-400"
             />
           </div>
         </div>
@@ -282,13 +282,13 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
           disabled={!isAmountValid || amount === null}
           className={`w-full min-h-[48px] py-3 px-4 rounded-xl font-semibold text-sm transition-all flex items-center justify-center gap-2 cursor-pointer ${
             isAmountValid && amount !== null
-              ? 'bg-stone-900 text-white hover:bg-stone-800 shadow-sm'
-              : 'bg-stone-200 text-stone-400 cursor-not-allowed'
+              ? 'bg-stone-900 hover:bg-stone-800 dark:bg-stone-100 dark:hover:bg-white text-white dark:text-stone-900 shadow-sm'
+              : 'bg-stone-200 dark:bg-stone-800 text-stone-400 dark:text-stone-600 cursor-not-allowed'
           }`}
         >
           <span>Record {type === 'TRANSFER' ? 'Transfer' : type === 'DEBT_REPAYMENT' ? 'Debt Payment' : 'Transaction'}</span>
           {amount !== null && isAmountValid && (
-            <span className="font-mono text-xs bg-stone-800 px-2 py-0.5 rounded text-stone-200">
+            <span className="font-mono text-xs bg-stone-800 dark:bg-stone-200 px-2 py-0.5 rounded text-stone-200 dark:text-stone-800">
               ${amount.toFixed(2)}
             </span>
           )}
@@ -296,7 +296,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
         </motion.button>
 
         {isSubmitted && (
-          <p className="text-center text-xs font-medium text-emerald-600 mt-2">
+          <p className="text-center text-xs font-medium text-emerald-600 dark:text-emerald-400 mt-2">
             ✓ Transaction successfully logged!
           </p>
         )}

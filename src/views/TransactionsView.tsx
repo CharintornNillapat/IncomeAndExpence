@@ -163,10 +163,10 @@ export const TransactionsView: React.FC = () => {
   return (
     <div className="space-y-4 sm:space-y-6">
       {/* Header & Action Toolbar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 bg-white p-4 sm:p-5 rounded-2xl border border-stone-200 shadow-2xs">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 bg-white dark:bg-stone-900 p-4 sm:p-5 rounded-2xl border border-stone-200 dark:border-stone-800 shadow-2xs">
         <div>
-          <h2 className="text-base font-bold text-stone-900">Transaction Management</h2>
-          <p className="hidden sm:block text-xs text-stone-500">
+          <h2 className="text-base font-bold text-stone-900 dark:text-white">Transaction Management</h2>
+          <p className="hidden sm:block text-xs text-stone-500 dark:text-stone-400">
             CRUD operations with soft-delete safety, math parser, and 2-step CSV synchronization
           </p>
         </div>
@@ -177,7 +177,7 @@ export const TransactionsView: React.FC = () => {
             id="tx-export-csv-btn"
             type="button"
             onClick={() => exportTransactionsToCsv(transactions, wallets, categories)}
-            className="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-stone-700 bg-stone-100 hover:bg-stone-200 rounded-xl transition-all cursor-pointer"
+            className="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-stone-700 dark:text-stone-300 bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 rounded-xl transition-all cursor-pointer"
           >
             <Download className="w-3.5 h-3.5" />
             <span>Export CSV</span>
@@ -188,9 +188,9 @@ export const TransactionsView: React.FC = () => {
             id="diary-export-json-btn"
             type="button"
             onClick={() => exportDiaryToJson(diaryEntries)}
-            className="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-stone-700 bg-stone-100 hover:bg-stone-200 rounded-xl transition-all cursor-pointer"
+            className="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-stone-700 dark:text-stone-300 bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 rounded-xl transition-all cursor-pointer"
           >
-            <FileText className="w-3.5 h-3.5 text-stone-500" />
+            <FileText className="w-3.5 h-3.5 text-stone-500 dark:text-stone-400" />
             <span className="hidden sm:inline">Export Diary (JSON)</span>
             <span className="sm:hidden">Diary</span>
           </button>
@@ -200,7 +200,7 @@ export const TransactionsView: React.FC = () => {
             id="tx-import-csv-btn"
             type="button"
             onClick={() => setIsImportModalOpen(true)}
-            className="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-xl border border-indigo-200 transition-all cursor-pointer"
+            className="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/40 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 rounded-xl border border-indigo-200 dark:border-indigo-800/60 transition-all cursor-pointer"
           >
             <Upload className="w-3.5 h-3.5" />
             <span>Import CSV</span>
@@ -211,27 +211,27 @@ export const TransactionsView: React.FC = () => {
             id="tx-open-add-modal-btn"
             type="button"
             onClick={() => setIsAddModalOpen(true)}
-            className="min-h-[44px] inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-stone-900 hover:bg-stone-800 rounded-xl shadow-xs transition-all cursor-pointer"
+            className="min-h-[44px] inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white dark:text-stone-900 bg-stone-900 hover:bg-stone-800 dark:bg-stone-100 dark:hover:bg-white rounded-xl shadow-xs transition-all cursor-pointer"
           >
-            <Plus className="w-4 h-4 text-emerald-400" />
+            <Plus className="w-4 h-4 text-emerald-400 dark:text-emerald-600" />
             <span>Add Transaction</span>
           </button>
         </div>
       </div>
 
       {/* Filter & Search Bar */}
-      <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-stone-200 shadow-2xs space-y-3">
+      <div className="bg-white dark:bg-stone-900 p-3.5 sm:p-4 rounded-2xl border border-stone-200 dark:border-stone-800 shadow-2xs space-y-3">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
           {/* Search */}
           <div className="relative lg:col-span-2">
-            <Search className="w-4 h-4 text-stone-400 absolute left-3 top-3" />
+            <Search className="w-4 h-4 text-stone-400 dark:text-stone-500 absolute left-3 top-3" />
             <input
               id="tx-search-input"
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Search description, amount, math..."
-              className="w-full min-h-[44px] pl-9 pr-3 py-2 text-xs rounded-xl border border-stone-200 focus:outline-none focus:border-stone-800"
+              className="w-full min-h-[44px] pl-9 pr-3 py-2 text-xs rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 text-stone-900 dark:text-stone-100 placeholder:text-stone-400 dark:placeholder:text-stone-500 focus:outline-none focus:border-stone-800 dark:focus:border-stone-400"
             />
           </div>
 
@@ -241,7 +241,7 @@ export const TransactionsView: React.FC = () => {
               id="tx-filter-wallet"
               value={selectedWalletId}
               onChange={(e) => setSelectedWalletId(e.target.value)}
-              className="w-full min-h-[44px] py-2 px-3 text-xs rounded-xl border border-stone-200 bg-white focus:outline-none focus:border-stone-800"
+              className="w-full min-h-[44px] py-2 px-3 text-xs rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-none focus:border-stone-800 dark:focus:border-stone-400"
             >
               <option value="ALL">All Wallets</option>
               {wallets.map((w) => (
@@ -258,7 +258,7 @@ export const TransactionsView: React.FC = () => {
               id="tx-filter-type"
               value={selectedType}
               onChange={(e) => setSelectedType(e.target.value)}
-              className="w-full min-h-[44px] py-2 px-3 text-xs rounded-xl border border-stone-200 bg-white focus:outline-none focus:border-stone-800"
+              className="w-full min-h-[44px] py-2 px-3 text-xs rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-none focus:border-stone-800 dark:focus:border-stone-400"
             >
               <option value="ALL">All Types</option>
               <option value="EXPENSE">Expense</option>
@@ -271,7 +271,7 @@ export const TransactionsView: React.FC = () => {
 
           {/* Soft Delete Switch */}
           <div className="flex items-center justify-between sm:justify-end gap-2 px-1 min-h-[44px]">
-            <label htmlFor="tx-show-deleted" className="text-xs font-semibold text-stone-600 cursor-pointer">
+            <label htmlFor="tx-show-deleted" className="text-xs font-semibold text-stone-600 dark:text-stone-300 cursor-pointer">
               Show Soft Deleted
             </label>
             <input
@@ -286,10 +286,10 @@ export const TransactionsView: React.FC = () => {
       </div>
 
       {/* Transaction Table */}
-      <div className="bg-white rounded-2xl border border-stone-200 shadow-2xs overflow-hidden">
+      <div className="bg-white dark:bg-stone-900 rounded-2xl border border-stone-200 dark:border-stone-800 shadow-2xs overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
-            <thead className="bg-stone-50 border-b border-stone-200 text-stone-500 uppercase tracking-wider font-semibold text-[10px]">
+            <thead className="bg-stone-50 dark:bg-stone-800/80 border-b border-stone-200 dark:border-stone-800 text-stone-500 dark:text-stone-400 uppercase tracking-wider font-semibold text-[10px]">
               <tr>
                 <th className="py-3 px-3 sm:px-4">Date</th>
                 <th className="py-3 px-3 sm:px-4">Details</th>
@@ -299,10 +299,10 @@ export const TransactionsView: React.FC = () => {
                 <th className="py-3 px-2 sm:px-4 text-center">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-stone-100">
+            <tbody className="divide-y divide-stone-100 dark:divide-stone-800/60">
               {paginatedTransactions.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="text-center py-10 text-stone-400">
+                  <td colSpan={6} className="text-center py-10 text-stone-400 dark:text-stone-500">
                     No transactions match your current filters.
                   </td>
                 </tr>
@@ -324,8 +324,8 @@ export const TransactionsView: React.FC = () => {
         </div>
 
         {/* Pagination Footer */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 bg-stone-50 border-t border-stone-200 text-xs">
-          <span className="text-stone-500 text-center sm:text-left text-[11px] sm:text-xs">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 bg-stone-50 dark:bg-stone-850 dark:bg-stone-800/60 border-t border-stone-200 dark:border-stone-800 text-xs">
+          <span className="text-stone-500 dark:text-stone-400 text-center sm:text-left text-[11px] sm:text-xs">
             Showing {filteredTransactions.length === 0 ? 0 : (currentPage - 1) * pageSize + 1} to{' '}
             {Math.min(currentPage * pageSize, filteredTransactions.length)} of {filteredTransactions.length} entries
           </span>
@@ -336,11 +336,11 @@ export const TransactionsView: React.FC = () => {
               type="button"
               disabled={currentPage === 1}
               onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-              className="min-h-[44px] px-3.5 py-1.5 rounded-xl border border-stone-200 bg-white text-stone-700 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer font-medium"
+              className="min-h-[44px] px-3.5 py-1.5 rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-700 dark:text-stone-300 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer font-medium"
             >
               Previous
             </button>
-            <span className="px-2 font-mono font-semibold text-stone-800">
+            <span className="px-2 font-mono font-semibold text-stone-800 dark:text-stone-200">
               {currentPage} / {totalPages}
             </span>
             <button
@@ -348,7 +348,7 @@ export const TransactionsView: React.FC = () => {
               type="button"
               disabled={currentPage >= totalPages}
               onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-              className="min-h-[44px] px-3.5 py-1.5 rounded-xl border border-stone-200 bg-white text-stone-700 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer font-medium"
+              className="min-h-[44px] px-3.5 py-1.5 rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-700 dark:text-stone-300 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer font-medium"
             >
               Next
             </button>
@@ -368,19 +368,19 @@ export const TransactionsView: React.FC = () => {
             role="dialog"
             aria-modal="true"
             aria-labelledby="add-transaction-modal-title"
-            className="bg-white rounded-t-3xl sm:rounded-2xl max-w-xl w-full max-h-[92vh] sm:max-h-[90vh] flex flex-col shadow-2xl border border-stone-200 animate-in fade-in slide-in-from-bottom-6 sm:slide-in-from-bottom-0 duration-200"
+            className="bg-white dark:bg-stone-900 rounded-t-3xl sm:rounded-2xl max-w-xl w-full max-h-[92vh] sm:max-h-[90vh] flex flex-col shadow-2xl border border-stone-200 dark:border-stone-800 animate-in fade-in slide-in-from-bottom-6 sm:slide-in-from-bottom-0 duration-200"
           >
             {/* Mobile Drag Indicator */}
             <div className="sm:hidden pt-3 pb-1 flex justify-center cursor-pointer" onClick={() => setIsAddModalOpen(false)}>
-              <div className="w-12 h-1.5 rounded-full bg-stone-300" />
+              <div className="w-12 h-1.5 rounded-full bg-stone-300 dark:bg-stone-700" />
             </div>
 
-            <div className="px-4 sm:px-6 py-3.5 sm:py-4 border-b border-stone-100 flex items-center justify-between">
+            <div className="px-4 sm:px-6 py-3.5 sm:py-4 border-b border-stone-100 dark:border-stone-800 flex items-center justify-between">
               <div>
-                <h3 id="add-transaction-modal-title" className="text-base sm:text-lg font-bold text-stone-900">
+                <h3 id="add-transaction-modal-title" className="text-base sm:text-lg font-bold text-stone-900 dark:text-white">
                   Record New Transaction
                 </h3>
-                <p className="text-xs text-stone-500 hidden sm:block">
+                <p className="text-xs text-stone-500 dark:text-stone-400 hidden sm:block">
                   Add an expense, income, transfer, or debt payment
                 </p>
               </div>
@@ -388,7 +388,7 @@ export const TransactionsView: React.FC = () => {
                 type="button"
                 id="close-add-transaction-modal-btn"
                 onClick={() => setIsAddModalOpen(false)}
-                className="p-2 rounded-xl text-stone-400 hover:text-stone-700 hover:bg-stone-100 active:bg-stone-200 transition-colors cursor-pointer"
+                className="p-2 rounded-xl text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 hover:bg-stone-100 dark:hover:bg-stone-800 active:bg-stone-200 transition-colors cursor-pointer"
                 aria-label="Close modal"
               >
                 <X className="w-5 h-5" />
@@ -413,12 +413,12 @@ export const TransactionsView: React.FC = () => {
 
       {/* Two-Step CSV Import Modal */}
       {isImportModalOpen && (
-        <div className="fixed inset-0 z-50 bg-stone-900/40 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto shadow-xl border border-stone-200 p-6 space-y-6">
-            <div className="flex items-center justify-between pb-4 border-b border-stone-100">
+        <div className="fixed inset-0 z-50 bg-stone-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-stone-900 rounded-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto shadow-xl border border-stone-200 dark:border-stone-800 p-6 space-y-6">
+            <div className="flex items-center justify-between pb-4 border-b border-stone-100 dark:border-stone-800">
               <div>
-                <h3 className="text-base font-bold text-stone-900">Two-Step CSV Transaction Import</h3>
-                <p className="text-xs text-stone-500">
+                <h3 className="text-base font-bold text-stone-900 dark:text-white">Two-Step CSV Transaction Import</h3>
+                <p className="text-xs text-stone-500 dark:text-stone-400">
                   Step 1: Dry-run parse & validate rows $\rightarrow$ Step 2: Atomic commit into MySQL
                 </p>
               </div>
@@ -428,7 +428,7 @@ export const TransactionsView: React.FC = () => {
                   setIsImportModalOpen(false);
                   setImportPreview(null);
                 }}
-                className="p-1 rounded-lg text-stone-400 hover:text-stone-700 hover:bg-stone-100 cursor-pointer"
+                className="p-1 rounded-lg text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 hover:bg-stone-100 dark:hover:bg-stone-800 cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -437,13 +437,13 @@ export const TransactionsView: React.FC = () => {
             {/* Step 1: Upload File */}
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <label className="text-xs font-semibold uppercase tracking-wider text-stone-700">
+                <label className="text-xs font-semibold uppercase tracking-wider text-stone-700 dark:text-stone-300">
                   Select CSV File
                 </label>
                 <button
                   type="button"
                   onClick={handleDownloadSampleCsv}
-                  className="text-xs text-indigo-600 hover:underline flex items-center gap-1 cursor-pointer"
+                  className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1 cursor-pointer"
                 >
                   <Download className="w-3 h-3" /> Download Sample CSV Template
                 </button>
@@ -454,22 +454,22 @@ export const TransactionsView: React.FC = () => {
                 type="file"
                 accept=".csv,text/csv"
                 onChange={handleCsvFileUpload}
-                className="w-full text-xs text-stone-600 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-stone-900 file:text-white hover:file:bg-stone-800 cursor-pointer border border-stone-200 rounded-xl p-2"
+                className="w-full text-xs text-stone-600 dark:text-stone-400 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-stone-900 dark:file:bg-stone-100 file:text-white dark:file:text-stone-900 hover:file:bg-stone-800 dark:hover:file:bg-white cursor-pointer border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 rounded-xl p-2"
               />
 
               {isParsingCsv && (
-                <p className="text-xs text-stone-500 animate-pulse">Running dry-run validation checks...</p>
+                <p className="text-xs text-stone-500 dark:text-stone-400 animate-pulse">Running dry-run validation checks...</p>
               )}
 
               {importFileError && (
-                <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center gap-2">
+                <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 text-xs flex items-center gap-2">
                   <AlertCircle className="w-4 h-4 shrink-0" />
                   <span>{importFileError}</span>
                 </div>
               )}
 
               {importSuccessMsg && (
-                <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs flex items-center gap-2">
+                <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 text-xs flex items-center gap-2">
                   <CheckCircle2 className="w-4 h-4 shrink-0" />
                   <span>{importSuccessMsg}</span>
                 </div>
@@ -479,29 +479,29 @@ export const TransactionsView: React.FC = () => {
             {/* Dry Run Preview Summary & Table */}
             {importPreview && (
               <div className="space-y-4 pt-2">
-                <div className="grid grid-cols-4 gap-3 bg-stone-50 p-3 rounded-xl border border-stone-200 text-xs">
+                <div className="grid grid-cols-4 gap-3 bg-stone-50 dark:bg-stone-800/80 p-3 rounded-xl border border-stone-200 dark:border-stone-700 text-xs">
                   <div>
-                    <span className="text-stone-500 block">Total Rows</span>
-                    <span className="font-bold text-stone-900 font-mono text-sm">{importPreview.totalRows}</span>
+                    <span className="text-stone-500 dark:text-stone-400 block">Total Rows</span>
+                    <span className="font-bold text-stone-900 dark:text-stone-100 font-mono text-sm">{importPreview.totalRows}</span>
                   </div>
                   <div>
-                    <span className="text-stone-500 block">Valid Rows</span>
-                    <span className="font-bold text-emerald-600 font-mono text-sm">{importPreview.validRowsCount}</span>
+                    <span className="text-stone-500 dark:text-stone-400 block">Valid Rows</span>
+                    <span className="font-bold text-emerald-600 dark:text-emerald-400 font-mono text-sm">{importPreview.validRowsCount}</span>
                   </div>
                   <div>
-                    <span className="text-stone-500 block">Errors / Invalid</span>
-                    <span className="font-bold text-rose-600 font-mono text-sm">{importPreview.invalidRowsCount}</span>
+                    <span className="text-stone-500 dark:text-stone-400 block">Errors / Invalid</span>
+                    <span className="font-bold text-rose-600 dark:text-rose-400 font-mono text-sm">{importPreview.invalidRowsCount}</span>
                   </div>
                   <div>
-                    <span className="text-stone-500 block">Total Amount</span>
-                    <span className="font-bold text-stone-900 font-mono text-sm">${importPreview.totalAmount.toFixed(2)}</span>
+                    <span className="text-stone-500 dark:text-stone-400 block">Total Amount</span>
+                    <span className="font-bold text-stone-900 dark:text-stone-100 font-mono text-sm">${importPreview.totalAmount.toFixed(2)}</span>
                   </div>
                 </div>
 
                 {/* Dry Run Row Table */}
-                <div className="max-h-60 overflow-y-auto rounded-xl border border-stone-200 text-xs">
+                <div className="max-h-60 overflow-y-auto rounded-xl border border-stone-200 dark:border-stone-700 text-xs">
                   <table className="w-full text-left">
-                    <thead className="bg-stone-100 text-stone-600 sticky top-0 font-semibold">
+                    <thead className="bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300 sticky top-0 font-semibold">
                       <tr>
                         <th className="p-2">Row</th>
                         <th className="p-2">Status</th>
@@ -511,29 +511,29 @@ export const TransactionsView: React.FC = () => {
                         <th className="p-2">Description / Error</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-stone-100">
+                    <tbody className="divide-y divide-stone-100 dark:divide-stone-800">
                       {importPreview.rows.map((row) => (
-                        <tr key={row.rowIndex} className={row.isValid ? 'bg-white' : 'bg-rose-50/50'}>
-                          <td className="p-2 font-mono text-stone-500">{row.rowIndex}</td>
+                        <tr key={row.rowIndex} className={row.isValid ? 'bg-white dark:bg-stone-900' : 'bg-rose-50/50 dark:bg-rose-950/30'}>
+                          <td className="p-2 font-mono text-stone-500 dark:text-stone-400">{row.rowIndex}</td>
                           <td className="p-2">
                             {row.isValid ? (
-                              <span className="inline-flex items-center gap-1 text-emerald-700 font-semibold text-[11px]">
+                              <span className="inline-flex items-center gap-1 text-emerald-700 dark:text-emerald-400 font-semibold text-[11px]">
                                 <CheckCircle2 className="w-3.5 h-3.5" /> Valid
                               </span>
                             ) : (
-                              <span className="inline-flex items-center gap-1 text-rose-700 font-semibold text-[11px]">
+                              <span className="inline-flex items-center gap-1 text-rose-700 dark:text-rose-400 font-semibold text-[11px]">
                                 <AlertCircle className="w-3.5 h-3.5" /> Error
                               </span>
                             )}
                           </td>
-                          <td className="p-2 font-mono">{row.date}</td>
-                          <td className="p-2">{row.walletName}</td>
-                          <td className="p-2 font-mono font-bold">${row.amount.toFixed(2)}</td>
+                          <td className="p-2 font-mono text-stone-700 dark:text-stone-300">{row.date}</td>
+                          <td className="p-2 text-stone-700 dark:text-stone-300">{row.walletName}</td>
+                          <td className="p-2 font-mono font-bold text-stone-900 dark:text-stone-100">${row.amount.toFixed(2)}</td>
                           <td className="p-2">
                             {row.isValid ? (
-                              <span className="text-stone-700">{row.description}</span>
+                              <span className="text-stone-700 dark:text-stone-300">{row.description}</span>
                             ) : (
-                              <span className="text-rose-600 font-medium">{row.errorMessage}</span>
+                              <span className="text-rose-600 dark:text-rose-400 font-medium">{row.errorMessage}</span>
                             )}
                           </td>
                         </tr>
@@ -543,8 +543,8 @@ export const TransactionsView: React.FC = () => {
                 </div>
 
                 {/* Step 2 Confirmation Actions */}
-                <div className="flex items-center justify-between pt-3 border-t border-stone-100">
-                  <p className="text-xs text-stone-500">
+                <div className="flex items-center justify-between pt-3 border-t border-stone-100 dark:border-stone-800">
+                  <p className="text-xs text-stone-500 dark:text-stone-400">
                     Executing commit will insert valid entries & update wallet balances inside a single transaction.
                   </p>
                   <button
@@ -555,7 +555,7 @@ export const TransactionsView: React.FC = () => {
                     className={`px-4 py-2.5 rounded-xl font-semibold text-xs transition-all flex items-center gap-2 cursor-pointer ${
                       importPreview.validRowsCount > 0
                         ? 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-xs'
-                        : 'bg-stone-200 text-stone-400 cursor-not-allowed'
+                        : 'bg-stone-200 dark:bg-stone-800 text-stone-400 dark:text-stone-600 cursor-not-allowed'
                     }`}
                   >
                     <CheckCircle2 className="w-4 h-4" />

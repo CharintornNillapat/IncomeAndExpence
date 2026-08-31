@@ -84,10 +84,10 @@ export const DebtsView: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Header Banner */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-stone-200 shadow-2xs">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-stone-900 p-5 rounded-2xl border border-stone-200 dark:border-stone-800 shadow-2xs">
         <div>
-          <h2 className="text-base font-bold text-stone-900">Debts & Loans</h2>
-          <p className="text-xs text-stone-500">
+          <h2 className="text-base font-bold text-stone-900 dark:text-white">Debts & Loans</h2>
+          <p className="text-xs text-stone-500 dark:text-stone-400">
             Track payoff goals and make repayments from your wallets
           </p>
         </div>
@@ -96,9 +96,9 @@ export const DebtsView: React.FC = () => {
           id="open-add-debt-btn"
           type="button"
           onClick={() => setIsAddDebtOpen(true)}
-          className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-stone-900 hover:bg-stone-800 rounded-xl shadow-xs transition-all cursor-pointer"
+          className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white dark:text-stone-900 bg-stone-900 hover:bg-stone-800 dark:bg-stone-100 dark:hover:bg-white rounded-xl shadow-xs transition-all cursor-pointer"
         >
-          <Plus className="w-4 h-4 text-emerald-400" />
+          <Plus className="w-4 h-4 text-emerald-400 dark:text-emerald-600" />
           <span>Add Debt</span>
         </button>
       </div>
@@ -124,18 +124,18 @@ export const DebtsView: React.FC = () => {
             if (e.target === e.currentTarget) setIsAddDebtOpen(false);
           }}
         >
-          <div className="bg-white rounded-t-3xl sm:rounded-2xl max-w-md w-full max-h-[92vh] sm:max-h-[90vh] overflow-y-auto shadow-2xl border border-stone-200 p-4 sm:p-6 space-y-4 sm:space-y-5 animate-in fade-in slide-in-from-bottom-6 sm:slide-in-from-bottom-0 duration-200 overscroll-contain">
+          <div className="bg-white dark:bg-stone-900 rounded-t-3xl sm:rounded-2xl max-w-md w-full max-h-[92vh] sm:max-h-[90vh] overflow-y-auto shadow-2xl border border-stone-200 dark:border-stone-800 p-4 sm:p-6 space-y-4 sm:space-y-5 animate-in fade-in slide-in-from-bottom-6 sm:slide-in-from-bottom-0 duration-200 overscroll-contain">
             {/* Mobile Drag Indicator */}
             <div className="sm:hidden -mt-1 pb-1 flex justify-center cursor-pointer" onClick={() => setIsAddDebtOpen(false)}>
-              <div className="w-12 h-1.5 rounded-full bg-stone-300" />
+              <div className="w-12 h-1.5 rounded-full bg-stone-300 dark:bg-stone-700" />
             </div>
 
-            <div className="flex items-center justify-between pb-3 border-b border-stone-100">
-              <h3 className="text-sm sm:text-base font-bold text-stone-900">Add Debt</h3>
+            <div className="flex items-center justify-between pb-3 border-b border-stone-100 dark:border-stone-800">
+              <h3 className="text-sm sm:text-base font-bold text-stone-900 dark:text-white">Add Debt</h3>
               <button
                 type="button"
                 onClick={() => setIsAddDebtOpen(false)}
-                className="p-2 rounded-xl text-stone-400 hover:text-stone-700 hover:bg-stone-100 active:bg-stone-200 cursor-pointer"
+                className="p-2 rounded-xl text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 hover:bg-stone-100 dark:hover:bg-stone-800 active:bg-stone-200 cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -143,7 +143,7 @@ export const DebtsView: React.FC = () => {
 
             <form onSubmit={handleCreateDebt} className="space-y-4">
               <div>
-                <label className="text-xs font-semibold uppercase tracking-wider text-stone-600 block mb-1">
+                <label className="text-xs font-semibold uppercase tracking-wider text-stone-600 dark:text-stone-300 block mb-1">
                   Debt Title *
                 </label>
                 <input
@@ -153,13 +153,13 @@ export const DebtsView: React.FC = () => {
                   value={debtName}
                   onChange={(e) => setDebtName(e.target.value)}
                   placeholder="e.g. Student Loan, Car Loan"
-                  className="w-full text-xs rounded-xl border border-stone-200 px-3.5 py-2.5 text-stone-900 focus:outline-none focus:border-stone-800"
+                  className="w-full text-xs rounded-xl border border-stone-200 dark:border-stone-700 px-3.5 py-2.5 bg-stone-50 dark:bg-stone-800 text-stone-900 dark:text-stone-100 placeholder:text-stone-400 dark:placeholder:text-stone-500 focus:outline-none focus:border-stone-800 dark:focus:border-stone-400"
                 />
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div>
-                  <label className="text-xs font-semibold uppercase tracking-wider text-stone-600 block mb-1">
+                  <label className="text-xs font-semibold uppercase tracking-wider text-stone-600 dark:text-stone-300 block mb-1">
                     Total Amount ($) *
                   </label>
                   <input
@@ -174,12 +174,12 @@ export const DebtsView: React.FC = () => {
                       setTotalAmount(val);
                       setRemainingAmount(val);
                     }}
-                    className="w-full text-xs rounded-xl border border-stone-200 px-3.5 py-2.5 text-stone-900 font-mono focus:outline-none focus:border-stone-800"
+                    className="w-full text-xs rounded-xl border border-stone-200 dark:border-stone-700 px-3.5 py-2.5 bg-stone-50 dark:bg-stone-800 text-stone-900 dark:text-stone-100 font-mono placeholder:text-stone-400 dark:placeholder:text-stone-500 focus:outline-none focus:border-stone-800 dark:focus:border-stone-400"
                   />
                 </div>
 
                 <div>
-                  <label className="text-xs font-semibold uppercase tracking-wider text-stone-600 block mb-1">
+                  <label className="text-xs font-semibold uppercase tracking-wider text-stone-600 dark:text-stone-300 block mb-1">
                     Remaining ($)
                   </label>
                   <input
@@ -189,14 +189,14 @@ export const DebtsView: React.FC = () => {
                     min="0"
                     value={remainingAmount}
                     onChange={(e) => setRemainingAmount(parseFloat(e.target.value) || 0)}
-                    className="w-full text-xs rounded-xl border border-stone-200 px-3.5 py-2.5 text-stone-900 font-mono focus:outline-none focus:border-stone-800"
+                    className="w-full text-xs rounded-xl border border-stone-200 dark:border-stone-700 px-3.5 py-2.5 bg-stone-50 dark:bg-stone-800 text-stone-900 dark:text-stone-100 font-mono placeholder:text-stone-400 dark:placeholder:text-stone-500 focus:outline-none focus:border-stone-800 dark:focus:border-stone-400"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div>
-                  <label className="text-xs font-semibold uppercase tracking-wider text-stone-600 block mb-1">
+                  <label className="text-xs font-semibold uppercase tracking-wider text-stone-600 dark:text-stone-300 block mb-1">
                     Interest Rate (% APR)
                   </label>
                   <input
@@ -206,12 +206,12 @@ export const DebtsView: React.FC = () => {
                     min="0"
                     value={interestRate}
                     onChange={(e) => setInterestRate(parseFloat(e.target.value) || 0)}
-                    className="w-full text-xs rounded-xl border border-stone-200 px-3.5 py-2.5 text-stone-900 font-mono focus:outline-none focus:border-stone-800"
+                    className="w-full text-xs rounded-xl border border-stone-200 dark:border-stone-700 px-3.5 py-2.5 bg-stone-50 dark:bg-stone-800 text-stone-900 dark:text-stone-100 font-mono placeholder:text-stone-400 dark:placeholder:text-stone-500 focus:outline-none focus:border-stone-800 dark:focus:border-stone-400"
                   />
                 </div>
 
                 <div>
-                  <label className="text-xs font-semibold uppercase tracking-wider text-stone-600 block mb-1">
+                  <label className="text-xs font-semibold uppercase tracking-wider text-stone-600 dark:text-stone-300 block mb-1">
                     Min Monthly ($)
                   </label>
                   <input
@@ -221,13 +221,13 @@ export const DebtsView: React.FC = () => {
                     min="0"
                     value={minimumPayment}
                     onChange={(e) => setMinimumPayment(parseFloat(e.target.value) || 0)}
-                    className="w-full text-xs rounded-xl border border-stone-200 px-3.5 py-2.5 text-stone-900 font-mono focus:outline-none focus:border-stone-800"
+                    className="w-full text-xs rounded-xl border border-stone-200 dark:border-stone-700 px-3.5 py-2.5 bg-stone-50 dark:bg-stone-800 text-stone-900 dark:text-stone-100 font-mono placeholder:text-stone-400 dark:placeholder:text-stone-500 focus:outline-none focus:border-stone-800 dark:focus:border-stone-400"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="text-xs font-semibold uppercase tracking-wider text-stone-600 block mb-1">
+                <label className="text-xs font-semibold uppercase tracking-wider text-stone-600 dark:text-stone-300 block mb-1">
                   Target Payoff Date
                 </label>
                 <input
@@ -235,7 +235,7 @@ export const DebtsView: React.FC = () => {
                   type="date"
                   value={dueDate}
                   onChange={(e) => setDueDate(e.target.value)}
-                  className="w-full text-xs rounded-xl border border-stone-200 px-3.5 py-2.5 bg-white text-stone-900 focus:outline-none focus:border-stone-800"
+                  className="w-full text-xs rounded-xl border border-stone-200 dark:border-stone-700 px-3.5 py-2.5 bg-stone-50 dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-none focus:border-stone-800 dark:focus:border-stone-400"
                 />
               </div>
 
@@ -243,7 +243,7 @@ export const DebtsView: React.FC = () => {
                 <button
                   id="save-new-debt-btn"
                   type="submit"
-                  className="w-full py-2.5 sm:py-3 bg-stone-900 hover:bg-stone-800 text-white rounded-xl font-semibold text-xs transition-all shadow-xs cursor-pointer"
+                  className="w-full py-2.5 sm:py-3 bg-stone-900 hover:bg-stone-800 dark:bg-stone-100 dark:hover:bg-white text-white dark:text-stone-900 rounded-xl font-semibold text-xs transition-all shadow-xs cursor-pointer"
                 >
                   Add Debt
                 </button>
@@ -261,21 +261,21 @@ export const DebtsView: React.FC = () => {
             if (e.target === e.currentTarget) setRepayDebtTarget(null);
           }}
         >
-          <div className="bg-white rounded-t-3xl sm:rounded-2xl max-w-md w-full max-h-[92vh] sm:max-h-[90vh] overflow-y-auto shadow-2xl border border-stone-200 p-4 sm:p-6 space-y-4 sm:space-y-5 animate-in fade-in slide-in-from-bottom-6 sm:slide-in-from-bottom-0 duration-200 overscroll-contain">
+          <div className="bg-white dark:bg-stone-900 rounded-t-3xl sm:rounded-2xl max-w-md w-full max-h-[92vh] sm:max-h-[90vh] overflow-y-auto shadow-2xl border border-stone-200 dark:border-stone-800 p-4 sm:p-6 space-y-4 sm:space-y-5 animate-in fade-in slide-in-from-bottom-6 sm:slide-in-from-bottom-0 duration-200 overscroll-contain">
             {/* Mobile Drag Indicator */}
             <div className="sm:hidden -mt-1 pb-1 flex justify-center cursor-pointer" onClick={() => setRepayDebtTarget(null)}>
-              <div className="w-12 h-1.5 rounded-full bg-stone-300" />
+              <div className="w-12 h-1.5 rounded-full bg-stone-300 dark:bg-stone-700" />
             </div>
 
-            <div className="flex items-center justify-between pb-3 border-b border-stone-100">
+            <div className="flex items-center justify-between pb-3 border-b border-stone-100 dark:border-stone-800">
               <div>
-                <h3 className="text-sm sm:text-base font-bold text-stone-900">Repay: {repayDebtTarget.name}</h3>
-                <p className="text-xs text-stone-500">Deducts directly from your selected wallet</p>
+                <h3 className="text-sm sm:text-base font-bold text-stone-900 dark:text-white">Repay: {repayDebtTarget.name}</h3>
+                <p className="text-xs text-stone-500 dark:text-stone-400">Deducts directly from your selected wallet</p>
               </div>
               <button
                 type="button"
                 onClick={() => setRepayDebtTarget(null)}
-                className="p-2 rounded-xl text-stone-400 hover:text-stone-700 hover:bg-stone-100 active:bg-stone-200 cursor-pointer"
+                className="p-2 rounded-xl text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 hover:bg-stone-100 dark:hover:bg-stone-800 active:bg-stone-200 cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -283,14 +283,14 @@ export const DebtsView: React.FC = () => {
 
             <form onSubmit={handleExecuteRepay} className="space-y-4">
               <div>
-                <label className="text-xs font-semibold uppercase tracking-wider text-stone-600 block mb-1">
+                <label className="text-xs font-semibold uppercase tracking-wider text-stone-600 dark:text-stone-300 block mb-1">
                   Pay From Wallet *
                 </label>
                 <select
                   id="repay-wallet-select"
                   value={selectedWalletId}
                   onChange={(e) => setSelectedWalletId(e.target.value)}
-                  className="w-full text-xs rounded-xl border border-stone-200 px-3 py-2.5 bg-white text-stone-900 focus:outline-none focus:border-stone-800"
+                  className="w-full text-xs rounded-xl border border-stone-200 dark:border-stone-700 px-3 py-2.5 bg-stone-50 dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-none focus:border-stone-800 dark:focus:border-stone-400"
                 >
                   {wallets
                     .filter((w) => !w.isDeleted)
@@ -316,7 +316,7 @@ export const DebtsView: React.FC = () => {
               />
 
               <div>
-                <label className="text-xs font-semibold uppercase tracking-wider text-stone-600 block mb-1">
+                <label className="text-xs font-semibold uppercase tracking-wider text-stone-600 dark:text-stone-300 block mb-1">
                   Note
                 </label>
                 <input
@@ -325,12 +325,12 @@ export const DebtsView: React.FC = () => {
                   value={repayNote}
                   onChange={(e) => setRepayNote(e.target.value)}
                   placeholder="e.g. Monthly payment"
-                  className="w-full text-xs rounded-xl border border-stone-200 px-3.5 py-2.5 text-stone-900 focus:outline-none focus:border-stone-800"
+                  className="w-full text-xs rounded-xl border border-stone-200 dark:border-stone-700 px-3.5 py-2.5 bg-stone-50 dark:bg-stone-800 text-stone-900 dark:text-stone-100 placeholder:text-stone-400 dark:placeholder:text-stone-500 focus:outline-none focus:border-stone-800 dark:focus:border-stone-400"
                 />
               </div>
 
               {repayError && (
-                <p className="text-xs text-rose-600 font-medium flex items-center gap-1">
+                <p className="text-xs text-rose-600 dark:text-rose-400 font-medium flex items-center gap-1">
                   <ShieldAlert className="w-4 h-4" /> {repayError}
                 </p>
               )}
@@ -342,8 +342,8 @@ export const DebtsView: React.FC = () => {
                   disabled={!repayValid || repayAmount === null}
                   className={`w-full py-2.5 sm:py-3 rounded-xl font-semibold text-xs transition-all flex items-center justify-center gap-2 cursor-pointer ${
                     repayValid && repayAmount !== null
-                      ? 'bg-stone-900 hover:bg-stone-800 text-white shadow-xs'
-                      : 'bg-stone-200 text-stone-400 cursor-not-allowed'
+                      ? 'bg-stone-900 hover:bg-stone-800 dark:bg-stone-100 dark:hover:bg-white text-white dark:text-stone-900 shadow-xs'
+                      : 'bg-stone-200 dark:bg-stone-800 text-stone-400 dark:text-stone-600 cursor-not-allowed'
                   }`}
                 >
                   <span>Pay ${repayAmount !== null ? repayAmount.toFixed(2) : '0.00'}</span>

@@ -95,10 +95,10 @@ export const WalletsView: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Header & Net Worth Banner */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-stone-200 shadow-2xs">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-stone-900 p-5 rounded-2xl border border-stone-200 dark:border-stone-800 shadow-2xs">
         <div>
-          <h2 className="text-base font-bold text-stone-900">Wallets & Accounts</h2>
-          <p className="text-xs text-stone-500">
+          <h2 className="text-base font-bold text-stone-900 dark:text-white">Wallets & Accounts</h2>
+          <p className="text-xs text-stone-500 dark:text-stone-400">
             Manage your accounts, balances, and transfers
           </p>
         </div>
@@ -108,9 +108,9 @@ export const WalletsView: React.FC = () => {
             id="wallet-transfer-modal-btn"
             type="button"
             onClick={() => setIsTransferOpen(true)}
-            className="inline-flex items-center gap-1.5 px-3 sm:px-3.5 py-2 text-xs font-semibold text-stone-700 bg-stone-100 hover:bg-stone-200 rounded-xl transition-all cursor-pointer"
+            className="inline-flex items-center gap-1.5 px-3 sm:px-3.5 py-2 text-xs font-semibold text-stone-700 dark:text-stone-300 bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 rounded-xl transition-all cursor-pointer"
           >
-            <ArrowLeftRight className="w-3.5 h-3.5 text-indigo-600" />
+            <ArrowLeftRight className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
             <span>Transfer</span>
           </button>
 
@@ -118,9 +118,9 @@ export const WalletsView: React.FC = () => {
             id="wallet-add-modal-btn"
             type="button"
             onClick={() => setIsAddWalletOpen(true)}
-            className="inline-flex items-center gap-1.5 px-3 sm:px-3.5 py-2 text-xs font-semibold text-white bg-stone-900 hover:bg-stone-800 rounded-xl shadow-xs transition-all cursor-pointer"
+            className="inline-flex items-center gap-1.5 px-3 sm:px-3.5 py-2 text-xs font-semibold text-white dark:text-stone-900 bg-stone-900 hover:bg-stone-800 dark:bg-stone-100 dark:hover:bg-white rounded-xl shadow-xs transition-all cursor-pointer"
           >
-            <Plus className="w-4 h-4 text-emerald-400" />
+            <Plus className="w-4 h-4 text-emerald-400 dark:text-emerald-600" />
             <span>Add Wallet</span>
           </button>
         </div>
@@ -136,7 +136,7 @@ export const WalletsView: React.FC = () => {
               whileTap={{ scale: 0.98 }}
               key={wallet.id}
               id={`wallet-entity-${wallet.id}`}
-              className="bg-white rounded-2xl border border-stone-200 p-5 shadow-xs hover:border-stone-300 transition-all flex flex-col justify-between"
+              className="bg-white dark:bg-stone-900 rounded-2xl border border-stone-200 dark:border-stone-800 p-5 shadow-xs hover:border-stone-300 dark:hover:border-stone-700 transition-all flex flex-col justify-between"
             >
               <div>
                 <div className="flex items-center justify-between">
@@ -148,8 +148,8 @@ export const WalletsView: React.FC = () => {
                       <Icon className="w-5 h-5" />
                     </div>
                     <div>
-                      <h3 className="text-sm font-bold text-stone-900">{wallet.name}</h3>
-                      <span className="text-[11px] font-medium text-stone-400 capitalize">
+                      <h3 className="text-sm font-bold text-stone-900 dark:text-white">{wallet.name}</h3>
+                      <span className="text-[11px] font-medium text-stone-400 dark:text-stone-500 capitalize">
                         {wallet.type.replace('_', ' ').toLowerCase()}
                       </span>
                     </div>
@@ -161,32 +161,32 @@ export const WalletsView: React.FC = () => {
                     type="button"
                     onClick={() => deleteWallet(wallet.id)}
                     title="Delete wallet"
-                    className="p-1.5 text-stone-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                    className="p-1.5 text-stone-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg transition-colors cursor-pointer"
                   >
                     <Trash2 className="w-4 h-4" />
                   </motion.button>
                 </div>
 
                 <div className="mt-6">
-                  <span className="text-xs font-semibold uppercase tracking-wider text-stone-400 block">
+                  <span className="text-xs font-semibold uppercase tracking-wider text-stone-400 dark:text-stone-500 block">
                     Current Balance
                   </span>
                   <div className="flex items-baseline gap-2 mt-1">
-                    <div className="text-2xl font-bold font-mono text-stone-900">
+                    <div className="text-2xl font-bold font-mono text-stone-900 dark:text-white">
                       <AnimatedCounter
                         value={wallet.balance}
                         currencyPrefix={wallet.currency === 'THB' ? '฿' : wallet.currency === 'EUR' ? '€' : '$'}
                         duration={0.8}
                       />
                     </div>
-                    <span className="text-xs font-semibold text-stone-500 font-mono">{wallet.currency}</span>
+                    <span className="text-xs font-semibold text-stone-500 dark:text-stone-400 font-mono">{wallet.currency}</span>
                   </div>
                 </div>
               </div>
 
-              <div className="pt-4 mt-4 border-t border-stone-100 flex items-center justify-between text-[11px] text-stone-400">
+              <div className="pt-4 mt-4 border-t border-stone-100 dark:border-stone-800 flex items-center justify-between text-[11px] text-stone-400 dark:text-stone-500">
                 <span>Created: {wallet.createdAt.slice(0, 10)}</span>
-                <span className="inline-flex items-center gap-1 text-emerald-600 font-medium">
+                <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-medium">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> Active Source
                 </span>
               </div>
@@ -213,20 +213,20 @@ export const WalletsView: React.FC = () => {
               animate={{ y: 0, scale: 1, opacity: 1 }}
               exit={{ y: 40, scale: 0.96, opacity: 0 }}
               transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-              className="bg-white/95 backdrop-blur-xl rounded-t-3xl sm:rounded-2xl max-w-md w-full max-h-[92vh] sm:max-h-[90vh] overflow-y-auto shadow-2xl border border-stone-200/80 p-4 sm:p-6 space-y-4 sm:space-y-5 overscroll-contain"
+              className="bg-white/95 dark:bg-stone-900/95 backdrop-blur-xl rounded-t-3xl sm:rounded-2xl max-w-md w-full max-h-[92vh] sm:max-h-[90vh] overflow-y-auto shadow-2xl border border-stone-200/80 dark:border-stone-800 p-4 sm:p-6 space-y-4 sm:space-y-5 overscroll-contain"
             >
               {/* Mobile Drag Indicator */}
               <div className="sm:hidden -mt-1 pb-1 flex justify-center cursor-pointer" onClick={() => setIsAddWalletOpen(false)}>
-                <div className="w-12 h-1.5 rounded-full bg-stone-300" />
+                <div className="w-12 h-1.5 rounded-full bg-stone-300 dark:bg-stone-700" />
               </div>
 
-              <div className="flex items-center justify-between pb-3 border-b border-stone-100/80">
-                <h3 className="text-sm sm:text-base font-bold text-stone-900">Add Wallet</h3>
+              <div className="flex items-center justify-between pb-3 border-b border-stone-100/80 dark:border-stone-800">
+                <h3 className="text-sm sm:text-base font-bold text-stone-900 dark:text-white">Add Wallet</h3>
                 <motion.button
                   whileTap={{ scale: 0.9 }}
                   type="button"
                   onClick={() => setIsAddWalletOpen(false)}
-                  className="p-2 rounded-xl text-stone-400 hover:text-stone-700 hover:bg-stone-100 active:bg-stone-200 cursor-pointer"
+                  className="p-2 rounded-xl text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 hover:bg-stone-100 dark:hover:bg-stone-800 active:bg-stone-200 cursor-pointer"
                 >
                   <X className="w-5 h-5" />
                 </motion.button>
@@ -234,7 +234,7 @@ export const WalletsView: React.FC = () => {
 
               <form onSubmit={handleCreateWallet} className="space-y-4">
                 <div>
-                  <label className="text-xs font-semibold uppercase tracking-wider text-stone-600 block mb-1">
+                  <label className="text-xs font-semibold uppercase tracking-wider text-stone-600 dark:text-stone-300 block mb-1">
                     Wallet Name *
                   </label>
                   <input
@@ -244,20 +244,20 @@ export const WalletsView: React.FC = () => {
                     value={walletName}
                     onChange={(e) => setWalletName(e.target.value)}
                     placeholder="e.g. Checking Account, Cash"
-                    className="w-full text-xs rounded-xl border border-stone-200 px-3.5 py-2.5 text-stone-900 focus:outline-none focus:border-stone-800"
+                    className="w-full text-xs rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 px-3.5 py-2.5 text-stone-900 dark:text-stone-100 placeholder:text-stone-400 dark:placeholder:text-stone-500 focus:outline-none focus:border-stone-800 dark:focus:border-stone-400"
                   />
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   <div>
-                    <label className="text-xs font-semibold uppercase tracking-wider text-stone-600 block mb-1">
+                    <label className="text-xs font-semibold uppercase tracking-wider text-stone-600 dark:text-stone-300 block mb-1">
                       Type
                     </label>
                     <select
                       id="new-wallet-type"
                       value={walletType}
                       onChange={(e) => setWalletType(e.target.value as WalletType)}
-                      className="w-full text-xs rounded-xl border border-stone-200 px-3 py-2.5 bg-white text-stone-900 focus:outline-none focus:border-stone-800"
+                      className="w-full text-xs rounded-xl border border-stone-200 dark:border-stone-700 px-3 py-2.5 bg-stone-50 dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-none focus:border-stone-800 dark:focus:border-stone-400"
                     >
                       <option value="BANK_ACCOUNT">Bank Account</option>
                       <option value="CASH">Cash</option>
@@ -269,14 +269,14 @@ export const WalletsView: React.FC = () => {
                   </div>
 
                   <div>
-                    <label className="text-xs font-semibold uppercase tracking-wider text-stone-600 block mb-1">
+                    <label className="text-xs font-semibold uppercase tracking-wider text-stone-600 dark:text-stone-300 block mb-1">
                       Currency
                     </label>
                     <select
                       id="new-wallet-currency"
                       value={currency}
                       onChange={(e) => setCurrency(e.target.value)}
-                      className="w-full text-xs rounded-xl border border-stone-200 px-3 py-2.5 bg-white text-stone-900 focus:outline-none focus:border-stone-800 font-mono"
+                      className="w-full text-xs rounded-xl border border-stone-200 dark:border-stone-700 px-3 py-2.5 bg-stone-50 dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-none focus:border-stone-800 dark:focus:border-stone-400 font-mono"
                     >
                       <option value="USD">USD ($)</option>
                       <option value="EUR">EUR (€)</option>
@@ -288,7 +288,7 @@ export const WalletsView: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="text-xs font-semibold uppercase tracking-wider text-stone-600 block mb-1">
+                  <label className="text-xs font-semibold uppercase tracking-wider text-stone-600 dark:text-stone-300 block mb-1">
                     Starting Balance ($)
                   </label>
                   <input
@@ -298,12 +298,12 @@ export const WalletsView: React.FC = () => {
                     min="0"
                     value={initialBalance}
                     onChange={(e) => setInitialBalance(parseFloat(e.target.value) || 0)}
-                    className="w-full text-xs rounded-xl border border-stone-200 px-3.5 py-2.5 text-stone-900 font-mono focus:outline-none focus:border-stone-800"
+                    className="w-full text-xs rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 px-3.5 py-2.5 text-stone-900 dark:text-stone-100 font-mono focus:outline-none focus:border-stone-800 dark:focus:border-stone-400"
                   />
                 </div>
 
                 <div>
-                  <label className="text-xs font-semibold uppercase tracking-wider text-stone-600 block mb-1.5">
+                  <label className="text-xs font-semibold uppercase tracking-wider text-stone-600 dark:text-stone-300 block mb-1.5">
                     Theme Color
                   </label>
                   <div className="flex flex-wrap items-center gap-2">
@@ -314,7 +314,7 @@ export const WalletsView: React.FC = () => {
                         type="button"
                         onClick={() => setWalletColor(c)}
                         className={`w-7 h-7 rounded-full transition-transform cursor-pointer ${
-                          walletColor === c ? 'scale-125 ring-2 ring-stone-900 ring-offset-2' : ''
+                          walletColor === c ? 'scale-125 ring-2 ring-stone-900 dark:ring-stone-100 ring-offset-2 dark:ring-offset-stone-900' : ''
                         }`}
                         style={{ backgroundColor: c }}
                       />
@@ -327,7 +327,7 @@ export const WalletsView: React.FC = () => {
                     whileTap={{ scale: 0.96 }}
                     id="save-new-wallet-btn"
                     type="submit"
-                    className="w-full py-2.5 sm:py-3 bg-stone-900 hover:bg-stone-800 text-white rounded-xl font-semibold text-xs transition-all shadow-xs cursor-pointer"
+                    className="w-full py-2.5 sm:py-3 bg-stone-900 hover:bg-stone-800 dark:bg-stone-100 dark:hover:bg-white text-white dark:text-stone-900 rounded-xl font-semibold text-xs transition-all shadow-xs cursor-pointer"
                   >
                     Add Wallet
                   </motion.button>
@@ -356,20 +356,20 @@ export const WalletsView: React.FC = () => {
               animate={{ y: 0, scale: 1, opacity: 1 }}
               exit={{ y: 40, scale: 0.96, opacity: 0 }}
               transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-              className="bg-white/95 backdrop-blur-xl rounded-t-3xl sm:rounded-2xl max-w-md w-full max-h-[92vh] sm:max-h-[90vh] overflow-y-auto shadow-2xl border border-stone-200/80 p-4 sm:p-6 space-y-4 sm:space-y-5 overscroll-contain"
+              className="bg-white/95 dark:bg-stone-900/95 backdrop-blur-xl rounded-t-3xl sm:rounded-2xl max-w-md w-full max-h-[92vh] sm:max-h-[90vh] overflow-y-auto shadow-2xl border border-stone-200/80 dark:border-stone-800 p-4 sm:p-6 space-y-4 sm:space-y-5 overscroll-contain"
             >
               {/* Mobile Drag Indicator */}
               <div className="sm:hidden -mt-1 pb-1 flex justify-center cursor-pointer" onClick={() => setIsTransferOpen(false)}>
-                <div className="w-12 h-1.5 rounded-full bg-stone-300" />
+                <div className="w-12 h-1.5 rounded-full bg-stone-300 dark:bg-stone-700" />
               </div>
 
-              <div className="flex items-center justify-between pb-3 border-b border-stone-100/80">
-                <h3 className="text-sm sm:text-base font-bold text-stone-900">Transfer Funds</h3>
+              <div className="flex items-center justify-between pb-3 border-b border-stone-100/80 dark:border-stone-800">
+                <h3 className="text-sm sm:text-base font-bold text-stone-900 dark:text-white">Transfer Funds</h3>
                 <motion.button
                   whileTap={{ scale: 0.9 }}
                   type="button"
                   onClick={() => setIsTransferOpen(false)}
-                  className="p-2 rounded-xl text-stone-400 hover:text-stone-700 hover:bg-stone-100 active:bg-stone-200 cursor-pointer"
+                  className="p-2 rounded-xl text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 hover:bg-stone-100 dark:hover:bg-stone-800 active:bg-stone-200 cursor-pointer"
                 >
                   <X className="w-5 h-5" />
                 </motion.button>
@@ -378,14 +378,14 @@ export const WalletsView: React.FC = () => {
               <form onSubmit={handleExecuteTransfer} className="space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   <div>
-                    <label className="text-xs font-semibold uppercase tracking-wider text-stone-600 block mb-1">
+                    <label className="text-xs font-semibold uppercase tracking-wider text-stone-600 dark:text-stone-300 block mb-1">
                       From Wallet
                     </label>
                     <select
                       id="transfer-source-wallet"
                       value={sourceWalletId}
                       onChange={(e) => setSourceWalletId(e.target.value)}
-                      className="w-full text-xs rounded-xl border border-stone-200 px-3 py-2.5 bg-white text-stone-900 focus:outline-none focus:border-stone-800"
+                      className="w-full text-xs rounded-xl border border-stone-200 dark:border-stone-700 px-3 py-2.5 bg-stone-50 dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-none focus:border-stone-800 dark:focus:border-stone-400"
                     >
                       {activeWallets.map((w) => (
                         <option key={w.id} value={w.id}>
@@ -396,14 +396,14 @@ export const WalletsView: React.FC = () => {
                   </div>
 
                   <div>
-                    <label className="text-xs font-semibold uppercase tracking-wider text-stone-600 block mb-1">
+                    <label className="text-xs font-semibold uppercase tracking-wider text-stone-600 dark:text-stone-300 block mb-1">
                       To Wallet
                     </label>
                     <select
                       id="transfer-dest-wallet"
                       value={destWalletId}
                       onChange={(e) => setDestWalletId(e.target.value)}
-                      className="w-full text-xs rounded-xl border border-stone-200 px-3 py-2.5 bg-white text-stone-900 focus:outline-none focus:border-stone-800"
+                      className="w-full text-xs rounded-xl border border-stone-200 dark:border-stone-700 px-3 py-2.5 bg-stone-50 dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-none focus:border-stone-800 dark:focus:border-stone-400"
                     >
                       {activeWallets
                         .filter((w) => w.id !== sourceWalletId)
@@ -430,7 +430,7 @@ export const WalletsView: React.FC = () => {
                 />
 
                 <div>
-                  <label className="text-xs font-semibold uppercase tracking-wider text-stone-600 block mb-1">
+                  <label className="text-xs font-semibold uppercase tracking-wider text-stone-600 dark:text-stone-300 block mb-1">
                     Note
                   </label>
                   <input
@@ -439,7 +439,7 @@ export const WalletsView: React.FC = () => {
                     value={transferNote}
                     onChange={(e) => setTransferNote(e.target.value)}
                     placeholder="e.g. Savings transfer"
-                    className="w-full text-xs rounded-xl border border-stone-200 px-3.5 py-2.5 text-stone-900 focus:outline-none focus:border-stone-800"
+                    className="w-full text-xs rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 px-3.5 py-2.5 text-stone-900 dark:text-stone-100 placeholder:text-stone-400 dark:placeholder:text-stone-500 focus:outline-none focus:border-stone-800 dark:focus:border-stone-400"
                   />
                 </div>
 
@@ -451,8 +451,8 @@ export const WalletsView: React.FC = () => {
                     disabled={!transferValid || transferAmount === null || sourceWalletId === destWalletId}
                     className={`w-full py-2.5 sm:py-3 rounded-xl font-semibold text-xs transition-all flex items-center justify-center gap-2 cursor-pointer ${
                       transferValid && transferAmount !== null && sourceWalletId !== destWalletId
-                        ? 'bg-stone-900 hover:bg-stone-800 text-white shadow-xs'
-                        : 'bg-stone-200 text-stone-400 cursor-not-allowed'
+                        ? 'bg-stone-900 hover:bg-stone-800 dark:bg-stone-100 dark:hover:bg-white text-white dark:text-stone-900 shadow-xs'
+                        : 'bg-stone-200 dark:bg-stone-800 text-stone-400 dark:text-stone-600 cursor-not-allowed'
                     }`}
                   >
                     <ArrowLeftRight className="w-4 h-4" />

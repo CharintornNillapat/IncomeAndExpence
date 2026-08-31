@@ -26,6 +26,22 @@
     <meta property="og:type" content="website" />
     <meta property="og:image" content="/pwa-512x512.png" />
     <meta name="twitter:card" content="summary_large_image" />
+    <!-- Theme Early Init to Prevent FOUC -->
+    <script>
+      try {
+        const saved = localStorage.getItem('finlife_theme_preference');
+        const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        if (saved === 'dark' || (saved === 'system' && systemDark) || (!saved && systemDark)) {
+          document.documentElement.classList.add('dark');
+          document.documentElement.setAttribute('data-theme', 'dark');
+          document.documentElement.style.colorScheme = 'dark';
+        } else {
+          document.documentElement.classList.remove('dark');
+          document.documentElement.setAttribute('data-theme', 'light');
+          document.documentElement.style.colorScheme = 'light';
+        }
+      } catch (e) {}
+    </script>
   </head>
   <body>
     <div id="root"></div>

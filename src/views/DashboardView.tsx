@@ -223,16 +223,16 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
 
       {/* 3. Financial Performance & Timeframe Breakdown */}
       <motion.section variants={itemVariants} aria-label="Performance Breakdown" className="space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-4 sm:p-5 rounded-2xl border border-stone-200 shadow-2xs">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-stone-900 p-4 sm:p-5 rounded-2xl border border-stone-200 dark:border-stone-800 shadow-2xs transition-colors">
           <div>
-            <h2 className="text-base font-bold text-stone-900">Periodic Cashflow & Outflow Analysis</h2>
-            <p className="text-xs text-stone-500">
+            <h2 className="text-base font-bold text-stone-900 dark:text-white">Periodic Cashflow & Outflow Analysis</h2>
+            <p className="text-xs text-stone-500 dark:text-stone-400">
               Filter cashflow by day, week, month, or all-time records
             </p>
           </div>
 
           {/* Time Filter Controls */}
-          <div className="flex items-center bg-stone-100 p-1 rounded-xl gap-1 self-start sm:self-auto border border-stone-200">
+          <div className="flex items-center bg-stone-100 dark:bg-stone-800 p-1 rounded-xl gap-1 self-start sm:self-auto border border-stone-200 dark:border-stone-700">
             {(['DAY', 'WEEK', 'MONTH', 'ALL'] as TimeFilter[]).map((f) => (
               <motion.button
                 whileTap={{ scale: 0.95 }}
@@ -242,8 +242,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
                 onClick={() => setTimeFilter(f)}
                 className={`px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
                   timeFilter === f
-                    ? 'bg-white text-stone-900 shadow-xs'
-                    : 'text-stone-500 hover:text-stone-800'
+                    ? 'bg-white dark:bg-stone-700 text-stone-900 dark:text-white shadow-xs'
+                    : 'text-stone-500 dark:text-stone-400 hover:text-stone-800 dark:hover:text-stone-200'
                 }`}
               >
                 {f === 'DAY' ? 'Today' : f === 'WEEK' ? 'This Week' : f === 'MONTH' ? 'Past 30 Days' : 'All Time'}

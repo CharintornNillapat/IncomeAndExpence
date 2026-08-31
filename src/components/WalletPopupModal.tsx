@@ -183,28 +183,28 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
             animate={{ y: 0, scale: 1, opacity: 1 }}
             exit={{ y: 40, scale: 0.96, opacity: 0 }}
             transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-            className="bg-white/95 backdrop-blur-xl rounded-t-3xl sm:rounded-2xl max-w-3xl w-full max-h-[92vh] sm:max-h-[88vh] flex flex-col shadow-2xl border border-stone-200/80 overflow-hidden"
+            className="bg-white/95 dark:bg-stone-900/95 backdrop-blur-xl rounded-t-3xl sm:rounded-2xl max-w-3xl w-full max-h-[92vh] sm:max-h-[88vh] flex flex-col shadow-2xl border border-stone-200/80 dark:border-stone-800 overflow-hidden"
           >
             {/* Mobile Swipe Handle */}
             <div className="sm:hidden pt-3 pb-1 flex justify-center cursor-pointer" onClick={onClose}>
-              <div className="w-12 h-1.5 rounded-full bg-stone-300" />
+              <div className="w-12 h-1.5 rounded-full bg-stone-300 dark:bg-stone-700" />
             </div>
 
             {/* Modal Header */}
-            <div className="px-4 sm:px-6 py-3.5 sm:py-4 border-b border-stone-200/70 flex items-center justify-between bg-stone-50/70 backdrop-blur-xs shrink-0">
+            <div className="px-4 sm:px-6 py-3.5 sm:py-4 border-b border-stone-200/70 dark:border-stone-800 flex items-center justify-between bg-stone-50/70 dark:bg-stone-900/70 backdrop-blur-xs shrink-0">
               <div className="flex items-center gap-3">
-                <div className="w-9 sm:w-10 h-9 sm:h-10 rounded-xl bg-stone-900 text-white flex items-center justify-center shadow-xs shrink-0">
+                <div className="w-9 sm:w-10 h-9 sm:h-10 rounded-xl bg-stone-900 dark:bg-stone-800 text-white flex items-center justify-center shadow-xs shrink-0 border border-stone-700">
                   <WalletIcon className="w-4 sm:w-5 h-4 sm:h-5 text-emerald-400" />
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <h3 className="text-sm sm:text-base font-bold text-stone-900">Wallets & Accounts</h3>
-                    <span className="text-[10px] sm:text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
+                    <h3 className="text-sm sm:text-base font-bold text-stone-900 dark:text-white">Wallets & Accounts</h3>
+                    <span className="text-[10px] sm:text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/60">
                       {activeWallets.length}
                     </span>
                   </div>
-                  <p className="text-xs text-stone-500 font-mono">
-                    Total: <strong className="text-stone-900">${totalNetWorth.toLocaleString('en-US', { minimumFractionDigits: 2 })}</strong>
+                  <p className="text-xs text-stone-500 dark:text-stone-400 font-mono">
+                    Total: <strong className="text-stone-900 dark:text-stone-100">${totalNetWorth.toLocaleString('en-US', { minimumFractionDigits: 2 })}</strong>
                   </p>
                 </div>
               </div>
@@ -214,22 +214,22 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
                 id="close-wallet-modal-btn"
                 type="button"
                 onClick={onClose}
-                className="p-2 rounded-xl text-stone-400 hover:text-stone-700 hover:bg-stone-200/80 transition-colors cursor-pointer"
+                className="p-2 rounded-xl text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 hover:bg-stone-200/80 dark:hover:bg-stone-800 transition-colors cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </motion.button>
             </div>
 
         {/* Tab Navigation Navigation Controls */}
-        <div className="flex border-b border-stone-200 px-3 sm:px-6 bg-white gap-1 sm:gap-3 overflow-x-auto text-xs font-semibold shrink-0 no-scrollbar">
+        <div className="flex border-b border-stone-200 dark:border-stone-800 px-3 sm:px-6 bg-white dark:bg-stone-900 gap-1 sm:gap-3 overflow-x-auto text-xs font-semibold shrink-0 no-scrollbar">
           <button
             type="button"
             id="tab-btn-overview"
             onClick={() => setActiveTab('OVERVIEW')}
             className={`py-3 px-2 sm:px-3 border-b-2 transition-colors flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
               activeTab === 'OVERVIEW'
-                ? 'border-stone-900 text-stone-900'
-                : 'border-transparent text-stone-500 hover:text-stone-800'
+                ? 'border-stone-900 dark:border-stone-100 text-stone-900 dark:text-white'
+                : 'border-transparent text-stone-500 dark:text-stone-400 hover:text-stone-800 dark:hover:text-stone-200'
             }`}
           >
             <Layers className="w-4 h-4" />
@@ -242,11 +242,11 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
             onClick={() => setActiveTab('TRANSFER')}
             className={`py-3 px-2 sm:px-3 border-b-2 transition-colors flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
               activeTab === 'TRANSFER'
-                ? 'border-stone-900 text-stone-900'
-                : 'border-transparent text-stone-500 hover:text-stone-800'
+                ? 'border-stone-900 dark:border-stone-100 text-stone-900 dark:text-white'
+                : 'border-transparent text-stone-500 dark:text-stone-400 hover:text-stone-800 dark:hover:text-stone-200'
             }`}
           >
-            <ArrowLeftRight className="w-4 h-4 text-indigo-600" />
+            <ArrowLeftRight className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
             <span>Transfer</span>
           </button>
 
@@ -256,11 +256,11 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
             onClick={() => setActiveTab('ADD_WALLET')}
             className={`py-3 px-2 sm:px-3 border-b-2 transition-colors flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
               activeTab === 'ADD_WALLET'
-                ? 'border-stone-900 text-stone-900'
-                : 'border-transparent text-stone-500 hover:text-stone-800'
+                ? 'border-stone-900 dark:border-stone-100 text-stone-900 dark:text-white'
+                : 'border-transparent text-stone-500 dark:text-stone-400 hover:text-stone-800 dark:hover:text-stone-200'
             }`}
           >
-            <Plus className="w-4 h-4 text-emerald-600" />
+            <Plus className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
             <span>Add Wallet</span>
           </button>
 
@@ -270,11 +270,11 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
             onClick={() => setActiveTab('TRANSACTIONS')}
             className={`py-3 px-2 sm:px-3 border-b-2 transition-colors flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
               activeTab === 'TRANSACTIONS'
-                ? 'border-stone-900 text-stone-900'
-                : 'border-transparent text-stone-500 hover:text-stone-800'
+                ? 'border-stone-900 dark:border-stone-100 text-stone-900 dark:text-white'
+                : 'border-transparent text-stone-500 dark:text-stone-400 hover:text-stone-800 dark:hover:text-stone-200'
             }`}
           >
-            <Receipt className="w-4 h-4 text-amber-600" />
+            <Receipt className="w-4 h-4 text-amber-600 dark:text-amber-400" />
             <span>Activity</span>
           </button>
         </div>
@@ -297,8 +297,8 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
                       onClick={() => setSelectedWalletId(wallet.id)}
                       className={`p-3.5 sm:p-4 rounded-2xl border-2 transition-all cursor-pointer relative flex flex-col justify-between ${
                         isSelected 
-                          ? 'border-stone-900 bg-stone-50/80 shadow-xs' 
-                          : 'border-stone-200 bg-white hover:border-stone-300'
+                          ? 'border-stone-900 dark:border-stone-300 bg-stone-50/80 dark:bg-stone-800/90 shadow-xs' 
+                          : 'border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900/60 hover:border-stone-300 dark:hover:border-stone-700'
                       }`}
                     >
                       <div>
@@ -311,8 +311,8 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
                               <Icon className="w-4 sm:w-5 h-4 sm:h-5" />
                             </div>
                             <div className="min-w-0">
-                              <h4 className="text-xs sm:text-sm font-bold text-stone-900 truncate">{wallet.name}</h4>
-                              <span className="text-[10px] sm:text-[11px] font-medium text-stone-500 capitalize">
+                              <h4 className="text-xs sm:text-sm font-bold text-stone-900 dark:text-white truncate">{wallet.name}</h4>
+                              <span className="text-[10px] sm:text-[11px] font-medium text-stone-500 dark:text-stone-400 capitalize">
                                 {wallet.type.replace('_', ' ').toLowerCase()}
                               </span>
                             </div>
@@ -327,7 +327,7 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
                                 setIsAdjustingBalance(wallet.id);
                                 setAdjustedBalance(wallet.balance);
                               }}
-                              className="p-1.5 rounded-lg text-stone-400 hover:text-stone-700 hover:bg-stone-200 transition-colors"
+                              className="p-1.5 rounded-lg text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 hover:bg-stone-200 dark:hover:bg-stone-700 transition-colors"
                             >
                               <Sliders className="w-3.5 h-3.5" />
                             </button>
@@ -340,7 +340,7 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
                                   deleteWallet(wallet.id);
                                 }
                               }}
-                              className="p-1.5 rounded-lg text-stone-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+                              className="p-1.5 rounded-lg text-stone-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
                             </button>
@@ -349,8 +349,8 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
 
                         {/* Balance display or adjustment editor */}
                         {isAdjustingBalance === wallet.id ? (
-                          <div className="mt-3 p-2.5 bg-white rounded-xl border border-stone-300 space-y-2" onClick={(e) => e.stopPropagation()}>
-                            <label className="text-[10px] font-bold uppercase tracking-wider text-stone-500 block">
+                          <div className="mt-3 p-2.5 bg-white dark:bg-stone-800 rounded-xl border border-stone-300 dark:border-stone-700 space-y-2" onClick={(e) => e.stopPropagation()}>
+                            <label className="text-[10px] font-bold uppercase tracking-wider text-stone-500 dark:text-stone-400 block">
                               Set Balance ($)
                             </label>
                             <div className="flex flex-wrap sm:flex-nowrap items-center gap-2">
@@ -359,20 +359,20 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
                                 step="0.01"
                                 value={adjustedBalance}
                                 onChange={(e) => setAdjustedBalance(parseFloat(e.target.value) || 0)}
-                                className="w-full text-xs font-mono px-2.5 py-1.5 rounded-lg border border-stone-300 focus:outline-none focus:border-stone-900"
+                                className="w-full text-xs font-mono px-2.5 py-1.5 rounded-lg border border-stone-300 dark:border-stone-600 bg-white dark:bg-stone-900 text-stone-900 dark:text-white focus:outline-none focus:border-stone-900 dark:focus:border-stone-400"
                               />
                               <div className="flex items-center gap-1 shrink-0">
                                 <button
                                   type="button"
                                   onClick={() => handleSaveBalanceAdjustment(wallet.id)}
-                                  className="px-3 py-1.5 bg-stone-900 text-white rounded-lg text-xs font-semibold hover:bg-stone-800"
+                                  className="px-3 py-1.5 bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 rounded-lg text-xs font-semibold hover:bg-stone-800 dark:hover:bg-white"
                                 >
                                   Save
                                 </button>
                                 <button
                                   type="button"
                                   onClick={() => setIsAdjustingBalance(null)}
-                                  className="px-2 py-1.5 text-stone-500 text-xs hover:text-stone-800"
+                                  className="px-2 py-1.5 text-stone-500 dark:text-stone-400 text-xs hover:text-stone-800 dark:hover:text-stone-200"
                                 >
                                   Cancel
                                 </button>
@@ -381,21 +381,21 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
                           </div>
                         ) : (
                           <div className="mt-3 sm:mt-4">
-                            <span className="text-[10px] font-bold uppercase tracking-wider text-stone-400 block">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-stone-400 dark:text-stone-500 block">
                               Balance
                             </span>
                             <div className="flex items-baseline gap-1.5 mt-0.5">
-                              <span className="text-lg sm:text-xl font-black font-mono text-stone-900">
+                              <span className="text-lg sm:text-xl font-black font-mono text-stone-900 dark:text-white">
                                 ${wallet.balance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                               </span>
-                              <span className="text-[11px] font-semibold text-stone-500 font-mono">{wallet.currency}</span>
+                              <span className="text-[11px] font-semibold text-stone-500 dark:text-stone-400 font-mono">{wallet.currency}</span>
                             </div>
                           </div>
                         )}
                       </div>
 
-                      <div className="mt-3 pt-2.5 border-t border-stone-100 flex items-center justify-between text-[11px]">
-                        <span className="text-stone-400 font-mono">
+                      <div className="mt-3 pt-2.5 border-t border-stone-100 dark:border-stone-800 flex items-center justify-between text-[11px]">
+                        <span className="text-stone-400 dark:text-stone-500 font-mono">
                           {percentOfTotal > 0 ? `${percentOfTotal.toFixed(1)}% of total` : '0%'}
                         </span>
                         <button
@@ -405,7 +405,7 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
                             setSourceWalletId(wallet.id);
                             setActiveTab('TRANSFER');
                           }}
-                          className="text-indigo-600 font-semibold hover:underline flex items-center gap-1"
+                          className="text-indigo-600 dark:text-indigo-400 font-semibold hover:underline flex items-center gap-1 cursor-pointer"
                         >
                           <ArrowLeftRight className="w-3 h-3" />
                           <span>Transfer</span>
@@ -418,7 +418,7 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
 
               {/* Selected Wallet Quick Summary Banner */}
               {currentWallet && (
-                <div className="p-4 rounded-2xl bg-stone-900 text-white flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
+                <div className="p-4 rounded-2xl bg-stone-900 dark:bg-stone-800/90 border border-stone-800 dark:border-stone-700 text-white flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 shadow-xs">
                   <div className="flex items-center gap-3">
                     <div 
                       className="w-9 sm:w-10 h-9 sm:h-10 rounded-xl flex items-center justify-center shrink-0"
@@ -428,7 +428,7 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
                     </div>
                     <div>
                       <h4 className="text-xs sm:text-sm font-bold">{currentWallet.name}</h4>
-                      <p className="text-[11px] sm:text-xs text-stone-300">
+                      <p className="text-[11px] sm:text-xs text-stone-300 dark:text-stone-400">
                         {currentWallet.type.replace('_', ' ')} • {currentWallet.currency}
                       </p>
                     </div>
@@ -441,7 +441,7 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
                         setSourceWalletId(currentWallet.id);
                         setActiveTab('TRANSFER');
                       }}
-                      className="flex-1 sm:flex-none px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-semibold transition-colors flex items-center justify-center gap-1.5"
+                      className="flex-1 sm:flex-none px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-semibold transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
                     >
                       <ArrowLeftRight className="w-3.5 h-3.5 text-emerald-400" />
                       <span>Transfer</span>
@@ -449,7 +449,7 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
                     <button
                       type="button"
                       onClick={() => setActiveTab('TRANSACTIONS')}
-                      className="flex-1 sm:flex-none px-3 py-1.5 rounded-xl bg-white text-stone-900 text-xs font-semibold transition-colors hover:bg-stone-100 flex items-center justify-center gap-1.5"
+                      className="flex-1 sm:flex-none px-3 py-1.5 rounded-xl bg-white dark:bg-stone-100 text-stone-900 text-xs font-semibold transition-colors hover:bg-stone-100 dark:hover:bg-stone-200 flex items-center justify-center gap-1.5 cursor-pointer"
                     >
                       <Receipt className="w-3.5 h-3.5" />
                       <span>Activity</span>
@@ -463,28 +463,28 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
           {/* TAB 2: TRANSFER FUNDS */}
           {activeTab === 'TRANSFER' && (
             <form onSubmit={handleExecuteTransfer} className="space-y-4 max-w-lg mx-auto">
-              <div className="bg-indigo-50/80 border border-indigo-100 rounded-xl p-3 text-xs text-indigo-900 flex items-center gap-2.5">
-                <ArrowLeftRight className="w-4 h-4 text-indigo-600 shrink-0" />
+              <div className="bg-indigo-50/80 dark:bg-indigo-950/50 border border-indigo-100 dark:border-indigo-800/60 rounded-xl p-3 text-xs text-indigo-900 dark:text-indigo-300 flex items-center gap-2.5">
+                <ArrowLeftRight className="w-4 h-4 text-indigo-600 dark:text-indigo-400 shrink-0" />
                 <span>Transfers move money between your accounts directly.</span>
               </div>
 
               {transferStatus && (
-                <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 p-3 rounded-xl text-xs font-semibold flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                <div className="bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 p-3 rounded-xl text-xs font-semibold flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
                   <span>{transferStatus}</span>
                 </div>
               )}
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div>
-                  <label className="text-xs font-semibold uppercase tracking-wider text-stone-600 block mb-1">
+                  <label className="text-xs font-semibold uppercase tracking-wider text-stone-600 dark:text-stone-300 block mb-1">
                     From Wallet
                   </label>
                   <select
                     id="modal-transfer-source"
                     value={sourceWalletId}
                     onChange={(e) => setSourceWalletId(e.target.value)}
-                    className="w-full text-xs rounded-xl border border-stone-200 px-3 py-2.5 bg-white text-stone-900 focus:outline-none focus:border-stone-800"
+                    className="w-full text-xs rounded-xl border border-stone-200 dark:border-stone-700 px-3 py-2.5 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-none focus:border-stone-800 dark:focus:border-stone-400"
                   >
                     {activeWallets.map((w) => (
                       <option key={w.id} value={w.id}>
@@ -495,14 +495,14 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
                 </div>
 
                 <div>
-                  <label className="text-xs font-semibold uppercase tracking-wider text-stone-600 block mb-1">
+                  <label className="text-xs font-semibold uppercase tracking-wider text-stone-600 dark:text-stone-300 block mb-1">
                     To Wallet
                   </label>
                   <select
                     id="modal-transfer-dest"
                     value={destWalletId}
                     onChange={(e) => setDestWalletId(e.target.value)}
-                    className="w-full text-xs rounded-xl border border-stone-200 px-3 py-2.5 bg-white text-stone-900 focus:outline-none focus:border-stone-800"
+                    className="w-full text-xs rounded-xl border border-stone-200 dark:border-stone-700 px-3 py-2.5 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-none focus:border-stone-800 dark:focus:border-stone-400"
                   >
                     {activeWallets
                       .filter((w) => w.id !== sourceWalletId)
@@ -529,7 +529,7 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
               />
 
               <div>
-                <label className="text-xs font-semibold uppercase tracking-wider text-stone-600 block mb-1">
+                <label className="text-xs font-semibold uppercase tracking-wider text-stone-600 dark:text-stone-300 block mb-1">
                   Note
                 </label>
                 <input
@@ -538,7 +538,7 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
                   value={transferNote}
                   onChange={(e) => setTransferNote(e.target.value)}
                   placeholder="e.g. Savings transfer"
-                  className="w-full text-xs rounded-xl border border-stone-200 px-3.5 py-2.5 text-stone-900 focus:outline-none focus:border-stone-800"
+                  className="w-full text-xs rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 px-3.5 py-2.5 text-stone-900 dark:text-stone-100 placeholder:text-stone-400 dark:placeholder:text-stone-500 focus:outline-none focus:border-stone-800 dark:focus:border-stone-400"
                 />
               </div>
 
@@ -549,8 +549,8 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
                   disabled={!transferValid || transferAmount === null || sourceWalletId === destWalletId}
                   className={`w-full py-2.5 sm:py-3 rounded-xl font-semibold text-xs transition-all flex items-center justify-center gap-2 cursor-pointer ${
                     transferValid && transferAmount !== null && sourceWalletId !== destWalletId
-                      ? 'bg-stone-900 hover:bg-stone-800 text-white shadow-xs'
-                      : 'bg-stone-200 text-stone-400 cursor-not-allowed'
+                      ? 'bg-stone-900 hover:bg-stone-800 dark:bg-stone-100 dark:hover:bg-white text-white dark:text-stone-900 shadow-xs'
+                      : 'bg-stone-200 dark:bg-stone-800 text-stone-400 dark:text-stone-600 cursor-not-allowed'
                   }`}
                 >
                   <ArrowLeftRight className="w-4 h-4" />
@@ -564,7 +564,7 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
           {activeTab === 'ADD_WALLET' && (
             <form onSubmit={handleCreateWallet} className="space-y-4 max-w-lg mx-auto">
               <div>
-                <label className="text-xs font-semibold uppercase tracking-wider text-stone-600 block mb-1">
+                <label className="text-xs font-semibold uppercase tracking-wider text-stone-600 dark:text-stone-300 block mb-1">
                   Wallet Name *
                 </label>
                 <input
@@ -574,20 +574,20 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
                   value={walletName}
                   onChange={(e) => setWalletName(e.target.value)}
                   placeholder="e.g. Checking Account, Cash"
-                  className="w-full text-xs rounded-xl border border-stone-200 px-3.5 py-2.5 text-stone-900 focus:outline-none focus:border-stone-800"
+                  className="w-full text-xs rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 px-3.5 py-2.5 text-stone-900 dark:text-stone-100 placeholder:text-stone-400 dark:placeholder:text-stone-500 focus:outline-none focus:border-stone-800 dark:focus:border-stone-400"
                 />
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div>
-                  <label className="text-xs font-semibold uppercase tracking-wider text-stone-600 block mb-1">
+                  <label className="text-xs font-semibold uppercase tracking-wider text-stone-600 dark:text-stone-300 block mb-1">
                     Type
                   </label>
                   <select
                     id="modal-new-wallet-type"
                     value={walletType}
                     onChange={(e) => setWalletType(e.target.value as WalletType)}
-                    className="w-full text-xs rounded-xl border border-stone-200 px-3 py-2.5 bg-white text-stone-900 focus:outline-none focus:border-stone-800"
+                    className="w-full text-xs rounded-xl border border-stone-200 dark:border-stone-700 px-3 py-2.5 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-none focus:border-stone-800 dark:focus:border-stone-400"
                   >
                     <option value="BANK_ACCOUNT">Bank Account</option>
                     <option value="CASH">Cash</option>
@@ -599,14 +599,14 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
                 </div>
 
                 <div>
-                  <label className="text-xs font-semibold uppercase tracking-wider text-stone-600 block mb-1">
+                  <label className="text-xs font-semibold uppercase tracking-wider text-stone-600 dark:text-stone-300 block mb-1">
                     Currency
                   </label>
                   <select
                     id="modal-new-wallet-currency"
                     value={currency}
                     onChange={(e) => setCurrency(e.target.value)}
-                    className="w-full text-xs rounded-xl border border-stone-200 px-3 py-2.5 bg-white text-stone-900 focus:outline-none focus:border-stone-800 font-mono"
+                    className="w-full text-xs rounded-xl border border-stone-200 dark:border-stone-700 px-3 py-2.5 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-none focus:border-stone-800 dark:focus:border-stone-400 font-mono"
                   >
                     <option value="USD">USD ($)</option>
                     <option value="EUR">EUR (€)</option>
@@ -618,7 +618,7 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
               </div>
 
               <div>
-                <label className="text-xs font-semibold uppercase tracking-wider text-stone-600 block mb-1">
+                <label className="text-xs font-semibold uppercase tracking-wider text-stone-600 dark:text-stone-300 block mb-1">
                   Starting Balance ($)
                 </label>
                 <input
@@ -628,12 +628,12 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
                   min="0"
                   value={initialBalance}
                   onChange={(e) => setInitialBalance(parseFloat(e.target.value) || 0)}
-                  className="w-full text-xs rounded-xl border border-stone-200 px-3.5 py-2.5 text-stone-900 font-mono focus:outline-none focus:border-stone-800"
+                  className="w-full text-xs rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 px-3.5 py-2.5 text-stone-900 dark:text-stone-100 font-mono focus:outline-none focus:border-stone-800 dark:focus:border-stone-400"
                 />
               </div>
 
               <div>
-                <label className="text-xs font-semibold uppercase tracking-wider text-stone-600 block mb-1.5">
+                <label className="text-xs font-semibold uppercase tracking-wider text-stone-600 dark:text-stone-300 block mb-1.5">
                   Theme Color
                 </label>
                 <div className="flex flex-wrap items-center gap-2.5">
@@ -643,7 +643,7 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
                       type="button"
                       onClick={() => setWalletColor(c)}
                       className={`w-7 h-7 rounded-full transition-transform cursor-pointer ${
-                        walletColor === c ? 'scale-125 ring-2 ring-stone-900 ring-offset-2' : ''
+                        walletColor === c ? 'scale-125 ring-2 ring-stone-900 dark:ring-stone-100 ring-offset-2 dark:ring-offset-stone-900' : ''
                       }`}
                       style={{ backgroundColor: c }}
                     />
@@ -655,7 +655,7 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
                 <button
                   id="modal-create-wallet-submit"
                   type="submit"
-                  className="w-full py-2.5 sm:py-3 bg-stone-900 hover:bg-stone-800 text-white rounded-xl font-semibold text-xs transition-all shadow-xs cursor-pointer"
+                  className="w-full py-2.5 sm:py-3 bg-stone-900 hover:bg-stone-800 dark:bg-stone-100 dark:hover:bg-white text-white dark:text-stone-900 rounded-xl font-semibold text-xs transition-all shadow-xs cursor-pointer"
                 >
                   Add Wallet
                 </button>
@@ -666,14 +666,14 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
           {/* TAB 4: WALLET SPECIFIC ACTIVITY */}
           {activeTab === 'TRANSACTIONS' && (
             <div className="space-y-4">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-stone-50 p-3 rounded-xl border border-stone-200">
-                <span className="text-xs font-semibold text-stone-700">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-stone-50 dark:bg-stone-800/80 p-3 rounded-xl border border-stone-200 dark:border-stone-700">
+                <span className="text-xs font-semibold text-stone-700 dark:text-stone-300">
                   Account Activity:
                 </span>
                 <select
                   value={selectedWalletId}
                   onChange={(e) => setSelectedWalletId(e.target.value)}
-                  className="text-xs font-semibold bg-white border border-stone-200 rounded-lg px-2.5 py-1.5 text-stone-900 focus:outline-none"
+                  className="text-xs font-semibold bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-lg px-2.5 py-1.5 text-stone-900 dark:text-white focus:outline-none"
                 >
                   {activeWallets.map((w) => (
                     <option key={w.id} value={w.id}>
@@ -684,7 +684,7 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
               </div>
 
               {walletTransactions.length === 0 ? (
-                <div className="text-center py-10 text-stone-400 text-xs">
+                <div className="text-center py-10 text-stone-400 dark:text-stone-500 text-xs">
                   No recent activity recorded for this wallet.
                 </div>
               ) : (
@@ -692,31 +692,31 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
                   {walletTransactions.map((tx) => (
                     <div
                       key={tx.id}
-                      className="p-3 rounded-xl border border-stone-200 bg-white flex items-center justify-between text-xs gap-3"
+                      className="p-3 rounded-xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900/80 flex items-center justify-between text-xs gap-3"
                     >
                       <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
                         <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
                           tx.type === 'INCOME' 
-                            ? 'bg-emerald-50 text-emerald-600' 
+                            ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400' 
                             : tx.type === 'EXPENSE' 
-                            ? 'bg-rose-50 text-rose-600' 
-                            : 'bg-indigo-50 text-indigo-600'
+                            ? 'bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400' 
+                            : 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400'
                         }`}>
                           {tx.type === 'INCOME' ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
                         </div>
                         <div className="min-w-0">
-                          <p className="font-semibold text-stone-900 truncate">{tx.description}</p>
-                          <span className="text-[10px] text-stone-400 font-mono">{tx.transactionDate}</span>
+                          <p className="font-semibold text-stone-900 dark:text-stone-100 truncate">{tx.description}</p>
+                          <span className="text-[10px] text-stone-400 dark:text-stone-500 font-mono">{tx.transactionDate}</span>
                         </div>
                       </div>
 
                       <div className="text-right shrink-0">
                         <span className={`font-mono font-bold ${
-                          tx.type === 'INCOME' ? 'text-emerald-600' : 'text-stone-900'
+                          tx.type === 'INCOME' ? 'text-emerald-600 dark:text-emerald-400' : 'text-stone-900 dark:text-stone-100'
                         }`}>
                           {tx.type === 'INCOME' ? '+' : '-'}${tx.amount.toFixed(2)}
                         </span>
-                        <span className="text-[10px] text-stone-400 block uppercase font-medium">{tx.type}</span>
+                        <span className="text-[10px] text-stone-400 dark:text-stone-500 block uppercase font-medium">{tx.type}</span>
                       </div>
                     </div>
                   ))}

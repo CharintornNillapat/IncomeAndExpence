@@ -20,19 +20,19 @@ export const TotalWealthHero: React.FC<TotalWealthHeroProps> = React.memo(({
   onOpenManageWallets,
 }) => {
   return (
-    <div className="bg-stone-900 text-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 lg:p-8 shadow-xl border border-stone-800 relative overflow-hidden">
+    <div className="bg-stone-900 dark:bg-stone-900/90 text-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 lg:p-8 shadow-xl border border-stone-800 dark:border-stone-800/80 relative overflow-hidden backdrop-blur-sm">
       {/* Subtle background decoration */}
-      <div className="absolute -right-16 -top-16 w-64 h-64 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute -left-16 -bottom-16 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute -right-16 -top-16 w-64 h-64 bg-emerald-500/10 dark:bg-emerald-500/15 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute -left-16 -bottom-16 w-64 h-64 bg-indigo-500/10 dark:bg-indigo-500/15 rounded-full blur-3xl pointer-events-none" />
 
       <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-5 sm:gap-6">
         <div className="space-y-2.5 sm:space-y-3">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
-            <span className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-stone-300">
+            <span className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-stone-300 dark:text-stone-300">
               Total Money Across All Wallets
             </span>
-            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-950 text-emerald-300 border border-emerald-800">
+            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-950/80 text-emerald-300 border border-emerald-800/80">
               {activeWalletCount} Accounts Active
             </span>
           </div>
@@ -57,7 +57,7 @@ export const TotalWealthHero: React.FC<TotalWealthHeroProps> = React.memo(({
                 {currencyBreakdown.groups.map((group) => (
                   <span
                     key={group.currency}
-                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-stone-800 border border-stone-700 text-xs font-mono font-bold text-stone-200"
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-stone-800/90 dark:bg-stone-800 border border-stone-700/80 text-xs font-mono font-bold text-stone-200"
                   >
                     <span className="text-emerald-400">{group.symbol}</span>
                     <AnimatedCounter value={group.total} duration={1.2} />
@@ -81,7 +81,7 @@ export const TotalWealthHero: React.FC<TotalWealthHeroProps> = React.memo(({
             id="hero-transfer-funds-btn"
             type="button"
             onClick={onOpenTransfer}
-            className="min-h-[44px] flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 px-4 py-2.5 text-xs font-bold text-stone-900 bg-emerald-400 hover:bg-emerald-300 rounded-xl shadow-xs transition-colors cursor-pointer"
+            className="min-h-[44px] flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 px-4 py-2.5 text-xs font-bold text-stone-900 bg-emerald-400 hover:bg-emerald-300 dark:bg-emerald-500 dark:hover:bg-emerald-400 dark:text-stone-950 rounded-xl shadow-xs transition-colors cursor-pointer"
           >
             <ArrowLeftRight className="w-4 h-4 text-stone-950 shrink-0" />
             <span>Transfer Funds</span>
@@ -93,7 +93,7 @@ export const TotalWealthHero: React.FC<TotalWealthHeroProps> = React.memo(({
             id="hero-add-wallet-btn"
             type="button"
             onClick={onOpenAddWallet}
-            className="min-h-[44px] flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 px-4 py-2.5 text-xs font-bold text-white bg-stone-800 hover:bg-stone-700 border border-stone-700 rounded-xl shadow-xs transition-colors cursor-pointer"
+            className="min-h-[44px] flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 px-4 py-2.5 text-xs font-bold text-white bg-stone-800 hover:bg-stone-700 dark:bg-stone-800/80 dark:hover:bg-stone-700 border border-stone-700 rounded-xl shadow-xs transition-colors cursor-pointer"
           >
             <Plus className="w-4 h-4 text-emerald-400 shrink-0" />
             <span>Add Wallet</span>
