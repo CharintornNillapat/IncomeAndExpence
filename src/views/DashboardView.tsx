@@ -23,12 +23,14 @@ import {
   Receipt,
   CheckCircle2,
   Clock,
-  Sparkles
+  Sparkles,
+  Globe
 } from 'lucide-react';
 import { useFinance } from '../context/FinanceContext';
 import { TransactionForm } from '../components/TransactionForm';
 import { WalletPopupModal, WalletModalTab } from '../components/WalletPopupModal';
 import { WalletType, TransactionType } from '../types';
+import { getWalletsCurrencyBreakdown, getCurrencySymbol } from '../utils/currency';
 
 export type TimeFilter = 'DAY' | 'WEEK' | 'MONTH' | 'ALL';
 
@@ -52,6 +54,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
   };
 
   const activeWallets = useMemo(() => wallets.filter((w) => !w.isDeleted), [wallets]);
+
+  const currencyBreakdown = useMemo(() => {
+    return getWalletsCurrencyBreakdown(activeWallets);
+  }, [activeWallets]);
 
   const getWalletIcon = (type: WalletType) => {
     switch (type) {
@@ -182,7 +188,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
           <div className="absolute -left-16 -bottom-16 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
 
           <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-            <div className="space-y-2">
+            <div className="space-y-3">
               <div className="flex items-center gap-2">
                 <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
                 <span className="text-xs font-bold uppercase tracking-wider text-stone-300">
@@ -193,11 +199,35 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
                 </span>
               </div>
 
-              <div className="flex items-baseline gap-3">
-                <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black font-mono tracking-tight text-white">
-                  ${totalNetWorth.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                </h1>
-                <span className="text-sm sm:text-base font-semibold font-mono text-stone-400">USD Net Worth</span>
+              <div className="flex flex-col gap-1">
+                <div className="flex items-baseline gap-3 flex-wrap">
+                  <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black font-mono tracking-tight text-white">
+                    {currencyBreakdown.primarySymbol}
+                    {currencyBreakdown.primaryTotal.toLocaleString('en-US', {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })}
+                  </h1>
+                  <span className="text-sm sm:text-base font-semibold font-mono text-emerald-400">
+                    {currencyBreakdown.primaryCurrency} Total Balance
+                  </span>
+                </div>
+
+                {!currencyBreakdown.isSingleCurrency && (
+                  <div className="flex items-center gap-2 flex-wrap pt-1">
+                    <span className="text-[11px] text-stone-400 font-medium">Currency Breakdown:</span>
+                    {currencyBreakdown.groups.map((group) => (
+                      <span
+                        key={group.currency}
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-stone-800 border border-stone-700 text-xs font-mono font-bold text-stone-200"
+                      >
+                        <span className="text-emerald-400">{group.symbol}</span>
+                        <span>{group.total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                        <span className="text-[10px] text-stone-400 font-sans">{group.currency} ({group.count})</span>
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <p className="text-xs sm:text-sm text-stone-400 max-w-xl">
@@ -251,7 +281,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
                 </span>
               </div>
               <p className="text-xl font-bold font-mono text-white mt-1">
-                ${liquidCashAndBank.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                {currencyBreakdown.primarySymbol}{liquidCashAndBank.toLocaleString('en-US', { minimumFractionDigits: 2 })}
               </p>
             </div>
 
@@ -265,7 +295,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
                 </span>
               </div>
               <p className="text-xl font-bold font-mono text-white mt-1">
-                ${savingsAndInvestments.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                {currencyBreakdown.primarySymbol}{savingsAndInvestments.toLocaleString('en-US', { minimumFractionDigits: 2 })}
               </p>
             </div>
 
@@ -277,7 +307,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
                 <span className="font-mono text-rose-400">Target</span>
               </div>
               <p className="text-xl font-bold font-mono text-rose-300 mt-1">
-                ${creditAndLiabilities.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                {currencyBreakdown.primarySymbol}{creditAndLiabilities.toLocaleString('en-US', { minimumFractionDigits: 2 })}
               </p>
             </div>
           </div>
@@ -356,7 +386,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
                       <span className={`text-xl sm:text-2xl font-black font-mono tracking-tight ${
                         wallet.balance < 0 ? 'text-rose-600' : 'text-stone-900'
                       }`}>
-                        ${wallet.balance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        {getCurrencySymbol(wallet.currency)}{wallet.balance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </span>
                       <span className="text-[11px] font-semibold font-mono text-stone-400">{wallet.currency}</span>
                     </div>
@@ -446,7 +476,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
             </div>
             <div className="mt-5">
               <p className="text-3xl sm:text-4xl lg:text-5xl font-black font-mono tracking-tight text-emerald-600">
-                ${incomeTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                {currencyBreakdown.primarySymbol}{incomeTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </p>
               <div className="flex items-center justify-between mt-3 text-xs">
                 <span className="text-stone-500 font-medium">Inflows across active accounts</span>
@@ -470,7 +500,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
             </div>
             <div className="mt-5">
               <p className="text-3xl sm:text-4xl lg:text-5xl font-black font-mono tracking-tight text-rose-600">
-                ${expenseTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                {currencyBreakdown.primarySymbol}{expenseTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </p>
               <div className="flex items-center justify-between mt-3 text-xs">
                 <span className="text-stone-500 font-medium">Outflows & regular expenses</span>
@@ -508,7 +538,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
               <p className={`text-3xl sm:text-4xl lg:text-5xl font-black font-mono tracking-tight ${
                 netBalance >= 0 ? 'text-emerald-700' : 'text-rose-600'
               }`}>
-                {netBalance < 0 ? '-' : ''}${Math.abs(netBalance).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                {netBalance < 0 ? '-' : ''}{currencyBreakdown.primarySymbol}{Math.abs(netBalance).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </p>
               <div className="flex items-center justify-between mt-3 text-xs">
                 <span className="text-stone-500 font-medium">
@@ -553,7 +583,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
                 <h3 className="text-sm font-bold text-stone-900">Expense Category Distribution</h3>
               </div>
               <span className="text-xs text-stone-400 font-mono">
-                Total: ${(expenseTotal + debtRepaymentTotal).toFixed(2)}
+                Total: {currencyBreakdown.primarySymbol}{(expenseTotal + debtRepaymentTotal).toFixed(2)}
               </span>
             </div>
 
@@ -570,7 +600,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
                         <span className="font-semibold text-stone-800">{item.name}</span>
                         <div className="flex items-center gap-2">
                           <span className="font-mono text-stone-500">{percent.toFixed(1)}%</span>
-                          <span className="font-mono font-bold text-stone-900">${item.amount.toFixed(2)}</span>
+                          <span className="font-mono font-bold text-stone-900">
+                            {currencyBreakdown.primarySymbol}{item.amount.toFixed(2)}
+                          </span>
                         </div>
                       </div>
                       {/* Progress bar */}
@@ -618,13 +650,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
                   <div className="bg-stone-50 p-3 rounded-xl border border-stone-100">
                     <span className="text-[11px] text-stone-500 block">Remaining Balance</span>
                     <span className="text-base font-bold font-mono text-rose-600">
-                      ${remainingDebtTarget.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                      {currencyBreakdown.primarySymbol}{remainingDebtTarget.toLocaleString('en-US', { minimumFractionDigits: 2 })}
                     </span>
                   </div>
                   <div className="bg-stone-50 p-3 rounded-xl border border-stone-100">
                     <span className="text-[11px] text-stone-500 block">Total Principal Paid</span>
                     <span className="text-base font-bold font-mono text-emerald-600">
-                      ${paidDebtTarget.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                      {currencyBreakdown.primarySymbol}{paidDebtTarget.toLocaleString('en-US', { minimumFractionDigits: 2 })}
                     </span>
                   </div>
                 </div>
@@ -779,7 +811,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
                               : 'text-purple-600'
                           }`}>
                             {tx.type === 'INCOME' ? '+' : tx.type === 'EXPENSE' ? '−' : tx.type === 'TRANSFER' ? '⇄ ' : ''}
-                            ${tx.amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            {getCurrencySymbol(wallet?.currency)}{tx.amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </span>
                         </td>
                       </tr>

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { 
   LayoutDashboard, 
   ArrowLeftRight, 
@@ -15,6 +15,7 @@ import {
   LogOut
 } from 'lucide-react';
 import { useFinance } from '../context/FinanceContext';
+import { getWalletsCurrencyBreakdown } from '../utils/currency';
 
 export type ActiveTab = 'dashboard' | 'transactions' | 'wallets' | 'debts' | 'diary' | 'keywords' | 'security';
 
@@ -26,7 +27,11 @@ interface NavbarProps {
 }
 
 export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, onOpenQuickAdd, onOpenAuth }) => {
-  const { totalNetWorth, isAuthenticated, isSyncing, currentUser, signOut, otpPending } = useFinance();
+  const { wallets, isAuthenticated, isSyncing, currentUser, signOut, otpPending } = useFinance();
+
+  const currencyBreakdown = useMemo(() => {
+    return getWalletsCurrencyBreakdown(wallets);
+  }, [wallets]);
 
   const navItems: { id: ActiveTab; label: string; icon: React.FC<{ className?: string }> }[] = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -44,8 +49,21 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, onOpenQ
         {/* Top brand & live net worth row */}
         <div className="h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-stone-900 text-white flex items-center justify-center font-bold text-base shadow-xs">
-              PF
+            <img
+              src="/pwa-192x192.png"
+              alt="FinLife"
+              className="w-10 h-10 rounded-xl object-contain bg-stone-900 shadow-xs border border-stone-800 shrink-0"
+              onError={(e) => {
+                // In case image isn't loaded yet, fallback gracefully
+                const target = e.currentTarget;
+                target.style.display = 'none';
+                if (target.nextElementSibling) {
+                  (target.nextElementSibling as HTMLElement).style.display = 'flex';
+                }
+              }}
+            />
+            <div className="w-10 h-10 rounded-xl bg-stone-900 text-emerald-400 hidden items-center justify-center font-black text-sm shadow-xs border border-stone-800 shrink-0">
+              FL
             </div>
             <div>
               <div className="flex items-center gap-2">
@@ -76,10 +94,28 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, onOpenQ
             {/* Live Net Worth aggregated query */}
             <div className="text-right hidden xs:block">
               <span className="text-[11px] font-semibold uppercase tracking-wider text-stone-500 block">
-                Net Worth
+                Total Balance
               </span>
               <span className="text-base sm:text-lg font-bold font-mono text-stone-900 tracking-tight">
-                ${totalNetWorth.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                {currencyBreakdown.isSingleCurrency ? (
+                  <>
+                    {currencyBreakdown.primarySymbol}
+                    {currencyBreakdown.primaryTotal.toLocaleString('en-US', {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })}{' '}
+                    <span className="text-xs font-semibold text-stone-500 font-mono">
+                      {currencyBreakdown.primaryCurrency}
+                    </span>
+                  </>
+                ) : (
+                  <span className="text-xs sm:text-sm font-semibold">
+                    {currencyBreakdown.groups
+                      .slice(0, 2)
+                      .map((g) => `${g.symbol}${g.total.toLocaleString('en-US', { maximumFractionDigits: 0 })} ${g.currency}`)
+                      .join(' • ')}
+                  </span>
+                )}
               </span>
             </div>
 
