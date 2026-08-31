@@ -1,0 +1,269 @@
+import React, { useState, useId } from 'react';
+import { Sparkles, ArrowRight } from 'lucide-react';
+import { InlineMathInput } from './InlineMathInput';
+import { Wallet, Category, TransactionType } from '../types';
+import { useFinance } from '../context/FinanceContext';
+import { matchSmartDescription } from '../utils/smartMatcher';
+
+interface TransactionFormProps {
+  wallets: Wallet[];
+  categories: Category[];
+  onSubmitTransaction: (tx: {
+    amount: number;
+    rawInput: string;
+    description: string;
+    walletId: string;
+    destinationWalletId?: string;
+    categoryId?: string;
+    type: TransactionType;
+    date: string;
+  }) => void;
+}
+
+export const TransactionForm: React.FC<TransactionFormProps> = ({
+  wallets,
+  categories,
+  onSubmitTransaction,
+}) => {
+  const formId = useId();
+  const { keywordRules } = useFinance();
+
+  const [amount, setAmount] = useState<number | null>(null);
+  const [rawAmountInput, setRawAmountInput] = useState<string>('');
+  const [isAmountValid, setIsAmountValid] = useState<boolean>(false);
+
+  const [description, setDescription] = useState<string>('');
+  const [type, setType] = useState<TransactionType>('EXPENSE');
+  const [walletId, setWalletId] = useState<string>(wallets[0]?.id || '');
+  const [destinationWalletId, setDestinationWalletId] = useState<string>(wallets[1]?.id || '');
+  const [categoryId, setCategoryId] = useState<string>(categories[0]?.id || '');
+  const [date, setDate] = useState<string>(new Date().toISOString().split('T')[0]);
+
+  const [autoMatchedCategory, setAutoMatchedCategory] = useState<string | null>(null);
+  const [isSubmitted, setIsSubmitted] = useState<boolean>(false);
+
+  // Smart Description Keyword Matcher
+  const handleDescriptionChange = (text: string) => {
+    setDescription(text);
+    const match = matchSmartDescription(text, keywordRules, categories);
+    
+    if (match.categoryId) {
+      setCategoryId(match.categoryId);
+      if (match.type) {
+        setType(match.type);
+      }
+      setAutoMatchedCategory(match.categoryName || null);
+    } else {
+      setAutoMatchedCategory(null);
+    }
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!isAmountValid || amount === null || !walletId) {
+      return;
+    }
+
+    onSubmitTransaction({
+      amount,
+      rawInput: rawAmountInput,
+      description: description.trim() || (type === 'TRANSFER' ? 'Transfer' : 'Transaction'),
+      walletId,
+      destinationWalletId: type === 'TRANSFER' ? destinationWalletId : undefined,
+      categoryId: type !== 'TRANSFER' ? categoryId : undefined,
+      type,
+      date,
+    });
+
+    // Reset form fields
+    setDescription('');
+    setAutoMatchedCategory(null);
+    setIsSubmitted(true);
+    setTimeout(() => setIsSubmitted(false), 2500);
+  };
+
+  const selectedWallet = wallets.find((w) => w.id === walletId);
+
+  return (
+    <form
+      id={`${formId}-form`}
+      onSubmit={handleSubmit}
+      className="bg-white rounded-2xl border border-stone-200 shadow-xs p-4 sm:p-6 space-y-5"
+    >
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-stone-100 pb-4">
+        <div>
+          <h2 className="text-base sm:text-lg font-bold text-stone-900">Record Transaction</h2>
+          <p className="text-xs text-stone-500">Log an expense, income, transfer, or debt payoff</p>
+        </div>
+
+        {/* Transaction Type Segmented Toggle with mobile touch targets */}
+        <div className="grid grid-cols-4 sm:flex bg-stone-100 p-1 rounded-xl gap-1 w-full sm:w-auto">
+          {(['EXPENSE', 'INCOME', 'TRANSFER', 'DEBT_REPAYMENT'] as TransactionType[]).map((t) => (
+            <button
+              key={t}
+              type="button"
+              id={`${formId}-type-${t.toLowerCase()}`}
+              onClick={() => setType(t)}
+              className={`py-2 px-2 sm:px-3 text-center text-xs font-semibold rounded-lg transition-all cursor-pointer truncate ${
+                type === t
+                  ? 'bg-white text-stone-900 shadow-xs'
+                  : 'text-stone-500 hover:text-stone-800'
+              }`}
+            >
+              {t === 'DEBT_REPAYMENT' ? 'Debt' : t.charAt(0) + t.slice(1).toLowerCase()}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* 1. Safe Inline Math Input Component */}
+      <InlineMathInput
+        id={`${formId}-math-input`}
+        label="Transaction Amount"
+        placeholder="e.g. 500+500 or 1500*0.7"
+        currencyPrefix={selectedWallet?.currency === 'EUR' ? '€' : selectedWallet?.currency === 'THB' ? '฿' : '$'}
+        required
+        onAmountEvaluated={(val, raw, valid) => {
+          setAmount(val);
+          setRawAmountInput(raw);
+          setIsAmountValid(valid);
+        }}
+      />
+
+      {/* 2. Smart Description Input with auto-tagging */}
+      <div className="flex flex-col gap-1.5">
+        <div className="flex items-center justify-between flex-wrap gap-1">
+          <label htmlFor={`${formId}-desc`} className="text-xs font-semibold uppercase tracking-wider text-stone-600">
+            Description / Note
+          </label>
+          {autoMatchedCategory && (
+            <span className="inline-flex items-center gap-1 text-[11px] font-medium text-amber-800 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+              <Sparkles className="w-3 h-3 text-amber-600" />
+              Auto-category: <strong>{autoMatchedCategory}</strong>
+            </span>
+          )}
+        </div>
+        <div className="relative">
+          <input
+            id={`${formId}-desc`}
+            type="text"
+            value={description}
+            onChange={(e) => handleDescriptionChange(e.target.value)}
+            placeholder="e.g., 250 lunch with team or grocery at market"
+            className="w-full text-sm rounded-xl border border-stone-200 px-3.5 py-2.5 text-stone-800 placeholder:text-stone-400 focus:outline-none focus:border-stone-800 focus:ring-2 focus:ring-stone-200"
+          />
+        </div>
+      </div>
+
+      {/* 3. Source Wallet & Category Selectors */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {/* Source Wallet */}
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor={`${formId}-wallet`} className="text-xs font-semibold uppercase tracking-wider text-stone-600">
+            {type === 'TRANSFER' ? 'From Wallet' : 'Wallet / Money Source'}
+          </label>
+          <select
+            id={`${formId}-wallet`}
+            value={walletId}
+            onChange={(e) => setWalletId(e.target.value)}
+            className="w-full text-sm rounded-xl border border-stone-200 px-3 py-2.5 bg-white text-stone-800 focus:outline-none focus:border-stone-800"
+          >
+            {wallets.map((w) => (
+              <option key={w.id} value={w.id}>
+                {w.name} ({w.currency} {w.balance.toFixed(2)})
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Destination Wallet for transfers OR Category for regular transactions */}
+        {type === 'TRANSFER' ? (
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor={`${formId}-dest-wallet`} className="text-xs font-semibold uppercase tracking-wider text-stone-600">
+              To Wallet
+            </label>
+            <select
+              id={`${formId}-dest-wallet`}
+              value={destinationWalletId}
+              onChange={(e) => setDestinationWalletId(e.target.value)}
+              className="w-full text-sm rounded-xl border border-stone-200 px-3 py-2.5 bg-white text-stone-800 focus:outline-none focus:border-stone-800"
+            >
+              {wallets
+                .filter((w) => w.id !== walletId)
+                .map((w) => (
+                  <option key={w.id} value={w.id}>
+                    {w.name} ({w.currency} {w.balance.toFixed(2)})
+                  </option>
+                ))}
+            </select>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor={`${formId}-category`} className="text-xs font-semibold uppercase tracking-wider text-stone-600">
+              Category
+            </label>
+            <div className="relative">
+              <select
+                id={`${formId}-category`}
+                value={categoryId}
+                onChange={(e) => {
+                  setCategoryId(e.target.value);
+                  setAutoMatchedCategory(null);
+                }}
+                className="w-full text-sm rounded-xl border border-stone-200 px-3 py-2.5 bg-white text-stone-800 focus:outline-none focus:border-stone-800"
+              >
+                {categories.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* 4. Date Picker */}
+      <div className="flex flex-col gap-1.5">
+        <label htmlFor={`${formId}-date`} className="text-xs font-semibold uppercase tracking-wider text-stone-600">
+          Transaction Date
+        </label>
+        <input
+          id={`${formId}-date`}
+          type="date"
+          value={date}
+          onChange={(e) => setDate(e.target.value)}
+          className="w-full text-sm rounded-xl border border-stone-200 px-3.5 py-2.5 bg-white text-stone-800 focus:outline-none focus:border-stone-800"
+        />
+      </div>
+
+      {/* 5. Submit Button */}
+      <div className="pt-2">
+        <button
+          id={`${formId}-submit-btn`}
+          type="submit"
+          disabled={!isAmountValid || amount === null}
+          className={`w-full min-h-[48px] py-3 px-4 rounded-xl font-semibold text-sm transition-all flex items-center justify-center gap-2 cursor-pointer ${
+            isAmountValid && amount !== null
+              ? 'bg-stone-900 text-white hover:bg-stone-800 shadow-sm active:scale-[0.99]'
+              : 'bg-stone-200 text-stone-400 cursor-not-allowed'
+          }`}
+        >
+          <span>Record {type === 'TRANSFER' ? 'Transfer' : type === 'DEBT_REPAYMENT' ? 'Debt Payment' : 'Transaction'}</span>
+          {amount !== null && isAmountValid && (
+            <span className="font-mono text-xs bg-stone-800 px-2 py-0.5 rounded text-stone-200">
+              ${amount.toFixed(2)}
+            </span>
+          )}
+          <ArrowRight className="w-4 h-4" />
+        </button>
+
+        {isSubmitted && (
+          <p className="text-center text-xs font-medium text-emerald-600 mt-2">
+            ✓ Transaction successfully logged!
+          </p>
+        )}
+      </div>
+    </form>
+  );
+};
