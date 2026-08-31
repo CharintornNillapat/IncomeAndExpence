@@ -1,18 +1,21 @@
-import React, { useState } from 'react';
+import React, { useState, lazy, Suspense } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FinanceProvider, useFinance } from './context/FinanceContext';
 import { Navbar, ActiveTab } from './components/Navbar';
-import { DashboardView } from './views/DashboardView';
-import { TransactionsView } from './views/TransactionsView';
-import { WalletsView } from './views/WalletsView';
-import { DebtsView } from './views/DebtsView';
-import { DiaryView } from './views/DiaryView';
-import { KeywordRulesView } from './views/KeywordRulesView';
-import { SecurityView } from './views/SecurityView';
+import { ViewLoadingFallback } from './components/ViewLoadingFallback';
 import { TransactionForm } from './components/TransactionForm';
 import { AuthModal } from './components/AuthModal';
 import { ReloadPrompt } from './components/ReloadPrompt';
 import { X } from 'lucide-react';
+
+// Lazy-loaded route views for optimized bundle size & code splitting
+const DashboardView = lazy(() => import('./views/DashboardView').then(m => ({ default: m.DashboardView })));
+const TransactionsView = lazy(() => import('./views/TransactionsView').then(m => ({ default: m.TransactionsView })));
+const WalletsView = lazy(() => import('./views/WalletsView').then(m => ({ default: m.WalletsView })));
+const DebtsView = lazy(() => import('./views/DebtsView').then(m => ({ default: m.DebtsView })));
+const DiaryView = lazy(() => import('./views/DiaryView').then(m => ({ default: m.DiaryView })));
+const KeywordRulesView = lazy(() => import('./views/KeywordRulesView').then(m => ({ default: m.KeywordRulesView })));
+const SecurityView = lazy(() => import('./views/SecurityView').then(m => ({ default: m.SecurityView })));
 
 const MainApp: React.FC = () => {
   const [activeTab, setActiveTab] = useState<ActiveTab>('dashboard');
@@ -37,7 +40,7 @@ const MainApp: React.FC = () => {
       case 'security':
         return <SecurityView />;
       default:
-        return <DashboardView />;
+        return <DashboardView onNavigate={(tab) => setActiveTab(tab as ActiveTab)} />;
     }
   };
 
@@ -51,9 +54,11 @@ const MainApp: React.FC = () => {
         onOpenAuth={() => setIsAuthModalOpen(true)}
       />
 
-      {/* Main Content Area */}
+      {/* Main Content Area with Suspense boundary */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-8">
-        {renderActiveView()}
+        <Suspense fallback={<ViewLoadingFallback />}>
+          {renderActiveView()}
+        </Suspense>
       </main>
 
       {/* Auth Modal for Supabase Login / Register */}
