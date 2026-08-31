@@ -231,7 +231,7 @@ export const TransactionsView: React.FC = () => {
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Search description, amount, math..."
-              className="w-full min-h-[44px] pl-9 pr-3 py-2 text-xs rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 text-stone-900 dark:text-stone-100 placeholder:text-stone-400 dark:placeholder:text-stone-500 focus:outline-none focus:border-stone-800 dark:focus:border-stone-400"
+              className="w-full min-h-[44px] pl-9 pr-3 py-2 text-xs rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 text-stone-900 dark:text-stone-100 placeholder:text-stone-400 dark:placeholder:text-stone-500 focus:outline-none focus:border-stone-800 dark:focus:border-stone-400 focus:ring-2 focus:ring-stone-200 dark:focus:ring-stone-700 transition-colors"
             />
           </div>
 
@@ -241,11 +241,11 @@ export const TransactionsView: React.FC = () => {
               id="tx-filter-wallet"
               value={selectedWalletId}
               onChange={(e) => setSelectedWalletId(e.target.value)}
-              className="w-full min-h-[44px] py-2 px-3 text-xs rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-none focus:border-stone-800 dark:focus:border-stone-400"
+              className="w-full min-h-[44px] py-2 px-3 text-xs rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-none focus:border-stone-800 dark:focus:border-stone-400 focus:ring-2 focus:ring-stone-200 dark:focus:ring-stone-700 transition-colors"
             >
               <option value="ALL">All Wallets</option>
               {wallets.map((w) => (
-                <option key={w.id} value={w.id}>
+                <option key={w.id} value={w.id} className="dark:bg-stone-800 dark:text-stone-100">
                   {w.name}
                 </option>
               ))}
@@ -258,7 +258,7 @@ export const TransactionsView: React.FC = () => {
               id="tx-filter-type"
               value={selectedType}
               onChange={(e) => setSelectedType(e.target.value)}
-              className="w-full min-h-[44px] py-2 px-3 text-xs rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-none focus:border-stone-800 dark:focus:border-stone-400"
+              className="w-full min-h-[44px] py-2 px-3 text-xs rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-none focus:border-stone-800 dark:focus:border-stone-400 focus:ring-2 focus:ring-stone-200 dark:focus:ring-stone-700 transition-colors"
             >
               <option value="ALL">All Types</option>
               <option value="EXPENSE">Expense</option>
@@ -279,7 +279,7 @@ export const TransactionsView: React.FC = () => {
               type="checkbox"
               checked={showSoftDeleted}
               onChange={(e) => setShowSoftDeleted(e.target.checked)}
-              className="w-4 h-4 rounded text-stone-900 focus:ring-stone-800 cursor-pointer"
+              className="w-4 h-4 rounded border-stone-300 dark:border-stone-600 text-stone-900 dark:text-stone-100 focus:ring-stone-800 dark:focus:ring-stone-400 cursor-pointer accent-stone-900 dark:accent-stone-100"
             />
           </div>
         </div>
@@ -324,7 +324,7 @@ export const TransactionsView: React.FC = () => {
         </div>
 
         {/* Pagination Footer */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 bg-stone-50 dark:bg-stone-850 dark:bg-stone-800/60 border-t border-stone-200 dark:border-stone-800 text-xs">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 bg-stone-50 dark:bg-stone-800/60 border-t border-stone-200 dark:border-stone-800 text-xs">
           <span className="text-stone-500 dark:text-stone-400 text-center sm:text-left text-[11px] sm:text-xs">
             Showing {filteredTransactions.length === 0 ? 0 : (currentPage - 1) * pageSize + 1} to{' '}
             {Math.min(currentPage * pageSize, filteredTransactions.length)} of {filteredTransactions.length} entries
@@ -336,7 +336,7 @@ export const TransactionsView: React.FC = () => {
               type="button"
               disabled={currentPage === 1}
               onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-              className="min-h-[44px] px-3.5 py-1.5 rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-700 dark:text-stone-300 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer font-medium"
+              className="min-h-[44px] px-3.5 py-1.5 rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-700 dark:text-stone-300 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer font-medium hover:bg-stone-50 dark:hover:bg-stone-750 transition-colors"
             >
               Previous
             </button>
@@ -348,7 +348,7 @@ export const TransactionsView: React.FC = () => {
               type="button"
               disabled={currentPage >= totalPages}
               onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-              className="min-h-[44px] px-3.5 py-1.5 rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-700 dark:text-stone-300 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer font-medium"
+              className="min-h-[44px] px-3.5 py-1.5 rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-700 dark:text-stone-300 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer font-medium hover:bg-stone-50 dark:hover:bg-stone-750 transition-colors"
             >
               Next
             </button>
@@ -359,7 +359,7 @@ export const TransactionsView: React.FC = () => {
       {/* Add Transaction Modal / Responsive Mobile Bottom Sheet */}
       {isAddModalOpen && (
         <div 
-          className="fixed inset-0 z-50 bg-stone-900/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 transition-opacity"
+          className="fixed inset-0 z-50 bg-stone-900/60 dark:bg-black/70 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-4 transition-opacity"
           onClick={(e) => {
             if (e.target === e.currentTarget) setIsAddModalOpen(false);
           }}
@@ -413,7 +413,7 @@ export const TransactionsView: React.FC = () => {
 
       {/* Two-Step CSV Import Modal */}
       {isImportModalOpen && (
-        <div className="fixed inset-0 z-50 bg-stone-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 bg-stone-900/60 dark:bg-black/70 backdrop-blur-md flex items-center justify-center p-4">
           <div className="bg-white dark:bg-stone-900 rounded-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto shadow-xl border border-stone-200 dark:border-stone-800 p-6 space-y-6">
             <div className="flex items-center justify-between pb-4 border-b border-stone-100 dark:border-stone-800">
               <div>

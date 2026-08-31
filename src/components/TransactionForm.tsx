@@ -162,7 +162,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
             value={description}
             onChange={(e) => handleDescriptionChange(e.target.value)}
             placeholder="e.g., lunch with team or groceries"
-            className="w-full text-sm rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 px-3.5 py-2.5 text-stone-800 dark:text-stone-100 placeholder:text-stone-400 dark:placeholder:text-stone-500 focus:outline-none focus:border-stone-800 dark:focus:border-stone-400 focus:ring-2 focus:ring-stone-200 dark:focus:ring-stone-700"
+            className="w-full text-sm rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 px-3.5 py-2.5 text-stone-900 dark:text-stone-100 placeholder:text-stone-400 dark:placeholder:text-stone-500 focus:outline-none focus:border-stone-800 dark:focus:border-stone-400 focus:ring-2 focus:ring-stone-200 dark:focus:ring-stone-700 transition-colors"
           />
         </div>
       </div>
@@ -200,10 +200,10 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
                 id={`${formId}-wallet`}
                 value={walletId}
                 onChange={(e) => setWalletId(e.target.value)}
-                className="w-full text-sm rounded-xl border border-stone-200 dark:border-stone-700 px-3 py-2.5 bg-white dark:bg-stone-800 text-stone-800 dark:text-stone-100 focus:outline-none focus:border-stone-800 dark:focus:border-stone-400"
+                className="w-full text-sm rounded-xl border border-stone-200 dark:border-stone-700 px-3 py-2.5 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-none focus:border-stone-800 dark:focus:border-stone-400 focus:ring-2 focus:ring-stone-200 dark:focus:ring-stone-700 transition-colors"
               >
                 {wallets.map((w) => (
-                  <option key={w.id} value={w.id}>
+                  <option key={w.id} value={w.id} className="dark:bg-stone-800 dark:text-stone-100">
                     {w.name} ({w.currency} {w.balance.toFixed(2)})
                   </option>
                 ))}
@@ -220,12 +220,12 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
                   id={`${formId}-dest-wallet`}
                   value={destinationWalletId}
                   onChange={(e) => setDestinationWalletId(e.target.value)}
-                  className="w-full text-sm rounded-xl border border-stone-200 dark:border-stone-700 px-3 py-2.5 bg-white dark:bg-stone-800 text-stone-800 dark:text-stone-100 focus:outline-none focus:border-stone-800 dark:focus:border-stone-400"
+                  className="w-full text-sm rounded-xl border border-stone-200 dark:border-stone-700 px-3 py-2.5 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-none focus:border-stone-800 dark:focus:border-stone-400 focus:ring-2 focus:ring-stone-200 dark:focus:ring-stone-700 transition-colors"
                 >
                   {wallets
                     .filter((w) => w.id !== walletId)
                     .map((w) => (
-                      <option key={w.id} value={w.id}>
+                      <option key={w.id} value={w.id} className="dark:bg-stone-800 dark:text-stone-100">
                         {w.name} ({w.currency} {w.balance.toFixed(2)})
                       </option>
                     ))}
@@ -244,10 +244,10 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
                       setCategoryId(e.target.value);
                       setAutoMatchedCategory(null);
                     }}
-                    className="w-full text-sm rounded-xl border border-stone-200 dark:border-stone-700 px-3 py-2.5 bg-white dark:bg-stone-800 text-stone-800 dark:text-stone-100 focus:outline-none focus:border-stone-800 dark:focus:border-stone-400"
+                    className="w-full text-sm rounded-xl border border-stone-200 dark:border-stone-700 px-3 py-2.5 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-none focus:border-stone-800 dark:focus:border-stone-400 focus:ring-2 focus:ring-stone-200 dark:focus:ring-stone-700 transition-colors"
                   >
                     {categories.map((c) => (
-                      <option key={c.id} value={c.id}>
+                      <option key={c.id} value={c.id} className="dark:bg-stone-800 dark:text-stone-100">
                         {c.name}
                       </option>
                     ))}
@@ -267,7 +267,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
               type="date"
               value={date}
               onChange={(e) => setDate(e.target.value)}
-              className="w-full text-sm rounded-xl border border-stone-200 dark:border-stone-700 px-3.5 py-2.5 bg-white dark:bg-stone-800 text-stone-800 dark:text-stone-100 focus:outline-none focus:border-stone-800 dark:focus:border-stone-400"
+              className="w-full text-sm rounded-xl border border-stone-200 dark:border-stone-700 px-3.5 py-2.5 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-none focus:border-stone-800 dark:focus:border-stone-400 focus:ring-2 focus:ring-stone-200 dark:focus:ring-stone-700 [color-scheme:light] dark:[color-scheme:dark] transition-colors"
             />
           </div>
         </div>

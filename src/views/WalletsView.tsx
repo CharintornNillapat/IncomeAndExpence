@@ -244,7 +244,7 @@ export const WalletsView: React.FC = () => {
                     value={walletName}
                     onChange={(e) => setWalletName(e.target.value)}
                     placeholder="e.g. Checking Account, Cash"
-                    className="w-full text-xs rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 px-3.5 py-2.5 text-stone-900 dark:text-stone-100 placeholder:text-stone-400 dark:placeholder:text-stone-500 focus:outline-none focus:border-stone-800 dark:focus:border-stone-400"
+                    className="w-full text-xs rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 px-3.5 py-2.5 text-stone-900 dark:text-stone-100 placeholder:text-stone-400 dark:placeholder:text-stone-500 focus:outline-none focus:border-stone-800 dark:focus:border-stone-400 focus:ring-2 focus:ring-stone-200 dark:focus:ring-stone-700 transition-colors"
                   />
                 </div>
 
@@ -257,14 +257,14 @@ export const WalletsView: React.FC = () => {
                       id="new-wallet-type"
                       value={walletType}
                       onChange={(e) => setWalletType(e.target.value as WalletType)}
-                      className="w-full text-xs rounded-xl border border-stone-200 dark:border-stone-700 px-3 py-2.5 bg-stone-50 dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-none focus:border-stone-800 dark:focus:border-stone-400"
+                      className="w-full text-xs rounded-xl border border-stone-200 dark:border-stone-700 px-3 py-2.5 bg-stone-50 dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-none focus:border-stone-800 dark:focus:border-stone-400 focus:ring-2 focus:ring-stone-200 dark:focus:ring-stone-700 transition-colors"
                     >
-                      <option value="BANK_ACCOUNT">Bank Account</option>
-                      <option value="CASH">Cash</option>
-                      <option value="SAVINGS">Savings</option>
-                      <option value="CREDIT_CARD">Credit Card</option>
-                      <option value="INVESTMENT">Investment</option>
-                      <option value="E_WALLET">E-Wallet</option>
+                      <option value="BANK_ACCOUNT" className="dark:bg-stone-800 dark:text-stone-100">Bank Account</option>
+                      <option value="CASH" className="dark:bg-stone-800 dark:text-stone-100">Cash</option>
+                      <option value="SAVINGS" className="dark:bg-stone-800 dark:text-stone-100">Savings</option>
+                      <option value="CREDIT_CARD" className="dark:bg-stone-800 dark:text-stone-100">Credit Card</option>
+                      <option value="INVESTMENT" className="dark:bg-stone-800 dark:text-stone-100">Investment</option>
+                      <option value="E_WALLET" className="dark:bg-stone-800 dark:text-stone-100">E-Wallet</option>
                     </select>
                   </div>
 
@@ -276,13 +276,13 @@ export const WalletsView: React.FC = () => {
                       id="new-wallet-currency"
                       value={currency}
                       onChange={(e) => setCurrency(e.target.value)}
-                      className="w-full text-xs rounded-xl border border-stone-200 dark:border-stone-700 px-3 py-2.5 bg-stone-50 dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-none focus:border-stone-800 dark:focus:border-stone-400 font-mono"
+                      className="w-full text-xs rounded-xl border border-stone-200 dark:border-stone-700 px-3 py-2.5 bg-stone-50 dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-none focus:border-stone-800 dark:focus:border-stone-400 focus:ring-2 focus:ring-stone-200 dark:focus:ring-stone-700 font-mono transition-colors"
                     >
-                      <option value="USD">USD ($)</option>
-                      <option value="EUR">EUR (€)</option>
-                      <option value="THB">THB (฿)</option>
-                      <option value="GBP">GBP (£)</option>
-                      <option value="JPY">JPY (¥)</option>
+                      <option value="USD" className="dark:bg-stone-800 dark:text-stone-100">USD ($)</option>
+                      <option value="EUR" className="dark:bg-stone-800 dark:text-stone-100">EUR (€)</option>
+                      <option value="THB" className="dark:bg-stone-800 dark:text-stone-100">THB (฿)</option>
+                      <option value="GBP" className="dark:bg-stone-800 dark:text-stone-100">GBP (£)</option>
+                      <option value="JPY" className="dark:bg-stone-800 dark:text-stone-100">JPY (¥)</option>
                     </select>
                   </div>
                 </div>
@@ -298,7 +298,7 @@ export const WalletsView: React.FC = () => {
                     min="0"
                     value={initialBalance}
                     onChange={(e) => setInitialBalance(parseFloat(e.target.value) || 0)}
-                    className="w-full text-xs rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 px-3.5 py-2.5 text-stone-900 dark:text-stone-100 font-mono focus:outline-none focus:border-stone-800 dark:focus:border-stone-400"
+                    className="w-full text-xs rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 px-3.5 py-2.5 text-stone-900 dark:text-stone-100 font-mono focus:outline-none focus:border-stone-800 dark:focus:border-stone-400 focus:ring-2 focus:ring-stone-200 dark:focus:ring-stone-700 transition-colors"
                   />
                 </div>
 
@@ -385,10 +385,10 @@ export const WalletsView: React.FC = () => {
                       id="transfer-source-wallet"
                       value={sourceWalletId}
                       onChange={(e) => setSourceWalletId(e.target.value)}
-                      className="w-full text-xs rounded-xl border border-stone-200 dark:border-stone-700 px-3 py-2.5 bg-stone-50 dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-none focus:border-stone-800 dark:focus:border-stone-400"
+                      className="w-full text-xs rounded-xl border border-stone-200 dark:border-stone-700 px-3 py-2.5 bg-stone-50 dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-none focus:border-stone-800 dark:focus:border-stone-400 focus:ring-2 focus:ring-stone-200 dark:focus:ring-stone-700 transition-colors"
                     >
                       {activeWallets.map((w) => (
-                        <option key={w.id} value={w.id}>
+                        <option key={w.id} value={w.id} className="dark:bg-stone-800 dark:text-stone-100">
                           {w.name} (${w.balance.toFixed(2)})
                         </option>
                       ))}
@@ -403,12 +403,12 @@ export const WalletsView: React.FC = () => {
                       id="transfer-dest-wallet"
                       value={destWalletId}
                       onChange={(e) => setDestWalletId(e.target.value)}
-                      className="w-full text-xs rounded-xl border border-stone-200 dark:border-stone-700 px-3 py-2.5 bg-stone-50 dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-none focus:border-stone-800 dark:focus:border-stone-400"
+                      className="w-full text-xs rounded-xl border border-stone-200 dark:border-stone-700 px-3 py-2.5 bg-stone-50 dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-none focus:border-stone-800 dark:focus:border-stone-400 focus:ring-2 focus:ring-stone-200 dark:focus:ring-stone-700 transition-colors"
                     >
                       {activeWallets
                         .filter((w) => w.id !== sourceWalletId)
                         .map((w) => (
-                          <option key={w.id} value={w.id}>
+                          <option key={w.id} value={w.id} className="dark:bg-stone-800 dark:text-stone-100">
                             {w.name} (${w.balance.toFixed(2)})
                           </option>
                         ))}
@@ -439,7 +439,7 @@ export const WalletsView: React.FC = () => {
                     value={transferNote}
                     onChange={(e) => setTransferNote(e.target.value)}
                     placeholder="e.g. Savings transfer"
-                    className="w-full text-xs rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 px-3.5 py-2.5 text-stone-900 dark:text-stone-100 placeholder:text-stone-400 dark:placeholder:text-stone-500 focus:outline-none focus:border-stone-800 dark:focus:border-stone-400"
+                    className="w-full text-xs rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 px-3.5 py-2.5 text-stone-900 dark:text-stone-100 placeholder:text-stone-400 dark:placeholder:text-stone-500 focus:outline-none focus:border-stone-800 dark:focus:border-stone-400 focus:ring-2 focus:ring-stone-200 dark:focus:ring-stone-700 transition-colors"
                   />
                 </div>
 
