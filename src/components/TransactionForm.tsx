@@ -82,13 +82,15 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
       }
     }
 
+    const debtCategory = categories.find((c) => c.type === 'DEBT_REPAYMENT' || c.name.toLowerCase().includes('debt'));
+
     onSubmitTransaction({
       amount,
       rawInput: rawAmountInput,
       description: finalDescription,
       walletId,
       destinationWalletId: type === 'TRANSFER' ? destinationWalletId : undefined,
-      categoryId: type === 'EXPENSE' || type === 'INCOME' || type === 'ADJUSTMENT' ? categoryId : type === 'DEBT_REPAYMENT' ? 'cat-debt' : undefined,
+      categoryId: type === 'EXPENSE' || type === 'INCOME' || type === 'ADJUSTMENT' ? categoryId : type === 'DEBT_REPAYMENT' ? debtCategory?.id : undefined,
       debtId: type === 'DEBT_REPAYMENT' ? debtId : undefined,
       type,
       date,

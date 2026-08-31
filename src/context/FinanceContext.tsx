@@ -800,13 +800,17 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
 
     if (isAuthenticated) {
       try {
+        const validCategoryId = data.categoryId && categories.some((c) => c.id === data.categoryId)
+          ? data.categoryId
+          : null;
+
         const { data: insertedTx, error: txErr } = await supabase
           .from('transactions')
           .insert({
             user_id: currentUser.id,
             wallet_id: data.walletId,
             destination_wallet_id: data.destinationWalletId || null,
-            category_id: data.categoryId || null,
+            category_id: validCategoryId,
             debt_id: data.debtId || null,
             amount: data.amount,
             type: data.type,
@@ -868,7 +872,13 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
         return { success: true };
       } catch (err: unknown) {
         console.error('[Add Transaction Failed]', err);
-        return { success: false, error: err instanceof Error ? err.message : 'Database error' };
+        const postgrestErr = err as { message?: string; details?: string; hint?: string };
+        const detailedError =
+          postgrestErr?.message ||
+          postgrestErr?.details ||
+          postgrestErr?.hint ||
+          (err instanceof Error ? err.message : 'Database error');
+        return { success: false, error: detailedError };
       }
     } else {
       const newTx: Transaction = {
@@ -1130,12 +1140,15 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     if (!wallet) return { success: false, error: 'Selected wallet not found' };
     if (amount <= 0) return { success: false, error: 'Repayment amount must be positive' };
 
+    // Find if a valid category exists in categories array (e.g. debt repayment category)
+    const matchedCategory = categories.find((c) => c.type === 'DEBT_REPAYMENT' || c.name.toLowerCase().includes('debt'));
+
     return addTransaction({
       amount,
       rawInput: amount.toString(),
       description: note ? `Debt Repayment: ${debt.name} (${note})` : `Debt Repayment: ${debt.name}`,
       walletId,
-      categoryId: 'cat-debt',
+      categoryId: matchedCategory ? matchedCategory.id : undefined,
       debtId,
       type: 'DEBT_REPAYMENT',
       transactionDate: new Date().toISOString().slice(0, 10),
