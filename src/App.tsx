@@ -9,11 +9,13 @@ import { DiaryView } from './views/DiaryView';
 import { KeywordRulesView } from './views/KeywordRulesView';
 import { SecurityView } from './views/SecurityView';
 import { TransactionForm } from './components/TransactionForm';
+import { AuthModal } from './components/AuthModal';
 import { X } from 'lucide-react';
 
 const MainApp: React.FC = () => {
   const [activeTab, setActiveTab] = useState<ActiveTab>('dashboard');
   const [isQuickAddOpen, setIsQuickAddOpen] = useState<boolean>(false);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
   const { wallets, categories, addTransaction } = useFinance();
 
   const renderActiveView = () => {
@@ -44,6 +46,7 @@ const MainApp: React.FC = () => {
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         onOpenQuickAdd={() => setIsQuickAddOpen(true)}
+        onOpenAuth={() => setIsAuthModalOpen(true)}
       />
 
       {/* Main Content Area */}
@@ -51,11 +54,17 @@ const MainApp: React.FC = () => {
         {renderActiveView()}
       </main>
 
+      {/* Auth Modal for Supabase Login / Register */}
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+      />
+
       {/* Footer */}
       <footer className="border-t border-stone-200 bg-white py-6 mt-12 text-center text-xs text-stone-500">
         <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
           <p>FinLife Tracker — Full-Stack Personal Finance & Holistic Lifestyle Management</p>
-          <p className="text-stone-400 font-mono text-[11px]">Safe Math.js Evaluator • Two-Step CSV Sync • Single-Tx Repayments</p>
+          <p className="text-stone-400 font-mono text-[11px]">Supabase Realtime Cloud Sync • Safe Math.js • Single-Tx Repayments</p>
         </div>
       </footer>
 
@@ -124,3 +133,4 @@ export default function App() {
     </FinanceProvider>
   );
 }
+

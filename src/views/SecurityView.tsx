@@ -12,12 +12,18 @@ import {
   CheckCircle2,
   Clock,
   Fingerprint,
-  RefreshCw
+  RefreshCw,
+  Database,
+  Cloud
 } from 'lucide-react';
 import { useFinance } from '../context/FinanceContext';
 
 export const SecurityView: React.FC = () => {
   const { 
+    currentUser,
+    isAuthenticated,
+    isSyncing,
+    refreshFromCloud,
     sessions, 
     currentSession, 
     revokeSession, 
@@ -30,6 +36,13 @@ export const SecurityView: React.FC = () => {
   const [enteredOtp, setEnteredOtp] = useState<string>('');
   const [otpError, setOtpError] = useState<string | null>(null);
   const [otpSuccess, setOtpSuccess] = useState<boolean>(false);
+  const [isManualSyncing, setIsManualSyncing] = useState<boolean>(false);
+
+  const handleManualSync = async () => {
+    setIsManualSyncing(true);
+    await refreshFromCloud();
+    setTimeout(() => setIsManualSyncing(false), 500);
+  };
 
   const handleVerifyOtp = (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,13 +63,22 @@ export const SecurityView: React.FC = () => {
       {/* Header Banner */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-stone-200 shadow-2xs">
         <div>
-          <h2 className="text-base font-bold text-stone-900">Security & Session Management</h2>
+          <h2 className="text-base font-bold text-stone-900">Security & Cloud Sync Management</h2>
           <p className="text-xs text-stone-500">
-            Multi-device authorization, active JWT session revoking, and OTP step-up challenge
+            Supabase PostgreSQL Row Level Security, cross-device Realtime subscriptions, and device authorization
           </p>
         </div>
 
         <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={handleManualSync}
+            disabled={isSyncing || isManualSyncing}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-stone-700 bg-stone-100 hover:bg-stone-200 border border-stone-200 rounded-xl transition-all cursor-pointer disabled:opacity-50"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${isSyncing || isManualSyncing ? 'animate-spin' : ''}`} />
+            <span>{isSyncing || isManualSyncing ? 'Syncing...' : 'Sync Cloud Now'}</span>
+          </button>
           <button
             id="revoke-all-others-btn"
             type="button"
@@ -64,8 +86,37 @@ export const SecurityView: React.FC = () => {
             className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-xl transition-all cursor-pointer"
           >
             <Trash2 className="w-3.5 h-3.5" />
-            <span>Revoke All Other Devices</span>
+            <span>Revoke Other Devices</span>
           </button>
+        </div>
+      </div>
+
+      {/* Cloud & Supabase Auth Status Banner */}
+      <div className="p-4 sm:p-5 rounded-2xl bg-white border border-stone-200 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center justify-center shrink-0">
+            <Cloud className="w-5 h-5" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-bold text-stone-900">
+                {isAuthenticated ? 'Supabase Realtime Sync Connected' : 'Local Fallback Mode'}
+              </span>
+              <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${
+                isAuthenticated ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+              }`}>
+                {isAuthenticated ? 'Active RLS' : 'Not Signed In'}
+              </span>
+            </div>
+            <p className="text-xs text-stone-500 font-mono">
+              Account: {currentUser.email} • ID: {currentUser.id.slice(0, 18)}...
+            </p>
+          </div>
+        </div>
+
+        <div className="text-xs text-stone-500 font-mono bg-stone-50 p-2.5 rounded-xl border border-stone-100 sm:text-right">
+          <div>PostgreSQL: <span className="text-emerald-700 font-semibold">Online</span></div>
+          <div>Realtime Channel: <span className="text-stone-800 font-semibold">schema-db-changes</span></div>
         </div>
       </div>
 
@@ -231,13 +282,13 @@ export const SecurityView: React.FC = () => {
             )}
           </div>
 
-          {/* Security Best Practices Card */}
+          {/* Security & Database Info Card */}
           <div className="bg-stone-50 rounded-2xl border border-stone-200 p-5 text-xs space-y-2">
             <h4 className="font-bold text-stone-900 flex items-center gap-1.5">
-              <Fingerprint className="w-4 h-4 text-stone-600" /> Token Hygiene
+              <Database className="w-4 h-4 text-stone-600" /> Row Level Security & Encryption
             </h4>
             <p className="text-stone-500 text-[11px] leading-relaxed">
-              Tokens are tied to device fingerprints. Revoking an authorized device instantly terminates all active API and WebSocket sessions.
+              Every database row in Supabase is secured by PostgreSQL Row Level Security (RLS) policies evaluated against your JWT user ID. Only you can read, write, or subscribe to your transactions.
             </p>
           </div>
         </div>
@@ -245,3 +296,4 @@ export const SecurityView: React.FC = () => {
     </div>
   );
 };
+
