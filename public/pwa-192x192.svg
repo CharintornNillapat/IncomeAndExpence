@@ -1,22 +1,20 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <defs>
-    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#1c1917"/>
-      <stop offset="100%" stop-color="#0c0a09"/>
-    </linearGradient>
-    <linearGradient id="brand" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#10b981"/>
-      <stop offset="100%" stop-color="#059669"/>
-    </linearGradient>
-  </defs>
-  <rect width="512" height="512" rx="128" fill="url(#bg)"/>
-  <circle cx="256" cy="256" r="180" fill="none" stroke="#292524" stroke-width="8"/>
-  <!-- Wallet / Finance stylized icon -->
-  <path d="M140 180 C140 160 156 144 176 144 L336 144 C356 144 372 160 372 180 L372 332 C372 352 356 368 336 368 L176 368 C156 368 140 352 140 332 Z" fill="#292524" stroke="#44403c" stroke-width="8"/>
-  <path d="M140 220 L372 220" stroke="#1c1917" stroke-width="8"/>
-  <rect x="290" y="240" width="82" height="56" rx="14" fill="url(#brand)"/>
-  <circle cx="330" cy="268" r="8" fill="#ffffff"/>
-  <!-- Trending upward growth spark -->
-  <path d="M180 310 L230 260 L270 290 L320 230" fill="none" stroke="#34d399" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
-  <polyline points="300 230 320 230 320 250" fill="none" stroke="#34d399" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+<?xml version="1.0" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 20010904//EN"
+ "http://www.w3.org/TR/2001/REC-SVG-20010904/DTD/svg10.dtd">
+<svg version="1.0" xmlns="http://www.w3.org/2000/svg"
+ width="192.000000pt" height="192.000000pt" viewBox="0 0 192.000000 192.000000"
+ preserveAspectRatio="xMidYMid meet">
+
+<g transform="translate(0.000000,192.000000) scale(0.100000,-0.100000)"
+fill="#000000" stroke="none">
+<path d="M0 960 l0 -960 960 0 960 0 0 960 0 960 -960 0 -960 0 0 -960z m1430
+461 l0 -179 -51 -4 c-28 -1 -71 -1 -95 1 l-44 3 0 67 c0 107 5 105 -274 109
+-224 3 -233 2 -259 -18 l-27 -21 0 -146 c0 -178 3 -183 93 -183 76 0 97 16 97
+74 0 23 3 58 6 79 l7 37 77 0 77 0 7 -37 c3 -21 6 -63 6 -93 1 -57 22 -105 34
+-75 6 16 43 19 120 9 l46 -7 0 -77 0 -77 -46 -7 c-77 -10 -114 -7 -120 9 -6
+14 -8 13 -20 -2 -10 -13 -13 -61 -14 -187 0 -144 2 -172 17 -188 14 -16 34
+-18 167 -18 207 0 196 5 196 -90 l0 -78 -97 -7 c-109 -9 -440 -1 -451 10 -4 3
+-8 120 -10 258 -4 296 -1 287 -97 287 -93 0 -94 -1 -97 -211 l-3 -174 -90 0
+-90 0 -3 558 -2 557 470 0 470 0 0 -179z"/>
+</g>
 </svg>

@@ -1,22 +1,29 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <defs>
-    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#1c1917"/>
-      <stop offset="100%" stop-color="#0c0a09"/>
-    </linearGradient>
-    <linearGradient id="brand" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#10b981"/>
-      <stop offset="100%" stop-color="#059669"/>
-    </linearGradient>
-  </defs>
-  <rect width="512" height="512" rx="128" fill="url(#bg)"/>
-  <circle cx="256" cy="256" r="180" fill="none" stroke="#292524" stroke-width="8"/>
-  <!-- Wallet / Finance stylized icon -->
-  <path d="M140 180 C140 160 156 144 176 144 L336 144 C356 144 372 160 372 180 L372 332 C372 352 356 368 336 368 L176 368 C156 368 140 352 140 332 Z" fill="#292524" stroke="#44403c" stroke-width="8"/>
-  <path d="M140 220 L372 220" stroke="#1c1917" stroke-width="8"/>
-  <rect x="290" y="240" width="82" height="56" rx="14" fill="url(#brand)"/>
-  <circle cx="330" cy="268" r="8" fill="#ffffff"/>
-  <!-- Trending upward growth spark -->
-  <path d="M180 310 L230 260 L270 290 L320 230" fill="none" stroke="#34d399" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
-  <polyline points="300 230 320 230 320 250" fill="none" stroke="#34d399" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+<?xml version="1.0" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 20010904//EN"
+ "http://www.w3.org/TR/2001/REC-SVG-20010904/DTD/svg10.dtd">
+<svg version="1.0" xmlns="http://www.w3.org/2000/svg"
+ width="512.000000pt" height="512.000000pt" viewBox="0 0 512.000000 512.000000"
+ preserveAspectRatio="xMidYMid meet">
+
+<g transform="translate(0.000000,512.000000) scale(0.100000,-0.100000)"
+fill="#000000" stroke="none">
+<path d="M0 2560 l0 -2560 2560 0 2560 0 0 2560 0 2560 -2560 0 -2560 0 0
+-2560z m3804 1673 c8 -49 8 -881 0 -910 l-6 -23 -239 0 -239 0 0 155 c0 97 -4
+155 -10 155 -5 0 -10 11 -10 23 0 35 -56 106 -95 123 -19 8 -53 14 -75 14 -25
+0 -39 4 -35 10 4 7 -182 10 -549 10 -364 0 -556 -3 -556 -10 0 -5 -9 -10 -20
+-10 -61 0 -135 -59 -146 -116 -3 -19 -10 -31 -15 -28 -5 3 -9 -139 -9 -336 0
+-225 3 -339 10 -335 6 3 10 -4 10 -16 0 -59 66 -139 115 -139 9 0 13 -4 10
+-10 -4 -6 37 -10 114 -10 74 0 121 4 121 10 0 6 7 10 16 10 47 0 124 84 124
+135 0 9 5 13 10 10 7 -4 10 58 10 179 l0 186 220 0 220 0 0 -211 c0 -137 3
+-208 10 -204 6 4 10 -6 10 -22 1 -39 34 -109 59 -123 18 -9 21 -8 21 10 0 20
+4 20 223 18 l222 -3 0 -215 0 -215 -222 -3 -223 -2 0 25 0 26 -22 -20 c-35
+-34 -58 -74 -58 -106 0 -23 -3 -27 -10 -15 -6 10 -10 -118 -10 -370 0 -212 4
+-379 9 -372 5 9 10 -7 14 -42 3 -30 11 -68 19 -83 15 -32 88 -73 133 -74 19 0
+24 -3 15 -7 -8 -4 176 -9 410 -12 l425 -5 0 -215 0 -215 -732 -3 -733 -2 0
+647 c0 422 -4 643 -10 633 -7 -11 -10 -5 -10 25 -1 86 -76 165 -156 165 -24 0
+-46 5 -49 10 -3 6 -42 10 -86 10 -44 0 -78 -4 -75 -9 3 -5 -9 -12 -27 -15 -51
+-10 -107 -83 -107 -141 0 -14 -4 -25 -10 -25 -7 0 -10 -148 -10 -424 l0 -424
+-87 -7 c-131 -11 -383 -1 -394 16 -10 16 -12 2863 -3 2922 l7 37 1237 0 1237
+0 7 -37z"/>
+</g>
 </svg>
