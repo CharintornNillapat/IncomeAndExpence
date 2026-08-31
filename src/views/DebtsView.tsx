@@ -65,20 +65,24 @@ export const DebtsView: React.FC = () => {
     setDebtName('');
   };
 
-  const handleExecuteRepay = (e: React.FormEvent) => {
+  const handleExecuteRepay = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!repayDebtTarget || !repayValid || repayAmount === null || !selectedWalletId) return;
 
-    const result = repayDebt(repayDebtTarget.id, selectedWalletId, repayAmount, repayNote);
-    if (!result.success) {
-      setRepayError(result.error || 'Failed to process debt repayment');
-      return;
-    }
+    try {
+      const result = await repayDebt(repayDebtTarget.id, selectedWalletId, repayAmount, repayNote);
+      if (result && !result.success) {
+        setRepayError(result.error || 'Failed to process debt repayment');
+        return;
+      }
 
-    setRepayDebtTarget(null);
-    setRepayAmount(null);
-    setRepayRaw('');
-    setRepayError(null);
+      setRepayDebtTarget(null);
+      setRepayAmount(null);
+      setRepayRaw('');
+      setRepayError(null);
+    } catch (err: unknown) {
+      setRepayError(err instanceof Error ? err.message : 'An error occurred during repayment');
+    }
   };
 
   return (

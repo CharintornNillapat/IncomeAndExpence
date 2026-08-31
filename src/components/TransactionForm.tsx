@@ -1,6 +1,6 @@
 import React, { useState, useId } from 'react';
 import { motion } from 'framer-motion';
-import { Sparkles, ArrowRight, ChevronDown, ChevronUp, SlidersHorizontal } from 'lucide-react';
+import { Sparkles, ArrowRight, SlidersHorizontal } from 'lucide-react';
 import { InlineMathInput } from './InlineMathInput';
 import { Wallet, Category, TransactionType } from '../types';
 import { useFinance } from '../context/FinanceContext';
@@ -16,6 +16,7 @@ interface TransactionFormProps {
     walletId: string;
     destinationWalletId?: string;
     categoryId?: string;
+    debtId?: string;
     type: TransactionType;
     date: string;
   }) => void;
@@ -27,7 +28,9 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
   onSubmitTransaction,
 }) => {
   const formId = useId();
-  const { keywordRules } = useFinance();
+  const { keywordRules, debts } = useFinance();
+
+  const activeDebts = debts.filter((d) => !d.isDeleted && !d.isSettled);
 
   const [amount, setAmount] = useState<number | null>(null);
   const [rawAmountInput, setRawAmountInput] = useState<string>('');
@@ -38,6 +41,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
   const [walletId, setWalletId] = useState<string>(wallets[0]?.id || '');
   const [destinationWalletId, setDestinationWalletId] = useState<string>(wallets[1]?.id || '');
   const [categoryId, setCategoryId] = useState<string>(categories[0]?.id || '');
+  const [debtId, setDebtId] = useState<string>(activeDebts[0]?.id || debts[0]?.id || '');
   const [date, setDate] = useState<string>(new Date().toISOString().split('T')[0]);
 
   const [autoMatchedCategory, setAutoMatchedCategory] = useState<string | null>(null);
@@ -66,13 +70,26 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
       return;
     }
 
+    const selectedDebt = debts.find((d) => d.id === debtId);
+    let finalDescription = description.trim();
+    if (!finalDescription) {
+      if (type === 'TRANSFER') {
+        finalDescription = 'Transfer';
+      } else if (type === 'DEBT_REPAYMENT' && selectedDebt) {
+        finalDescription = `Debt Repayment: ${selectedDebt.name}`;
+      } else {
+        finalDescription = 'Transaction';
+      }
+    }
+
     onSubmitTransaction({
       amount,
       rawInput: rawAmountInput,
-      description: description.trim() || (type === 'TRANSFER' ? 'Transfer' : 'Transaction'),
+      description: finalDescription,
       walletId,
       destinationWalletId: type === 'TRANSFER' ? destinationWalletId : undefined,
-      categoryId: type !== 'TRANSFER' ? categoryId : undefined,
+      categoryId: type === 'EXPENSE' || type === 'INCOME' || type === 'ADJUSTMENT' ? categoryId : type === 'DEBT_REPAYMENT' ? 'cat-debt' : undefined,
+      debtId: type === 'DEBT_REPAYMENT' ? debtId : undefined,
       type,
       date,
     });
@@ -161,7 +178,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
             type="text"
             value={description}
             onChange={(e) => handleDescriptionChange(e.target.value)}
-            placeholder="e.g., lunch with team or groceries"
+            placeholder={type === 'DEBT_REPAYMENT' ? 'e.g., Monthly student loan payment' : 'e.g., lunch with team or groceries'}
             className="w-full text-sm rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 px-3.5 py-2.5 text-stone-900 dark:text-stone-100 placeholder:text-stone-400 dark:placeholder:text-stone-500 focus:outline-none focus:border-stone-800 dark:focus:border-stone-400 focus:ring-2 focus:ring-stone-200 dark:focus:ring-stone-700 transition-colors"
           />
         </div>
@@ -187,14 +204,14 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
         </div>
       )}
 
-      {/* 3. Source Wallet & Category Selectors (Collapsed when auto-matched unless expanded) */}
+      {/* 3. Source Wallet & Destination/Category/Debt Selectors (Collapsed when auto-matched unless expanded) */}
       {!isCollapsed && (
         <div className="space-y-4 pt-1 animate-in fade-in duration-150">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {/* Source Wallet */}
             <div className="flex flex-col gap-1.5">
               <label htmlFor={`${formId}-wallet`} className="text-xs font-semibold uppercase tracking-wider text-stone-600 dark:text-stone-300">
-                {type === 'TRANSFER' ? 'From Wallet' : 'Wallet'}
+                {type === 'TRANSFER' ? 'From Wallet' : 'Paying Wallet'}
               </label>
               <select
                 id={`${formId}-wallet`}
@@ -210,7 +227,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
               </select>
             </div>
 
-            {/* Destination Wallet for transfers OR Category for regular transactions */}
+            {/* Destination Wallet for transfers, Target Debt for repayments, OR Category for regular transactions */}
             {type === 'TRANSFER' ? (
               <div className="flex flex-col gap-1.5">
                 <label htmlFor={`${formId}-dest-wallet`} className="text-xs font-semibold uppercase tracking-wider text-stone-600 dark:text-stone-300">
@@ -229,6 +246,24 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
                         {w.name} ({w.currency} {w.balance.toFixed(2)})
                       </option>
                     ))}
+                </select>
+              </div>
+            ) : type === 'DEBT_REPAYMENT' ? (
+              <div className="flex flex-col gap-1.5">
+                <label htmlFor={`${formId}-debt`} className="text-xs font-semibold uppercase tracking-wider text-stone-600 dark:text-stone-300">
+                  Debt Target
+                </label>
+                <select
+                  id={`${formId}-debt`}
+                  value={debtId}
+                  onChange={(e) => setDebtId(e.target.value)}
+                  className="w-full text-sm rounded-xl border border-stone-200 dark:border-stone-700 px-3 py-2.5 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-none focus:border-stone-800 dark:focus:border-stone-400 focus:ring-2 focus:ring-stone-200 dark:focus:ring-stone-700 transition-colors"
+                >
+                  {debts.map((d) => (
+                    <option key={d.id} value={d.id} className="dark:bg-stone-800 dark:text-stone-100">
+                      {d.name} (${d.remainingAmount.toFixed(2)} remaining)
+                    </option>
+                  ))}
                 </select>
               </div>
             ) : (
@@ -304,3 +339,4 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
     </form>
   );
 };
+
