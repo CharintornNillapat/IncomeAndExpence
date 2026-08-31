@@ -24,6 +24,7 @@
     "papaparse": "^5.7.0",
     "react": "^19.0.1",
     "react-dom": "^19.0.1",
+    "react-swipeable": "^7.0.2",
     "vite": "^6.2.3",
     "zod": "^4.5.4"
   },

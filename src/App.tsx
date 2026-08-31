@@ -1,5 +1,6 @@
 import React, { useState, lazy, Suspense } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useSwipeable } from 'react-swipeable';
 import { FinanceProvider, useFinance } from './context/FinanceContext';
 import { Navbar, ActiveTab } from './components/Navbar';
 import { MobileBottomNav } from './components/MobileBottomNav';
@@ -8,6 +9,17 @@ import { TransactionForm } from './components/TransactionForm';
 import { AuthModal } from './components/AuthModal';
 import { ReloadPrompt } from './components/ReloadPrompt';
 import { X } from 'lucide-react';
+
+// Ordered tab hierarchy for native-like swipe gestures
+const TABS_ORDER: ActiveTab[] = [
+  'dashboard',
+  'transactions',
+  'wallets',
+  'debts',
+  'diary',
+  'keywords',
+  'security',
+];
 
 // Lazy-loaded route views for optimized bundle size & code splitting
 const DashboardView = lazy(() => import('./views/DashboardView').then(m => ({ default: m.DashboardView })));
@@ -18,16 +30,75 @@ const DiaryView = lazy(() => import('./views/DiaryView').then(m => ({ default: m
 const KeywordRulesView = lazy(() => import('./views/KeywordRulesView').then(m => ({ default: m.KeywordRulesView })));
 const SecurityView = lazy(() => import('./views/SecurityView').then(m => ({ default: m.SecurityView })));
 
+// Page slide animation variants for smooth forward/backward transitions
+const pageVariants = {
+  enter: (direction: number) => ({
+    x: direction > 0 ? 48 : direction < 0 ? -48 : 0,
+    opacity: 0,
+  }),
+  center: {
+    x: 0,
+    opacity: 1,
+  },
+  exit: (direction: number) => ({
+    x: direction > 0 ? -48 : direction < 0 ? 48 : 0,
+    opacity: 0,
+  }),
+};
+
+const pageTransition = {
+  type: 'spring',
+  stiffness: 380,
+  damping: 32,
+  mass: 0.8,
+};
+
 const MainApp: React.FC = () => {
   const [activeTab, setActiveTab] = useState<ActiveTab>('dashboard');
+  const [direction, setDirection] = useState<number>(0);
   const [isQuickAddOpen, setIsQuickAddOpen] = useState<boolean>(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
   const { wallets, categories, addTransaction } = useFinance();
 
+  const handleTabChange = (newTab: ActiveTab) => {
+    const currentIndex = TABS_ORDER.indexOf(activeTab);
+    const newIndex = TABS_ORDER.indexOf(newTab);
+    if (currentIndex !== -1 && newIndex !== -1 && currentIndex !== newIndex) {
+      setDirection(newIndex > currentIndex ? 1 : -1);
+    }
+    setActiveTab(newTab);
+  };
+
+  const handleNextTab = () => {
+    const currentIndex = TABS_ORDER.indexOf(activeTab);
+    if (currentIndex < TABS_ORDER.length - 1) {
+      setDirection(1);
+      setActiveTab(TABS_ORDER[currentIndex + 1]);
+    }
+  };
+
+  const handlePrevTab = () => {
+    const currentIndex = TABS_ORDER.indexOf(activeTab);
+    if (currentIndex > 0) {
+      setDirection(-1);
+      setActiveTab(TABS_ORDER[currentIndex - 1]);
+    }
+  };
+
+  // Touch swipe gesture hook for iOS/Android native app feel
+  const swipeHandlers = useSwipeable({
+    onSwipedLeft: () => handleNextTab(),
+    onSwipedRight: () => handlePrevTab(),
+    delta: 40,
+    preventScrollOnSwipe: false,
+    trackTouch: true,
+    trackMouse: false,
+  });
+
   const renderActiveView = () => {
     switch (activeTab) {
       case 'dashboard':
-        return <DashboardView onNavigate={(tab) => setActiveTab(tab as ActiveTab)} />;
+        return <DashboardView onNavigate={(tab) => handleTabChange(tab as ActiveTab)} />;
       case 'transactions':
         return <TransactionsView />;
       case 'wallets':
@@ -41,7 +112,7 @@ const MainApp: React.FC = () => {
       case 'security':
         return <SecurityView />;
       default:
-        return <DashboardView onNavigate={(tab) => setActiveTab(tab as ActiveTab)} />;
+        return <DashboardView onNavigate={(tab) => handleTabChange(tab as ActiveTab)} />;
     }
   };
 
@@ -50,22 +121,38 @@ const MainApp: React.FC = () => {
       {/* Top Navbar */}
       <Navbar
         activeTab={activeTab}
-        setActiveTab={setActiveTab}
+        setActiveTab={handleTabChange}
         onOpenQuickAdd={() => setIsQuickAddOpen(true)}
         onOpenAuth={() => setIsAuthModalOpen(true)}
       />
 
-      {/* Main Content Area with Suspense boundary & bottom padding for mobile navigation */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 py-4 sm:py-8 pb-24 sm:pb-8">
-        <Suspense fallback={<ViewLoadingFallback />}>
-          {renderActiveView()}
-        </Suspense>
+      {/* Main Content Area with Touch Swipe Gestures, Framer Slide Animations & Suspense */}
+      <main
+        {...swipeHandlers}
+        className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 py-4 sm:py-8 pb-24 sm:pb-8 overflow-x-hidden touch-pan-y"
+      >
+        <AnimatePresence mode="wait" custom={direction}>
+          <motion.div
+            key={activeTab}
+            custom={direction}
+            variants={pageVariants}
+            initial="enter"
+            animate="center"
+            exit="exit"
+            transition={pageTransition}
+            className="w-full"
+          >
+            <Suspense fallback={<ViewLoadingFallback />}>
+              {renderActiveView()}
+            </Suspense>
+          </motion.div>
+        </AnimatePresence>
       </main>
 
       {/* Mobile Fixed Bottom Navigation Bar (block sm:hidden) */}
       <MobileBottomNav
         activeTab={activeTab}
-        setActiveTab={setActiveTab}
+        setActiveTab={handleTabChange}
       />
 
       {/* Auth Modal for Supabase Login / Register */}
