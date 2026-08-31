@@ -93,6 +93,73 @@ function safeGetLocalStorage<T>(key: string, fallback: T): T {
   }
 }
 
+// Device detection helper for Active Authorized Sessions
+function detectCurrentDevice(): { deviceName: string; userAgent: string; deviceFingerprint: string; ipAddress: string } {
+  const ua = typeof navigator !== 'undefined' ? navigator.userAgent : 'Unknown Web Client';
+  let os = 'Unknown OS';
+  if (/Windows/i.test(ua)) os = 'Windows PC';
+  else if (/Macintosh|Mac OS X/i.test(ua)) os = 'macOS';
+  else if (/iPhone/i.test(ua)) os = 'iPhone (iOS)';
+  else if (/iPad/i.test(ua)) os = 'iPad (iPadOS)';
+  else if (/Android/i.test(ua)) os = 'Android Device';
+  else if (/Linux/i.test(ua)) os = 'Linux Workstation';
+
+  let browser = 'Web Browser';
+  if (/Chrome/i.test(ua) && !/Edg/i.test(ua)) browser = 'Chrome';
+  else if (/Safari/i.test(ua) && !/Chrome/i.test(ua)) browser = 'Safari';
+  else if (/Firefox/i.test(ua)) browser = 'Firefox';
+  else if (/Edg/i.test(ua)) browser = 'Microsoft Edge';
+
+  let deviceFingerprint = '';
+  try {
+    deviceFingerprint = localStorage.getItem('pf_device_fingerprint') || '';
+    if (!deviceFingerprint) {
+      deviceFingerprint = 'fp-' + Math.random().toString(36).substring(2, 10) + '-' + Date.now().toString(36);
+      localStorage.setItem('pf_device_fingerprint', deviceFingerprint);
+    }
+  } catch {
+    deviceFingerprint = 'fp-client-session';
+  }
+
+  return {
+    deviceName: `${browser} on ${os}`,
+    userAgent: ua,
+    deviceFingerprint,
+    ipAddress: '127.0.0.1 (Current Client)',
+  };
+}
+
+// Helper to initialize session list with current device guaranteed
+function initializeSessionList(userId: string): SessionDevice[] {
+  const saved = safeGetLocalStorage<SessionDevice[]>('pf_sessions', []);
+  const dev = detectCurrentDevice();
+  const currentId = `sess-${dev.deviceFingerprint}`;
+
+  const hasCurrent = saved.some((s) => s.id === currentId && !s.revokedAt);
+  if (hasCurrent) {
+    return saved.map((s) => ({
+      ...s,
+      isCurrent: s.id === currentId,
+      lastActiveAt: s.id === currentId ? new Date().toISOString() : s.lastActiveAt,
+    }));
+  }
+
+  const currentSess: SessionDevice = {
+    id: currentId,
+    userId: userId || 'usr-guest-01',
+    deviceFingerprint: dev.deviceFingerprint,
+    deviceName: dev.deviceName,
+    ipAddress: dev.ipAddress,
+    userAgent: dev.userAgent,
+    isTrusted: true,
+    isCurrent: true,
+    lastActiveAt: new Date().toISOString(),
+    createdAt: new Date().toISOString(),
+  };
+
+  return [currentSess, ...saved.filter((s) => s.id !== currentId)];
+}
+
 // Initial Default Seed Data
 const DEFAULT_USER: User = {
   id: 'usr-guest-01',
@@ -127,7 +194,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
   const [debts, setDebts] = useState<Debt[]>(() => safeGetLocalStorage('pf_debts', []));
   const [diaryEntries, setDiaryEntries] = useState<DiaryEntry[]>(() => safeGetLocalStorage('pf_diary', []));
 
-  const [sessions, setSessions] = useState<SessionDevice[]>(() => safeGetLocalStorage('pf_sessions', []));
+  const [sessions, setSessions] = useState<SessionDevice[]>(() => initializeSessionList(currentUser.id));
   const [showSoftDeleted, setShowSoftDeleted] = useState<boolean>(false);
 
   // OTP State
@@ -156,6 +223,9 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
   useEffect(() => {
     localStorage.setItem('pf_user', JSON.stringify(currentUser));
   }, [currentUser]);
+  useEffect(() => {
+    localStorage.setItem('pf_sessions', JSON.stringify(sessions));
+  }, [sessions]);
 
   // Net Worth aggregation
   const totalNetWorth = useMemo(() => {

@@ -78,9 +78,9 @@ export const DebtsView: React.FC = () => {
       {/* Header Banner */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-stone-200 shadow-2xs">
         <div>
-          <h2 className="text-base font-bold text-stone-900">Debt Freedom & Repayment Management</h2>
+          <h2 className="text-base font-bold text-stone-900">Debts & Loans</h2>
           <p className="text-xs text-stone-500">
-            Target payoff tracking and atomic single-transaction wallet balance deduction
+            Track payoff goals and make repayments from your wallets
           </p>
         </div>
 
@@ -90,8 +90,8 @@ export const DebtsView: React.FC = () => {
           onClick={() => setIsAddDebtOpen(true)}
           className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-stone-900 hover:bg-stone-800 rounded-xl shadow-xs transition-all cursor-pointer"
         >
-          <Plus className="w-4 h-4" />
-          <span>Add Debt Target</span>
+          <Plus className="w-4 h-4 text-emerald-400" />
+          <span>Add Debt</span>
         </button>
       </div>
 
@@ -209,11 +209,11 @@ export const DebtsView: React.FC = () => {
                     className="w-full py-2.5 bg-stone-900 hover:bg-stone-800 text-white rounded-xl font-semibold text-xs transition-all shadow-xs flex items-center justify-center gap-2 cursor-pointer"
                   >
                     <CreditCard className="w-4 h-4 text-stone-300" />
-                    <span>Make Atomic Repayment</span>
+                    <span>Make Repayment</span>
                   </button>
                 ) : (
                   <div className="text-center py-1 text-xs font-semibold text-emerald-700 bg-emerald-50 rounded-xl border border-emerald-200">
-                    ✓ Debt Obligation Complete
+                    ✓ Debt Fully Settled
                   </div>
                 )}
               </div>
@@ -230,14 +230,14 @@ export const DebtsView: React.FC = () => {
             if (e.target === e.currentTarget) setIsAddDebtOpen(false);
           }}
         >
-          <div className="bg-white rounded-t-3xl sm:rounded-2xl max-w-md w-full max-h-[92vh] sm:max-h-[90vh] overflow-y-auto shadow-2xl border border-stone-200 p-5 sm:p-6 space-y-5 animate-in fade-in slide-in-from-bottom-6 sm:slide-in-from-bottom-0 duration-200">
+          <div className="bg-white rounded-t-3xl sm:rounded-2xl max-w-md w-full max-h-[92vh] sm:max-h-[90vh] overflow-y-auto shadow-2xl border border-stone-200 p-4 sm:p-6 space-y-4 sm:space-y-5 animate-in fade-in slide-in-from-bottom-6 sm:slide-in-from-bottom-0 duration-200 overscroll-contain">
             {/* Mobile Drag Indicator */}
             <div className="sm:hidden -mt-1 pb-1 flex justify-center cursor-pointer" onClick={() => setIsAddDebtOpen(false)}>
               <div className="w-12 h-1.5 rounded-full bg-stone-300" />
             </div>
 
             <div className="flex items-center justify-between pb-3 border-b border-stone-100">
-              <h3 className="text-base font-bold text-stone-900">Add New Debt Goal</h3>
+              <h3 className="text-sm sm:text-base font-bold text-stone-900">Add Debt</h3>
               <button
                 type="button"
                 onClick={() => setIsAddDebtOpen(false)}
@@ -258,12 +258,12 @@ export const DebtsView: React.FC = () => {
                   required
                   value={debtName}
                   onChange={(e) => setDebtName(e.target.value)}
-                  placeholder="e.g. Credit Card Consolidation, Student Loan"
+                  placeholder="e.g. Student Loan, Car Loan"
                   className="w-full text-xs rounded-xl border border-stone-200 px-3.5 py-2.5 text-stone-900 focus:outline-none focus:border-stone-800"
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div>
                   <label className="text-xs font-semibold uppercase tracking-wider text-stone-600 block mb-1">
                     Total Amount ($) *
@@ -300,7 +300,7 @@ export const DebtsView: React.FC = () => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div>
                   <label className="text-xs font-semibold uppercase tracking-wider text-stone-600 block mb-1">
                     Interest Rate (% APR)
@@ -318,7 +318,7 @@ export const DebtsView: React.FC = () => {
 
                 <div>
                   <label className="text-xs font-semibold uppercase tracking-wider text-stone-600 block mb-1">
-                    Minimum Monthly ($)
+                    Min Monthly ($)
                   </label>
                   <input
                     id="new-debt-min-payment"
@@ -334,7 +334,7 @@ export const DebtsView: React.FC = () => {
 
               <div>
                 <label className="text-xs font-semibold uppercase tracking-wider text-stone-600 block mb-1">
-                  Target Due Date
+                  Target Payoff Date
                 </label>
                 <input
                   id="new-debt-due-date"
@@ -349,9 +349,9 @@ export const DebtsView: React.FC = () => {
                 <button
                   id="save-new-debt-btn"
                   type="submit"
-                  className="w-full py-2.5 bg-stone-900 hover:bg-stone-800 text-white rounded-xl font-semibold text-xs transition-all shadow-xs cursor-pointer"
+                  className="w-full py-2.5 sm:py-3 bg-stone-900 hover:bg-stone-800 text-white rounded-xl font-semibold text-xs transition-all shadow-xs cursor-pointer"
                 >
-                  Create Debt Payoff Target
+                  Add Debt
                 </button>
               </div>
             </form>
@@ -367,7 +367,7 @@ export const DebtsView: React.FC = () => {
             if (e.target === e.currentTarget) setRepayDebtTarget(null);
           }}
         >
-          <div className="bg-white rounded-t-3xl sm:rounded-2xl max-w-md w-full max-h-[92vh] sm:max-h-[90vh] overflow-y-auto shadow-2xl border border-stone-200 p-5 sm:p-6 space-y-5 animate-in fade-in slide-in-from-bottom-6 sm:slide-in-from-bottom-0 duration-200">
+          <div className="bg-white rounded-t-3xl sm:rounded-2xl max-w-md w-full max-h-[92vh] sm:max-h-[90vh] overflow-y-auto shadow-2xl border border-stone-200 p-4 sm:p-6 space-y-4 sm:space-y-5 animate-in fade-in slide-in-from-bottom-6 sm:slide-in-from-bottom-0 duration-200 overscroll-contain">
             {/* Mobile Drag Indicator */}
             <div className="sm:hidden -mt-1 pb-1 flex justify-center cursor-pointer" onClick={() => setRepayDebtTarget(null)}>
               <div className="w-12 h-1.5 rounded-full bg-stone-300" />
@@ -375,8 +375,8 @@ export const DebtsView: React.FC = () => {
 
             <div className="flex items-center justify-between pb-3 border-b border-stone-100">
               <div>
-                <h3 className="text-base font-bold text-stone-900">Repay Debt: {repayDebtTarget.name}</h3>
-                <p className="text-xs text-stone-500">Atomic deduction from wallet & debt target reduction</p>
+                <h3 className="text-sm sm:text-base font-bold text-stone-900">Repay: {repayDebtTarget.name}</h3>
+                <p className="text-xs text-stone-500">Deducts directly from your selected wallet</p>
               </div>
               <button
                 type="button"
@@ -390,7 +390,7 @@ export const DebtsView: React.FC = () => {
             <form onSubmit={handleExecuteRepay} className="space-y-4">
               <div>
                 <label className="text-xs font-semibold uppercase tracking-wider text-stone-600 block mb-1">
-                  Deduct Funds From Wallet *
+                  Pay From Wallet *
                 </label>
                 <select
                   id="repay-wallet-select"
@@ -411,7 +411,7 @@ export const DebtsView: React.FC = () => {
               {/* Inline Math Input */}
               <InlineMathInput
                 id="repay-amount-math"
-                label="Repayment Amount"
+                label="Repayment Amount ($)"
                 defaultValue={repayRaw}
                 required
                 onAmountEvaluated={(val, raw, valid) => {
@@ -423,13 +423,14 @@ export const DebtsView: React.FC = () => {
 
               <div>
                 <label className="text-xs font-semibold uppercase tracking-wider text-stone-600 block mb-1">
-                  Payment Memo / Note
+                  Note
                 </label>
                 <input
                   id="repay-note"
                   type="text"
                   value={repayNote}
                   onChange={(e) => setRepayNote(e.target.value)}
+                  placeholder="e.g. Monthly payment"
                   className="w-full text-xs rounded-xl border border-stone-200 px-3.5 py-2.5 text-stone-900 focus:outline-none focus:border-stone-800"
                 />
               </div>
@@ -445,13 +446,13 @@ export const DebtsView: React.FC = () => {
                   id="confirm-repay-btn"
                   type="submit"
                   disabled={!repayValid || repayAmount === null}
-                  className={`w-full py-2.5 rounded-xl font-semibold text-xs transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                  className={`w-full py-2.5 sm:py-3 rounded-xl font-semibold text-xs transition-all flex items-center justify-center gap-2 cursor-pointer ${
                     repayValid && repayAmount !== null
                       ? 'bg-stone-900 hover:bg-stone-800 text-white shadow-xs'
                       : 'bg-stone-200 text-stone-400 cursor-not-allowed'
                   }`}
                 >
-                  <span>Execute Atomic Payment of ${repayAmount !== null ? repayAmount.toFixed(2) : '0.00'}</span>
+                  <span>Pay ${repayAmount !== null ? repayAmount.toFixed(2) : '0.00'}</span>
                   <ArrowRight className="w-4 h-4" />
                 </button>
               </div>

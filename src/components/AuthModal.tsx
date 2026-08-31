@@ -92,9 +92,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
             </div>
             <div>
               <h3 className="text-base font-bold text-stone-900">
-                {mode === 'signin' ? 'Sign in to Supabase' : mode === 'signup' ? 'Create Supabase Account' : 'Reset Password'}
+                {mode === 'signin' ? 'Sign In' : mode === 'signup' ? 'Create Account' : 'Reset Password'}
               </h3>
-              <p className="text-xs text-stone-500">Cross-device live sync for PC & Phone</p>
+              <p className="text-xs text-stone-500">Sync your finances across devices</p>
             </div>
           </div>
           <button
@@ -223,7 +223,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-3 px-4 rounded-xl font-semibold text-sm bg-stone-900 hover:bg-stone-800 text-white shadow-xs transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+            className="w-full py-2.5 sm:py-3 px-4 rounded-xl font-semibold text-xs sm:text-sm bg-stone-900 hover:bg-stone-800 text-white shadow-xs transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
           >
             {loading ? (
               <span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -231,10 +231,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
               <>
                 <span>
                   {mode === 'signin'
-                    ? 'Sign In & Sync'
+                    ? 'Sign In'
                     : mode === 'signup'
-                    ? 'Create Free Account'
-                    : 'Send Password Reset'}
+                    ? 'Create Account'
+                    : 'Send Reset Link'}
                 </span>
                 <ArrowRight className="w-4 h-4" />
               </>
@@ -249,7 +249,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
                 setErrorMessage(null);
                 setSuccessMessage(null);
               }}
-              className="w-full text-center text-xs text-stone-600 hover:text-stone-900 underline pt-2 cursor-pointer"
+              className="w-full text-center text-xs text-stone-600 hover:text-stone-900 underline pt-1 cursor-pointer"
             >
               Back to Sign In
             </button>
@@ -258,7 +258,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
 
         <div className="pt-2 border-t border-stone-100 text-center">
           <p className="text-[11px] text-stone-400">
-            Powered by Supabase PostgreSQL & Row Level Security (RLS)
+            Encrypted with Supabase & Row Level Security
           </p>
         </div>
       </div>

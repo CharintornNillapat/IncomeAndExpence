@@ -1,5 +1,5 @@
 {
-  "name": "Personal Finance & Lifestyle Tracker",
+  "name": "FinLife Tracker",
   "description": "A personal finance and lifestyle tracking application with multi-wallet management, smart categorization, debt tracking, and daily holistic diary.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]

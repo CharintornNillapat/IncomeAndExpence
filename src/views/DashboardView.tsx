@@ -5,16 +5,63 @@ import {
   CreditCard, 
   PieChart, 
   ArrowUpRight, 
-  ArrowDownLeft 
+  ArrowDownLeft,
+  Wallet as WalletIcon,
+  ArrowLeftRight,
+  Plus,
+  Landmark,
+  Banknote,
+  PiggyBank,
+  Coins,
+  Layers,
+  ChevronRight,
+  Search,
+  Calendar,
+  DollarSign,
+  ArrowRight,
+  Filter,
+  Receipt,
+  CheckCircle2,
+  Clock,
+  Sparkles
 } from 'lucide-react';
 import { useFinance } from '../context/FinanceContext';
 import { TransactionForm } from '../components/TransactionForm';
+import { WalletPopupModal, WalletModalTab } from '../components/WalletPopupModal';
+import { WalletType, TransactionType } from '../types';
 
 export type TimeFilter = 'DAY' | 'WEEK' | 'MONTH' | 'ALL';
 
-export const DashboardView: React.FC = () => {
-  const { transactions, wallets, debts, categories, addTransaction } = useFinance();
+interface DashboardViewProps {
+  onNavigate?: (tab: string) => void;
+}
+
+export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
+  const { transactions, wallets, debts, categories, totalNetWorth, addTransaction } = useFinance();
   const [timeFilter, setTimeFilter] = useState<TimeFilter>('MONTH');
+  
+  // Wallet Popup Modal State in Dashboard
+  const [isWalletModalOpen, setIsWalletModalOpen] = useState<boolean>(false);
+  const [walletModalTab, setWalletModalTab] = useState<WalletModalTab>('OVERVIEW');
+  const [selectedWalletIdForModal, setSelectedWalletIdForModal] = useState<string | undefined>(undefined);
+
+  const openWalletModal = (tab: WalletModalTab = 'OVERVIEW', walletId?: string) => {
+    setWalletModalTab(tab);
+    setSelectedWalletIdForModal(walletId);
+    setIsWalletModalOpen(true);
+  };
+
+  const activeWallets = useMemo(() => wallets.filter((w) => !w.isDeleted), [wallets]);
+
+  const getWalletIcon = (type: WalletType) => {
+    switch (type) {
+      case 'BANK_ACCOUNT': return Landmark;
+      case 'CASH': return Banknote;
+      case 'SAVINGS': return PiggyBank;
+      case 'CREDIT_CARD': return CreditCard;
+      default: return Coins;
+    }
+  };
 
   // Filter transactions based on time breakdown
   const filteredTransactions = useMemo(() => {
@@ -40,7 +87,7 @@ export const DashboardView: React.FC = () => {
     });
   }, [transactions, timeFilter]);
 
-  // Aggregate Metrics
+  // Aggregate Metrics for Selected Timeframe
   const incomeTotal = useMemo(() => {
     return filteredTransactions
       .filter((t) => t.type === 'INCOME')
@@ -89,17 +136,278 @@ export const DashboardView: React.FC = () => {
   const paidDebtTarget = totalDebtTarget - remainingDebtTarget;
   const debtProgressPercent = totalDebtTarget > 0 ? (paidDebtTarget / totalDebtTarget) * 100 : 0;
 
+  // Total Money & Wealth Aggregations across all wallets
+  const liquidCashAndBank = useMemo(() => {
+    return activeWallets
+      .filter((w) => w.type === 'BANK_ACCOUNT' || w.type === 'CASH' || w.type === 'E_WALLET')
+      .reduce((sum, w) => sum + Number(w.balance || 0), 0);
+  }, [activeWallets]);
+
+  const savingsAndInvestments = useMemo(() => {
+    return activeWallets
+      .filter((w) => w.type === 'SAVINGS' || w.type === 'INVESTMENT')
+      .reduce((sum, w) => sum + Number(w.balance || 0), 0);
+  }, [activeWallets]);
+
+  const creditAndLiabilities = useMemo(() => {
+    const creditBalances = activeWallets
+      .filter((w) => w.type === 'CREDIT_CARD')
+      .reduce((sum, w) => sum + Number(w.balance || 0), 0);
+    return creditBalances + remainingDebtTarget;
+  }, [activeWallets, remainingDebtTarget]);
+
+  // Compact Recent 5 Transactions for Dashboard Preview
+  const recentTransactions = useMemo(() => {
+    return transactions
+      .filter((t) => !t.isDeleted)
+      .sort((a, b) => new Date(b.transactionDate).getTime() - new Date(a.transactionDate).getTime())
+      .slice(0, 5);
+  }, [transactions]);
+
+  const walletMap = useMemo(() => {
+    return new Map(wallets.map((w) => [w.id, w]));
+  }, [wallets]);
+
+  const categoryMap = useMemo(() => {
+    return new Map(categories.map((c) => [c.id, c]));
+  }, [categories]);
+
   return (
     <div className="space-y-8">
-      {/* High-Visibility Primary Financial Summary (Top Hero Section) */}
-      <section aria-label="Financial Summary" className="space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      {/* 1. High-Visibility Total Money & Complete Net Worth Hero Section */}
+      <section aria-label="Total Wealth & Net Worth" className="space-y-4">
+        <div className="bg-stone-900 text-white rounded-3xl p-6 sm:p-8 shadow-xl border border-stone-800 relative overflow-hidden">
+          {/* Subtle background decoration */}
+          <div className="absolute -right-16 -top-16 w-64 h-64 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
+          <div className="absolute -left-16 -bottom-16 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
+
+          <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                <span className="text-xs font-bold uppercase tracking-wider text-stone-300">
+                  Total Money Across All Wallets
+                </span>
+                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-950 text-emerald-300 border border-emerald-800">
+                  {activeWallets.length} Accounts Active
+                </span>
+              </div>
+
+              <div className="flex items-baseline gap-3">
+                <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black font-mono tracking-tight text-white">
+                  ${totalNetWorth.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </h1>
+                <span className="text-sm sm:text-base font-semibold font-mono text-stone-400">USD Net Worth</span>
+              </div>
+
+              <p className="text-xs sm:text-sm text-stone-400 max-w-xl">
+                Cumulative liquid capital, bank balances, reserve savings, and investment assets across all registered accounts.
+              </p>
+            </div>
+
+            {/* Quick Actions in Hero */}
+            <div className="flex flex-wrap items-center gap-2.5">
+              <button
+                id="hero-transfer-funds-btn"
+                type="button"
+                onClick={() => openWalletModal('TRANSFER')}
+                className="inline-flex items-center gap-2 px-4 py-2.5 text-xs font-bold text-stone-900 bg-emerald-400 hover:bg-emerald-300 rounded-xl shadow-xs transition-all cursor-pointer"
+              >
+                <ArrowLeftRight className="w-4 h-4 text-stone-950" />
+                <span>Transfer Funds</span>
+              </button>
+
+              <button
+                id="hero-add-wallet-btn"
+                type="button"
+                onClick={() => openWalletModal('ADD_WALLET')}
+                className="inline-flex items-center gap-2 px-4 py-2.5 text-xs font-bold text-white bg-stone-800 hover:bg-stone-700 border border-stone-700 rounded-xl shadow-xs transition-all cursor-pointer"
+              >
+                <Plus className="w-4 h-4 text-emerald-400" />
+                <span>Add Wallet</span>
+              </button>
+
+              <button
+                id="hero-manage-all-wallets-btn"
+                type="button"
+                onClick={() => openWalletModal('OVERVIEW')}
+                className="inline-flex items-center gap-2 px-4 py-2.5 text-xs font-bold text-stone-300 hover:text-white bg-stone-800/80 hover:bg-stone-700 border border-stone-700 rounded-xl shadow-xs transition-all cursor-pointer"
+              >
+                <Layers className="w-4 h-4" />
+                <span>Manage All</span>
+              </button>
+            </div>
+          </div>
+
+          {/* 3-Pillar Asset Distribution Sub-Bar */}
+          <div className="mt-8 pt-6 border-t border-stone-800/80 grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="bg-stone-800/60 p-4 rounded-2xl border border-stone-700/50">
+              <div className="flex items-center justify-between text-xs text-stone-400">
+                <span className="flex items-center gap-1.5">
+                  <Banknote className="w-3.5 h-3.5 text-emerald-400" /> Liquid Cash & Banks
+                </span>
+                <span className="font-mono text-stone-300">
+                  {totalNetWorth > 0 ? `${((liquidCashAndBank / totalNetWorth) * 100).toFixed(0)}%` : '0%'}
+                </span>
+              </div>
+              <p className="text-xl font-bold font-mono text-white mt-1">
+                ${liquidCashAndBank.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+              </p>
+            </div>
+
+            <div className="bg-stone-800/60 p-4 rounded-2xl border border-stone-700/50">
+              <div className="flex items-center justify-between text-xs text-stone-400">
+                <span className="flex items-center gap-1.5">
+                  <PiggyBank className="w-3.5 h-3.5 text-indigo-400" /> Savings & Investments
+                </span>
+                <span className="font-mono text-stone-300">
+                  {totalNetWorth > 0 ? `${((savingsAndInvestments / totalNetWorth) * 100).toFixed(0)}%` : '0%'}
+                </span>
+              </div>
+              <p className="text-xl font-bold font-mono text-white mt-1">
+                ${savingsAndInvestments.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+              </p>
+            </div>
+
+            <div className="bg-stone-800/60 p-4 rounded-2xl border border-stone-700/50">
+              <div className="flex items-center justify-between text-xs text-stone-400">
+                <span className="flex items-center gap-1.5">
+                  <CreditCard className="w-3.5 h-3.5 text-rose-400" /> Debt & Outstanding Liabilities
+                </span>
+                <span className="font-mono text-rose-400">Target</span>
+              </div>
+              <p className="text-xl font-bold font-mono text-rose-300 mt-1">
+                ${creditAndLiabilities.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* 2. All User Wallets & Accounts Grid */}
+      <section aria-label="User Wallets & Accounts" className="space-y-4">
+        <div className="flex items-center justify-between gap-3 bg-white p-4 sm:p-5 rounded-2xl border border-stone-200 shadow-2xs">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-stone-900 text-white flex items-center justify-center shadow-xs">
+              <WalletIcon className="w-5 h-5 text-emerald-400" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h2 className="text-base font-bold text-stone-900">Your Wallets & Accounts</h2>
+                <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
+                  {activeWallets.length} Accounts
+                </span>
+              </div>
+              <p className="text-xs text-stone-500">
+                Balances across checking, cash, savings, and credit lines
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Wallets Cards Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          {activeWallets.map((wallet) => {
+            const Icon = getWalletIcon(wallet.type);
+            const percentOfNetWorth = totalNetWorth > 0 ? (wallet.balance / totalNetWorth) * 100 : 0;
+
+            return (
+              <div
+                key={wallet.id}
+                id={`dashboard-wallet-card-${wallet.id}`}
+                onClick={() => openWalletModal('OVERVIEW', wallet.id)}
+                className="group bg-white rounded-2xl border border-stone-200 hover:border-stone-400 p-4 sm:p-5 shadow-2xs hover:shadow-md transition-all cursor-pointer flex flex-col justify-between relative overflow-hidden"
+              >
+                {/* Top Accent bar based on wallet color */}
+                <div 
+                  className="absolute top-0 left-0 right-0 h-1.5"
+                  style={{ backgroundColor: wallet.color }}
+                />
+
+                <div>
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-center gap-2.5">
+                      <div
+                        className="w-9 h-9 rounded-xl flex items-center justify-center text-white shrink-0 shadow-2xs"
+                        style={{ backgroundColor: wallet.color }}
+                      >
+                        <Icon className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <h3 className="text-xs sm:text-sm font-bold text-stone-900 group-hover:text-stone-800 line-clamp-1">
+                          {wallet.name}
+                        </h3>
+                        <span className="text-[10px] font-semibold text-stone-400 uppercase tracking-wider block">
+                          {wallet.type.replace('_', ' ')}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="p-1 rounded-lg text-stone-300 group-hover:text-stone-700 group-hover:bg-stone-100 transition-colors">
+                      <ChevronRight className="w-4 h-4" />
+                    </div>
+                  </div>
+
+                  <div className="mt-4">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-stone-400 block">
+                      Balance
+                    </span>
+                    <div className="flex items-baseline gap-1.5 mt-0.5">
+                      <span className={`text-xl sm:text-2xl font-black font-mono tracking-tight ${
+                        wallet.balance < 0 ? 'text-rose-600' : 'text-stone-900'
+                      }`}>
+                        ${wallet.balance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </span>
+                      <span className="text-[11px] font-semibold font-mono text-stone-400">{wallet.currency}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-4 pt-3 border-t border-stone-100">
+                  <div className="flex items-center justify-between text-[10px] text-stone-500 mb-1.5">
+                    <span>Share of Total</span>
+                    <span className="font-mono font-bold text-stone-700">
+                      {percentOfNetWorth > 0 ? `${percentOfNetWorth.toFixed(1)}%` : '0%'}
+                    </span>
+                  </div>
+                  <div className="w-full h-1.5 bg-stone-100 rounded-full overflow-hidden">
+                    <div
+                      className="h-full rounded-full transition-all duration-500"
+                      style={{ 
+                        width: `${Math.min(100, Math.max(0, percentOfNetWorth))}%`,
+                        backgroundColor: wallet.color 
+                      }}
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between mt-3 pt-2 text-[11px]">
+                    <span className="text-stone-400 text-[10px]">Click to inspect</span>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openWalletModal('TRANSFER', wallet.id);
+                      }}
+                      className="inline-flex items-center gap-1 text-indigo-600 font-semibold hover:underline"
+                    >
+                      <ArrowLeftRight className="w-3 h-3" />
+                      <span>Transfer</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
+      {/* 3. Financial Performance & Timeframe Breakdown */}
+      <section aria-label="Performance Breakdown" className="space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-4 sm:p-5 rounded-2xl border border-stone-200 shadow-2xs">
           <div>
-            <h1 className="text-xl sm:text-2xl font-black text-stone-900 tracking-tight">
-              Financial Summary
-            </h1>
-            <p className="text-xs sm:text-sm text-stone-500">
-              High-visibility overview of total cash inflow, expense outflow, and net balance
+            <h2 className="text-base font-bold text-stone-900">Periodic Cashflow & Outflow Analysis</h2>
+            <p className="text-xs text-stone-500">
+              Filter cashflow by day, week, month, or all-time records
             </p>
           </div>
 
@@ -219,92 +527,7 @@ export const DashboardView: React.FC = () => {
         </div>
       </section>
 
-      {/* Analytics & Breakdown Section Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-4 sm:p-5 rounded-2xl border border-stone-200 shadow-2xs">
-        <div>
-          <h2 className="text-base font-bold text-stone-900">Performance & Allocation Breakdown</h2>
-          <p className="text-xs text-stone-500">
-            Granular breakdown of debt paydowns, savings rates, and expense allocations
-          </p>
-        </div>
-      </div>
-
-      {/* 4 Core Financial Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Income Card */}
-        <div className="bg-white rounded-2xl border border-stone-200 p-5 shadow-xs flex flex-col justify-between">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider text-stone-500">Income</span>
-            <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
-              <ArrowDownLeft className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="mt-4">
-            <p className="text-2xl font-bold font-mono text-stone-900">
-              ${incomeTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </p>
-            <p className="text-xs text-emerald-600 font-medium mt-1">
-              Active cash inflows
-            </p>
-          </div>
-        </div>
-
-        {/* Expenses Card */}
-        <div className="bg-white rounded-2xl border border-stone-200 p-5 shadow-xs flex flex-col justify-between">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider text-stone-500">Expenses</span>
-            <div className="w-8 h-8 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center">
-              <ArrowUpRight className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="mt-4">
-            <p className="text-2xl font-bold font-mono text-stone-900">
-              ${expenseTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </p>
-            <p className="text-xs text-rose-600 font-medium mt-1">
-              Outgoing spending
-            </p>
-          </div>
-        </div>
-
-        {/* Debt Repayment Card */}
-        <div className="bg-white rounded-2xl border border-stone-200 p-5 shadow-xs flex flex-col justify-between">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider text-stone-500">Debt Repaid</span>
-            <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center">
-              <CreditCard className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="mt-4">
-            <p className="text-2xl font-bold font-mono text-stone-900">
-              ${debtRepaymentTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </p>
-            <p className="text-xs text-indigo-600 font-medium mt-1">
-              Accelerating debt freedom
-            </p>
-          </div>
-        </div>
-
-        {/* Net Savings & Rate Card */}
-        <div className="bg-white rounded-2xl border border-stone-200 p-5 shadow-xs flex flex-col justify-between">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider text-stone-500">Net Savings</span>
-            <div className="w-8 h-8 rounded-lg bg-stone-100 text-stone-800 flex items-center justify-center">
-              <TrendingUp className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="mt-4">
-            <p className={`text-2xl font-bold font-mono ${netSavings >= 0 ? 'text-stone-900' : 'text-rose-600'}`}>
-              ${netSavings.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </p>
-            <p className="text-xs text-stone-500 font-medium mt-1">
-              Savings Rate: <strong className="text-stone-800">{savingsRate.toFixed(1)}%</strong>
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Main Action & Breakdown Section: Add Transaction + Category & Debt Progress */}
+      {/* 4. Main Action & Breakdown Section: Add Transaction + Category & Debt Progress */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         {/* Left Column: Direct Add Transaction Form (lg:col-span-6) */}
         <div className="lg:col-span-6">
@@ -409,11 +632,173 @@ export const DashboardView: React.FC = () => {
             </div>
 
             <p className="text-[11px] text-stone-400 mt-6 pt-4 border-t border-stone-100">
-              Repayments automatically deduct from selected wallet & reduce debt balance atomically.
+              Payments automatically update your wallet balance and reduce what you owe.
             </p>
           </div>
         </div>
       </div>
+
+      {/* 5. Compact Recent 5 Transactions List with View All Button */}
+      <section aria-label="Recent Transactions" className="space-y-4">
+        <div className="bg-white rounded-2xl border border-stone-200 p-5 shadow-2xs space-y-4">
+          <div className="flex items-center justify-between gap-4 pb-4 border-b border-stone-100">
+            <div className="flex items-center gap-2">
+              <Calendar className="w-5 h-5 text-indigo-600" />
+              <div>
+                <h2 className="text-base font-bold text-stone-900">Recent Transactions</h2>
+                <p className="text-xs text-stone-500">Your latest 5 financial activities</p>
+              </div>
+            </div>
+
+            <button
+              id="dashboard-view-all-transactions-btn"
+              type="button"
+              onClick={() => onNavigate?.('transactions')}
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold text-stone-700 hover:text-stone-900 bg-stone-100 hover:bg-stone-200 rounded-xl transition-all cursor-pointer"
+            >
+              <span>View All</span>
+              <ChevronRight className="w-3.5 h-3.5 text-stone-500" />
+            </button>
+          </div>
+
+          {/* Compact Transactions Table */}
+          <div className="overflow-x-auto rounded-xl border border-stone-200">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-stone-50 border-b border-stone-200 text-stone-500 font-semibold uppercase tracking-wider text-[10px]">
+                <tr>
+                  <th className="py-3 px-4">Date</th>
+                  <th className="py-3 px-4">Description</th>
+                  <th className="py-3 px-4">Category</th>
+                  <th className="py-3 px-4">Wallet</th>
+                  <th className="py-3 px-4">Type</th>
+                  <th className="py-3 px-4 text-right">Amount</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-stone-100 bg-white">
+                {recentTransactions.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="py-10 text-center text-stone-400">
+                      <div className="flex flex-col items-center justify-center gap-2">
+                        <Receipt className="w-8 h-8 text-stone-300" />
+                        <p className="text-xs font-semibold text-stone-600">No transactions recorded yet</p>
+                        <p className="text-[11px] text-stone-400">
+                          Use the form above to record your first transaction.
+                        </p>
+                      </div>
+                    </td>
+                  </tr>
+                ) : (
+                  recentTransactions.map((tx) => {
+                    const category = tx.categoryId ? categoryMap.get(tx.categoryId) : undefined;
+                    const wallet = tx.walletId ? walletMap.get(tx.walletId) : undefined;
+                    const toWallet = tx.toWalletId ? walletMap.get(tx.toWalletId) : undefined;
+
+                    return (
+                      <tr key={tx.id} className="hover:bg-stone-50/80 transition-colors">
+                        {/* Date */}
+                        <td className="py-3 px-4 whitespace-nowrap font-mono text-stone-700">
+                          {new Date(tx.transactionDate).toLocaleDateString('en-US', {
+                            month: 'short',
+                            day: 'numeric',
+                          })}
+                        </td>
+
+                        {/* Description */}
+                        <td className="py-3 px-4">
+                          <p className="font-bold text-stone-900 line-clamp-1">{tx.description}</p>
+                          {tx.note && (
+                            <p className="text-[11px] text-stone-500 line-clamp-1">{tx.note}</p>
+                          )}
+                        </td>
+
+                        {/* Category */}
+                        <td className="py-3 px-4 whitespace-nowrap">
+                          {category ? (
+                            <span 
+                              className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] font-semibold"
+                              style={{ 
+                                backgroundColor: `${category.color}15`,
+                                color: category.color,
+                                border: `1px solid ${category.color}30` 
+                              }}
+                            >
+                              <span 
+                                className="w-1.5 h-1.5 rounded-full" 
+                                style={{ backgroundColor: category.color }}
+                              />
+                              {category.name}
+                            </span>
+                          ) : (
+                            <span className="text-stone-400 text-[11px] italic">Uncategorized</span>
+                          )}
+                        </td>
+
+                        {/* Wallet */}
+                        <td className="py-3 px-4 whitespace-nowrap">
+                          {tx.type === 'TRANSFER' ? (
+                            <div className="flex items-center gap-1 text-[11px] font-semibold text-stone-700">
+                              <span>{wallet?.name || 'Source'}</span>
+                              <ArrowRight className="w-3 h-3 text-stone-400" />
+                              <span className="text-indigo-600">{toWallet?.name || 'Target'}</span>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-1.5 text-[11px] font-semibold text-stone-800">
+                              <span 
+                                className="w-2 h-2 rounded-full shrink-0" 
+                                style={{ backgroundColor: wallet?.color || '#94a3b8' }} 
+                              />
+                              <span>{wallet?.name || 'Wallet'}</span>
+                            </div>
+                          )}
+                        </td>
+
+                        {/* Type Badge */}
+                        <td className="py-3 px-4 whitespace-nowrap">
+                          <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider ${
+                            tx.type === 'INCOME' 
+                              ? 'bg-emerald-100 text-emerald-800' 
+                              : tx.type === 'EXPENSE' 
+                              ? 'bg-rose-100 text-rose-800' 
+                              : tx.type === 'TRANSFER' 
+                              ? 'bg-indigo-100 text-indigo-800' 
+                              : 'bg-purple-100 text-purple-800'
+                          }`}>
+                            {tx.type.replace('_', ' ')}
+                          </span>
+                        </td>
+
+                        {/* Amount */}
+                        <td className="py-3 px-4 text-right whitespace-nowrap">
+                          <span className={`font-mono font-black text-sm ${
+                            tx.type === 'INCOME' 
+                              ? 'text-emerald-600' 
+                              : tx.type === 'EXPENSE' 
+                              ? 'text-rose-600' 
+                              : tx.type === 'TRANSFER' 
+                              ? 'text-indigo-600' 
+                              : 'text-purple-600'
+                          }`}>
+                            {tx.type === 'INCOME' ? '+' : tx.type === 'EXPENSE' ? '−' : tx.type === 'TRANSFER' ? '⇄ ' : ''}
+                            ${tx.amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      {/* Wallet Management & Transfer Pop-up Modal */}
+      <WalletPopupModal
+        isOpen={isWalletModalOpen}
+        onClose={() => setIsWalletModalOpen(false)}
+        initialTab={walletModalTab}
+        initialWalletId={selectedWalletIdForModal}
+      />
     </div>
   );
 };

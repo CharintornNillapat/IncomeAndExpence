@@ -29,9 +29,9 @@ export const KeywordRulesView: React.FC = () => {
       {/* Header Banner */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-stone-200 shadow-2xs">
         <div>
-          <h2 className="text-base font-bold text-stone-900">Smart Description Keyword Rules</h2>
+          <h2 className="text-base font-bold text-stone-900">Auto-Categorization Rules</h2>
           <p className="text-xs text-stone-500">
-            Configurable text-parsing rules table to auto-categorize transactions without code redeployment
+            Set up keywords to automatically assign categories to matching transactions
           </p>
         </div>
       </div>
@@ -85,7 +85,7 @@ export const KeywordRulesView: React.FC = () => {
                 type="submit"
                 className="w-full py-2.5 bg-stone-900 hover:bg-stone-800 text-white rounded-xl font-semibold text-xs transition-all shadow-xs cursor-pointer"
               >
-                Save Keyword Mapping
+                Add Rule
               </button>
             </form>
           </div>
@@ -94,12 +94,12 @@ export const KeywordRulesView: React.FC = () => {
           <div className="bg-white rounded-2xl border border-stone-200 p-6 shadow-xs space-y-4">
             <div className="flex items-center gap-2 pb-3 border-b border-stone-100">
               <Sparkles className="w-4 h-4 text-amber-600" />
-              <h3 className="text-sm font-bold text-stone-900">Live Parser Test Bench</h3>
+              <h3 className="text-sm font-bold text-stone-900">Try Quick-Input Test</h3>
             </div>
 
             <div>
               <label className="text-xs font-semibold uppercase tracking-wider text-stone-600 block mb-1">
-                Simulate User Raw Input String:
+                Type sample text:
               </label>
               <input
                 id="test-parser-input"

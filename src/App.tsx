@@ -10,6 +10,7 @@ import { KeywordRulesView } from './views/KeywordRulesView';
 import { SecurityView } from './views/SecurityView';
 import { TransactionForm } from './components/TransactionForm';
 import { AuthModal } from './components/AuthModal';
+import { ReloadPrompt } from './components/ReloadPrompt';
 import { X } from 'lucide-react';
 
 const MainApp: React.FC = () => {
@@ -21,7 +22,7 @@ const MainApp: React.FC = () => {
   const renderActiveView = () => {
     switch (activeTab) {
       case 'dashboard':
-        return <DashboardView />;
+        return <DashboardView onNavigate={(tab) => setActiveTab(tab as ActiveTab)} />;
       case 'transactions':
         return <TransactionsView />;
       case 'wallets':
@@ -59,6 +60,9 @@ const MainApp: React.FC = () => {
         isOpen={isAuthModalOpen}
         onClose={() => setIsAuthModalOpen(false)}
       />
+
+      {/* PWA Service Worker Update / Offline Prompt */}
+      <ReloadPrompt />
 
       {/* Footer */}
       <footer className="border-t border-stone-200 bg-white py-6 mt-12 text-center text-xs text-stone-500">
