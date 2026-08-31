@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react';
+import { motion } from 'framer-motion';
 import { 
   LayoutDashboard, 
   ArrowLeftRight, 
@@ -16,6 +17,7 @@ import {
 } from 'lucide-react';
 import { useFinance } from '../context/FinanceContext';
 import { getWalletsCurrencyBreakdown } from '../utils/currency';
+import { AnimatedCounter } from './AnimatedCounter';
 
 export type ActiveTab = 'dashboard' | 'transactions' | 'wallets' | 'debts' | 'diary' | 'keywords' | 'security';
 
@@ -99,11 +101,11 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, onOpenQ
               <span className="text-base sm:text-lg font-bold font-mono text-stone-900 tracking-tight">
                 {currencyBreakdown.isSingleCurrency ? (
                   <>
-                    {currencyBreakdown.primarySymbol}
-                    {currencyBreakdown.primaryTotal.toLocaleString('en-US', {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2,
-                    })}{' '}
+                    <AnimatedCounter
+                      value={currencyBreakdown.primaryTotal}
+                      currencyPrefix={currencyBreakdown.primarySymbol}
+                      duration={1.2}
+                    />{' '}
                     <span className="text-xs font-semibold text-stone-500 font-mono">
                       {currencyBreakdown.primaryCurrency}
                     </span>
@@ -126,7 +128,8 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, onOpenQ
                 <span className="max-w-[90px] sm:max-w-[120px] truncate font-medium text-stone-700 hidden sm:inline">
                   {currentUser.name || currentUser.email}
                 </span>
-                <button
+                <motion.button
+                  whileTap={{ scale: 0.9 }}
                   type="button"
                   id="navbar-signout-btn"
                   onClick={() => signOut()}
@@ -134,10 +137,11 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, onOpenQ
                   className="p-1 rounded-lg text-stone-400 hover:text-rose-600 hover:bg-stone-200 transition-colors cursor-pointer"
                 >
                   <LogOut className="w-3.5 h-3.5" />
-                </button>
+                </motion.button>
               </div>
             ) : (
-              <button
+              <motion.button
+                whileTap={{ scale: 0.95 }}
                 type="button"
                 id="navbar-signin-btn"
                 onClick={onOpenAuth}
@@ -145,11 +149,13 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, onOpenQ
               >
                 <LogIn className="w-3.5 h-3.5 text-stone-600" />
                 <span>Sign In</span>
-              </button>
+              </motion.button>
             )}
 
             {/* Quick Action Button */}
-            <button
+            <motion.button
+              whileTap={{ scale: 0.95 }}
+              whileHover={{ scale: 1.02 }}
               id="navbar-quick-add-btn"
               type="button"
               onClick={onOpenQuickAdd}
@@ -157,7 +163,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, onOpenQ
             >
               <PlusCircle className="w-4 h-4 text-stone-300" />
               <span className="hidden sm:inline">Add Entry</span>
-            </button>
+            </motion.button>
           </div>
         </div>
 
@@ -167,7 +173,8 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, onOpenQ
             const Icon = item.icon;
             const isActive = activeTab === item.id;
             return (
-              <button
+              <motion.button
+                whileTap={{ scale: 0.95 }}
                 key={item.id}
                 id={`nav-tab-${item.id}`}
                 type="button"
@@ -183,7 +190,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, onOpenQ
                 {item.id === 'security' && otpPending && (
                   <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping" />
                 )}
-              </button>
+              </motion.button>
             );
           })}
         </div>

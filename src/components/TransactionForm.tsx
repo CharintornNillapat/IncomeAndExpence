@@ -1,4 +1,5 @@
 import React, { useState, useId } from 'react';
+import { motion } from 'framer-motion';
 import { Sparkles, ArrowRight, ChevronDown, ChevronUp, SlidersHorizontal } from 'lucide-react';
 import { InlineMathInput } from './InlineMathInput';
 import { Wallet, Category, TransactionType } from '../types';
@@ -106,7 +107,8 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
         {/* Transaction Type Segmented Toggle with mobile touch targets */}
         <div className="grid grid-cols-4 sm:flex bg-stone-100 p-1 rounded-xl gap-1 w-full sm:w-auto">
           {(['EXPENSE', 'INCOME', 'TRANSFER', 'DEBT_REPAYMENT'] as TransactionType[]).map((t) => (
-            <button
+            <motion.button
+              whileTap={{ scale: 0.95 }}
               key={t}
               type="button"
               id={`${formId}-type-${t.toLowerCase()}`}
@@ -121,7 +123,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
               }`}
             >
               {t === 'DEBT_REPAYMENT' ? 'Debt' : t.charAt(0) + t.slice(1).toLowerCase()}
-            </button>
+            </motion.button>
           ))}
         </div>
       </div>
@@ -273,13 +275,14 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
 
       {/* 5. Submit Button */}
       <div className="pt-2">
-        <button
+        <motion.button
+          whileTap={isAmountValid && amount !== null ? { scale: 0.96 } : {}}
           id={`${formId}-submit-btn`}
           type="submit"
           disabled={!isAmountValid || amount === null}
           className={`w-full min-h-[48px] py-3 px-4 rounded-xl font-semibold text-sm transition-all flex items-center justify-center gap-2 cursor-pointer ${
             isAmountValid && amount !== null
-              ? 'bg-stone-900 text-white hover:bg-stone-800 shadow-sm active:scale-[0.99]'
+              ? 'bg-stone-900 text-white hover:bg-stone-800 shadow-sm'
               : 'bg-stone-200 text-stone-400 cursor-not-allowed'
           }`}
         >
@@ -290,7 +293,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
             </span>
           )}
           <ArrowRight className="w-4 h-4" />
-        </button>
+        </motion.button>
 
         {isSubmitted && (
           <p className="text-center text-xs font-medium text-emerald-600 mt-2">

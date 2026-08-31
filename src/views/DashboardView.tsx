@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { 
   TrendingUp, 
   TrendingDown, 
@@ -29,10 +30,36 @@ import {
 import { useFinance } from '../context/FinanceContext';
 import { TransactionForm } from '../components/TransactionForm';
 import { WalletPopupModal, WalletModalTab } from '../components/WalletPopupModal';
+import { AnimatedCounter } from '../components/AnimatedCounter';
 import { WalletType, TransactionType } from '../types';
 import { getWalletsCurrencyBreakdown, getCurrencySymbol } from '../utils/currency';
 
 export type TimeFilter = 'DAY' | 'WEEK' | 'MONTH' | 'ALL';
+
+// Stagger animation container & item variants
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.08,
+      delayChildren: 0.05,
+    },
+  },
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 16 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: {
+      type: 'spring',
+      damping: 24,
+      stiffness: 300,
+    },
+  },
+};
 
 interface DashboardViewProps {
   onNavigate?: (tab: string) => void;
@@ -179,9 +206,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
   }, [categories]);
 
   return (
-    <div className="space-y-8">
+    <motion.div 
+      className="space-y-8"
+      variants={containerVariants}
+      initial="hidden"
+      animate="visible"
+    >
       {/* 1. High-Visibility Total Money & Complete Net Worth Hero Section */}
-      <section aria-label="Total Wealth & Net Worth" className="space-y-4">
+      <motion.section variants={itemVariants} aria-label="Total Wealth & Net Worth" className="space-y-4">
         <div className="bg-stone-900 text-white rounded-3xl p-6 sm:p-8 shadow-xl border border-stone-800 relative overflow-hidden">
           {/* Subtle background decoration */}
           <div className="absolute -right-16 -top-16 w-64 h-64 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
@@ -202,11 +234,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
               <div className="flex flex-col gap-1">
                 <div className="flex items-baseline gap-3 flex-wrap">
                   <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black font-mono tracking-tight text-white">
-                    {currencyBreakdown.primarySymbol}
-                    {currencyBreakdown.primaryTotal.toLocaleString('en-US', {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2,
-                    })}
+                    <AnimatedCounter
+                      value={currencyBreakdown.primaryTotal}
+                      currencyPrefix={currencyBreakdown.primarySymbol}
+                      duration={1.4}
+                    />
                   </h1>
                   <span className="text-sm sm:text-base font-semibold font-mono text-emerald-400">
                     {currencyBreakdown.primaryCurrency} Total Balance
@@ -222,7 +254,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
                         className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-stone-800 border border-stone-700 text-xs font-mono font-bold text-stone-200"
                       >
                         <span className="text-emerald-400">{group.symbol}</span>
-                        <span>{group.total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                        <AnimatedCounter value={group.total} duration={1.2} />
                         <span className="text-[10px] text-stone-400 font-sans">{group.currency} ({group.count})</span>
                       </span>
                     ))}
@@ -235,37 +267,43 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
               </p>
             </div>
 
-            {/* Quick Actions in Hero */}
+            {/* Quick Actions in Hero with tactile micro-interactions */}
             <div className="flex flex-wrap items-center gap-2.5">
-              <button
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.95 }}
                 id="hero-transfer-funds-btn"
                 type="button"
                 onClick={() => openWalletModal('TRANSFER')}
-                className="inline-flex items-center gap-2 px-4 py-2.5 text-xs font-bold text-stone-900 bg-emerald-400 hover:bg-emerald-300 rounded-xl shadow-xs transition-all cursor-pointer"
+                className="inline-flex items-center gap-2 px-4 py-2.5 text-xs font-bold text-stone-900 bg-emerald-400 hover:bg-emerald-300 rounded-xl shadow-xs transition-colors cursor-pointer"
               >
                 <ArrowLeftRight className="w-4 h-4 text-stone-950" />
                 <span>Transfer Funds</span>
-              </button>
+              </motion.button>
 
-              <button
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.95 }}
                 id="hero-add-wallet-btn"
                 type="button"
                 onClick={() => openWalletModal('ADD_WALLET')}
-                className="inline-flex items-center gap-2 px-4 py-2.5 text-xs font-bold text-white bg-stone-800 hover:bg-stone-700 border border-stone-700 rounded-xl shadow-xs transition-all cursor-pointer"
+                className="inline-flex items-center gap-2 px-4 py-2.5 text-xs font-bold text-white bg-stone-800 hover:bg-stone-700 border border-stone-700 rounded-xl shadow-xs transition-colors cursor-pointer"
               >
                 <Plus className="w-4 h-4 text-emerald-400" />
                 <span>Add Wallet</span>
-              </button>
+              </motion.button>
 
-              <button
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.95 }}
                 id="hero-manage-all-wallets-btn"
                 type="button"
                 onClick={() => openWalletModal('OVERVIEW')}
-                className="inline-flex items-center gap-2 px-4 py-2.5 text-xs font-bold text-stone-300 hover:text-white bg-stone-800/80 hover:bg-stone-700 border border-stone-700 rounded-xl shadow-xs transition-all cursor-pointer"
+                className="inline-flex items-center gap-2 px-4 py-2.5 text-xs font-bold text-stone-300 hover:text-white bg-stone-800/80 hover:bg-stone-700 border border-stone-700 rounded-xl shadow-xs transition-colors cursor-pointer"
               >
                 <Layers className="w-4 h-4" />
                 <span>Manage All</span>
-              </button>
+              </motion.button>
             </div>
           </div>
 
@@ -281,7 +319,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
                 </span>
               </div>
               <p className="text-xl font-bold font-mono text-white mt-1">
-                {currencyBreakdown.primarySymbol}{liquidCashAndBank.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                <AnimatedCounter
+                  value={liquidCashAndBank}
+                  currencyPrefix={currencyBreakdown.primarySymbol}
+                  duration={1.2}
+                />
               </p>
             </div>
 
@@ -295,7 +337,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
                 </span>
               </div>
               <p className="text-xl font-bold font-mono text-white mt-1">
-                {currencyBreakdown.primarySymbol}{savingsAndInvestments.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                <AnimatedCounter
+                  value={savingsAndInvestments}
+                  currencyPrefix={currencyBreakdown.primarySymbol}
+                  duration={1.2}
+                />
               </p>
             </div>
 
@@ -307,15 +353,19 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
                 <span className="font-mono text-rose-400">Target</span>
               </div>
               <p className="text-xl font-bold font-mono text-rose-300 mt-1">
-                {currencyBreakdown.primarySymbol}{creditAndLiabilities.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                <AnimatedCounter
+                  value={creditAndLiabilities}
+                  currencyPrefix={currencyBreakdown.primarySymbol}
+                  duration={1.2}
+                />
               </p>
             </div>
           </div>
         </div>
-      </section>
+      </motion.section>
 
       {/* 2. All User Wallets & Accounts Grid */}
-      <section aria-label="User Wallets & Accounts" className="space-y-4">
+      <motion.section variants={itemVariants} aria-label="User Wallets & Accounts" className="space-y-4">
         <div className="flex items-center justify-between gap-3 bg-white p-4 sm:p-5 rounded-2xl border border-stone-200 shadow-2xs">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-stone-900 text-white flex items-center justify-center shadow-xs">
@@ -335,14 +385,20 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
           </div>
         </div>
 
-        {/* Wallets Cards Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        {/* Wallets Cards Grid with Stagger & Tap scale */}
+        <motion.div 
+          variants={containerVariants}
+          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"
+        >
           {activeWallets.map((wallet) => {
             const Icon = getWalletIcon(wallet.type);
             const percentOfNetWorth = totalNetWorth > 0 ? (wallet.balance / totalNetWorth) * 100 : 0;
 
             return (
-              <div
+              <motion.div
+                variants={itemVariants}
+                whileHover={{ y: -3, transition: { duration: 0.15 } }}
+                whileTap={{ scale: 0.96 }}
                 key={wallet.id}
                 id={`dashboard-wallet-card-${wallet.id}`}
                 onClick={() => openWalletModal('OVERVIEW', wallet.id)}
@@ -386,7 +442,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
                       <span className={`text-xl sm:text-2xl font-black font-mono tracking-tight ${
                         wallet.balance < 0 ? 'text-rose-600' : 'text-stone-900'
                       }`}>
-                        {getCurrencySymbol(wallet.currency)}{wallet.balance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        <AnimatedCounter
+                          value={wallet.balance}
+                          currencyPrefix={getCurrencySymbol(wallet.currency)}
+                          duration={1.2}
+                        />
                       </span>
                       <span className="text-[11px] font-semibold font-mono text-stone-400">{wallet.currency}</span>
                     </div>
@@ -418,21 +478,21 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
                         e.stopPropagation();
                         openWalletModal('TRANSFER', wallet.id);
                       }}
-                      className="inline-flex items-center gap-1 text-indigo-600 font-semibold hover:underline"
+                      className="inline-flex items-center gap-1 text-indigo-600 font-semibold hover:underline cursor-pointer"
                     >
                       <ArrowLeftRight className="w-3 h-3" />
                       <span>Transfer</span>
                     </button>
                   </div>
                 </div>
-              </div>
+              </motion.div>
             );
           })}
-        </div>
-      </section>
+        </motion.div>
+      </motion.section>
 
       {/* 3. Financial Performance & Timeframe Breakdown */}
-      <section aria-label="Performance Breakdown" className="space-y-4">
+      <motion.section variants={itemVariants} aria-label="Performance Breakdown" className="space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-4 sm:p-5 rounded-2xl border border-stone-200 shadow-2xs">
           <div>
             <h2 className="text-base font-bold text-stone-900">Periodic Cashflow & Outflow Analysis</h2>
@@ -444,7 +504,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
           {/* Time Filter Controls */}
           <div className="flex items-center bg-stone-100 p-1 rounded-xl gap-1 self-start sm:self-auto border border-stone-200">
             {(['DAY', 'WEEK', 'MONTH', 'ALL'] as TimeFilter[]).map((f) => (
-              <button
+              <motion.button
+                whileTap={{ scale: 0.95 }}
                 key={f}
                 id={`time-filter-${f.toLowerCase()}`}
                 type="button"
@@ -456,7 +517,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
                 }`}
               >
                 {f === 'DAY' ? 'Today' : f === 'WEEK' ? 'This Week' : f === 'MONTH' ? 'Past 30 Days' : 'All Time'}
-              </button>
+              </motion.button>
             ))}
           </div>
         </div>
@@ -464,7 +525,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
         {/* 3 Prominent Hero Metric Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
           {/* 1. Total Income Card */}
-          <div className="bg-white rounded-2xl border-2 border-emerald-200/80 p-6 sm:p-7 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden flex flex-col justify-between">
+          <motion.div 
+            whileHover={{ y: -2 }}
+            className="bg-white rounded-2xl border-2 border-emerald-200/80 p-6 sm:p-7 shadow-sm hover:shadow-md transition-all relative overflow-hidden flex flex-col justify-between"
+          >
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold uppercase tracking-wider text-emerald-800 flex items-center gap-2">
                 <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
@@ -476,7 +540,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
             </div>
             <div className="mt-5">
               <p className="text-3xl sm:text-4xl lg:text-5xl font-black font-mono tracking-tight text-emerald-600">
-                {currencyBreakdown.primarySymbol}{incomeTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                <AnimatedCounter
+                  value={incomeTotal}
+                  currencyPrefix={currencyBreakdown.primarySymbol}
+                  duration={1.2}
+                />
               </p>
               <div className="flex items-center justify-between mt-3 text-xs">
                 <span className="text-stone-500 font-medium">Inflows across active accounts</span>
@@ -485,10 +553,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
                 </span>
               </div>
             </div>
-          </div>
+          </motion.div>
 
           {/* 2. Total Expense Card */}
-          <div className="bg-white rounded-2xl border-2 border-rose-200/80 p-6 sm:p-7 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden flex flex-col justify-between">
+          <motion.div 
+            whileHover={{ y: -2 }}
+            className="bg-white rounded-2xl border-2 border-rose-200/80 p-6 sm:p-7 shadow-sm hover:shadow-md transition-all relative overflow-hidden flex flex-col justify-between"
+          >
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold uppercase tracking-wider text-rose-800 flex items-center gap-2">
                 <span className="w-2.5 h-2.5 rounded-full bg-rose-500"></span>
@@ -500,7 +571,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
             </div>
             <div className="mt-5">
               <p className="text-3xl sm:text-4xl lg:text-5xl font-black font-mono tracking-tight text-rose-600">
-                {currencyBreakdown.primarySymbol}{expenseTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                <AnimatedCounter
+                  value={expenseTotal}
+                  currencyPrefix={currencyBreakdown.primarySymbol}
+                  duration={1.2}
+                />
               </p>
               <div className="flex items-center justify-between mt-3 text-xs">
                 <span className="text-stone-500 font-medium">Outflows & regular expenses</span>
@@ -509,12 +584,15 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
                 </span>
               </div>
             </div>
-          </div>
+          </motion.div>
 
           {/* 3. Net Balance Card (Income - Expense) */}
-          <div className={`bg-white rounded-2xl border-2 p-6 sm:p-7 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden flex flex-col justify-between ${
-            netBalance >= 0 ? 'border-emerald-300' : 'border-rose-300'
-          }`}>
+          <motion.div 
+            whileHover={{ y: -2 }}
+            className={`bg-white rounded-2xl border-2 p-6 sm:p-7 shadow-sm hover:shadow-md transition-all relative overflow-hidden flex flex-col justify-between ${
+              netBalance >= 0 ? 'border-emerald-300' : 'border-rose-300'
+            }`}
+          >
             <div className="flex items-center justify-between">
               <span className={`text-xs font-bold uppercase tracking-wider flex items-center gap-2 ${
                 netBalance >= 0 ? 'text-emerald-800' : 'text-rose-800'
@@ -538,7 +616,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
               <p className={`text-3xl sm:text-4xl lg:text-5xl font-black font-mono tracking-tight ${
                 netBalance >= 0 ? 'text-emerald-700' : 'text-rose-600'
               }`}>
-                {netBalance < 0 ? '-' : ''}{currencyBreakdown.primarySymbol}{Math.abs(netBalance).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                {netBalance < 0 ? '-' : ''}
+                <AnimatedCounter
+                  value={Math.abs(netBalance)}
+                  currencyPrefix={currencyBreakdown.primarySymbol}
+                  duration={1.2}
+                />
               </p>
               <div className="flex items-center justify-between mt-3 text-xs">
                 <span className="text-stone-500 font-medium">
@@ -553,12 +636,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
                 </span>
               </div>
             </div>
-          </div>
+          </motion.div>
         </div>
-      </section>
+      </motion.section>
 
       {/* 4. Main Action & Breakdown Section: Add Transaction + Category & Debt Progress */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+      <motion.div variants={itemVariants} className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         {/* Left Column: Direct Add Transaction Form (lg:col-span-6) */}
         <div className="lg:col-span-6">
           <TransactionForm
@@ -668,10 +751,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
             </p>
           </div>
         </div>
-      </div>
+      </motion.div>
 
       {/* 5. Compact Recent 5 Transactions List with View All Button */}
-      <section aria-label="Recent Transactions" className="space-y-4">
+      <motion.section variants={itemVariants} aria-label="Recent Transactions" className="space-y-4">
         <div className="bg-white rounded-2xl border border-stone-200 p-5 shadow-2xs space-y-4">
           <div className="flex items-center justify-between gap-4 pb-4 border-b border-stone-100">
             <div className="flex items-center gap-2">
@@ -682,7 +765,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
               </div>
             </div>
 
-            <button
+            <motion.button
+              whileTap={{ scale: 0.95 }}
               id="dashboard-view-all-transactions-btn"
               type="button"
               onClick={() => onNavigate?.('transactions')}
@@ -690,7 +774,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
             >
               <span>View All</span>
               <ChevronRight className="w-3.5 h-3.5 text-stone-500" />
-            </button>
+            </motion.button>
           </div>
 
           {/* Compact Transactions Table */}
@@ -822,7 +906,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
             </table>
           </div>
         </div>
-      </section>
+      </motion.section>
 
       {/* Wallet Management & Transfer Pop-up Modal */}
       <WalletPopupModal
@@ -831,6 +915,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
         initialTab={walletModalTab}
         initialWalletId={selectedWalletIdForModal}
       />
-    </div>
+    </motion.div>
   );
 };

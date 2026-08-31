@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { 
   X, 
   Plus, 
@@ -164,49 +165,60 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
   };
 
   return (
-    <div 
-      className="fixed inset-0 z-50 bg-stone-900/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 transition-opacity animate-in fade-in duration-200"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
-    >
-      <div 
-        id="wallet-popup-modal"
-        className="bg-white rounded-t-3xl sm:rounded-2xl max-w-3xl w-full max-h-[92vh] sm:max-h-[88vh] flex flex-col shadow-2xl border border-stone-200 overflow-hidden animate-in zoom-in-95 duration-150"
-      >
-        {/* Mobile Swipe Handle */}
-        <div className="sm:hidden pt-3 pb-1 flex justify-center cursor-pointer" onClick={onClose}>
-          <div className="w-12 h-1.5 rounded-full bg-stone-300" />
-        </div>
-
-        {/* Modal Header */}
-        <div className="px-4 sm:px-6 py-3.5 sm:py-4 border-b border-stone-200 flex items-center justify-between bg-stone-50/80 shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="w-9 sm:w-10 h-9 sm:h-10 rounded-xl bg-stone-900 text-white flex items-center justify-center shadow-xs shrink-0">
-              <WalletIcon className="w-4 sm:w-5 h-4 sm:h-5 text-emerald-400" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 className="text-sm sm:text-base font-bold text-stone-900">Wallets & Accounts</h3>
-                <span className="text-[10px] sm:text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
-                  {activeWallets.length}
-                </span>
-              </div>
-              <p className="text-xs text-stone-500 font-mono">
-                Total: <strong className="text-stone-900">${totalNetWorth.toLocaleString('en-US', { minimumFractionDigits: 2 })}</strong>
-              </p>
-            </div>
-          </div>
-
-          <button
-            id="close-wallet-modal-btn"
-            type="button"
-            onClick={onClose}
-            className="p-2 rounded-xl text-stone-400 hover:text-stone-700 hover:bg-stone-200 transition-colors cursor-pointer"
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div 
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.2 }}
+          className="fixed inset-0 z-50 bg-stone-900/60 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-4"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) onClose();
+          }}
+        >
+          <motion.div 
+            id="wallet-popup-modal"
+            initial={{ y: 40, scale: 0.96, opacity: 0 }}
+            animate={{ y: 0, scale: 1, opacity: 1 }}
+            exit={{ y: 40, scale: 0.96, opacity: 0 }}
+            transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+            className="bg-white/95 backdrop-blur-xl rounded-t-3xl sm:rounded-2xl max-w-3xl w-full max-h-[92vh] sm:max-h-[88vh] flex flex-col shadow-2xl border border-stone-200/80 overflow-hidden"
           >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
+            {/* Mobile Swipe Handle */}
+            <div className="sm:hidden pt-3 pb-1 flex justify-center cursor-pointer" onClick={onClose}>
+              <div className="w-12 h-1.5 rounded-full bg-stone-300" />
+            </div>
+
+            {/* Modal Header */}
+            <div className="px-4 sm:px-6 py-3.5 sm:py-4 border-b border-stone-200/70 flex items-center justify-between bg-stone-50/70 backdrop-blur-xs shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-9 sm:w-10 h-9 sm:h-10 rounded-xl bg-stone-900 text-white flex items-center justify-center shadow-xs shrink-0">
+                  <WalletIcon className="w-4 sm:w-5 h-4 sm:h-5 text-emerald-400" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-sm sm:text-base font-bold text-stone-900">Wallets & Accounts</h3>
+                    <span className="text-[10px] sm:text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
+                      {activeWallets.length}
+                    </span>
+                  </div>
+                  <p className="text-xs text-stone-500 font-mono">
+                    Total: <strong className="text-stone-900">${totalNetWorth.toLocaleString('en-US', { minimumFractionDigits: 2 })}</strong>
+                  </p>
+                </div>
+              </div>
+
+              <motion.button
+                whileTap={{ scale: 0.9 }}
+                id="close-wallet-modal-btn"
+                type="button"
+                onClick={onClose}
+                className="p-2 rounded-xl text-stone-400 hover:text-stone-700 hover:bg-stone-200/80 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </motion.button>
+            </div>
 
         {/* Tab Navigation Navigation Controls */}
         <div className="flex border-b border-stone-200 px-3 sm:px-6 bg-white gap-1 sm:gap-3 overflow-x-auto text-xs font-semibold shrink-0 no-scrollbar">
@@ -713,7 +725,9 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
             </div>
           )}
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
+  )}
+</AnimatePresence>
   );
 };

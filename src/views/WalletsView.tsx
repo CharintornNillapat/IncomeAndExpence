@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Plus, 
   Wallet as WalletIcon, 
@@ -15,6 +16,7 @@ import {
 import { useFinance } from '../context/FinanceContext';
 import { Wallet, WalletType } from '../types';
 import { InlineMathInput } from '../components/InlineMathInput';
+import { AnimatedCounter } from '../components/AnimatedCounter';
 
 export const WalletsView: React.FC = () => {
   const { wallets, totalNetWorth, addWallet, deleteWallet, addTransaction } = useFinance();
@@ -129,7 +131,9 @@ export const WalletsView: React.FC = () => {
         {activeWallets.map((wallet) => {
           const Icon = getWalletIcon(wallet.type);
           return (
-            <div
+            <motion.div
+              whileHover={{ y: -3 }}
+              whileTap={{ scale: 0.98 }}
               key={wallet.id}
               id={`wallet-entity-${wallet.id}`}
               className="bg-white rounded-2xl border border-stone-200 p-5 shadow-xs hover:border-stone-300 transition-all flex flex-col justify-between"
@@ -138,7 +142,7 @@ export const WalletsView: React.FC = () => {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div
-                      className="w-10 h-10 rounded-xl flex items-center justify-center text-white"
+                      className="w-10 h-10 rounded-xl flex items-center justify-center text-white shadow-xs"
                       style={{ backgroundColor: wallet.color }}
                     >
                       <Icon className="w-5 h-5" />
@@ -151,7 +155,8 @@ export const WalletsView: React.FC = () => {
                     </div>
                   </div>
 
-                  <button
+                  <motion.button
+                    whileTap={{ scale: 0.9 }}
                     id={`delete-wallet-${wallet.id}`}
                     type="button"
                     onClick={() => deleteWallet(wallet.id)}
@@ -159,7 +164,7 @@ export const WalletsView: React.FC = () => {
                     className="p-1.5 text-stone-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
                   >
                     <Trash2 className="w-4 h-4" />
-                  </button>
+                  </motion.button>
                 </div>
 
                 <div className="mt-6">
@@ -167,9 +172,13 @@ export const WalletsView: React.FC = () => {
                     Current Balance
                   </span>
                   <div className="flex items-baseline gap-2 mt-1">
-                    <span className="text-2xl font-bold font-mono text-stone-900">
-                      ${wallet.balance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                    </span>
+                    <div className="text-2xl font-bold font-mono text-stone-900">
+                      <AnimatedCounter
+                        value={wallet.balance}
+                        currencyPrefix={wallet.currency === 'THB' ? '฿' : wallet.currency === 'EUR' ? '€' : '$'}
+                        duration={0.8}
+                      />
+                    </div>
                     <span className="text-xs font-semibold text-stone-500 font-mono">{wallet.currency}</span>
                   </div>
                 </div>
@@ -181,251 +190,280 @@ export const WalletsView: React.FC = () => {
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> Active Source
                 </span>
               </div>
-            </div>
+            </motion.div>
           );
         })}
       </div>
 
       {/* Add Wallet Modal / Responsive Mobile Bottom Sheet */}
-      {isAddWalletOpen && (
-        <div 
-          className="fixed inset-0 z-50 bg-stone-900/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 transition-opacity"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setIsAddWalletOpen(false);
-          }}
-        >
-          <div className="bg-white rounded-t-3xl sm:rounded-2xl max-w-md w-full max-h-[92vh] sm:max-h-[90vh] overflow-y-auto shadow-2xl border border-stone-200 p-4 sm:p-6 space-y-4 sm:space-y-5 animate-in fade-in slide-in-from-bottom-6 sm:slide-in-from-bottom-0 duration-200 overscroll-contain">
-            {/* Mobile Drag Indicator */}
-            <div className="sm:hidden -mt-1 pb-1 flex justify-center cursor-pointer" onClick={() => setIsAddWalletOpen(false)}>
-              <div className="w-12 h-1.5 rounded-full bg-stone-300" />
-            </div>
-
-            <div className="flex items-center justify-between pb-3 border-b border-stone-100">
-              <h3 className="text-sm sm:text-base font-bold text-stone-900">Add Wallet</h3>
-              <button
-                type="button"
-                onClick={() => setIsAddWalletOpen(false)}
-                className="p-2 rounded-xl text-stone-400 hover:text-stone-700 hover:bg-stone-100 active:bg-stone-200 cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <form onSubmit={handleCreateWallet} className="space-y-4">
-              <div>
-                <label className="text-xs font-semibold uppercase tracking-wider text-stone-600 block mb-1">
-                  Wallet Name *
-                </label>
-                <input
-                  id="new-wallet-name"
-                  type="text"
-                  required
-                  value={walletName}
-                  onChange={(e) => setWalletName(e.target.value)}
-                  placeholder="e.g. Checking Account, Cash"
-                  className="w-full text-xs rounded-xl border border-stone-200 px-3.5 py-2.5 text-stone-900 focus:outline-none focus:border-stone-800"
-                />
+      <AnimatePresence>
+        {isAddWalletOpen && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 z-50 bg-stone-900/60 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-4"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) setIsAddWalletOpen(false);
+            }}
+          >
+            <motion.div 
+              initial={{ y: 40, scale: 0.96, opacity: 0 }}
+              animate={{ y: 0, scale: 1, opacity: 1 }}
+              exit={{ y: 40, scale: 0.96, opacity: 0 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+              className="bg-white/95 backdrop-blur-xl rounded-t-3xl sm:rounded-2xl max-w-md w-full max-h-[92vh] sm:max-h-[90vh] overflow-y-auto shadow-2xl border border-stone-200/80 p-4 sm:p-6 space-y-4 sm:space-y-5 overscroll-contain"
+            >
+              {/* Mobile Drag Indicator */}
+              <div className="sm:hidden -mt-1 pb-1 flex justify-center cursor-pointer" onClick={() => setIsAddWalletOpen(false)}>
+                <div className="w-12 h-1.5 rounded-full bg-stone-300" />
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                <div>
-                  <label className="text-xs font-semibold uppercase tracking-wider text-stone-600 block mb-1">
-                    Type
-                  </label>
-                  <select
-                    id="new-wallet-type"
-                    value={walletType}
-                    onChange={(e) => setWalletType(e.target.value as WalletType)}
-                    className="w-full text-xs rounded-xl border border-stone-200 px-3 py-2.5 bg-white text-stone-900 focus:outline-none focus:border-stone-800"
-                  >
-                    <option value="BANK_ACCOUNT">Bank Account</option>
-                    <option value="CASH">Cash</option>
-                    <option value="SAVINGS">Savings</option>
-                    <option value="CREDIT_CARD">Credit Card</option>
-                    <option value="INVESTMENT">Investment</option>
-                    <option value="E_WALLET">E-Wallet</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="text-xs font-semibold uppercase tracking-wider text-stone-600 block mb-1">
-                    Currency
-                  </label>
-                  <select
-                    id="new-wallet-currency"
-                    value={currency}
-                    onChange={(e) => setCurrency(e.target.value)}
-                    className="w-full text-xs rounded-xl border border-stone-200 px-3 py-2.5 bg-white text-stone-900 focus:outline-none focus:border-stone-800 font-mono"
-                  >
-                    <option value="USD">USD ($)</option>
-                    <option value="EUR">EUR (€)</option>
-                    <option value="THB">THB (฿)</option>
-                    <option value="GBP">GBP (£)</option>
-                    <option value="JPY">JPY (¥)</option>
-                  </select>
-                </div>
-              </div>
-
-              <div>
-                <label className="text-xs font-semibold uppercase tracking-wider text-stone-600 block mb-1">
-                  Starting Balance ($)
-                </label>
-                <input
-                  id="new-wallet-init-balance"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={initialBalance}
-                  onChange={(e) => setInitialBalance(parseFloat(e.target.value) || 0)}
-                  className="w-full text-xs rounded-xl border border-stone-200 px-3.5 py-2.5 text-stone-900 font-mono focus:outline-none focus:border-stone-800"
-                />
-              </div>
-
-              <div>
-                <label className="text-xs font-semibold uppercase tracking-wider text-stone-600 block mb-1.5">
-                  Theme Color
-                </label>
-                <div className="flex flex-wrap items-center gap-2">
-                  {['#0284c7', '#16a34a', '#7c3aed', '#f59e0b', '#ef4444', '#0f172a', '#059669', '#d97706'].map((c) => (
-                    <button
-                      key={c}
-                      type="button"
-                      onClick={() => setWalletColor(c)}
-                      className={`w-7 h-7 rounded-full transition-transform cursor-pointer ${
-                        walletColor === c ? 'scale-125 ring-2 ring-stone-900 ring-offset-2' : ''
-                      }`}
-                      style={{ backgroundColor: c }}
-                    />
-                  ))}
-                </div>
-              </div>
-
-              <div className="pt-2">
-                <button
-                  id="save-new-wallet-btn"
-                  type="submit"
-                  className="w-full py-2.5 sm:py-3 bg-stone-900 hover:bg-stone-800 text-white rounded-xl font-semibold text-xs transition-all shadow-xs cursor-pointer"
+              <div className="flex items-center justify-between pb-3 border-b border-stone-100/80">
+                <h3 className="text-sm sm:text-base font-bold text-stone-900">Add Wallet</h3>
+                <motion.button
+                  whileTap={{ scale: 0.9 }}
+                  type="button"
+                  onClick={() => setIsAddWalletOpen(false)}
+                  className="p-2 rounded-xl text-stone-400 hover:text-stone-700 hover:bg-stone-100 active:bg-stone-200 cursor-pointer"
                 >
-                  Add Wallet
-                </button>
+                  <X className="w-5 h-5" />
+                </motion.button>
               </div>
-            </form>
-          </div>
-        </div>
-      )}
+
+              <form onSubmit={handleCreateWallet} className="space-y-4">
+                <div>
+                  <label className="text-xs font-semibold uppercase tracking-wider text-stone-600 block mb-1">
+                    Wallet Name *
+                  </label>
+                  <input
+                    id="new-wallet-name"
+                    type="text"
+                    required
+                    value={walletName}
+                    onChange={(e) => setWalletName(e.target.value)}
+                    placeholder="e.g. Checking Account, Cash"
+                    className="w-full text-xs rounded-xl border border-stone-200 px-3.5 py-2.5 text-stone-900 focus:outline-none focus:border-stone-800"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                  <div>
+                    <label className="text-xs font-semibold uppercase tracking-wider text-stone-600 block mb-1">
+                      Type
+                    </label>
+                    <select
+                      id="new-wallet-type"
+                      value={walletType}
+                      onChange={(e) => setWalletType(e.target.value as WalletType)}
+                      className="w-full text-xs rounded-xl border border-stone-200 px-3 py-2.5 bg-white text-stone-900 focus:outline-none focus:border-stone-800"
+                    >
+                      <option value="BANK_ACCOUNT">Bank Account</option>
+                      <option value="CASH">Cash</option>
+                      <option value="SAVINGS">Savings</option>
+                      <option value="CREDIT_CARD">Credit Card</option>
+                      <option value="INVESTMENT">Investment</option>
+                      <option value="E_WALLET">E-Wallet</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-semibold uppercase tracking-wider text-stone-600 block mb-1">
+                      Currency
+                    </label>
+                    <select
+                      id="new-wallet-currency"
+                      value={currency}
+                      onChange={(e) => setCurrency(e.target.value)}
+                      className="w-full text-xs rounded-xl border border-stone-200 px-3 py-2.5 bg-white text-stone-900 focus:outline-none focus:border-stone-800 font-mono"
+                    >
+                      <option value="USD">USD ($)</option>
+                      <option value="EUR">EUR (€)</option>
+                      <option value="THB">THB (฿)</option>
+                      <option value="GBP">GBP (£)</option>
+                      <option value="JPY">JPY (¥)</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold uppercase tracking-wider text-stone-600 block mb-1">
+                    Starting Balance ($)
+                  </label>
+                  <input
+                    id="new-wallet-init-balance"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={initialBalance}
+                    onChange={(e) => setInitialBalance(parseFloat(e.target.value) || 0)}
+                    className="w-full text-xs rounded-xl border border-stone-200 px-3.5 py-2.5 text-stone-900 font-mono focus:outline-none focus:border-stone-800"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold uppercase tracking-wider text-stone-600 block mb-1.5">
+                    Theme Color
+                  </label>
+                  <div className="flex flex-wrap items-center gap-2">
+                    {['#0284c7', '#16a34a', '#7c3aed', '#f59e0b', '#ef4444', '#0f172a', '#059669', '#d97706'].map((c) => (
+                      <motion.button
+                        whileTap={{ scale: 0.9 }}
+                        key={c}
+                        type="button"
+                        onClick={() => setWalletColor(c)}
+                        className={`w-7 h-7 rounded-full transition-transform cursor-pointer ${
+                          walletColor === c ? 'scale-125 ring-2 ring-stone-900 ring-offset-2' : ''
+                        }`}
+                        style={{ backgroundColor: c }}
+                      />
+                    ))}
+                  </div>
+                </div>
+
+                <div className="pt-2">
+                  <motion.button
+                    whileTap={{ scale: 0.96 }}
+                    id="save-new-wallet-btn"
+                    type="submit"
+                    className="w-full py-2.5 sm:py-3 bg-stone-900 hover:bg-stone-800 text-white rounded-xl font-semibold text-xs transition-all shadow-xs cursor-pointer"
+                  >
+                    Add Wallet
+                  </motion.button>
+                </div>
+              </form>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Transfer Funds Modal / Responsive Mobile Bottom Sheet */}
-      {isTransferOpen && (
-        <div 
-          className="fixed inset-0 z-50 bg-stone-900/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 transition-opacity"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setIsTransferOpen(false);
-          }}
-        >
-          <div className="bg-white rounded-t-3xl sm:rounded-2xl max-w-md w-full max-h-[92vh] sm:max-h-[90vh] overflow-y-auto shadow-2xl border border-stone-200 p-4 sm:p-6 space-y-4 sm:space-y-5 animate-in fade-in slide-in-from-bottom-6 sm:slide-in-from-bottom-0 duration-200 overscroll-contain">
-            {/* Mobile Drag Indicator */}
-            <div className="sm:hidden -mt-1 pb-1 flex justify-center cursor-pointer" onClick={() => setIsTransferOpen(false)}>
-              <div className="w-12 h-1.5 rounded-full bg-stone-300" />
-            </div>
+      <AnimatePresence>
+        {isTransferOpen && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 z-50 bg-stone-900/60 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-4"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) setIsTransferOpen(false);
+            }}
+          >
+            <motion.div 
+              initial={{ y: 40, scale: 0.96, opacity: 0 }}
+              animate={{ y: 0, scale: 1, opacity: 1 }}
+              exit={{ y: 40, scale: 0.96, opacity: 0 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+              className="bg-white/95 backdrop-blur-xl rounded-t-3xl sm:rounded-2xl max-w-md w-full max-h-[92vh] sm:max-h-[90vh] overflow-y-auto shadow-2xl border border-stone-200/80 p-4 sm:p-6 space-y-4 sm:space-y-5 overscroll-contain"
+            >
+              {/* Mobile Drag Indicator */}
+              <div className="sm:hidden -mt-1 pb-1 flex justify-center cursor-pointer" onClick={() => setIsTransferOpen(false)}>
+                <div className="w-12 h-1.5 rounded-full bg-stone-300" />
+              </div>
 
-            <div className="flex items-center justify-between pb-3 border-b border-stone-100">
-              <h3 className="text-sm sm:text-base font-bold text-stone-900">Transfer Funds</h3>
-              <button
-                type="button"
-                onClick={() => setIsTransferOpen(false)}
-                className="p-2 rounded-xl text-stone-400 hover:text-stone-700 hover:bg-stone-100 active:bg-stone-200 cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
+              <div className="flex items-center justify-between pb-3 border-b border-stone-100/80">
+                <h3 className="text-sm sm:text-base font-bold text-stone-900">Transfer Funds</h3>
+                <motion.button
+                  whileTap={{ scale: 0.9 }}
+                  type="button"
+                  onClick={() => setIsTransferOpen(false)}
+                  className="p-2 rounded-xl text-stone-400 hover:text-stone-700 hover:bg-stone-100 active:bg-stone-200 cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </motion.button>
+              </div>
 
-            <form onSubmit={handleExecuteTransfer} className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                <div>
-                  <label className="text-xs font-semibold uppercase tracking-wider text-stone-600 block mb-1">
-                    From Wallet
-                  </label>
-                  <select
-                    id="transfer-source-wallet"
-                    value={sourceWalletId}
-                    onChange={(e) => setSourceWalletId(e.target.value)}
-                    className="w-full text-xs rounded-xl border border-stone-200 px-3 py-2.5 bg-white text-stone-900 focus:outline-none focus:border-stone-800"
-                  >
-                    {activeWallets.map((w) => (
-                      <option key={w.id} value={w.id}>
-                        {w.name} (${w.balance.toFixed(2)})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="text-xs font-semibold uppercase tracking-wider text-stone-600 block mb-1">
-                    To Wallet
-                  </label>
-                  <select
-                    id="transfer-dest-wallet"
-                    value={destWalletId}
-                    onChange={(e) => setDestWalletId(e.target.value)}
-                    className="w-full text-xs rounded-xl border border-stone-200 px-3 py-2.5 bg-white text-stone-900 focus:outline-none focus:border-stone-800"
-                  >
-                    {activeWallets
-                      .filter((w) => w.id !== sourceWalletId)
-                      .map((w) => (
+              <form onSubmit={handleExecuteTransfer} className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                  <div>
+                    <label className="text-xs font-semibold uppercase tracking-wider text-stone-600 block mb-1">
+                      From Wallet
+                    </label>
+                    <select
+                      id="transfer-source-wallet"
+                      value={sourceWalletId}
+                      onChange={(e) => setSourceWalletId(e.target.value)}
+                      className="w-full text-xs rounded-xl border border-stone-200 px-3 py-2.5 bg-white text-stone-900 focus:outline-none focus:border-stone-800"
+                    >
+                      {activeWallets.map((w) => (
                         <option key={w.id} value={w.id}>
                           {w.name} (${w.balance.toFixed(2)})
                         </option>
                       ))}
-                  </select>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-semibold uppercase tracking-wider text-stone-600 block mb-1">
+                      To Wallet
+                    </label>
+                    <select
+                      id="transfer-dest-wallet"
+                      value={destWalletId}
+                      onChange={(e) => setDestWalletId(e.target.value)}
+                      className="w-full text-xs rounded-xl border border-stone-200 px-3 py-2.5 bg-white text-stone-900 focus:outline-none focus:border-stone-800"
+                    >
+                      {activeWallets
+                        .filter((w) => w.id !== sourceWalletId)
+                        .map((w) => (
+                          <option key={w.id} value={w.id}>
+                            {w.name} (${w.balance.toFixed(2)})
+                          </option>
+                        ))}
+                    </select>
+                  </div>
                 </div>
-              </div>
 
-              {/* Inline math input for transfer amount */}
-              <InlineMathInput
-                id="transfer-amount-math"
-                label="Transfer Amount ($)"
-                placeholder="e.g. 500 or 1200/2"
-                required
-                onAmountEvaluated={(val, raw, valid) => {
-                  setTransferAmount(val);
-                  setTransferRaw(raw);
-                  setTransferValid(valid);
-                }}
-              />
-
-              <div>
-                <label className="text-xs font-semibold uppercase tracking-wider text-stone-600 block mb-1">
-                  Note
-                </label>
-                <input
-                  id="transfer-note"
-                  type="text"
-                  value={transferNote}
-                  onChange={(e) => setTransferNote(e.target.value)}
-                  placeholder="e.g. Savings transfer"
-                  className="w-full text-xs rounded-xl border border-stone-200 px-3.5 py-2.5 text-stone-900 focus:outline-none focus:border-stone-800"
+                {/* Inline math input for transfer amount */}
+                <InlineMathInput
+                  id="transfer-amount-math"
+                  label="Transfer Amount ($)"
+                  placeholder="e.g. 500 or 1200/2"
+                  required
+                  onAmountEvaluated={(val, raw, valid) => {
+                    setTransferAmount(val);
+                    setTransferRaw(raw);
+                    setTransferValid(valid);
+                  }}
                 />
-              </div>
 
-              <div className="pt-2">
-                <button
-                  id="execute-transfer-btn"
-                  type="submit"
-                  disabled={!transferValid || transferAmount === null || sourceWalletId === destWalletId}
-                  className={`w-full py-2.5 sm:py-3 rounded-xl font-semibold text-xs transition-all flex items-center justify-center gap-2 cursor-pointer ${
-                    transferValid && transferAmount !== null && sourceWalletId !== destWalletId
-                      ? 'bg-stone-900 hover:bg-stone-800 text-white shadow-xs'
-                      : 'bg-stone-200 text-stone-400 cursor-not-allowed'
-                  }`}
-                >
-                  <ArrowLeftRight className="w-4 h-4" />
-                  <span>Transfer ${transferAmount !== null ? transferAmount.toFixed(2) : '0.00'}</span>
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+                <div>
+                  <label className="text-xs font-semibold uppercase tracking-wider text-stone-600 block mb-1">
+                    Note
+                  </label>
+                  <input
+                    id="transfer-note"
+                    type="text"
+                    value={transferNote}
+                    onChange={(e) => setTransferNote(e.target.value)}
+                    placeholder="e.g. Savings transfer"
+                    className="w-full text-xs rounded-xl border border-stone-200 px-3.5 py-2.5 text-stone-900 focus:outline-none focus:border-stone-800"
+                  />
+                </div>
+
+                <div className="pt-2">
+                  <motion.button
+                    whileTap={{ scale: 0.96 }}
+                    id="execute-transfer-btn"
+                    type="submit"
+                    disabled={!transferValid || transferAmount === null || sourceWalletId === destWalletId}
+                    className={`w-full py-2.5 sm:py-3 rounded-xl font-semibold text-xs transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                      transferValid && transferAmount !== null && sourceWalletId !== destWalletId
+                        ? 'bg-stone-900 hover:bg-stone-800 text-white shadow-xs'
+                        : 'bg-stone-200 text-stone-400 cursor-not-allowed'
+                    }`}
+                  >
+                    <ArrowLeftRight className="w-4 h-4" />
+                    <span>Transfer ${transferAmount !== null ? transferAmount.toFixed(2) : '0.00'}</span>
+                  </motion.button>
+                </div>
+              </form>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
