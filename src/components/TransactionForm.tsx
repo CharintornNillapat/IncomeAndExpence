@@ -5,6 +5,7 @@ import { InlineMathInput } from './InlineMathInput';
 import { Wallet, Category, TransactionType } from '../types';
 import { useFinance } from '../context/FinanceContext';
 import { matchSmartDescription } from '../utils/smartMatcher';
+import { safeEvaluateMath } from '../utils/mathEvaluator';
 
 interface TransactionFormProps {
   wallets: Wallet[];
@@ -44,9 +45,22 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
   const [debtId, setDebtId] = useState<string>(activeDebts[0]?.id || debts[0]?.id || '');
   const [date, setDate] = useState<string>(new Date().toISOString().split('T')[0]);
 
+  // Keep walletId in sync when wallets are loaded
+  React.useEffect(() => {
+    if (wallets.length > 0 && (!walletId || !wallets.some((w) => w.id === walletId))) {
+      setWalletId(wallets[0].id);
+    }
+  }, [wallets, walletId]);
+
   const [autoMatchedCategory, setAutoMatchedCategory] = useState<string | null>(null);
   const [showManualOverrides, setShowManualOverrides] = useState<boolean>(false);
   const [isSubmitted, setIsSubmitted] = useState<boolean>(false);
+
+  const handleAmountEvaluated = React.useCallback((val: number | null, raw: string, valid: boolean) => {
+    setAmount(val);
+    setRawAmountInput(raw);
+    setIsAmountValid(valid);
+  }, []);
 
   // Smart Description Keyword Matcher
   const handleDescriptionChange = (text: string) => {
@@ -66,7 +80,22 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!isAmountValid || amount === null || !walletId) {
+    let effectiveAmount = amount;
+    let effectiveRaw = rawAmountInput;
+    let effectiveValid = isAmountValid;
+
+    if (effectiveAmount === null || !effectiveValid) {
+      if (rawAmountInput) {
+        const evalRes = safeEvaluateMath(rawAmountInput);
+        if (evalRes.isValid && evalRes.value !== null && evalRes.value > 0) {
+          effectiveAmount = evalRes.value;
+          effectiveValid = true;
+        }
+      }
+    }
+
+    const effectiveWalletId = walletId || wallets[0]?.id;
+    if (!effectiveValid || effectiveAmount === null || effectiveAmount <= 0 || !effectiveWalletId) {
       return;
     }
 
@@ -85,10 +114,10 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
     const debtCategory = categories.find((c) => c.type === 'DEBT_REPAYMENT' || c.name.toLowerCase().includes('debt'));
 
     onSubmitTransaction({
-      amount,
-      rawInput: rawAmountInput,
+      amount: effectiveAmount,
+      rawInput: effectiveRaw,
       description: finalDescription,
-      walletId,
+      walletId: effectiveWalletId,
       destinationWalletId: type === 'TRANSFER' ? destinationWalletId : undefined,
       categoryId: type === 'EXPENSE' || type === 'INCOME' || type === 'ADJUSTMENT' ? categoryId : type === 'DEBT_REPAYMENT' ? debtCategory?.id : undefined,
       debtId: type === 'DEBT_REPAYMENT' ? debtId : undefined,
@@ -154,11 +183,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
         placeholder="e.g. 500+500 or 1500*0.7"
         currencyPrefix={selectedWallet?.currency === 'EUR' ? '€' : selectedWallet?.currency === 'THB' ? '฿' : '$'}
         required
-        onAmountEvaluated={(val, raw, valid) => {
-          setAmount(val);
-          setRawAmountInput(raw);
-          setIsAmountValid(valid);
-        }}
+        onAmountEvaluated={handleAmountEvaluated}
       />
 
       {/* 2. Smart Description Input with auto-tagging */}

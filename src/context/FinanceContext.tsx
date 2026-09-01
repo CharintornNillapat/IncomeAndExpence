@@ -182,16 +182,85 @@ const DEFAULT_SYSTEM_CATEGORIES: Category[] = [
   { id: 'cat-adjust', name: 'Balance Adjustment', type: 'ADJUSTMENT', icon: 'sliders', color: '#94a3b8', isSystem: true, isDeleted: false },
 ];
 
+const DEFAULT_STARTER_WALLETS: Wallet[] = [
+  {
+    id: 'wal-main-checking',
+    userId: 'usr-guest-01',
+    name: 'Main Checking',
+    type: 'BANK_ACCOUNT',
+    currency: 'USD',
+    balance: 2500.0,
+    color: '#0284c7',
+    icon: 'landmark',
+    isArchived: false,
+    isDeleted: false,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+  {
+    id: 'wal-cash',
+    userId: 'usr-guest-01',
+    name: 'Cash Wallet',
+    type: 'CASH',
+    currency: 'USD',
+    balance: 150.0,
+    color: '#16a34a',
+    icon: 'banknote',
+    isArchived: false,
+    isDeleted: false,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+  {
+    id: 'wal-savings',
+    userId: 'usr-guest-01',
+    name: 'Savings Reserve',
+    type: 'SAVINGS',
+    currency: 'USD',
+    balance: 5000.0,
+    color: '#7c3aed',
+    icon: 'piggy-bank',
+    isArchived: false,
+    isDeleted: false,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+];
+
+const DEFAULT_KEYWORD_RULES: KeywordRule[] = [
+  { id: 'kw-1', userId: 'usr-guest-01', keyword: 'coffee', categoryId: 'cat-food', createdAt: new Date().toISOString() },
+  { id: 'kw-2', userId: 'usr-guest-01', keyword: 'groceries', categoryId: 'cat-groceries', createdAt: new Date().toISOString() },
+  { id: 'kw-3', userId: 'usr-guest-01', keyword: 'fuel', categoryId: 'cat-transport', createdAt: new Date().toISOString() },
+  { id: 'kw-4', userId: 'usr-guest-01', keyword: 'salary', categoryId: 'cat-salary', createdAt: new Date().toISOString() },
+];
+
+const DEFAULT_STARTER_DEBTS: Debt[] = [
+  {
+    id: 'debt-starter-01',
+    userId: 'usr-guest-01',
+    name: 'Student Loan',
+    totalAmount: 10000,
+    remainingAmount: 4500,
+    interestRate: 4.5,
+    minimumPayment: 250,
+    dueDate: '2026-12-31',
+    isSettled: false,
+    isDeleted: false,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+];
+
 export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [currentUser, setCurrentUser] = useState<User>(() => safeGetLocalStorage('pf_user', DEFAULT_USER));
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
 
-  const [wallets, setWallets] = useState<Wallet[]>(() => safeGetLocalStorage('pf_wallets', []));
+  const [wallets, setWallets] = useState<Wallet[]>(() => safeGetLocalStorage('pf_wallets', DEFAULT_STARTER_WALLETS));
   const [categories, setCategories] = useState<Category[]>(() => safeGetLocalStorage('pf_categories', DEFAULT_SYSTEM_CATEGORIES));
-  const [keywordRules, setKeywordRules] = useState<KeywordRule[]>(() => safeGetLocalStorage('pf_keywords', []));
+  const [keywordRules, setKeywordRules] = useState<KeywordRule[]>(() => safeGetLocalStorage('pf_keywords', DEFAULT_KEYWORD_RULES));
   const [transactions, setTransactions] = useState<Transaction[]>(() => safeGetLocalStorage('pf_transactions', []));
-  const [debts, setDebts] = useState<Debt[]>(() => safeGetLocalStorage('pf_debts', []));
+  const [debts, setDebts] = useState<Debt[]>(() => safeGetLocalStorage('pf_debts', DEFAULT_STARTER_DEBTS));
   const [diaryEntries, setDiaryEntries] = useState<DiaryEntry[]>(() => safeGetLocalStorage('pf_diary', []));
 
   const [sessions, setSessions] = useState<SessionDevice[]>(() => initializeSessionList(currentUser.id));

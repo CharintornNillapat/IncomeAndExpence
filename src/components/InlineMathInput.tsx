@@ -39,46 +39,66 @@ export const InlineMathInput: React.FC<InlineMathInputProps> = ({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isFocused, setIsFocused] = useState<boolean>(false);
 
-  // Evaluate whenever raw input changes
+  const onAmountEvaluatedRef = React.useRef(onAmountEvaluated);
   useEffect(() => {
-    if (!rawInput.trim()) {
+    onAmountEvaluatedRef.current = onAmountEvaluated;
+  });
+
+  // Synchronous change handler to prevent race conditions during testing / rapid form submission
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setRawInput(val);
+
+    if (!val.trim()) {
       setEvaluatedAmount(null);
       setFormattedResult('');
       setHasCalculation(false);
       setErrorMessage(null);
-      onAmountEvaluated(null, '', false);
+      onAmountEvaluatedRef.current(null, '', false);
       return;
     }
 
-    const isComplex = /[+\-*/%^()]/.test(rawInput);
+    const isComplex = /[+\-*/%^()]/.test(val);
     setHasCalculation(isComplex);
 
-    const evalResult = safeEvaluateMath(rawInput);
+    const evalResult = safeEvaluateMath(val);
 
     if (evalResult.isValid && evalResult.value !== null) {
       if (evalResult.value <= 0) {
         setEvaluatedAmount(null);
         setFormattedResult('');
         setErrorMessage('Amount must be greater than zero');
-        onAmountEvaluated(null, rawInput, false);
+        onAmountEvaluatedRef.current(null, val, false);
       } else {
         setEvaluatedAmount(evalResult.value);
         setFormattedResult(evalResult.formattedValue);
         setErrorMessage(null);
-        onAmountEvaluated(evalResult.value, rawInput, true);
+        onAmountEvaluatedRef.current(evalResult.value, val, true);
       }
     } else {
       setEvaluatedAmount(null);
       setFormattedResult('');
-      // Only show error message if user has typed something that isn't just a starting digit or dot
-      if (rawInput.trim().length > 1 || !/^[0-9.]+$/.test(rawInput)) {
+      if (val.trim().length > 1 || !/^[0-9.]+$/.test(val)) {
         setErrorMessage(evalResult.error || 'Invalid expression');
       } else {
         setErrorMessage(null);
       }
-      onAmountEvaluated(null, rawInput, false);
+      onAmountEvaluatedRef.current(null, val, false);
     }
-  }, [rawInput, onAmountEvaluated]);
+  };
+
+  // Evaluate whenever raw input or defaultValue initializes
+  useEffect(() => {
+    if (defaultValue && !rawInput) {
+      setRawInput(defaultValue);
+      const evalResult = safeEvaluateMath(defaultValue);
+      if (evalResult.isValid && evalResult.value !== null && evalResult.value > 0) {
+        setEvaluatedAmount(evalResult.value);
+        setFormattedResult(evalResult.formattedValue);
+        onAmountEvaluatedRef.current(evalResult.value, defaultValue, true);
+      }
+    }
+  }, [defaultValue]);
 
   const handleApplyResult = () => {
     if (evaluatedAmount !== null && hasCalculation) {
@@ -133,7 +153,7 @@ export const InlineMathInput: React.FC<InlineMathInputProps> = ({
           name={name}
           type="text"
           value={rawInput}
-          onChange={(e) => setRawInput(e.target.value)}
+          onChange={handleInputChange}
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
           placeholder={placeholder}
