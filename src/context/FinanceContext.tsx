@@ -12,6 +12,7 @@ import {
   TransactionType,
 } from '../types';
 import { supabase } from '../lib/supabase';
+import { TransactionSchema } from '../utils/zodSchemas';
 
 interface FinanceContextType {
   // Auth & Security
@@ -822,6 +823,12 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     type: TransactionType;
     transactionDate: string;
   }) => {
+    const validation = TransactionSchema.safeParse(data);
+    if (!validation.success) {
+      const errorMsg = validation.error.issues.map((i) => i.message).join('; ');
+      return { success: false, error: errorMsg };
+    }
+
     const clientKey = `idemp-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
 
     // Optimistic balance calculation

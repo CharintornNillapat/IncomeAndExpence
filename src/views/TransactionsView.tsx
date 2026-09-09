@@ -398,12 +398,15 @@ export const TransactionsView: React.FC = () => {
               <TransactionForm
                 wallets={wallets.filter((w) => !w.isDeleted)}
                 categories={categories.filter((c) => !c.isDeleted)}
-                onSubmitTransaction={(data) => {
-                  addTransaction({
+                onSubmitTransaction={async (data) => {
+                  const res = await addTransaction({
                     ...data,
                     transactionDate: data.date,
                   });
-                  setIsAddModalOpen(false);
+                  if (res && res.success) {
+                    setIsAddModalOpen(false);
+                  }
+                  return res;
                 }}
               />
             </div>

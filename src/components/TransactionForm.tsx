@@ -1,6 +1,6 @@
 import React, { useState, useId } from 'react';
 import { motion } from 'framer-motion';
-import { Sparkles, ArrowRight, SlidersHorizontal } from 'lucide-react';
+import { Sparkles, ArrowRight, SlidersHorizontal, AlertCircle } from 'lucide-react';
 import { InlineMathInput } from './InlineMathInput';
 import { Wallet, Category, TransactionType } from '../types';
 import { useFinance } from '../context/FinanceContext';
@@ -20,7 +20,7 @@ interface TransactionFormProps {
     debtId?: string;
     type: TransactionType;
     date: string;
-  }) => void;
+  }) => Promise<{ success: boolean; error?: string } | void> | { success: boolean; error?: string } | void;
 }
 
 export const TransactionForm: React.FC<TransactionFormProps> = ({
@@ -55,6 +55,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
   const [autoMatchedCategory, setAutoMatchedCategory] = useState<string | null>(null);
   const [showManualOverrides, setShowManualOverrides] = useState<boolean>(false);
   const [isSubmitted, setIsSubmitted] = useState<boolean>(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const handleAmountEvaluated = React.useCallback((val: number | null, raw: string, valid: boolean) => {
     setAmount(val);
@@ -78,7 +79,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     let effectiveAmount = amount;
     let effectiveRaw = rawAmountInput;
@@ -113,7 +114,8 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
 
     const debtCategory = categories.find((c) => c.type === 'DEBT_REPAYMENT' || c.name.toLowerCase().includes('debt'));
 
-    onSubmitTransaction({
+    setSubmitError(null);
+    const res = await onSubmitTransaction({
       amount: effectiveAmount,
       rawInput: effectiveRaw,
       description: finalDescription,
@@ -124,6 +126,11 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
       type,
       date,
     });
+
+    if (res && typeof res === 'object' && 'success' in res && !res.success) {
+      setSubmitError(res.error || 'Failed to save transaction');
+      return;
+    }
 
     // Reset form fields
     setDescription('');
@@ -356,6 +363,13 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
           )}
           <ArrowRight className="w-4 h-4" />
         </motion.button>
+
+        {submitError && (
+          <div className="bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 p-3 rounded-xl text-xs font-medium flex items-center gap-2 mt-2">
+            <AlertCircle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0" />
+            <span>{submitError}</span>
+          </div>
+        )}
 
         {isSubmitted && (
           <p className="text-center text-xs font-medium text-emerald-600 dark:text-emerald-400 mt-2">

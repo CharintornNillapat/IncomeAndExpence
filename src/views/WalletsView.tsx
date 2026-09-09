@@ -11,6 +11,7 @@ import {
   Coins, 
   Trash2, 
   X,
+  AlertCircle,
   Sparkles
 } from 'lucide-react';
 import { useFinance } from '../context/FinanceContext';
@@ -38,6 +39,7 @@ export const WalletsView: React.FC = () => {
   const [transferRaw, setTransferRaw] = useState<string>('');
   const [transferValid, setTransferValid] = useState<boolean>(false);
   const [transferNote, setTransferNote] = useState<string>('Funds transfer');
+  const [transferError, setTransferError] = useState<string | null>(null);
 
   const activeWallets = wallets.filter((w) => !w.isDeleted);
 
@@ -71,13 +73,15 @@ export const WalletsView: React.FC = () => {
     setInitialBalance(0);
   };
 
-  const handleExecuteTransfer = (e: React.FormEvent) => {
+  const handleExecuteTransfer = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!transferValid || transferAmount === null || !sourceWalletId || !destWalletId || sourceWalletId === destWalletId) {
       return;
     }
 
-    addTransaction({
+    setTransferError(null);
+
+    const res = await addTransaction({
       amount: transferAmount,
       rawInput: transferRaw,
       description: transferNote || 'Transfer between wallets',
@@ -86,6 +90,11 @@ export const WalletsView: React.FC = () => {
       type: 'TRANSFER',
       transactionDate: new Date().toISOString().slice(0, 10),
     });
+
+    if (res && !res.success) {
+      setTransferError(res.error || 'Failed to complete transfer');
+      return;
+    }
 
     setIsTransferOpen(false);
     setTransferAmount(null);
@@ -442,6 +451,13 @@ export const WalletsView: React.FC = () => {
                     className="w-full text-xs rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 px-3.5 py-2.5 text-stone-900 dark:text-stone-100 placeholder:text-stone-400 dark:placeholder:text-stone-500 focus:outline-none focus:border-stone-800 dark:focus:border-stone-400 focus:ring-2 focus:ring-stone-200 dark:focus:ring-stone-700 transition-colors"
                   />
                 </div>
+
+                {transferError && (
+                  <div className="bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 p-3 rounded-xl text-xs font-medium flex items-center gap-2">
+                    <AlertCircle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0" />
+                    <span>{transferError}</span>
+                  </div>
+                )}
 
                 <div className="pt-2">
                   <motion.button

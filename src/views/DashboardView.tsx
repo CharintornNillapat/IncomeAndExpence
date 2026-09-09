@@ -188,7 +188,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
     type: any;
     date: string;
   }) => {
-    addTransaction({
+    return addTransaction({
       ...data,
       transactionDate: data.date,
     });

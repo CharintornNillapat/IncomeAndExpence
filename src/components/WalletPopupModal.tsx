@@ -14,6 +14,7 @@ import {
   TrendingUp, 
   TrendingDown, 
   CheckCircle2, 
+  AlertCircle,
   Sparkles,
   Wallet as WalletIcon,
   Search,
@@ -67,6 +68,7 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
   const [transferValid, setTransferValid] = useState<boolean>(false);
   const [transferNote, setTransferNote] = useState<string>('Funds transfer');
   const [transferStatus, setTransferStatus] = useState<string | null>(null);
+  const [transferError, setTransferError] = useState<string | null>(null);
 
   // Edit / Adjust Balance State
   const [isAdjustingBalance, setIsAdjustingBalance] = useState<string | null>(null);
@@ -125,6 +127,9 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
       return;
     }
 
+    setTransferStatus(null);
+    setTransferError(null);
+
     const res = await addTransaction({
       amount: transferAmount,
       rawInput: transferRaw,
@@ -141,6 +146,8 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
         setTransferStatus(null);
         setActiveTab('OVERVIEW');
       }, 1000);
+    } else {
+      setTransferError(res.error || 'Failed to complete transfer');
     }
   };
 
@@ -472,6 +479,13 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
                 <div className="bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 p-3 rounded-xl text-xs font-semibold flex items-center gap-2">
                   <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
                   <span>{transferStatus}</span>
+                </div>
+              )}
+
+              {transferError && (
+                <div className="bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 p-3 rounded-xl text-xs font-medium flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0" />
+                  <span>{transferError}</span>
                 </div>
               )}
 

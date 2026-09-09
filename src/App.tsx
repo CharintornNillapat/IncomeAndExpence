@@ -224,12 +224,15 @@ const MainApp: React.FC = () => {
                 <TransactionForm
                   wallets={wallets.filter((w) => !w.isDeleted)}
                   categories={categories.filter((c) => !c.isDeleted)}
-                  onSubmitTransaction={(data) => {
-                    addTransaction({
+                  onSubmitTransaction={async (data) => {
+                    const res = await addTransaction({
                       ...data,
                       transactionDate: data.date,
                     });
-                    setIsQuickAddOpen(false);
+                    if (res && res.success) {
+                      setIsQuickAddOpen(false);
+                    }
+                    return res;
                   }}
                 />
               </div>
