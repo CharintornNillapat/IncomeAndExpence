@@ -15,6 +15,8 @@ export interface UseTransactionsFilterOptions {
 export const useTransactions = (options: UseTransactionsFilterOptions = {}) => {
   const {
     transactions,
+    wallets,
+    categories,
     addTransaction,
     softDeleteTransaction,
     restoreTransaction,
@@ -33,6 +35,18 @@ export const useTransactions = (options: UseTransactionsFilterOptions = {}) => {
     endDate,
     searchQuery,
   } = options;
+
+  // Name lookups: Transaction only stores ids, so resolve display names from the
+  // wallet / category collections for keyword search.
+  const walletNameMap = useMemo(
+    () => new Map(wallets.map((w) => [w.id, w.name.toLowerCase()])),
+    [wallets]
+  );
+
+  const categoryNameMap = useMemo(
+    () => new Map(categories.map((c) => [c.id, c.name.toLowerCase()])),
+    [categories]
+  );
 
   // Memoized filtered transactions list
   const filteredTransactions = useMemo(() => {
@@ -66,10 +80,18 @@ export const useTransactions = (options: UseTransactionsFilterOptions = {}) => {
 
       // Keyword / description search
       if (searchQuery && searchQuery.trim().length > 0) {
-        const q = searchQuery.toLowerCase();
+        const q = searchQuery.trim().toLowerCase();
+        const categoryName = tx.categoryId ? categoryNameMap.get(tx.categoryId) : undefined;
+        const sourceWalletName = walletNameMap.get(tx.walletId);
+        const destWalletName = tx.destinationWalletId
+          ? walletNameMap.get(tx.destinationWalletId)
+          : undefined;
+
         const matchesDesc = tx.description.toLowerCase().includes(q);
-        const matchesCategory = tx.categoryName?.toLowerCase().includes(q);
-        const matchesWallet = tx.walletName?.toLowerCase().includes(q);
+        const matchesCategory = categoryName?.includes(q) ?? false;
+        const matchesWallet =
+          (sourceWalletName?.includes(q) ?? false) || (destWalletName?.includes(q) ?? false);
+
         if (!matchesDesc && !matchesCategory && !matchesWallet) {
           return false;
         }
@@ -77,7 +99,19 @@ export const useTransactions = (options: UseTransactionsFilterOptions = {}) => {
 
       return true;
     });
-  }, [transactions, includeDeleted, showSoftDeleted, walletId, categoryId, type, startDate, endDate, searchQuery]);
+  }, [
+    transactions,
+    includeDeleted,
+    showSoftDeleted,
+    walletId,
+    categoryId,
+    type,
+    startDate,
+    endDate,
+    searchQuery,
+    walletNameMap,
+    categoryNameMap,
+  ]);
 
   // Aggregated Financial Metrics using useMemo
   const metrics = useMemo(() => {

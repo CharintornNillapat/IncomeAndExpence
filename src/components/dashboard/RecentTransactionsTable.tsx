@@ -2,6 +2,7 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { Calendar, ChevronRight, Receipt, ArrowDownLeft, ArrowUpRight, ArrowLeftRight, TrendingDown } from 'lucide-react';
 import { Transaction, Wallet, Category } from '../../types';
+import { APP_CURRENCY } from '../../utils/currency';
 
 interface RecentTransactionsTableProps {
   transactions: Transaction[];
@@ -70,7 +71,7 @@ export const RecentTransactionsTable: React.FC<RecentTransactionsTableProps> = R
                 const wallet = tx.walletId ? walletMap.get(tx.walletId) : undefined;
                 const destWallet = tx.destinationWalletId ? walletMap.get(tx.destinationWalletId) : undefined;
                 const category = tx.categoryId ? categoryMap.get(tx.categoryId) : undefined;
-                const currency = wallet?.currency || 'USD';
+                const currency = APP_CURRENCY;
 
                 return (
                   <tr key={tx.id} className="hover:bg-stone-50/70 dark:hover:bg-stone-800/40 transition-colors">
@@ -170,7 +171,7 @@ export const RecentTransactionsTable: React.FC<RecentTransactionsTableProps> = R
                         }
                       >
                         {tx.type === 'INCOME' ? '+' : tx.type === 'EXPENSE' ? '−' : ''}
-                        ${tx.amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        ฿{tx.amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </span>
                       <span className="text-[10px] text-stone-400 dark:text-stone-500 ml-1 hidden sm:inline">{currency}</span>
                     </td>

@@ -1,7 +1,6 @@
-import { useMemo, useCallback } from 'react';
+﻿import { useMemo, useCallback } from 'react';
 import { useFinance } from '../context/FinanceContext';
 import { Wallet, WalletType } from '../types';
-import { getWalletsCurrencyBreakdown } from '../utils/currency';
 
 export const useWallets = () => {
   const {
@@ -17,11 +16,6 @@ export const useWallets = () => {
   const activeWallets = useMemo(() => {
     return wallets.filter((w) => !w.isDeleted);
   }, [wallets]);
-
-  // Currency breakdown with memoization
-  const currencyBreakdown = useMemo(() => {
-    return getWalletsCurrencyBreakdown(activeWallets);
-  }, [activeWallets]);
 
   // Grouped by type
   const walletsByType = useMemo(() => {
@@ -45,7 +39,7 @@ export const useWallets = () => {
 
   const handleAddWallet = useCallback(
     async (
-      wallet: Omit<Wallet, 'id' | 'userId' | 'createdAt' | 'updatedAt' | 'isArchived' | 'isDeleted'>,
+      wallet: Omit<Wallet, 'id' | 'userId' | 'createdAt' | 'updatedAt' | 'isArchived' | 'isDeleted' | 'balance'>,
       initialBalance: number
     ) => {
       await addWallet(wallet, initialBalance);
@@ -71,7 +65,6 @@ export const useWallets = () => {
     wallets: activeWallets,
     allWallets: wallets,
     totalNetWorth,
-    currencyBreakdown,
     walletsByType,
     isSyncing,
     addWallet: handleAddWallet,

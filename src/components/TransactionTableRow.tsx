@@ -131,7 +131,7 @@ export const TransactionTableRow: React.FC<TransactionTableRowProps> = React.mem
       {/* Amount */}
       <td className="py-3 px-3 sm:px-4 text-right font-mono font-bold whitespace-nowrap text-xs sm:text-sm">
         <span className={isIncome ? 'text-emerald-600 dark:text-emerald-400' : isDebtRepayment ? 'text-amber-600 dark:text-amber-400' : 'text-stone-900 dark:text-stone-100'}>
-          {isIncome ? '+' : '-'}${tx.amount.toFixed(2)}
+          {isIncome ? '+' : '-'}฿{tx.amount.toFixed(2)}
         </span>
       </td>
 

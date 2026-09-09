@@ -25,12 +25,19 @@ export interface SessionDevice {
 
 export type WalletType = 'CASH' | 'BANK_ACCOUNT' | 'CREDIT_CARD' | 'E_WALLET' | 'INVESTMENT' | 'SAVINGS';
 
+/**
+ * The app is single-currency (Thai Baht). Keeping this as a one-member union
+ * rather than `string` makes every write site a compile error if another
+ * currency is ever introduced without handling conversion.
+ */
+export type CurrencyCode = 'THB';
+
 export interface Wallet {
   id: string;
   userId: string;
   name: string;
   type: WalletType;
-  currency: string; // e.g. USD, EUR, THB, JPY, GBP
+  currency: CurrencyCode;
   balance: number; // Decimal(15,2)
   color: string;
   icon: string;

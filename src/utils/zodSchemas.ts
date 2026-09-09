@@ -38,7 +38,7 @@ export const TransactionSchema = z.object({
 export const WalletSchema = z.object({
   name: z.string().min(1, 'Wallet name is required').max(100),
   type: z.enum(['CASH', 'BANK_ACCOUNT', 'CREDIT_CARD', 'E_WALLET', 'INVESTMENT', 'SAVINGS']),
-  currency: z.string().min(3).max(3).toUpperCase(),
+  currency: z.literal('THB'),
   initialBalance: z.number().min(0, 'Initial balance cannot be negative'),
   color: z.string().optional(),
   icon: z.string().optional(),

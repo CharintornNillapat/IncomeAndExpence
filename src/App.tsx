@@ -1,5 +1,5 @@
 import React, { useState, lazy, Suspense } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, Transition } from 'framer-motion';
 import { useSwipeable } from 'react-swipeable';
 import { FinanceProvider, useFinance } from './context/FinanceContext';
 import { Navbar, ActiveTab } from './components/Navbar';
@@ -46,7 +46,7 @@ const pageVariants = {
   }),
 };
 
-const pageTransition = {
+const pageTransition: Transition = {
   type: 'spring',
   stiffness: 380,
   damping: 32,

@@ -100,7 +100,7 @@ export const DebtCardItem: React.FC<DebtCardItemProps> = React.memo(({
             <div className="bg-stone-50 dark:bg-stone-800/80 p-3 rounded-xl border border-stone-100 dark:border-stone-700/60">
               <span className="text-[11px] text-stone-500 dark:text-stone-400 block">Total Principal Target</span>
               <span className="text-base font-bold font-mono text-stone-900 dark:text-stone-100">
-                ${debt.totalAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                ฿{debt.totalAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })}
               </span>
             </div>
           </div>

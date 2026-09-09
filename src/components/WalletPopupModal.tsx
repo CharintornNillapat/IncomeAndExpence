@@ -24,6 +24,7 @@ import {
 import { useFinance } from '../context/FinanceContext';
 import { Wallet, WalletType } from '../types';
 import { InlineMathInput } from './InlineMathInput';
+import { APP_CURRENCY, APP_CURRENCY_SYMBOL } from '../utils/currency';
 
 export type WalletModalTab = 'OVERVIEW' | 'TRANSFER' | 'ADD_WALLET' | 'TRANSACTIONS';
 
@@ -56,7 +57,6 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
   // Add Wallet State
   const [walletName, setWalletName] = useState<string>('');
   const [walletType, setWalletType] = useState<WalletType>('BANK_ACCOUNT');
-  const [currency, setCurrency] = useState<string>('USD');
   const [initialBalance, setInitialBalance] = useState<number>(0);
   const [walletColor, setWalletColor] = useState<string>('#0284c7');
 
@@ -69,6 +69,10 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
   const [transferNote, setTransferNote] = useState<string>('Funds transfer');
   const [transferStatus, setTransferStatus] = useState<string | null>(null);
   const [transferError, setTransferError] = useState<string | null>(null);
+  const [isTransferring, setIsTransferring] = useState<boolean>(false);
+  // One key per armed form. Retrying after a failure reuses it so the retry is
+  // deduplicated rather than double-spending; it is regenerated only on success.
+  const [transferKey, setTransferKey] = useState<string>(() => crypto.randomUUID());
 
   // Edit / Adjust Balance State
   const [isAdjustingBalance, setIsAdjustingBalance] = useState<string | null>(null);
@@ -109,7 +113,7 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
       {
         name: walletName.trim(),
         type: walletType,
-        currency: currency.toUpperCase(),
+        currency: APP_CURRENCY,
         color: walletColor,
         icon: walletType.toLowerCase(),
       },
@@ -123,31 +127,45 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
 
   const handleExecuteTransfer = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isTransferring) return;
     if (!transferValid || transferAmount === null || !sourceWalletId || !destWalletId || sourceWalletId === destWalletId) {
       return;
     }
 
     setTransferStatus(null);
     setTransferError(null);
+    setIsTransferring(true);
 
-    const res = await addTransaction({
-      amount: transferAmount,
-      rawInput: transferRaw,
-      description: transferNote || 'Transfer between wallets',
-      walletId: sourceWalletId,
-      destinationWalletId: destWalletId,
-      type: 'TRANSFER',
-      transactionDate: new Date().toISOString().slice(0, 10),
-    });
+    try {
+      const res = await addTransaction({
+        amount: transferAmount,
+        rawInput: transferRaw,
+        description: transferNote || 'Transfer between wallets',
+        walletId: sourceWalletId,
+        destinationWalletId: destWalletId,
+        type: 'TRANSFER',
+        transactionDate: new Date().toISOString().slice(0, 10),
+        idempotencyKey: transferKey,
+      });
 
-    if (res.success) {
-      setTransferStatus('Transfer completed successfully!');
-      setTimeout(() => {
-        setTransferStatus(null);
-        setActiveTab('OVERVIEW');
-      }, 1000);
-    } else {
-      setTransferError(res.error || 'Failed to complete transfer');
+      if (res.success) {
+        // Clear the armed amount immediately so the form cannot be resubmitted
+        // during the confirmation delay. Rotating the key also remounts the
+        // amount input, clearing its internal value.
+        setTransferAmount(null);
+        setTransferRaw('');
+        setTransferValid(false);
+        setTransferKey(crypto.randomUUID());
+        setTransferStatus('Transfer completed successfully!');
+        setTimeout(() => {
+          setTransferStatus(null);
+          setActiveTab('OVERVIEW');
+        }, 1000);
+      } else {
+        setTransferError(res.error || 'Failed to complete transfer');
+      }
+    } finally {
+      setIsTransferring(false);
     }
   };
 
@@ -162,7 +180,7 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
 
     await addTransaction({
       amount: Math.abs(diff),
-      description: `Manual balance adjustment (${diff >= 0 ? '+' : '-'}$${Math.abs(diff).toFixed(2)})`,
+      description: `Manual balance adjustment (${diff >= 0 ? '+' : '-'}฿${Math.abs(diff).toFixed(2)})`,
       walletId: target.id,
       type: 'ADJUSTMENT',
       transactionDate: new Date().toISOString().slice(0, 10),
@@ -211,7 +229,7 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
                     </span>
                   </div>
                   <p className="text-xs text-stone-500 dark:text-stone-400 font-mono">
-                    Total: <strong className="text-stone-900 dark:text-stone-100">${totalNetWorth.toLocaleString('en-US', { minimumFractionDigits: 2 })}</strong>
+                    Total: <strong className="text-stone-900 dark:text-stone-100">฿{totalNetWorth.toLocaleString('en-US', { minimumFractionDigits: 2 })}</strong>
                   </p>
                 </div>
               </div>
@@ -358,7 +376,7 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
                         {isAdjustingBalance === wallet.id ? (
                           <div className="mt-3 p-2.5 bg-white dark:bg-stone-800 rounded-xl border border-stone-300 dark:border-stone-700 space-y-2" onClick={(e) => e.stopPropagation()}>
                             <label className="text-[10px] font-bold uppercase tracking-wider text-stone-500 dark:text-stone-400 block">
-                              Set Balance ($)
+                              Set Balance (฿)
                             </label>
                             <div className="flex flex-wrap sm:flex-nowrap items-center gap-2">
                               <input
@@ -393,9 +411,9 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
                             </span>
                             <div className="flex items-baseline gap-1.5 mt-0.5">
                               <span className="text-lg sm:text-xl font-black font-mono text-stone-900 dark:text-white">
-                                ${wallet.balance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                ฿{wallet.balance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                               </span>
-                              <span className="text-[11px] font-semibold text-stone-500 dark:text-stone-400 font-mono">{wallet.currency}</span>
+                              <span className="text-[11px] font-semibold text-stone-500 dark:text-stone-400 font-mono">{APP_CURRENCY}</span>
                             </div>
                           </div>
                         )}
@@ -436,7 +454,7 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
                     <div>
                       <h4 className="text-xs sm:text-sm font-bold">{currentWallet.name}</h4>
                       <p className="text-[11px] sm:text-xs text-stone-300 dark:text-stone-400">
-                        {currentWallet.type.replace('_', ' ')} • {currentWallet.currency}
+                        {currentWallet.type.replace('_', ' ')} • {APP_CURRENCY}
                       </p>
                     </div>
                   </div>
@@ -502,7 +520,7 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
                   >
                     {activeWallets.map((w) => (
                       <option key={w.id} value={w.id}>
-                        {w.name} (${w.balance.toFixed(2)})
+                        {w.name} (฿{w.balance.toFixed(2)})
                       </option>
                     ))}
                   </select>
@@ -522,7 +540,7 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
                       .filter((w) => w.id !== sourceWalletId)
                       .map((w) => (
                         <option key={w.id} value={w.id}>
-                          {w.name} (${w.balance.toFixed(2)})
+                          {w.name} (฿{w.balance.toFixed(2)})
                         </option>
                       ))}
                   </select>
@@ -531,10 +549,12 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
 
               {/* Inline math input */}
               <InlineMathInput
+                key={transferKey}
                 id="modal-transfer-amount-input"
-                label="Transfer Amount ($)"
+                label="Transfer Amount (฿)"
                 placeholder="e.g. 250 or 500/2"
                 required
+                disabled={isTransferring}
                 onAmountEvaluated={(val, raw, valid) => {
                   setTransferAmount(val);
                   setTransferRaw(raw);
@@ -560,15 +580,19 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
                 <button
                   id="modal-submit-transfer-btn"
                   type="submit"
-                  disabled={!transferValid || transferAmount === null || sourceWalletId === destWalletId}
+                  disabled={isTransferring || !transferValid || transferAmount === null || sourceWalletId === destWalletId}
                   className={`w-full py-2.5 sm:py-3 rounded-xl font-semibold text-xs transition-all flex items-center justify-center gap-2 cursor-pointer ${
-                    transferValid && transferAmount !== null && sourceWalletId !== destWalletId
+                    !isTransferring && transferValid && transferAmount !== null && sourceWalletId !== destWalletId
                       ? 'bg-stone-900 hover:bg-stone-800 dark:bg-stone-100 dark:hover:bg-white text-white dark:text-stone-900 shadow-xs'
                       : 'bg-stone-200 dark:bg-stone-800 text-stone-400 dark:text-stone-600 cursor-not-allowed'
                   }`}
                 >
                   <ArrowLeftRight className="w-4 h-4" />
-                  <span>Transfer ${transferAmount !== null ? transferAmount.toFixed(2) : '0.00'}</span>
+                  <span>
+                    {isTransferring
+                      ? 'Transferring...'
+                      : `Transfer ฿${transferAmount !== null ? transferAmount.toFixed(2) : '0.00'}`}
+                  </span>
                 </button>
               </div>
             </form>
@@ -616,24 +640,18 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
                   <label className="text-xs font-semibold uppercase tracking-wider text-stone-600 dark:text-stone-300 block mb-1">
                     Currency
                   </label>
-                  <select
+                  <div
                     id="modal-new-wallet-currency"
-                    value={currency}
-                    onChange={(e) => setCurrency(e.target.value)}
-                    className="w-full text-xs rounded-xl border border-stone-200 dark:border-stone-700 px-3 py-2.5 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-none focus:border-stone-800 dark:focus:border-stone-400 font-mono"
+                    className="w-full text-xs rounded-xl border border-stone-200 dark:border-stone-700 px-3 py-2.5 bg-stone-100 dark:bg-stone-800 text-stone-500 dark:text-stone-400 font-mono"
                   >
-                    <option value="USD">USD ($)</option>
-                    <option value="EUR">EUR (€)</option>
-                    <option value="THB">THB (฿)</option>
-                    <option value="GBP">GBP (£)</option>
-                    <option value="JPY">JPY (¥)</option>
-                  </select>
+                    {APP_CURRENCY} ({APP_CURRENCY_SYMBOL})
+                  </div>
                 </div>
               </div>
 
               <div>
                 <label className="text-xs font-semibold uppercase tracking-wider text-stone-600 dark:text-stone-300 block mb-1">
-                  Starting Balance ($)
+                  Starting Balance (฿)
                 </label>
                 <input
                   id="modal-new-wallet-balance"
@@ -691,7 +709,7 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
                 >
                   {activeWallets.map((w) => (
                     <option key={w.id} value={w.id}>
-                      {w.name} (${w.balance.toFixed(2)})
+                      {w.name} (฿{w.balance.toFixed(2)})
                     </option>
                   ))}
                 </select>
@@ -728,7 +746,7 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
                         <span className={`font-mono font-bold ${
                           tx.type === 'INCOME' ? 'text-emerald-600 dark:text-emerald-400' : 'text-stone-900 dark:text-stone-100'
                         }`}>
-                          {tx.type === 'INCOME' ? '+' : '-'}${tx.amount.toFixed(2)}
+                          {tx.type === 'INCOME' ? '+' : '-'}฿{tx.amount.toFixed(2)}
                         </span>
                         <span className="text-[10px] text-stone-400 dark:text-stone-500 block uppercase font-medium">{tx.type}</span>
                       </div>

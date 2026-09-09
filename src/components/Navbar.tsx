@@ -19,7 +19,7 @@ import {
   Monitor
 } from 'lucide-react';
 import { useFinance } from '../context/FinanceContext';
-import { getWalletsCurrencyBreakdown } from '../utils/currency';
+import { APP_CURRENCY, APP_CURRENCY_SYMBOL } from '../utils/currency';
 import { AnimatedCounter } from './AnimatedCounter';
 import { useTheme } from '../hooks/useTheme';
 
@@ -33,12 +33,8 @@ interface NavbarProps {
 }
 
 export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, onOpenQuickAdd, onOpenAuth }) => {
-  const { wallets, isAuthenticated, isSyncing, currentUser, signOut, otpPending } = useFinance();
+  const { totalNetWorth, isAuthenticated, isSyncing, currentUser, signOut, otpPending } = useFinance();
   const { theme, cycleTheme } = useTheme();
-
-  const currencyBreakdown = useMemo(() => {
-    return getWalletsCurrencyBreakdown(wallets);
-  }, [wallets]);
 
   const navItems: { id: ActiveTab; label: string; icon: React.FC<{ className?: string }> }[] = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -156,25 +152,14 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, onOpenQ
                 Total Balance
               </span>
               <span className="text-sm sm:text-base font-bold font-mono text-stone-900 dark:text-white tracking-tight">
-                {currencyBreakdown.isSingleCurrency ? (
-                  <>
-                    <AnimatedCounter
-                      value={currencyBreakdown.primaryTotal}
-                      currencyPrefix={currencyBreakdown.primarySymbol}
-                      duration={1.2}
-                    />{' '}
-                    <span className="text-xs font-semibold text-stone-500 dark:text-stone-400 font-mono">
-                      {currencyBreakdown.primaryCurrency}
-                    </span>
-                  </>
-                ) : (
-                  <span className="text-xs sm:text-sm font-semibold">
-                    {currencyBreakdown.groups
-                      .slice(0, 2)
-                      .map((g) => `${g.symbol}${g.total.toLocaleString('en-US', { maximumFractionDigits: 0 })} ${g.currency}`)
-                      .join(' • ')}
-                  </span>
-                )}
+                <AnimatedCounter
+                  value={totalNetWorth}
+                  currencyPrefix={APP_CURRENCY_SYMBOL}
+                  duration={1.2}
+                />{' '}
+                <span className="text-xs font-semibold text-stone-500 dark:text-stone-400 font-mono">
+                  {APP_CURRENCY}
+                </span>
               </span>
             </div>
 

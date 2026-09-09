@@ -102,7 +102,11 @@ test.describe('Core Transaction Flow E2E Tests', () => {
     const amountInput = dashboardForm.locator('input[name="amount_expression"]');
     await amountInput.fill('120 + 30 * 2');
 
-    // The inline math preview should compute 180.00
-    await expect(dashboardForm.getByText('180.00')).toBeVisible();
+    // The inline math preview should compute 180.00. Target the "Calculated:" badge
+    // specifically - the value also renders in the apply-calculation button and the
+    // submit button, so a bare text match resolves to three elements.
+    const calculatedBadge = dashboardForm.locator('span', { hasText: /Calculated:/i });
+    await expect(calculatedBadge).toBeVisible();
+    await expect(calculatedBadge).toContainText('180.00');
   });
 });

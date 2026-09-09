@@ -147,13 +147,16 @@ export const TransactionsView: React.FC = () => {
   };
 
   // Handle Commit Import (Step 2: Single Atomic Batch)
-  const handleCommitImport = () => {
+  const handleCommitImport = async () => {
     if (!importPreview || importPreview.validRowsCount === 0) return;
 
     const validRows = importPreview.rows.filter((r) => r.isValid);
-    const result = commitBulkImport(validRows);
+    const result = await commitBulkImport(validRows);
 
-    setImportSuccessMsg(`Successfully imported ${result.insertedCount} transactions ($${result.totalAmount.toFixed(2)})!`);
+    const skippedNote = result.skippedCount > 0
+      ? ` ${result.skippedCount} row${result.skippedCount === 1 ? '' : 's'} skipped (unknown or deleted wallet).`
+      : '';
+    setImportSuccessMsg(`Successfully imported ${result.insertedCount} transactions (฿${result.totalAmount.toFixed(2)})!${skippedNote}`);
     setImportPreview(null);
     setTimeout(() => {
       setIsImportModalOpen(false);
@@ -523,7 +526,7 @@ export const TransactionsView: React.FC = () => {
                   </div>
                   <div>
                     <span className="text-stone-500 dark:text-stone-400 block">Total Amount</span>
-                    <span className="font-bold text-stone-900 dark:text-stone-100 font-mono text-sm">${importPreview.totalAmount.toFixed(2)}</span>
+                    <span className="font-bold text-stone-900 dark:text-stone-100 font-mono text-sm">฿{importPreview.totalAmount.toFixed(2)}</span>
                   </div>
                 </div>
 
@@ -557,7 +560,7 @@ export const TransactionsView: React.FC = () => {
                           </td>
                           <td className="p-2 font-mono text-stone-700 dark:text-stone-300">{row.date}</td>
                           <td className="p-2 text-stone-700 dark:text-stone-300">{row.walletName}</td>
-                          <td className="p-2 font-mono font-bold text-stone-900 dark:text-stone-100">${row.amount.toFixed(2)}</td>
+                          <td className="p-2 font-mono font-bold text-stone-900 dark:text-stone-100">฿{row.amount.toFixed(2)}</td>
                           <td className="p-2">
                             {row.isValid ? (
                               <span className="text-stone-700 dark:text-stone-300">{row.description}</span>

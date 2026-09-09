@@ -11,6 +11,25 @@ export interface MathEvaluationResult {
 const SAFE_MATH_EXPRESSION_REGEX = /^[0-9+\-*/().%\^\s]+$/;
 
 /**
+ * Rounds to 2 decimal places (whole cents).
+ *
+ * A plain `Math.round(value * 100) / 100` under-rounds any half-cent whose binary
+ * representation falls a hair below .5 - `16.775 * 100` is `1677.4999999999998`,
+ * so it yields 16.77 instead of 16.78. Adding a bare `Number.EPSILON` before
+ * scaling does not fix this: EPSILON is the gap at 1.0, so it is smaller than one
+ * ULP for any `|value| >= 2` and gets swallowed entirely.
+ *
+ * Nudging by an epsilon scaled to the magnitude of the value corrects the
+ * representation error without disturbing values that are genuinely below the
+ * halfway point.
+ */
+function roundToTwoDecimals(value: number): number {
+  const scaled = value * 100;
+  const nudge = Math.sign(scaled) * Math.abs(scaled) * Number.EPSILON * 4;
+  return Math.round(scaled + nudge) / 100;
+}
+
+/**
  * Safely evaluates a math expression string using mathjs.
  * Strictly checks input characters to prevent code injection or unintended function calls.
  */
@@ -33,9 +52,10 @@ export function safeEvaluateMath(expression: string): MathEvaluationResult {
   try {
     const result = evaluate(trimmed);
 
-    // Validate result is a finite positive number
+    // Validate result is a finite number. Callers enforce their own sign rules
+    // (e.g. TransactionSchema requires a positive amount).
     if (typeof result === 'number' && !Number.isNaN(result) && Number.isFinite(result)) {
-      const rounded = Math.round((result + Number.EPSILON) * 100) / 100;
+      const rounded = roundToTwoDecimals(result);
       return {
         isValid: true,
         value: rounded,

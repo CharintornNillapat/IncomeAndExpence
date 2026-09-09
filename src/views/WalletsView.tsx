@@ -18,6 +18,7 @@ import { useFinance } from '../context/FinanceContext';
 import { Wallet, WalletType } from '../types';
 import { InlineMathInput } from '../components/InlineMathInput';
 import { AnimatedCounter } from '../components/AnimatedCounter';
+import { APP_CURRENCY, APP_CURRENCY_SYMBOL } from '../utils/currency';
 
 export const WalletsView: React.FC = () => {
   const { wallets, totalNetWorth, addWallet, deleteWallet, addTransaction } = useFinance();
@@ -28,20 +29,24 @@ export const WalletsView: React.FC = () => {
   // Add Wallet Form State
   const [walletName, setWalletName] = useState<string>('');
   const [walletType, setWalletType] = useState<WalletType>('BANK_ACCOUNT');
-  const [currency, setCurrency] = useState<string>('USD');
   const [initialBalance, setInitialBalance] = useState<number>(0);
   const [walletColor, setWalletColor] = useState<string>('#0284c7');
 
-  // Transfer Form State
-  const [sourceWalletId, setSourceWalletId] = useState<string>(wallets[0]?.id || '');
-  const [destWalletId, setDestWalletId] = useState<string>(wallets[1]?.id || '');
+  const activeWallets = wallets.filter((w) => !w.isDeleted);
+
+  // Transfer Form State. Seeded from the active list so a soft-deleted wallet can
+  // never be preselected as the source.
+  const [sourceWalletId, setSourceWalletId] = useState<string>(activeWallets[0]?.id || '');
+  const [destWalletId, setDestWalletId] = useState<string>(activeWallets[1]?.id || '');
   const [transferAmount, setTransferAmount] = useState<number | null>(null);
   const [transferRaw, setTransferRaw] = useState<string>('');
   const [transferValid, setTransferValid] = useState<boolean>(false);
   const [transferNote, setTransferNote] = useState<string>('Funds transfer');
   const [transferError, setTransferError] = useState<string | null>(null);
-
-  const activeWallets = wallets.filter((w) => !w.isDeleted);
+  const [isTransferring, setIsTransferring] = useState<boolean>(false);
+  // One key per armed form. Retrying after a failure reuses it so the retry is
+  // deduplicated rather than double-spending; it is regenerated only on success.
+  const [transferKey, setTransferKey] = useState<string>(() => crypto.randomUUID());
 
   const getWalletIcon = (type: WalletType) => {
     switch (type) {
@@ -61,7 +66,7 @@ export const WalletsView: React.FC = () => {
       {
         name: walletName.trim(),
         type: walletType,
-        currency: currency.toUpperCase(),
+        currency: APP_CURRENCY,
         color: walletColor,
         icon: walletType.toLowerCase(),
       },
@@ -75,30 +80,39 @@ export const WalletsView: React.FC = () => {
 
   const handleExecuteTransfer = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isTransferring) return;
     if (!transferValid || transferAmount === null || !sourceWalletId || !destWalletId || sourceWalletId === destWalletId) {
       return;
     }
 
     setTransferError(null);
+    setIsTransferring(true);
 
-    const res = await addTransaction({
-      amount: transferAmount,
-      rawInput: transferRaw,
-      description: transferNote || 'Transfer between wallets',
-      walletId: sourceWalletId,
-      destinationWalletId: destWalletId,
-      type: 'TRANSFER',
-      transactionDate: new Date().toISOString().slice(0, 10),
-    });
+    try {
+      const res = await addTransaction({
+        amount: transferAmount,
+        rawInput: transferRaw,
+        description: transferNote || 'Transfer between wallets',
+        walletId: sourceWalletId,
+        destinationWalletId: destWalletId,
+        type: 'TRANSFER',
+        transactionDate: new Date().toISOString().slice(0, 10),
+        idempotencyKey: transferKey,
+      });
 
-    if (res && !res.success) {
-      setTransferError(res.error || 'Failed to complete transfer');
-      return;
+      if (res && !res.success) {
+        setTransferError(res.error || 'Failed to complete transfer');
+        return;
+      }
+
+      setIsTransferOpen(false);
+      setTransferAmount(null);
+      setTransferRaw('');
+      setTransferValid(false);
+      setTransferKey(crypto.randomUUID());
+    } finally {
+      setIsTransferring(false);
     }
-
-    setIsTransferOpen(false);
-    setTransferAmount(null);
-    setTransferRaw('');
   };
 
   return (
@@ -184,11 +198,11 @@ export const WalletsView: React.FC = () => {
                     <div className="text-2xl font-bold font-mono text-stone-900 dark:text-white">
                       <AnimatedCounter
                         value={wallet.balance}
-                        currencyPrefix={wallet.currency === 'THB' ? '฿' : wallet.currency === 'EUR' ? '€' : '$'}
+                        currencyPrefix={APP_CURRENCY_SYMBOL}
                         duration={0.8}
                       />
                     </div>
-                    <span className="text-xs font-semibold text-stone-500 dark:text-stone-400 font-mono">{wallet.currency}</span>
+                    <span className="text-xs font-semibold text-stone-500 dark:text-stone-400 font-mono">{APP_CURRENCY}</span>
                   </div>
                 </div>
               </div>
@@ -281,24 +295,18 @@ export const WalletsView: React.FC = () => {
                     <label className="text-xs font-semibold uppercase tracking-wider text-stone-600 dark:text-stone-300 block mb-1">
                       Currency
                     </label>
-                    <select
+                    <div
                       id="new-wallet-currency"
-                      value={currency}
-                      onChange={(e) => setCurrency(e.target.value)}
-                      className="w-full text-xs rounded-xl border border-stone-200 dark:border-stone-700 px-3 py-2.5 bg-stone-50 dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-none focus:border-stone-800 dark:focus:border-stone-400 focus:ring-2 focus:ring-stone-200 dark:focus:ring-stone-700 font-mono transition-colors"
+                      className="w-full text-xs rounded-xl border border-stone-200 dark:border-stone-700 px-3 py-2.5 bg-stone-100 dark:bg-stone-800 text-stone-500 dark:text-stone-400 font-mono"
                     >
-                      <option value="USD" className="dark:bg-stone-800 dark:text-stone-100">USD ($)</option>
-                      <option value="EUR" className="dark:bg-stone-800 dark:text-stone-100">EUR (€)</option>
-                      <option value="THB" className="dark:bg-stone-800 dark:text-stone-100">THB (฿)</option>
-                      <option value="GBP" className="dark:bg-stone-800 dark:text-stone-100">GBP (£)</option>
-                      <option value="JPY" className="dark:bg-stone-800 dark:text-stone-100">JPY (¥)</option>
-                    </select>
+                      {APP_CURRENCY} ({APP_CURRENCY_SYMBOL})
+                    </div>
                   </div>
                 </div>
 
                 <div>
                   <label className="text-xs font-semibold uppercase tracking-wider text-stone-600 dark:text-stone-300 block mb-1">
-                    Starting Balance ($)
+                    Starting Balance (฿)
                   </label>
                   <input
                     id="new-wallet-init-balance"
@@ -398,7 +406,7 @@ export const WalletsView: React.FC = () => {
                     >
                       {activeWallets.map((w) => (
                         <option key={w.id} value={w.id} className="dark:bg-stone-800 dark:text-stone-100">
-                          {w.name} (${w.balance.toFixed(2)})
+                          {w.name} (฿{w.balance.toFixed(2)})
                         </option>
                       ))}
                     </select>
@@ -418,7 +426,7 @@ export const WalletsView: React.FC = () => {
                         .filter((w) => w.id !== sourceWalletId)
                         .map((w) => (
                           <option key={w.id} value={w.id} className="dark:bg-stone-800 dark:text-stone-100">
-                            {w.name} (${w.balance.toFixed(2)})
+                            {w.name} (฿{w.balance.toFixed(2)})
                           </option>
                         ))}
                     </select>
@@ -427,10 +435,12 @@ export const WalletsView: React.FC = () => {
 
                 {/* Inline math input for transfer amount */}
                 <InlineMathInput
+                  key={transferKey}
                   id="transfer-amount-math"
-                  label="Transfer Amount ($)"
+                  label="Transfer Amount (฿)"
                   placeholder="e.g. 500 or 1200/2"
                   required
+                  disabled={isTransferring}
                   onAmountEvaluated={(val, raw, valid) => {
                     setTransferAmount(val);
                     setTransferRaw(raw);
@@ -464,15 +474,19 @@ export const WalletsView: React.FC = () => {
                     whileTap={{ scale: 0.96 }}
                     id="execute-transfer-btn"
                     type="submit"
-                    disabled={!transferValid || transferAmount === null || sourceWalletId === destWalletId}
+                    disabled={isTransferring || !transferValid || transferAmount === null || sourceWalletId === destWalletId}
                     className={`w-full py-2.5 sm:py-3 rounded-xl font-semibold text-xs transition-all flex items-center justify-center gap-2 cursor-pointer ${
-                      transferValid && transferAmount !== null && sourceWalletId !== destWalletId
+                      !isTransferring && transferValid && transferAmount !== null && sourceWalletId !== destWalletId
                         ? 'bg-stone-900 hover:bg-stone-800 dark:bg-stone-100 dark:hover:bg-white text-white dark:text-stone-900 shadow-xs'
                         : 'bg-stone-200 dark:bg-stone-800 text-stone-400 dark:text-stone-600 cursor-not-allowed'
                     }`}
                   >
                     <ArrowLeftRight className="w-4 h-4" />
-                    <span>Transfer ${transferAmount !== null ? transferAmount.toFixed(2) : '0.00'}</span>
+                    <span>
+                      {isTransferring
+                        ? 'Transferring...'
+                        : `Transfer ฿${transferAmount !== null ? transferAmount.toFixed(2) : '0.00'}`}
+                    </span>
                   </motion.button>
                 </div>
               </form>

@@ -1,5 +1,5 @@
-import React, { useState, useMemo, useCallback } from 'react';
-import { motion } from 'framer-motion';
+﻿import React, { useState, useMemo, useCallback } from 'react';
+import { motion, Variants } from 'framer-motion';
 import { useFinance } from '../context/FinanceContext';
 import { TransactionForm } from '../components/TransactionForm';
 import { WalletPopupModal, WalletModalTab } from '../components/WalletPopupModal';
@@ -9,12 +9,12 @@ import { CashflowMetricsCards } from '../components/dashboard/CashflowMetricsCar
 import { CategoryExpenseDistribution } from '../components/dashboard/CategoryExpenseDistribution';
 import { DebtPayoffOverview } from '../components/dashboard/DebtPayoffOverview';
 import { RecentTransactionsTable } from '../components/dashboard/RecentTransactionsTable';
-import { getWalletsCurrencyBreakdown } from '../utils/currency';
+import { APP_CURRENCY_SYMBOL } from '../utils/currency';
 
 export type TimeFilter = 'DAY' | 'WEEK' | 'MONTH' | 'ALL';
 
 // Stagger animation container & item variants
-const containerVariants = {
+const containerVariants: Variants = {
   hidden: { opacity: 0 },
   visible: {
     opacity: 1,
@@ -25,7 +25,7 @@ const containerVariants = {
   },
 };
 
-const itemVariants = {
+const itemVariants: Variants = {
   hidden: { opacity: 0, y: 16 },
   visible: {
     opacity: 1,
@@ -70,10 +70,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
   }, [openWalletModal]);
 
   const activeWallets = useMemo(() => wallets.filter((w) => !w.isDeleted), [wallets]);
-
-  const currencyBreakdown = useMemo(() => {
-    return getWalletsCurrencyBreakdown(activeWallets);
-  }, [activeWallets]);
 
   // Filter transactions based on time breakdown (Memoized)
   const filteredTransactions = useMemo(() => {
@@ -187,6 +183,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
     debtId?: string;
     type: any;
     date: string;
+    idempotencyKey?: string;
   }) => {
     return addTransaction({
       ...data,
@@ -204,7 +201,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
       {/* 1. Total Wealth & Complete Net Worth Hero Section */}
       <motion.section variants={itemVariants} aria-label="Total Wealth & Net Worth">
         <TotalWealthHero
-          currencyBreakdown={currencyBreakdown}
+          totalNetWorth={totalNetWorth}
           activeWalletCount={activeWallets.length}
           onOpenTransfer={handleOpenTransfer}
           onOpenAddWallet={handleOpenAddWallet}
@@ -257,7 +254,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
           incomeTotal={incomeTotal}
           expenseTotal={expenseTotal}
           netBalance={netBalance}
-          primarySymbol={currencyBreakdown.primarySymbol}
+          primarySymbol={APP_CURRENCY_SYMBOL}
         />
       </motion.section>
 
@@ -277,7 +274,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
           <CategoryExpenseDistribution
             categoryBreakdown={categoryBreakdown}
             totalExpenseAmount={expenseTotal + debtRepaymentTotal}
-            primarySymbol={currencyBreakdown.primarySymbol}
+            primarySymbol={APP_CURRENCY_SYMBOL}
           />
 
           <DebtPayoffOverview
@@ -285,7 +282,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
             debtProgressPercent={debtSummary.progressPercent}
             remainingDebtTarget={debtSummary.remainingTarget}
             paidDebtTarget={debtSummary.paidTarget}
-            primarySymbol={currencyBreakdown.primarySymbol}
+            primarySymbol={APP_CURRENCY_SYMBOL}
           />
         </div>
       </motion.div>

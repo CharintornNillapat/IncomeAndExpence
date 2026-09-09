@@ -6,6 +6,7 @@ import { Wallet, Category, TransactionType } from '../types';
 import { useFinance } from '../context/FinanceContext';
 import { matchSmartDescription } from '../utils/smartMatcher';
 import { safeEvaluateMath } from '../utils/mathEvaluator';
+import { APP_CURRENCY_SYMBOL } from '../utils/currency';
 
 interface TransactionFormProps {
   wallets: Wallet[];
@@ -20,6 +21,7 @@ interface TransactionFormProps {
     debtId?: string;
     type: TransactionType;
     date: string;
+    idempotencyKey?: string;
   }) => Promise<{ success: boolean; error?: string } | void> | { success: boolean; error?: string } | void;
 }
 
@@ -52,10 +54,28 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
     }
   }, [wallets, walletId]);
 
+  // Keep destinationWalletId valid: it must resolve to a real wallet and must never
+  // collide with the source, otherwise the form looks fine but the transfer is
+  // rejected as "requires a distinct destination wallet".
+  React.useEffect(() => {
+    const candidates = wallets.filter((w) => w.id !== walletId);
+    if (candidates.length === 0) {
+      if (destinationWalletId) setDestinationWalletId('');
+      return;
+    }
+    if (!destinationWalletId || !candidates.some((w) => w.id === destinationWalletId)) {
+      setDestinationWalletId(candidates[0].id);
+    }
+  }, [wallets, walletId, destinationWalletId]);
+
   const [autoMatchedCategory, setAutoMatchedCategory] = useState<string | null>(null);
   const [showManualOverrides, setShowManualOverrides] = useState<boolean>(false);
   const [isSubmitted, setIsSubmitted] = useState<boolean>(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  // One key per armed form. Retrying after a failure reuses it so the retry is
+  // deduplicated rather than double-spending; it is regenerated only on success.
+  const [submitKey, setSubmitKey] = useState<string>(() => crypto.randomUUID());
 
   const handleAmountEvaluated = React.useCallback((val: number | null, raw: string, valid: boolean) => {
     setAmount(val);
@@ -81,6 +101,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
     let effectiveAmount = amount;
     let effectiveRaw = rawAmountInput;
     let effectiveValid = isAmountValid;
@@ -115,29 +136,37 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
     const debtCategory = categories.find((c) => c.type === 'DEBT_REPAYMENT' || c.name.toLowerCase().includes('debt'));
 
     setSubmitError(null);
-    const res = await onSubmitTransaction({
-      amount: effectiveAmount,
-      rawInput: effectiveRaw,
-      description: finalDescription,
-      walletId: effectiveWalletId,
-      destinationWalletId: type === 'TRANSFER' ? destinationWalletId : undefined,
-      categoryId: type === 'EXPENSE' || type === 'INCOME' || type === 'ADJUSTMENT' ? categoryId : type === 'DEBT_REPAYMENT' ? debtCategory?.id : undefined,
-      debtId: type === 'DEBT_REPAYMENT' ? debtId : undefined,
-      type,
-      date,
-    });
+    setIsSubmitting(true);
 
-    if (res && typeof res === 'object' && 'success' in res && !res.success) {
-      setSubmitError(res.error || 'Failed to save transaction');
-      return;
+    try {
+      const res = await onSubmitTransaction({
+        amount: effectiveAmount,
+        rawInput: effectiveRaw,
+        description: finalDescription,
+        walletId: effectiveWalletId,
+        destinationWalletId: type === 'TRANSFER' ? destinationWalletId : undefined,
+        categoryId: type === 'EXPENSE' || type === 'INCOME' || type === 'ADJUSTMENT' ? categoryId : type === 'DEBT_REPAYMENT' ? debtCategory?.id : undefined,
+        debtId: type === 'DEBT_REPAYMENT' ? debtId : undefined,
+        type,
+        date,
+        idempotencyKey: submitKey,
+      });
+
+      if (res && typeof res === 'object' && 'success' in res && !res.success) {
+        setSubmitError(res.error || 'Failed to save transaction');
+        return;
+      }
+
+      // Reset form fields
+      setDescription('');
+      setAutoMatchedCategory(null);
+      setShowManualOverrides(false);
+      setSubmitKey(crypto.randomUUID());
+      setIsSubmitted(true);
+      setTimeout(() => setIsSubmitted(false), 2500);
+    } finally {
+      setIsSubmitting(false);
     }
-
-    // Reset form fields
-    setDescription('');
-    setAutoMatchedCategory(null);
-    setShowManualOverrides(false);
-    setIsSubmitted(true);
-    setTimeout(() => setIsSubmitted(false), 2500);
   };
 
   const selectedWallet = wallets.find((w) => w.id === walletId);
@@ -188,7 +217,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
         id={`${formId}-math-input`}
         label="Transaction Amount"
         placeholder="e.g. 500+500 or 1500*0.7"
-        currencyPrefix={selectedWallet?.currency === 'EUR' ? '€' : selectedWallet?.currency === 'THB' ? '฿' : '$'}
+        currencyPrefix={APP_CURRENCY_SYMBOL}
         required
         onAmountEvaluated={handleAmountEvaluated}
       />
@@ -255,7 +284,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
               >
                 {wallets.map((w) => (
                   <option key={w.id} value={w.id} className="dark:bg-stone-800 dark:text-stone-100">
-                    {w.name} ({w.currency} {w.balance.toFixed(2)})
+                    {w.name} (฿{w.balance.toFixed(2)})
                   </option>
                 ))}
               </select>
@@ -277,7 +306,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
                     .filter((w) => w.id !== walletId)
                     .map((w) => (
                       <option key={w.id} value={w.id} className="dark:bg-stone-800 dark:text-stone-100">
-                        {w.name} ({w.currency} {w.balance.toFixed(2)})
+                        {w.name} (฿{w.balance.toFixed(2)})
                       </option>
                     ))}
                 </select>
@@ -295,7 +324,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
                 >
                   {debts.map((d) => (
                     <option key={d.id} value={d.id} className="dark:bg-stone-800 dark:text-stone-100">
-                      {d.name} (${d.remainingAmount.toFixed(2)} remaining)
+                      {d.name} (฿{d.remainingAmount.toFixed(2)} remaining)
                     </option>
                   ))}
                 </select>
@@ -345,20 +374,24 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
       {/* 5. Submit Button */}
       <div className="pt-2">
         <motion.button
-          whileTap={isAmountValid && amount !== null ? { scale: 0.96 } : {}}
+          whileTap={!isSubmitting && isAmountValid && amount !== null ? { scale: 0.96 } : {}}
           id={`${formId}-submit-btn`}
           type="submit"
-          disabled={!isAmountValid || amount === null}
+          disabled={isSubmitting || !isAmountValid || amount === null}
           className={`w-full min-h-[48px] py-3 px-4 rounded-xl font-semibold text-sm transition-all flex items-center justify-center gap-2 cursor-pointer ${
-            isAmountValid && amount !== null
+            !isSubmitting && isAmountValid && amount !== null
               ? 'bg-stone-900 hover:bg-stone-800 dark:bg-stone-100 dark:hover:bg-white text-white dark:text-stone-900 shadow-sm'
               : 'bg-stone-200 dark:bg-stone-800 text-stone-400 dark:text-stone-600 cursor-not-allowed'
           }`}
         >
-          <span>Record {type === 'TRANSFER' ? 'Transfer' : type === 'DEBT_REPAYMENT' ? 'Debt Payment' : 'Transaction'}</span>
+          <span>
+            {isSubmitting
+              ? 'Saving...'
+              : `Record ${type === 'TRANSFER' ? 'Transfer' : type === 'DEBT_REPAYMENT' ? 'Debt Payment' : 'Transaction'}`}
+          </span>
           {amount !== null && isAmountValid && (
             <span className="font-mono text-xs bg-stone-800 dark:bg-stone-200 px-2 py-0.5 rounded text-stone-200 dark:text-stone-800">
-              ${amount.toFixed(2)}
+              ฿{amount.toFixed(2)}
             </span>
           )}
           <ArrowRight className="w-4 h-4" />

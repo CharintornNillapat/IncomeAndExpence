@@ -115,7 +115,7 @@ export const KeywordRulesView: React.FC = () => {
               <div className="flex justify-between">
                 <span className="text-stone-500 dark:text-stone-400">Extracted Amount:</span>
                 <span className="font-mono font-bold text-stone-900 dark:text-stone-100">
-                  {matchResult.extractedAmount ? `$${matchResult.extractedAmount.toFixed(2)}` : 'None detected'}
+                  {matchResult.extractedAmount ? `฿${matchResult.extractedAmount.toFixed(2)}` : 'None detected'}
                 </span>
               </div>
               <div className="flex justify-between">

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useId } from 'react';
 import { Calculator, Check, AlertCircle, Sparkles } from 'lucide-react';
 import { safeEvaluateMath } from '../utils/mathEvaluator';
+import { APP_CURRENCY_SYMBOL } from '../utils/currency';
 
 export interface InlineMathInputProps {
   id?: string;
@@ -21,7 +22,7 @@ export const InlineMathInput: React.FC<InlineMathInputProps> = ({
   name = 'amount_expression',
   label = 'Amount / Math Expression',
   placeholder = 'e.g. 500+500 or 1200*0.8',
-  currencyPrefix = '$',
+  currencyPrefix = APP_CURRENCY_SYMBOL,
   defaultValue = '',
   disabled = false,
   required = false,

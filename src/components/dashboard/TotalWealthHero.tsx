@@ -2,10 +2,10 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { ArrowLeftRight, Plus, ChevronRight } from 'lucide-react';
 import { AnimatedCounter } from '../AnimatedCounter';
-import { WalletsCurrencyBreakdown } from '../../utils/currency';
+import { APP_CURRENCY, APP_CURRENCY_SYMBOL } from '../../utils/currency';
 
 interface TotalWealthHeroProps {
-  currencyBreakdown: WalletsCurrencyBreakdown;
+  totalNetWorth: number;
   activeWalletCount: number;
   onOpenTransfer: () => void;
   onOpenAddWallet: () => void;
@@ -13,7 +13,7 @@ interface TotalWealthHeroProps {
 }
 
 export const TotalWealthHero: React.FC<TotalWealthHeroProps> = React.memo(({
-  currencyBreakdown,
+  totalNetWorth,
   activeWalletCount,
   onOpenTransfer,
   onOpenAddWallet,
@@ -41,31 +41,15 @@ export const TotalWealthHero: React.FC<TotalWealthHeroProps> = React.memo(({
             <div className="flex items-baseline gap-2 sm:gap-3 flex-wrap">
               <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black font-mono tracking-tight text-white">
                 <AnimatedCounter
-                  value={currencyBreakdown.primaryTotal}
-                  currencyPrefix={currencyBreakdown.primarySymbol}
+                  value={totalNetWorth}
+                  currencyPrefix={APP_CURRENCY_SYMBOL}
                   duration={1.4}
                 />
               </h1>
               <span className="text-xs sm:text-sm md:text-base font-semibold font-mono text-emerald-400">
-                {currencyBreakdown.primaryCurrency} Total
+                {APP_CURRENCY} Total
               </span>
             </div>
-
-            {!currencyBreakdown.isSingleCurrency && (
-              <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap pt-1">
-                <span className="text-[11px] text-stone-400 font-medium hidden sm:inline">Breakdown:</span>
-                {currencyBreakdown.groups.map((group) => (
-                  <span
-                    key={group.currency}
-                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-stone-800/90 dark:bg-stone-800 border border-stone-700/80 text-xs font-mono font-bold text-stone-200"
-                  >
-                    <span className="text-emerald-400">{group.symbol}</span>
-                    <AnimatedCounter value={group.total} duration={1.2} />
-                    <span className="text-[10px] text-stone-400 font-sans">{group.currency} ({group.count})</span>
-                  </span>
-                ))}
-              </div>
-            )}
           </div>
 
           <p className="hidden sm:block text-xs sm:text-sm text-stone-400 max-w-xl">

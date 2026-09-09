@@ -1,9 +1,9 @@
 import React from 'react';
-import { motion } from 'framer-motion';
+import { motion, Variants } from 'framer-motion';
 import { Wallet as WalletIcon, ChevronRight, ArrowLeftRight, Landmark, Banknote, PiggyBank, CreditCard, Coins } from 'lucide-react';
 import { Wallet, WalletType } from '../../types';
 import { AnimatedCounter } from '../AnimatedCounter';
-import { getCurrencySymbol } from '../../utils/currency';
+import { APP_CURRENCY_SYMBOL } from '../../utils/currency';
 
 interface WalletAccountsGridProps {
   wallets: Wallet[];
@@ -21,7 +21,7 @@ const getWalletIcon = (type: WalletType) => {
   }
 };
 
-const itemVariants = {
+const itemVariants: Variants = {
   hidden: { opacity: 0, y: 16 },
   visible: {
     opacity: 1,
@@ -116,7 +116,7 @@ export const WalletAccountsGrid: React.FC<WalletAccountsGridProps> = React.memo(
                     }`}>
                       <AnimatedCounter
                         value={wallet.balance}
-                        currencyPrefix={getCurrencySymbol(wallet.currency)}
+                        currencyPrefix={APP_CURRENCY_SYMBOL}
                         duration={1.2}
                       />
                     </span>

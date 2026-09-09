@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useMemo, useRef, ReactNode } from 'react';
+﻿import React, { createContext, useContext, useState, useEffect, useMemo, useCallback, useRef, ReactNode } from 'react';
 import {
   User,
   SessionDevice,
@@ -13,8 +13,9 @@ import {
 } from '../types';
 import { supabase } from '../lib/supabase';
 import { TransactionSchema } from '../utils/zodSchemas';
+import { APP_CURRENCY } from '../utils/currency';
 
-interface FinanceContextType {
+export interface FinanceContextType {
   // Auth & Security
   currentUser: User;
   isAuthenticated: boolean;
@@ -34,7 +35,8 @@ interface FinanceContextType {
   // Wallets
   wallets: Wallet[];
   totalNetWorth: number;
-  addWallet: (wallet: Omit<Wallet, 'id' | 'userId' | 'createdAt' | 'updatedAt' | 'isArchived' | 'isDeleted'>, initialBalance: number) => Promise<void>;
+  // `balance` is omitted: the opening balance is supplied via `initialBalance`.
+  addWallet: (wallet: Omit<Wallet, 'id' | 'userId' | 'createdAt' | 'updatedAt' | 'isArchived' | 'isDeleted' | 'balance'>, initialBalance: number) => Promise<void>;
   updateWallet: (id: string, updates: Partial<Wallet>) => Promise<void>;
   deleteWallet: (id: string) => Promise<void>;
 
@@ -60,7 +62,7 @@ interface FinanceContextType {
   }) => Promise<{ success: boolean; error?: string; txId?: string }>;
   softDeleteTransaction: (id: string) => Promise<void>;
   restoreTransaction: (id: string) => Promise<void>;
-  commitBulkImport: (validRows: ImportRowValidation[]) => Promise<{ insertedCount: number; totalAmount: number }>;
+  commitBulkImport: (validRows: ImportRowValidation[]) => Promise<{ insertedCount: number; totalAmount: number; skippedCount: number }>;
 
   // Debts
   debts: Debt[];
@@ -93,6 +95,62 @@ function safeGetLocalStorage<T>(key: string, fallback: T): T {
     console.warn(`[SafeStorage] Fallback for ${key}`, err);
     return fallback;
   }
+}
+
+// Money helper: all balances are Decimal(15,2), so every arithmetic result is
+// normalised back to whole cents to avoid float drift accumulating in the ledger.
+function roundToCents(value: number): number {
+  return Math.round(value * 100) / 100;
+}
+
+// Collision-resistant idempotency key. `crypto.randomUUID` is used where available
+// (all PWA/secure contexts); the fallback still mixes two independent random draws
+// so that two submissions inside the same millisecond cannot produce the same key.
+function generateIdempotencyKey(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return `idemp-${crypto.randomUUID()}`;
+  }
+  const rand = () => Math.random().toString(36).slice(2, 11);
+  return `idemp-${Date.now()}-${rand()}-${rand()}`;
+}
+
+// Maps a `transactions` row from Supabase (snake_case) to the domain type.
+function mapTransactionRow(row: any): Transaction {
+  return {
+    id: row.id,
+    userId: row.user_id,
+    walletId: row.wallet_id,
+    destinationWalletId: row.destination_wallet_id || undefined,
+    categoryId: row.category_id || undefined,
+    debtId: row.debt_id || undefined,
+    amount: parseFloat(row.amount) || 0,
+    type: row.type,
+    description: row.description,
+    rawInput: row.raw_input || undefined,
+    transactionDate: row.transaction_date,
+    idempotencyKey: row.idempotency_key || undefined,
+    isDeleted: row.is_deleted || false,
+    createdBy: row.created_by || row.user_id,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+// Shape returned by the `transfer_funds` RPC.
+interface TransferFundsResult {
+  reused: boolean;
+  transaction: any;
+  source_balance: number | string;
+  dest_balance: number | string;
+}
+
+// True only when the RPC itself is absent, i.e. the migration has not been
+// applied yet. Deliberately narrow: any other database error must surface and
+// trigger a rollback rather than silently falling back to the legacy path.
+function isMissingRpcError(err: { code?: string; message?: string } | null): boolean {
+  if (!err) return false;
+  if (err.code === '42883' || err.code === 'PGRST202') return true;
+  return (err.message || '').toLowerCase().includes('could not find the function');
 }
 
 // Device detection helper for Active Authorized Sessions
@@ -190,7 +248,7 @@ const DEFAULT_STARTER_WALLETS: Wallet[] = [
     userId: 'usr-guest-01',
     name: 'Main Checking',
     type: 'BANK_ACCOUNT',
-    currency: 'USD',
+    currency: APP_CURRENCY,
     balance: 2500.0,
     color: '#0284c7',
     icon: 'landmark',
@@ -204,7 +262,7 @@ const DEFAULT_STARTER_WALLETS: Wallet[] = [
     userId: 'usr-guest-01',
     name: 'Cash Wallet',
     type: 'CASH',
-    currency: 'USD',
+    currency: APP_CURRENCY,
     balance: 150.0,
     color: '#16a34a',
     icon: 'banknote',
@@ -218,7 +276,7 @@ const DEFAULT_STARTER_WALLETS: Wallet[] = [
     userId: 'usr-guest-01',
     name: 'Savings Reserve',
     type: 'SAVINGS',
-    currency: 'USD',
+    currency: APP_CURRENCY,
     balance: 5000.0,
     color: '#7c3aed',
     icon: 'piggy-bank',
@@ -312,8 +370,72 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     return sessions.find((s) => s.isCurrent && !s.revokedAt) || null;
   }, [sessions]);
 
+  // `loadSupabaseData` and `seedInitialUserAccount` call each other. Routing the
+  // back-edge through a ref breaks the dependency cycle so both can be memoised
+  // with empty/stable deps instead of being rebuilt on every render.
+  const loadSupabaseDataRef = useRef<((userId: string) => Promise<void>) | null>(null);
+
+  // Seed initial starter account on Supabase if new user
+  const seedInitialUserAccount = useCallback(async (userId: string) => {
+    try {
+      // 1. Create starter wallets
+      await supabase
+        .from('wallets')
+        .insert([
+          {
+            user_id: userId,
+            name: 'Checking Account',
+            type: 'BANK_ACCOUNT',
+            currency: APP_CURRENCY,
+            balance: 2500.0,
+            color: '#0284c7',
+            icon: 'landmark',
+          },
+          {
+            user_id: userId,
+            name: 'Cash Wallet',
+            type: 'CASH',
+            currency: APP_CURRENCY,
+            balance: 150.0,
+            color: '#16a34a',
+            icon: 'banknote',
+          },
+          {
+            user_id: userId,
+            name: 'Savings Reserve',
+            type: 'SAVINGS',
+            currency: APP_CURRENCY,
+            balance: 8000.0,
+            color: '#7c3aed',
+            icon: 'piggy-bank',
+          },
+        ])
+        .select();
+
+      // 2. Insert standard categories for user
+      await supabase
+        .from('categories')
+        .insert(
+          DEFAULT_SYSTEM_CATEGORIES.map((c) => ({
+            user_id: userId,
+            name: c.name,
+            type: c.type,
+            icon: c.icon,
+            color: c.color,
+            is_system: true,
+          }))
+        )
+        .select();
+
+      // Refresh data
+      await loadSupabaseDataRef.current?.(userId);
+    } catch (err) {
+      console.error('[Seed Error]', err);
+    }
+  }, []);
+
   // Fetch all user data from Supabase
-  const loadSupabaseData = async (userId: string) => {
+  const loadSupabaseData = useCallback(async (userId: string) => {
     setIsSyncing(true);
     try {
       // 1. Wallets
@@ -328,7 +450,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
           userId: row.user_id,
           name: row.name,
           type: row.type,
-          currency: row.currency || 'USD',
+          currency: APP_CURRENCY,
           balance: parseFloat(row.balance) || 0,
           color: row.color || 'stone',
           icon: row.icon || 'wallet',
@@ -466,66 +588,12 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     } finally {
       setIsSyncing(false);
     }
-  };
+  }, [seedInitialUserAccount]);
 
-  // Seed initial starter account on Supabase if new user
-  const seedInitialUserAccount = async (userId: string) => {
-    try {
-      // 1. Create starter wallets
-      const { data: newWallets } = await supabase
-        .from('wallets')
-        .insert([
-          {
-            user_id: userId,
-            name: 'Checking Account',
-            type: 'BANK_ACCOUNT',
-            currency: 'USD',
-            balance: 2500.0,
-            color: '#0284c7',
-            icon: 'landmark',
-          },
-          {
-            user_id: userId,
-            name: 'Cash Wallet',
-            type: 'CASH',
-            currency: 'USD',
-            balance: 150.0,
-            color: '#16a34a',
-            icon: 'banknote',
-          },
-          {
-            user_id: userId,
-            name: 'Savings Reserve',
-            type: 'SAVINGS',
-            currency: 'USD',
-            balance: 8000.0,
-            color: '#7c3aed',
-            icon: 'piggy-bank',
-          },
-        ])
-        .select();
-
-      // 2. Insert standard categories for user
-      const { data: newCategories } = await supabase
-        .from('categories')
-        .insert(
-          DEFAULT_SYSTEM_CATEGORIES.map((c) => ({
-            user_id: userId,
-            name: c.name,
-            type: c.type,
-            icon: c.icon,
-            color: c.color,
-            is_system: true,
-          }))
-        )
-        .select();
-
-      // Refresh data
-      await loadSupabaseData(userId);
-    } catch (err) {
-      console.error('[Seed Error]', err);
-    }
-  };
+  // Keep the ref pointing at the current loader for `seedInitialUserAccount`.
+  useEffect(() => {
+    loadSupabaseDataRef.current = loadSupabaseData;
+  }, [loadSupabaseData]);
 
   // Listen to Supabase Auth state changes
   useEffect(() => {
@@ -572,7 +640,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     return () => {
       if (authSubscription) authSubscription.unsubscribe();
     };
-  }, []);
+  }, [loadSupabaseData]);
 
   // Real-time Subscriptions across all tables for Cross-Device Sync (PC <-> Phone)
   useEffect(() => {
@@ -620,39 +688,39 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [isAuthenticated, currentUser.id]);
+  }, [isAuthenticated, currentUser.id, loadSupabaseData]);
 
-  const refreshFromCloud = async () => {
+  const refreshFromCloud = useCallback(async () => {
     if (currentUser.id) {
       await loadSupabaseData(currentUser.id);
     }
-  };
+  }, [currentUser.id, loadSupabaseData]);
 
-  const signOut = async () => {
+  const signOut = useCallback(async () => {
     await supabase.auth.signOut();
     setIsAuthenticated(false);
     setCurrentUser(DEFAULT_USER);
-  };
+  }, []);
 
   // Sessions handling
-  const revokeSession = (sessionId: string) => {
+  const revokeSession = useCallback((sessionId: string) => {
     setSessions((prev) =>
       prev.map((s) => (s.id === sessionId ? { ...s, revokedAt: new Date().toISOString() } : s))
     );
-  };
+  }, []);
 
-  const revokeAllOtherSessions = () => {
+  const revokeAllOtherSessions = useCallback(() => {
     setSessions((prev) =>
       prev.map((s) => (!s.isCurrent ? { ...s, revokedAt: new Date().toISOString() } : s))
     );
-  };
+  }, []);
 
-  const triggerOtpChallenge = () => {
+  const triggerOtpChallenge = useCallback(() => {
     setActiveOtpCode('123456');
     setOtpPending(true);
-  };
+  }, []);
 
-  const simulateNewDeviceLogin = (email: string) => {
+  const simulateNewDeviceLogin = useCallback((email: string) => {
     const randomOtp = Math.floor(100000 + Math.random() * 900000).toString();
     setActiveOtpCode(randomOtp);
     setOtpPending(true);
@@ -660,21 +728,21 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       requiresOtp: true,
       message: `Unrecognized device detected. 6-digit OTP sent to ${email} (Demo Code: ${randomOtp})`,
     };
-  };
+  }, []);
 
-  const verifyOtp = (code: string) => {
+  const verifyOtp = useCallback((code: string) => {
     if (code.trim() === activeOtpCode || code.trim() === '123456') {
       setOtpPending(false);
       return true;
     }
     return false;
-  };
+  }, [activeOtpCode]);
 
   const verifyOtpCode = verifyOtp;
 
   // Wallets CRUD
-  const addWallet = async (
-    data: Omit<Wallet, 'id' | 'userId' | 'createdAt' | 'updatedAt' | 'isArchived' | 'isDeleted'>,
+  const addWallet = useCallback(async (
+    data: Omit<Wallet, 'id' | 'userId' | 'createdAt' | 'updatedAt' | 'isArchived' | 'isDeleted' | 'balance'>,
     initialBalance: number
   ) => {
     if (isAuthenticated) {
@@ -700,7 +768,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
           userId: inserted.user_id,
           name: inserted.name,
           type: inserted.type,
-          currency: inserted.currency,
+          currency: APP_CURRENCY,
           balance: parseFloat(inserted.balance) || 0,
           color: inserted.color,
           icon: inserted.icon,
@@ -740,9 +808,9 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       };
       setWallets((prev) => [...prev, newWallet]);
     }
-  };
+  }, [isAuthenticated, currentUser.id]);
 
-  const updateWallet = async (id: string, updates: Partial<Wallet>) => {
+  const updateWallet = useCallback(async (id: string, updates: Partial<Wallet>) => {
     // Optimistic update
     setWallets((prev) =>
       prev.map((w) => (w.id === id ? { ...w, ...updates, updatedAt: new Date().toISOString() } : w))
@@ -764,14 +832,14 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
         })
         .eq('id', id);
     }
-  };
+  }, [isAuthenticated]);
 
-  const deleteWallet = async (id: string) => {
+  const deleteWallet = useCallback(async (id: string) => {
     await updateWallet(id, { isDeleted: true });
-  };
+  }, [updateWallet]);
 
   // Keyword rules CRUD
-  const addKeywordRule = async (keyword: string, categoryId: string) => {
+  const addKeywordRule = useCallback(async (keyword: string, categoryId: string) => {
     const cleaned = keyword.trim().toLowerCase();
     if (isAuthenticated) {
       const { data, error } = await supabase
@@ -806,17 +874,17 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       };
       setKeywordRules((prev) => [newRule, ...prev]);
     }
-  };
+  }, [isAuthenticated, currentUser.id]);
 
-  const deleteKeywordRule = async (id: string) => {
+  const deleteKeywordRule = useCallback(async (id: string) => {
     setKeywordRules((prev) => prev.filter((r) => r.id !== id));
     if (isAuthenticated) {
       await supabase.from('keyword_rules').delete().eq('id', id);
     }
-  };
+  }, [isAuthenticated]);
 
   // Transactions CRUD
-  const addTransaction = async (data: {
+  const addTransaction = useCallback(async (data: {
     amount: number;
     rawInput?: string;
     description: string;
@@ -834,7 +902,27 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       return { success: false, error: errorMsg };
     }
 
-    const clientKey = data.idempotencyKey || `idemp-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+    // Resolve every participating wallet BEFORE mutating any state. Zod only proves
+    // the ids are well-formed and distinct; it cannot prove they still resolve to a
+    // live wallet. Without this, a transfer to a missing/soft-deleted destination
+    // debits the source and credits nobody.
+    const sourceWallet = wallets.find((w) => w.id === data.walletId && !w.isDeleted);
+    if (!sourceWallet) {
+      return { success: false, error: 'Source wallet not found or has been deleted' };
+    }
+
+    let destWallet: Wallet | undefined;
+    if (data.type === 'TRANSFER') {
+      if (!data.destinationWalletId || data.destinationWalletId === data.walletId) {
+        return { success: false, error: 'Transfer requires a distinct destination wallet' };
+      }
+      destWallet = wallets.find((w) => w.id === data.destinationWalletId && !w.isDeleted);
+      if (!destWallet) {
+        return { success: false, error: 'Destination wallet not found or has been deleted' };
+      }
+    }
+
+    const clientKey = data.idempotencyKey || generateIdempotencyKey();
 
     // P0-5 Idempotency Guard: prevent concurrent duplicate submissions
     if (inFlightIdempotencyKeys.current.has(clientKey)) {
@@ -849,30 +937,33 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
 
     inFlightIdempotencyKeys.current.add(clientKey);
 
-    // Snapshot state for rollback if network/database fails
+    // Snapshot state for rollback if network/database fails. `transactions` is
+    // included so a failed balance write cannot leave an orphan ledger row behind.
     const previousWallets = wallets;
     const previousDebts = debts;
+    const previousTransactions = transactions;
 
-    // Optimistic balance calculation
+    // Optimistic balance calculation, derived from the resolved wallets up front so
+    // the state updater below stays a pure mapping with no assignment side effects.
     let sourceNewBalance: number | null = null;
-    let destNewBalance: number | null = null;
+    if (data.type === 'EXPENSE' || data.type === 'DEBT_REPAYMENT' || data.type === 'TRANSFER') {
+      sourceNewBalance = roundToCents(sourceWallet.balance - data.amount);
+    } else if (data.type === 'INCOME' || data.type === 'ADJUSTMENT') {
+      sourceNewBalance = roundToCents(sourceWallet.balance + data.amount);
+    }
+
+    const destNewBalance: number | null =
+      data.type === 'TRANSFER' && destWallet
+        ? roundToCents(destWallet.balance + data.amount)
+        : null;
 
     setWallets((prev) =>
       prev.map((w) => {
-        if (w.id === data.walletId) {
-          let newBal = w.balance;
-          if (data.type === 'EXPENSE' || data.type === 'DEBT_REPAYMENT' || data.type === 'TRANSFER') {
-            newBal = Math.round((w.balance - data.amount) * 100) / 100;
-          } else if (data.type === 'INCOME' || data.type === 'ADJUSTMENT') {
-            newBal = Math.round((w.balance + data.amount) * 100) / 100;
-          }
-          sourceNewBalance = newBal;
-          return { ...w, balance: newBal };
+        if (w.id === sourceWallet.id && sourceNewBalance !== null) {
+          return { ...w, balance: sourceNewBalance };
         }
-        if (data.type === 'TRANSFER' && w.id === data.destinationWalletId) {
-          const newBal = Math.round((w.balance + data.amount) * 100) / 100;
-          destNewBalance = newBal;
-          return { ...w, balance: newBal };
+        if (destWallet && w.id === destWallet.id && destNewBalance !== null) {
+          return { ...w, balance: destNewBalance };
         }
         return w;
       })
@@ -896,8 +987,70 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       );
     }
 
+    // Track which remote writes committed so a mid-sequence failure can be undone.
+    let insertedTxId: string | null = null;
+    let sourceDebited = false;
+    let destCredited = false;
+
     try {
       if (isAuthenticated) {
+        // Transfers go through a single database transaction. The RPC locks both
+        // wallets, applies relative balance updates and inserts the ledger row
+        // atomically, so a partial failure cannot debit one side without
+        // crediting the other.
+        if (data.type === 'TRANSFER' && destWallet) {
+          const { data: rpcData, error: rpcError } = await supabase.rpc('transfer_funds', {
+            p_user_id: currentUser.id,
+            p_source_wallet_id: sourceWallet.id,
+            p_dest_wallet_id: destWallet.id,
+            p_amount: data.amount,
+            p_idempotency_key: clientKey,
+            p_notes: data.description,
+            p_date: data.transactionDate,
+            p_raw_input: data.rawInput || null,
+          });
+
+          if (rpcError) {
+            // Only an unapplied migration falls through to the legacy path;
+            // every other error is a real failure and must roll back.
+            if (!isMissingRpcError(rpcError)) throw rpcError;
+            console.warn('[transfer_funds RPC unavailable, using non-atomic fallback]', rpcError.message);
+          } else {
+            const payload = rpcData as TransferFundsResult | null;
+            // A successful call that returned something unexpected must not fall
+            // through to the legacy path - the RPC may already have moved the
+            // money, and writing again would double-spend.
+            if (!payload?.transaction) {
+              throw new Error('transfer_funds returned an unexpected response');
+            }
+
+            const mapped = mapTransactionRow(payload.transaction);
+            const nextSourceBalance = Number(payload.source_balance);
+            const nextDestBalance = Number(payload.dest_balance);
+
+            // Replace rather than prepend: on an idempotent replay the row may
+            // already be present locally.
+            setTransactions((prev) => [mapped, ...prev.filter((t) => t.id !== mapped.id)]);
+
+            // Reconcile against the balances the database actually committed.
+            // This also corrects the optimistic debit when `reused` is true and
+            // no new money actually moved.
+            setWallets((prev) =>
+              prev.map((w) => {
+                if (w.id === sourceWallet.id && Number.isFinite(nextSourceBalance)) {
+                  return { ...w, balance: nextSourceBalance };
+                }
+                if (w.id === destWallet.id && Number.isFinite(nextDestBalance)) {
+                  return { ...w, balance: nextDestBalance };
+                }
+                return w;
+              })
+            );
+
+            return { success: true, txId: mapped.id };
+          }
+        }
+
         const validCategoryId = data.categoryId && categories.some((c) => c.id === data.categoryId)
           ? data.categoryId
           : null;
@@ -927,35 +1080,21 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
         let createdTxId = clientKey;
         if (insertedTx) {
           createdTxId = insertedTx.id;
-          const mapped: Transaction = {
-            id: insertedTx.id,
-            userId: insertedTx.user_id,
-            walletId: insertedTx.wallet_id,
-            destinationWalletId: insertedTx.destination_wallet_id || undefined,
-            categoryId: insertedTx.category_id || undefined,
-            debtId: insertedTx.debt_id || undefined,
-            amount: parseFloat(insertedTx.amount),
-            type: insertedTx.type,
-            description: insertedTx.description,
-            rawInput: insertedTx.raw_input || undefined,
-            transactionDate: insertedTx.transaction_date,
-            idempotencyKey: insertedTx.idempotency_key,
-            isDeleted: false,
-            createdBy: insertedTx.created_by,
-            createdAt: insertedTx.created_at,
-            updatedAt: insertedTx.updated_at,
-          };
+          insertedTxId = insertedTx.id;
+          const mapped = mapTransactionRow(insertedTx);
           setTransactions((prev) => [mapped, ...prev]);
         }
 
         // Update wallet balances in Supabase and check errors
         if (sourceNewBalance !== null) {
-          const { error: wErr1 } = await supabase.from('wallets').update({ balance: sourceNewBalance }).eq('id', data.walletId);
+          const { error: wErr1 } = await supabase.from('wallets').update({ balance: sourceNewBalance }).eq('id', sourceWallet.id);
           if (wErr1) throw wErr1;
+          sourceDebited = true;
         }
-        if (destNewBalance !== null && data.destinationWalletId) {
-          const { error: wErr2 } = await supabase.from('wallets').update({ balance: destNewBalance }).eq('id', data.destinationWalletId);
+        if (destWallet && destNewBalance !== null) {
+          const { error: wErr2 } = await supabase.from('wallets').update({ balance: destNewBalance }).eq('id', destWallet.id);
           if (wErr2) throw wErr2;
+          destCredited = true;
         }
 
         // Update debt in Supabase and check errors
@@ -974,10 +1113,20 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
 
         return { success: true, txId: createdTxId };
       } else {
+        // Fields are mapped explicitly rather than spread, so caller-only keys
+        // (e.g. the form's `date`) never leak into the persisted ledger row.
         const newTx: Transaction = {
           id: `tx-${Date.now()}`,
           userId: currentUser.id,
-          ...data,
+          walletId: data.walletId,
+          destinationWalletId: data.destinationWalletId,
+          categoryId: data.categoryId,
+          debtId: data.debtId,
+          amount: data.amount,
+          type: data.type,
+          description: data.description,
+          rawInput: data.rawInput,
+          transactionDate: data.transactionDate,
           idempotencyKey: clientKey,
           isDeleted: false,
           createdBy: currentUser.id,
@@ -989,9 +1138,35 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       }
     } catch (err: unknown) {
       console.error('[Add Transaction Failed]', err);
-      // Rollback optimistic state changes
+
+      // Rollback optimistic local state. Wallets, debts and transactions are
+      // restored together so the ledger and the balances can never disagree.
       setWallets(previousWallets);
       setDebts(previousDebts);
+      setTransactions(previousTransactions);
+
+      // Compensate any remote writes that already committed. The three writes are
+      // not a single database transaction, so a failure part-way through leaves the
+      // source debited with nothing credited unless we explicitly undo it.
+      if (isAuthenticated) {
+        try {
+          if (destCredited && destWallet) {
+            await supabase.from('wallets').update({ balance: destWallet.balance }).eq('id', destWallet.id);
+          }
+          if (sourceDebited) {
+            await supabase.from('wallets').update({ balance: sourceWallet.balance }).eq('id', sourceWallet.id);
+          }
+          if (insertedTxId) {
+            // Soft delete only - financial records are never hard deleted.
+            await supabase
+              .from('transactions')
+              .update({ is_deleted: true, updated_at: new Date().toISOString() })
+              .eq('id', insertedTxId);
+          }
+        } catch (compErr) {
+          console.error('[Add Transaction Compensation Failed]', compErr);
+        }
+      }
 
       const postgrestErr = err as { message?: string; details?: string; hint?: string };
       const detailedError =
@@ -1003,9 +1178,9 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     } finally {
       inFlightIdempotencyKeys.current.delete(clientKey);
     }
-  };
+  }, [wallets, transactions, debts, categories, currentUser.id, isAuthenticated]);
 
-  const softDeleteTransaction = async (id: string) => {
+  const softDeleteTransaction = useCallback(async (id: string) => {
     const tx = transactions.find((t) => t.id === id);
     if (!tx || tx.isDeleted) return;
 
@@ -1048,9 +1223,9 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
         await supabase.from('wallets').update({ balance: destNewBal }).eq('id', tx.destinationWalletId);
       }
     }
-  };
+  }, [transactions, isAuthenticated]);
 
-  const restoreTransaction = async (id: string) => {
+  const restoreTransaction = useCallback(async (id: string) => {
     const tx = transactions.find((t) => t.id === id);
     if (!tx || !tx.isDeleted) return;
 
@@ -1091,27 +1266,47 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
         await supabase.from('wallets').update({ balance: destNewBal }).eq('id', tx.destinationWalletId);
       }
     }
-  };
+  }, [transactions, isAuthenticated]);
 
   // Bulk CSV Import
-  const commitBulkImport = async (validRows: ImportRowValidation[]) => {
-    const walletMapByName = new Map<string, Wallet>(wallets.map((w) => [w.name.trim().toLowerCase(), w]));
-    const categoryMapByName = new Map<string, Category>(categories.map((c) => [c.name.trim().toLowerCase(), c]));
+  const commitBulkImport = useCallback(async (validRows: ImportRowValidation[]) => {
+    // Only active records may be referenced. Importing into a soft-deleted wallet
+    // would mutate the balance of a wallet the user has already removed.
+    const walletMapByName = new Map<string, Wallet>(
+      wallets.filter((w) => !w.isDeleted).map((w) => [w.name.trim().toLowerCase(), w])
+    );
+    const categoryMapByName = new Map<string, Category>(
+      categories.filter((c) => !c.isDeleted).map((c) => [c.name.trim().toLowerCase(), c])
+    );
 
     const newTxs: Transaction[] = [];
     const dbPayloads: any[] = [];
     const walletDeltas: Record<string, number> = {};
     let totalAmt = 0;
+    let skippedCount = 0;
 
     for (const row of validRows) {
-      if (!row.isValid) continue;
+      if (!row.isValid) {
+        skippedCount += 1;
+        continue;
+      }
 
       const sourceWallet = walletMapByName.get(row.walletName.trim().toLowerCase());
-      if (!sourceWallet) continue;
+      if (!sourceWallet) {
+        skippedCount += 1;
+        continue;
+      }
 
       const destWallet = row.destinationWalletName
         ? walletMapByName.get(row.destinationWalletName.trim().toLowerCase())
         : undefined;
+
+      // A transfer whose destination cannot be resolved would debit the source and
+      // credit nobody, destroying money. Skip the row instead.
+      if (row.type === 'TRANSFER' && !destWallet) {
+        skippedCount += 1;
+        continue;
+      }
 
       const cat = row.categoryName
         ? categoryMapByName.get(row.categoryName.trim().toLowerCase())
@@ -1184,11 +1379,15 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       setTransactions((prev) => [...newTxs, ...prev]);
     }
 
-    return { insertedCount: dbPayloads.length || newTxs.length, totalAmount: Math.round(totalAmt * 100) / 100 };
-  };
+    return {
+      insertedCount: dbPayloads.length || newTxs.length,
+      totalAmount: roundToCents(totalAmt),
+      skippedCount,
+    };
+  }, [wallets, categories, isAuthenticated, currentUser.id, refreshFromCloud]);
 
   // Debts CRUD
-  const addDebt = async (
+  const addDebt = useCallback(async (
     data: Omit<Debt, 'id' | 'userId' | 'createdAt' | 'updatedAt' | 'isSettled' | 'isDeleted'>
   ) => {
     if (isAuthenticated) {
@@ -1239,9 +1438,9 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       };
       setDebts((prev) => [newDebt, ...prev]);
     }
-  };
+  }, [isAuthenticated, currentUser.id]);
 
-  const repayDebtAtomic = async (debtId: string, walletId: string, amount: number, note?: string) => {
+  const repayDebtAtomic = useCallback(async (debtId: string, walletId: string, amount: number, note?: string) => {
     const debt = debts.find((d) => d.id === debtId);
     const wallet = wallets.find((w) => w.id === walletId);
 
@@ -1262,28 +1461,28 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       type: 'DEBT_REPAYMENT',
       transactionDate: new Date().toISOString().slice(0, 10),
     });
-  };
+  }, [debts, wallets, categories, addTransaction]);
 
-  const settleDebt = async (debtId: string) => {
+  const settleDebt = useCallback(async (debtId: string) => {
     setDebts((prev) =>
       prev.map((d) => (d.id === debtId ? { ...d, remainingAmount: 0, isSettled: true, updatedAt: new Date().toISOString() } : d))
     );
     if (isAuthenticated) {
       await supabase.from('debts').update({ remaining_amount: 0, is_settled: true, updated_at: new Date().toISOString() }).eq('id', debtId);
     }
-  };
+  }, [isAuthenticated]);
 
-  const deleteDebt = async (debtId: string) => {
+  const deleteDebt = useCallback(async (debtId: string) => {
     setDebts((prev) =>
       prev.map((d) => (d.id === debtId ? { ...d, isDeleted: true, updatedAt: new Date().toISOString() } : d))
     );
     if (isAuthenticated) {
       await supabase.from('debts').update({ is_deleted: true, updated_at: new Date().toISOString() }).eq('id', debtId);
     }
-  };
+  }, [isAuthenticated]);
 
   // Holistic Diary CRUD
-  const upsertDiaryEntry = async (
+  const upsertDiaryEntry = useCallback(async (
     entryData: Omit<DiaryEntry, 'id' | 'userId' | 'createdAt' | 'updatedAt' | 'isDeleted'>
   ) => {
     if (isAuthenticated) {
@@ -1336,67 +1535,117 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
         }
       });
     }
-  };
+  }, [isAuthenticated, diaryEntries, currentUser.id, refreshFromCloud]);
 
-  const deleteDiaryEntry = async (id: string) => {
+  const deleteDiaryEntry = useCallback(async (id: string) => {
     setDiaryEntries((prev) =>
       prev.map((e) => (e.id === id ? { ...e, isDeleted: true, updatedAt: new Date().toISOString() } : e))
     );
     if (isAuthenticated) {
       await supabase.from('diary_entries').update({ is_deleted: true, updated_at: new Date().toISOString() }).eq('id', id);
     }
-  };
+  }, [isAuthenticated]);
+
+  // Memoised so the provider only hands consumers a new object when something they
+  // can actually observe has changed. Without this, every render of the provider
+  // produced a fresh value and re-rendered every consumer, defeating the React.memo
+  // and useCallback layers throughout the app.
+  const contextValue = useMemo(
+    () => ({
+      currentUser,
+      isAuthenticated,
+      isSyncing,
+      sessions,
+      currentSession,
+      revokeSession,
+      revokeAllOtherSessions,
+      simulateNewDeviceLogin,
+      triggerOtpChallenge,
+      verifyOtp,
+      verifyOtpCode,
+      otpPending,
+      activeOtpCode,
+      signOut,
+      wallets,
+      totalNetWorth,
+      addWallet,
+      updateWallet,
+      deleteWallet,
+      categories,
+      keywordRules,
+      addKeywordRule,
+      deleteKeywordRule,
+      transactions,
+      addTransaction,
+      softDeleteTransaction,
+      restoreTransaction,
+      commitBulkImport,
+      debts,
+      addDebt,
+      repayDebtAtomic,
+      settleDebt,
+      deleteDebt,
+      diaryEntries,
+      upsertDiaryEntry,
+      deleteDiaryEntry,
+      showSoftDeleted,
+      setShowSoftDeleted,
+      refreshFromCloud,
+    }),
+    [
+      currentUser,
+      isAuthenticated,
+      isSyncing,
+      sessions,
+      currentSession,
+      revokeSession,
+      revokeAllOtherSessions,
+      simulateNewDeviceLogin,
+      triggerOtpChallenge,
+      verifyOtp,
+      verifyOtpCode,
+      otpPending,
+      activeOtpCode,
+      signOut,
+      wallets,
+      totalNetWorth,
+      addWallet,
+      updateWallet,
+      deleteWallet,
+      categories,
+      keywordRules,
+      addKeywordRule,
+      deleteKeywordRule,
+      transactions,
+      addTransaction,
+      softDeleteTransaction,
+      restoreTransaction,
+      commitBulkImport,
+      debts,
+      addDebt,
+      repayDebtAtomic,
+      settleDebt,
+      deleteDebt,
+      diaryEntries,
+      upsertDiaryEntry,
+      deleteDiaryEntry,
+      showSoftDeleted,
+      refreshFromCloud,
+    ]
+  );
 
   return (
-    <FinanceContext.Provider
-      value={{
-        currentUser,
-        isAuthenticated,
-        isSyncing,
-        sessions,
-        currentSession,
-        revokeSession,
-        revokeAllOtherSessions,
-        simulateNewDeviceLogin,
-        triggerOtpChallenge,
-        verifyOtp,
-        verifyOtpCode,
-        otpPending,
-        activeOtpCode,
-        signOut,
-        wallets,
-        totalNetWorth,
-        addWallet,
-        updateWallet,
-        deleteWallet,
-        categories,
-        keywordRules,
-        addKeywordRule,
-        deleteKeywordRule,
-        transactions,
-        addTransaction,
-        softDeleteTransaction,
-        restoreTransaction,
-        commitBulkImport,
-        debts,
-        addDebt,
-        repayDebtAtomic,
-        settleDebt,
-        deleteDebt,
-        diaryEntries,
-        upsertDiaryEntry,
-        deleteDiaryEntry,
-        showSoftDeleted,
-        setShowSoftDeleted,
-        refreshFromCloud,
-      }}
-    >
+    <FinanceContext.Provider value={contextValue}>
       {children}
     </FinanceContext.Provider>
   );
 };
 
-export function useFinance() {
+// The return type is annotated explicitly rather than inferred. `useContext` comes
+// from React's untyped JS fallback when React type definitions are absent, which
+// makes an inferred return type collapse to `any` and silently disables type
+// checking in every consumer of this hook.
+export function useFinance(): FinanceContextType {
   const context = useContext(FinanceContext);
   if (!context) {
     throw new Error('useFinance must be used within a FinanceProvider');

@@ -164,7 +164,7 @@ export const DebtsView: React.FC = () => {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div>
                   <label className="text-xs font-semibold uppercase tracking-wider text-stone-600 dark:text-stone-300 block mb-1">
-                    Total Amount ($) *
+                    Total Amount (฿) *
                   </label>
                   <input
                     id="new-debt-total"
@@ -184,7 +184,7 @@ export const DebtsView: React.FC = () => {
 
                 <div>
                   <label className="text-xs font-semibold uppercase tracking-wider text-stone-600 dark:text-stone-300 block mb-1">
-                    Remaining ($)
+                    Remaining (฿)
                   </label>
                   <input
                     id="new-debt-remaining"
@@ -216,7 +216,7 @@ export const DebtsView: React.FC = () => {
 
                 <div>
                   <label className="text-xs font-semibold uppercase tracking-wider text-stone-600 dark:text-stone-300 block mb-1">
-                    Min Monthly ($)
+                    Min Monthly (฿)
                   </label>
                   <input
                     id="new-debt-min-payment"
@@ -300,7 +300,7 @@ export const DebtsView: React.FC = () => {
                     .filter((w) => !w.isDeleted)
                     .map((w) => (
                       <option key={w.id} value={w.id} className="dark:bg-stone-800 dark:text-stone-100">
-                        {w.name} (${w.balance.toFixed(2)})
+                        {w.name} (฿{w.balance.toFixed(2)})
                       </option>
                     ))}
                 </select>
@@ -309,7 +309,7 @@ export const DebtsView: React.FC = () => {
               {/* Inline Math Input */}
               <InlineMathInput
                 id="repay-amount-math"
-                label="Repayment Amount ($)"
+                label="Repayment Amount (฿)"
                 defaultValue={repayRaw}
                 required
                 onAmountEvaluated={(val, raw, valid) => {
@@ -350,7 +350,7 @@ export const DebtsView: React.FC = () => {
                       : 'bg-stone-200 dark:bg-stone-800 text-stone-400 dark:text-stone-600 cursor-not-allowed'
                   }`}
                 >
-                  <span>Pay ${repayAmount !== null ? repayAmount.toFixed(2) : '0.00'}</span>
+                  <span>Pay ฿{repayAmount !== null ? repayAmount.toFixed(2) : '0.00'}</span>
                   <ArrowRight className="w-4 h-4" />
                 </button>
               </div>
