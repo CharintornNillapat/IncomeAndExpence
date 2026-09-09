@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { 
   Plus, 
   Download, 
@@ -38,11 +38,25 @@ export const TransactionsView: React.FC = () => {
 
   // Filter States
   const [searchTerm, setSearchTerm] = useState<string>('');
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState<string>('');
   const [selectedWalletId, setSelectedWalletId] = useState<string>('ALL');
   const [selectedType, setSelectedType] = useState<string>('ALL');
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>('ALL');
   const [currentPage, setCurrentPage] = useState<number>(1);
   const pageSize = 8;
+
+  // Debounce search input by 250ms
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [debouncedSearchTerm, selectedWalletId, selectedType, selectedCategoryId, showSoftDeleted]);
 
   // Modal States
   const [isAddModalOpen, setIsAddModalOpen] = useState<boolean>(false);
@@ -57,13 +71,12 @@ export const TransactionsView: React.FC = () => {
   // Filter Logic
   const filteredTransactions = useMemo(() => {
     return transactions.filter((tx) => {
-      // Soft-delete toggle
+      // Soft-delete toggle: when disabled, hide soft-deleted transactions
       if (!showSoftDeleted && tx.isDeleted) return false;
-      if (showSoftDeleted && !tx.isDeleted) return true; // show both or only deleted
 
-      // Search
-      if (searchTerm) {
-        const lower = searchTerm.toLowerCase();
+      // Debounced search
+      if (debouncedSearchTerm.trim()) {
+        const lower = debouncedSearchTerm.trim().toLowerCase();
         const descMatch = tx.description.toLowerCase().includes(lower);
         const amountMatch = tx.amount.toString().includes(lower);
         const rawMatch = tx.rawInput?.toLowerCase().includes(lower);
@@ -87,7 +100,7 @@ export const TransactionsView: React.FC = () => {
 
       return true;
     });
-  }, [transactions, showSoftDeleted, searchTerm, selectedWalletId, selectedType, selectedCategoryId]);
+  }, [transactions, showSoftDeleted, debouncedSearchTerm, selectedWalletId, selectedType, selectedCategoryId]);
 
   // Maps for O(1) row lookups
   const walletMap = useMemo(() => {
@@ -224,15 +237,28 @@ export const TransactionsView: React.FC = () => {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
           {/* Search */}
           <div className="relative lg:col-span-2">
-            <Search className="w-4 h-4 text-stone-400 dark:text-stone-500 absolute left-3 top-3" />
+            <Search className="w-4 h-4 text-stone-400 dark:text-stone-500 absolute left-3 top-3 pointer-events-none" />
             <input
               id="tx-search-input"
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Search description, amount, math..."
-              className="w-full min-h-[44px] pl-9 pr-3 py-2 text-xs rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 text-stone-900 dark:text-stone-100 placeholder:text-stone-400 dark:placeholder:text-stone-500 focus:outline-none focus:border-stone-800 dark:focus:border-stone-400 focus:ring-2 focus:ring-stone-200 dark:focus:ring-stone-700 transition-colors"
+              className="w-full min-h-[44px] pl-9 pr-8 py-2 text-xs rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 text-stone-900 dark:text-stone-100 placeholder:text-stone-400 dark:placeholder:text-stone-500 focus:outline-none focus:border-stone-800 dark:focus:border-stone-400 focus:ring-2 focus:ring-stone-200 dark:focus:ring-stone-700 transition-colors"
             />
+            {searchTerm && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchTerm('');
+                  setDebouncedSearchTerm('');
+                }}
+                className="absolute right-2.5 top-2.5 p-1 text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 rounded-lg cursor-pointer"
+                title="Clear search"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
           </div>
 
           {/* Wallet Filter */}

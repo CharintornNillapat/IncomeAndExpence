@@ -15,8 +15,17 @@ This report documents the verification of the current codebase against `FinLife-
 | `package.json` | 44 lines | 44 lines | **Matches exactly**. All 8 unused dependencies from P2-3 are present; `@playwright/test` is missing from devDependencies (P1-7); `vite` is declared twice. |
 | `.github/workflows/playwright.yml` | Cited line 25 (`npm ci`) | 43 lines | **Matches**. Line 26 runs `npm ci` without a committed `package-lock.json` (P1-6). |
 
-### Chat History Status
-**None of the P0 through P3 issues have been fixed.** The previous turns only modified local Playwright test spec files (`tests/diary.spec.ts`, `tests/transaction.spec.ts`, `tests/theme.spec.ts`), added `.github/workflows/playwright.yml`, updated `.gitignore`, and added starter wallet/debt constants in context state. All P0-1 through P3-3 audit findings remain open and valid.
+### Implementation Progress Tracker
+- [x] **P1-6 & P1-7**: Standardized on `npm`, removed bun artifacts, added `@playwright/test` script and test definitions.
+- [x] **P0-4**: Runtime Zod validation for `addTransaction` in `FinanceContext.tsx`.
+- [x] **P0-3**: Error handling and user-facing feedback for transactions and transfers in `TransactionForm.tsx`, `WalletPopupModal.tsx`, `WalletsView.tsx`, and callers.
+- [x] **P2-1**: Fixed filter short-circuit bug when "Show Soft Deleted" is toggled in `TransactionsView.tsx`.
+- [x] **P2-2**: Added 250ms debounced search filtering and instant clear button in `TransactionsView.tsx`.
+- [ ] **P0-1 & P0-2**: Atomic transfer transaction / Balance recalculation (Client-side & DB RPC).
+- [ ] **P0-5**: Client-side idempotency guard in `FinanceContext.tsx`.
+- [ ] **P1-1**: Tree-shake `mathjs` in `src/utils/mathEvaluator.ts`.
+- [ ] **P2-3**: Prune unused dependencies in `package.json`.
+- [ ] **P3-1**: Supabase environment variables & rotation.
 
 ---
 

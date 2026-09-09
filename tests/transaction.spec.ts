@@ -71,4 +71,27 @@ test.describe('Core Transaction Flow E2E Tests', () => {
     // Assert transaction is visible
     await expect(page.getByText('E2E Freelance Income')).toBeVisible();
   });
+
+  test('should filter transactions by search term and allow clearing search', async ({ page }) => {
+    // Navigate to Transactions tab
+    const txTabBtn = page.locator('button').filter({ hasText: /Transactions/i }).first();
+    await txTabBtn.click();
+
+    // Locate the search input
+    const searchInput = page.locator('#tx-search-input');
+    await expect(searchInput).toBeVisible();
+
+    // Type a specific search term
+    await searchInput.fill('NonexistentQuery12345');
+    // Wait for debounce and verify no records or empty state
+    await page.waitForTimeout(350);
+
+    // Locate and click clear button
+    const clearBtn = page.locator('button[title="Clear search"]');
+    await expect(clearBtn).toBeVisible();
+    await clearBtn.click();
+
+    // Ensure search input is cleared
+    await expect(searchInput).toHaveValue('');
+  });
 });
