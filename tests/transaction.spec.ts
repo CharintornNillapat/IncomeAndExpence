@@ -94,4 +94,15 @@ test.describe('Core Transaction Flow E2E Tests', () => {
     // Ensure search input is cleared
     await expect(searchInput).toHaveValue('');
   });
+
+  test('should evaluate inline math expressions correctly in amount field', async ({ page }) => {
+    const dashboardForm = page.locator('form').filter({ hasText: /Record Transaction/i }).first();
+    await expect(dashboardForm).toBeVisible();
+
+    const amountInput = dashboardForm.locator('input[name="amount_expression"]');
+    await amountInput.fill('120 + 30 * 2');
+
+    // The inline math preview should compute 180.00
+    await expect(dashboardForm.getByText('180.00')).toBeVisible();
+  });
 });

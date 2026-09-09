@@ -1,4 +1,4 @@
-import { evaluate } from 'mathjs';
+import { evaluate } from 'mathjs/number';
 
 export interface MathEvaluationResult {
   isValid: boolean;

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useMemo, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo, useRef, ReactNode } from 'react';
 import {
   User,
   SessionDevice,
@@ -56,7 +56,8 @@ interface FinanceContextType {
     debtId?: string;
     type: TransactionType;
     transactionDate: string;
-  }) => Promise<{ success: boolean; error?: string }>;
+    idempotencyKey?: string;
+  }) => Promise<{ success: boolean; error?: string; txId?: string }>;
   softDeleteTransaction: (id: string) => Promise<void>;
   restoreTransaction: (id: string) => Promise<void>;
   commitBulkImport: (validRows: ImportRowValidation[]) => Promise<{ insertedCount: number; totalAmount: number }>;
@@ -270,6 +271,9 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
   // OTP State
   const [otpPending, setOtpPending] = useState<boolean>(false);
   const [activeOtpCode, setActiveOtpCode] = useState<string>('123456');
+
+  // Client-side Idempotency Guard (P0-5)
+  const inFlightIdempotencyKeys = useRef<Set<string>>(new Set());
 
   // Cache state to localStorage for instant offline access
   useEffect(() => {
@@ -822,6 +826,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     debtId?: string;
     type: TransactionType;
     transactionDate: string;
+    idempotencyKey?: string;
   }) => {
     const validation = TransactionSchema.safeParse(data);
     if (!validation.success) {
@@ -829,7 +834,24 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       return { success: false, error: errorMsg };
     }
 
-    const clientKey = `idemp-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+    const clientKey = data.idempotencyKey || `idemp-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+
+    // P0-5 Idempotency Guard: prevent concurrent duplicate submissions
+    if (inFlightIdempotencyKeys.current.has(clientKey)) {
+      return { success: false, error: 'Duplicate transaction submission in progress.' };
+    }
+
+    // Check if already processed
+    const existingTx = transactions.find((t) => t.idempotencyKey === clientKey);
+    if (existingTx) {
+      return { success: true, txId: existingTx.id };
+    }
+
+    inFlightIdempotencyKeys.current.add(clientKey);
+
+    // Snapshot state for rollback if network/database fails
+    const previousWallets = wallets;
+    const previousDebts = debts;
 
     // Optimistic balance calculation
     let sourceNewBalance: number | null = null;
@@ -874,8 +896,8 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       );
     }
 
-    if (isAuthenticated) {
-      try {
+    try {
+      if (isAuthenticated) {
         const validCategoryId = data.categoryId && categories.some((c) => c.id === data.categoryId)
           ? data.categoryId
           : null;
@@ -902,7 +924,9 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
 
         if (txErr) throw txErr;
 
+        let createdTxId = clientKey;
         if (insertedTx) {
+          createdTxId = insertedTx.id;
           const mapped: Transaction = {
             id: insertedTx.id,
             userId: insertedTx.user_id,
@@ -924,51 +948,60 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
           setTransactions((prev) => [mapped, ...prev]);
         }
 
-        // Update wallet balances in Supabase
+        // Update wallet balances in Supabase and check errors
         if (sourceNewBalance !== null) {
-          await supabase.from('wallets').update({ balance: sourceNewBalance }).eq('id', data.walletId);
+          const { error: wErr1 } = await supabase.from('wallets').update({ balance: sourceNewBalance }).eq('id', data.walletId);
+          if (wErr1) throw wErr1;
         }
         if (destNewBalance !== null && data.destinationWalletId) {
-          await supabase.from('wallets').update({ balance: destNewBalance }).eq('id', data.destinationWalletId);
+          const { error: wErr2 } = await supabase.from('wallets').update({ balance: destNewBalance }).eq('id', data.destinationWalletId);
+          if (wErr2) throw wErr2;
         }
 
-        // Update debt in Supabase
+        // Update debt in Supabase and check errors
         if (data.type === 'DEBT_REPAYMENT' && data.debtId) {
           const targetDebt = debts.find((d) => d.id === data.debtId);
           if (targetDebt) {
             const updatedRem = Math.max(0, Math.round((targetDebt.remainingAmount - data.amount) * 100) / 100);
-            await supabase.from('debts').update({
+            const { error: dErr } = await supabase.from('debts').update({
               remaining_amount: updatedRem,
               is_settled: updatedRem === 0,
               updated_at: new Date().toISOString(),
             }).eq('id', data.debtId);
+            if (dErr) throw dErr;
           }
         }
 
-        return { success: true };
-      } catch (err: unknown) {
-        console.error('[Add Transaction Failed]', err);
-        const postgrestErr = err as { message?: string; details?: string; hint?: string };
-        const detailedError =
-          postgrestErr?.message ||
-          postgrestErr?.details ||
-          postgrestErr?.hint ||
-          (err instanceof Error ? err.message : 'Database error');
-        return { success: false, error: detailedError };
+        return { success: true, txId: createdTxId };
+      } else {
+        const newTx: Transaction = {
+          id: `tx-${Date.now()}`,
+          userId: currentUser.id,
+          ...data,
+          idempotencyKey: clientKey,
+          isDeleted: false,
+          createdBy: currentUser.id,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+        setTransactions((prev) => [newTx, ...prev]);
+        return { success: true, txId: newTx.id };
       }
-    } else {
-      const newTx: Transaction = {
-        id: `tx-${Date.now()}`,
-        userId: currentUser.id,
-        ...data,
-        idempotencyKey: clientKey,
-        isDeleted: false,
-        createdBy: currentUser.id,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-      setTransactions((prev) => [newTx, ...prev]);
-      return { success: true };
+    } catch (err: unknown) {
+      console.error('[Add Transaction Failed]', err);
+      // Rollback optimistic state changes
+      setWallets(previousWallets);
+      setDebts(previousDebts);
+
+      const postgrestErr = err as { message?: string; details?: string; hint?: string };
+      const detailedError =
+        postgrestErr?.message ||
+        postgrestErr?.details ||
+        postgrestErr?.hint ||
+        (err instanceof Error ? err.message : 'Database error');
+      return { success: false, error: detailedError };
+    } finally {
+      inFlightIdempotencyKeys.current.delete(clientKey);
     }
   };
 

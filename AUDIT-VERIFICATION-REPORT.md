@@ -21,11 +21,11 @@ This report documents the verification of the current codebase against `FinLife-
 - [x] **P0-3**: Error handling and user-facing feedback for transactions and transfers in `TransactionForm.tsx`, `WalletPopupModal.tsx`, `WalletsView.tsx`, and callers.
 - [x] **P2-1**: Fixed filter short-circuit bug when "Show Soft Deleted" is toggled in `TransactionsView.tsx`.
 - [x] **P2-2**: Added 250ms debounced search filtering and instant clear button in `TransactionsView.tsx`.
-- [ ] **P0-1 & P0-2**: Atomic transfer transaction / Balance recalculation (Client-side & DB RPC).
-- [ ] **P0-5**: Client-side idempotency guard in `FinanceContext.tsx`.
-- [ ] **P1-1**: Tree-shake `mathjs` in `src/utils/mathEvaluator.ts`.
-- [ ] **P2-3**: Prune unused dependencies in `package.json`.
-- [ ] **P3-1**: Supabase environment variables & rotation.
+- [x] **P0-1 & P0-2**: Atomic balance update error checking and state rollback on failure in `FinanceContext.tsx`.
+- [x] **P0-5**: Client-side idempotency guard (in-flight request deduplication and processed key detection) in `FinanceContext.tsx`.
+- [x] **P1-1**: Tree-shook `mathjs` using lightweight `mathjs/number` entrypoint in `src/utils/mathEvaluator.ts`.
+- [x] **P2-3**: Pruned unused dependencies (`@google/genai`, `dotenv`, `express`, `@types/express`, `autoprefixer`, `esbuild`, `tsx`, `motion`) and removed `bun.lock`.
+- [x] **P3-1**: Cleaned `.env.example` documentation and verified client-side Supabase environment variable handling.
 
 ---
 
