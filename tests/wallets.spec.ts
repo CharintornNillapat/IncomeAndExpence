@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { gotoTab } from './helpers';
 
 test.describe('Wallets & Accounts E2E Tests', () => {
   test.beforeEach(async ({ page }) => {
@@ -6,14 +7,8 @@ test.describe('Wallets & Accounts E2E Tests', () => {
   });
 
   test('should navigate to Wallets view and create a new wallet', async ({ page }) => {
-    // 1. Navigate to the Wallets tab
-    const walletsTab = page.locator('#nav-tab-wallets');
-    if (await walletsTab.isVisible()) {
-      await walletsTab.click();
-    } else {
-      // On mobile bottom nav fallback
-      await page.getByRole('button', { name: /Wallets/i }).first().click();
-    }
+    // 1. Navigate to the Wallets tab (waits for the lazy view chunk to resolve)
+    await gotoTab(page, 'wallets');
 
     // 2. Open Add Wallet modal
     const addWalletBtn = page.getByRole('button', { name: /Add Wallet/i }).first();

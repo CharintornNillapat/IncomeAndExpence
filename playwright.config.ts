@@ -15,6 +15,17 @@ export default defineConfig({
   workers: process.env.CI ? 1 : undefined,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: 'html',
+  /*
+   * Timeouts below bound *failure* only - an auto-retrying assertion resolves
+   * the moment its condition holds, so raising these does not slow a green run.
+   * The extra headroom is for Firefox, which is consistently the slowest of the
+   * three engines at first paint of a `React.lazy` view chunk served by the
+   * Vite dev server, especially with workers running in parallel.
+   */
+  timeout: 60 * 1000,
+  expect: {
+    timeout: 10 * 1000,
+  },
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
     /* Base URL to use in actions like `await page.goto('/')`. */
@@ -22,6 +33,16 @@ export default defineConfig({
 
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
     trace: 'on-first-retry',
+
+    actionTimeout: 15 * 1000,
+    navigationTimeout: 30 * 1000,
+
+    /*
+     * Pin the OS preference so useTheme's 'system' mode resolves to a known
+     * value. Without this the theme spec depends on whatever the host reports,
+     * which differs between local machines and CI.
+     */
+    colorScheme: 'light',
   },
 
   /* Configure projects for major browsers */

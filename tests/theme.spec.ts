@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { gotoTab } from './helpers';
 
 test.describe('Navigation & Theme E2E Tests', () => {
   test.beforeEach(async ({ page }) => {
@@ -16,54 +17,44 @@ test.describe('Navigation & Theme E2E Tests', () => {
     const themeToggleBtn = page.locator('#navbar-theme-toggle-btn');
     const htmlElement = page.locator('html');
 
-    const isInitiallyDark = await htmlElement.evaluate((el) => el.classList.contains('dark'));
+    await expect(themeToggleBtn).toBeVisible();
 
-    // Click theme toggle button to switch modes
-    await themeToggleBtn.click();
+    // useTheme always stamps a resolved data-theme, so waiting on it confirms
+    // the app has applied a theme before we start clicking.
+    await expect(htmlElement).toHaveAttribute('data-theme', /^(light|dark)$/);
 
-    // Verify theme state change
-    const isNowDark = await htmlElement.evaluate((el) => el.classList.contains('dark'));
-    if (!isInitiallyDark) {
-      if (!isNowDark) {
-        // In case system theme needs another click to reach dark
-        await themeToggleBtn.click();
-      }
-      await expect(htmlElement).toHaveClass(/dark/);
-    } else {
-      // Toggle back from dark to light
-      if (isNowDark) {
-        await themeToggleBtn.click();
-      }
+    // cycleTheme steps light -> dark -> system -> light. A fresh context has no
+    // stored preference so it starts on 'system', meaning the first click can
+    // resolve to the same visual theme. At most three clicks reach an explicitly
+    // dark document from any starting point.
+    for (let i = 0; i < 3; i++) {
+      if ((await htmlElement.getAttribute('data-theme')) === 'dark') break;
+      await themeToggleBtn.click();
+      // Re-assert the attribute so the next read happens after React has
+      // committed, rather than racing the state update with a bare classList
+      // read the way this test used to.
+      await expect(htmlElement).toHaveAttribute('data-theme', /^(light|dark)$/);
     }
+
+    await expect(htmlElement).toHaveAttribute('data-theme', 'dark');
+    await expect(htmlElement).toHaveClass(/dark/);
+
+    // Cycling onward must leave dark mode again.
+    await themeToggleBtn.click();
+    await expect(htmlElement).not.toHaveClass(/dark/);
   });
 
   test('should navigate between tabs via desktop navbar and verify view loading', async ({ page }) => {
-    // 1. Navigate to Wallets View
-    const walletsTab = page.locator('#nav-tab-wallets');
-    if (await walletsTab.isVisible()) {
-      await walletsTab.click();
-      await expect(page.getByRole('heading', { name: /Wallets & Accounts/i })).toBeVisible();
-    }
+    await gotoTab(page, 'wallets');
+    await expect(page.getByRole('heading', { name: /Wallets & Accounts/i })).toBeVisible();
 
-    // 2. Navigate to Debt Payoff View
-    const debtsTab = page.locator('#nav-tab-debts');
-    if (await debtsTab.isVisible()) {
-      await debtsTab.click();
-      await expect(page.getByRole('heading', { name: /Debts & Loans/i })).toBeVisible();
-    }
+    await gotoTab(page, 'debts');
+    await expect(page.getByRole('heading', { name: /Debts & Loans/i })).toBeVisible();
 
-    // 3. Navigate to Holistic Diary View
-    const diaryTab = page.locator('#nav-tab-diary');
-    if (await diaryTab.isVisible()) {
-      await diaryTab.click();
-      await expect(page.getByRole('heading', { name: /Holistic Mini Diary/i })).toBeVisible();
-    }
+    await gotoTab(page, 'diary');
+    await expect(page.getByRole('heading', { name: /Holistic Mini Diary/i })).toBeVisible();
 
-    // 4. Return to Dashboard View
-    const dashboardTab = page.locator('#nav-tab-dashboard');
-    if (await dashboardTab.isVisible()) {
-      await dashboardTab.click();
-      await expect(page.getByText(/Total Money Across All Wallets/i)).toBeVisible();
-    }
+    await gotoTab(page, 'dashboard');
+    await expect(page.getByText(/Total Money Across All Wallets/i)).toBeVisible();
   });
 });

@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { gotoTab } from './helpers';
 
 test.describe('Holistic Mini Diary E2E Tests', () => {
   test.beforeEach(async ({ page }) => {
@@ -6,13 +7,8 @@ test.describe('Holistic Mini Diary E2E Tests', () => {
   });
 
   test('should navigate to Diary view, rate daily mood, and save wellbeing entry', async ({ page }) => {
-    // 1. Navigate to Diary tab
-    const diaryTab = page.locator('#nav-tab-diary');
-    if (await diaryTab.isVisible()) {
-      await diaryTab.click();
-    } else {
-      await page.getByRole('button', { name: /Diary/i }).first().click();
-    }
+    // 1. Navigate to Diary tab (waits for the lazy view chunk to resolve)
+    await gotoTab(page, 'diary');
 
     // 2. Verify Diary header
     await expect(page.getByRole('heading', { name: /Holistic Mini Diary/i })).toBeVisible();
@@ -31,7 +27,10 @@ test.describe('Holistic Mini Diary E2E Tests', () => {
     await expect(saveBtn).toBeVisible();
     await saveBtn.click();
 
-    // 6. Assert success feedback / entry updated in historical list
+    // 6. Wait for the save to be confirmed, then assert the entry reached the
+    // historical list. Saving is async (validation + persistence), so assert on
+    // the success badge first rather than racing straight to the list.
+    await expect(page.getByText(/Diary entry logged/i)).toBeVisible();
     await expect(page.locator('p').filter({ hasText: /Playwright automated wellbeing log/i })).toBeVisible();
   });
 });

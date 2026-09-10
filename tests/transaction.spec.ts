@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { gotoTab, addQuickTransaction } from './helpers';
 
 test.describe('Core Transaction Flow E2E Tests', () => {
   test.beforeEach(async ({ page }) => {
@@ -73,26 +74,36 @@ test.describe('Core Transaction Flow E2E Tests', () => {
   });
 
   test('should filter transactions by search term and allow clearing search', async ({ page }) => {
-    // Navigate to Transactions tab
-    const txTabBtn = page.locator('button').filter({ hasText: /Transactions/i }).first();
-    await txTabBtn.click();
+    // A fresh context has no transactions, so seed one. Without this the list is
+    // empty either way and any assertion about filtering is vacuous.
+    const marker = 'E2E Searchable Latte';
+    await addQuickTransaction(page, marker);
+
+    // Navigate to Transactions tab (waits for the lazy view chunk to resolve)
+    await gotoTab(page, 'transactions');
+
+    const row = page.getByText(marker);
+    await expect(row).toBeVisible();
 
     // Locate the search input
     const searchInput = page.locator('#tx-search-input');
     await expect(searchInput).toBeVisible();
 
-    // Type a specific search term
+    // Type a term that cannot match. The input is debounced by 250ms, so assert
+    // that the seeded row actually disappears rather than sleeping past the
+    // debounce - the assertion retries until the filtered list settles.
     await searchInput.fill('NonexistentQuery12345');
-    // Wait for debounce and verify no records or empty state
-    await page.waitForTimeout(350);
+    await expect(row).toHaveCount(0);
+    await expect(page.getByText(/No transactions match your current filters/i)).toBeVisible();
 
     // Locate and click clear button
     const clearBtn = page.locator('button[title="Clear search"]');
     await expect(clearBtn).toBeVisible();
     await clearBtn.click();
 
-    // Ensure search input is cleared
+    // Clearing restores the unfiltered list.
     await expect(searchInput).toHaveValue('');
+    await expect(row).toBeVisible();
   });
 
   test('should evaluate inline math expressions correctly in amount field', async ({ page }) => {
