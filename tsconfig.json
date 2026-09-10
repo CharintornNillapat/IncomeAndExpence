@@ -22,7 +22,9 @@
     },
     "allowImportingTsExtensions": true,
     "types": ["vite-plugin-pwa/client"],
-    "noEmit": true
+    "noEmit": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true
   },
   "include": ["src"],
   "exclude": ["node_modules", "dist", "tests", "playwright.config.ts"]
