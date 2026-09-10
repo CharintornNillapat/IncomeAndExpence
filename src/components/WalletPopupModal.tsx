@@ -8,16 +8,14 @@ import {
   Sliders, 
   TrendingUp, 
   TrendingDown, 
-  CheckCircle2, 
-  AlertCircle,
   Wallet as WalletIcon,
   Receipt,
   Layers
 } from 'lucide-react';
 import { useFinance } from '../context/FinanceContext';
-import { WalletType } from '../types';
-import { InlineMathInput } from './InlineMathInput';
-import { APP_CURRENCY, APP_CURRENCY_SYMBOL, formatCurrencyAmount } from '../utils/currency';
+import { AddWalletForm } from './wallet/AddWalletForm';
+import { WalletTransferForm } from './wallet/WalletTransferForm';
+import { APP_CURRENCY, formatCurrencyAmount } from '../utils/currency';
 import { todayIsoDate } from '../utils/date';
 import { getWalletIcon } from '../utils/walletIcons';
 
@@ -40,7 +38,6 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
     wallets, 
     transactions, 
     totalNetWorth, 
-    addWallet, 
     deleteWallet, 
     addTransaction 
   } = useFinance();
@@ -48,26 +45,10 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
   const [activeTab, setActiveTab] = useState<WalletModalTab>(initialTab);
   const [selectedWalletId, setSelectedWalletId] = useState<string>(initialWalletId || wallets[0]?.id || '');
 
-  // Add Wallet State
-  const [walletName, setWalletName] = useState<string>('');
-  const [walletType, setWalletType] = useState<WalletType>('BANK_ACCOUNT');
-  const [initialBalance, setInitialBalance] = useState<number>(0);
-  const [walletColor, setWalletColor] = useState<string>('#0284c7');
-
-  // Transfer State
-  const [sourceWalletId, setSourceWalletId] = useState<string>(initialWalletId || wallets[0]?.id || '');
-  const [destWalletId, setDestWalletId] = useState<string>(wallets.find(w => w.id !== initialWalletId)?.id || wallets[1]?.id || '');
-  const [transferAmount, setTransferAmount] = useState<number | null>(null);
-  const [transferRaw, setTransferRaw] = useState<string>('');
-  const [transferValid, setTransferValid] = useState<boolean>(false);
-  const [transferNote, setTransferNote] = useState<string>('Funds transfer');
+  // The overview's "Transfer" shortcuts preselect which wallet the transfer
+  // starts from; the form itself owns the rest of the transfer state.
+  const [transferSourceId, setTransferSourceId] = useState<string>(initialWalletId || '');
   const [transferStatus, setTransferStatus] = useState<string | null>(null);
-  const [transferError, setTransferError] = useState<string | null>(null);
-  const [createWalletError, setCreateWalletError] = useState<string | null>(null);
-  const [isTransferring, setIsTransferring] = useState<boolean>(false);
-  // One key per armed form. Retrying after a failure reuses it so the retry is
-  // deduplicated rather than double-spending; it is regenerated only on success.
-  const [transferKey, setTransferKey] = useState<string>(() => crypto.randomUUID());
 
   // Edit / Adjust Balance State
   const [isAdjustingBalance, setIsAdjustingBalance] = useState<string | null>(null);
@@ -89,76 +70,6 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
   }, [transactions, currentWallet]);
 
   if (!isOpen) return null;
-
-  const handleCreateWallet = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setCreateWalletError(null);
-
-    const res = await addWallet(
-      {
-        name: walletName.trim(),
-        type: walletType,
-        currency: APP_CURRENCY,
-        color: walletColor,
-        icon: walletType.toLowerCase(),
-      },
-      initialBalance
-    );
-
-    // Stay on the form with the input intact when the write is rejected.
-    if (!res.success) {
-      setCreateWalletError(res.error || 'Failed to create wallet');
-      return;
-    }
-
-    setWalletName('');
-    setInitialBalance(0);
-    setActiveTab('OVERVIEW');
-  };
-
-  const handleExecuteTransfer = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (isTransferring) return;
-    if (!transferValid || transferAmount === null || !sourceWalletId || !destWalletId || sourceWalletId === destWalletId) {
-      return;
-    }
-
-    setTransferStatus(null);
-    setTransferError(null);
-    setIsTransferring(true);
-
-    try {
-      const res = await addTransaction({
-        amount: transferAmount,
-        rawInput: transferRaw,
-        description: transferNote || 'Transfer between wallets',
-        walletId: sourceWalletId,
-        destinationWalletId: destWalletId,
-        type: 'TRANSFER',
-        transactionDate: todayIsoDate(),
-        idempotencyKey: transferKey,
-      });
-
-      if (res.success) {
-        // Clear the armed amount immediately so the form cannot be resubmitted
-        // during the confirmation delay. Rotating the key also remounts the
-        // amount input, clearing its internal value.
-        setTransferAmount(null);
-        setTransferRaw('');
-        setTransferValid(false);
-        setTransferKey(crypto.randomUUID());
-        setTransferStatus('Transfer completed successfully!');
-        setTimeout(() => {
-          setTransferStatus(null);
-          setActiveTab('OVERVIEW');
-        }, 1000);
-      } else {
-        setTransferError(res.error || 'Failed to complete transfer');
-      }
-    } finally {
-      setIsTransferring(false);
-    }
-  };
 
   const handleSaveBalanceAdjustment = async (walletId: string) => {
     const target = activeWallets.find(w => w.id === walletId);
@@ -418,7 +329,7 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation();
-                            setSourceWalletId(wallet.id);
+                            setTransferSourceId(wallet.id);
                             setActiveTab('TRANSFER');
                           }}
                           className="text-indigo-600 dark:text-indigo-400 font-semibold hover:underline flex items-center gap-1 cursor-pointer"
@@ -454,7 +365,7 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
                     <button
                       type="button"
                       onClick={() => {
-                        setSourceWalletId(currentWallet.id);
+                        setTransferSourceId(currentWallet.id);
                         setActiveTab('TRANSFER');
                       }}
                       className="flex-1 sm:flex-none px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-semibold transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
@@ -478,218 +389,52 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
 
           {/* TAB 2: TRANSFER FUNDS */}
           {activeTab === 'TRANSFER' && (
-            <form onSubmit={handleExecuteTransfer} className="space-y-4 max-w-lg mx-auto">
+            <div className="space-y-4 max-w-lg mx-auto">
               <div className="bg-indigo-50/80 dark:bg-indigo-950/50 border border-indigo-100 dark:border-indigo-800/60 rounded-xl p-3 text-xs text-indigo-900 dark:text-indigo-300 flex items-center gap-2.5">
                 <ArrowLeftRight className="w-4 h-4 text-indigo-600 dark:text-indigo-400 shrink-0" />
                 <span>Transfers move money between your accounts directly.</span>
               </div>
 
-              {transferStatus && (
-                <div className="bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 p-3 rounded-xl text-xs font-semibold flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                  <span>{transferStatus}</span>
-                </div>
-              )}
-
-              {transferError && (
-                <div className="bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 p-3 rounded-xl text-xs font-medium flex items-center gap-2">
-                  <AlertCircle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0" />
-                  <span>{transferError}</span>
-                </div>
-              )}
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                <div>
-                  <label className="text-xs font-semibold uppercase tracking-wider text-stone-600 dark:text-stone-300 block mb-1">
-                    From Wallet
-                  </label>
-                  <select
-                    id="modal-transfer-source"
-                    value={sourceWalletId}
-                    onChange={(e) => setSourceWalletId(e.target.value)}
-                    className="w-full text-xs rounded-xl border border-stone-200 dark:border-stone-700 px-3 py-2.5 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-none focus:border-stone-800 dark:focus:border-stone-400"
-                  >
-                    {activeWallets.map((w) => (
-                      <option key={w.id} value={w.id}>
-                        {w.name} ({formatCurrencyAmount(w.balance)})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="text-xs font-semibold uppercase tracking-wider text-stone-600 dark:text-stone-300 block mb-1">
-                    To Wallet
-                  </label>
-                  <select
-                    id="modal-transfer-dest"
-                    value={destWalletId}
-                    onChange={(e) => setDestWalletId(e.target.value)}
-                    className="w-full text-xs rounded-xl border border-stone-200 dark:border-stone-700 px-3 py-2.5 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-none focus:border-stone-800 dark:focus:border-stone-400"
-                  >
-                    {activeWallets
-                      .filter((w) => w.id !== sourceWalletId)
-                      .map((w) => (
-                        <option key={w.id} value={w.id}>
-                          {w.name} ({formatCurrencyAmount(w.balance)})
-                        </option>
-                      ))}
-                  </select>
-                </div>
-              </div>
-
-              {/* Inline math input */}
-              <InlineMathInput
-                key={transferKey}
-                id="modal-transfer-amount-input"
-                label="Transfer Amount (฿)"
-                placeholder="e.g. 250 or 500/2"
-                required
-                disabled={isTransferring}
-                onAmountEvaluated={(val, raw, valid) => {
-                  setTransferAmount(val);
-                  setTransferRaw(raw);
-                  setTransferValid(valid);
+              <WalletTransferForm
+                key={transferSourceId}
+                wallets={activeWallets}
+                initialSourceWalletId={transferSourceId}
+                tone="plain"
+                errorPlacement="top"
+                statusMessage={transferStatus}
+                amountPlaceholder="e.g. 250 or 500/2"
+                ids={{
+                  source: 'modal-transfer-source',
+                  dest: 'modal-transfer-dest',
+                  amount: 'modal-transfer-amount-input',
+                  note: 'modal-transfer-note-input',
+                  submit: 'modal-submit-transfer-btn',
+                }}
+                onTransferred={() => {
+                  setTransferStatus('Transfer completed successfully!');
+                  setTimeout(() => {
+                    setTransferStatus(null);
+                    setActiveTab('OVERVIEW');
+                  }, 1000);
                 }}
               />
-
-              <div>
-                <label className="text-xs font-semibold uppercase tracking-wider text-stone-600 dark:text-stone-300 block mb-1">
-                  Note
-                </label>
-                <input
-                  id="modal-transfer-note-input"
-                  type="text"
-                  value={transferNote}
-                  onChange={(e) => setTransferNote(e.target.value)}
-                  placeholder="e.g. Savings transfer"
-                  className="w-full text-xs rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 px-3.5 py-2.5 text-stone-900 dark:text-stone-100 placeholder:text-stone-400 dark:placeholder:text-stone-500 focus:outline-none focus:border-stone-800 dark:focus:border-stone-400"
-                />
-              </div>
-
-              <div className="pt-2">
-                <button
-                  id="modal-submit-transfer-btn"
-                  type="submit"
-                  disabled={isTransferring || !transferValid || transferAmount === null || sourceWalletId === destWalletId}
-                  className={`w-full py-2.5 sm:py-3 rounded-xl font-semibold text-xs transition-all flex items-center justify-center gap-2 cursor-pointer ${
-                    !isTransferring && transferValid && transferAmount !== null && sourceWalletId !== destWalletId
-                      ? 'bg-stone-900 hover:bg-stone-800 dark:bg-stone-100 dark:hover:bg-white text-white dark:text-stone-900 shadow-xs'
-                      : 'bg-stone-200 dark:bg-stone-800 text-stone-400 dark:text-stone-600 cursor-not-allowed'
-                  }`}
-                >
-                  <ArrowLeftRight className="w-4 h-4" />
-                  <span>
-                    {isTransferring
-                      ? 'Transferring...'
-                      : `Transfer ${formatCurrencyAmount(transferAmount ?? 0)}`}
-                  </span>
-                </button>
-              </div>
-            </form>
+            </div>
           )}
 
           {/* TAB 3: ADD NEW WALLET */}
           {activeTab === 'ADD_WALLET' && (
-            <form onSubmit={handleCreateWallet} className="space-y-4 max-w-lg mx-auto">
-              <div>
-                <label className="text-xs font-semibold uppercase tracking-wider text-stone-600 dark:text-stone-300 block mb-1">
-                  Wallet Name *
-                </label>
-                <input
-                  id="modal-new-wallet-name"
-                  type="text"
-                  required
-                  value={walletName}
-                  onChange={(e) => setWalletName(e.target.value)}
-                  placeholder="e.g. Checking Account, Cash"
-                  className="w-full text-xs rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 px-3.5 py-2.5 text-stone-900 dark:text-stone-100 placeholder:text-stone-400 dark:placeholder:text-stone-500 focus:outline-none focus:border-stone-800 dark:focus:border-stone-400"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                <div>
-                  <label className="text-xs font-semibold uppercase tracking-wider text-stone-600 dark:text-stone-300 block mb-1">
-                    Type
-                  </label>
-                  <select
-                    id="modal-new-wallet-type"
-                    value={walletType}
-                    onChange={(e) => setWalletType(e.target.value as WalletType)}
-                    className="w-full text-xs rounded-xl border border-stone-200 dark:border-stone-700 px-3 py-2.5 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-none focus:border-stone-800 dark:focus:border-stone-400"
-                  >
-                    <option value="BANK_ACCOUNT">Bank Account</option>
-                    <option value="CASH">Cash</option>
-                    <option value="SAVINGS">Savings</option>
-                    <option value="CREDIT_CARD">Credit Card</option>
-                    <option value="INVESTMENT">Investment</option>
-                    <option value="E_WALLET">E-Wallet</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="text-xs font-semibold uppercase tracking-wider text-stone-600 dark:text-stone-300 block mb-1">
-                    Currency
-                  </label>
-                  <div
-                    id="modal-new-wallet-currency"
-                    className="w-full text-xs rounded-xl border border-stone-200 dark:border-stone-700 px-3 py-2.5 bg-stone-100 dark:bg-stone-800 text-stone-500 dark:text-stone-400 font-mono"
-                  >
-                    {APP_CURRENCY} ({APP_CURRENCY_SYMBOL})
-                  </div>
-                </div>
-              </div>
-
-              <div>
-                <label className="text-xs font-semibold uppercase tracking-wider text-stone-600 dark:text-stone-300 block mb-1">
-                  Starting Balance (฿)
-                </label>
-                <input
-                  id="modal-new-wallet-balance"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={initialBalance}
-                  onChange={(e) => setInitialBalance(parseFloat(e.target.value) || 0)}
-                  className="w-full text-xs rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 px-3.5 py-2.5 text-stone-900 dark:text-stone-100 font-mono focus:outline-none focus:border-stone-800 dark:focus:border-stone-400"
-                />
-              </div>
-
-              <div>
-                <label className="text-xs font-semibold uppercase tracking-wider text-stone-600 dark:text-stone-300 block mb-1.5">
-                  Theme Color
-                </label>
-                <div className="flex flex-wrap items-center gap-2.5">
-                  {['#0284c7', '#16a34a', '#7c3aed', '#f59e0b', '#ef4444', '#0f172a', '#059669', '#d97706'].map((c) => (
-                    <button
-                      key={c}
-                      type="button"
-                      onClick={() => setWalletColor(c)}
-                      className={`w-7 h-7 rounded-full transition-transform cursor-pointer ${
-                        walletColor === c ? 'scale-125 ring-2 ring-stone-900 dark:ring-stone-100 ring-offset-2 dark:ring-offset-stone-900' : ''
-                      }`}
-                      style={{ backgroundColor: c }}
-                    />
-                  ))}
-                </div>
-              </div>
-
-              <div className="pt-2">
-                {createWalletError && (
-                  <div className="bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 p-3 rounded-xl text-xs font-medium mb-3">
-                    {createWalletError}
-                  </div>
-                )}
-
-                <button
-                  id="modal-create-wallet-submit"
-                  type="submit"
-                  className="w-full py-2.5 sm:py-3 bg-stone-900 hover:bg-stone-800 dark:bg-stone-100 dark:hover:bg-white text-white dark:text-stone-900 rounded-xl font-semibold text-xs transition-all shadow-xs cursor-pointer"
-                >
-                  Add Wallet
-                </button>
-              </div>
-            </form>
+            <AddWalletForm
+              tone="plain"
+              className="max-w-lg mx-auto"
+              ids={{
+                name: 'modal-new-wallet-name',
+                type: 'modal-new-wallet-type',
+                currency: 'modal-new-wallet-currency',
+                balance: 'modal-new-wallet-balance',
+                submit: 'modal-create-wallet-submit',
+              }}
+              onCreated={() => setActiveTab('OVERVIEW')}
+            />
           )}
 
           {/* TAB 4: WALLET SPECIFIC ACTIVITY */}

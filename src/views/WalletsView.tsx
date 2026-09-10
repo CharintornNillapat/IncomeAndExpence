@@ -5,108 +5,21 @@ import {
   ArrowLeftRight, 
   Trash2, 
   X,
-  AlertCircle,
 } from 'lucide-react';
 import { useFinance } from '../context/FinanceContext';
-import { WalletType } from '../types';
-import { InlineMathInput } from '../components/InlineMathInput';
 import { AnimatedCounter } from '../components/AnimatedCounter';
-import { APP_CURRENCY, APP_CURRENCY_SYMBOL, formatCurrencyAmount } from '../utils/currency';
-import { todayIsoDate } from '../utils/date';
+import { APP_CURRENCY, APP_CURRENCY_SYMBOL } from '../utils/currency';
 import { getWalletIcon } from '../utils/walletIcons';
+import { AddWalletForm } from '../components/wallet/AddWalletForm';
+import { WalletTransferForm } from '../components/wallet/WalletTransferForm';
 
 export const WalletsView: React.FC = () => {
-  const { wallets, addWallet, deleteWallet, addTransaction } = useFinance();
+  const { wallets, deleteWallet } = useFinance();
 
   const [isAddWalletOpen, setIsAddWalletOpen] = useState<boolean>(false);
   const [isTransferOpen, setIsTransferOpen] = useState<boolean>(false);
 
-  // Add Wallet Form State
-  const [walletName, setWalletName] = useState<string>('');
-  const [walletType, setWalletType] = useState<WalletType>('BANK_ACCOUNT');
-  const [initialBalance, setInitialBalance] = useState<number>(0);
-  const [walletColor, setWalletColor] = useState<string>('#0284c7');
-
   const activeWallets = wallets.filter((w) => !w.isDeleted);
-
-  // Transfer Form State. Seeded from the active list so a soft-deleted wallet can
-  // never be preselected as the source.
-  const [sourceWalletId, setSourceWalletId] = useState<string>(activeWallets[0]?.id || '');
-  const [destWalletId, setDestWalletId] = useState<string>(activeWallets[1]?.id || '');
-  const [transferAmount, setTransferAmount] = useState<number | null>(null);
-  const [transferRaw, setTransferRaw] = useState<string>('');
-  const [transferValid, setTransferValid] = useState<boolean>(false);
-  const [transferNote, setTransferNote] = useState<string>('Funds transfer');
-  const [transferError, setTransferError] = useState<string | null>(null);
-  const [createWalletError, setCreateWalletError] = useState<string | null>(null);
-  const [isTransferring, setIsTransferring] = useState<boolean>(false);
-  // One key per armed form. Retrying after a failure reuses it so the retry is
-  // deduplicated rather than double-spending; it is regenerated only on success.
-  const [transferKey, setTransferKey] = useState<string>(() => crypto.randomUUID());
-
-  const handleCreateWallet = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setCreateWalletError(null);
-
-    const res = await addWallet(
-      {
-        name: walletName.trim(),
-        type: walletType,
-        currency: APP_CURRENCY,
-        color: walletColor,
-        icon: walletType.toLowerCase(),
-      },
-      initialBalance
-    );
-
-    // Keep the form open and populated when the write is rejected, so the user
-    // can correct the input rather than losing it.
-    if (!res.success) {
-      setCreateWalletError(res.error || 'Failed to create wallet');
-      return;
-    }
-
-    setIsAddWalletOpen(false);
-    setWalletName('');
-    setInitialBalance(0);
-  };
-
-  const handleExecuteTransfer = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (isTransferring) return;
-    if (!transferValid || transferAmount === null || !sourceWalletId || !destWalletId || sourceWalletId === destWalletId) {
-      return;
-    }
-
-    setTransferError(null);
-    setIsTransferring(true);
-
-    try {
-      const res = await addTransaction({
-        amount: transferAmount,
-        rawInput: transferRaw,
-        description: transferNote || 'Transfer between wallets',
-        walletId: sourceWalletId,
-        destinationWalletId: destWalletId,
-        type: 'TRANSFER',
-        transactionDate: todayIsoDate(),
-        idempotencyKey: transferKey,
-      });
-
-      if (res && !res.success) {
-        setTransferError(res.error || 'Failed to complete transfer');
-        return;
-      }
-
-      setIsTransferOpen(false);
-      setTransferAmount(null);
-      setTransferRaw('');
-      setTransferValid(false);
-      setTransferKey(crypto.randomUUID());
-    } finally {
-      setIsTransferring(false);
-    }
-  };
 
   return (
     <div className="space-y-6">
@@ -248,107 +161,17 @@ export const WalletsView: React.FC = () => {
                 </motion.button>
               </div>
 
-              <form onSubmit={handleCreateWallet} className="space-y-4">
-                <div>
-                  <label className="text-xs font-semibold uppercase tracking-wider text-stone-600 dark:text-stone-300 block mb-1">
-                    Wallet Name *
-                  </label>
-                  <input
-                    id="new-wallet-name"
-                    type="text"
-                    required
-                    value={walletName}
-                    onChange={(e) => setWalletName(e.target.value)}
-                    placeholder="e.g. Checking Account, Cash"
-                    className="w-full text-xs rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 px-3.5 py-2.5 text-stone-900 dark:text-stone-100 placeholder:text-stone-400 dark:placeholder:text-stone-500 focus:outline-none focus:border-stone-800 dark:focus:border-stone-400 focus:ring-2 focus:ring-stone-200 dark:focus:ring-stone-700 transition-colors"
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                  <div>
-                    <label className="text-xs font-semibold uppercase tracking-wider text-stone-600 dark:text-stone-300 block mb-1">
-                      Type
-                    </label>
-                    <select
-                      id="new-wallet-type"
-                      value={walletType}
-                      onChange={(e) => setWalletType(e.target.value as WalletType)}
-                      className="w-full text-xs rounded-xl border border-stone-200 dark:border-stone-700 px-3 py-2.5 bg-stone-50 dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-none focus:border-stone-800 dark:focus:border-stone-400 focus:ring-2 focus:ring-stone-200 dark:focus:ring-stone-700 transition-colors"
-                    >
-                      <option value="BANK_ACCOUNT" className="dark:bg-stone-800 dark:text-stone-100">Bank Account</option>
-                      <option value="CASH" className="dark:bg-stone-800 dark:text-stone-100">Cash</option>
-                      <option value="SAVINGS" className="dark:bg-stone-800 dark:text-stone-100">Savings</option>
-                      <option value="CREDIT_CARD" className="dark:bg-stone-800 dark:text-stone-100">Credit Card</option>
-                      <option value="INVESTMENT" className="dark:bg-stone-800 dark:text-stone-100">Investment</option>
-                      <option value="E_WALLET" className="dark:bg-stone-800 dark:text-stone-100">E-Wallet</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="text-xs font-semibold uppercase tracking-wider text-stone-600 dark:text-stone-300 block mb-1">
-                      Currency
-                    </label>
-                    <div
-                      id="new-wallet-currency"
-                      className="w-full text-xs rounded-xl border border-stone-200 dark:border-stone-700 px-3 py-2.5 bg-stone-100 dark:bg-stone-800 text-stone-500 dark:text-stone-400 font-mono"
-                    >
-                      {APP_CURRENCY} ({APP_CURRENCY_SYMBOL})
-                    </div>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="text-xs font-semibold uppercase tracking-wider text-stone-600 dark:text-stone-300 block mb-1">
-                    Starting Balance (฿)
-                  </label>
-                  <input
-                    id="new-wallet-init-balance"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={initialBalance}
-                    onChange={(e) => setInitialBalance(parseFloat(e.target.value) || 0)}
-                    className="w-full text-xs rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 px-3.5 py-2.5 text-stone-900 dark:text-stone-100 font-mono focus:outline-none focus:border-stone-800 dark:focus:border-stone-400 focus:ring-2 focus:ring-stone-200 dark:focus:ring-stone-700 transition-colors"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-xs font-semibold uppercase tracking-wider text-stone-600 dark:text-stone-300 block mb-1.5">
-                    Theme Color
-                  </label>
-                  <div className="flex flex-wrap items-center gap-2">
-                    {['#0284c7', '#16a34a', '#7c3aed', '#f59e0b', '#ef4444', '#0f172a', '#059669', '#d97706'].map((c) => (
-                      <motion.button
-                        whileTap={{ scale: 0.9 }}
-                        key={c}
-                        type="button"
-                        onClick={() => setWalletColor(c)}
-                        className={`w-7 h-7 rounded-full transition-transform cursor-pointer ${
-                          walletColor === c ? 'scale-125 ring-2 ring-stone-900 dark:ring-stone-100 ring-offset-2 dark:ring-offset-stone-900' : ''
-                        }`}
-                        style={{ backgroundColor: c }}
-                      />
-                    ))}
-                  </div>
-                </div>
-
-                <div className="pt-2">
-                  {createWalletError && (
-                    <div className="bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 p-3 rounded-xl text-xs font-medium">
-                      {createWalletError}
-                    </div>
-                  )}
-
-                  <motion.button
-                    whileTap={{ scale: 0.96 }}
-                    id="save-new-wallet-btn"
-                    type="submit"
-                    className="w-full py-2.5 sm:py-3 bg-stone-900 hover:bg-stone-800 dark:bg-stone-100 dark:hover:bg-white text-white dark:text-stone-900 rounded-xl font-semibold text-xs transition-all shadow-xs cursor-pointer"
-                  >
-                    Add Wallet
-                  </motion.button>
-                </div>
-              </form>
+              <AddWalletForm
+                tone="subtle"
+                ids={{
+                  name: 'new-wallet-name',
+                  type: 'new-wallet-type',
+                  currency: 'new-wallet-currency',
+                  balance: 'new-wallet-init-balance',
+                  submit: 'save-new-wallet-btn',
+                }}
+                onCreated={() => setIsAddWalletOpen(false)}
+              />
             </motion.div>
           </motion.div>
         )}
@@ -391,104 +214,18 @@ export const WalletsView: React.FC = () => {
                 </motion.button>
               </div>
 
-              <form onSubmit={handleExecuteTransfer} className="space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                  <div>
-                    <label className="text-xs font-semibold uppercase tracking-wider text-stone-600 dark:text-stone-300 block mb-1">
-                      From Wallet
-                    </label>
-                    <select
-                      id="transfer-source-wallet"
-                      value={sourceWalletId}
-                      onChange={(e) => setSourceWalletId(e.target.value)}
-                      className="w-full text-xs rounded-xl border border-stone-200 dark:border-stone-700 px-3 py-2.5 bg-stone-50 dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-none focus:border-stone-800 dark:focus:border-stone-400 focus:ring-2 focus:ring-stone-200 dark:focus:ring-stone-700 transition-colors"
-                    >
-                      {activeWallets.map((w) => (
-                        <option key={w.id} value={w.id} className="dark:bg-stone-800 dark:text-stone-100">
-                          {w.name} ({formatCurrencyAmount(w.balance)})
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="text-xs font-semibold uppercase tracking-wider text-stone-600 dark:text-stone-300 block mb-1">
-                      To Wallet
-                    </label>
-                    <select
-                      id="transfer-dest-wallet"
-                      value={destWalletId}
-                      onChange={(e) => setDestWalletId(e.target.value)}
-                      className="w-full text-xs rounded-xl border border-stone-200 dark:border-stone-700 px-3 py-2.5 bg-stone-50 dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-none focus:border-stone-800 dark:focus:border-stone-400 focus:ring-2 focus:ring-stone-200 dark:focus:ring-stone-700 transition-colors"
-                    >
-                      {activeWallets
-                        .filter((w) => w.id !== sourceWalletId)
-                        .map((w) => (
-                          <option key={w.id} value={w.id} className="dark:bg-stone-800 dark:text-stone-100">
-                            {w.name} ({formatCurrencyAmount(w.balance)})
-                          </option>
-                        ))}
-                    </select>
-                  </div>
-                </div>
-
-                {/* Inline math input for transfer amount */}
-                <InlineMathInput
-                  key={transferKey}
-                  id="transfer-amount-math"
-                  label="Transfer Amount (฿)"
-                  placeholder="e.g. 500 or 1200/2"
-                  required
-                  disabled={isTransferring}
-                  onAmountEvaluated={(val, raw, valid) => {
-                    setTransferAmount(val);
-                    setTransferRaw(raw);
-                    setTransferValid(valid);
-                  }}
-                />
-
-                <div>
-                  <label className="text-xs font-semibold uppercase tracking-wider text-stone-600 dark:text-stone-300 block mb-1">
-                    Note
-                  </label>
-                  <input
-                    id="transfer-note"
-                    type="text"
-                    value={transferNote}
-                    onChange={(e) => setTransferNote(e.target.value)}
-                    placeholder="e.g. Savings transfer"
-                    className="w-full text-xs rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 px-3.5 py-2.5 text-stone-900 dark:text-stone-100 placeholder:text-stone-400 dark:placeholder:text-stone-500 focus:outline-none focus:border-stone-800 dark:focus:border-stone-400 focus:ring-2 focus:ring-stone-200 dark:focus:ring-stone-700 transition-colors"
-                  />
-                </div>
-
-                {transferError && (
-                  <div className="bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 p-3 rounded-xl text-xs font-medium flex items-center gap-2">
-                    <AlertCircle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0" />
-                    <span>{transferError}</span>
-                  </div>
-                )}
-
-                <div className="pt-2">
-                  <motion.button
-                    whileTap={{ scale: 0.96 }}
-                    id="execute-transfer-btn"
-                    type="submit"
-                    disabled={isTransferring || !transferValid || transferAmount === null || sourceWalletId === destWalletId}
-                    className={`w-full py-2.5 sm:py-3 rounded-xl font-semibold text-xs transition-all flex items-center justify-center gap-2 cursor-pointer ${
-                      !isTransferring && transferValid && transferAmount !== null && sourceWalletId !== destWalletId
-                        ? 'bg-stone-900 hover:bg-stone-800 dark:bg-stone-100 dark:hover:bg-white text-white dark:text-stone-900 shadow-xs'
-                        : 'bg-stone-200 dark:bg-stone-800 text-stone-400 dark:text-stone-600 cursor-not-allowed'
-                    }`}
-                  >
-                    <ArrowLeftRight className="w-4 h-4" />
-                    <span>
-                      {isTransferring
-                        ? 'Transferring...'
-                        : `Transfer ${formatCurrencyAmount(transferAmount ?? 0)}`}
-                    </span>
-                  </motion.button>
-                </div>
-              </form>
+              <WalletTransferForm
+                wallets={activeWallets}
+                tone="subtle"
+                ids={{
+                  source: 'transfer-source-wallet',
+                  dest: 'transfer-dest-wallet',
+                  amount: 'transfer-amount-math',
+                  note: 'transfer-note',
+                  submit: 'execute-transfer-btn',
+                }}
+                onTransferred={() => setIsTransferOpen(false)}
+              />
             </motion.div>
           </motion.div>
         )}
