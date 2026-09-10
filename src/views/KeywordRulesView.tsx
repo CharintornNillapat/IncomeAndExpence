@@ -8,17 +8,25 @@ export const KeywordRulesView: React.FC = () => {
 
   const [keyword, setKeyword] = useState<string>('');
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>(categories[0]?.id || '');
+  const [ruleError, setRuleError] = useState<string | null>(null);
 
   // Sandbox Test
   const [testInput, setTestInput] = useState<string>('500 buy new shirt');
 
   const matchResult = matchSmartDescription(testInput, keywordRules, categories);
 
-  const handleAddRule = (e: React.FormEvent) => {
+  const handleAddRule = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!keyword.trim() || !selectedCategoryId) return;
+    setRuleError(null);
 
-    addKeywordRule(keyword.trim(), selectedCategoryId);
+    const res = await addKeywordRule(keyword, selectedCategoryId);
+
+    // Keep the typed keyword when the rule is rejected.
+    if (!res.success) {
+      setRuleError(res.error || 'Failed to save keyword rule');
+      return;
+    }
+
     setKeyword('');
   };
 
@@ -79,6 +87,12 @@ export const KeywordRulesView: React.FC = () => {
                   ))}
                 </select>
               </div>
+
+              {ruleError && (
+                <div className="bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 p-3 rounded-xl text-xs font-medium">
+                  {ruleError}
+                </div>
+              )}
 
               <button
                 id="save-keyword-rule-btn"

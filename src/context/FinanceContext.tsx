@@ -12,9 +12,26 @@ import {
   TransactionType,
 } from '../types';
 import { supabase } from '../lib/supabase';
-import { TransactionSchema } from '../utils/zodSchemas';
+import {
+  TransactionSchema,
+  WalletSchema,
+  DebtSchema,
+  DiarySchema,
+  KeywordMappingSchema,
+  formatZodIssues,
+} from '../utils/zodSchemas';
 import { APP_CURRENCY } from '../utils/currency';
 import { todayIsoDate } from '../utils/date';
+
+/**
+ * Outcome of a validated write. Every mutating call reports failure this way
+ * rather than throwing or failing silently, so views can surface the reason
+ * without a try/catch at each call site.
+ */
+export interface MutationResult {
+  success: boolean;
+  error?: string;
+}
 
 export interface FinanceContextType {
   // Auth & Security
@@ -32,14 +49,14 @@ export interface FinanceContextType {
   wallets: Wallet[];
   totalNetWorth: number;
   // `balance` is omitted: the opening balance is supplied via `initialBalance`.
-  addWallet: (wallet: Omit<Wallet, 'id' | 'userId' | 'createdAt' | 'updatedAt' | 'isArchived' | 'isDeleted' | 'balance'>, initialBalance: number) => Promise<void>;
+  addWallet: (wallet: Omit<Wallet, 'id' | 'userId' | 'createdAt' | 'updatedAt' | 'isArchived' | 'isDeleted' | 'balance'>, initialBalance: number) => Promise<MutationResult>;
   updateWallet: (id: string, updates: Partial<Wallet>) => Promise<void>;
   deleteWallet: (id: string) => Promise<void>;
 
   // Categories & Configurable Keyword Rules
   categories: Category[];
   keywordRules: KeywordRule[];
-  addKeywordRule: (keyword: string, categoryId: string) => Promise<void>;
+  addKeywordRule: (keyword: string, categoryId: string) => Promise<MutationResult>;
   deleteKeywordRule: (id: string) => Promise<void>;
 
   // Transactions
@@ -62,14 +79,14 @@ export interface FinanceContextType {
 
   // Debts
   debts: Debt[];
-  addDebt: (debt: Omit<Debt, 'id' | 'userId' | 'createdAt' | 'updatedAt' | 'isSettled' | 'isDeleted'>) => Promise<void>;
+  addDebt: (debt: Omit<Debt, 'id' | 'userId' | 'createdAt' | 'updatedAt' | 'isSettled' | 'isDeleted'>) => Promise<MutationResult>;
   repayDebtAtomic: (debtId: string, walletId: string, amount: number, note?: string) => Promise<{ success: boolean; error?: string }>;
   settleDebt: (debtId: string) => Promise<void>;
   deleteDebt: (debtId: string) => Promise<void>;
 
   // Holistic Diary
   diaryEntries: DiaryEntry[];
-  upsertDiaryEntry: (entry: Omit<DiaryEntry, 'id' | 'userId' | 'createdAt' | 'updatedAt' | 'isDeleted'>) => Promise<void>;
+  upsertDiaryEntry: (entry: Omit<DiaryEntry, 'id' | 'userId' | 'createdAt' | 'updatedAt' | 'isDeleted'>) => Promise<MutationResult>;
   deleteDiaryEntry: (id: string) => Promise<void>;
 
   // Filters & State helpers
@@ -681,7 +698,12 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
   const addWallet = useCallback(async (
     data: Omit<Wallet, 'id' | 'userId' | 'createdAt' | 'updatedAt' | 'isArchived' | 'isDeleted' | 'balance'>,
     initialBalance: number
-  ) => {
+  ): Promise<MutationResult> => {
+    const validation = WalletSchema.safeParse({ ...data, initialBalance });
+    if (!validation.success) {
+      return { success: false, error: formatZodIssues(validation.error) };
+    }
+
     if (isAuthenticated) {
       const { data: inserted, error } = await supabase
         .from('wallets')
@@ -699,23 +721,25 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
         .select()
         .single();
 
-      if (!error && inserted) {
-        setWallets((prev) => [...prev, mapWalletRow(inserted)]);
+      if (error || !inserted) {
+        return { success: false, error: error?.message || 'Failed to create wallet' };
+      }
 
-        if (initialBalance > 0) {
-          await supabase.from('transactions').insert({
-            user_id: currentUser.id,
-            wallet_id: inserted.id,
-            amount: initialBalance,
-            raw_input: initialBalance.toString(),
-            type: 'ADJUSTMENT',
-            description: `Initial balance setup for ${data.name}`,
-            transaction_date: todayIsoDate(),
-            idempotency_key: `init-${inserted.id}`,
-            is_deleted: false,
-            created_by: currentUser.id,
-          });
-        }
+      setWallets((prev) => [...prev, mapWalletRow(inserted)]);
+
+      if (initialBalance > 0) {
+        await supabase.from('transactions').insert({
+          user_id: currentUser.id,
+          wallet_id: inserted.id,
+          amount: initialBalance,
+          raw_input: initialBalance.toString(),
+          type: 'ADJUSTMENT',
+          description: `Initial balance setup for ${data.name}`,
+          transaction_date: todayIsoDate(),
+          idempotency_key: `init-${inserted.id}`,
+          is_deleted: false,
+          created_by: currentUser.id,
+        });
       }
     } else {
       const newWalletId = `w-${Date.now()}`;
@@ -731,6 +755,8 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       };
       setWallets((prev) => [...prev, newWallet]);
     }
+
+    return { success: true };
   }, [isAuthenticated, currentUser.id]);
 
   const updateWallet = useCallback(async (id: string, updates: Partial<Wallet>) => {
@@ -762,8 +788,14 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
   }, [updateWallet]);
 
   // Keyword rules CRUD
-  const addKeywordRule = useCallback(async (keyword: string, categoryId: string) => {
-    const cleaned = keyword.trim().toLowerCase();
+  const addKeywordRule = useCallback(async (keyword: string, categoryId: string): Promise<MutationResult> => {
+    const validation = KeywordMappingSchema.safeParse({ keyword, categoryId });
+    if (!validation.success) {
+      return { success: false, error: formatZodIssues(validation.error) };
+    }
+    // The schema trims and lower-cases the keyword, so use its parsed output.
+    const cleaned = validation.data.keyword;
+
     if (isAuthenticated) {
       const { data, error } = await supabase
         .from('keyword_rules')
@@ -775,18 +807,20 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
         .select()
         .single();
 
-      if (!error && data) {
-        setKeywordRules((prev) => [
-          {
-            id: data.id,
-            userId: data.user_id,
-            keyword: data.keyword,
-            categoryId: data.category_id,
-            createdAt: data.created_at,
-          },
-          ...prev,
-        ]);
+      if (error || !data) {
+        return { success: false, error: error?.message || 'Failed to save keyword rule' };
       }
+
+      setKeywordRules((prev) => [
+        {
+          id: data.id,
+          userId: data.user_id,
+          keyword: data.keyword,
+          categoryId: data.category_id,
+          createdAt: data.created_at,
+        },
+        ...prev,
+      ]);
     } else {
       const newRule: KeywordRule = {
         id: `kr-${Date.now()}`,
@@ -797,6 +831,8 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       };
       setKeywordRules((prev) => [newRule, ...prev]);
     }
+
+    return { success: true };
   }, [isAuthenticated, currentUser.id]);
 
   const deleteKeywordRule = useCallback(async (id: string) => {
@@ -821,8 +857,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
   }) => {
     const validation = TransactionSchema.safeParse(data);
     if (!validation.success) {
-      const errorMsg = validation.error.issues.map((i) => i.message).join('; ');
-      return { success: false, error: errorMsg };
+      return { success: false, error: formatZodIssues(validation.error) };
     }
 
     // Resolve every participating wallet BEFORE mutating any state. Zod only proves
@@ -1287,7 +1322,12 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
   // Debts CRUD
   const addDebt = useCallback(async (
     data: Omit<Debt, 'id' | 'userId' | 'createdAt' | 'updatedAt' | 'isSettled' | 'isDeleted'>
-  ) => {
+  ): Promise<MutationResult> => {
+    const validation = DebtSchema.safeParse(data);
+    if (!validation.success) {
+      return { success: false, error: formatZodIssues(validation.error) };
+    }
+
     if (isAuthenticated) {
       const { data: inserted, error } = await supabase
         .from('debts')
@@ -1305,9 +1345,11 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
         .select()
         .single();
 
-      if (!error && inserted) {
-        setDebts((prev) => [mapDebtRow(inserted), ...prev]);
+      if (error || !inserted) {
+        return { success: false, error: error?.message || 'Failed to create debt goal' };
       }
+
+      setDebts((prev) => [mapDebtRow(inserted), ...prev]);
     } else {
       const newDebt: Debt = {
         ...data,
@@ -1320,6 +1362,8 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       };
       setDebts((prev) => [newDebt, ...prev]);
     }
+
+    return { success: true };
   }, [isAuthenticated, currentUser.id]);
 
   const repayDebtAtomic = useCallback(async (debtId: string, walletId: string, amount: number, note?: string) => {
@@ -1366,32 +1410,40 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
   // Holistic Diary CRUD
   const upsertDiaryEntry = useCallback(async (
     entryData: Omit<DiaryEntry, 'id' | 'userId' | 'createdAt' | 'updatedAt' | 'isDeleted'>
-  ) => {
+  ): Promise<MutationResult> => {
+    const validation = DiarySchema.safeParse(entryData);
+    if (!validation.success) {
+      return { success: false, error: formatZodIssues(validation.error) };
+    }
+
     if (isAuthenticated) {
       const existing = diaryEntries.find((e) => e.date === entryData.date && !e.isDeleted);
-      if (existing) {
-        await supabase
-          .from('diary_entries')
-          .update({
+      const { error } = existing
+        ? await supabase
+            .from('diary_entries')
+            .update({
+              mood: entryData.mood,
+              workout: entryData.workout,
+              workout_note: entryData.workoutNote || null,
+              food_quality: entryData.foodQuality,
+              notes: entryData.notes || null,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', existing.id)
+        : await supabase.from('diary_entries').insert({
+            user_id: currentUser.id,
+            date: entryData.date,
             mood: entryData.mood,
             workout: entryData.workout,
             workout_note: entryData.workoutNote || null,
             food_quality: entryData.foodQuality,
             notes: entryData.notes || null,
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', existing.id);
-      } else {
-        await supabase.from('diary_entries').insert({
-          user_id: currentUser.id,
-          date: entryData.date,
-          mood: entryData.mood,
-          workout: entryData.workout,
-          workout_note: entryData.workoutNote || null,
-          food_quality: entryData.foodQuality,
-          notes: entryData.notes || null,
-        });
+          });
+
+      if (error) {
+        return { success: false, error: error.message || 'Failed to save diary entry' };
       }
+
       await refreshFromCloud();
     } else {
       setDiaryEntries((prev) => {
@@ -1417,6 +1469,8 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
         }
       });
     }
+
+    return { success: true };
   }, [isAuthenticated, diaryEntries, currentUser.id, refreshFromCloud]);
 
   const deleteDiaryEntry = useCallback(async (id: string) => {

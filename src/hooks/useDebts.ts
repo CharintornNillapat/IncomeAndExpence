@@ -50,7 +50,7 @@ export const useDebts = () => {
   // Stable action callbacks
   const handleAddDebt = useCallback(
     (debt: Omit<Debt, 'id' | 'userId' | 'createdAt' | 'updatedAt' | 'isSettled' | 'isDeleted'>) => {
-      addDebt(debt);
+      return addDebt(debt);
     },
     [addDebt]
   );

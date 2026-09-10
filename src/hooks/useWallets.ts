@@ -42,7 +42,7 @@ export const useWallets = () => {
       wallet: Omit<Wallet, 'id' | 'userId' | 'createdAt' | 'updatedAt' | 'isArchived' | 'isDeleted' | 'balance'>,
       initialBalance: number
     ) => {
-      await addWallet(wallet, initialBalance);
+      return await addWallet(wallet, initialBalance);
     },
     [addWallet]
   );

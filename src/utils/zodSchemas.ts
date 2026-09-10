@@ -1,5 +1,15 @@
 import { z } from 'zod';
 
+/**
+ * Flattens a validation failure into one human-readable line.
+ *
+ * Every write path surfaces validation errors the same way, so the message can
+ * go straight into the error banner a view already renders.
+ */
+export function formatZodIssues(error: z.ZodError): string {
+  return error.issues.map((i) => i.message).join('; ');
+}
+
 export const TransactionSchema = z.object({
   amount: z.number().positive('Amount must be greater than 0').max(999999999.99, 'Amount too large'),
   rawInput: z.string().optional(),
@@ -63,18 +73,13 @@ export const DiarySchema = z.object({
 });
 
 export const KeywordMappingSchema = z.object({
-  keyword: z.string().min(1, 'Keyword is required').trim().toLowerCase(),
+  // trim() runs before min(1) so a whitespace-only keyword is rejected rather
+  // than normalizing to an empty string.
+  keyword: z.string().trim().min(1, 'Keyword cannot be empty').toLowerCase(),
   categoryId: z.string().min(1, 'Category is required'),
 });
 
 export const AuthLoginSchema = z.object({
   email: z.string().email('Invalid email address'),
   password: z.string().min(6, 'Password must be at least 6 characters'),
-  deviceFingerprint: z.string().min(1),
-});
-
-export const OtpVerifySchema = z.object({
-  email: z.string().email(),
-  code: z.string().length(6, 'OTP must be 6 digits'),
-  deviceFingerprint: z.string().min(1),
 });

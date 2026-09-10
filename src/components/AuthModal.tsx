@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../lib/supabase';
+import { AuthLoginSchema, formatZodIssues } from '../utils/zodSchemas';
 import { Lock, Mail, User as UserIcon, AlertCircle, CheckCircle2, ArrowRight, X, KeyRound } from 'lucide-react';
 
 interface AuthModalProps {
@@ -19,9 +20,23 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
     setErrorMessage(null);
     setSuccessMessage(null);
+
+    // Validate credentials before the network round-trip. A password reset only
+    // needs the address, so the password rule is dropped for that mode.
+    const credentials = { email: email.trim(), password };
+    const validation =
+      mode === 'forgot'
+        ? AuthLoginSchema.pick({ email: true }).safeParse(credentials)
+        : AuthLoginSchema.safeParse(credentials);
+
+    if (!validation.success) {
+      setErrorMessage(formatZodIssues(validation.error));
+      return;
+    }
+
+    setLoading(true);
 
     try {
       if (mode === 'signup') {

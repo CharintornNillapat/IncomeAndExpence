@@ -31,6 +31,7 @@ export const DiaryView: React.FC = () => {
   const [foodQuality, setFoodQuality] = useState<FoodQuality>('HEALTHY');
   const [notes, setNotes] = useState<string>('');
   const [saveSuccess, setSaveSuccess] = useState<boolean>(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   // Map category and wallet helpers
   const categoryMap = useMemo(() => new Map(categories.map((c) => [c.id, c])), [categories]);
@@ -81,10 +82,11 @@ export const DiaryView: React.FC = () => {
     return { dayName, fullDate, badge };
   };
 
-  const handleSaveEntry = (e: React.FormEvent) => {
+  const handleSaveEntry = async (e: React.FormEvent) => {
     e.preventDefault();
+    setSaveError(null);
 
-    upsertDiaryEntry({
+    const res = await upsertDiaryEntry({
       date: selectedDate,
       mood,
       workout,
@@ -92,6 +94,12 @@ export const DiaryView: React.FC = () => {
       foodQuality,
       notes: notes.trim() || undefined,
     });
+
+    // Only confirm once the entry is actually persisted.
+    if (!res.success) {
+      setSaveError(res.error || 'Failed to save diary entry');
+      return;
+    }
 
     setSaveSuccess(true);
     setTimeout(() => setSaveSuccess(false), 2500);
@@ -325,6 +333,11 @@ export const DiaryView: React.FC = () => {
               {saveSuccess && (
                 <p className="text-center text-xs text-emerald-600 dark:text-emerald-400 font-semibold mt-2 animate-fade-in">
                   ✓ Diary entry logged for {selectedDayInfo.dayName}!
+                </p>
+              )}
+              {saveError && (
+                <p className="text-center text-xs text-rose-600 dark:text-rose-400 font-semibold mt-2">
+                  {saveError}
                 </p>
               )}
             </div>

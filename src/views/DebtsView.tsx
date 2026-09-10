@@ -31,6 +31,7 @@ export const DebtsView: React.FC = () => {
   const [repayValid, setRepayValid] = useState<boolean>(false);
   const [repayNote, setRepayNote] = useState<string>('Monthly principal payment');
   const [repayError, setRepayError] = useState<string | null>(null);
+  const [createDebtError, setCreateDebtError] = useState<string | null>(null);
 
   const handleSettle = useCallback((id: string) => {
     settleDebt(id);
@@ -48,11 +49,11 @@ export const DebtsView: React.FC = () => {
     setRepayValid(true);
   }, []);
 
-  const handleCreateDebt = (e: React.FormEvent) => {
+  const handleCreateDebt = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!debtName.trim() || totalAmount <= 0) return;
+    setCreateDebtError(null);
 
-    addDebt({
+    const res = await addDebt({
       name: debtName.trim(),
       totalAmount,
       remainingAmount: remainingAmount > 0 ? remainingAmount : totalAmount,
@@ -60,6 +61,12 @@ export const DebtsView: React.FC = () => {
       minimumPayment,
       dueDate,
     });
+
+    // Keep the form open so a rejected debt goal can be corrected.
+    if (!res.success) {
+      setCreateDebtError(res.error || 'Failed to create debt goal');
+      return;
+    }
 
     setIsAddDebtOpen(false);
     setDebtName('');
@@ -244,6 +251,12 @@ export const DebtsView: React.FC = () => {
               </div>
 
               <div className="pt-2">
+                {createDebtError && (
+                  <div className="bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 p-3 rounded-xl text-xs font-medium">
+                    {createDebtError}
+                  </div>
+                )}
+
                 <button
                   id="save-new-debt-btn"
                   type="submit"

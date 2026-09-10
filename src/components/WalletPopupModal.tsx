@@ -63,6 +63,7 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
   const [transferNote, setTransferNote] = useState<string>('Funds transfer');
   const [transferStatus, setTransferStatus] = useState<string | null>(null);
   const [transferError, setTransferError] = useState<string | null>(null);
+  const [createWalletError, setCreateWalletError] = useState<string | null>(null);
   const [isTransferring, setIsTransferring] = useState<boolean>(false);
   // One key per armed form. Retrying after a failure reuses it so the retry is
   // deduplicated rather than double-spending; it is regenerated only on success.
@@ -91,9 +92,9 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
 
   const handleCreateWallet = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!walletName.trim()) return;
+    setCreateWalletError(null);
 
-    await addWallet(
+    const res = await addWallet(
       {
         name: walletName.trim(),
         type: walletType,
@@ -103,6 +104,12 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
       },
       initialBalance
     );
+
+    // Stay on the form with the input intact when the write is rejected.
+    if (!res.success) {
+      setCreateWalletError(res.error || 'Failed to create wallet');
+      return;
+    }
 
     setWalletName('');
     setInitialBalance(0);
@@ -668,6 +675,12 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
               </div>
 
               <div className="pt-2">
+                {createWalletError && (
+                  <div className="bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 p-3 rounded-xl text-xs font-medium mb-3">
+                    {createWalletError}
+                  </div>
+                )}
+
                 <button
                   id="modal-create-wallet-submit"
                   type="submit"
