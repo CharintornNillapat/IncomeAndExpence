@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { supabase } from '../lib/supabase';
+import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { AuthLoginSchema, formatZodIssues } from '../utils/zodSchemas';
 import { Lock, Mail, User as UserIcon, AlertCircle, CheckCircle2, ArrowRight, X, KeyRound } from 'lucide-react';
 
@@ -22,6 +22,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
     e.preventDefault();
     setErrorMessage(null);
     setSuccessMessage(null);
+
+    if (!isSupabaseConfigured) {
+      setErrorMessage(
+        'Cloud sync is not configured. Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY ' +
+          'to your .env file to sign in. Your data is saved locally in the meantime.'
+      );
+      return;
+    }
 
     // Validate credentials before the network round-trip. A password reset only
     // needs the address, so the password rule is dropped for that mode.

@@ -11,7 +11,7 @@ import {
   ImportRowValidation,
   TransactionType,
 } from '../types';
-import { supabase } from '../lib/supabase';
+import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import {
   TransactionSchema,
   WalletSchema,
@@ -603,6 +603,13 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
 
   // Listen to Supabase Auth state changes
   useEffect(() => {
+    // Without credentials there is nothing to talk to: stay unauthenticated so
+    // every write takes the local-storage path and no request is attempted.
+    if (!isSupabaseConfigured) {
+      setIsAuthenticated(false);
+      return;
+    }
+
     let authSubscription: { unsubscribe: () => void } | null = null;
 
     const setupAuth = async () => {
@@ -676,7 +683,9 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
   }, [currentUser.id, loadSupabaseData]);
 
   const signOut = useCallback(async () => {
-    await supabase.auth.signOut();
+    if (isSupabaseConfigured) {
+      await supabase.auth.signOut();
+    }
     setIsAuthenticated(false);
     setCurrentUser(DEFAULT_USER);
   }, []);
