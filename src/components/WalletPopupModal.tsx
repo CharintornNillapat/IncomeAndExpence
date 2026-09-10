@@ -4,27 +4,21 @@ import {
   X, 
   Plus, 
   ArrowLeftRight, 
-  Landmark, 
-  Banknote, 
-  PiggyBank, 
-  CreditCard, 
-  Coins, 
   Trash2, 
   Sliders, 
   TrendingUp, 
   TrendingDown, 
   CheckCircle2, 
   AlertCircle,
-  Sparkles,
   Wallet as WalletIcon,
-  Search,
   Receipt,
   Layers
 } from 'lucide-react';
 import { useFinance } from '../context/FinanceContext';
-import { Wallet, WalletType } from '../types';
+import { WalletType } from '../types';
 import { InlineMathInput } from './InlineMathInput';
 import { APP_CURRENCY, APP_CURRENCY_SYMBOL } from '../utils/currency';
+import { getWalletIcon } from '../utils/walletIcons';
 
 export type WalletModalTab = 'OVERVIEW' | 'TRANSFER' | 'ADD_WALLET' | 'TRANSACTIONS';
 
@@ -47,7 +41,6 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
     totalNetWorth, 
     addWallet, 
     deleteWallet, 
-    updateWallet,
     addTransaction 
   } = useFinance();
 
@@ -94,16 +87,6 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
   }, [transactions, currentWallet]);
 
   if (!isOpen) return null;
-
-  const getWalletIcon = (type: WalletType) => {
-    switch (type) {
-      case 'BANK_ACCOUNT': return Landmark;
-      case 'CASH': return Banknote;
-      case 'SAVINGS': return PiggyBank;
-      case 'CREDIT_CARD': return CreditCard;
-      default: return Coins;
-    }
-  };
 
   const handleCreateWallet = async (e: React.FormEvent) => {
     e.preventDefault();

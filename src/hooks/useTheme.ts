@@ -15,14 +15,6 @@ export const useTheme = () => {
     }
   });
 
-  const [resolvedTheme, setResolvedTheme] = useState<'light' | 'dark'>(() => {
-    if (typeof window === 'undefined') return 'light';
-    const saved = localStorage.getItem(THEME_STORAGE_KEY) as Theme | null;
-    if (saved === 'dark') return 'dark';
-    if (saved === 'light') return 'light';
-    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-  });
-
   const applyTheme = useCallback((currentTheme: Theme) => {
     if (typeof document === 'undefined') return;
     const root = document.documentElement;
@@ -33,12 +25,10 @@ export const useTheme = () => {
       root.classList.add('dark');
       root.setAttribute('data-theme', 'dark');
       root.style.colorScheme = 'dark';
-      setResolvedTheme('dark');
     } else {
       root.classList.remove('dark');
       root.setAttribute('data-theme', 'light');
       root.style.colorScheme = 'light';
-      setResolvedTheme('light');
     }
   }, []);
 
@@ -64,10 +54,6 @@ export const useTheme = () => {
     return () => mediaQuery.removeEventListener('change', handleChange);
   }, [theme, applyTheme]);
 
-  const setTheme = useCallback((newTheme: Theme) => {
-    setThemeState(newTheme);
-  }, []);
-
   const cycleTheme = useCallback(() => {
     setThemeState((prev) => {
       if (prev === 'light') return 'dark';
@@ -78,8 +64,6 @@ export const useTheme = () => {
 
   return {
     theme,
-    resolvedTheme,
-    setTheme,
     cycleTheme,
   };
 };

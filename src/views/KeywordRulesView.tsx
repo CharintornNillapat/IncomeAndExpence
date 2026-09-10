@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Sparkles, Plus, Trash2, Tag, Search, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { Sparkles, Plus, Trash2, Tag } from 'lucide-react';
 import { useFinance } from '../context/FinanceContext';
 import { matchSmartDescription } from '../utils/smartMatcher';
 

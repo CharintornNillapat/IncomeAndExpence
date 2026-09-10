@@ -2,26 +2,20 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Plus, 
-  Wallet as WalletIcon, 
   ArrowLeftRight, 
-  Landmark, 
-  Banknote, 
-  PiggyBank, 
-  CreditCard, 
-  Coins, 
   Trash2, 
   X,
   AlertCircle,
-  Sparkles
 } from 'lucide-react';
 import { useFinance } from '../context/FinanceContext';
-import { Wallet, WalletType } from '../types';
+import { WalletType } from '../types';
 import { InlineMathInput } from '../components/InlineMathInput';
 import { AnimatedCounter } from '../components/AnimatedCounter';
 import { APP_CURRENCY, APP_CURRENCY_SYMBOL } from '../utils/currency';
+import { getWalletIcon } from '../utils/walletIcons';
 
 export const WalletsView: React.FC = () => {
-  const { wallets, totalNetWorth, addWallet, deleteWallet, addTransaction } = useFinance();
+  const { wallets, addWallet, deleteWallet, addTransaction } = useFinance();
 
   const [isAddWalletOpen, setIsAddWalletOpen] = useState<boolean>(false);
   const [isTransferOpen, setIsTransferOpen] = useState<boolean>(false);
@@ -47,16 +41,6 @@ export const WalletsView: React.FC = () => {
   // One key per armed form. Retrying after a failure reuses it so the retry is
   // deduplicated rather than double-spending; it is regenerated only on success.
   const [transferKey, setTransferKey] = useState<string>(() => crypto.randomUUID());
-
-  const getWalletIcon = (type: WalletType) => {
-    switch (type) {
-      case 'BANK_ACCOUNT': return Landmark;
-      case 'CASH': return Banknote;
-      case 'SAVINGS': return PiggyBank;
-      case 'CREDIT_CARD': return CreditCard;
-      default: return Coins;
-    }
-  };
 
   const handleCreateWallet = (e: React.FormEvent) => {
     e.preventDefault();

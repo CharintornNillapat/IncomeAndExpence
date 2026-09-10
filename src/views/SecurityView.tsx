@@ -9,7 +9,6 @@ import {
   Lock, 
   CheckCircle2, 
   Clock, 
-  Fingerprint, 
   RefreshCw, 
   Database, 
   Cloud, 

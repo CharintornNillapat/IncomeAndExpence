@@ -24,12 +24,7 @@ export interface FinanceContextType {
   currentSession: SessionDevice | null;
   revokeSession: (sessionId: string) => void;
   revokeAllOtherSessions: () => void;
-  simulateNewDeviceLogin: (email: string) => { requiresOtp: boolean; message: string };
-  triggerOtpChallenge: () => void;
-  verifyOtp: (code: string) => boolean;
-  verifyOtpCode: (code: string) => boolean;
   otpPending: boolean;
-  activeOtpCode: string;
   signOut: () => Promise<void>;
 
   // Wallets
@@ -114,6 +109,10 @@ function generateIdempotencyKey(): string {
   return `idemp-${Date.now()}-${rand()}-${rand()}`;
 }
 
+// Tables mirrored into local state. Every one of them re-runs the full loader on
+// any row change, so cross-device sync stays consistent at the cost of a refetch.
+const SYNCED_TABLES = ['wallets', 'transactions', 'debts', 'diary_entries', 'categories'] as const;
+
 // Maps a `transactions` row from Supabase (snake_case) to the domain type.
 function mapTransactionRow(row: any): Transaction {
   return {
@@ -131,6 +130,42 @@ function mapTransactionRow(row: any): Transaction {
     idempotencyKey: row.idempotency_key || undefined,
     isDeleted: row.is_deleted || false,
     createdBy: row.created_by || row.user_id,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+// Maps a `wallets` row from Supabase (snake_case) to the domain type.
+function mapWalletRow(row: any): Wallet {
+  return {
+    id: row.id,
+    userId: row.user_id,
+    name: row.name,
+    type: row.type,
+    currency: APP_CURRENCY,
+    balance: parseFloat(row.balance) || 0,
+    color: row.color || 'stone',
+    icon: row.icon || 'wallet',
+    isArchived: row.is_archived || false,
+    isDeleted: row.is_deleted || false,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+// Maps a `debts` row from Supabase (snake_case) to the domain type.
+function mapDebtRow(row: any): Debt {
+  return {
+    id: row.id,
+    userId: row.user_id,
+    name: row.name,
+    totalAmount: parseFloat(row.total_amount) || 0,
+    remainingAmount: parseFloat(row.remaining_amount) || 0,
+    interestRate: row.interest_rate ? parseFloat(row.interest_rate) : undefined,
+    minimumPayment: row.minimum_payment ? parseFloat(row.minimum_payment) : undefined,
+    dueDate: row.due_date || undefined,
+    isSettled: row.is_settled || false,
+    isDeleted: row.is_deleted || false,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -326,9 +361,9 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
   const [sessions, setSessions] = useState<SessionDevice[]>(() => initializeSessionList(currentUser.id));
   const [showSoftDeleted, setShowSoftDeleted] = useState<boolean>(false);
 
-  // OTP State
-  const [otpPending, setOtpPending] = useState<boolean>(false);
-  const [activeOtpCode, setActiveOtpCode] = useState<string>('123456');
+  // OTP State. Nothing sets this today: the challenge/verify flow was never wired
+  // up to AuthModal or SecurityView, so the nav badge that reads it stays hidden.
+  const [otpPending] = useState<boolean>(false);
 
   // Client-side Idempotency Guard (P0-5)
   const inFlightIdempotencyKeys = useRef<Set<string>>(new Set());
@@ -445,20 +480,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
         .order('created_at', { ascending: true });
       
       if (!wErr && wData) {
-        const mappedWallets: Wallet[] = wData.map((row) => ({
-          id: row.id,
-          userId: row.user_id,
-          name: row.name,
-          type: row.type,
-          currency: APP_CURRENCY,
-          balance: parseFloat(row.balance) || 0,
-          color: row.color || 'stone',
-          icon: row.icon || 'wallet',
-          isArchived: row.is_archived || false,
-          isDeleted: row.is_deleted || false,
-          createdAt: row.created_at,
-          updatedAt: row.updated_at,
-        }));
+        const mappedWallets: Wallet[] = wData.map(mapWalletRow);
         setWallets(mappedWallets);
 
         // Auto-seed default wallet if account is completely empty
@@ -512,22 +534,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
         .order('created_at', { ascending: false });
 
       if (!dErr && dData) {
-        setDebts(
-          dData.map((row) => ({
-            id: row.id,
-            userId: row.user_id,
-            name: row.name,
-            totalAmount: parseFloat(row.total_amount) || 0,
-            remainingAmount: parseFloat(row.remaining_amount) || 0,
-            interestRate: row.interest_rate ? parseFloat(row.interest_rate) : undefined,
-            minimumPayment: row.minimum_payment ? parseFloat(row.minimum_payment) : undefined,
-            dueDate: row.due_date || undefined,
-            isSettled: row.is_settled || false,
-            isDeleted: row.is_deleted || false,
-            createdAt: row.created_at,
-            updatedAt: row.updated_at,
-          }))
-        );
+        setDebts(dData.map(mapDebtRow));
       }
 
       // 5. Transactions
@@ -538,26 +545,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
         .order('created_at', { ascending: false });
 
       if (!txErr && txData) {
-        setTransactions(
-          txData.map((row) => ({
-            id: row.id,
-            userId: row.user_id,
-            walletId: row.wallet_id,
-            destinationWalletId: row.destination_wallet_id || undefined,
-            categoryId: row.category_id || undefined,
-            debtId: row.debt_id || undefined,
-            amount: parseFloat(row.amount) || 0,
-            type: row.type,
-            description: row.description,
-            rawInput: row.raw_input || undefined,
-            transactionDate: row.transaction_date,
-            idempotencyKey: row.idempotency_key || undefined,
-            isDeleted: row.is_deleted || false,
-            createdBy: row.created_by || row.user_id,
-            createdAt: row.created_at,
-            updatedAt: row.updated_at,
-          }))
-        );
+        setTransactions(txData.map(mapTransactionRow));
       }
 
       // 6. Diary Entries
@@ -616,7 +604,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
         setIsAuthenticated(false);
       }
 
-      const { data } = supabase.auth.onAuthStateChange(async (event, newSession) => {
+      const { data } = supabase.auth.onAuthStateChange(async (_event, newSession) => {
         if (newSession?.user) {
           setIsAuthenticated(true);
           setCurrentUser({
@@ -646,44 +634,17 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
   useEffect(() => {
     if (!isAuthenticated || !currentUser.id) return;
 
-    const channel = supabase
-      .channel('schema-db-changes')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'wallets' },
-        () => {
-          loadSupabaseData(currentUser.id);
-        }
-      )
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'transactions' },
-        () => {
-          loadSupabaseData(currentUser.id);
-        }
-      )
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'debts' },
-        () => {
-          loadSupabaseData(currentUser.id);
-        }
-      )
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'diary_entries' },
-        () => {
-          loadSupabaseData(currentUser.id);
-        }
-      )
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'categories' },
-        () => {
-          loadSupabaseData(currentUser.id);
-        }
-      )
-      .subscribe();
+    const channel = SYNCED_TABLES.reduce(
+      (ch, table) =>
+        ch.on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table },
+          () => {
+            loadSupabaseData(currentUser.id);
+          }
+        ),
+      supabase.channel('schema-db-changes')
+    ).subscribe();
 
     return () => {
       supabase.removeChannel(channel);
@@ -715,31 +676,6 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     );
   }, []);
 
-  const triggerOtpChallenge = useCallback(() => {
-    setActiveOtpCode('123456');
-    setOtpPending(true);
-  }, []);
-
-  const simulateNewDeviceLogin = useCallback((email: string) => {
-    const randomOtp = Math.floor(100000 + Math.random() * 900000).toString();
-    setActiveOtpCode(randomOtp);
-    setOtpPending(true);
-    return {
-      requiresOtp: true,
-      message: `Unrecognized device detected. 6-digit OTP sent to ${email} (Demo Code: ${randomOtp})`,
-    };
-  }, []);
-
-  const verifyOtp = useCallback((code: string) => {
-    if (code.trim() === activeOtpCode || code.trim() === '123456') {
-      setOtpPending(false);
-      return true;
-    }
-    return false;
-  }, [activeOtpCode]);
-
-  const verifyOtpCode = verifyOtp;
-
   // Wallets CRUD
   const addWallet = useCallback(async (
     data: Omit<Wallet, 'id' | 'userId' | 'createdAt' | 'updatedAt' | 'isArchived' | 'isDeleted' | 'balance'>,
@@ -763,21 +699,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
         .single();
 
       if (!error && inserted) {
-        const newW: Wallet = {
-          id: inserted.id,
-          userId: inserted.user_id,
-          name: inserted.name,
-          type: inserted.type,
-          currency: APP_CURRENCY,
-          balance: parseFloat(inserted.balance) || 0,
-          color: inserted.color,
-          icon: inserted.icon,
-          isArchived: false,
-          isDeleted: false,
-          createdAt: inserted.created_at,
-          updatedAt: inserted.updated_at,
-        };
-        setWallets((prev) => [...prev, newW]);
+        setWallets((prev) => [...prev, mapWalletRow(inserted)]);
 
         if (initialBalance > 0) {
           await supabase.from('transactions').insert({
@@ -1180,57 +1102,19 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     }
   }, [wallets, transactions, debts, categories, currentUser.id, isAuthenticated]);
 
-  const softDeleteTransaction = useCallback(async (id: string) => {
+  // Soft-delete and restore are exact inverses: both flip `isDeleted` and undo or
+  // re-apply the transaction's effect on wallet balances. `sign` is +1 when removing
+  // the transaction from the ledger and -1 when putting it back, so one body covers
+  // both directions and the two can no longer drift apart.
+  const setTransactionDeleted = useCallback(async (id: string, deleted: boolean) => {
     const tx = transactions.find((t) => t.id === id);
-    if (!tx || tx.isDeleted) return;
+    if (!tx || tx.isDeleted === deleted) return;
 
-    // Optimistic soft delete
+    const sign = deleted ? 1 : -1;
+
+    // Optimistic flag flip
     setTransactions((prev) =>
-      prev.map((t) => (t.id === id ? { ...t, isDeleted: true, updatedAt: new Date().toISOString() } : t))
-    );
-
-    // Revert balance
-    let sourceNewBal: number | null = null;
-    let destNewBal: number | null = null;
-
-    setWallets((prev) =>
-      prev.map((w) => {
-        if (w.id === tx.walletId) {
-          let b = w.balance;
-          if (tx.type === 'EXPENSE' || tx.type === 'DEBT_REPAYMENT' || tx.type === 'TRANSFER') {
-            b = Math.round((w.balance + tx.amount) * 100) / 100;
-          } else if (tx.type === 'INCOME' || tx.type === 'ADJUSTMENT') {
-            b = Math.round((w.balance - tx.amount) * 100) / 100;
-          }
-          sourceNewBal = b;
-          return { ...w, balance: b };
-        }
-        if (tx.type === 'TRANSFER' && w.id === tx.destinationWalletId) {
-          const b = Math.round((w.balance - tx.amount) * 100) / 100;
-          destNewBal = b;
-          return { ...w, balance: b };
-        }
-        return w;
-      })
-    );
-
-    if (isAuthenticated) {
-      await supabase.from('transactions').update({ is_deleted: true, updated_at: new Date().toISOString() }).eq('id', id);
-      if (sourceNewBal !== null) {
-        await supabase.from('wallets').update({ balance: sourceNewBal }).eq('id', tx.walletId);
-      }
-      if (destNewBal !== null && tx.destinationWalletId) {
-        await supabase.from('wallets').update({ balance: destNewBal }).eq('id', tx.destinationWalletId);
-      }
-    }
-  }, [transactions, isAuthenticated]);
-
-  const restoreTransaction = useCallback(async (id: string) => {
-    const tx = transactions.find((t) => t.id === id);
-    if (!tx || !tx.isDeleted) return;
-
-    setTransactions((prev) =>
-      prev.map((t) => (t.id === id ? { ...t, isDeleted: false, updatedAt: new Date().toISOString() } : t))
+      prev.map((t) => (t.id === id ? { ...t, isDeleted: deleted, updatedAt: new Date().toISOString() } : t))
     );
 
     let sourceNewBal: number | null = null;
@@ -1241,15 +1125,15 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
         if (w.id === tx.walletId) {
           let b = w.balance;
           if (tx.type === 'EXPENSE' || tx.type === 'DEBT_REPAYMENT' || tx.type === 'TRANSFER') {
-            b = Math.round((w.balance - tx.amount) * 100) / 100;
+            b = roundToCents(w.balance + sign * tx.amount);
           } else if (tx.type === 'INCOME' || tx.type === 'ADJUSTMENT') {
-            b = Math.round((w.balance + tx.amount) * 100) / 100;
+            b = roundToCents(w.balance - sign * tx.amount);
           }
           sourceNewBal = b;
           return { ...w, balance: b };
         }
         if (tx.type === 'TRANSFER' && w.id === tx.destinationWalletId) {
-          const b = Math.round((w.balance + tx.amount) * 100) / 100;
+          const b = roundToCents(w.balance - sign * tx.amount);
           destNewBal = b;
           return { ...w, balance: b };
         }
@@ -1258,7 +1142,10 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     );
 
     if (isAuthenticated) {
-      await supabase.from('transactions').update({ is_deleted: false, updated_at: new Date().toISOString() }).eq('id', id);
+      await supabase
+        .from('transactions')
+        .update({ is_deleted: deleted, updated_at: new Date().toISOString() })
+        .eq('id', id);
       if (sourceNewBal !== null) {
         await supabase.from('wallets').update({ balance: sourceNewBal }).eq('id', tx.walletId);
       }
@@ -1267,6 +1154,16 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       }
     }
   }, [transactions, isAuthenticated]);
+
+  const softDeleteTransaction = useCallback(
+    (id: string) => setTransactionDeleted(id, true),
+    [setTransactionDeleted]
+  );
+
+  const restoreTransaction = useCallback(
+    (id: string) => setTransactionDeleted(id, false),
+    [setTransactionDeleted]
+  );
 
   // Bulk CSV Import
   const commitBulkImport = useCallback(async (validRows: ImportRowValidation[]) => {
@@ -1408,23 +1305,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
         .single();
 
       if (!error && inserted) {
-        setDebts((prev) => [
-          {
-            id: inserted.id,
-            userId: inserted.user_id,
-            name: inserted.name,
-            totalAmount: parseFloat(inserted.total_amount),
-            remainingAmount: parseFloat(inserted.remaining_amount),
-            interestRate: inserted.interest_rate ? parseFloat(inserted.interest_rate) : undefined,
-            minimumPayment: inserted.minimum_payment ? parseFloat(inserted.minimum_payment) : undefined,
-            dueDate: inserted.due_date || undefined,
-            isSettled: inserted.is_settled,
-            isDeleted: false,
-            createdAt: inserted.created_at,
-            updatedAt: inserted.updated_at,
-          },
-          ...prev,
-        ]);
+        setDebts((prev) => [mapDebtRow(inserted), ...prev]);
       }
     } else {
       const newDebt: Debt = {
@@ -1559,12 +1440,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       currentSession,
       revokeSession,
       revokeAllOtherSessions,
-      simulateNewDeviceLogin,
-      triggerOtpChallenge,
-      verifyOtp,
-      verifyOtpCode,
       otpPending,
-      activeOtpCode,
       signOut,
       wallets,
       totalNetWorth,
@@ -1600,12 +1476,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       currentSession,
       revokeSession,
       revokeAllOtherSessions,
-      simulateNewDeviceLogin,
-      triggerOtpChallenge,
-      verifyOtp,
-      verifyOtpCode,
       otpPending,
-      activeOtpCode,
       signOut,
       wallets,
       totalNetWorth,

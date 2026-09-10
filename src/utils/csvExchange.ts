@@ -71,8 +71,7 @@ export function exportDiaryToJson(diaryEntries: DiaryEntry[]): void {
  */
 export function parseAndValidateTransactionCsv(
   fileContent: string,
-  wallets: Wallet[],
-  categories: Category[]
+  wallets: Wallet[]
 ): Promise<ImportPreviewSummary> {
   return new Promise((resolve, reject) => {
     Papa.parse(fileContent, {
@@ -81,7 +80,6 @@ export function parseAndValidateTransactionCsv(
       transformHeader: (h) => h.trim().toLowerCase().replace(/[\s_-]+/g, ''),
       complete: (results) => {
         const walletMap = new Map(wallets.map((w) => [w.name.trim().toLowerCase(), w]));
-        const categoryMap = new Map(categories.map((c) => [c.name.trim().toLowerCase(), c]));
 
         const validationRows: ImportRowValidation[] = [];
         let validCount = 0;
@@ -140,11 +138,6 @@ export function parseAndValidateTransactionCsv(
           const numAmount = parseFloat(rawAmount);
           if (isNaN(numAmount) || numAmount <= 0) {
             errors.push('Amount must be a positive number');
-          }
-
-          // Check category if provided
-          if (rawCategory && !categoryMap.get(rawCategory.toLowerCase()) && parsedType !== 'TRANSFER') {
-            // Soft warning, can still import as uncategorized or notify
           }
 
           const isValid = errors.length === 0;

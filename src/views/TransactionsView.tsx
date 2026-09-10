@@ -3,21 +3,14 @@ import {
   Plus, 
   Download, 
   Upload, 
-  Trash2, 
-  RotateCcw, 
   Search, 
-  Filter, 
   FileText, 
   CheckCircle2, 
   AlertCircle, 
-  ArrowUpRight, 
-  ArrowDownLeft, 
-  RefreshCw, 
   X,
-  Sparkles
 } from 'lucide-react';
 import { useFinance } from '../context/FinanceContext';
-import { Transaction, TransactionType, ImportPreviewSummary } from '../types';
+import { ImportPreviewSummary } from '../types';
 import { exportTransactionsToCsv, exportDiaryToJson, parseAndValidateTransactionCsv } from '../utils/csvExchange';
 import { TransactionForm } from '../components/TransactionForm';
 import { TransactionTableRow } from '../components/TransactionTableRow';
@@ -41,7 +34,6 @@ export const TransactionsView: React.FC = () => {
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState<string>('');
   const [selectedWalletId, setSelectedWalletId] = useState<string>('ALL');
   const [selectedType, setSelectedType] = useState<string>('ALL');
-  const [selectedCategoryId, setSelectedCategoryId] = useState<string>('ALL');
   const [currentPage, setCurrentPage] = useState<number>(1);
   const pageSize = 8;
 
@@ -56,7 +48,7 @@ export const TransactionsView: React.FC = () => {
   // Reset page when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [debouncedSearchTerm, selectedWalletId, selectedType, selectedCategoryId, showSoftDeleted]);
+  }, [debouncedSearchTerm, selectedWalletId, selectedType, showSoftDeleted]);
 
   // Modal States
   const [isAddModalOpen, setIsAddModalOpen] = useState<boolean>(false);
@@ -93,14 +85,9 @@ export const TransactionsView: React.FC = () => {
         return false;
       }
 
-      // Category filter
-      if (selectedCategoryId !== 'ALL' && tx.categoryId !== selectedCategoryId) {
-        return false;
-      }
-
       return true;
     });
-  }, [transactions, showSoftDeleted, debouncedSearchTerm, selectedWalletId, selectedType, selectedCategoryId]);
+  }, [transactions, showSoftDeleted, debouncedSearchTerm, selectedWalletId, selectedType]);
 
   // Maps for O(1) row lookups
   const walletMap = useMemo(() => {
@@ -137,7 +124,7 @@ export const TransactionsView: React.FC = () => {
 
     try {
       const text = await file.text();
-      const preview = await parseAndValidateTransactionCsv(text, wallets, categories);
+      const preview = await parseAndValidateTransactionCsv(text, wallets);
       setImportPreview(preview);
     } catch (err: any) {
       setImportFileError(err.message || 'Failed to parse CSV file');

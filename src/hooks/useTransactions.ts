@@ -1,6 +1,6 @@
 import { useMemo, useCallback } from 'react';
 import { useFinance } from '../context/FinanceContext';
-import { Transaction, TransactionType } from '../types';
+import { TransactionType } from '../types';
 
 export interface UseTransactionsFilterOptions {
   includeDeleted?: boolean;

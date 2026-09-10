@@ -1,7 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { 
   BookHeart, 
-  Smile, 
   Dumbbell, 
   Utensils, 
   Calendar, 
@@ -12,10 +11,9 @@ import {
   ChevronDown, 
   ChevronUp,
   Receipt,
-  Wallet as WalletIcon
 } from 'lucide-react';
 import { useFinance } from '../context/FinanceContext';
-import { DiaryEntry, FoodQuality } from '../types';
+import { FoodQuality } from '../types';
 import { exportDiaryToJson } from '../utils/csvExchange';
 
 export const DiaryView: React.FC = () => {

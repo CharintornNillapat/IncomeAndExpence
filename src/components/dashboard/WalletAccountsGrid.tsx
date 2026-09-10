@@ -1,25 +1,16 @@
 import React from 'react';
 import { motion, Variants } from 'framer-motion';
-import { Wallet as WalletIcon, ChevronRight, ArrowLeftRight, Landmark, Banknote, PiggyBank, CreditCard, Coins } from 'lucide-react';
-import { Wallet, WalletType } from '../../types';
+import { Wallet as WalletIcon, ChevronRight, ArrowLeftRight } from 'lucide-react';
+import { Wallet } from '../../types';
 import { AnimatedCounter } from '../AnimatedCounter';
 import { APP_CURRENCY_SYMBOL } from '../../utils/currency';
+import { getWalletIcon } from '../../utils/walletIcons';
 
 interface WalletAccountsGridProps {
   wallets: Wallet[];
   totalNetWorth: number;
   onOpenWalletModal: (tab: 'OVERVIEW' | 'TRANSFER' | 'ADD_WALLET', walletId?: string) => void;
 }
-
-const getWalletIcon = (type: WalletType) => {
-  switch (type) {
-    case 'BANK_ACCOUNT': return Landmark;
-    case 'CASH': return Banknote;
-    case 'SAVINGS': return PiggyBank;
-    case 'CREDIT_CARD': return CreditCard;
-    default: return Coins;
-  }
-};
 
 const itemVariants: Variants = {
   hidden: { opacity: 0, y: 16 },
