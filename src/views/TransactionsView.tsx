@@ -12,6 +12,7 @@ import {
 import { useFinance } from '../context/FinanceContext';
 import { useTransactions } from '../hooks/useTransactions';
 import { ImportPreviewSummary, TransactionType } from '../types';
+import { todayIsoDate } from '../utils/date';
 import { exportTransactionsToCsv, exportDiaryToJson, parseAndValidateTransactionCsv } from '../utils/csvExchange';
 import { TransactionForm } from '../components/TransactionForm';
 import { TransactionTableRow } from '../components/TransactionTableRow';
@@ -136,7 +137,7 @@ export const TransactionsView: React.FC = () => {
 
   // Download Sample CSV
   const handleDownloadSampleCsv = () => {
-    const sampleCsv = `Date,Wallet,Category,Type,Amount,Description,DestinationWallet\n${new Date().toISOString().slice(0, 10)},Chase Checking,Food & Dining,EXPENSE,35.50,Lunch with team,\n${new Date().toISOString().slice(0, 10)},Chase Checking,Salary,INCOME,3200.00,Monthly Paycheck,\n${new Date().toISOString().slice(0, 10)},Chase Checking,,TRANSFER,500.00,Savings Deposit,Marcus High-Yield Savings`;
+    const sampleCsv = `Date,Wallet,Category,Type,Amount,Description,DestinationWallet\n${todayIsoDate()},Chase Checking,Food & Dining,EXPENSE,35.50,Lunch with team,\n${todayIsoDate()},Chase Checking,Salary,INCOME,3200.00,Monthly Paycheck,\n${todayIsoDate()},Chase Checking,,TRANSFER,500.00,Savings Deposit,Marcus High-Yield Savings`;
     const blob = new Blob([sampleCsv], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');

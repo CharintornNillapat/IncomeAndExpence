@@ -7,6 +7,7 @@ import { useFinance } from '../context/FinanceContext';
 import { matchSmartDescription } from '../utils/smartMatcher';
 import { safeEvaluateMath } from '../utils/mathEvaluator';
 import { APP_CURRENCY_SYMBOL } from '../utils/currency';
+import { todayIsoDate } from '../utils/date';
 
 interface TransactionFormProps {
   wallets: Wallet[];
@@ -45,7 +46,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
   const [destinationWalletId, setDestinationWalletId] = useState<string>(wallets[1]?.id || '');
   const [categoryId, setCategoryId] = useState<string>(categories[0]?.id || '');
   const [debtId, setDebtId] = useState<string>(activeDebts[0]?.id || debts[0]?.id || '');
-  const [date, setDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [date, setDate] = useState<string>(todayIsoDate());
 
   // Keep walletId in sync when wallets are loaded
   React.useEffect(() => {

@@ -14,6 +14,7 @@ import {
 import { supabase } from '../lib/supabase';
 import { TransactionSchema } from '../utils/zodSchemas';
 import { APP_CURRENCY } from '../utils/currency';
+import { todayIsoDate } from '../utils/date';
 
 export interface FinanceContextType {
   // Auth & Security
@@ -709,7 +710,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
             raw_input: initialBalance.toString(),
             type: 'ADJUSTMENT',
             description: `Initial balance setup for ${data.name}`,
-            transaction_date: new Date().toISOString().slice(0, 10),
+            transaction_date: todayIsoDate(),
             idempotency_key: `init-${inserted.id}`,
             is_deleted: false,
             created_by: currentUser.id,
@@ -792,7 +793,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
         userId: currentUser.id,
         keyword: cleaned,
         categoryId,
-        createdAt: new Date().toISOString().slice(0, 10),
+        createdAt: new Date().toISOString(),
       };
       setKeywordRules((prev) => [newRule, ...prev]);
     }
@@ -1340,7 +1341,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       categoryId: matchedCategory ? matchedCategory.id : undefined,
       debtId,
       type: 'DEBT_REPAYMENT',
-      transactionDate: new Date().toISOString().slice(0, 10),
+      transactionDate: todayIsoDate(),
     });
   }, [debts, wallets, categories, addTransaction]);
 

@@ -12,6 +12,7 @@ import { CategoryExpenseDistribution } from '../components/dashboard/CategoryExp
 import { DebtPayoffOverview } from '../components/dashboard/DebtPayoffOverview';
 import { RecentTransactionsTable } from '../components/dashboard/RecentTransactionsTable';
 import { APP_CURRENCY_SYMBOL } from '../utils/currency';
+import { todayIsoDate } from '../utils/date';
 
 export type TimeFilter = 'DAY' | 'WEEK' | 'MONTH' | 'ALL';
 
@@ -85,7 +86,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
     return activeTxs.filter((tx) => {
       const txDate = new Date(tx.transactionDate);
       if (timeFilter === 'DAY') {
-        return tx.transactionDate === now.toISOString().slice(0, 10);
+        return tx.transactionDate === todayIsoDate();
       }
       if (timeFilter === 'WEEK') {
         const weekAgo = new Date(now.getTime() - 7 * 86400000);

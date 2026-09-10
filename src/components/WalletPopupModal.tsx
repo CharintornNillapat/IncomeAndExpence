@@ -18,6 +18,7 @@ import { useFinance } from '../context/FinanceContext';
 import { WalletType } from '../types';
 import { InlineMathInput } from './InlineMathInput';
 import { APP_CURRENCY, APP_CURRENCY_SYMBOL } from '../utils/currency';
+import { todayIsoDate } from '../utils/date';
 import { getWalletIcon } from '../utils/walletIcons';
 
 export type WalletModalTab = 'OVERVIEW' | 'TRANSFER' | 'ADD_WALLET' | 'TRANSACTIONS';
@@ -127,7 +128,7 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
         walletId: sourceWalletId,
         destinationWalletId: destWalletId,
         type: 'TRANSFER',
-        transactionDate: new Date().toISOString().slice(0, 10),
+        transactionDate: todayIsoDate(),
         idempotencyKey: transferKey,
       });
 
@@ -166,7 +167,7 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
       description: `Manual balance adjustment (${diff >= 0 ? '+' : '-'}฿${Math.abs(diff).toFixed(2)})`,
       walletId: target.id,
       type: 'ADJUSTMENT',
-      transactionDate: new Date().toISOString().slice(0, 10),
+      transactionDate: todayIsoDate(),
     });
 
     setIsAdjustingBalance(null);

@@ -94,7 +94,7 @@ export const DebtCardItem: React.FC<DebtCardItemProps> = React.memo(({
             <div className="bg-stone-50 dark:bg-stone-800/80 p-3 rounded-xl border border-stone-100 dark:border-stone-700/60">
               <span className="text-[11px] text-stone-500 dark:text-stone-400 block">Remaining Balance</span>
               <span className="text-base font-bold font-mono text-rose-600 dark:text-rose-400">
-                ${debt.remainingAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                ฿{debt.remainingAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })}
               </span>
             </div>
             <div className="bg-stone-50 dark:bg-stone-800/80 p-3 rounded-xl border border-stone-100 dark:border-stone-700/60">
@@ -107,7 +107,7 @@ export const DebtCardItem: React.FC<DebtCardItemProps> = React.memo(({
 
           <div className="flex items-center justify-between text-[11px] text-stone-500 dark:text-stone-400 pt-1">
             {debt.minimumPayment && (
-              <span>Min Monthly: <strong className="text-stone-700 dark:text-stone-300">${debt.minimumPayment.toFixed(2)}</strong></span>
+              <span>Min Monthly: <strong className="text-stone-700 dark:text-stone-300">฿{debt.minimumPayment.toFixed(2)}</strong></span>
             )}
             {debt.dueDate && <span>Target Payoff Date: {debt.dueDate}</span>}
           </div>

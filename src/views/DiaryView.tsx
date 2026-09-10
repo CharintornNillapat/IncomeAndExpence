@@ -14,12 +14,13 @@ import {
 } from 'lucide-react';
 import { useFinance } from '../context/FinanceContext';
 import { FoodQuality } from '../types';
+import { todayIsoDate, daysAgoIsoDate } from '../utils/date';
 import { exportDiaryToJson } from '../utils/csvExchange';
 
 export const DiaryView: React.FC = () => {
   const { diaryEntries, transactions, wallets, categories, upsertDiaryEntry, deleteDiaryEntry } = useFinance();
 
-  const todayIso = new Date().toISOString().slice(0, 10);
+  const todayIso = todayIsoDate();
   const [selectedDate, setSelectedDate] = useState<string>(todayIso);
   const [expandedDateId, setExpandedDateId] = useState<string | null>(null);
 
@@ -67,9 +68,8 @@ export const DiaryView: React.FC = () => {
     const [year, month, day] = dateStr.split('-').map(Number);
     const dateObj = new Date(year, month - 1, day);
 
-    const now = new Date();
-    const todayStr = now.toISOString().slice(0, 10);
-    const yestStr = new Date(now.getTime() - 86400000).toISOString().slice(0, 10);
+    const todayStr = todayIsoDate();
+    const yestStr = daysAgoIsoDate(1);
 
     const dayName = dateObj.toLocaleDateString('en-US', { weekday: 'long' });
     const fullDate = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });

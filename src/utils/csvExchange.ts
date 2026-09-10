@@ -1,4 +1,5 @@
 import Papa from 'papaparse';
+import { todayIsoDate, toIsoDate } from './date';
 import { Transaction, Wallet, Category, DiaryEntry, ImportPreviewSummary, ImportRowValidation, TransactionType } from '../types';
 
 export function exportTransactionsToCsv(
@@ -28,7 +29,7 @@ export function exportTransactionsToCsv(
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.setAttribute('href', url);
-  link.setAttribute('download', `transactions_export_${new Date().toISOString().slice(0, 10)}.csv`);
+  link.setAttribute('download', `transactions_export_${todayIsoDate()}.csv`);
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
@@ -59,7 +60,7 @@ export function exportDiaryToJson(diaryEntries: DiaryEntry[]): void {
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.setAttribute('href', url);
-  link.setAttribute('download', `holistic_diary_export_${new Date().toISOString().slice(0, 10)}.json`);
+  link.setAttribute('download', `holistic_diary_export_${todayIsoDate()}.json`);
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
@@ -109,7 +110,12 @@ export function parseAndValidateTransactionCsv(
             if (isNaN(d.getTime())) {
               errors.push('Invalid date format');
             } else {
-              parsedDate = d.toISOString().slice(0, 10);
+              // Read back the local calendar day. `new Date(...)` parses a bare
+              // ISO date as UTC midnight but a locale format like `09/10/2026`
+              // as local midnight; in UTC+7 taking the local components is
+              // correct for both, whereas `toISOString` shifts the latter back
+              // a day.
+              parsedDate = toIsoDate(d);
             }
           }
 

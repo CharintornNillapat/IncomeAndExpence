@@ -12,6 +12,7 @@ import { WalletType } from '../types';
 import { InlineMathInput } from '../components/InlineMathInput';
 import { AnimatedCounter } from '../components/AnimatedCounter';
 import { APP_CURRENCY, APP_CURRENCY_SYMBOL } from '../utils/currency';
+import { todayIsoDate } from '../utils/date';
 import { getWalletIcon } from '../utils/walletIcons';
 
 export const WalletsView: React.FC = () => {
@@ -80,7 +81,7 @@ export const WalletsView: React.FC = () => {
         walletId: sourceWalletId,
         destinationWalletId: destWalletId,
         type: 'TRANSFER',
-        transactionDate: new Date().toISOString().slice(0, 10),
+        transactionDate: todayIsoDate(),
         idempotencyKey: transferKey,
       });
 
