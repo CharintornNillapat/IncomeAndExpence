@@ -6,9 +6,9 @@ import { gotoTab } from './helpers';
  * WalletPopupModal. Both render the same extracted form components, so these
  * exercise each container's wiring: id sets, seeding, and success callbacks.
  *
- * Note: the hero buttons open the modal but do not switch its tab - the modal
- * seeds `activeTab` from `initialTab` only on first mount and never syncs it.
- * That is a pre-existing bug, so these drive the modal's own tab buttons.
+ * The modal cases go through the dashboard hero buttons rather than the modal's
+ * own tabs, so they also cover the open-sync: the modal stays mounted between
+ * opens, so it has to re-apply `initialTab` each time it is opened.
  */
 test.describe('Wallet forms (shared AddWalletForm / WalletTransferForm)', () => {
   test.beforeEach(async ({ page }) => { await page.goto('/'); });
@@ -40,7 +40,6 @@ test.describe('Wallet forms (shared AddWalletForm / WalletTransferForm)', () => 
 
   test('Modal: transfer from dashboard seeds distinct wallets and reports status', async ({ page }) => {
     await page.locator('#hero-transfer-funds-btn').click();
-    await page.locator('#tab-btn-transfer').click();
 
     const src = page.locator('#modal-transfer-source');
     const dst = page.locator('#modal-transfer-dest');
@@ -58,7 +57,6 @@ test.describe('Wallet forms (shared AddWalletForm / WalletTransferForm)', () => 
 
   test('Modal: add wallet works and returns to overview', async ({ page }) => {
     await page.locator('#hero-add-wallet-btn').click();
-    await page.locator('#tab-btn-add').click();
 
     const name = page.locator('#modal-new-wallet-name');
     await expect(name).toBeVisible();
@@ -71,7 +69,6 @@ test.describe('Wallet forms (shared AddWalletForm / WalletTransferForm)', () => 
 
   test('Modal: rejects an unnamed wallet without losing input', async ({ page }) => {
     await page.locator('#hero-add-wallet-btn').click();
-    await page.locator('#tab-btn-add').click();
     await page.locator('#modal-new-wallet-balance').fill('50');
     // Bypass the native required attribute to reach the Zod layer.
     await page.locator('#modal-new-wallet-name').evaluate((el: HTMLInputElement) => el.removeAttribute('required'));

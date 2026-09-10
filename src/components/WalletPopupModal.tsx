@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   X, 
@@ -68,6 +68,24 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
       .filter((t) => !t.isDeleted && (t.walletId === currentWallet.id || t.destinationWalletId === currentWallet.id))
       .slice(0, 15);
   }, [transactions, currentWallet]);
+
+  /**
+   * The modal is rendered unconditionally by its parent and only returns null
+   * while closed, so it never unmounts and the useState initialisers above run
+   * exactly once. Without this sync it reopens on whichever tab and wallet were
+   * last used, ignoring what the caller asked for - which is why the dashboard's
+   * "Transfer" and "Add Wallet" shortcuts always landed on the Overview tab.
+   */
+  useEffect(() => {
+    if (!isOpen) return;
+    setActiveTab(initialTab);
+    // Only override the wallet when the caller named one; opening the modal
+    // generically should keep whatever the user was last looking at.
+    if (initialWalletId) {
+      setSelectedWalletId(initialWalletId);
+      setTransferSourceId(initialWalletId);
+    }
+  }, [isOpen, initialTab, initialWalletId]);
 
   if (!isOpen) return null;
 
