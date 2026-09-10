@@ -2,18 +2,19 @@
 
 <div align="center">
 
-![React](https://img.shields.io/badge/React-18.3-61DAFB?style=for-the-badge&logo=react&logoColor=black)
-![TypeScript](https://img.shields.io/badge/TypeScript-5.5-3178C6?style=for-the-badge&logo=typescript&logoColor=white)
-![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-v4.0-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)
+![React](https://img.shields.io/badge/React-19-61DAFB?style=for-the-badge&logo=react&logoColor=black)
+![TypeScript](https://img.shields.io/badge/TypeScript-5.8-3178C6?style=for-the-badge&logo=typescript&logoColor=white)
+![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-v4-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)
 ![Supabase](https://img.shields.io/badge/Supabase-Database%20%26%20Auth-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white)
-![Vite](https://img.shields.io/badge/Vite-6.0-646CFF?style=for-the-badge&logo=vite&logoColor=white)
+![Vite](https://img.shields.io/badge/Vite-6-646CFF?style=for-the-badge&logo=vite&logoColor=white)
+![Playwright](https://img.shields.io/badge/Playwright-39%20E2E%20tests-2EAD33?style=for-the-badge&logo=playwright&logoColor=white)
 ![PWA](https://img.shields.io/badge/PWA-Offline%20Ready-5A0FC8?style=for-the-badge&logo=pwa&logoColor=white)
 
 <br />
 
-**A Full-Stack Personal Finance & Holistic Lifestyle Management Platform**
+**A Personal Finance & Holistic Lifestyle Tracker**
 
-*Track expenses, manage multi-currency wallets, optimize debt payoff strategies, and correlate financial behavior with sleep, stress, and daily wellbeing.*
+*Track spending across Thai Baht wallets, work down debt goals, and correlate your finances with a daily wellbeing diary.*
 
 </div>
 
@@ -21,75 +22,85 @@
 
 ## 🌟 Overview
 
-**FinLife Tracker** bridges the gap between quantitative financial tracking and qualitative lifestyle well-being. Built with modern TypeScript, React, and Supabase, it provides a high-performance, mobile-first experience designed to help users understand not only *where* their money goes, but *how* their daily mood, habits, and physical health influence their spending patterns.
+**FinLife Tracker** connects quantitative financial tracking with qualitative wellbeing. Built with React, TypeScript, and Supabase, it is a mobile-first PWA designed to show not only *where* your money goes, but *how* your mood, workouts, and eating habits line up with your spending.
+
+It runs fully offline against `localStorage`, and syncs bi-directionally with Supabase when credentials are configured.
 
 ---
 
-## 🚀 Core Features (The "Wow" Factor)
+## 🚀 Features
 
-### 📱 Offline-Ready Progressive Web App (PWA)
-- **Installable Experience**: Install directly to home screens on iOS and Android with full standalone app display.
-- **Resilient Offline Architecture**: Client-side caching and local storage persistence allow uninterrupted transaction logging even without active network connectivity.
+### 💰 Transactions & Wallets
+- **Thai Baht wallets** across cash, bank accounts, credit cards, savings, investments, and e-wallets.
+- **Atomic transfers** between wallets, executed in a single database transaction with idempotency protection against double submission.
+- **Inline math** in every amount field — type `120/4 + 15*2` and see the result evaluated live before you commit it.
+- **Smart entry**: keyword rules map recurring merchants to categories automatically, with a live sandbox to test rules against sample input.
+- **CSV import/export** with a dry-run validation preview that reports invalid rows before anything is written.
+- **Soft deletion** everywhere — financial records are never hard-deleted, and soft-deleted transactions can be viewed and restored.
 
-### 👆 Native-Like Mobile UX
-- **Fluid Gesture Navigation**: Integrated swipe gestures via `react-swipeable` allowing seamless view switching (Dashboard, Transactions, Holistic Diary, Wallets, Analytics, Debts, Rules, Security).
-- **Responsive Navigation**: Adaptive desktop sidebar and ergonomic mobile bottom navigation bar with safe-area padding.
-- **Hardware-Accelerated Transitions**: Powered by `motion/react` with spring physics and zero layout jitter.
+### 📊 Dashboard & Debts
+- Net-worth hero, wallet grid, and cashflow metrics filterable by day / week / month / all-time.
+- Category expense distribution and recent-activity table.
+- **Debt goals** with principal, remaining balance, interest rate, minimum payment, and target payoff date, plus wallet-funded repayments that update the ledger and the goal together.
 
-### ⚡ Smart Natural Language Data Entry & Inline Math
-- **Natural Language Parsing**: Type shorthand expressions like `"dinner with team 45.50 food"` or `"gym membership 60 health"` to instantly auto-populate descriptions, amounts, and categories.
-- **Inline Math Calculator**: Evaluate arithmetic expressions directly within the amount field (e.g., `120/4 + 15*2`) with instant live previews.
-- **Dynamic Keyword Rules Engine**: Define customizable regex and keyword rules to categorize recurring merchants automatically.
+### 🧘 Holistic Diary
+- Log daily **mood (1–5), workout, workout note, and food quality**, with free-form reflections.
+- Each day's entry sits alongside that day's inflow and outflow, so lifestyle and spending can be read together.
+- JSON export including average mood and workout-rate summaries.
 
-### 🌗 System-Aware Dark Mode with Anti-FOUC
-- **Tailwind CSS v4 Class Strategy**: Seamless toggling between `Light`, `Dark`, and `System Default` themes using the curated `Stone` aesthetic palette.
-- **Zero Flash of Unstyled Content (Anti-FOUC)**: Synchronous `<head>` script evaluates `localStorage` and `prefers-color-scheme` before DOM rendering.
+### 📱 Progressive Web App
+- Installable on iOS and Android with standalone display.
+- Offline-first: `localStorage` persistence keeps the app usable with no network.
+- Swipe gesture navigation (`react-swipeable`) plus an adaptive desktop navbar and mobile bottom bar.
 
-### 🧘 Holistic Lifestyle Diary
-- **Mind-Money Correlation**: Log daily sleep duration, stress levels, physical activity, and mood alongside financial outlays.
-- **Behavioral Insights**: Identify lifestyle triggers linked to impulse spending and track holistic wellness scores over time.
-
-### 💳 Comprehensive Debt Engine & Wealth Management
-- **Snowball & Avalanche Payoff Models**: Compare interest savings and payoff timelines between lowest-balance-first and highest-APR-first repayment strategies.
-- **Multi-Currency Wallets**: Manage cash, bank accounts, credit lines, and investment accounts with transfer tracking and reconciliation tools.
+### 🌗 System-Aware Dark Mode
+- Light / Dark / System cycling on the Tailwind v4 `stone` palette.
+- Anti-FOUC: a synchronous `<head>` script reads `localStorage` and `prefers-color-scheme` before first paint.
 
 ---
 
-## 🏗️ Architecture & Performance Highlights
+## 🏗️ Architecture
 
-### ⚡ Frontend Engineering
 ```
 src/
-├── components/          # Extracted, reusable UI elements & modals
-│   ├── AuthModal.tsx
-│   ├── DebtCardItem.tsx
+├── components/
+│   ├── dashboard/       # Hero, metric cards, wallet grid, recent transactions
+│   ├── wallet/          # AddWalletForm + WalletTransferForm (shared by view & modal)
+│   ├── AuthModal.tsx    # Supabase email/password auth
 │   ├── InlineMathInput.tsx
-│   ├── Navbar.tsx
 │   ├── TransactionForm.tsx
 │   └── WalletPopupModal.tsx
-├── context/             # State management & reactive stores
-├── hooks/               # Custom hooks for strict Separation of Concerns
-│   ├── useSupabaseAuth.ts
+├── context/
+│   └── FinanceContext.tsx   # Canonical state, local fallback, Supabase sync
+├── hooks/
+│   ├── useTransactions.ts   # Filtering, metrics, transaction actions
+│   ├── useWallets.ts        # Active wallets, net worth, grouping
+│   ├── useDebts.ts          # Debt splits and aggregate metrics
 │   └── useTheme.ts
-├── types/               # Strict TypeScript interfaces & domain models
-└── views/               # Route views with lazy code-splitting
-    ├── AnalyticsView.tsx
-    ├── DebtsView.tsx
-    ├── DiaryView.tsx
-    ├── RulesView.tsx
-    ├── SecurityView.tsx
-    ├── TransactionsView.tsx
-    └── WalletsView.tsx
+├── utils/
+│   ├── currency.ts      # THB constants + formatCurrencyAmount
+│   ├── date.ts          # Local-calendar date helpers (UTC+7 safe)
+│   ├── zodSchemas.ts    # Runtime validation for every write path
+│   ├── mathEvaluator.ts # Sandboxed inline arithmetic
+│   ├── smartMatcher.ts  # Keyword-rule matching
+│   ├── csvExchange.ts   # CSV/JSON import & export
+│   └── walletIcons.ts
+├── views/               # Lazy-loaded via React.lazy
+│   ├── DashboardView.tsx    ├── DebtsView.tsx
+│   ├── TransactionsView.tsx ├── DiaryView.tsx
+│   ├── WalletsView.tsx      ├── KeywordRulesView.tsx
+│   └── SecurityView.tsx
+└── types.ts
 ```
 
-- **Route-Level Code Splitting**: Non-critical views (`AnalyticsView`, `DebtsView`, `RulesView`, `SecurityView`, `DiaryView`) are loaded on-demand via `React.lazy()` and wrapped in `Suspense` with bespoke skeleton loaders.
-- **Aggressive Memoization**: High-frequency financial aggregates, rolling balance calculations, and multi-filter queries leverage `useMemo` and `useCallback` to prevent unnecessary recalculations.
-- **Modular Custom Hooks**: Encapsulated state and lifecycle logic (e.g., authentication flow, session tracking, theme listener) ensures clean UI components.
+**Design notes**
 
-### 🔒 Backend & Security Architecture
-- **Supabase Realtime Sync**: Bi-directional data synchronization keeps multiple tabs and devices up-to-date in real time.
-- **PostgreSQL Row-Level Security (RLS)**: Enforces tenant isolation at the database layer ensuring users can only read and mutate their own financial data.
-- **Multi-Device Session Telemetry**: Device session tracking with one-click remote session revocation.
+- **Single currency by construction.** `CurrencyCode` is the one-member union `'THB'`, so introducing another currency is a compile error at every write site rather than a silent bug. All display formatting goes through `formatCurrencyAmount()`.
+- **Local calendar dates.** Date fields use `src/utils/date.ts` rather than `toISOString().slice(0, 10)`, which formats in UTC and would file anything entered between 00:00 and 06:59 Thailand time under the previous day.
+- **Validation at the boundary.** Every mutating context method validates with Zod first and returns `MutationResult` (`{ success, error? }`) instead of throwing or failing quietly, so views can surface the reason and keep the user's input.
+- **Route-level code splitting.** Views load on demand via `React.lazy()` behind a `Suspense` fallback.
+- **Optimistic writes with rollback.** Balances update immediately and are restored from a snapshot if the remote write fails, with compensating updates for any partial commit.
+- **Row-Level Security.** Supabase RLS scopes every row to its owner.
 
 ---
 
@@ -97,58 +108,91 @@ src/
 
 | Domain | Technology |
 | :--- | :--- |
-| **Framework & UI** | React 18, TypeScript, Tailwind CSS v4, Lucide React, Motion |
-| **Build & Tooling** | Vite, ESBuild, PostCSS, TypeScript Compiler |
-| **Data & Auth** | Supabase (PostgreSQL, Realtime Engine, GoTrue Auth) |
-| **Mobile & Gestures** | PWA Service Worker, Web App Manifest, React Swipeable |
-| **Data Visualization**| Recharts, SVG Gauge Visualizers, Trend Sparklines |
+| **Framework & UI** | React 19, TypeScript 5.8, Tailwind CSS v4, Lucide React, Framer Motion |
+| **Build & Tooling** | Vite 6, `vite-plugin-pwa`, TypeScript compiler |
+| **Data & Auth** | Supabase (PostgreSQL, Realtime, GoTrue Auth) |
+| **Validation & Parsing** | Zod, mathjs (`mathjs/number`), PapaParse |
+| **Testing** | Playwright (Chromium, Firefox, WebKit) |
+| **Mobile** | PWA service worker, Web App Manifest, React Swipeable |
 
 ---
 
 ## 💻 Local Development Setup
 
-Follow these steps to run FinLife Tracker locally:
-
 ### 1. Prerequisites
-- **Node.js**: v18.0.0 or higher
-- **npm** or **yarn** / **pnpm**
-- A **Supabase** project (optional for local fallback mode, required for cloud sync)
+- **Node.js** v18 or higher
+- **npm**
+- A **Supabase** project (optional — the app falls back to local storage without one)
 
-### 2. Clone the Repository
+### 2. Clone and install
 ```bash
-git clone https://github.com/your-username/finlife-tracker.git
-cd finlife-tracker
-```
-
-### 3. Install Dependencies
-```bash
+git clone https://github.com/CharintornNillapat/IncomeAndExpence.git
+cd IncomeAndExpence
 npm install
 ```
 
-### 4. Configure Environment Variables
-Create a `.env` file in the root directory (refer to `.env.example`):
+### 3. Configure environment variables
+Create a `.env` file in the project root (see `.env.example`):
 
 ```env
-# Supabase Configuration
 VITE_SUPABASE_URL=https://your-project-id.supabase.co
 VITE_SUPABASE_ANON_KEY=your-anon-key-here
 ```
 
-> **Note**: If Supabase keys are not provided, FinLife Tracker automatically operates in **Local Storage Mode**, allowing complete testing and offline data persistence.
+> Without these, FinLife Tracker runs in **Local Storage Mode** — fully usable and offline-persistent, but with no cross-device sync.
 
-### 5. Start the Development Server
+### 4. Database setup (required for cloud sync)
+
+Apply the migration in [`supabase/migrations/`](supabase/migrations/) to your Supabase project. It provides:
+
+- `transactions_user_idempotency_key_uniq` — a partial unique index on `(user_id, idempotency_key)` for live rows, so a retried write cannot create a duplicate ledger entry.
+- `public.transfer_funds(...)` — an RPC that locks both wallets, applies **relative** balance updates, and inserts the ledger row inside one transaction, returning `{ reused, transaction, source_balance, dest_balance }`.
+
+Apply it either with the Supabase CLI:
+
+```bash
+supabase db push
+```
+
+…or by pasting `supabase/migrations/20260909_transfer_funds.sql` into the SQL Editor in the Supabase dashboard.
+
+> **Why it matters:** without this migration the app falls back to a legacy non-atomic transfer path that issues three separate round-trips. A failure part-way through can debit the source wallet without crediting the destination. The fallback exists only so an un-migrated project still runs — apply the migration for any real use.
+
+### 5. Run the development server
 ```bash
 npm run dev
 ```
-Open your browser and navigate to `http://localhost:3000`.
+Then open `http://localhost:3000`.
 
-### 6. Build for Production
+---
+
+## 🧪 Testing & Quality
+
 ```bash
-# Typecheck & build static bundle
+# Type-check the whole project.
+# tsconfig enables noUnusedLocals + noUnusedParameters, so dead imports fail the build.
+npm run lint
+
+# Run the Playwright E2E suite: 13 tests across 5 spec files,
+# executed on Chromium, Firefox and WebKit (39 test runs).
+# Playwright starts the dev server automatically.
+npm test
+
+# Narrow to one spec or browser while iterating
+npx playwright test tests/wallets.spec.ts --project=chromium
+
+# First run only: download the browser engines
+npx playwright install
+```
+
+Specs live in [`tests/`](tests/) and cover transactions, wallets, the shared wallet forms, the diary, and theme/navigation. Shared helpers in `tests/helpers.ts` handle tab navigation (including waiting for lazy view chunks) and seeding a transaction.
+
+```bash
+# Production build
 npm run build
 
-# Run TypeScript linter
-npm run lint
+# Preview the production bundle
+npm run preview
 ```
 
 ---
