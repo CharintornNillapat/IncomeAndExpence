@@ -10,23 +10,17 @@ import {
   X,
 } from 'lucide-react';
 import { useFinance } from '../context/FinanceContext';
-import { ImportPreviewSummary } from '../types';
+import { useTransactions } from '../hooks/useTransactions';
+import { ImportPreviewSummary, TransactionType } from '../types';
 import { exportTransactionsToCsv, exportDiaryToJson, parseAndValidateTransactionCsv } from '../utils/csvExchange';
 import { TransactionForm } from '../components/TransactionForm';
 import { TransactionTableRow } from '../components/TransactionTableRow';
 
 export const TransactionsView: React.FC = () => {
   const { 
-    transactions, 
     wallets, 
     categories, 
     diaryEntries, 
-    addTransaction, 
-    softDeleteTransaction, 
-    restoreTransaction, 
-    commitBulkImport,
-    showSoftDeleted,
-    setShowSoftDeleted 
   } = useFinance();
 
   // Filter States
@@ -34,6 +28,24 @@ export const TransactionsView: React.FC = () => {
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState<string>('');
   const [selectedWalletId, setSelectedWalletId] = useState<string>('ALL');
   const [selectedType, setSelectedType] = useState<string>('ALL');
+
+  // Filtering, soft-delete visibility and the write actions all come from the
+  // domain hook; 'ALL' is the view's sentinel for "no filter", which the hook
+  // expresses as `undefined`.
+  const {
+    transactions: filteredTransactions,
+    rawTransactions,
+    addTransaction,
+    deleteTransaction,
+    restoreTransaction,
+    commitBulkImport,
+    showSoftDeleted,
+    setShowSoftDeleted,
+  } = useTransactions({
+    walletId: selectedWalletId === 'ALL' ? undefined : selectedWalletId,
+    type: selectedType === 'ALL' ? undefined : (selectedType as TransactionType),
+    searchQuery: debouncedSearchTerm,
+  });
   const [currentPage, setCurrentPage] = useState<number>(1);
   const pageSize = 8;
 
@@ -60,35 +72,6 @@ export const TransactionsView: React.FC = () => {
   const [isParsingCsv, setIsParsingCsv] = useState<boolean>(false);
   const [importSuccessMsg, setImportSuccessMsg] = useState<string | null>(null);
 
-  // Filter Logic
-  const filteredTransactions = useMemo(() => {
-    return transactions.filter((tx) => {
-      // Soft-delete toggle: when disabled, hide soft-deleted transactions
-      if (!showSoftDeleted && tx.isDeleted) return false;
-
-      // Debounced search
-      if (debouncedSearchTerm.trim()) {
-        const lower = debouncedSearchTerm.trim().toLowerCase();
-        const descMatch = tx.description.toLowerCase().includes(lower);
-        const amountMatch = tx.amount.toString().includes(lower);
-        const rawMatch = tx.rawInput?.toLowerCase().includes(lower);
-        if (!descMatch && !amountMatch && !rawMatch) return false;
-      }
-
-      // Wallet filter
-      if (selectedWalletId !== 'ALL' && tx.walletId !== selectedWalletId && tx.destinationWalletId !== selectedWalletId) {
-        return false;
-      }
-
-      // Type filter
-      if (selectedType !== 'ALL' && tx.type !== selectedType) {
-        return false;
-      }
-
-      return true;
-    });
-  }, [transactions, showSoftDeleted, debouncedSearchTerm, selectedWalletId, selectedType]);
-
   // Maps for O(1) row lookups
   const walletMap = useMemo(() => {
     return new Map(wallets.map((w) => [w.id, w]));
@@ -103,8 +86,8 @@ export const TransactionsView: React.FC = () => {
   }, [restoreTransaction]);
 
   const handleDeleteTx = useCallback((id: string) => {
-    softDeleteTransaction(id);
-  }, [softDeleteTransaction]);
+    deleteTransaction(id);
+  }, [deleteTransaction]);
 
   // Pagination
   const totalPages = Math.ceil(filteredTransactions.length / pageSize) || 1;
@@ -179,7 +162,7 @@ export const TransactionsView: React.FC = () => {
           <button
             id="tx-export-csv-btn"
             type="button"
-            onClick={() => exportTransactionsToCsv(transactions, wallets, categories)}
+            onClick={() => exportTransactionsToCsv(rawTransactions, wallets, categories)}
             className="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-stone-700 dark:text-stone-300 bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 rounded-xl transition-all cursor-pointer"
           >
             <Download className="w-3.5 h-3.5" />

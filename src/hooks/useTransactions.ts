@@ -78,7 +78,9 @@ export const useTransactions = (options: UseTransactionsFilterOptions = {}) => {
         return false;
       }
 
-      // Keyword / description search
+      // Keyword search. Matches across all five user-visible fields: the
+      // description, the raw amount, the original calculation input, and the
+      // resolved category / wallet names.
       if (searchQuery && searchQuery.trim().length > 0) {
         const q = searchQuery.trim().toLowerCase();
         const categoryName = tx.categoryId ? categoryNameMap.get(tx.categoryId) : undefined;
@@ -88,11 +90,13 @@ export const useTransactions = (options: UseTransactionsFilterOptions = {}) => {
           : undefined;
 
         const matchesDesc = tx.description.toLowerCase().includes(q);
+        const matchesAmount = tx.amount.toString().includes(q);
+        const matchesRaw = tx.rawInput?.toLowerCase().includes(q) ?? false;
         const matchesCategory = categoryName?.includes(q) ?? false;
         const matchesWallet =
           (sourceWalletName?.includes(q) ?? false) || (destWalletName?.includes(q) ?? false);
 
-        if (!matchesDesc && !matchesCategory && !matchesWallet) {
+        if (!matchesDesc && !matchesAmount && !matchesRaw && !matchesCategory && !matchesWallet) {
           return false;
         }
       }
@@ -158,6 +162,7 @@ export const useTransactions = (options: UseTransactionsFilterOptions = {}) => {
       debtId?: string;
       type: TransactionType;
       transactionDate: string;
+      idempotencyKey?: string;
     }) => {
       return await addTransaction(params);
     },

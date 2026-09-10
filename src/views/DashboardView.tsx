@@ -1,6 +1,8 @@
 ﻿import React, { useState, useMemo, useCallback } from 'react';
 import { motion, Variants } from 'framer-motion';
 import { useFinance } from '../context/FinanceContext';
+import { useWallets } from '../hooks/useWallets';
+import { useDebts } from '../hooks/useDebts';
 import { TransactionForm } from '../components/TransactionForm';
 import { WalletPopupModal, WalletModalTab } from '../components/WalletPopupModal';
 import { TotalWealthHero } from '../components/dashboard/TotalWealthHero';
@@ -43,7 +45,11 @@ interface DashboardViewProps {
 }
 
 export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
-  const { transactions, wallets, debts, categories, totalNetWorth, addTransaction } = useFinance();
+  const { transactions, categories, addTransaction } = useFinance();
+  // `wallets` here is already the active (non-deleted) set; `allWallets` still
+  // includes soft-deleted ones so historic rows can resolve their wallet name.
+  const { wallets: activeWallets, allWallets, totalNetWorth } = useWallets();
+  const { metrics: debtSummary } = useDebts();
   const [timeFilter, setTimeFilter] = useState<TimeFilter>('MONTH');
   
   // Wallet Popup Modal State in Dashboard
@@ -68,8 +74,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
   const handleOpenManageWallets = useCallback(() => {
     openWalletModal('OVERVIEW');
   }, [openWalletModal]);
-
-  const activeWallets = useMemo(() => wallets.filter((w) => !w.isDeleted), [wallets]);
 
   // Filter transactions based on time breakdown (Memoized)
   const filteredTransactions = useMemo(() => {
@@ -138,24 +142,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
     return Object.values(expenseMap).sort((a, b) => b.amount - a.amount);
   }, [filteredTransactions, categories]);
 
-  // Overall Debt Summary (Memoized)
-  const debtSummary = useMemo(() => {
-    const activeDebtsList = debts.filter((d) => !d.isDeleted);
-    const totalTarget = activeDebtsList.reduce((sum, d) => sum + d.totalAmount, 0);
-    const remainingTarget = activeDebtsList.reduce((sum, d) => sum + (d.isSettled ? 0 : d.remainingAmount), 0);
-    const paidTarget = totalTarget - remainingTarget;
-    const progressPercent = totalTarget > 0 ? (paidTarget / totalTarget) * 100 : 0;
-    const activeDebtCount = activeDebtsList.filter((d) => !d.isSettled).length;
-
-    return {
-      totalTarget,
-      remainingTarget,
-      paidTarget,
-      progressPercent,
-      activeDebtCount,
-    };
-  }, [debts]);
-
   // Compact Recent 5 Transactions for Dashboard Preview (Memoized)
   const recentTransactions = useMemo(() => {
     return transactions
@@ -165,8 +151,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
   }, [transactions]);
 
   const walletMap = useMemo(() => {
-    return new Map(wallets.map((w) => [w.id, w]));
-  }, [wallets]);
+    return new Map(allWallets.map((w) => [w.id, w]));
+  }, [allWallets]);
 
   const categoryMap = useMemo(() => {
     return new Map(categories.map((c) => [c.id, c]));
@@ -278,7 +264,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
           />
 
           <DebtPayoffOverview
-            activeDebtCount={debtSummary.activeDebtCount}
+            activeDebtCount={debtSummary.activeCount}
             debtProgressPercent={debtSummary.progressPercent}
             remainingDebtTarget={debtSummary.remainingTarget}
             paidDebtTarget={debtSummary.paidTarget}

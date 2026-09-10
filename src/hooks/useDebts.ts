@@ -32,7 +32,8 @@ export const useDebts = () => {
     const totalTarget = activeDebts.reduce((sum, d) => sum + d.totalAmount, 0);
     const remainingTarget = activeDebts.reduce((sum, d) => sum + (d.isSettled ? 0 : d.remainingAmount), 0);
     const paidTarget = totalTarget - remainingTarget;
-    const progressPercent = totalTarget > 0 ? (paidTarget / totalTarget) * 100 : 100;
+    // No debts tracked reads as 0% paid off, not 100%.
+    const progressPercent = totalTarget > 0 ? (paidTarget / totalTarget) * 100 : 0;
     const totalMinimumMonthly = unsettledDebts.reduce((sum, d) => sum + (d.minimumPayment || 0), 0);
 
     return {
