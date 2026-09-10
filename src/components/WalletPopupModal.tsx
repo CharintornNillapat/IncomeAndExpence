@@ -17,7 +17,7 @@ import {
 import { useFinance } from '../context/FinanceContext';
 import { WalletType } from '../types';
 import { InlineMathInput } from './InlineMathInput';
-import { APP_CURRENCY, APP_CURRENCY_SYMBOL } from '../utils/currency';
+import { APP_CURRENCY, APP_CURRENCY_SYMBOL, formatCurrencyAmount } from '../utils/currency';
 import { todayIsoDate } from '../utils/date';
 import { getWalletIcon } from '../utils/walletIcons';
 
@@ -171,7 +171,7 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
 
     await addTransaction({
       amount: Math.abs(diff),
-      description: `Manual balance adjustment (${diff >= 0 ? '+' : '-'}฿${Math.abs(diff).toFixed(2)})`,
+      description: `Manual balance adjustment (${diff >= 0 ? '+' : '-'}${formatCurrencyAmount(Math.abs(diff))})`,
       walletId: target.id,
       type: 'ADJUSTMENT',
       transactionDate: todayIsoDate(),
@@ -220,7 +220,7 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
                     </span>
                   </div>
                   <p className="text-xs text-stone-500 dark:text-stone-400 font-mono">
-                    Total: <strong className="text-stone-900 dark:text-stone-100">฿{totalNetWorth.toLocaleString('en-US', { minimumFractionDigits: 2 })}</strong>
+                    Total: <strong className="text-stone-900 dark:text-stone-100">{formatCurrencyAmount(totalNetWorth)}</strong>
                   </p>
                 </div>
               </div>
@@ -402,7 +402,7 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
                             </span>
                             <div className="flex items-baseline gap-1.5 mt-0.5">
                               <span className="text-lg sm:text-xl font-black font-mono text-stone-900 dark:text-white">
-                                ฿{wallet.balance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                {formatCurrencyAmount(wallet.balance)}
                               </span>
                               <span className="text-[11px] font-semibold text-stone-500 dark:text-stone-400 font-mono">{APP_CURRENCY}</span>
                             </div>
@@ -511,7 +511,7 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
                   >
                     {activeWallets.map((w) => (
                       <option key={w.id} value={w.id}>
-                        {w.name} (฿{w.balance.toFixed(2)})
+                        {w.name} ({formatCurrencyAmount(w.balance)})
                       </option>
                     ))}
                   </select>
@@ -531,7 +531,7 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
                       .filter((w) => w.id !== sourceWalletId)
                       .map((w) => (
                         <option key={w.id} value={w.id}>
-                          {w.name} (฿{w.balance.toFixed(2)})
+                          {w.name} ({formatCurrencyAmount(w.balance)})
                         </option>
                       ))}
                   </select>
@@ -582,7 +582,7 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
                   <span>
                     {isTransferring
                       ? 'Transferring...'
-                      : `Transfer ฿${transferAmount !== null ? transferAmount.toFixed(2) : '0.00'}`}
+                      : `Transfer ${formatCurrencyAmount(transferAmount ?? 0)}`}
                   </span>
                 </button>
               </div>
@@ -706,7 +706,7 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
                 >
                   {activeWallets.map((w) => (
                     <option key={w.id} value={w.id}>
-                      {w.name} (฿{w.balance.toFixed(2)})
+                      {w.name} ({formatCurrencyAmount(w.balance)})
                     </option>
                   ))}
                 </select>
@@ -743,7 +743,7 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
                         <span className={`font-mono font-bold ${
                           tx.type === 'INCOME' ? 'text-emerald-600 dark:text-emerald-400' : 'text-stone-900 dark:text-stone-100'
                         }`}>
-                          {tx.type === 'INCOME' ? '+' : '-'}฿{tx.amount.toFixed(2)}
+                          {tx.type === 'INCOME' ? '+' : '-'}{formatCurrencyAmount(tx.amount)}
                         </span>
                         <span className="text-[10px] text-stone-400 dark:text-stone-500 block uppercase font-medium">{tx.type}</span>
                       </div>

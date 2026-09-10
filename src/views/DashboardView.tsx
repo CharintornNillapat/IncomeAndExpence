@@ -261,7 +261,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
           <CategoryExpenseDistribution
             categoryBreakdown={categoryBreakdown}
             totalExpenseAmount={expenseTotal + debtRepaymentTotal}
-            primarySymbol={APP_CURRENCY_SYMBOL}
           />
 
           <DebtPayoffOverview
@@ -269,7 +268,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
             debtProgressPercent={debtSummary.progressPercent}
             remainingDebtTarget={debtSummary.remainingTarget}
             paidDebtTarget={debtSummary.paidTarget}
-            primarySymbol={APP_CURRENCY_SYMBOL}
           />
         </div>
       </motion.div>

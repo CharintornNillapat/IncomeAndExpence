@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Sparkles, Plus, Trash2, Tag } from 'lucide-react';
 import { useFinance } from '../context/FinanceContext';
 import { matchSmartDescription } from '../utils/smartMatcher';
+import { formatCurrencyAmount } from '../utils/currency';
 
 export const KeywordRulesView: React.FC = () => {
   const { keywordRules, categories, addKeywordRule, deleteKeywordRule } = useFinance();
@@ -129,7 +130,7 @@ export const KeywordRulesView: React.FC = () => {
               <div className="flex justify-between">
                 <span className="text-stone-500 dark:text-stone-400">Extracted Amount:</span>
                 <span className="font-mono font-bold text-stone-900 dark:text-stone-100">
-                  {matchResult.extractedAmount ? `฿${matchResult.extractedAmount.toFixed(2)}` : 'None detected'}
+                  {matchResult.extractedAmount ? formatCurrencyAmount(matchResult.extractedAmount) : 'None detected'}
                 </span>
               </div>
               <div className="flex justify-between">

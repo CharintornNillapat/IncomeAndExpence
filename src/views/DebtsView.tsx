@@ -6,6 +6,7 @@ import {
   ShieldAlert
 } from 'lucide-react';
 import { useDebts } from '../hooks/useDebts';
+import { formatCurrencyAmount } from '../utils/currency';
 import { Debt } from '../types';
 import { DebtCardItem } from '../components/DebtCardItem';
 import { InlineMathInput } from '../components/InlineMathInput';
@@ -313,7 +314,7 @@ export const DebtsView: React.FC = () => {
                     .filter((w) => !w.isDeleted)
                     .map((w) => (
                       <option key={w.id} value={w.id} className="dark:bg-stone-800 dark:text-stone-100">
-                        {w.name} (฿{w.balance.toFixed(2)})
+                        {w.name} ({formatCurrencyAmount(w.balance)})
                       </option>
                     ))}
                 </select>
@@ -363,7 +364,7 @@ export const DebtsView: React.FC = () => {
                       : 'bg-stone-200 dark:bg-stone-800 text-stone-400 dark:text-stone-600 cursor-not-allowed'
                   }`}
                 >
-                  <span>Pay ฿{repayAmount !== null ? repayAmount.toFixed(2) : '0.00'}</span>
+                  <span>Pay {formatCurrencyAmount(repayAmount ?? 0)}</span>
                   <ArrowRight className="w-4 h-4" />
                 </button>
               </div>

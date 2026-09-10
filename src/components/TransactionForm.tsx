@@ -6,7 +6,7 @@ import { Wallet, Category, TransactionType } from '../types';
 import { useFinance } from '../context/FinanceContext';
 import { matchSmartDescription } from '../utils/smartMatcher';
 import { safeEvaluateMath } from '../utils/mathEvaluator';
-import { APP_CURRENCY_SYMBOL } from '../utils/currency';
+import { APP_CURRENCY_SYMBOL, formatCurrencyAmount } from '../utils/currency';
 import { todayIsoDate } from '../utils/date';
 
 interface TransactionFormProps {
@@ -285,7 +285,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
               >
                 {wallets.map((w) => (
                   <option key={w.id} value={w.id} className="dark:bg-stone-800 dark:text-stone-100">
-                    {w.name} (฿{w.balance.toFixed(2)})
+                    {w.name} ({formatCurrencyAmount(w.balance)})
                   </option>
                 ))}
               </select>
@@ -307,7 +307,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
                     .filter((w) => w.id !== walletId)
                     .map((w) => (
                       <option key={w.id} value={w.id} className="dark:bg-stone-800 dark:text-stone-100">
-                        {w.name} (฿{w.balance.toFixed(2)})
+                        {w.name} ({formatCurrencyAmount(w.balance)})
                       </option>
                     ))}
                 </select>
@@ -325,7 +325,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
                 >
                   {debts.map((d) => (
                     <option key={d.id} value={d.id} className="dark:bg-stone-800 dark:text-stone-100">
-                      {d.name} (฿{d.remainingAmount.toFixed(2)} remaining)
+                      {d.name} ({formatCurrencyAmount(d.remainingAmount)} remaining)
                     </option>
                   ))}
                 </select>
@@ -392,7 +392,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
           </span>
           {amount !== null && isAmountValid && (
             <span className="font-mono text-xs bg-stone-800 dark:bg-stone-200 px-2 py-0.5 rounded text-stone-200 dark:text-stone-800">
-              ฿{amount.toFixed(2)}
+              {formatCurrencyAmount(amount)}
             </span>
           )}
           <ArrowRight className="w-4 h-4" />

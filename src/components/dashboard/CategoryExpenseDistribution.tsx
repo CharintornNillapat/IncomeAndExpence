@@ -1,5 +1,6 @@
 import React from 'react';
 import { PieChart } from 'lucide-react';
+import { formatCurrencyAmount } from '../../utils/currency';
 
 interface CategoryBreakdownItem {
   name: string;
@@ -10,13 +11,11 @@ interface CategoryBreakdownItem {
 interface CategoryExpenseDistributionProps {
   categoryBreakdown: CategoryBreakdownItem[];
   totalExpenseAmount: number;
-  primarySymbol: string;
 }
 
 export const CategoryExpenseDistribution: React.FC<CategoryExpenseDistributionProps> = React.memo(({
   categoryBreakdown,
   totalExpenseAmount,
-  primarySymbol,
 }) => {
   return (
     <div className="bg-white dark:bg-stone-900 rounded-2xl border border-stone-200 dark:border-stone-800 p-6 shadow-xs transition-colors">
@@ -26,7 +25,7 @@ export const CategoryExpenseDistribution: React.FC<CategoryExpenseDistributionPr
           <h3 className="text-sm font-bold text-stone-900 dark:text-white">Expense Category Distribution</h3>
         </div>
         <span className="text-xs text-stone-400 dark:text-stone-500 font-mono">
-          Total: {primarySymbol}{totalExpenseAmount.toFixed(2)}
+          Total: {formatCurrencyAmount(totalExpenseAmount)}
         </span>
       </div>
 
@@ -43,7 +42,7 @@ export const CategoryExpenseDistribution: React.FC<CategoryExpenseDistributionPr
                   <div className="flex items-center gap-2">
                     <span className="font-mono text-stone-500 dark:text-stone-400">{percent.toFixed(1)}%</span>
                     <span className="font-mono font-bold text-stone-900 dark:text-white">
-                      {primarySymbol}{item.amount.toFixed(2)}
+                      {formatCurrencyAmount(item.amount)}
                     </span>
                   </div>
                 </div>

@@ -11,7 +11,7 @@ import { useFinance } from '../context/FinanceContext';
 import { WalletType } from '../types';
 import { InlineMathInput } from '../components/InlineMathInput';
 import { AnimatedCounter } from '../components/AnimatedCounter';
-import { APP_CURRENCY, APP_CURRENCY_SYMBOL } from '../utils/currency';
+import { APP_CURRENCY, APP_CURRENCY_SYMBOL, formatCurrencyAmount } from '../utils/currency';
 import { todayIsoDate } from '../utils/date';
 import { getWalletIcon } from '../utils/walletIcons';
 
@@ -405,7 +405,7 @@ export const WalletsView: React.FC = () => {
                     >
                       {activeWallets.map((w) => (
                         <option key={w.id} value={w.id} className="dark:bg-stone-800 dark:text-stone-100">
-                          {w.name} (฿{w.balance.toFixed(2)})
+                          {w.name} ({formatCurrencyAmount(w.balance)})
                         </option>
                       ))}
                     </select>
@@ -425,7 +425,7 @@ export const WalletsView: React.FC = () => {
                         .filter((w) => w.id !== sourceWalletId)
                         .map((w) => (
                           <option key={w.id} value={w.id} className="dark:bg-stone-800 dark:text-stone-100">
-                            {w.name} (฿{w.balance.toFixed(2)})
+                            {w.name} ({formatCurrencyAmount(w.balance)})
                           </option>
                         ))}
                     </select>
@@ -484,7 +484,7 @@ export const WalletsView: React.FC = () => {
                     <span>
                       {isTransferring
                         ? 'Transferring...'
-                        : `Transfer ฿${transferAmount !== null ? transferAmount.toFixed(2) : '0.00'}`}
+                        : `Transfer ${formatCurrencyAmount(transferAmount ?? 0)}`}
                     </span>
                   </motion.button>
                 </div>

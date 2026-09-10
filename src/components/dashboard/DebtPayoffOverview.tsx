@@ -1,12 +1,12 @@
 import React from 'react';
 import { TrendingDown } from 'lucide-react';
+import { formatCurrencyAmount } from '../../utils/currency';
 
 interface DebtPayoffOverviewProps {
   activeDebtCount: number;
   debtProgressPercent: number;
   remainingDebtTarget: number;
   paidDebtTarget: number;
-  primarySymbol: string;
 }
 
 export const DebtPayoffOverview: React.FC<DebtPayoffOverviewProps> = React.memo(({
@@ -14,7 +14,6 @@ export const DebtPayoffOverview: React.FC<DebtPayoffOverviewProps> = React.memo(
   debtProgressPercent,
   remainingDebtTarget,
   paidDebtTarget,
-  primarySymbol,
 }) => {
   return (
     <div className="bg-white dark:bg-stone-900 rounded-2xl border border-stone-200 dark:border-stone-800 p-6 shadow-xs flex flex-col justify-between transition-colors">
@@ -47,13 +46,13 @@ export const DebtPayoffOverview: React.FC<DebtPayoffOverviewProps> = React.memo(
             <div className="bg-stone-50 dark:bg-stone-800/60 p-3 rounded-xl border border-stone-100 dark:border-stone-800">
               <span className="text-[11px] text-stone-500 dark:text-stone-400 block">Remaining Balance</span>
               <span className="text-base font-bold font-mono text-rose-600 dark:text-rose-400">
-                {primarySymbol}{remainingDebtTarget.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                {formatCurrencyAmount(remainingDebtTarget)}
               </span>
             </div>
             <div className="bg-stone-50 dark:bg-stone-800/60 p-3 rounded-xl border border-stone-100 dark:border-stone-800">
               <span className="text-[11px] text-stone-500 dark:text-stone-400 block">Total Principal Paid</span>
               <span className="text-base font-bold font-mono text-emerald-600 dark:text-emerald-400">
-                {primarySymbol}{paidDebtTarget.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                {formatCurrencyAmount(paidDebtTarget)}
               </span>
             </div>
           </div>

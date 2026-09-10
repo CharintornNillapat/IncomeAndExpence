@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { useFinance } from '../context/FinanceContext';
 import { FoodQuality } from '../types';
+import { formatCurrencyAmount } from '../utils/currency';
 import { todayIsoDate, daysAgoIsoDate } from '../utils/date';
 import { exportDiaryToJson } from '../utils/csvExchange';
 
@@ -205,11 +206,11 @@ export const DiaryView: React.FC = () => {
             </div>
             <div className="text-right">
               <span className={`text-base font-black font-mono ${selectedDateData.totalOutflow > 0 ? 'text-rose-600 dark:text-rose-400' : 'text-stone-700 dark:text-stone-300'}`}>
-                ฿{selectedDateData.totalOutflow.toFixed(2)}
+                {formatCurrencyAmount(selectedDateData.totalOutflow)}
               </span>
               {selectedDateData.totalIncome > 0 && (
                 <span className="text-[11px] font-mono text-emerald-600 dark:text-emerald-400 block font-semibold">
-                  +฿{selectedDateData.totalIncome.toFixed(2)} in
+                  +{formatCurrencyAmount(selectedDateData.totalIncome)} in
                 </span>
               )}
             </div>
@@ -398,7 +399,7 @@ export const DiaryView: React.FC = () => {
                             Day Outflow
                           </span>
                           <span className={`text-xs font-mono font-bold ${dayData.totalOutflow > 0 ? 'text-rose-600 dark:text-rose-400' : 'text-stone-500 dark:text-stone-400'}`}>
-                            ฿{dayData.totalOutflow.toFixed(2)}
+                            {formatCurrencyAmount(dayData.totalOutflow)}
                           </span>
                         </div>
 
@@ -474,7 +475,7 @@ export const DiaryView: React.FC = () => {
                                   </span>
                                 </div>
                               </div>
-                              <span className="font-mono font-bold text-rose-600 dark:text-rose-400">-฿{tx.amount.toFixed(2)}</span>
+                              <span className="font-mono font-bold text-rose-600 dark:text-rose-400">-{formatCurrencyAmount(tx.amount)}</span>
                             </div>
                           );
                         })}
