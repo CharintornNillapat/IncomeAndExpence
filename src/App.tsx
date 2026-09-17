@@ -1,14 +1,13 @@
-import React, { useState, lazy, Suspense } from 'react';
+import React, { useState, useCallback, lazy, Suspense } from 'react';
 import { motion, AnimatePresence, Transition } from 'framer-motion';
 import { useSwipeable } from 'react-swipeable';
-import { FinanceProvider, useFinance } from './context/FinanceContext';
+import { FinanceProvider } from './context/FinanceContext';
 import { Navbar, ActiveTab } from './components/Navbar';
 import { MobileBottomNav } from './components/MobileBottomNav';
 import { ViewLoadingFallback } from './components/ViewLoadingFallback';
-import { TransactionForm } from './components/TransactionForm';
+import { QuickAddModal } from './components/QuickAddModal';
 import { AuthModal } from './components/AuthModal';
 import { ReloadPrompt } from './components/ReloadPrompt';
-import { X } from 'lucide-react';
 
 // Ordered tab hierarchy for native-like swipe gestures
 const TABS_ORDER: ActiveTab[] = [
@@ -58,37 +57,61 @@ const MainApp: React.FC = () => {
   const [direction, setDirection] = useState<number>(0);
   const [isQuickAddOpen, setIsQuickAddOpen] = useState<boolean>(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
-  const { wallets, categories, addTransaction } = useFinance();
 
-  const handleTabChange = (newTab: ActiveTab) => {
-    const currentIndex = TABS_ORDER.indexOf(activeTab);
-    const newIndex = TABS_ORDER.indexOf(newTab);
-    if (currentIndex !== -1 && newIndex !== -1 && currentIndex !== newIndex) {
-      setDirection(newIndex > currentIndex ? 1 : -1);
-    }
-    setActiveTab(newTab);
-  };
+  // T1 (Phase 2): MainApp no longer calls useFinance(). It previously did so
+  // only to feed the quick-add modal, which meant every financial write
+  // re-rendered this entire component - and everything it renders inline
+  // (Navbar, the swipe wrapper, the active view, MobileBottomNav, AuthModal,
+  // ReloadPrompt, the footer). That logic now lives in QuickAddModal, which
+  // subscribes for itself.
 
-  const handleNextTab = () => {
+  // T3 (Phase 2): stabilized with useCallback so Navbar / MobileBottomNav /
+  // the active view don't receive a new function identity on every render -
+  // each still depends on `activeTab` (it reads the current tab to compute
+  // `direction`), so identity only changes when the tab actually changes,
+  // not on every unrelated re-render of MainApp.
+  const handleTabChange = useCallback(
+    (newTab: ActiveTab) => {
+      const currentIndex = TABS_ORDER.indexOf(activeTab);
+      const newIndex = TABS_ORDER.indexOf(newTab);
+      if (currentIndex !== -1 && newIndex !== -1 && currentIndex !== newIndex) {
+        setDirection(newIndex > currentIndex ? 1 : -1);
+      }
+      setActiveTab(newTab);
+    },
+    [activeTab]
+  );
+
+  const handleNextTab = useCallback(() => {
     const currentIndex = TABS_ORDER.indexOf(activeTab);
     if (currentIndex < TABS_ORDER.length - 1) {
       setDirection(1);
       setActiveTab(TABS_ORDER[currentIndex + 1]);
     }
-  };
+  }, [activeTab]);
 
-  const handlePrevTab = () => {
+  const handlePrevTab = useCallback(() => {
     const currentIndex = TABS_ORDER.indexOf(activeTab);
     if (currentIndex > 0) {
       setDirection(-1);
       setActiveTab(TABS_ORDER[currentIndex - 1]);
     }
-  };
+  }, [activeTab]);
+
+  const handleNavigate = useCallback(
+    (tab: string) => handleTabChange(tab as ActiveTab),
+    [handleTabChange]
+  );
+
+  const handleOpenQuickAdd = useCallback(() => setIsQuickAddOpen(true), []);
+  const handleCloseQuickAdd = useCallback(() => setIsQuickAddOpen(false), []);
+  const handleOpenAuth = useCallback(() => setIsAuthModalOpen(true), []);
+  const handleCloseAuth = useCallback(() => setIsAuthModalOpen(false), []);
 
   // Touch swipe gesture hook for iOS/Android native app feel
   const swipeHandlers = useSwipeable({
-    onSwipedLeft: () => handleNextTab(),
-    onSwipedRight: () => handlePrevTab(),
+    onSwipedLeft: handleNextTab,
+    onSwipedRight: handlePrevTab,
     delta: 40,
     preventScrollOnSwipe: false,
     trackTouch: true,
@@ -98,7 +121,7 @@ const MainApp: React.FC = () => {
   const renderActiveView = () => {
     switch (activeTab) {
       case 'dashboard':
-        return <DashboardView onNavigate={(tab) => handleTabChange(tab as ActiveTab)} />;
+        return <DashboardView onNavigate={handleNavigate} />;
       case 'transactions':
         return <TransactionsView />;
       case 'wallets':
@@ -112,7 +135,7 @@ const MainApp: React.FC = () => {
       case 'security':
         return <SecurityView />;
       default:
-        return <DashboardView onNavigate={(tab) => handleTabChange(tab as ActiveTab)} />;
+        return <DashboardView onNavigate={handleNavigate} />;
     }
   };
 
@@ -122,8 +145,8 @@ const MainApp: React.FC = () => {
       <Navbar
         activeTab={activeTab}
         setActiveTab={handleTabChange}
-        onOpenQuickAdd={() => setIsQuickAddOpen(true)}
-        onOpenAuth={() => setIsAuthModalOpen(true)}
+        onOpenQuickAdd={handleOpenQuickAdd}
+        onOpenAuth={handleOpenAuth}
       />
 
       {/* Main Content Area with Touch Swipe Gestures, Framer Slide Animations & Suspense */}
@@ -158,7 +181,7 @@ const MainApp: React.FC = () => {
       {/* Auth Modal for Supabase Login / Register */}
       <AuthModal
         isOpen={isAuthModalOpen}
-        onClose={() => setIsAuthModalOpen(false)}
+        onClose={handleCloseAuth}
       />
 
       {/* PWA Service Worker Update / Offline Prompt */}
@@ -173,73 +196,7 @@ const MainApp: React.FC = () => {
       </footer>
 
       {/* Quick Add Modal / Responsive Mobile Bottom Sheet with Glassmorphism */}
-      <AnimatePresence>
-        {isQuickAddOpen && (
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="fixed inset-0 z-50 bg-stone-900/60 dark:bg-black/70 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-4"
-            onClick={(e) => {
-              if (e.target === e.currentTarget) setIsQuickAddOpen(false);
-            }}
-          >
-            <motion.div 
-              role="dialog"
-              aria-modal="true"
-              aria-labelledby="quick-record-modal-title"
-              initial={{ y: 40, scale: 0.96, opacity: 0 }}
-              animate={{ y: 0, scale: 1, opacity: 1 }}
-              exit={{ y: 40, scale: 0.96, opacity: 0 }}
-              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-              className="bg-white/95 dark:bg-stone-900/95 backdrop-blur-xl rounded-t-3xl sm:rounded-2xl max-w-xl w-full max-h-[92vh] sm:max-h-[90vh] flex flex-col shadow-2xl border border-stone-200/80 dark:border-stone-800"
-            >
-              {/* Mobile Sheet Handle */}
-              <div className="sm:hidden pt-3 pb-1 flex justify-center cursor-pointer" onClick={() => setIsQuickAddOpen(false)}>
-                <div className="w-12 h-1.5 rounded-full bg-stone-300 dark:bg-stone-700" />
-              </div>
-
-              <div className="px-4 sm:px-6 py-3.5 sm:py-4 border-b border-stone-100/80 dark:border-stone-800 flex items-center justify-between">
-                <div>
-                  <h3 id="quick-record-modal-title" className="text-base sm:text-lg font-bold text-stone-900 dark:text-white">
-                    Quick Record Transaction
-                  </h3>
-                  <p className="text-xs text-stone-500 dark:text-stone-400 hidden sm:block">
-                    Add an expense, income, or wallet transfer instantly
-                  </p>
-                </div>
-                <motion.button
-                  whileTap={{ scale: 0.9 }}
-                  type="button"
-                  id="close-quick-record-modal-btn"
-                  onClick={() => setIsQuickAddOpen(false)}
-                  className="p-2 rounded-xl text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 hover:bg-stone-100 dark:hover:bg-stone-800 active:bg-stone-200 transition-colors cursor-pointer"
-                  aria-label="Close modal"
-                >
-                  <X className="w-5 h-5" />
-                </motion.button>
-              </div>
-              <div className="p-4 sm:p-6 overflow-y-auto max-h-[calc(92vh-70px)] sm:max-h-[calc(90vh-80px)] overscroll-contain">
-                <TransactionForm
-                  wallets={wallets.filter((w) => !w.isDeleted)}
-                  categories={categories.filter((c) => !c.isDeleted)}
-                  onSubmitTransaction={async (data) => {
-                    const res = await addTransaction({
-                      ...data,
-                      transactionDate: data.date,
-                    });
-                    if (res && res.success) {
-                      setIsQuickAddOpen(false);
-                    }
-                    return res;
-                  }}
-                />
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <QuickAddModal isOpen={isQuickAddOpen} onClose={handleCloseQuickAdd} />
     </div>
   );
 };
