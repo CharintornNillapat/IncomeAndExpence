@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 4 — DiaryView memoization: T8 (2026-09-17, no commit yet — pending review)
+## Phase 4 — DiaryView memoization: T8 (2026-09-17, commit `c9d4f26`)
 
 **Changed**
 
