@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 3 — Bundle optimization: T7 (2026-09-17, no commit yet — pending review)
+## Phase 3 — Bundle optimization: T7 (2026-09-17, commit `da46314`)
 
 **Changed**
 
