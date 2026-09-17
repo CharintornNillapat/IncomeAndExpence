@@ -134,6 +134,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
               <motion.button
                 whileTap={{ scale: 0.9 }}
                 type="button"
+                id="auth-close-btn"
                 onClick={onClose}
                 className="p-2 rounded-xl text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 hover:bg-stone-100 dark:hover:bg-stone-800 cursor-pointer"
               >
@@ -146,14 +147,15 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
               <div className="flex bg-stone-100 dark:bg-stone-800 p-1 rounded-xl gap-1 border border-stone-200 dark:border-stone-700">
                 <button
                   type="button"
+                  id="auth-tab-signin"
                   onClick={() => {
                     setMode('signin');
                     setErrorMessage(null);
                     setSuccessMessage(null);
                   }}
                   className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
-                    mode === 'signin' 
-                      ? 'bg-white dark:bg-stone-700 text-stone-900 dark:text-white shadow-xs' 
+                    mode === 'signin'
+                      ? 'bg-white dark:bg-stone-700 text-stone-900 dark:text-white shadow-xs'
                       : 'text-stone-500 dark:text-stone-400 hover:text-stone-800 dark:hover:text-stone-200'
                   }`}
                 >
@@ -161,14 +163,15 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
                 </button>
                 <button
                   type="button"
+                  id="auth-tab-signup"
                   onClick={() => {
                     setMode('signup');
                     setErrorMessage(null);
                     setSuccessMessage(null);
                   }}
                   className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
-                    mode === 'signup' 
-                      ? 'bg-white dark:bg-stone-700 text-stone-900 dark:text-white shadow-xs' 
+                    mode === 'signup'
+                      ? 'bg-white dark:bg-stone-700 text-stone-900 dark:text-white shadow-xs'
                       : 'text-stone-500 dark:text-stone-400 hover:text-stone-800 dark:hover:text-stone-200'
                   }`}
                 >
@@ -200,6 +203,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
                   <div className="relative">
                     <UserIcon className="w-4 h-4 text-stone-400 dark:text-stone-500 absolute left-3 top-3" />
                     <input
+                      id="auth-name-input"
                       type="text"
                       required
                       placeholder="Alex Rivera"
@@ -216,6 +220,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
                 <div className="relative">
                   <Mail className="w-4 h-4 text-stone-400 dark:text-stone-500 absolute left-3 top-3" />
                   <input
+                    id="auth-email-input"
                     type="email"
                     required
                     placeholder="user@example.com"
@@ -233,6 +238,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
                     {mode === 'signin' && (
                       <button
                         type="button"
+                        id="auth-forgot-password-link"
                         onClick={() => {
                           setMode('forgot');
                           setErrorMessage(null);
@@ -247,6 +253,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
                   <div className="relative">
                     <KeyRound className="w-4 h-4 text-stone-400 dark:text-stone-500 absolute left-3 top-3" />
                     <input
+                      id="auth-password-input"
                       type="password"
                       required
                       minLength={6}
@@ -262,6 +269,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
               <motion.button
                 whileTap={{ scale: 0.96 }}
                 type="submit"
+                id="auth-submit-btn"
                 disabled={loading}
                 className="w-full py-2.5 sm:py-3 px-4 rounded-xl font-semibold text-xs sm:text-sm bg-stone-900 hover:bg-stone-800 dark:bg-stone-100 dark:hover:bg-white text-white dark:text-stone-900 shadow-xs transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
               >
@@ -284,6 +292,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
               {mode === 'forgot' && (
                 <button
                   type="button"
+                  id="auth-back-to-signin-link"
                   onClick={() => {
                     setMode('signin');
                     setErrorMessage(null);
