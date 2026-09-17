@@ -34,9 +34,13 @@ Also verified: the `useMemo` at `FinanceContext.tsx:1498` currently guards again
 ## B. Unmemoized render-time computation
 
 - `DiaryView.tsx:135-137` — filter+sort over `diaryEntries`, no `useMemo`, recomputed on every keystroke across 7 local state vars (`:29-35`).
+  > Resolved by T8 (Phase 4): wrapped in `useMemo`, deps `[diaryEntries]`.
 - `DiaryView.tsx:367` — filter executed once per diary entry inside the render map (`:362`) → O(entries × transactions-per-day) per keystroke.
+  > Resolved by T8 (Phase 4): moved into a single `enrichedEntries` `useMemo` that precomputes each entry's `outflowTxs` once per `diaryEntries`/`transactions` change, not once per render. The per-entry card was also extracted to a `React.memo`'d `DiaryEntryCard` component, so even the *rendering* of unaffected rows is skipped on unrelated re-renders, not just the filter computation.
 - `DiaryView.tsx:203` — inline filter in JSX, every render.
+  > Resolved by T8 (Phase 4): wrapped in `useMemo` as `selectedDateOutflowCount`, deps `[selectedDateData]`.
 - `DiaryView.tsx:68-84` (`formatDayInfo`) — recreated every render, allocates a `Date` + two `toLocaleDateString` calls per entry per render, and calls `todayIsoDate()`/`daysAgoIsoDate(1)` inside itself.
+  > Resolved by T8 (Phase 4): hoisted to `utils/date.ts` (see the finding at line ~101 below) and its "today"/"yesterday" reference dates are now computed once per `DiaryView` render and threaded through, rather than once per `formatDayInfo` call — since it's called once per diary entry in the list, this was previously N recomputations of "today" per render.
 - `KeywordRulesView.tsx:17` — `matchSmartDescription` called during render, unmemoized. `:34` — `new Map(categories.map(...))` unmemoized.
 - `TransactionForm.tsx:37` — `debts.filter(...)` at component body; the form holds ~12 local state fields, so this runs on every keystroke. `:306-307` — `wallets.filter(...)` inline in JSX.
 - `WalletsView.tsx:22` — `wallets.filter(...)` unmemoized, result passed as a prop (`:218`) with a new identity every render.
@@ -99,6 +103,7 @@ Also verified: the `useMemo` at `FinanceContext.tsx:1498` currently guards again
 - `CashflowMetricsCards.tsx:10,17` threads a `primarySymbol` prop from `DashboardView.tsx:244` instead of importing `APP_CURRENCY_SYMBOL` directly, as its sibling `TotalWealthHero.tsx:5` does.
   > Resolved by T20 (Phase 1). `DashboardView.tsx`'s now-unused `APP_CURRENCY_SYMBOL` import was also removed.
 - Dates: `new Date().toISOString().slice(0,10)` has **zero** occurrences in `src/` (migration complete). Remaining issues of the same class: `WalletsView.tsx:117` slices a full UTC timestamp (`wallet.createdAt.slice(0,10)`), showing the UTC calendar day. `DashboardView.tsx:87,92,95,150` parse bare `YYYY-MM-DD` as UTC midnight and compare against a local `now`. `daysAgoIsoDate` (`date.ts:32`) exists and is used nowhere but `DiaryView.tsx`. `DiaryView.tsx:68-84` (`formatDayInfo`) is a local-calendar formatter living in a view rather than `utils/date.ts`. `SecurityView.tsx:282` — inline `toLocaleTimeString`.
+  > `formatDayInfo` piece resolved by T8 (Phase 4): now `utils/date.ts`'s `formatDayInfo`, still constructing local midnight via `new Date(year, month-1, day)` — never `new Date(dateStr)` — so no UTC-shift was introduced by the move. `daysAgoIsoDate` gained a second call site in the same file (`DiaryView.tsx`'s `yesterdayIso`), still not adopted elsewhere (`DashboardView.tsx`, `WalletsView.tsx`, `SecurityView.tsx` remain open — task T21).
 - Rounding: `roundToCents` (`FinanceContext.tsx:115-117`) has 7 ledger call sites; `roundToTwoDecimals` (`mathEvaluator.ts:26-30`) has 1. CLAUDE.md says do not merge them (still correct). But 4 inlined hand-rolled `Math.round(x*100)/100` copies bypass `roundToCents` at `FinanceContext.tsx:944,1071,1309,1318`, plus 3 more money-rounding copies at `csvExchange.ts:152,163,176` (note: `csvExchange.ts:52,53` round mood/workout-rate, not money — do not touch those).
   > Partially resolved by T19 (Phase 1): the 4 `FinanceContext.tsx` sites now call `roundToCents`. The `csvExchange.ts` sites were deliberately left out of scope — `roundToCents` is module-private to `FinanceContext.tsx`, and exporting it adds import churn Phase 1 didn't need. Deferred to a later phase.
 

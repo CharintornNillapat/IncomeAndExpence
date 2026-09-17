@@ -46,11 +46,25 @@ Status values: `todo` · `in-progress` · `done` · `dropped` (with a one-line r
 - One Firefox test (`diary.spec.ts`) failed on `#view-loading-fallback` timing out on the first full-suite run, then passed both in isolation and on a full clean re-run. This is the known dev-server flakiness `CLAUDE.md`/`playwright.config.ts` already document generous Firefox timeouts for — and structurally cannot be caused by this change, since `build.rollupOptions` only applies to `vite build`, never to `vite dev`, which is what the Playwright `webServer` runs.
 - `DISABLE_HMR` / `server.hmr` / `server.watch` block untouched, as required. PWA plugin config, manifest, and workbox caching rules untouched. No `@/*` alias re-added.
 
+## Phase 4 — DiaryView memoization (approved to execute)
+
+| # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
+|---|---|---|---|---|---|---|---|---|---|---|
+| T8 | Memoize `DiaryView`; hoist `formatDayInfo` into `date.ts`; kill per-entry filters | `date.ts`, `DiaryView.tsx`, new `src/components/DiaryEntryCard.tsx` | High | Low | 3h | done | — | (uncommitted) | tsc clean; `diary.spec.ts` 3/3 (all browsers, Firefox at normal ~9.5s, no timing regression); 39/39 full suite; build succeeds | `activeEntries` filter+sort, `formatDayInfo`, and the per-entry outflow filter no longer recompute on every DiaryView render (e.g. every notes/workout keystroke) — only when `diaryEntries`/`transactions` actually change. Each entry row is now a `React.memo`'d `DiaryEntryCard` receiving referentially-stable props, so unaffected rows skip re-rendering entirely on unrelated state changes |
+
+**Notes on execution:**
+- `formatDayInfo` hoisted into `src/utils/date.ts` verbatim in its date-math (`new Date(year, month-1, day)` local-midnight construction, never `new Date(dateStr)`) — no UTC-shift risk introduced. Signature extended to accept optional `todayStr`/`yesterdayStr` parameters (defaulting to fresh `todayIsoDate()`/`daysAgoIsoDate(1)` calls) so callers formatting many dates in a loop compute "today" once instead of once per date — this is what actually kills the "N `formatDayInfo` calls per render" cost, not just moving the function to a new file.
+- `moodLabels` (a fully static object, no component-state dependency) hoisted to a module-level `MOOD_LABELS` constant instead of being recreated — or even `useMemo`'d — every render.
+- Added a stable module-level `EMPTY_DAY_DATA` constant replacing the inline `|| { totalOutflow: 0, totalIncome: 0, transactions: [] }` fallback literal (created fresh every access) at both the selected-date lookup and the per-entry lookup — a day with zero transactions now gets the *same* object reference every time, which matters for `DiaryEntryCard`'s `React.memo` to actually bail correctly on those rows.
+- New `enrichedEntries` `useMemo` (deps: `[activeEntries, dailyTransactionsMap, todayIso, yesterdayIso]`) precomputes `dayInfo`/`dayData`/`outflowTxs`/`moodInfo` once per entry, once per actual data change — this is the fix for the O(entries × transactionsPerDay) work that previously ran inline in the JSX `.map()` on every render.
+- Extracted the per-entry card markup into `src/components/DiaryEntryCard.tsx`, wrapped in `React.memo`. Its `onToggleExpand`/`onDelete` props are stable `useCallback`s from the parent (`handleToggleExpand`, `handleDeleteEntry`) that take the entry id as an argument, rather than the previous per-row inline arrow closures (`onClick={() => deleteDiaryEntry(entry.id)}`) — inline closures are a fresh function reference every render and would have defeated `React.memo` immediately regardless of how stable the other props were.
+- Also memoized `selectedDayInfo` and `selectedDateOutflowCount` (the selected-date summary box), flagged in the audit at `DiaryView.tsx:140,203` in the pre-T8 file — smaller wins than the list, but same class of unnecessary per-keystroke recompute.
+- `deleteDiaryEntry` (used inside `handleDeleteEntry`) is one of the context's stable actions (deps `[isAuthenticated]` only, per audit correction C1), so `handleDeleteEntry`'s own identity is stable across the whole session except around login/logout.
+
 ## Deferred — documented, awaiting separate approval
 
 | # | Task | Files | Impact | Risk | Effort | Status | Blocked by |
 |---|---|---|---|---|---|---|---|
-| T8 | Memoize `DiaryView`; hoist `formatDayInfo` into `date.ts`; kill per-entry filters | `DiaryView.tsx:68-84,129-137,203,362,367` | High | Low | 3h | todo | — |
 | T9 | Memoize inline filters passed as props | `TransactionForm.tsx:37,306-307`, `WalletsView.tsx:22,218`, `KeywordRulesView.tsx:17,34`, `TransactionsView.tsx:400-401` | Med-High | Low | 2h | todo | — (KeywordRulesView slice needs T12) |
 | T10 | Hoist `navItems`; memo `Navbar` after subscription cut | `Navbar.tsx:39-47`, `MobileBottomNav.tsx:33-41` | Med | Low | 30m | todo | none — T1 and T2 both shipped |
 | T11 | Hoist `<Suspense>` outside keyed `motion.div` | `App.tsx:134-147` | Med | Low-Med | 1h | todo | — |

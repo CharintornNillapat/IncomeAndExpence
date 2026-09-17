@@ -1,27 +1,43 @@
-import React, { useState, useMemo } from 'react';
-import { 
-  BookHeart, 
-  Dumbbell, 
-  Utensils, 
-  Calendar, 
-  Download, 
-  Check, 
-  Trash2, 
-  ArrowUpRight, 
-  ChevronDown, 
-  ChevronUp,
-  Receipt,
+import React, { useState, useMemo, useCallback } from 'react';
+import {
+  BookHeart,
+  Dumbbell,
+  Utensils,
+  Calendar,
+  Download,
+  Check,
+  ArrowUpRight,
 } from 'lucide-react';
 import { useFinance } from '../context/FinanceContext';
-import { FoodQuality } from '../types';
+import { DiaryEntryCard } from '../components/DiaryEntryCard';
+import { FoodQuality, Transaction } from '../types';
 import { formatCurrencyAmount } from '../utils/currency';
-import { todayIsoDate, daysAgoIsoDate } from '../utils/date';
+import { todayIsoDate, daysAgoIsoDate, formatDayInfo } from '../utils/date';
 import { exportDiaryToJson } from '../utils/csvExchange';
+
+// Static (never depends on component state), so it lives outside the
+// component instead of being recreated - or even re-useMemo'd - every render.
+const MOOD_LABELS: Record<number, { label: string; emoji: string; color: string }> = {
+  1: { label: 'Exhausted / Stressed', emoji: '😫', color: 'text-rose-600 bg-rose-50 border-rose-200' },
+  2: { label: 'Low Energy', emoji: '😕', color: 'text-orange-600 bg-orange-50 border-orange-200' },
+  3: { label: 'Neutral / Balanced', emoji: '😐', color: 'text-amber-600 bg-amber-50 border-amber-200' },
+  4: { label: 'Good & Focused', emoji: '😊', color: 'text-emerald-600 bg-emerald-50 border-emerald-200' },
+  5: { label: 'Peak Flow / Great', emoji: '🤩', color: 'text-green-600 bg-green-50 border-green-200' },
+};
+
+// Stable fallback for a day with no transactions, so days that fall back to
+// this identical object don't defeat memoization / DiaryEntryCard's React.memo.
+const EMPTY_DAY_DATA: { totalOutflow: number; totalIncome: number; transactions: Transaction[] } = {
+  totalOutflow: 0,
+  totalIncome: 0,
+  transactions: [],
+};
 
 export const DiaryView: React.FC = () => {
   const { diaryEntries, transactions, wallets, categories, upsertDiaryEntry, deleteDiaryEntry } = useFinance();
 
   const todayIso = todayIsoDate();
+  const yesterdayIso = daysAgoIsoDate(1);
   const [selectedDate, setSelectedDate] = useState<string>(todayIso);
   const [expandedDateId, setExpandedDateId] = useState<string | null>(null);
 
@@ -64,25 +80,6 @@ export const DiaryView: React.FC = () => {
     return map;
   }, [transactions]);
 
-  // Date formatting helper for explicit day names (e.g. Sunday, Aug 30, 2026)
-  const formatDayInfo = (dateStr: string) => {
-    if (!dateStr) return { dayName: '', fullDate: '', badge: '' };
-    const [year, month, day] = dateStr.split('-').map(Number);
-    const dateObj = new Date(year, month - 1, day);
-
-    const todayStr = todayIsoDate();
-    const yestStr = daysAgoIsoDate(1);
-
-    const dayName = dateObj.toLocaleDateString('en-US', { weekday: 'long' });
-    const fullDate = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-
-    let badge = '';
-    if (dateStr === todayStr) badge = 'Today';
-    else if (dateStr === yestStr) badge = 'Yesterday';
-
-    return { dayName, fullDate, badge };
-  };
-
   const handleSaveEntry = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaveError(null);
@@ -124,20 +121,53 @@ export const DiaryView: React.FC = () => {
     }
   };
 
-  const moodLabels: Record<number, { label: string; emoji: string; color: string }> = {
-    1: { label: 'Exhausted / Stressed', emoji: '😫', color: 'text-rose-600 bg-rose-50 border-rose-200' },
-    2: { label: 'Low Energy', emoji: '😕', color: 'text-orange-600 bg-orange-50 border-orange-200' },
-    3: { label: 'Neutral / Balanced', emoji: '😐', color: 'text-amber-600 bg-amber-50 border-amber-200' },
-    4: { label: 'Good & Focused', emoji: '😊', color: 'text-emerald-600 bg-emerald-50 border-emerald-200' },
-    5: { label: 'Peak Flow / Great', emoji: '🤩', color: 'text-green-600 bg-green-50 border-green-200' },
-  };
+  // Memoized so this filter+sort only re-runs when diaryEntries actually
+  // changes, not on every keystroke into the form's mood/workout/notes state.
+  const activeEntries = useMemo(
+    () => diaryEntries.filter((e) => !e.isDeleted).sort((a, b) => b.date.localeCompare(a.date)),
+    [diaryEntries]
+  );
 
-  const activeEntries = diaryEntries
-    .filter((e) => !e.isDeleted)
-    .sort((a, b) => b.date.localeCompare(a.date));
+  const selectedDateData = dailyTransactionsMap[selectedDate] || EMPTY_DAY_DATA;
+  const selectedDayInfo = useMemo(
+    () => formatDayInfo(selectedDate, todayIso, yesterdayIso),
+    [selectedDate, todayIso, yesterdayIso]
+  );
+  const selectedDateOutflowCount = useMemo(
+    () => selectedDateData.transactions.filter((t) => t.type === 'EXPENSE' || t.type === 'DEBT_REPAYMENT').length,
+    [selectedDateData]
+  );
 
-  const selectedDateData = dailyTransactionsMap[selectedDate] || { totalOutflow: 0, totalIncome: 0, transactions: [] };
-  const selectedDayInfo = formatDayInfo(selectedDate);
+  // Precomputes everything each entry card needs - the day's formatted
+  // display info and its bucket of outflow transactions - once per
+  // diaryEntries/transactions change, not once per render. Previously
+  // `formatDayInfo` and an outflow `.filter()` ran fresh for every entry on
+  // every render, including on every keystroke in the notes/workout fields.
+  const enrichedEntries = useMemo(() => {
+    return activeEntries.map((entry) => {
+      const dayData = dailyTransactionsMap[entry.date] || EMPTY_DAY_DATA;
+      return {
+        entry,
+        dayInfo: formatDayInfo(entry.date, todayIso, yesterdayIso),
+        dayData,
+        outflowTxs: dayData.transactions.filter((t) => t.type === 'EXPENSE' || t.type === 'DEBT_REPAYMENT'),
+        moodInfo: MOOD_LABELS[entry.mood],
+      };
+    });
+  }, [activeEntries, dailyTransactionsMap, todayIso, yesterdayIso]);
+
+  // Stable across renders (module-scope setter + context action only) so
+  // DiaryEntryCard's React.memo isn't defeated by a fresh closure per row.
+  const handleToggleExpand = useCallback((entryId: string) => {
+    setExpandedDateId((prev) => (prev === entryId ? null : entryId));
+  }, []);
+
+  const handleDeleteEntry = useCallback(
+    (entryId: string) => {
+      deleteDiaryEntry(entryId);
+    },
+    [deleteDiaryEntry]
+  );
 
   return (
     <div className="space-y-6">
@@ -200,7 +230,7 @@ export const DiaryView: React.FC = () => {
                   {selectedDayInfo.dayName} Outflow
                 </span>
                 <span className="text-xs text-stone-600 dark:text-stone-300 font-medium">
-                  {selectedDateData.transactions.filter((t) => t.type === 'EXPENSE' || t.type === 'DEBT_REPAYMENT').length} outflow transaction(s)
+                  {selectedDateOutflowCount} outflow transaction(s)
                 </span>
               </div>
             </div>
@@ -224,7 +254,7 @@ export const DiaryView: React.FC = () => {
               </label>
               <div className="grid grid-cols-5 gap-2">
                 {[1, 2, 3, 4, 5].map((level) => {
-                  const info = moodLabels[level];
+                  const info = MOOD_LABELS[level];
                   const isSelected = mood === level;
                   return (
                     <button
@@ -245,7 +275,7 @@ export const DiaryView: React.FC = () => {
                 })}
               </div>
               <p className="text-xs font-medium text-stone-600 dark:text-stone-400 mt-2 text-center">
-                Current Mood: <strong className="text-stone-900 dark:text-stone-100">{moodLabels[mood].label}</strong>
+                Current Mood: <strong className="text-stone-900 dark:text-stone-100">{MOOD_LABELS[mood].label}</strong>
               </p>
             </div>
 
@@ -356,140 +386,24 @@ export const DiaryView: React.FC = () => {
           </div>
 
           <div className="space-y-3 max-h-[560px] overflow-y-auto pr-1">
-            {activeEntries.length === 0 ? (
+            {enrichedEntries.length === 0 ? (
               <p className="text-xs text-stone-400 dark:text-stone-500 text-center py-10">No diary entries logged yet.</p>
             ) : (
-              activeEntries.map((entry) => {
-                const dayInfo = formatDayInfo(entry.date);
-                const dayData = dailyTransactionsMap[entry.date] || { totalOutflow: 0, totalIncome: 0, transactions: [] };
-                const moodInfo = moodLabels[entry.mood];
-                const isExpanded = expandedDateId === entry.id;
-                const outflowTxs = dayData.transactions.filter((t) => t.type === 'EXPENSE' || t.type === 'DEBT_REPAYMENT');
-
-                return (
-                  <div
-                    key={entry.id}
-                    id={`diary-card-${entry.id}`}
-                    className="p-4 rounded-xl border border-stone-100 dark:border-stone-800 bg-stone-50 dark:bg-stone-800/80 hover:bg-stone-100/70 dark:hover:bg-stone-800 transition-all space-y-3"
-                  >
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-start gap-2.5">
-                        <span className="text-2xl mt-0.5">{moodInfo.emoji}</span>
-                        <div>
-                          <div className="flex items-center gap-1.5">
-                            <p className="text-xs font-bold text-stone-900 dark:text-white">
-                              {dayInfo.dayName}, {dayInfo.fullDate}
-                            </p>
-                            {dayInfo.badge && (
-                              <span className="text-[10px] font-bold bg-stone-200 dark:bg-stone-700 text-stone-800 dark:text-stone-200 px-1.5 py-0.2 rounded">
-                                {dayInfo.badge}
-                              </span>
-                            )}
-                          </div>
-                          <span className="text-[11px] text-stone-500 dark:text-stone-400 font-medium">
-                            Mood: {entry.mood}/5 ★ ({moodInfo.label})
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        {/* Day spending correlation badge */}
-                        <div className="text-right">
-                          <span className="text-[10px] text-stone-400 dark:text-stone-500 block font-semibold uppercase tracking-wider">
-                            Day Outflow
-                          </span>
-                          <span className={`text-xs font-mono font-bold ${dayData.totalOutflow > 0 ? 'text-rose-600 dark:text-rose-400' : 'text-stone-500 dark:text-stone-400'}`}>
-                            {formatCurrencyAmount(dayData.totalOutflow)}
-                          </span>
-                        </div>
-
-                        <button
-                          type="button"
-                          title="Delete entry"
-                          onClick={() => deleteDiaryEntry(entry.id)}
-                          className="p-1 text-stone-400 hover:text-rose-600 dark:hover:text-rose-400 rounded cursor-pointer"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Workout & Food Badges */}
-                    <div className="flex flex-wrap items-center gap-2 text-[11px]">
-                      {entry.workout ? (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 font-medium">
-                          <Dumbbell className="w-3 h-3" />
-                          {entry.workoutNote || 'Workout Done'}
-                        </span>
-                      ) : (
-                        <span className="px-2 py-0.5 rounded-md bg-stone-200 dark:bg-stone-700 text-stone-600 dark:text-stone-300 font-medium">
-                          Rest Day
-                        </span>
-                      )}
-
-                      <span
-                        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md border font-medium ${
-                          entry.foodQuality === 'HEALTHY'
-                            ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
-                            : entry.foodQuality === 'AVERAGE'
-                            ? 'bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800'
-                            : 'bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800'
-                        }`}
-                      >
-                        <Utensils className="w-3 h-3" />
-                        {entry.foodQuality === 'HEALTHY' ? 'Clean Food' : entry.foodQuality === 'AVERAGE' ? 'Avg Food' : 'Junk Food'}
-                      </span>
-
-                      {/* Toggle day transactions breakdown button */}
-                      {outflowTxs.length > 0 && (
-                        <button
-                          type="button"
-                          onClick={() => setExpandedDateId(isExpanded ? null : entry.id)}
-                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-stone-100 dark:bg-stone-700 hover:bg-stone-200 dark:hover:bg-stone-600 text-stone-700 dark:text-stone-200 font-medium text-[11px] cursor-pointer ml-auto"
-                        >
-                          <Receipt className="w-3 h-3 text-stone-500 dark:text-stone-400" />
-                          <span>{outflowTxs.length} item(s)</span>
-                          {isExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-                        </button>
-                      )}
-                    </div>
-
-                    {/* Expandable breakdown of transactions for that day */}
-                    {isExpanded && outflowTxs.length > 0 && (
-                      <div className="bg-white dark:bg-stone-900 p-3 rounded-lg border border-stone-200 dark:border-stone-800 space-y-2 animate-fade-in text-xs">
-                        <div className="flex items-center justify-between text-[11px] font-semibold text-stone-500 dark:text-stone-400 uppercase tracking-wider border-b border-stone-100 dark:border-stone-800 pb-1">
-                          <span>{dayInfo.dayName}'s Outflows</span>
-                          <span>Amount</span>
-                        </div>
-                        {outflowTxs.map((tx) => {
-                          const cat = tx.categoryId ? categoryMap.get(tx.categoryId) : undefined;
-                          const wal = walletMap.get(tx.walletId);
-                          return (
-                            <div key={tx.id} className="flex items-center justify-between text-stone-800 dark:text-stone-200 py-1 border-b border-stone-50 dark:border-stone-800/60 last:border-0">
-                              <div className="flex items-center gap-2">
-                                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: cat?.color || '#94a3b8' }} />
-                                <div>
-                                  <span className="font-semibold block">{tx.description}</span>
-                                  <span className="text-[10px] text-stone-400 dark:text-stone-500">
-                                    {cat?.name || 'Uncategorized'} • {wal?.name || 'Wallet'}
-                                  </span>
-                                </div>
-                              </div>
-                              <span className="font-mono font-bold text-rose-600 dark:text-rose-400">-{formatCurrencyAmount(tx.amount)}</span>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-
-                    {entry.notes && (
-                      <p className="text-xs text-stone-600 dark:text-stone-400 bg-white dark:bg-stone-900 p-2.5 rounded-lg border border-stone-100 dark:border-stone-800 italic">
-                        "{entry.notes}"
-                      </p>
-                    )}
-                  </div>
-                );
-              })
+              enrichedEntries.map(({ entry, dayInfo, dayData, outflowTxs, moodInfo }) => (
+                <DiaryEntryCard
+                  key={entry.id}
+                  entry={entry}
+                  dayInfo={dayInfo}
+                  dayData={dayData}
+                  outflowTxs={outflowTxs}
+                  moodInfo={moodInfo}
+                  isExpanded={expandedDateId === entry.id}
+                  onToggleExpand={handleToggleExpand}
+                  onDelete={handleDeleteEntry}
+                  categoryMap={categoryMap}
+                  walletMap={walletMap}
+                />
+              ))
             )}
           </div>
         </div>

@@ -4,6 +4,61 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
+## Phase 4 — DiaryView memoization: T8 (2026-09-17, no commit yet — pending review)
+
+**Changed**
+
+- Hoisted `formatDayInfo` from `DiaryView.tsx` into `src/utils/date.ts`, extending its signature with optional `todayStr`/`yesterdayStr` parameters (defaulting to fresh `todayIsoDate()`/`daysAgoIsoDate(1)` calls) so a caller formatting many dates in a loop computes "today" once instead of once per date. Date math unchanged: still `new Date(year, month-1, day)` for local midnight, never `new Date(dateStr)` — no UTC-shift risk introduced.
+- Hoisted `moodLabels` (fully static, no component-state dependency) to a module-level `MOOD_LABELS` constant.
+- Added a module-level `EMPTY_DAY_DATA` constant replacing two inline fallback-object literals, so a day with zero transactions gets the same object reference every access.
+- Memoized `activeEntries` (`useMemo`, deps `[diaryEntries]`), `selectedDayInfo`, `selectedDateOutflowCount`, and — the main fix — a new `enrichedEntries` `useMemo` (deps `[activeEntries, dailyTransactionsMap, todayIso, yesterdayIso]`) that precomputes each diary entry's `dayInfo`/`dayData`/`outflowTxs`/`moodInfo` once per actual data change instead of once per render.
+- Extracted the per-entry card markup into a new `src/components/DiaryEntryCard.tsx`, wrapped in `React.memo`, receiving the precomputed values plus two new stable `useCallback`s from the parent (`handleToggleExpand`, `handleDeleteEntry`) that take the entry id as an argument — replacing per-row inline closures that would have defeated the memo regardless of prop stability elsewhere.
+
+3 files changed: `src/utils/date.ts` (+37 lines), `src/views/DiaryView.tsx` (132 insertions, 181 deletions — net smaller despite the added memoization, since the ~180-line inline card JSX moved out), new `src/components/DiaryEntryCard.tsx` (196 lines).
+
+**Why**
+
+`audit-report.md` finding B: `DiaryView.tsx:135-137` (filter+sort), `:203` (inline filter), and `:367` (per-entry filter inside the render map) all recomputed on every render, including every keystroke into the form's 7 local state fields (mood, workout, workoutNote, foodQuality, notes, saveSuccess, saveError) — none of which have anything to do with the entries list being displayed. `:68-84`'s `formatDayInfo` additionally recomputed "today"/"yesterday" reference dates once per diary entry per render.
+
+**Verification**
+
+```
+npx tsc --noEmit                          # clean, 0 errors
+npx playwright test tests/diary.spec.ts   # 3/3 (all 3 browsers), 9.5s total -
+                                           # Firefox at normal speed, no timing regression
+npx playwright test --reporter=line       # 39/39 (1m15.0s)
+npm run clean && npm run build            # succeeded in 6.88s; DiaryView chunk
+                                           # 16.46 kB -> 16.71 kB (DiaryEntryCard
+                                           # bundles into the same lazy chunk, not
+                                           # a new split point); vendor chunks
+                                           # from T7 unaffected
+```
+
+`git status --short` confirmed only `date.ts`, `DiaryView.tsx`, and the new `DiaryEntryCard.tsx` changed.
+
+**Metric delta**
+
+| Metric | Phase 3 | Phase 4 |
+|---|---|---|
+| `formatDayInfo` calls per DiaryView render (N entries) | N + 1 (once for selected date, once per entry, each also recomputing today/yesterday internally) | N + 1 calls, but 0 of them on a keystroke unrelated to the entries list — `enrichedEntries`/`selectedDayInfo` only recompute when their actual deps change |
+| `activeEntries` filter+sort | every render | only when `diaryEntries` changes |
+| Per-entry outflow filter (`:367`) | every render, inline in JSX | precomputed once in `enrichedEntries`, plus the row itself is `React.memo`'d so unaffected rows skip re-rendering entirely |
+| `DiaryView.tsx` line count | 499 (pre-T8) | ~350 (card markup extracted to its own file) |
+
+Re-render counts (S4, the diary-keystroke scenario from `baseline-metrics.md`) remain uncaptured — same instrumentation gap noted in the Phase 2 entry. This phase's fix is the direct target of S4 and would be the clearest place to finally stand up that measurement.
+
+**Surprises**
+
+- None. `tsc`, the diary spec (specifically watched for Firefox timing per the task's guardrail), and the full suite all passed clean on the first attempt.
+
+**Deliberately not done**
+
+- `DashboardView.tsx:87,92,95,150`, `WalletsView.tsx:117`, and `SecurityView.tsx:282` (the other UTC-shift-risk date sites the audit flagged) were not touched — that's task `T21`, out of scope here. `daysAgoIsoDate` still isn't adopted at any of those sites.
+- No change to `dailyTransactionsMap` (already correctly `useMemo`'d before this phase) or to the diary form's own local state shape.
+- Re-render scenario counts (S1-S5) still not captured — see Metric delta above.
+
+---
+
 ## Phase 3 — Bundle optimization: T7 (2026-09-17, commit `da46314`)
 
 **Changed**
