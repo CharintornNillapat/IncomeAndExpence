@@ -154,22 +154,22 @@ const MainApp: React.FC = () => {
         {...swipeHandlers}
         className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 py-4 sm:py-8 pb-24 sm:pb-8 overflow-x-hidden touch-pan-y"
       >
-        <AnimatePresence mode="wait" custom={direction}>
-          <motion.div
-            key={activeTab}
-            custom={direction}
-            variants={pageVariants}
-            initial="enter"
-            animate="center"
-            exit="exit"
-            transition={pageTransition}
-            className="w-full"
-          >
-            <Suspense fallback={<ViewLoadingFallback />}>
+        <Suspense fallback={<ViewLoadingFallback />}>
+          <AnimatePresence mode="wait" custom={direction}>
+            <motion.div
+              key={activeTab}
+              custom={direction}
+              variants={pageVariants}
+              initial="enter"
+              animate="center"
+              exit="exit"
+              transition={pageTransition}
+              className="w-full"
+            >
               {renderActiveView()}
-            </Suspense>
-          </motion.div>
-        </AnimatePresence>
+            </motion.div>
+          </AnimatePresence>
+        </Suspense>
       </main>
 
       {/* Mobile Fixed Bottom Navigation Bar (block sm:hidden) */}

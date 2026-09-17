@@ -4,6 +4,60 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
+## Phase 6 — Nav hoisting and Suspense boundary restructure: T10, T11 (2026-09-17, commit `(uncommitted)`)
+
+**Changed**
+
+- `Navbar.tsx` — hoisted the static `navItems` array (7 objects: id/label/icon per tab) to a module-level `NAV_ITEMS: NavItemConfig[]` constant, with a new `NavItemConfig` interface. Was previously reallocated (the array plus all 7 object literals) on every `Navbar` render, including every financial write (since `Navbar` subscribes to `useFinance()` for `totalNetWorth`/`isAuthenticated`/`isSyncing`/`currentUser`).
+- `MobileBottomNav.tsx` — same hoist, reusing the file's existing module-level `NavItemConfig` interface.
+- `App.tsx` — moved `<Suspense fallback={<ViewLoadingFallback />}>` to wrap `<AnimatePresence mode="wait" custom={direction}>`, out from its previous position nested inside the keyed `<motion.div>` (where it wrapped only `{renderActiveView()}`). One `Suspense` boundary now persists across `activeTab` changes instead of a new one being constructed every time the `motion.div`'s `key` changes.
+
+3 files changed: `src/App.tsx` (15 insertions, 15 deletions), `src/components/MobileBottomNav.tsx` (11 insertions, 11 deletions), `src/components/Navbar.tsx` (17 insertions, 11 deletions).
+
+**Why**
+
+`navItems` in both nav components was a purely static configuration array with zero dependency on props or component state, yet was declared inside the function body, so it was rebuilt from scratch on every render — for `Navbar` specifically, that's every financial write in the app, not just tab changes. Hoisting removes that allocation entirely from the render path.
+
+The `Suspense` placement was flagged in the original audit plan as a candidate fix for "tearing or fallback churn on route transitions" — nesting the boundary inside the per-tab keyed `motion.div` means a brand-new `Suspense` fiber is constructed and torn down on every tab switch, rather than one boundary persisting across the whole navigation lifecycle. The plan itself flagged this specific change as carrying the highest test risk in the deferred backlog, since `tests/helpers.ts:gotoTab`'s `#view-loading-fallback` assertion is the one piece of test coverage that would catch a regression here.
+
+**Verification**
+
+```
+npx tsc --noEmit                                            # clean, 0 errors
+npx playwright test --reporter=list                         # 39/39 (55.2s), all three browsers
+npx playwright test --project=firefox tests/theme.spec.ts tests/diary.spec.ts
+                                                              # re-run in isolation, 4/4 passed
+npx playwright test --project=firefox tests/theme.spec.ts:47 --repeat-each=3
+                                                              # the 7-tab cycling test specifically,
+                                                              # repeated 3x — 3/3 passed, ~8-10s each,
+                                                              # no flakes, no timing regression
+npm run build                                                # succeeded in 5.6s; vendor chunk split
+                                                              # from T7 unaffected
+```
+
+`git status --short` / `git diff --stat` confirmed only the three target files changed.
+
+**Metric delta**
+
+| Metric | Before | After |
+|---|---|---|
+| `navItems` allocation (`Navbar`) | array + 7 objects rebuilt every render, incl. every financial write | built once at module load |
+| `navItems` allocation (`MobileBottomNav`) | array + 7 objects rebuilt every render | built once at module load |
+| `Suspense` boundary lifetime | new fiber per `activeTab` key change (nested inside the keyed `motion.div`) | one persistent boundary spanning all tab transitions |
+| `Navbar` `React.memo` | not applied (unchanged this phase) | still not applied — see Deliberately not done |
+
+**Surprises**
+
+- None functionally — both changes were mechanical. The main open question going in was whether moving `Suspense` outside `AnimatePresence` would visibly disrupt the exit/enter slide animation on a tab switch to an unloaded chunk (a real risk given React's Suspense-fallback-replaces-whole-subtree behavior on non-`startTransition` updates). It did not surface as a test failure or a timing regression in any of the three browsers across the standard run plus the two additional targeted re-runs, but this was verified only via the automated suite's DOM-state assertions, not a visual/manual check of the animation itself — see Deliberately not done.
+
+**Deliberately not done**
+
+- **`Navbar` was not wrapped in `React.memo`.** It still calls `useFinance()`/`useTheme()` directly, so per audit correction C3 and the plan's guardrail #9, `React.memo` cannot stop it from re-rendering on financial writes (context-value changes force a re-render of every consumer regardless of props memoization) — it would only skip renders triggered by an unrelated parent (`MainApp`) re-render with unchanged props, a narrow and easily-overstated win. The task ledger's own original phrasing for this task was "memo `Navbar` after subscription cut" — that subscription cut (extracting the net-worth/sync-badge/auth sections into self-subscribing pieces, as T1 did for the quick-add modal) hasn't happened, so memoizing now was judged not worth doing; it's a precondition for a future task, not a partial step taken here.
+- No manual/visual verification of the tab-switch slide animation was performed — only the automated Playwright DOM assertions (class changes, fallback element count) were checked. If a subtle animation-timing regression exists that no current test asserts on, it would not have been caught by this verification pass.
+- `App.tsx`'s other structure (the `AnimatePresence`/`motion.div`/`pageVariants` themselves) was left untouched beyond relocating `Suspense` — no attempt was made to also address `renderActiveView()`'s `switch` statement or the lazy-import declarations, which are out of this task's scope.
+
+---
+
 ## Phase 5 — Inline filter/computation memoization: T9 (2026-09-17, commit `58e460d`)
 
 **Changed**

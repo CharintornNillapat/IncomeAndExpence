@@ -23,27 +23,27 @@ interface NavItemConfig {
   icon: React.FC<{ className?: string }>;
 }
 
+const NAV_ITEMS: NavItemConfig[] = [
+  { id: 'dashboard', label: 'Dashboard', shortLabel: 'Home', icon: LayoutDashboard },
+  { id: 'transactions', label: 'Transactions', shortLabel: 'Txns', icon: ArrowLeftRight },
+  { id: 'wallets', label: 'Wallets', shortLabel: 'Wallets', icon: WalletIcon },
+  { id: 'debts', label: 'Debts', shortLabel: 'Debts', icon: TrendingDown },
+  { id: 'diary', label: 'Diary', shortLabel: 'Diary', icon: BookHeart },
+  { id: 'keywords', label: 'Smart Rules', shortLabel: 'Rules', icon: Sparkles },
+  { id: 'security', label: 'Security', shortLabel: 'Security', icon: ShieldCheck },
+];
+
 export const MobileBottomNav: React.FC<MobileBottomNavProps> = React.memo(({
   activeTab,
   setActiveTab,
 }) => {
-  const navItems: NavItemConfig[] = [
-    { id: 'dashboard', label: 'Dashboard', shortLabel: 'Home', icon: LayoutDashboard },
-    { id: 'transactions', label: 'Transactions', shortLabel: 'Txns', icon: ArrowLeftRight },
-    { id: 'wallets', label: 'Wallets', shortLabel: 'Wallets', icon: WalletIcon },
-    { id: 'debts', label: 'Debts', shortLabel: 'Debts', icon: TrendingDown },
-    { id: 'diary', label: 'Diary', shortLabel: 'Diary', icon: BookHeart },
-    { id: 'keywords', label: 'Smart Rules', shortLabel: 'Rules', icon: Sparkles },
-    { id: 'security', label: 'Security', shortLabel: 'Security', icon: ShieldCheck },
-  ];
-
   return (
     <nav
       aria-label="Mobile Navigation"
       className="sm:hidden fixed bottom-0 left-0 right-0 w-full z-40 bg-white/95 dark:bg-stone-950/95 backdrop-blur-md border-t border-stone-200 dark:border-stone-800 shadow-[0_-4px_20px_rgba(0,0,0,0.06)] pb-[env(safe-area-inset-bottom,0.5rem)]"
     >
       <div className="grid grid-cols-7 items-center justify-between px-1 py-1.5 max-w-lg mx-auto">
-        {navItems.map((item) => {
+        {NAV_ITEMS.map((item) => {
           const Icon = item.icon;
           const isActive = activeTab === item.id;
 

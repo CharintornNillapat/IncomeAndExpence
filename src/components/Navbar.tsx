@@ -32,19 +32,25 @@ interface NavbarProps {
   onOpenAuth: () => void;
 }
 
+interface NavItemConfig {
+  id: ActiveTab;
+  label: string;
+  icon: React.FC<{ className?: string }>;
+}
+
+const NAV_ITEMS: NavItemConfig[] = [
+  { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { id: 'transactions', label: 'Transactions', icon: ArrowLeftRight },
+  { id: 'wallets', label: 'Wallets', icon: WalletIcon },
+  { id: 'debts', label: 'Debt Payoff', icon: TrendingDown },
+  { id: 'diary', label: 'Holistic Diary', icon: BookHeart },
+  { id: 'keywords', label: 'Smart Rules', icon: Sparkles },
+  { id: 'security', label: 'Security & Sessions', icon: ShieldCheck },
+];
+
 export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, onOpenQuickAdd, onOpenAuth }) => {
   const { totalNetWorth, isAuthenticated, isSyncing, currentUser, signOut } = useFinance();
   const { theme, cycleTheme } = useTheme();
-
-  const navItems: { id: ActiveTab; label: string; icon: React.FC<{ className?: string }> }[] = [
-    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'transactions', label: 'Transactions', icon: ArrowLeftRight },
-    { id: 'wallets', label: 'Wallets', icon: WalletIcon },
-    { id: 'debts', label: 'Debt Payoff', icon: TrendingDown },
-    { id: 'diary', label: 'Holistic Diary', icon: BookHeart },
-    { id: 'keywords', label: 'Smart Rules', icon: Sparkles },
-    { id: 'security', label: 'Security & Sessions', icon: ShieldCheck },
-  ];
 
   const renderThemeIcon = () => {
     switch (theme) {
@@ -215,7 +221,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, onOpenQ
           aria-label="Desktop Navigation"
           className="hidden sm:flex items-center gap-1 overflow-x-auto no-scrollbar py-2 border-t border-stone-100 dark:border-stone-800 md:justify-start lg:justify-between"
         >
-          {navItems.map((item) => {
+          {NAV_ITEMS.map((item) => {
             const Icon = item.icon;
             const isActive = activeTab === item.id;
             return (
