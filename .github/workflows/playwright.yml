@@ -25,6 +25,9 @@ jobs:
       - name: Install project dependencies
         run: npm ci
 
+      - name: Type-check (tsc --noEmit)
+        run: npm run lint
+
       - name: Install Playwright browsers with OS dependencies
         run: npx playwright install --with-deps
 

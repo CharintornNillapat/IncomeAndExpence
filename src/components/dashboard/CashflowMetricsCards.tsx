@@ -2,19 +2,18 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { ArrowDownLeft, ArrowUpRight, TrendingUp, TrendingDown } from 'lucide-react';
 import { AnimatedCounter } from '../AnimatedCounter';
+import { APP_CURRENCY_SYMBOL } from '../../utils/currency';
 
 interface CashflowMetricsCardsProps {
   incomeTotal: number;
   expenseTotal: number;
   netBalance: number;
-  primarySymbol: string;
 }
 
 export const CashflowMetricsCards: React.FC<CashflowMetricsCardsProps> = React.memo(({
   incomeTotal,
   expenseTotal,
   netBalance,
-  primarySymbol,
 }) => {
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-5">
@@ -36,7 +35,7 @@ export const CashflowMetricsCards: React.FC<CashflowMetricsCardsProps> = React.m
           <p className="text-2xl sm:text-3xl lg:text-4xl xl:text-5xl font-black font-mono tracking-tight text-emerald-600 dark:text-emerald-400">
             <AnimatedCounter
               value={incomeTotal}
-              currencyPrefix={primarySymbol}
+              currencyPrefix={APP_CURRENCY_SYMBOL}
               duration={1.2}
             />
           </p>
@@ -67,7 +66,7 @@ export const CashflowMetricsCards: React.FC<CashflowMetricsCardsProps> = React.m
           <p className="text-2xl sm:text-3xl lg:text-4xl xl:text-5xl font-black font-mono tracking-tight text-rose-600 dark:text-rose-400">
             <AnimatedCounter
               value={expenseTotal}
-              currencyPrefix={primarySymbol}
+              currencyPrefix={APP_CURRENCY_SYMBOL}
               duration={1.2}
             />
           </p>
@@ -113,7 +112,7 @@ export const CashflowMetricsCards: React.FC<CashflowMetricsCardsProps> = React.m
             {netBalance < 0 ? '-' : ''}
             <AnimatedCounter
               value={Math.abs(netBalance)}
-              currencyPrefix={primarySymbol}
+              currencyPrefix={APP_CURRENCY_SYMBOL}
               duration={1.2}
             />
           </p>

@@ -15,17 +15,12 @@
     "moduleDetection": "force",
     "allowJs": true,
     "jsx": "react-jsx",
-    "paths": {
-      "@/*": [
-        "./*"
-      ]
-    },
     "allowImportingTsExtensions": true,
     "types": ["vite-plugin-pwa/client"],
     "noEmit": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true
   },
-  "include": ["src"],
-  "exclude": ["node_modules", "dist", "tests", "playwright.config.ts"]
+  "include": ["src", "tests"],
+  "exclude": ["node_modules", "dist", "playwright.config.ts"]
 }

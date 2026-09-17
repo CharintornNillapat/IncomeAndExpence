@@ -11,7 +11,6 @@ import { CashflowMetricsCards } from '../components/dashboard/CashflowMetricsCar
 import { CategoryExpenseDistribution } from '../components/dashboard/CategoryExpenseDistribution';
 import { DebtPayoffOverview } from '../components/dashboard/DebtPayoffOverview';
 import { RecentTransactionsTable } from '../components/dashboard/RecentTransactionsTable';
-import { APP_CURRENCY_SYMBOL } from '../utils/currency';
 import { todayIsoDate } from '../utils/date';
 
 export type TimeFilter = 'DAY' | 'WEEK' | 'MONTH' | 'ALL';
@@ -241,7 +240,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
           incomeTotal={incomeTotal}
           expenseTotal={expenseTotal}
           netBalance={netBalance}
-          primarySymbol={APP_CURRENCY_SYMBOL}
         />
       </motion.section>
 

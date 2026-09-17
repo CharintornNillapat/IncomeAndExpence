@@ -10,7 +10,6 @@ export const useDebts = () => {
     repayDebtAtomic,
     settleDebt,
     deleteDebt,
-    isSyncing,
   } = useFinance();
 
   // Active (non-deleted) debts
@@ -34,18 +33,15 @@ export const useDebts = () => {
     const paidTarget = totalTarget - remainingTarget;
     // No debts tracked reads as 0% paid off, not 100%.
     const progressPercent = totalTarget > 0 ? (paidTarget / totalTarget) * 100 : 0;
-    const totalMinimumMonthly = unsettledDebts.reduce((sum, d) => sum + (d.minimumPayment || 0), 0);
 
     return {
       totalTarget,
       remainingTarget,
       paidTarget,
       progressPercent,
-      totalMinimumMonthly,
       activeCount: unsettledDebts.length,
-      settledCount: settledDebts.length,
     };
-  }, [activeDebts, unsettledDebts, settledDebts]);
+  }, [activeDebts, unsettledDebts]);
 
   // Stable action callbacks
   const handleAddDebt = useCallback(
@@ -78,12 +74,10 @@ export const useDebts = () => {
 
   return {
     debts: activeDebts,
-    allDebts: debts,
     unsettledDebts,
     settledDebts,
     wallets,
     metrics: debtMetrics,
-    isSyncing,
     addDebt: handleAddDebt,
     repayDebt: handleRepayDebt,
     settleDebt: handleSettleDebt,

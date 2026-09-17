@@ -34,8 +34,8 @@ FinLife Tracker is a full-stack personal finance and holistic lifestyle manageme
 ├── tests/               # Playwright specs (*.spec.ts) plus shared helpers.ts
 ├── index.html           # Anti-FOUC theme bootstrap and PWA meta tags
 ├── playwright.config.ts # Playwright multi-browser test configuration
-├── vite.config.ts       # Vite config (PWA manifest, Tailwind plugin, path aliases, HMR switch)
-└── tsconfig.json        # TypeScript configuration with @/* alias to ./*
+├── vite.config.ts       # Vite config (PWA manifest, Tailwind plugin, HMR switch)
+└── tsconfig.json        # TypeScript configuration (strict unused-locals/params, no path aliases)
 ```
 
 ## Common Commands
@@ -50,7 +50,7 @@ From `package.json` (requires `npm install` prior to execution):
 ## Coding Conventions
 - **Component Pattern**: Functional components with TypeScript interfaces; named exports for views and helper components.
 - **Naming**: PascalCase for components (`TransactionForm.tsx`), camelCase for hooks and utilities (`useTheme.ts`, `mathEvaluator.ts`), SCREAMING_SNAKE_CASE for enum/union values (`INCOME`, `EXPENSE`, `BANK_ACCOUNT`).
-- **Imports**: Alias `@/*` resolves to `./*`. Explicit `.tsx` extensions are supported and used in imports.
+- **Imports**: Relative paths only — there is no `@/*` alias. Explicit `.tsx` extensions are supported and used in imports.
 - **Styling**: Tailwind CSS v4 utility classes. Warm neutral aesthetic based on `stone-*` palette. Dark mode uses `.dark` class, `data-theme="dark"`, and `colorScheme`.
 - **Data Integrity**: Soft deletion (`isDeleted: true`) on records to protect ledger and history integrity.
 - **Unused symbols**: `tsconfig.json` sets `noUnusedLocals` and `noUnusedParameters`, so `npm run lint` fails on dead imports and locals. Prefix a deliberately unused parameter with `_` (see `_event` in `FinanceContext.tsx`).

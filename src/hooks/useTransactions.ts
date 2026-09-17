@@ -2,7 +2,7 @@ import { useMemo, useCallback } from 'react';
 import { useFinance } from '../context/FinanceContext';
 import { TransactionType } from '../types';
 
-export interface UseTransactionsFilterOptions {
+interface UseTransactionsFilterOptions {
   includeDeleted?: boolean;
   walletId?: string;
   categoryId?: string;
@@ -23,7 +23,6 @@ export const useTransactions = (options: UseTransactionsFilterOptions = {}) => {
     commitBulkImport,
     showSoftDeleted,
     setShowSoftDeleted,
-    isSyncing,
   } = useFinance();
 
   const {
@@ -117,39 +116,6 @@ export const useTransactions = (options: UseTransactionsFilterOptions = {}) => {
     categoryNameMap,
   ]);
 
-  // Aggregated Financial Metrics using useMemo
-  const metrics = useMemo(() => {
-    let totalExpense = 0;
-    let totalIncome = 0;
-    let totalTransfers = 0;
-    let totalDebtRepayments = 0;
-
-    const activeList = transactions.filter((tx) => !tx.isDeleted);
-
-    for (const tx of activeList) {
-      if (tx.type === 'EXPENSE') {
-        totalExpense += tx.amount;
-      } else if (tx.type === 'INCOME') {
-        totalIncome += tx.amount;
-      } else if (tx.type === 'TRANSFER') {
-        totalTransfers += tx.amount;
-      } else if (tx.type === 'DEBT_REPAYMENT') {
-        totalDebtRepayments += tx.amount;
-      }
-    }
-
-    const netCashflow = totalIncome - totalExpense;
-
-    return {
-      totalExpense,
-      totalIncome,
-      totalTransfers,
-      totalDebtRepayments,
-      netCashflow,
-      count: activeList.length,
-    };
-  }, [transactions]);
-
   // Action handlers stabilized with useCallback
   const handleAdd = useCallback(
     async (params: {
@@ -186,8 +152,6 @@ export const useTransactions = (options: UseTransactionsFilterOptions = {}) => {
   return {
     transactions: filteredTransactions,
     rawTransactions: transactions,
-    metrics,
-    isSyncing,
     showSoftDeleted,
     setShowSoftDeleted,
     addTransaction: handleAdd,

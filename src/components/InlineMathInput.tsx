@@ -5,30 +5,24 @@ import { APP_CURRENCY_SYMBOL } from '../utils/currency';
 
 export interface InlineMathInputProps {
   id?: string;
-  name?: string;
   label?: string;
   placeholder?: string;
   currencyPrefix?: string;
   defaultValue?: string;
   disabled?: boolean;
   required?: boolean;
-  autoFocus?: boolean;
   onAmountEvaluated: (amount: number | null, rawExpression: string, isValid: boolean) => void;
-  className?: string;
 }
 
 export const InlineMathInput: React.FC<InlineMathInputProps> = ({
   id,
-  name = 'amount_expression',
   label = 'Amount / Math Expression',
   placeholder = 'e.g. 500+500 or 1200*0.8',
   currencyPrefix = APP_CURRENCY_SYMBOL,
   defaultValue = '',
   disabled = false,
   required = false,
-  autoFocus = false,
   onAmountEvaluated,
-  className = '',
 }) => {
   const generatedId = useId();
   const inputId = id || generatedId;
@@ -120,7 +114,7 @@ export const InlineMathInput: React.FC<InlineMathInputProps> = ({
   };
 
   return (
-    <div id={`${inputId}-container`} className={`flex flex-col gap-1.5 ${className}`}>
+    <div id={`${inputId}-container`} className="flex flex-col gap-1.5">
       {label && (
         <div className="flex items-center justify-between">
           <label htmlFor={inputId} className="text-xs font-semibold uppercase tracking-wider text-stone-600 dark:text-stone-300">
@@ -151,7 +145,7 @@ export const InlineMathInput: React.FC<InlineMathInputProps> = ({
 
         <input
           id={inputId}
-          name={name}
+          name="amount_expression"
           type="text"
           value={rawInput}
           onChange={handleInputChange}
@@ -159,7 +153,6 @@ export const InlineMathInput: React.FC<InlineMathInputProps> = ({
           onBlur={() => setIsFocused(false)}
           placeholder={placeholder}
           disabled={disabled}
-          autoFocus={autoFocus}
           autoComplete="off"
           spellCheck="false"
           className="w-full text-base font-semibold text-stone-900 dark:text-stone-100 placeholder:text-stone-300 dark:placeholder:text-stone-600 placeholder:font-normal focus:outline-none bg-transparent"

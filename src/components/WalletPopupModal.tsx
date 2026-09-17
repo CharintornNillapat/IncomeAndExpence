@@ -15,7 +15,7 @@ import {
 import { useFinance } from '../context/FinanceContext';
 import { AddWalletForm } from './wallet/AddWalletForm';
 import { WalletTransferForm } from './wallet/WalletTransferForm';
-import { APP_CURRENCY, formatCurrencyAmount } from '../utils/currency';
+import { APP_CURRENCY, APP_CURRENCY_SYMBOL, formatCurrencyAmount } from '../utils/currency';
 import { todayIsoDate } from '../utils/date';
 import { getWalletIcon } from '../utils/walletIcons';
 
@@ -296,7 +296,7 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
                         {isAdjustingBalance === wallet.id ? (
                           <div className="mt-3 p-2.5 bg-white dark:bg-stone-800 rounded-xl border border-stone-300 dark:border-stone-700 space-y-2" onClick={(e) => e.stopPropagation()}>
                             <label className="text-[10px] font-bold uppercase tracking-wider text-stone-500 dark:text-stone-400 block">
-                              Set Balance (฿)
+                              Set Balance ({APP_CURRENCY_SYMBOL})
                             </label>
                             <div className="flex flex-wrap sm:flex-nowrap items-center gap-2">
                               <input

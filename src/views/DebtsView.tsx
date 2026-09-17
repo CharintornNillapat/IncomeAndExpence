@@ -6,7 +6,7 @@ import {
   ShieldAlert
 } from 'lucide-react';
 import { useDebts } from '../hooks/useDebts';
-import { formatCurrencyAmount } from '../utils/currency';
+import { APP_CURRENCY_SYMBOL, formatCurrencyAmount } from '../utils/currency';
 import { Debt } from '../types';
 import { DebtCardItem } from '../components/DebtCardItem';
 import { InlineMathInput } from '../components/InlineMathInput';
@@ -172,7 +172,7 @@ export const DebtsView: React.FC = () => {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div>
                   <label className="text-xs font-semibold uppercase tracking-wider text-stone-600 dark:text-stone-300 block mb-1">
-                    Total Amount (฿) *
+                    Total Amount ({APP_CURRENCY_SYMBOL}) *
                   </label>
                   <input
                     id="new-debt-total"
@@ -192,7 +192,7 @@ export const DebtsView: React.FC = () => {
 
                 <div>
                   <label className="text-xs font-semibold uppercase tracking-wider text-stone-600 dark:text-stone-300 block mb-1">
-                    Remaining (฿)
+                    Remaining ({APP_CURRENCY_SYMBOL})
                   </label>
                   <input
                     id="new-debt-remaining"
@@ -224,7 +224,7 @@ export const DebtsView: React.FC = () => {
 
                 <div>
                   <label className="text-xs font-semibold uppercase tracking-wider text-stone-600 dark:text-stone-300 block mb-1">
-                    Min Monthly (฿)
+                    Min Monthly ({APP_CURRENCY_SYMBOL})
                   </label>
                   <input
                     id="new-debt-min-payment"
@@ -323,7 +323,7 @@ export const DebtsView: React.FC = () => {
               {/* Inline Math Input */}
               <InlineMathInput
                 id="repay-amount-math"
-                label="Repayment Amount (฿)"
+                label={`Repayment Amount (${APP_CURRENCY_SYMBOL})`}
                 defaultValue={repayRaw}
                 required
                 onAmountEvaluated={(val, raw, valid) => {

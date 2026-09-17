@@ -42,7 +42,6 @@ export interface FinanceContextType {
   currentSession: SessionDevice | null;
   revokeSession: (sessionId: string) => void;
   revokeAllOtherSessions: () => void;
-  otpPending: boolean;
   signOut: () => Promise<void>;
 
   // Wallets
@@ -378,10 +377,6 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
 
   const [sessions, setSessions] = useState<SessionDevice[]>(() => initializeSessionList(currentUser.id));
   const [showSoftDeleted, setShowSoftDeleted] = useState<boolean>(false);
-
-  // OTP State. Nothing sets this today: the challenge/verify flow was never wired
-  // up to AuthModal or SecurityView, so the nav badge that reads it stays hidden.
-  const [otpPending] = useState<boolean>(false);
 
   // Client-side Idempotency Guard (P0-5)
   const inFlightIdempotencyKeys = useRef<Set<string>>(new Set());
@@ -941,7 +936,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       setDebts((prev) =>
         prev.map((d) => {
           if (d.id === data.debtId) {
-            const newRem = Math.max(0, Math.round((d.remainingAmount - data.amount) * 100) / 100);
+            const newRem = Math.max(0, roundToCents(d.remainingAmount - data.amount));
             return {
               ...d,
               remainingAmount: newRem,
@@ -1068,7 +1063,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
         if (data.type === 'DEBT_REPAYMENT' && data.debtId) {
           const targetDebt = debts.find((d) => d.id === data.debtId);
           if (targetDebt) {
-            const updatedRem = Math.max(0, Math.round((targetDebt.remainingAmount - data.amount) * 100) / 100);
+            const updatedRem = Math.max(0, roundToCents(targetDebt.remainingAmount - data.amount));
             const { error: dErr } = await supabase.from('debts').update({
               remaining_amount: updatedRem,
               is_settled: updatedRem === 0,
@@ -1306,7 +1301,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       for (const [wId, delta] of Object.entries(walletDeltas)) {
         const targetW = wallets.find((w) => w.id === wId);
         if (targetW) {
-          const updatedB = Math.round((targetW.balance + delta) * 100) / 100;
+          const updatedB = roundToCents(targetW.balance + delta);
           await supabase.from('wallets').update({ balance: updatedB }).eq('id', wId);
         }
       }
@@ -1315,7 +1310,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       setWallets((prev) =>
         prev.map((w) => {
           const delta = walletDeltas[w.id] || 0;
-          return delta !== 0 ? { ...w, balance: Math.round((w.balance + delta) * 100) / 100 } : w;
+          return delta !== 0 ? { ...w, balance: roundToCents(w.balance + delta) } : w;
         })
       );
       setTransactions((prev) => [...newTxs, ...prev]);
@@ -1504,7 +1499,6 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       currentSession,
       revokeSession,
       revokeAllOtherSessions,
-      otpPending,
       signOut,
       wallets,
       totalNetWorth,
@@ -1540,7 +1534,6 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       currentSession,
       revokeSession,
       revokeAllOtherSessions,
-      otpPending,
       signOut,
       wallets,
       totalNetWorth,

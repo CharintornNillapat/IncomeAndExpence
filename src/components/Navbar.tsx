@@ -33,7 +33,7 @@ interface NavbarProps {
 }
 
 export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, onOpenQuickAdd, onOpenAuth }) => {
-  const { totalNetWorth, isAuthenticated, isSyncing, currentUser, signOut, otpPending } = useFinance();
+  const { totalNetWorth, isAuthenticated, isSyncing, currentUser, signOut } = useFinance();
   const { theme, cycleTheme } = useTheme();
 
   const navItems: { id: ActiveTab; label: string; icon: React.FC<{ className?: string }> }[] = [
@@ -233,9 +233,6 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, onOpenQ
               >
                 <Icon className={`w-4 h-4 ${isActive ? 'text-white' : 'text-stone-500 dark:text-stone-400'} shrink-0`} />
                 <span>{item.label}</span>
-                {item.id === 'security' && otpPending && (
-                  <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping shrink-0" />
-                )}
               </motion.button>
             );
           })}

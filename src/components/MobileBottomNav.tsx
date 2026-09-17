@@ -10,7 +10,6 @@ import {
   ShieldCheck 
 } from 'lucide-react';
 import { ActiveTab } from './Navbar';
-import { useFinance } from '../context/FinanceContext';
 
 interface MobileBottomNavProps {
   activeTab: ActiveTab;
@@ -28,8 +27,6 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = React.memo(({
   activeTab,
   setActiveTab,
 }) => {
-  const { otpPending } = useFinance();
-
   const navItems: NavItemConfig[] = [
     { id: 'dashboard', label: 'Dashboard', shortLabel: 'Home', icon: LayoutDashboard },
     { id: 'transactions', label: 'Transactions', shortLabel: 'Txns', icon: ArrowLeftRight },
@@ -78,9 +75,6 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = React.memo(({
                     isActive ? 'scale-110 text-stone-900 dark:text-emerald-400' : 'text-stone-400 dark:text-stone-500'
                   }`}
                 />
-                {item.id === 'security' && otpPending && (
-                  <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-amber-500 animate-ping" />
-                )}
               </div>
 
               <span className={`text-[9px] tracking-tight mt-0.5 truncate max-w-full leading-tight ${
