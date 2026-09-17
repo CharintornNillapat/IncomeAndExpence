@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 5 — Inline filter/computation memoization: T9 (2026-09-17, commit `(uncommitted)`)
+## Phase 5 — Inline filter/computation memoization: T9 (2026-09-17, commit `58e460d`)
 
 **Changed**
 

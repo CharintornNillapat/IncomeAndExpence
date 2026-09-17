@@ -65,7 +65,7 @@ Status values: `todo` · `in-progress` · `done` · `dropped` (with a one-line r
 
 | # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
 |---|---|---|---|---|---|---|---|---|---|---|
-| T9 | Memoize inline filters passed as props | `TransactionForm.tsx`, `WalletsView.tsx`, `KeywordRulesView.tsx`, `TransactionsView.tsx` | Med-High | Low | 2h | done | — | (uncommitted) | tsc clean; 39/39 Playwright; build succeeds | Each target recompute now gated on its actual dependency instead of running on every render of its parent — see notes for per-site detail |
+| T9 | Memoize inline filters passed as props | `TransactionForm.tsx`, `WalletsView.tsx`, `KeywordRulesView.tsx`, `TransactionsView.tsx` | Med-High | Low | 2h | done | — | 58e460d | tsc clean; 39/39 Playwright; build succeeds | Each target recompute now gated on its actual dependency instead of running on every render of its parent — see notes for per-site detail |
 
 **Notes on execution:**
 - `TransactionForm.tsx:37` — `activeDebts` (`debts.filter(!isDeleted && !isSettled)`) wrapped in `React.useMemo([debts])`, matching the file's existing style of qualifying hooks as `React.useCallback`/`React.useEffect` rather than adding more named imports.
