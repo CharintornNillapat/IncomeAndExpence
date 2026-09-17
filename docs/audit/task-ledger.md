@@ -61,11 +61,26 @@ Status values: `todo` · `in-progress` · `done` · `dropped` (with a one-line r
 - Also memoized `selectedDayInfo` and `selectedDateOutflowCount` (the selected-date summary box), flagged in the audit at `DiaryView.tsx:140,203` in the pre-T8 file — smaller wins than the list, but same class of unnecessary per-keystroke recompute.
 - `deleteDiaryEntry` (used inside `handleDeleteEntry`) is one of the context's stable actions (deps `[isAuthenticated]` only, per audit correction C1), so `handleDeleteEntry`'s own identity is stable across the whole session except around login/logout.
 
+## Phase 5 — inline filter/computation memoization (approved to execute)
+
+| # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
+|---|---|---|---|---|---|---|---|---|---|---|
+| T9 | Memoize inline filters passed as props | `TransactionForm.tsx`, `WalletsView.tsx`, `KeywordRulesView.tsx`, `TransactionsView.tsx` | Med-High | Low | 2h | done | — | (uncommitted) | tsc clean; 39/39 Playwright; build succeeds | Each target recompute now gated on its actual dependency instead of running on every render of its parent — see notes for per-site detail |
+
+**Notes on execution:**
+- `TransactionForm.tsx:37` — `activeDebts` (`debts.filter(!isDeleted && !isSettled)`) wrapped in `React.useMemo([debts])`, matching the file's existing style of qualifying hooks as `React.useCallback`/`React.useEffect` rather than adding more named imports.
+- `TransactionForm.tsx:306-307` — the inline `wallets.filter((w) => w.id !== walletId)` built fresh inside the destination-wallet `<select>` JSX on every render was hoisted to a `destinationWalletOptions` `React.useMemo([wallets, walletId])` above the `return`, then the JSX maps over the memoized array directly.
+- `WalletsView.tsx:22` — `activeWallets` wrapped in `useMemo([wallets])`. This single memo covers both of its consumers: the wallet cards grid map and the `wallets={activeWallets}` prop passed to `WalletTransferForm` at the former line 218 — no second edit was needed there once the source memo existed.
+- `KeywordRulesView.tsx:17` — `matchResult` (a `matchSmartDescription(...)` call, not a filter, but the same "recomputes every render regardless of whether its inputs changed" problem) wrapped in `useMemo([testInput, keywordRules, categories])`.
+- `KeywordRulesView.tsx:34` — `categoryMap` (`new Map(categories.map(...))`) wrapped in `useMemo([categories])`.
+- `TransactionsView.tsx:400-401` — the two inline `wallets.filter(!isDeleted)` / `categories.filter(!isDeleted)` calls built fresh inside the Add Transaction modal's JSX on every `TransactionsView` render were hoisted to `activeWalletsForForm`/`activeCategoriesForForm` `useMemo`s (`useMemo`/`useCallback` were already imported in this file) placed beside the existing `walletMap`/`categoryMap` memos.
+- **On the ledger's prior "KeywordRulesView slice needs T12" blocker:** re-assessed and not applicable here. T9 is a pure memoization pass — each memoized value is referentially transparent (same inputs, same output as the unmemoized inline expression it replaces), so it cannot change `KeywordRulesView`'s behavior, only when the computation re-runs. That blocker note was written for the class of task that *changes* what's rendered (T22 modal consolidation, T24 style adoption, etc.), not for caching an existing pure computation. Verified by full-suite pass with no test changes.
+- No `React.memo` wrappers were added to `TransactionForm`, `WalletsView`, or `KeywordRulesView` themselves — out of scope per the task's own file/line list, which targets only the inline computations, not the components receiving them.
+
 ## Deferred — documented, awaiting separate approval
 
 | # | Task | Files | Impact | Risk | Effort | Status | Blocked by |
 |---|---|---|---|---|---|---|---|
-| T9 | Memoize inline filters passed as props | `TransactionForm.tsx:37,306-307`, `WalletsView.tsx:22,218`, `KeywordRulesView.tsx:17,34`, `TransactionsView.tsx:400-401` | Med-High | Low | 2h | todo | — (KeywordRulesView slice needs T12) |
 | T10 | Hoist `navItems`; memo `Navbar` after subscription cut | `Navbar.tsx:39-47`, `MobileBottomNav.tsx:33-41` | Med | Low | 30m | todo | none — T1 and T2 both shipped |
 | T11 | Hoist `<Suspense>` outside keyed `motion.div` | `App.tsx:134-147` | Med | Low-Med | 1h | todo | — |
 | T12 | Characterization tests for the untested half | new `tests/*.spec.ts`, mobile project | High (enabler) | Low | 12-16h | todo | — |

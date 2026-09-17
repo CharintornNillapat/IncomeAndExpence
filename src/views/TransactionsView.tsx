@@ -83,6 +83,10 @@ export const TransactionsView: React.FC = () => {
     return new Map(categories.map((c) => [c.id, c]));
   }, [categories]);
 
+  // Active-only slices for the Add Transaction modal (Memoized, T9)
+  const activeWalletsForForm = useMemo(() => wallets.filter((w) => !w.isDeleted), [wallets]);
+  const activeCategoriesForForm = useMemo(() => categories.filter((c) => !c.isDeleted), [categories]);
+
   const handleRestoreTx = useCallback((id: string) => {
     restoreTransaction(id);
   }, [restoreTransaction]);
@@ -397,8 +401,8 @@ export const TransactionsView: React.FC = () => {
             </div>
             <div className="p-4 sm:p-6 overflow-y-auto max-h-[calc(92vh-70px)] sm:max-h-[calc(90vh-80px)] overscroll-contain">
               <TransactionForm
-                wallets={wallets.filter((w) => !w.isDeleted)}
-                categories={categories.filter((c) => !c.isDeleted)}
+                wallets={activeWalletsForForm}
+                categories={activeCategoriesForForm}
                 onSubmitTransaction={async (data) => {
                   const res = await addTransaction({
                     ...data,

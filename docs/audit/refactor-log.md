@@ -4,6 +4,58 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
+## Phase 5 — Inline filter/computation memoization: T9 (2026-09-17, commit `(uncommitted)`)
+
+**Changed**
+
+- `TransactionForm.tsx:37` — `activeDebts` wrapped in `React.useMemo([debts])`.
+- `TransactionForm.tsx:306-307` — the destination-wallet `<select>`'s inline `wallets.filter((w) => w.id !== walletId)` hoisted to a `destinationWalletOptions` `React.useMemo([wallets, walletId])` above the `return`, JSX now maps over the memoized array.
+- `WalletsView.tsx:22` — `activeWallets` wrapped in `useMemo([wallets])`; this one memo also covers the `wallets={activeWallets}` prop passed to `WalletTransferForm` further down the same component.
+- `KeywordRulesView.tsx:17` — `matchResult` (`matchSmartDescription(...)`) wrapped in `useMemo([testInput, keywordRules, categories])`.
+- `KeywordRulesView.tsx:34` — `categoryMap` wrapped in `useMemo([categories])`.
+- `TransactionsView.tsx:400-401` — the Add Transaction modal's two inline `wallets.filter(!isDeleted)` / `categories.filter(!isDeleted)` calls hoisted to `activeWalletsForForm`/`activeCategoriesForForm` `useMemo`s, placed beside the file's existing `walletMap`/`categoryMap` memos.
+
+4 files changed: `src/components/TransactionForm.tsx` (+13/-6), `src/views/KeywordRulesView.tsx` (+9/-3), `src/views/TransactionsView.tsx` (+6/-2), `src/views/WalletsView.tsx` (+2/-2).
+
+**Why**
+
+Each of these was a computation (filter, `.map()`-built lookup, or matcher call) re-run from scratch on every render of its parent component, regardless of whether its actual inputs had changed — the same class of waste T8 fixed inside `DiaryView`, here spread across the four views/forms the task ledger's original audit had flagged. `TransactionForm` and `KeywordRulesView` in particular re-run these on every keystroke into unrelated local state (description text, math input, sandbox test string), since none of the memoized values depend on that state.
+
+**Verification**
+
+```
+npx tsc --noEmit          # clean, 0 errors
+npx playwright test --reporter=list   # 39/39 (1m6s-ish), all three browsers
+npm run build              # succeeded in 20.4s; vendor chunk split from T7 unaffected
+```
+
+`git status --short` / `git diff --stat` confirmed only the four target files changed, matching the task's file list exactly.
+
+**Metric delta**
+
+| Site | Before | After |
+|---|---|---|
+| `TransactionForm` `activeDebts` | recomputed every render (incl. every description/amount keystroke) | recomputed only when `debts` changes |
+| `TransactionForm` destination-wallet options | rebuilt every render inside JSX | recomputed only when `wallets`/`walletId` changes |
+| `WalletsView` `activeWallets` | recomputed every render | recomputed only when `wallets` changes |
+| `KeywordRulesView` `matchResult` | re-run `matchSmartDescription` every render (incl. every sandbox-input keystroke) | recomputed only when `testInput`/`keywordRules`/`categories` changes |
+| `KeywordRulesView` `categoryMap` | rebuilt every render | recomputed only when `categories` changes |
+| `TransactionsView` active wallets/categories for the Add Transaction modal | rebuilt every render (incl. every search/filter keystroke on the table above) | recomputed only when `wallets`/`categories` changes |
+
+No S1-S5 re-render-count replay was run for this phase; the existing `baseline-metrics.md` snapshot (recorded post-Phase-4, commit `e20c49e`) predates this change and was not re-captured, consistent with that file's own "current-state snapshot, not a before/after delta" caveat.
+
+**Surprises**
+
+- None. The task's own line references (`TransactionForm.tsx:37,306-307`, `WalletsView.tsx:22,218`, `KeywordRulesView.tsx:17,34`, `TransactionsView.tsx:400-401`) matched the current file contents closely enough that no re-scoping was needed — line 218 in `WalletsView.tsx` (the `wallets={activeWallets}` prop) needed no separate edit since it already consumes the memoized value once line 22 was fixed.
+
+**Deliberately not done**
+
+- No `React.memo` added to `TransactionForm`, `WalletsView`, or `KeywordRulesView` themselves — out of scope per the task's file/line list, which targets the inline computations passed as or feeding into props, not the receiving components. `TransactionForm` in particular is not currently `React.memo`'d; wrapping it is a separate, unrequested decision (its call sites already pass memoized `wallets`/`categories` arrays after this phase and T1/T8, but its `onSubmitTransaction` callbacks are inline in two of its three call sites — `TransactionsView.tsx`'s Add Transaction modal and the original `DashboardView.tsx` usage already uses a stable `handleTransactionSubmit`).
+- `TransactionsView.tsx`'s inline `onSubmitTransaction={async (data) => {...}}` passed to `TransactionForm` (adjacent to the memoized wallets/categories props) was left as-is — not in the task's specified line list, and stabilizing it only matters once `TransactionForm` itself is memoized, which is also not in scope here.
+- The ledger's prior note that the `KeywordRulesView` slice was "blocked by T12" (characterization tests) was re-assessed and treated as not applicable: every change in this phase is a pure memoization of an existing computation with no behavior change, verified by the full suite passing with zero test edits.
+
+---
+
 ## Phase 4 — DiaryView memoization: T8 (2026-09-17, commit `c9d4f26`)
 
 **Changed**

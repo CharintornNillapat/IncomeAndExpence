@@ -34,7 +34,10 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
   const formId = useId();
   const { keywordRules, debts } = useFinance();
 
-  const activeDebts = debts.filter((d) => !d.isDeleted && !d.isSettled);
+  const activeDebts = React.useMemo(
+    () => debts.filter((d) => !d.isDeleted && !d.isSettled),
+    [debts]
+  );
 
   const [amount, setAmount] = useState<number | null>(null);
   const [rawAmountInput, setRawAmountInput] = useState<string>('');
@@ -172,6 +175,10 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
 
   const selectedWallet = wallets.find((w) => w.id === walletId);
   const matchedCategoryObj = categories.find((c) => c.id === categoryId);
+  const destinationWalletOptions = React.useMemo(
+    () => wallets.filter((w) => w.id !== walletId),
+    [wallets, walletId]
+  );
 
   // Determine if manual fields should be collapsed by default
   const isAutoParsed = Boolean(autoMatchedCategory);
@@ -303,13 +310,11 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
                   onChange={(e) => setDestinationWalletId(e.target.value)}
                   className="w-full text-sm rounded-xl border border-stone-200 dark:border-stone-700 px-3 py-2.5 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-none focus:border-stone-800 dark:focus:border-stone-400 focus:ring-2 focus:ring-stone-200 dark:focus:ring-stone-700 transition-colors"
                 >
-                  {wallets
-                    .filter((w) => w.id !== walletId)
-                    .map((w) => (
-                      <option key={w.id} value={w.id} className="dark:bg-stone-800 dark:text-stone-100">
-                        {w.name} ({formatCurrencyAmount(w.balance)})
-                      </option>
-                    ))}
+                  {destinationWalletOptions.map((w) => (
+                    <option key={w.id} value={w.id} className="dark:bg-stone-800 dark:text-stone-100">
+                      {w.name} ({formatCurrencyAmount(w.balance)})
+                    </option>
+                  ))}
                 </select>
               </div>
             ) : type === 'DEBT_REPAYMENT' ? (

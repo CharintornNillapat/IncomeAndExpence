@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Sparkles, Plus, Trash2, Tag } from 'lucide-react';
 import { useFinance } from '../context/FinanceContext';
 import { matchSmartDescription } from '../utils/smartMatcher';
@@ -14,7 +14,10 @@ export const KeywordRulesView: React.FC = () => {
   // Sandbox Test
   const [testInput, setTestInput] = useState<string>('500 buy new shirt');
 
-  const matchResult = matchSmartDescription(testInput, keywordRules, categories);
+  const matchResult = useMemo(
+    () => matchSmartDescription(testInput, keywordRules, categories),
+    [testInput, keywordRules, categories]
+  );
 
   const handleAddRule = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,7 +34,10 @@ export const KeywordRulesView: React.FC = () => {
     setKeyword('');
   };
 
-  const categoryMap = new Map<string, typeof categories[0]>(categories.map((c) => [c.id, c]));
+  const categoryMap = useMemo(
+    () => new Map<string, typeof categories[0]>(categories.map((c) => [c.id, c])),
+    [categories]
+  );
 
   return (
     <div className="space-y-6">

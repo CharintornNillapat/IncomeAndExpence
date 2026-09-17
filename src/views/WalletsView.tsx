@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Plus, 
@@ -19,7 +19,7 @@ export const WalletsView: React.FC = () => {
   const [isAddWalletOpen, setIsAddWalletOpen] = useState<boolean>(false);
   const [isTransferOpen, setIsTransferOpen] = useState<boolean>(false);
 
-  const activeWallets = wallets.filter((w) => !w.isDeleted);
+  const activeWallets = useMemo(() => wallets.filter((w) => !w.isDeleted), [wallets]);
 
   return (
     <div className="space-y-6">
