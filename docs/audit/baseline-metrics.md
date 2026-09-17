@@ -143,24 +143,67 @@ Top 12 files under `src/`:
 
 ## Re-render counts (scenario replay)
 
-**Not yet captured.** This requires a throwaway instrumentation branch (React `Profiler` + `console.count`, per the plan) that is deliberately never merged. It has not been created in Phase 0 to keep this phase at zero `src/` edits, including on a disposable branch, per the explicit constraint for this session.
+**Captured 2026-09-17, after Phase 4 (T1/T3/T7/T8 already shipped on `main` at commit `1e4381e`), on a throwaway branch `benchmark/re-render-metrics` that was never merged and no longer exists.**
 
-**To capture before Phase 3 (App-shell fix) ships:**
+**What this column is and isn't:** this was captured *after* T1/T3/T8 already shipped, not before. Phase 0 deliberately kept zero `src/` edits (including on a disposable branch), and the instrumentation branch was never stood up before Phase 2/4 landed — a gap explicitly flagged in the Phase 2 and Phase 4 `refactor-log.md` entries. There is consequently **no true pre-refactor baseline to diff against**; that measurement opportunity is gone. What follows is a single **current-state** snapshot, read qualitatively (does this component re-render when its actual inputs are unchanged?) rather than as a before/after delta table. The "Phase 0 baseline" row is left as `not captured` — per this file's own rule, a column is never rewritten after the fact — and a new `Post-Phase-4` row holds the real numbers.
 
-1. Create a throwaway branch off `main`.
-2. Wrap `<MainApp />` at `App.tsx:249` in a `<Profiler id="app" onRender={...}>` that appends `phase` to `window.__commits`.
-3. Add `console.count('<Name>')` as the first statement in: `MainApp`, `Navbar`, `MobileBottomNav`, `AuthModal`, `ReloadPrompt`, `DashboardView`, `TransactionForm`, `InlineMathInput`, `AnimatedCounter`, `WalletPopupModal`, `AddWalletForm`, `WalletTransferForm`, `SecurityView`, `KeywordRulesView`.
-4. Run the five fixed scenarios below via Playwright, harvesting `page.on('console', ...)` and `window.__commits.length`.
-5. Record the numbers here, then discard the branch. Never commit the instrumentation.
+### Method actually used
+
+1. Throwaway branch `benchmark/re-render-metrics`, off `main` at `1e4381e`.
+2. `App.tsx`: wrapped `<MainApp />` in `<Profiler id="app" onRender={...}>`, pushing `phase` onto `window.__commits` (method (a) — true DOM-commit count, **not** inflated by StrictMode; see caveat below).
+3. New file `src/_bench.ts` exporting `bump(name)`, which both calls `console.count(name)` (as originally specified) and increments `window.__rc[name]` (added for deterministic programmatic harvesting — parsing `console.count`'s printed text via `page.on('console', ...)` was the originally documented plan, but a plain counter object read via `page.evaluate()` is more reliable and equally lightweight/zero-dependency). `bump(<Name>)` was inserted as the first statement in: `MainApp`, `Navbar`, `MobileBottomNav`, `AuthModal`, `ReloadPrompt`, `QuickAddModal`, `DashboardView`, `TransactionForm`, `InlineMathInput`, `AnimatedCounter`, `WalletPopupModal`, `DiaryView`, `DiaryEntryCard`, `RecentTransactionsTable` — this doc's original target list plus `QuickAddModal`/`DiaryEntryCard` (both new components T1/T8 created, after the target list was written). `AddWalletForm`, `WalletTransferForm`, `SecurityView`, `KeywordRulesView` were instrumented in an earlier pass of this same measurement and confirmed to never fire during S1-S5 (none of the five scenarios visit the wallets/debts/security/keywords tabs), so the final pass omitted them.
+4. A temporary `tests/_benchmark.spec.ts` ran all five scenarios in one continuous Chromium session (only Chromium — this measurement doesn't need cross-browser coverage), snapshotting `window.__rc`/`window.__commits.length` before and after each scenario's action and diffing.
+5. **First attempt had a real flaw, caught and fixed before recording anything:** S4 typed into the diary notes field without first saving any diary entry. A fresh Playwright browser context has **zero** diary entries, so `DiaryEntryCard` showing 0 renders proved nothing — there was no card to (not) re-render. Fixed by saving one diary entry first (clicking `#save-diary-entry-btn`), asserting a card actually exists (`[id^="diary-card-"]` count > 0), *then* measuring whether editing the form re-renders that already-rendered card.
+6. Ran twice with the fix in place to confirm structural findings were reproducible, not measurement noise — see Findings.
+7. Working tree wiped with `git checkout -- . && git clean -fd` (nothing had been committed on the branch), switched back to `main`, deleted the branch with `git branch -D`.
+
+**StrictMode caveat:** `main.tsx` wraps the app in `<StrictMode>`, which deliberately double-invokes component function bodies in development to surface impure renders — every `__rc` count below is inflated roughly ×2 versus a production build. `commits` (the `Profiler`'s actual DOM-commit count) is **not** inflated the same way — React only commits to the DOM once per real update regardless of StrictMode's extra render-function calls. Read `__rc` numbers as "which components rendered, and in what proportion to each other," not as literal production counts; read `commits` as the closer proxy for real work.
 
 ### Fixed scenarios (do not change these once a baseline exists — a changed scenario invalidates every prior column)
 
 - **S1 — Cold load.** `page.goto('/')` → dashboard painted.
 - **S2 — One write** (the headline number). From S1: open Quick Add → fill ฿150 + wallet + description → submit → modal closes.
 - **S3 — Typing.** From S1: type 12 characters into the `TransactionForm` description field.
-- **S4 — Diary keystroke.** Diary tab → type 12 characters into notes.
+- **S4 — Diary keystroke.** Diary tab → save one diary entry (so the list is non-empty) → type into notes.
 - **S5 — Tab cycle.** dashboard → transactions → wallets → dashboard.
 
 | Phase | S1 | S2 | S3 | S4 | S5 |
 |---|---|---|---|---|---|
 | **Phase 0 baseline** | not captured | not captured | not captured | not captured | not captured |
+| **Post-Phase-4** | see below | see below | see below | see below | see below |
+
+### Results (run 2 of 2 with the S4 fix in place; run 1 was structurally identical — see Findings)
+
+Per-component `__rc` deltas during each scenario's action (a component absent from a scenario's row rendered **zero** times during that action — that absence is itself the signal for several rows below). `commits` is the `Profiler`'s DOM-commit count for the same window.
+
+| Component | S1 (cold load) | S2 (write) | S3 (typing, no submit) | S4 (diary keystroke) | S5 (tab cycle ×3) |
+|---|---|---|---|---|---|
+| `MainApp` | 2 | 4 | 4 | 0 | 6 |
+| `Navbar` | 2 | 6 | 4 | 0 | 6 |
+| `MobileBottomNav` | 2 | **0** | 0 | 0 | 6 |
+| `AuthModal` | 2 | 4 | 4 | 0 | 6 |
+| `ReloadPrompt` | 2 | 4 | 4 | 0 | 6 |
+| `QuickAddModal` | 2 | 6 | 4 | 0 | 6 |
+| `DashboardView` | 60 | 6 | 4 | 0 | 0 (unmounted mid-cycle, see notes) |
+| `RecentTransactionsTable` | 6 | 2 | 0 | 0 | 0 |
+| `TransactionForm` | 42 | 20 | 40 | 0 | 0 |
+| `InlineMathInput` | 32 | 24 | 40 | 0 | 0 |
+| `WalletPopupModal` | 2 | 6 | 4 | 0 | 0 |
+| `AnimatedCounter` | 590 (timing-dependent, see notes) | 636 (timing-dependent) | 100 (timing-dependent) | 0 | 6 |
+| `DiaryView` | 0 | 0 | 0 | 34 | 0 |
+| `DiaryEntryCard` | 0 | 0 | 0 | **0** | 0 |
+| *sanity: cards on screen before the S4 keystroke* | — | — | — | **1** | — |
+| **`commits` (Profiler)** | 52 | 69 | 32 | 17 | 3 |
+
+### Findings
+
+- **T1 confirmed directly: `MainApp`'s S2 delta (4) equals exactly its own open+close UI-state transitions (2 state changes × StrictMode's ×2) and nothing more.** Before T1, `MainApp` also subscribed to `useFinance()` for the write itself, which would have added a third re-render trigger on top of open/close. Post-T1, opening and closing the modal is the *only* thing that moves `MainApp` — the ledger write itself contributes zero additional `MainApp` renders.
+- **T2 confirmed directly: `MobileBottomNav` shows 0 renders during S2 (the write) but 6 during S5 (the tab cycle).** Same `React.memo`'d component, two different outcomes, because its only prop that matters (`activeTab`) is unchanged during a financial write but genuinely changes on every tab transition. This is memo working exactly as intended, not by accident.
+- **T8 confirmed directly, with the false-positive risk explicitly closed: `DiaryEntryCard` shows 0 renders during S4 while a real card is present on screen** (sanity row: 1 card existed before the keystroke), and `DiaryView` itself renders 34 times (≈ once per keystroke, doubled by StrictMode, for "S4 keystroke test" = 17 characters). Typing into the diary notes field re-renders the form but the **already-rendered, unrelated** entry-card row below it does zero work — the exact claim T8 made, now measured against a non-empty list rather than an accidentally-empty one.
+- **New finding, not on the task ledger: `DashboardView`, `AuthModal`, `ReloadPrompt`, and `QuickAddModal` are not wrapped in `React.memo`, so they re-render on every `MainApp` render regardless of whether their own props changed** — visible in S5, where `AuthModal`/`ReloadPrompt` (which take no data derived from the active tab at all) still render exactly 6 times, once per `MainApp` render, purely because they're unmemoized children of a re-rendering parent. T1/T3 fixed *why* `MainApp` re-renders (only on its own real UI-state changes now); they didn't add memoization to what `MainApp` renders inline. This is a legitimate, cheap follow-on (`React.memo` on `AuthModal` and `ReloadPrompt` specifically — both take stable/no props) that isn't currently on `task-ledger.md`. Recommend adding it as a new low-risk candidate task in a future pass.
+- **`AnimatedCounter`'s counts are not meaningfully comparable run-to-run** (236-596 across three runs for S1 alone) because it's driven by `requestAnimationFrame` ticks over a 0.8-1.4s duration, not by discrete state transitions — more simultaneously-animating instances (S1's cold load animates ~6 counters: navbar total, dashboard hero, 3 wallet cards, cashflow cards) and OS/browser frame-pacing variance both move this number. Its presence/absence per scenario is still informative; the magnitude is not.
+- `DashboardView`'s S5 delta shows 0 because the tab cycle's third step returns to `dashboard`, and by the time the final snapshot is taken the view has fully **remounted** (per ADR `0005`'s deliberate `key={activeTab}` unmount/remount design) rather than "re-rendered" in the `__rc` sense — a fresh mount calls `bump()` too, but the before/after diff across an unmount+remount cycle isn't cleanly captured by this instrumentation. Treat `DashboardView`'s S5 row as inconclusive rather than as evidence of zero work — a benchmark-methodology limitation, not a code finding.
+- `TransactionForm`/`InlineMathInput` in S3 (40/40 both runs, exactly) scale almost exactly 1:1 with the 18 characters typed (`pressSequentially`, doubled by StrictMode ≈ 36, plus a few mount/unmount renders ≈ 40) — expected, controlled-input behavior, not a regression. Unlike `AnimatedCounter`, these were identical across both runs, confirming they're driven by discrete keystroke events, not animation timing.
+- `commits` (true DOM commits, not StrictMode-inflated) tracks the `__rc` numbers proportionally across scenarios (S1 ~52, S2 ~69, S3 ~32, S4 17, S5 3) — S5's very low commit count (3, one per tab transition) versus its relatively high `__rc` deltas (6 across several components) is the clearest illustration of the StrictMode-inflation caveat above: 3 real DOM updates, each counted twice at the function-invocation level.
+
+**Reproducibility:** all findings above (the T1/T2/T8 confirmations and the new unmemoized-siblings finding) were identical in shape across both runs with the S4 fix in place. Only `AnimatedCounter`'s magnitude and `DashboardView`'s cold-load (S1) count varied between runs (both timing-sensitive, as noted).
