@@ -81,8 +81,8 @@ Status values: `todo` · `in-progress` · `done` · `dropped` (with a one-line r
 
 | # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
 |---|---|---|---|---|---|---|---|---|---|---|
-| T10 | Hoist `navItems` to module scope; evaluate memoizing `Navbar` | `Navbar.tsx`, `MobileBottomNav.tsx` | Med | Low | 30m | **partial** | — | (uncommitted) | tsc clean; 39/39 Playwright; build succeeds | `navItems` no longer reallocated (array + 7 object literals) on every render of either component. `Navbar` deliberately **not** wrapped in `React.memo` — see note below |
-| T11 | Hoist `<Suspense>` outside the keyed `motion.div` | `App.tsx` | Med | Low-Med | 1h | done | — | (uncommitted) | tsc clean; 39/39 Playwright (Firefox tab-cycling test additionally repeated 3x in isolation — no flakes); build succeeds | Single persistent `Suspense` boundary spans tab transitions instead of one being freshly constructed per `activeTab` key |
+| T10 | Hoist `navItems` to module scope; evaluate memoizing `Navbar` | `Navbar.tsx`, `MobileBottomNav.tsx` | Med | Low | 30m | **partial** | — | 1c4c7e7 | tsc clean; 39/39 Playwright; build succeeds | `navItems` no longer reallocated (array + 7 object literals) on every render of either component. `Navbar` deliberately **not** wrapped in `React.memo` — see note below |
+| T11 | Hoist `<Suspense>` outside the keyed `motion.div` | `App.tsx` | Med | Low-Med | 1h | done | — | 1c4c7e7 | tsc clean; 39/39 Playwright (Firefox tab-cycling test additionally repeated 3x in isolation — no flakes); build succeeds | Single persistent `Suspense` boundary spans tab transitions instead of one being freshly constructed per `activeTab` key |
 
 **Notes on execution:**
 - `Navbar.tsx` — `navItems` hoisted to a module-level `NAV_ITEMS: NavItemConfig[]` constant (new `NavItemConfig` interface added for it, matching the pattern already used in `MobileBottomNav.tsx`). It held only static labels/ids/icon references with no dependency on props or state, so the hoist is behavior-neutral.

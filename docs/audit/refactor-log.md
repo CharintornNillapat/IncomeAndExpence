@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 6 — Nav hoisting and Suspense boundary restructure: T10, T11 (2026-09-17, commit `(uncommitted)`)
+## Phase 6 — Nav hoisting and Suspense boundary restructure: T10, T11 (2026-09-17, commit `1c4c7e7`)
 
 **Changed**
 
