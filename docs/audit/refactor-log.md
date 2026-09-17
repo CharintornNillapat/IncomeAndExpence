@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 2 — High-impact UI decoupling: T1 & T3 (2026-09-17, no commit yet — pending review)
+## Phase 2 — High-impact UI decoupling: T1 & T3 (2026-09-17, commit `41c6a4c`)
 
 **Changed**
 
