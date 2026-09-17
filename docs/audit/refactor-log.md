@@ -4,6 +4,57 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
+## Phase 3 — Bundle optimization: T7 (2026-09-17, no commit yet — pending review)
+
+**Changed**
+
+- **T7** — Added `build.rollupOptions.output.manualChunks` to `vite.config.ts` as a function (not the object-shorthand form, which cannot match `mathjs/number`'s subpath import or `lucide-react`'s deep per-icon module paths). Matches on `node_modules/<pkg>/` substrings and groups: `vendor-react` (`react`, `react-dom`, `scheduler`), `vendor-motion` (`framer-motion`, `motion-dom`, `motion-utils`, `tslib`), `vendor-supabase` (`@supabase/*`, which covers all 5 of `@supabase/supabase-js`'s sub-packages via the scope prefix), `vendor-math` (`mathjs/number`), `vendor-icons` (`lucide-react`). Everything else (`zod`, `papaparse`, `react-swipeable`, app code) is left to Rollup's default chunking.
+
+1 file changed (`vite.config.ts`): +38 lines (new `build` block only). No other file touched.
+
+**Why**
+
+`audit-report.md` finding H: the entry chunk was 1,116.67 kB with no `manualChunks` configured — Vite's own build output warned about it directly ("Some chunks are larger than 500 kB... Use build.rollupOptions.output.manualChunks"). Per-view code splitting via `React.lazy` already worked; the entry chunk was the one thing nothing split.
+
+**Verification**
+
+```
+npx tsc --noEmit                    # clean, 0 errors
+npm run clean && npm run build      # succeeded in 6.91s; entry chunk 165.39 kB / 45.72 kB gzip
+                                     # (was 1,116.36 kB / 326.11 kB gzip); 0 chunks over 500 kB (was 1)
+npx playwright test --reporter=line # 39/39 on a clean re-run (see Surprises for the one flake)
+```
+
+Additionally, since `manualChunks` only takes effect under `vite build` (never under the `vite dev` server Playwright's `webServer` runs against), I booted `vite preview` against the actual production build to confirm the split works at runtime, not just at build time: `curl` returned HTTP 200 for `/`, and grepping the served entry chunk's contents for `vendor-*.js` filenames found all 5 vendor chunks referenced.
+
+`git status --short` confirmed only `vite.config.ts` changed.
+
+**Metric delta**
+
+| Metric | Phase 2 | Phase 3 |
+|---|---|---|
+| Entry chunk (raw / gzip) | 1,116.36 kB / 326.11 kB | 165.39 kB / 45.72 kB (−85% raw) |
+| Chunks over Vite's 500 kB warning threshold | 1 (the entry chunk) | 0 |
+| Total JS bytes across all chunks (raw, summed) | ≈1,300.96 kB | ≈1,296.81 kB (essentially unchanged — see Surprises) |
+| Build time | 8.51s | 6.91s |
+
+Full per-chunk table recorded in `baseline-metrics.md` under "After T7".
+
+**Surprises**
+
+- **Total bytes shipped did not shrink.** Summing every `.js` chunk before and after T7 gives ≈1,301 kB and ≈1,297 kB respectively — essentially identical (the small drop is from consolidating 7 previously-separate lucide-react micro-chunks into one `vendor-icons` chunk, removing per-chunk overhead). This task was never going to reduce total payload — it redistributes the same code across chunks that can be fetched in parallel and cached independently across deploys. Worth stating plainly so this isn't mistaken for a "faster page" claim without qualification: what improved is time-to-first-paint-relevant parse/eval work (entry chunk −85%) and cache stability for returning visitors, not total bytes for a cold empty-cache visit.
+- One Firefox run of `diary.spec.ts` failed on the first full-suite pass (`#view-loading-fallback` didn't detach within 10s), then passed both in isolation and on a full clean re-run immediately after. Confirmed this cannot be caused by `manualChunks`, since that Rollup option only applies to `vite build` output and the Playwright suite runs against `vite dev` (`playwright.config.ts`'s `webServer.command: 'npm run dev'`), which never executes `build.rollupOptions` at all. This matches the pre-existing, documented Firefox/dev-server flakiness `tests/helpers.ts` and `playwright.config.ts` already account for with generous Firefox timeouts.
+- The pre-T7 build already had informal, Rollup-default splitting of individual `lucide-react` icons into tiny standalone chunks (`plus-*.js`, `arrow-up-right-*.js`, etc., 0.33-0.92 kB each) — an artifact of icons being shared across 2+ lazy-loaded view chunks. These disappeared post-T7, consolidated into the single `vendor-icons` chunk by the broader `node_modules/lucide-react/` match, which is the intended and better outcome (one cacheable chunk instead of many tiny ones).
+
+**Deliberately not done**
+
+- No bundle-analysis plugin (e.g. `rollup-plugin-visualizer`) was added — explicitly out of scope per the plan's non-goals; logged in `constraints-to-promote.md`'s follow-on proposals.
+- No change to `chunkSizeWarningLimit` — the warning is now moot since every chunk is under the default 500 kB threshold, so there was nothing to adjust.
+- `@/*` alias was not re-added or touched — confirmed the `vite.config.ts` diff contains only the new `build` block, nothing near the (already-deleted, per T28) `resolve.alias` section.
+- `server.hmr`/`server.watch` (`DISABLE_HMR` handling) untouched, per the explicit guardrail.
+
+---
+
 ## Phase 2 — High-impact UI decoupling: T1 & T3 (2026-09-17, commit `41c6a4c`)
 
 **Changed**

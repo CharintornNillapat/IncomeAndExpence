@@ -75,6 +75,47 @@ export default defineConfig(() => {
         },
       }),
     ],
+    build: {
+      rollupOptions: {
+        output: {
+          // T7: splits heavy vendor libraries out of the single ~1.1MB entry
+          // chunk into their own chunks. Vendor code changes far less often
+          // than app code, so browsers can cache these across deploys, and
+          // the browser can fetch them in parallel instead of one giant
+          // blocking chunk. Per-view code (React.lazy in App.tsx) already
+          // splits on its own - this only targets node_modules.
+          manualChunks(id: string) {
+            if (!id.includes('node_modules')) return undefined;
+
+            if (
+              id.includes('node_modules/react/') ||
+              id.includes('node_modules/react-dom/') ||
+              id.includes('node_modules/scheduler/')
+            ) {
+              return 'vendor-react';
+            }
+            if (
+              id.includes('node_modules/framer-motion/') ||
+              id.includes('node_modules/motion-dom/') ||
+              id.includes('node_modules/motion-utils/') ||
+              id.includes('node_modules/tslib/')
+            ) {
+              return 'vendor-motion';
+            }
+            if (id.includes('node_modules/@supabase/')) {
+              return 'vendor-supabase';
+            }
+            if (id.includes('node_modules/mathjs/')) {
+              return 'vendor-math';
+            }
+            if (id.includes('node_modules/lucide-react/')) {
+              return 'vendor-icons';
+            }
+            return undefined;
+          },
+        },
+      },
+    },
     server: {
       // HMR is disabled in AI Studio via DISABLE_HMR env var.
       // Do not modifyâfile watching is disabled to prevent flickering during agent edits.

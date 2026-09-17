@@ -48,9 +48,42 @@ Vite's own warning, verbatim: *"(!) Some chunks are larger than 500 kB after min
 
 Build time: 22.61s. Two harmless Rollup warnings about `@__PURE__` comment placement in `node_modules/zod` — third-party, not actionable.
 
+### After T7 (`manualChunks`)
+
+Same command (`npm run clean && npm run build`), captured after adding `build.rollupOptions.output.manualChunks` to `vite.config.ts`. The entry chunk collapsed from 1,116.36 kB (the Phase-2 figure, itself ~unchanged from the Phase 0 baseline) to 165.39 kB — an 85% reduction — with the removed weight moved into 5 new vendor chunks:
+
+| Chunk | Raw | Gzip |
+|---|---|---|
+| `index-*.js` (entry, post-T7) | 165.39 kB | 45.72 kB |
+| `vendor-math-*.js` (`mathjs/number`) | 375.73 kB | 110.72 kB |
+| `vendor-supabase-*.js` (`@supabase/supabase-js` + sub-packages) | 226.44 kB | 58.66 kB |
+| `vendor-react-*.js` (`react` + `react-dom` + `scheduler`) | 194.33 kB | 60.68 kB |
+| `vendor-motion-*.js` (`framer-motion` + `motion-dom`/`motion-utils`/`tslib`) | 136.71 kB | 45.33 kB |
+| `vendor-icons-*.js` (`lucide-react`) | 25.98 kB | 5.63 kB |
+| `DashboardView-*.js` | 44.59 kB | 9.06 kB |
+| `TransactionsView-*.js` | 25.73 kB | 6.39 kB |
+| `csvExchange-*.js` | 22.02 kB | 8.31 kB |
+| `SecurityView-*.js` | 17.11 kB | 3.55 kB |
+| `DebtsView-*.js` | 17.09 kB | 3.59 kB |
+| `DiaryView-*.js` | 16.46 kB | 4.41 kB |
+| `KeywordRulesView-*.js` | 8.02 kB | 2.08 kB |
+| `walletIcons-*.js` | 7.03 kB | 2.58 kB |
+| `WalletsView-*.js` | 7.60 kB | 1.98 kB |
+| `workbox-window.prod.es5-*.js` | 5.75 kB | 2.36 kB |
+| `useDebts-*.js` | 0.83 kB | — |
+
+The 7 icon micro-chunks that existed pre-T7 (`plus`, `arrow-up-right`, `arrow-down-left`, `credit-card`, `trash-2`, `landmark`, `receipt`) are gone — those were Rollup's own default splitting for `lucide-react` modules shared by 2+ lazy chunks; `manualChunks`'s broader `node_modules/lucide-react/` match now consolidates all of them (plus every icon used only by the entry) into the single `vendor-icons` chunk.
+
+**Total JS bytes shipped is ~unchanged** (≈1,297 kB raw both before and after, computed by summing every `.js` chunk) — this task does not reduce what a cold, empty-cache visitor downloads in total. What it buys instead:
+- **Parse/eval on the critical path drops 85%**: the entry chunk is what must be fetched, parsed, and executed before the app can paint anything; that work shrank from 1,116 kB to 165 kB.
+- **Parallel fetching**: 5 vendor chunks + the entry chunk can be requested over HTTP/2 in parallel, instead of one monolithic blocking download.
+- **Cache stability across deploys**: vendor code (react, framer-motion, supabase-js, mathjs, lucide-react) now lives in chunks whose content hash only changes when that dependency's version changes — an app-code-only deploy no longer invalidates ~960 kB of vendor code a returning visitor already has cached. Previously every deploy re-downloaded the entire 1.09 MB entry chunk regardless of what changed.
+
 | Phase | Entry chunk (raw / gzip) | Build warning present? |
 |---|---|---|
 | **Phase 0 baseline** | 1,116.67 kB / 326.33 kB | Yes (no manualChunks) |
+| **Phase 2** (T1/T3, unrelated to bundling) | 1,116.36 kB / 326.11 kB | Yes (no manualChunks) |
+| **Phase 3 (T7)** | 165.39 kB / 45.72 kB | No — 5 vendor chunks + all view chunks now under 500 kB |
 
 ## Type-check time
 

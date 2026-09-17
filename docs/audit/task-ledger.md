@@ -33,12 +33,24 @@ Status values: `todo` · `in-progress` · `done` · `dropped` (with a one-line r
 - `handleTabChange`/`handleNextTab`/`handlePrevTab` were first written using the `setActiveTab(current => ...)` functional-updater form so their `useCallback` deps could be `[]` (fully stable forever). Reverted that: it called `setDirection` as a side effect from inside `setActiveTab`'s updater, which React may invoke more than once (StrictMode, concurrent features) — updater functions must stay pure. Shipped instead with the closure-based form and an explicit `[activeTab]` dependency, which matches the pre-existing behavior exactly and is stable between tab changes (changes only when `activeTab` itself changes, which is correct — the closure must be re-created then).
 - Confirmed `Navbar`/`MobileBottomNav`'s `setActiveTab` prop type (`(tab: ActiveTab) => void`) and `DashboardView`'s `onNavigate` prop type (`(tab: string) => void`) were unchanged — no downstream signature changes needed.
 
+## Phase 3 — bundle optimization (approved to execute)
+
+| # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
+|---|---|---|---|---|---|---|---|---|---|---|
+| T7 | `build.rollupOptions.output.manualChunks` | `vite.config.ts` (new `build` block) | High | Low-Med | 2h | done | — | (uncommitted) | tsc clean; 39/39 Playwright (one Firefox flake on first run, reproduced-clean on re-run — see notes); build succeeds with 0 chunks over 500 kB (was 1) | Entry chunk 1,116.36 kB → 165.39 kB (−85%). 5 new vendor chunks. Total JS bytes shipped ~unchanged (~1,297 kB raw both before/after) — this redistributes weight for caching/parallelism, it does not shrink total payload |
+
+**Notes on execution:**
+- Implemented as a `manualChunks(id)` function (not the object-shorthand form), matching on `node_modules/<pkg>/` substrings — this is what correctly captures `mathjs/number`'s subpath import and `lucide-react`'s deep per-icon module paths, which the object form (`{'vendor-x': ['pkg-name']}`) would miss.
+- Folded each vendor's own runtime-only dependencies into its group rather than leaving them to Rollup's default chunking: `scheduler` (react-dom's dependency) → `vendor-react`; `motion-dom`, `motion-utils`, `tslib` (framer-motion's dependencies — confirmed via `grep -rl tslib node_modules/*/package.json` that no other *runtime* dependency in this project pulls in `tslib`) → `vendor-motion`. `@supabase/supabase-js`'s five `@supabase/*` sub-packages (`postgrest-js`, `realtime-js`, `functions-js`, `storage-js`, `auth-js`) are covered automatically by the `node_modules/@supabase/` prefix match.
+- Verified the split actually wires up at runtime, not just at build time: booted `vite preview` against the real production build, confirmed HTTP 200, and grepped the served entry chunk for references to all 5 vendor chunk filenames — all present.
+- One Firefox test (`diary.spec.ts`) failed on `#view-loading-fallback` timing out on the first full-suite run, then passed both in isolation and on a full clean re-run. This is the known dev-server flakiness `CLAUDE.md`/`playwright.config.ts` already document generous Firefox timeouts for — and structurally cannot be caused by this change, since `build.rollupOptions` only applies to `vite build`, never to `vite dev`, which is what the Playwright `webServer` runs.
+- `DISABLE_HMR` / `server.hmr` / `server.watch` block untouched, as required. PWA plugin config, manifest, and workbox caching rules untouched. No `@/*` alias re-added.
+
 ## Deferred — documented, awaiting separate approval
 
 | # | Task | Files | Impact | Risk | Effort | Status | Blocked by |
 |---|---|---|---|---|---|---|---|
 | T8 | Memoize `DiaryView`; hoist `formatDayInfo` into `date.ts`; kill per-entry filters | `DiaryView.tsx:68-84,129-137,203,362,367` | High | Low | 3h | todo | — |
-| T7 | `build.rollupOptions.output.manualChunks` | `vite.config.ts` (new `build` block) | High | Low-Med | 2h | todo | — |
 | T9 | Memoize inline filters passed as props | `TransactionForm.tsx:37,306-307`, `WalletsView.tsx:22,218`, `KeywordRulesView.tsx:17,34`, `TransactionsView.tsx:400-401` | Med-High | Low | 2h | todo | — (KeywordRulesView slice needs T12) |
 | T10 | Hoist `navItems`; memo `Navbar` after subscription cut | `Navbar.tsx:39-47`, `MobileBottomNav.tsx:33-41` | Med | Low | 30m | todo | none — T1 and T2 both shipped |
 | T11 | Hoist `<Suspense>` outside keyed `motion.div` | `App.tsx:134-147` | Med | Low-Med | 1h | todo | — |
