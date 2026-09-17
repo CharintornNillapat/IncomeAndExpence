@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 7 — Characterization tests for the untested half: T12 (2026-09-17, commit `(uncommitted)`)
+## Phase 7 — Characterization tests for the untested half: T12 (2026-09-17, commit `7f0c5b1`)
 
 **Changed**
 
