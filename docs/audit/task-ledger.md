@@ -124,7 +124,7 @@ Status values: `todo` · `in-progress` · `done` · `dropped` (with a one-line r
 
 | # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
 |---|---|---|---|---|---|---|---|---|---|---|
-| T14 | Migrate consumers off the `useFinance()` shim; delete the shim | 15 consumer files + `FinanceContext.tsx` (+58/-69) | High | Med | 4h | done | T13 (done), T12 (done) | _pending_ | tsc clean; `CI=true npx playwright test` 75/75, 0 retries; build succeeds in 6.4s | 15 shim call sites -> 0, `useFinance()` and `FinanceContextType` deleted. Consumers on both halves 15 -> 8; `AddWalletForm` now actions-only and insulated from ledger writes |
+| T14 | Migrate consumers off the `useFinance()` shim; delete the shim | 15 consumer files + `FinanceContext.tsx` (+58/-69) | High | Med | 4h | done | T13 (done), T12 (done) | 36c4d7e | tsc clean; `CI=true npx playwright test` 75/75, 0 retries; build succeeds in 6.4s | 15 shim call sites -> 0, `useFinance()` and `FinanceContextType` deleted. Consumers on both halves 15 -> 8; `AddWalletForm` now actions-only and insulated from ledger writes |
 
 **Notes on execution:**
 - **15 call sites, not the 16 recorded in ADR `0001` and the old T14 row.** Verified against the split commit: `git grep -c "= useFinance()" 8c3ad78 -- src/` returns 15 in 15 files. The 16th was the comment at `App.tsx:61` noting that `MainApp` deliberately does not subscribe.

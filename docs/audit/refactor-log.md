@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 9 — consumer migration and shim retirement: T14 (2026-09-18, commit `_pending_`)
+## Phase 9 — consumer migration and shim retirement: T14 (2026-09-18, commit `36c4d7e`)
 
 **Changed**
 
