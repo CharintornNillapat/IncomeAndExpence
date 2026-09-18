@@ -11,7 +11,7 @@ import { CashflowMetricsCards } from '../components/dashboard/CashflowMetricsCar
 import { CategoryExpenseDistribution } from '../components/dashboard/CategoryExpenseDistribution';
 import { DebtPayoffOverview } from '../components/dashboard/DebtPayoffOverview';
 import { RecentTransactionsTable } from '../components/dashboard/RecentTransactionsTable';
-import { todayIsoDate } from '../utils/date';
+import { todayIsoDate, daysAgoIsoDate } from '../utils/date';
 
 export type TimeFilter = 'DAY' | 'WEEK' | 'MONTH' | 'ALL';
 
@@ -76,28 +76,27 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
     openWalletModal('OVERVIEW');
   }, [openWalletModal]);
 
-  // Filter transactions based on time breakdown (Memoized)
+  // Filter transactions based on time breakdown (Memoized). `transactionDate`
+  // is a local-calendar `YYYY-MM-DD` string, so every cutoff is computed once,
+  // outside the per-transaction predicate, as the same kind of string
+  // (`todayIsoDate()`/`daysAgoIsoDate()`) and compared with plain string
+  // operators - never `new Date(tx.transactionDate)`. Parsing a bare date
+  // string constructs UTC midnight, which at UTC+7 sits 7 hours after local
+  // midnight and would misclassify transactions filed near the local-day
+  // boundary. Lexicographic comparison on same-format ISO strings matches
+  // chronological order exactly, with no timezone parsing involved.
   const filteredTransactions = useMemo(() => {
     const activeTxs = transactions.filter((t) => !t.isDeleted);
-    const now = new Date();
 
     if (timeFilter === 'ALL') return activeTxs;
 
-    return activeTxs.filter((tx) => {
-      const txDate = new Date(tx.transactionDate);
-      if (timeFilter === 'DAY') {
-        return tx.transactionDate === todayIsoDate();
-      }
-      if (timeFilter === 'WEEK') {
-        const weekAgo = new Date(now.getTime() - 7 * 86400000);
-        return txDate >= weekAgo;
-      }
-      if (timeFilter === 'MONTH') {
-        const monthAgo = new Date(now.getTime() - 30 * 86400000);
-        return txDate >= monthAgo;
-      }
-      return true;
-    });
+    if (timeFilter === 'DAY') {
+      const todayIso = todayIsoDate();
+      return activeTxs.filter((tx) => tx.transactionDate === todayIso);
+    }
+
+    const cutoffIso = daysAgoIsoDate(timeFilter === 'WEEK' ? 7 : 30);
+    return activeTxs.filter((tx) => tx.transactionDate >= cutoffIso);
   }, [transactions, timeFilter]);
 
   // Aggregate Metrics for Selected Timeframe (Memoized)
@@ -147,7 +146,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
   const recentTransactions = useMemo(() => {
     return transactions
       .filter((t) => !t.isDeleted)
-      .sort((a, b) => new Date(b.transactionDate).getTime() - new Date(a.transactionDate).getTime())
+      // Newest first. `transactionDate` strings compare chronologically as
+      // plain strings (see `filteredTransactions` above) - no `new Date(...)`
+      // parsing needed for a same-format ISO date sort.
+      .sort((a, b) => (b.transactionDate > a.transactionDate ? 1 : b.transactionDate < a.transactionDate ? -1 : 0))
       .slice(0, 5);
   }, [transactions]);
 

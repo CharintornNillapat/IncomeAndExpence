@@ -10,6 +10,7 @@ import { useFinanceState, useFinanceActions } from '../context/FinanceContext';
 import { AnimatedCounter } from '../components/AnimatedCounter';
 import { APP_CURRENCY, APP_CURRENCY_SYMBOL } from '../utils/currency';
 import { getWalletIcon } from '../utils/walletIcons';
+import { toIsoDate } from '../utils/date';
 import { AddWalletForm } from '../components/wallet/AddWalletForm';
 import { WalletTransferForm } from '../components/wallet/WalletTransferForm';
 
@@ -115,7 +116,11 @@ export const WalletsView: React.FC = () => {
               </div>
 
               <div className="pt-4 mt-4 border-t border-stone-100 dark:border-stone-800 flex items-center justify-between text-[11px] text-stone-400 dark:text-stone-500">
-                <span>Created: {wallet.createdAt.slice(0, 10)}</span>
+                {/* `createdAt` is a full ISO instant; slicing its first 10 characters
+                    would read the UTC calendar date, which at UTC+7 shows the wrong
+                    day for anything created 00:00-06:59 local. `toIsoDate` reads the
+                    `Date`'s local calendar components instead. */}
+                <span>Created: {toIsoDate(new Date(wallet.createdAt))}</span>
                 <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-medium">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> Active Source
                 </span>
