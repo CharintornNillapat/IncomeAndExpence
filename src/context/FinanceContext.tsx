@@ -124,13 +124,6 @@ export interface FinanceActionsContextType {
   refreshFromCloud: () => Promise<void>;
 }
 
-/**
- * The full, pre-split value shape, kept as the union of the two halves so the
- * `useFinance()` shim and anything still typed against it see exactly the same
- * members as before the split.
- */
-export interface FinanceContextType extends FinanceStateContextType, FinanceActionsContextType {}
-
 const FinanceStateContext = createContext<FinanceStateContextType | undefined>(undefined);
 const FinanceActionsContext = createContext<FinanceActionsContextType | undefined>(undefined);
 
@@ -1648,16 +1641,4 @@ export function useFinanceActions(): FinanceActionsContextType {
     throw new Error('useFinanceActions must be used within a FinanceProvider');
   }
   return context;
-}
-
-/**
- * Compatibility shim over both halves, preserving the pre-split API so the value
- * split needed no consumer changes. It subscribes to *both* contexts, so it gives
- * up the benefit of the split — migrate call sites to `useFinanceState()` /
- * `useFinanceActions()` (task T14), after which this is deleted.
- */
-export function useFinance(): FinanceContextType {
-  const state = useFinanceState();
-  const actions = useFinanceActions();
-  return useMemo(() => ({ ...state, ...actions }), [state, actions]);
 }

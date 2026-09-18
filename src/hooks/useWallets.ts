@@ -1,8 +1,8 @@
 import { useMemo } from 'react';
-import { useFinance } from '../context/FinanceContext';
+import { useFinanceState } from '../context/FinanceContext';
 
 export const useWallets = () => {
-  const { wallets, totalNetWorth } = useFinance();
+  const { wallets, totalNetWorth } = useFinanceState();
 
   // Filter active wallets
   const activeWallets = useMemo(() => {

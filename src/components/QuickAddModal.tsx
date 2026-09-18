@@ -2,7 +2,7 @@ import React, { useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X } from 'lucide-react';
 import { TransactionForm } from './TransactionForm';
-import { useFinance } from '../context/FinanceContext';
+import { useFinanceState } from '../context/FinanceContext';
 
 interface QuickAddModalProps {
   isOpen: boolean;
@@ -11,15 +11,15 @@ interface QuickAddModalProps {
 
 /**
  * Extracted from App.tsx (T1, Phase 2) so this is the only part of the app
- * that subscribes to `useFinance()` for the quick-add flow. Previously
- * `MainApp` itself called `useFinance()` for `wallets`/`categories`/
+ * that subscribes to the finance context for the quick-add flow. Previously
+ * `MainApp` itself subscribed for `wallets`/`categories`/
  * `addTransaction` purely to feed this modal, which meant every financial
  * write re-rendered the entire app shell (Navbar, swipe wrapper, active
  * view, MobileBottomNav, AuthModal, ReloadPrompt, footer) regardless of
  * whether the modal was even open.
  */
 export const QuickAddModal: React.FC<QuickAddModalProps> = ({ isOpen, onClose }) => {
-  const { wallets, categories, addTransaction } = useFinance();
+  const { wallets, categories, addTransaction } = useFinanceState();
 
   // Memoized so TransactionForm doesn't receive a new array identity on
   // every render of this component (e.g. while it's closed and unmounted

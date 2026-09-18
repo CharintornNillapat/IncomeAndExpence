@@ -120,11 +120,24 @@ Status values: `todo` · `in-progress` · `done` · `dropped` (with a one-line r
 - **`useFinance()` memoizes its merge** (`:1659`). A plain `{ ...state, ...actions }` would hand every one of the 16 current consumers a fresh object identity on *every* render, which is strictly worse than the single memoized value they had before the split. The `useMemo([state, actions])` keeps the pre-split stability guarantee exactly.
 - **No ref-mirroring performed.** T15's scope, explicitly untouched here — the 6 volatile mutators stay in the state context and stay volatile.
 
+## Phase 9 — consumer migration and shim retirement (approved to execute)
+
+| # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
+|---|---|---|---|---|---|---|---|---|---|---|
+| T14 | Migrate consumers off the `useFinance()` shim; delete the shim | 15 consumer files + `FinanceContext.tsx` (+58/-69) | High | Med | 4h | done | T13 (done), T12 (done) | _pending_ | tsc clean; `CI=true npx playwright test` 75/75, 0 retries; build succeeds in 6.4s | 15 shim call sites -> 0, `useFinance()` and `FinanceContextType` deleted. Consumers on both halves 15 -> 8; `AddWalletForm` now actions-only and insulated from ledger writes |
+
+**Notes on execution:**
+- **15 call sites, not the 16 recorded in ADR `0001` and the old T14 row.** Verified against the split commit: `git grep -c "= useFinance()" 8c3ad78 -- src/` returns 15 in 15 files. The 16th was the comment at `App.tsx:61` noting that `MainApp` deliberately does not subscribe.
+- **Only one consumer turned out to be actions-only.** `AddWalletForm` (`:53`). The brief also listed `WalletTransferForm` and `SecurityView` as instant wins; neither is. `WalletTransferForm` needs `addTransaction`, a volatile mutator still held in the state context until T15, and `SecurityView` reads five state members alongside its four actions.
+- **Three names in the brief's consumer list never called the shim** - `DebtsView`, `AuthModal`, `WalletAccountsGrid` - and two real consumers were missing from it: `TransactionForm.tsx` and `WalletsView.tsx`. Both are migrated.
+- **`FinanceContextType` was deleted along with the hook.** Its own Phase 8 note recorded it as public API, but a repo-wide grep shows the shim's return type was its only reference; keeping an exported union with no provider to satisfy it would have been dead surface.
+- **Mixed consumers take two destructures, not one merged object.** Re-merging state and actions locally would reintroduce exactly the identity churn the split removes.
+- **Firefox flake recorded, not dismissed.** Multi-worker local runs failed one Firefox test per run, a different one each time, always a `locator.click` that hung after the element was reported stable. Isolated re-runs pass 3/3 and the single-worker CI-mode run is 75/75. Full detail, including the fact that the parent commit did not flake under the same command, is in `refactor-log.md` Phase 9.
+
 ## Deferred — documented, awaiting separate approval
 
 | # | Task | Files | Impact | Risk | Effort | Status | Blocked by |
 |---|---|---|---|---|---|---|---|
-| T14 | Migrate 16 consumers off the shim; delete shim | 16 `useFinance()` sites | High | Med | 4h | todo | T13 (done), T12 |
 | T16 | Batched localStorage writer + `pagehide`/`visibilitychange` flush | `FinanceContext.tsx:390-413` | High | Med | 3h | todo | — |
 | T21 | Local-calendar correctness: compare ISO strings, not `Date` objects | `DashboardView.tsx:82,87,88,92,95,150`, `WalletsView.tsx:117`, `SecurityView.tsx:282` | Med | Med | 2h | todo | new frozen-clock spec |
 | T22 | One `<Modal>` primitive; convert 9 sites | 9 modal sites (see audit-report §E) | Med | Med | 6h | todo | T12 |

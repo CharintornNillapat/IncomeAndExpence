@@ -9,7 +9,7 @@ import {
   AlertCircle, 
   X,
 } from 'lucide-react';
-import { useFinance } from '../context/FinanceContext';
+import { useFinanceState } from '../context/FinanceContext';
 import { useTransactions } from '../hooks/useTransactions';
 import { ImportPreviewSummary, TransactionType } from '../types';
 import { todayIsoDate } from '../utils/date';
@@ -19,11 +19,11 @@ import { TransactionForm } from '../components/TransactionForm';
 import { TransactionTableRow } from '../components/TransactionTableRow';
 
 export const TransactionsView: React.FC = () => {
-  const { 
-    wallets, 
-    categories, 
-    diaryEntries, 
-  } = useFinance();
+  const {
+    wallets,
+    categories,
+    diaryEntries,
+  } = useFinanceState();
 
   // Filter States
   const [searchTerm, setSearchTerm] = useState<string>('');

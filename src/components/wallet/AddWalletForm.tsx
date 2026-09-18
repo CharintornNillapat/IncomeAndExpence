@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { useFinance } from '../../context/FinanceContext';
+import { useFinanceActions } from '../../context/FinanceContext';
 import { WalletType } from '../../types';
 import { APP_CURRENCY, APP_CURRENCY_SYMBOL } from '../../utils/currency';
 import {
@@ -50,7 +50,7 @@ export const AddWalletForm: React.FC<AddWalletFormProps> = ({
   className = '',
   onCreated,
 }) => {
-  const { addWallet } = useFinance();
+  const { addWallet } = useFinanceActions();
 
   const [walletName, setWalletName] = useState<string>('');
   const [walletType, setWalletType] = useState<WalletType>('BANK_ACCOUNT');

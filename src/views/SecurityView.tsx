@@ -18,21 +18,23 @@ import {
   Save,
   Check
 } from 'lucide-react';
-import { useFinance } from '../context/FinanceContext';
+import { useFinanceState, useFinanceActions } from '../context/FinanceContext';
 import { supabase } from '../lib/supabase';
 
 export const SecurityView: React.FC = () => {
-  const { 
+  const {
     currentUser,
     isAuthenticated,
     isSyncing,
+    sessions,
+    currentSession,
+  } = useFinanceState();
+  const {
     refreshFromCloud,
-    sessions, 
-    currentSession, 
-    revokeSession, 
+    revokeSession,
     revokeAllOtherSessions,
-    signOut
-  } = useFinance();
+    signOut,
+  } = useFinanceActions();
 
   const [isManualSyncing, setIsManualSyncing] = useState<boolean>(false);
   const [syncFeedback, setSyncFeedback] = useState<string | null>(null);

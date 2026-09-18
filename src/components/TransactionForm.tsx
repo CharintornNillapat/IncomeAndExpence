@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { Sparkles, ArrowRight, SlidersHorizontal, AlertCircle } from 'lucide-react';
 import { InlineMathInput } from './InlineMathInput';
 import { Wallet, Category, TransactionType } from '../types';
-import { useFinance } from '../context/FinanceContext';
+import { useFinanceState } from '../context/FinanceContext';
 import { matchSmartDescription } from '../utils/smartMatcher';
 import { safeEvaluateMath } from '../utils/mathEvaluator';
 import { APP_CURRENCY_SYMBOL, formatCurrencyAmount } from '../utils/currency';
@@ -32,7 +32,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
   onSubmitTransaction,
 }) => {
   const formId = useId();
-  const { keywordRules, debts } = useFinance();
+  const { keywordRules, debts } = useFinanceState();
 
   const activeDebts = React.useMemo(
     () => debts.filter((d) => !d.isDeleted && !d.isSettled),

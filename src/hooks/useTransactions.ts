@@ -1,5 +1,5 @@
 import { useMemo, useCallback } from 'react';
-import { useFinance } from '../context/FinanceContext';
+import { useFinanceState, useFinanceActions } from '../context/FinanceContext';
 import { TransactionType } from '../types';
 
 interface UseTransactionsFilterOptions {
@@ -22,8 +22,8 @@ export const useTransactions = (options: UseTransactionsFilterOptions = {}) => {
     restoreTransaction,
     commitBulkImport,
     showSoftDeleted,
-    setShowSoftDeleted,
-  } = useFinance();
+  } = useFinanceState();
+  const { setShowSoftDeleted } = useFinanceActions();
 
   const {
     includeDeleted = showSoftDeleted,

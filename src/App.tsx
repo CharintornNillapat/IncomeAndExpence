@@ -58,7 +58,7 @@ const MainApp: React.FC = () => {
   const [isQuickAddOpen, setIsQuickAddOpen] = useState<boolean>(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
 
-  // T1 (Phase 2): MainApp no longer calls useFinance(). It previously did so
+  // T1 (Phase 2): MainApp no longer subscribes to the finance context. It did so
   // only to feed the quick-add modal, which meant every financial write
   // re-rendered this entire component - and everything it renders inline
   // (Navbar, the swipe wrapper, the active view, MobileBottomNav, AuthModal,

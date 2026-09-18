@@ -12,7 +12,7 @@ import {
   Receipt,
   Layers
 } from 'lucide-react';
-import { useFinance } from '../context/FinanceContext';
+import { useFinanceState, useFinanceActions } from '../context/FinanceContext';
 import { AddWalletForm } from './wallet/AddWalletForm';
 import { WalletTransferForm } from './wallet/WalletTransferForm';
 import { APP_CURRENCY, APP_CURRENCY_SYMBOL, formatCurrencyAmount } from '../utils/currency';
@@ -34,13 +34,13 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
   initialTab = 'OVERVIEW',
   initialWalletId
 }) => {
-  const { 
-    wallets, 
-    transactions, 
-    totalNetWorth, 
-    deleteWallet, 
-    addTransaction 
-  } = useFinance();
+  const {
+    wallets,
+    transactions,
+    totalNetWorth,
+    addTransaction,
+  } = useFinanceState();
+  const { deleteWallet } = useFinanceActions();
 
   const [activeTab, setActiveTab] = useState<WalletModalTab>(initialTab);
   const [selectedWalletId, setSelectedWalletId] = useState<string>(initialWalletId || wallets[0]?.id || '');

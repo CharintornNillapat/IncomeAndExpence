@@ -18,7 +18,7 @@ import {
   Moon,
   Monitor
 } from 'lucide-react';
-import { useFinance } from '../context/FinanceContext';
+import { useFinanceState, useFinanceActions } from '../context/FinanceContext';
 import { APP_CURRENCY, APP_CURRENCY_SYMBOL } from '../utils/currency';
 import { AnimatedCounter } from './AnimatedCounter';
 import { useTheme } from '../hooks/useTheme';
@@ -49,7 +49,8 @@ const NAV_ITEMS: NavItemConfig[] = [
 ];
 
 export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, onOpenQuickAdd, onOpenAuth }) => {
-  const { totalNetWorth, isAuthenticated, isSyncing, currentUser, signOut } = useFinance();
+  const { totalNetWorth, isAuthenticated, isSyncing, currentUser } = useFinanceState();
+  const { signOut } = useFinanceActions();
   const { theme, cycleTheme } = useTheme();
 
   const renderThemeIcon = () => {

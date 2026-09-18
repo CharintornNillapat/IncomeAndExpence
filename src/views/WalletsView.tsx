@@ -6,7 +6,7 @@ import {
   Trash2, 
   X,
 } from 'lucide-react';
-import { useFinance } from '../context/FinanceContext';
+import { useFinanceState, useFinanceActions } from '../context/FinanceContext';
 import { AnimatedCounter } from '../components/AnimatedCounter';
 import { APP_CURRENCY, APP_CURRENCY_SYMBOL } from '../utils/currency';
 import { getWalletIcon } from '../utils/walletIcons';
@@ -14,7 +14,8 @@ import { AddWalletForm } from '../components/wallet/AddWalletForm';
 import { WalletTransferForm } from '../components/wallet/WalletTransferForm';
 
 export const WalletsView: React.FC = () => {
-  const { wallets, deleteWallet } = useFinance();
+  const { wallets } = useFinanceState();
+  const { deleteWallet } = useFinanceActions();
 
   const [isAddWalletOpen, setIsAddWalletOpen] = useState<boolean>(false);
   const [isTransferOpen, setIsTransferOpen] = useState<boolean>(false);

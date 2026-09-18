@@ -1,16 +1,18 @@
 import { useMemo, useCallback } from 'react';
-import { useFinance } from '../context/FinanceContext';
+import { useFinanceState, useFinanceActions } from '../context/FinanceContext';
 import { Debt } from '../types';
 
 export const useDebts = () => {
   const {
     debts,
     wallets,
-    addDebt,
     repayDebtAtomic,
+  } = useFinanceState();
+  const {
+    addDebt,
     settleDebt,
     deleteDebt,
-  } = useFinance();
+  } = useFinanceActions();
 
   // Active (non-deleted) debts
   const activeDebts = useMemo(() => {

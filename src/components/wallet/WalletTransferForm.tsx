@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { ArrowLeftRight, AlertCircle, CheckCircle2 } from 'lucide-react';
-import { useFinance } from '../../context/FinanceContext';
+import { useFinanceState } from '../../context/FinanceContext';
 import { Wallet } from '../../types';
 import { APP_CURRENCY_SYMBOL, formatCurrencyAmount } from '../../utils/currency';
 import { todayIsoDate } from '../../utils/date';
@@ -63,7 +63,7 @@ export const WalletTransferForm: React.FC<WalletTransferFormProps> = ({
   statusMessage = null,
   onTransferred,
 }) => {
-  const { addTransaction } = useFinance();
+  const { addTransaction } = useFinanceState();
 
   // Seed the destination to the first wallet that is not the source, so the two
   // sides never start out identical (which would leave submit disabled).

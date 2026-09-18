@@ -4,6 +4,52 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
+## Phase 9 — consumer migration and shim retirement: T14 (2026-09-18, commit `_pending_`)
+
+**Changed**
+
+- All 15 `useFinance()` call sites migrated to `useFinanceState()`, `useFinanceActions()`, or both, one destructure per context:
+  - **Actions only (no longer re-renders on a ledger write):** `components/wallet/AddWalletForm.tsx:53`.
+  - **State only:** `components/QuickAddModal.tsx:22`, `components/TransactionForm.tsx:35`, `components/wallet/WalletTransferForm.tsx:66`, `hooks/useWallets.ts:5`, `views/DashboardView.tsx:48`, `views/TransactionsView.tsx:22`.
+  - **Both halves:** `components/Navbar.tsx:52`, `components/WalletPopupModal.tsx:37`, `hooks/useDebts.ts:6`, `hooks/useTransactions.ts:16`, `views/DiaryView.tsx:37`, `views/KeywordRulesView.tsx:8`, `views/SecurityView.tsx:25`, `views/WalletsView.tsx:17`.
+- `src/context/FinanceContext.tsx` - deleted `useFinance()` and the `FinanceContextType` union that existed only to type it (-19 lines). `useFinanceState()` and `useFinanceActions()` are now the entire public consumer surface.
+- Two stale comments naming the deleted hook were reworded to refer to the finance context generally: `App.tsx:61` and `QuickAddModal.tsx:14-15`. No behavioural change.
+
+**Why**
+
+T13 split the value but left every consumer on the merging shim, so nothing actually benefited: the shim subscribes to both contexts, which means a component needing only `addWallet` still re-rendered on every transaction. This commit is where the split starts paying. `AddWalletForm` now reads nothing volatile at all and is fully insulated from ledger writes; the eight mixed consumers keep their volatile subscription but no longer pull in the stable half's identity churn on the rare occasions it does change.
+
+**Corrections to the recorded plan**
+
+- **There were 15 call sites, not 16.** ADR `0001`, the Phase 8 log entry, and the T14 ledger row all say 16. Verified against the T13 commit: `git grep -c "= useFinance()" 8c3ad78 -- src/` returns 15 across 15 files. The extra one was almost certainly `App.tsx:61`, which mentions `useFinance()` in a comment explaining that `MainApp` deliberately does *not* call it.
+- **`WalletTransferForm` and `SecurityView` are not actions-only.** The task brief grouped both with `AddWalletForm` as instant wins. `WalletTransferForm` needs `addTransaction`, one of the six volatile mutators, which still lives in the *state* context until T15 ref-mirrors it - so it is state-only and still re-renders on writes. `SecurityView` is genuinely mixed: `currentUser`, `isAuthenticated`, `isSyncing`, `sessions`, and `currentSession` are state; `refreshFromCloud`, `revokeSession`, `revokeAllOtherSessions`, and `signOut` are actions. `AddWalletForm` is the only consumer in the codebase that reads actions and nothing else.
+- **`DebtsView`, `AuthModal`, and `WalletAccountsGrid` were listed as consumers but never called the shim.** They take their data via props or via the domain hooks. `TransactionForm.tsx` and `WalletsView.tsx` were consumers and were missing from the brief's list; both are migrated.
+
+**Verification**
+
+```
+npm run lint                     # tsc --noEmit: clean, 0 errors
+npm run build                    # built in 6.42s; PWA precache 26 entries (1497.42 KiB)
+CI=true npx playwright test      # 75/75 passed (3.6m), 1 worker, 0 retries consumed
+```
+
+Parallel local runs (`npx playwright test`, 6 workers) produced one Firefox failure per run, but a *different* test each time - `csv.spec.ts:18` twice, then `auth.spec.ts:44`. Each failed identically: `locator.click` timing out after the call log had already reported "element is visible, enabled and stable ... performing click action", i.e. the click hung in the driver rather than the app leaving the element unclickable. Both specs pass in isolation on this branch (`--repeat-each=3`, 3/3), and the single-worker CI-mode run is clean at 75/75. Treated as Firefox-under-parallel-load flake on this machine, not a regression - but the same command on the unmodified parent commit passed 75/75 at 6 workers, so this is recorded rather than dismissed. If it recurs on CI, that assumption is wrong and this is the entry to revisit.
+
+**Metric delta**
+
+| | Before | After |
+|---|---|---|
+| `useFinance()` call sites | 15 | 0 (hook deleted) |
+| Consumers subscribing to both context halves | 15 | 8 |
+| Consumers insulated from ledger writes | 0 | 1 (`AddWalletForm`) |
+| Exported consumer hooks | 3 | 2 |
+
+**Not done here**
+
+The six volatile mutators (`addTransaction`, `softDeleteTransaction`, `restoreTransaction`, `commitBulkImport`, `repayDebtAtomic`, `upsertDiaryEntry`) remain in the state context, so any consumer needing one of them still re-renders on every write. That is T15's scope, and it is what moves `WalletTransferForm`, `QuickAddModal`, and `DashboardView` into the insulated column.
+
+---
+
 ## Phase 8 — FinanceContext value split: T13 (2026-09-18, commit `8c3ad78`)
 
 **Changed**

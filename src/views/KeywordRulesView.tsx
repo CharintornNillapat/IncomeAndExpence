@@ -1,11 +1,12 @@
 import React, { useState, useMemo } from 'react';
 import { Sparkles, Plus, Trash2, Tag } from 'lucide-react';
-import { useFinance } from '../context/FinanceContext';
+import { useFinanceState, useFinanceActions } from '../context/FinanceContext';
 import { matchSmartDescription } from '../utils/smartMatcher';
 import { formatCurrencyAmount } from '../utils/currency';
 
 export const KeywordRulesView: React.FC = () => {
-  const { keywordRules, categories, addKeywordRule, deleteKeywordRule } = useFinance();
+  const { keywordRules, categories } = useFinanceState();
+  const { addKeywordRule, deleteKeywordRule } = useFinanceActions();
 
   const [keyword, setKeyword] = useState<string>('');
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>(categories[0]?.id || '');

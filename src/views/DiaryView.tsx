@@ -8,7 +8,7 @@ import {
   Check,
   ArrowUpRight,
 } from 'lucide-react';
-import { useFinance } from '../context/FinanceContext';
+import { useFinanceState, useFinanceActions } from '../context/FinanceContext';
 import { DiaryEntryCard } from '../components/DiaryEntryCard';
 import { FoodQuality, Transaction } from '../types';
 import { formatCurrencyAmount } from '../utils/currency';
@@ -34,7 +34,8 @@ const EMPTY_DAY_DATA: { totalOutflow: number; totalIncome: number; transactions:
 };
 
 export const DiaryView: React.FC = () => {
-  const { diaryEntries, transactions, wallets, categories, upsertDiaryEntry, deleteDiaryEntry } = useFinance();
+  const { diaryEntries, transactions, wallets, categories, upsertDiaryEntry } = useFinanceState();
+  const { deleteDiaryEntry } = useFinanceActions();
 
   const todayIso = todayIsoDate();
   const yesterdayIso = daysAgoIsoDate(1);
