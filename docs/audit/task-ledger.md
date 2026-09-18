@@ -110,7 +110,7 @@ Status values: `todo` · `in-progress` · `done` · `dropped` (with a one-line r
 
 | # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
 |---|---|---|---|---|---|---|---|---|---|---|
-| T13 | Split context value: `FinanceActionsContext` + `FinanceStateContext`, shim `useFinance()` | `FinanceContext.tsx` (only file touched, +133/-52) | High | Med | 4h | done | — | _pending_ | tsc clean (`src/` + `tests/`); 75/75 Playwright; build succeeds in 19.5s | One 33-member context value → two: 19-member state (`FinanceStateContextType:46`) + 14-member actions (`FinanceActionsContextType:98`). Zero consumer files modified — all 16 `useFinance()` call sites unchanged |
+| T13 | Split context value: `FinanceActionsContext` + `FinanceStateContext`, shim `useFinance()` | `FinanceContext.tsx` (only file touched, +133/-52) | High | Med | 4h | done | — | 8c3ad78 | tsc clean (`src/` + `tests/`); 75/75 Playwright; build succeeds in 19.5s | One 33-member context value → two: 19-member state (`FinanceStateContextType:46`) + 14-member actions (`FinanceActionsContextType:98`). Zero consumer files modified — all 16 `useFinance()` call sites unchanged |
 
 **Notes on execution:**
 - **Split per ADR 0001 option (b), not (a).** One `FinanceProvider`, two `createContext` calls nested inside it (`FinanceContext.tsx:134-135`). No provider-per-domain, no new module, no new import edge — the file's imports are byte-identical to before, so the acyclic DAG property `audit-report.md` records is preserved by construction.

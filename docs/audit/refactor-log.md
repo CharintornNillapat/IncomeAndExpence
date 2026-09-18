@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 8 — FinanceContext value split: T13 (2026-09-18, commit `_pending_`)
+## Phase 8 — FinanceContext value split: T13 (2026-09-18, commit `8c3ad78`)
 
 **Changed**
 
