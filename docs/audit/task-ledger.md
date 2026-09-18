@@ -134,6 +134,20 @@ Status values: `todo` · `in-progress` · `done` · `dropped` (with a one-line r
 - **Mixed consumers take two destructures, not one merged object.** Re-merging state and actions locally would reintroduce exactly the identity churn the split removes.
 - **Firefox flake recorded, not dismissed.** Multi-worker local runs failed one Firefox test per run, a different one each time, always a `locator.click` that hung after the element was reported stable. Isolated re-runs pass 3/3 and the single-worker CI-mode run is 75/75. Full detail, including the fact that the parent commit did not flake under the same command, is in `refactor-log.md` Phase 9.
 
+## Phase 10 — ref-mirror volatile mutators (approved to execute)
+
+| # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
+|---|---|---|---|---|---|---|---|---|---|---|
+| T15 | Ref-mirror the 6 volatile mutators into `FinanceActionsContext`, one/small-batch per step | `FinanceContext.tsx` + 7 consumer files | Med-High | High | 6h | done | T12 (done), T13 (done), T14 (done) | c1740d6 | tsc clean; `CI=true npx playwright test` 75/75, 0 retries; `transaction`/`debts`/`diary`/`soft-delete` specs 27/27 across all 3 browsers; build succeeds in 5.7s | 6 volatile mutators moved `FinanceStateContextType` -> `FinanceActionsContextType`; `actionsValue` 14 -> 20 members; `WalletTransferForm` joins `AddWalletForm` as fully insulated from ledger writes |
+
+**Notes on execution:**
+- **"7 volatile mutators" in ADR `0001` counts the internal `setTransactionDeleted` helper alongside the 6 it exposes.** Only `addTransaction`, `softDeleteTransaction`, `restoreTransaction`, `commitBulkImport`, `repayDebtAtomic`, and `upsertDiaryEntry` are members of `FinanceStateContextType`/`FinanceActionsContextType`; `setTransactionDeleted` (`FinanceContext.tsx:1180`) is the shared implementation behind the first two and was ref-mirrored as part of that step, not as a separate one. Six mutators moved contexts; a seventh internal `useCallback` was also stabilised along the way.
+- **Ref mirrors follow the file's own precedent.** `loadSupabaseDataRef` (`:455`, `:627`) already used `useEffect(() => { ref.current = value }, [value])` to break a dependency cycle between `loadSupabaseData` and `seedInitialUserAccount`. The five new refs (`walletsRef`, `transactionsRef`, `debtsRef`, `categoriesRef`, `diaryEntriesRef`) use the identical pattern, so the technique was not new to this codebase, only new in how many places it is used.
+- **Sequencing followed the ADR exactly:** `setTransactionDeleted` first (simplest, single ref), then `commitBulkImport`, then `upsertDiaryEntry`, then `addTransaction` (the 3-slice rollback), then `repayDebtAtomic` last, because it calls `addTransaction` and could not stabilise until `addTransaction` itself had.
+- **`addTransaction`'s optimistic-rollback snapshot was rewritten, not removed.** `previousWallets`/`previousDebts`/`previousTransactions` now read `walletsRef.current`/`debtsRef.current`/`transactionsRef.current` instead of the closured `wallets`/`debts`/`transactions`. Both are the committed-state value at the instant the function starts running; the ref read is not weaker, only the mechanism by which the callback stays current without being rebuilt on every state change.
+- **One additional consumer became actions-only that the ADR did not name:** `WalletTransferForm`. T14's log recorded it as blocked on this exact task; this is the commit that unblocks it.
+- **Seven consumer files touched**, not just the context: `QuickAddModal.tsx`, `WalletPopupModal.tsx`, `WalletTransferForm.tsx`, `useDebts.ts`, `useTransactions.ts`, `DashboardView.tsx`, `DiaryView.tsx`. Each split its destructure so the migrated mutator(s) come from `useFinanceActions()` while any remaining state reads stay on `useFinanceState()`.
+
 ## Deferred — documented, awaiting separate approval
 
 | # | Task | Files | Impact | Risk | Effort | Status | Blocked by |
@@ -145,7 +159,6 @@ Status values: `todo` · `in-progress` · `done` · `dropped` (with a one-line r
 | T26 | Shared `buildLookupMap` helper | 7 independent map-building copies | Low-Med | Low | 2h | todo | T12 |
 | T27 | `useSubmitHandler`, `useIdempotencyKey`, `useTransientFlash` | 6 duplicate submit shapes, 3 duplicate amount callbacks, 7 flash timeouts | Med | Med | 5h | todo | T12 |
 | T29 | Fix `useDebts` returning unfiltered `wallets` | `useDebts.ts:84`, `DebtsView.tsx:29,313-314` | Med (correctness) | Med | 1h | todo | T12 debts spec |
-| T15 | Ref-mirror the 7 volatile mutators, one per commit | `FinanceContext.tsx:855,1154,1214,1378,1420` | Med-High | High | 6h | todo | T12 mandatory; T13 (done) |
 | T17 | Realtime: debounce, `user_id` filter, suppress self-echo | `FinanceContext.tsx:132,658-677` | High | High | 4h | todo | manual 2-device checklist |
 | T25 | Unify the 4 transaction-row renderers | see audit-report §E | Med | High | 8h | todo | consider dropping — see plan traps §19 |
 | T18 | `Promise.all` the bulk-import wallet updates | `FinanceContext.tsx:1305-1312` | Low-Med | Med | 1h | todo | T12 CSV spec |

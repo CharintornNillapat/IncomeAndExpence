@@ -4,6 +4,57 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
+## Phase 10 — ref-mirror volatile mutators: T15 (2026-09-18, commit `c1740d6`)
+
+**Changed**
+
+- `src/context/FinanceContext.tsx`:
+  - Added five ref mirrors (`walletsRef`, `transactionsRef`, `debtsRef`, `categoriesRef`, `diaryEntriesRef`), each kept current by its own `useEffect(() => { xRef.current = x }, [x])`, following the file's existing `loadSupabaseDataRef` pattern (`:627`). Never assigned inside a `setState` updater, per the ADR guardrail - `StrictMode` double-invokes those and would desync the mirror from committed state.
+  - Rewrote the six volatile mutators to read hot state through the matching ref instead of the closured state variable: `setTransactionDeleted` (backs `softDeleteTransaction`/`restoreTransaction`), `commitBulkImport`, `upsertDiaryEntry`, `addTransaction` (including its 3-slice optimistic-rollback snapshot), and `repayDebtAtomic`, migrated in that order per the ADR's sequencing (`repayDebtAtomic` last, since it depends on `addTransaction` and stays doubly volatile until `addTransaction` itself stabilises).
+  - Each rewritten `useCallback`'s deps array dropped the state member(s) it no longer closes over. `addTransaction`: `[wallets, transactions, debts, categories, currentUser.id, isAuthenticated]` -> `[currentUser.id, isAuthenticated]`. `repayDebtAtomic`: `[debts, wallets, categories, addTransaction]` -> `[addTransaction]`. All six now have session-stable identities.
+  - Moved all six from `FinanceStateContextType` to `FinanceActionsContextType`, and their entries from `stateValue`'s `useMemo` to `actionsValue`'s. `stateValue` is now plain state with no mutators at all; `actionsValue` carries every mutating action in the app.
+- Seven consumer files updated to read the six mutators from `useFinanceActions()` instead of `useFinanceState()`: `QuickAddModal.tsx`, `WalletPopupModal.tsx`, `WalletTransferForm.tsx`, `useDebts.ts`, `useTransactions.ts`, `DashboardView.tsx`, `DiaryView.tsx`.
+
+**Why**
+
+T14 migrated consumers off the `useFinance()` shim, but six of them still subscribed to `FinanceStateContext` for one of these six mutators alongside genuine state, and one (`WalletTransferForm`) subscribed to state for `addTransaction` alone - so none of them were actually insulated from ledger writes yet. This is the commit where that insulation lands: `WalletTransferForm` now reads only `useFinanceActions()` and re-renders on nothing but a rare stable-callback change, joining `AddWalletForm` as fully insulated. `QuickAddModal`, `DashboardView`, `WalletPopupModal`, `useDebts`, `useTransactions`, and `DiaryView` keep a state subscription for their remaining state reads, but that subscription no longer also re-created their mutator's identity on every write - `React.memo`'d subtrees below them that only receive the mutator as a prop stop re-rendering on writes they don't otherwise observe.
+
+**Correctness notes**
+
+- **Ref reads happen only in event-handler-invoked callbacks, never during render.** Every one of the six mutators is called from a form submit handler or an imperative action, always after the component tree has committed and the mirroring `useEffect`s have run. There is no code path that calls a mutator synchronously from within a render, so `xRef.current` is always the value from the most recent commit by the time any mutator reads it.
+- **`addTransaction`'s rollback snapshot is exactly as reliable as before.** `previousWallets`/`previousDebts`/`previousTransactions` are still captured once, synchronously, at the top of the function body - only the source changed, from the closured state variable to `xRef.current`. Both name the same committed array at the moment the function starts running.
+- **StrictMode-safe by construction.** No ref is written inside a `setState` updater anywhere in this diff; every write is `useEffect(() => { ref.current = value }, [value])`, which StrictMode's dev-mode double-invocation of effects (mount, cleanup, re-mount) handles correctly - the second invocation just reassigns the same value.
+
+**Verification**
+
+```
+npm run lint                     # tsc --noEmit: clean, 0 errors
+npm run build                    # built in 5.68s; PWA precache 26 entries (1497.83 KiB)
+CI=true npx playwright test      # 75/75 passed (3.9m), 1 worker, 0 retries consumed
+npx playwright test tests/transaction.spec.ts tests/debts.spec.ts tests/diary.spec.ts tests/soft-delete.spec.ts
+                                  # 27/27 passed (54.6s), all three browsers - the four specs
+                                  # exercising every migrated mutator (addTransaction,
+                                  # softDeleteTransaction/restoreTransaction, upsertDiaryEntry,
+                                  # repayDebtAtomic) run clean
+```
+
+**Metric delta**
+
+| | Before | After |
+|---|---|---|
+| Volatile mutators in `FinanceStateContextType` | 6 | 0 |
+| `useCallback`s with hot-state deps (`wallets`/`transactions`/`debts`/`categories`/`diaryEntries`) | 6 | 0 |
+| `stateValue` members | 19 (13 state + 6 mutators) | 13 (state only) |
+| `actionsValue` members | 14 | 20 |
+| Consumers fully insulated from ledger writes | 1 (`AddWalletForm`) | 2 (`AddWalletForm`, `WalletTransferForm`) |
+| Consumers with a mutator no longer re-creating on writes | 0 | 6 (`QuickAddModal`, `WalletPopupModal`, `useDebts`, `useTransactions`, `DashboardView`, `DiaryView`) |
+
+**Not done here**
+
+`SecurityView` and the remaining state reads in the six mixed consumers above still re-render on writes to the state members they read (e.g. `DashboardView` still reads `transactions`). That is inherent to what those components display, not something T15's scope changes - T15 only removed the *mutator*-driven half of that churn.
+
+---
+
 ## Phase 9 — consumer migration and shim retirement: T14 (2026-09-18, commit `36c4d7e`)
 
 **Changed**
