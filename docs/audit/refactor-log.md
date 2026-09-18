@@ -4,6 +4,61 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
+## Phase 8 — FinanceContext value split: T13 (2026-09-18, commit `_pending_`)
+
+**Changed**
+
+- `src/context/FinanceContext.tsx` — the only file touched (+133/-52).
+  - The single 33-member `FinanceContextType` was replaced by two interfaces: `FinanceStateContextType` (`:46`, 19 members — 13 state values plus the 6 volatile mutators) and `FinanceActionsContextType` (`:98`, 14 members — the stable session callbacks plus `setShowSoftDeleted`).
+  - `FinanceContextType` (`:132`) is retained as `extends FinanceStateContextType, FinanceActionsContextType`, so the exported type is structurally unchanged.
+  - `const FinanceContext = createContext(...)` became two contexts (`:134-135`), and the single `contextValue` memo became `stateValue` (`:1535`) and `actionsValue` (`:1584`).
+  - `FinanceProvider` now nests both providers — actions outer, state inner (`:1622-1626`).
+  - `useFinanceState()` (`:1636`) and `useFinanceActions()` (`:1645`) exported; `useFinance()` (`:1659`) survives as a merging shim over both.
+
+Zero consumer files modified. All 16 `useFinance()` call sites are byte-identical to before.
+
+**Why**
+
+ADR `0001` option (b), staged after the App-shell fixes that already shipped in Phase 2. Correction C1 established that only 7 of the context's 22 `useCallback`s are volatile; the other 15 are stable for the whole session but were trapped in a value object that changes identity on every ledger write, so a component needing nothing but `signOut` or `addWallet` re-rendered on every transaction. This commit makes the two halves invalidate independently. It deliberately does not yet *use* that — migrating consumers is T14 — because doing the split and the migration together would mean a 17-file diff where a behavioral regression has 17 candidate causes instead of one.
+
+**Verification**
+
+```
+npm run lint                     # tsc --noEmit: clean, 0 errors, src/ and tests/
+npm run build                    # built in 19.54s; PWA precache 26 entries (1497.37 KiB)
+npx playwright test --reporter=line   # 75/75 passed (1.7m)
+```
+
+`git diff --stat` confirmed a single changed file.
+
+**Metric delta**
+
+| | Before | After |
+|---|---|---|
+| React contexts in `FinanceContext.tsx` | 1 | 2 |
+| Largest context value | 33 members | 19 members (state) / 14 (actions) |
+| `Object.is` comparisons per provider commit | 33 (one memo) | 19 + 13 = 32, across two independently-invalidating memos |
+| Consumers subscribed to the volatile value | 16 | 16 (unchanged — the shim still reads both; T14 reduces this) |
+| Files changed | — | 1 |
+| Full suite | 75 runs | 75 runs, no spec edited |
+
+No re-render metric is claimed for this phase, and none should be: with every consumer still on the shim, the split cannot yet reduce a single re-render. The S1-S5 counts are the measurement for T14, not this commit.
+
+**Surprises**
+
+- **A naive shim would have been a regression, not a no-op.** The obvious `return { ...useFinanceState(), ...useFinanceActions() }` allocates a fresh object on every render of every consumer. Pre-split, `useFinance()` returned one memoized object whose identity was stable between writes — so the "zero breaking changes" shim would have silently broken identity stability for all 16 consumers (and anything downstream keying a `useMemo`/`useEffect` on the context object). The shim memoizes the merge on `[state, actions]` (`:1659`) to preserve the original guarantee exactly.
+- **Two Firefox tests failed on the first full-suite run** (`auth.spec.ts:33`, `csv.spec.ts:18`) and passed on an immediate clean re-run, plus in isolation against the same working tree. Load-related flake under full parallelism in the engine `playwright.config.ts` already documents as the slowest to paint a lazy chunk — not a regression from this change, which touches neither auth nor CSV code paths. Recorded rather than quietly dropped, because it is the second phase in a row where the T12-era specs have been the ones to wobble; if it recurs, those two specs need a look independent of whatever task is in flight.
+
+**Deliberately not done**
+
+- **No consumer migrated.** That is T14, one file per commit, and it is what actually banks the re-render win. The shim exists precisely so this commit can be reverted alone.
+- **No ref-mirroring.** The 6 volatile mutators (`addTransaction`, `softDeleteTransaction`, `restoreTransaction`, `commitBulkImport`, `repayDebtAtomic`, `upsertDiaryEntry`) stay in the state context and stay volatile. Moving them is T15, gated on T12 and sequenced one mutator per commit with `repayDebtAtomic` last.
+- **`setTransactionDeleted` was not exposed.** It stays a private implementation detail behind `softDeleteTransaction`/`restoreTransaction`; the split neither widened nor narrowed the public surface.
+- **No dependency-array cleanup.** Several deps are wider than strictly needed (e.g. `upsertDiaryEntry` depends on the whole `diaryEntries` array where a functional `setState` would drop it). Narrowing them changes which callbacks are volatile and therefore which context they belong in — that is a decision for T15, and folding it in here would have made this commit non-mechanical.
+- **No re-render instrumentation run.** `baseline-metrics.md`'s S1-S5 still have no captured "before" numbers (deferred since Phase 0). This phase cannot move them by construction, so capturing them now would burn the instrumentation branch on a commit with nothing to show; they belong immediately before T14.
+
+---
+
 ## Phase 7 — Characterization tests for the untested half: T12 (2026-09-17, commit `7f0c5b1`)
 
 **Changed**

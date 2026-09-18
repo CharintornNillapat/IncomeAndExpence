@@ -106,12 +106,25 @@ Status values: `todo` · `in-progress` · `done` · `dropped` (with a one-line r
 - **Mobile project not added.** The original T12 scope text included "mobile project" as a target; this pass added only the five spec files and the `AuthModal` ids. Extending `playwright.config.ts` with a mobile viewport project is a separate, broader change (would need every existing spec re-verified against it, not just the 5 new files) and wasn't part of this task's explicit instructions. Left as a follow-on, noted here rather than silently dropped.
 - All 5 new files follow the existing conventions: `gotoTab`/`addQuickTransaction` from `helpers.ts`, no `page.waitForTimeout`, no `isVisible()` guards — every assertion is an auto-retrying `expect(...)`.
 
+## Phase 8 — FinanceContext value split (approved to execute)
+
+| # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
+|---|---|---|---|---|---|---|---|---|---|---|
+| T13 | Split context value: `FinanceActionsContext` + `FinanceStateContext`, shim `useFinance()` | `FinanceContext.tsx` (only file touched, +133/-52) | High | Med | 4h | done | — | _pending_ | tsc clean (`src/` + `tests/`); 75/75 Playwright; build succeeds in 19.5s | One 33-member context value → two: 19-member state (`FinanceStateContextType:46`) + 14-member actions (`FinanceActionsContextType:98`). Zero consumer files modified — all 16 `useFinance()` call sites unchanged |
+
+**Notes on execution:**
+- **Split per ADR 0001 option (b), not (a).** One `FinanceProvider`, two `createContext` calls nested inside it (`FinanceContext.tsx:134-135`). No provider-per-domain, no new module, no new import edge — the file's imports are byte-identical to before, so the acyclic DAG property `audit-report.md` records is preserved by construction.
+- **Membership follows correction C1's volatility classification, verified against the live dep arrays rather than taken from the ADR on trust.** `FinanceStateContextType` (`:46`) holds the 13 state members plus the 6 exposed volatile mutators — `addTransaction` (deps `[wallets, transactions, debts, categories, currentUser.id, isAuthenticated]`), `softDeleteTransaction`/`restoreTransaction` (both derived from `setTransactionDeleted`, deps `[transactions, isAuthenticated]`), `commitBulkImport` (`[wallets, categories, …]`), `repayDebtAtomic` (`[debts, wallets, categories, addTransaction]`), and `upsertDiaryEntry` (`[isAuthenticated, diaryEntries, …]`). `FinanceActionsContextType` (`:98`) holds the 14 stable ones, every dep array of which is `[]`, `[isAuthenticated]`, or `[currentUser.id]` — including `deleteWallet` (deps `[updateWallet]`, itself `[isAuthenticated]`) and `refreshFromCloud` (deps `[currentUser.id, loadSupabaseData]`, the latter `[]`).
+- **`FinanceContextType` survives as `extends FinanceStateContextType, FinanceActionsContextType`** (`:132`). It is still exported and still structurally identical to the pre-split interface, so anything typed against it — today nothing outside this file, but it is public API — sees no change.
+- **Provider nesting order is deliberate:** actions outside, state inside (`:1622-1626`). The rarely-changing value sits nearer the root, so the state provider re-rendering cannot invalidate it.
+- **`useFinance()` memoizes its merge** (`:1659`). A plain `{ ...state, ...actions }` would hand every one of the 16 current consumers a fresh object identity on *every* render, which is strictly worse than the single memoized value they had before the split. The `useMemo([state, actions])` keeps the pre-split stability guarantee exactly.
+- **No ref-mirroring performed.** T15's scope, explicitly untouched here — the 6 volatile mutators stay in the state context and stay volatile.
+
 ## Deferred — documented, awaiting separate approval
 
 | # | Task | Files | Impact | Risk | Effort | Status | Blocked by |
 |---|---|---|---|---|---|---|---|
-| T13 | Split context value: `FinanceActionsContext` + `FinanceStateContext`, shim `useFinance()` | `FinanceContext.tsx:1498-1572` | High | Med | 4h | todo | T1 recommended first |
-| T14 | Migrate 16 consumers off the shim; delete shim | 16 `useFinance()` sites | High | Med | 4h | todo | T13, T12 |
+| T14 | Migrate 16 consumers off the shim; delete shim | 16 `useFinance()` sites | High | Med | 4h | todo | T13 (done), T12 |
 | T16 | Batched localStorage writer + `pagehide`/`visibilitychange` flush | `FinanceContext.tsx:390-413` | High | Med | 3h | todo | — |
 | T21 | Local-calendar correctness: compare ISO strings, not `Date` objects | `DashboardView.tsx:82,87,88,92,95,150`, `WalletsView.tsx:117`, `SecurityView.tsx:282` | Med | Med | 2h | todo | new frozen-clock spec |
 | T22 | One `<Modal>` primitive; convert 9 sites | 9 modal sites (see audit-report §E) | Med | Med | 6h | todo | T12 |
@@ -119,7 +132,7 @@ Status values: `todo` · `in-progress` · `done` · `dropped` (with a one-line r
 | T26 | Shared `buildLookupMap` helper | 7 independent map-building copies | Low-Med | Low | 2h | todo | T12 |
 | T27 | `useSubmitHandler`, `useIdempotencyKey`, `useTransientFlash` | 6 duplicate submit shapes, 3 duplicate amount callbacks, 7 flash timeouts | Med | Med | 5h | todo | T12 |
 | T29 | Fix `useDebts` returning unfiltered `wallets` | `useDebts.ts:84`, `DebtsView.tsx:29,313-314` | Med (correctness) | Med | 1h | todo | T12 debts spec |
-| T15 | Ref-mirror the 7 volatile mutators, one per commit | `FinanceContext.tsx:855,1154,1214,1378,1420` | Med-High | High | 6h | todo | T12 mandatory |
+| T15 | Ref-mirror the 7 volatile mutators, one per commit | `FinanceContext.tsx:855,1154,1214,1378,1420` | Med-High | High | 6h | todo | T12 mandatory; T13 (done) |
 | T17 | Realtime: debounce, `user_id` filter, suppress self-echo | `FinanceContext.tsx:132,658-677` | High | High | 4h | todo | manual 2-device checklist |
 | T25 | Unify the 4 transaction-row renderers | see audit-report §E | Med | High | 8h | todo | consider dropping — see plan traps §19 |
 | T18 | `Promise.all` the bulk-import wallet updates | `FinanceContext.tsx:1305-1312` | Low-Med | Med | 1h | todo | T12 CSV spec |

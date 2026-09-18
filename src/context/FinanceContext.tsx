@@ -33,30 +33,31 @@ export interface MutationResult {
   error?: string;
 }
 
-export interface FinanceContextType {
+/**
+ * The volatile half of the context value: every state member, plus the six
+ * mutating actions whose `useCallback` deps include hot state (`transactions`,
+ * `wallets`, `debts`, `categories`, `diaryEntries`). Each of these changes
+ * identity on a ledger write, so a consumer of this context re-renders on writes.
+ *
+ * The volatile actions sit here only until T15 ref-mirrors them. They belong
+ * conceptually with the stable actions below, but cannot move while their own
+ * identities still churn on every write.
+ */
+export interface FinanceStateContextType {
   // Auth & Security
   currentUser: User;
   isAuthenticated: boolean;
   isSyncing: boolean;
   sessions: SessionDevice[];
   currentSession: SessionDevice | null;
-  revokeSession: (sessionId: string) => void;
-  revokeAllOtherSessions: () => void;
-  signOut: () => Promise<void>;
 
   // Wallets
   wallets: Wallet[];
   totalNetWorth: number;
-  // `balance` is omitted: the opening balance is supplied via `initialBalance`.
-  addWallet: (wallet: Omit<Wallet, 'id' | 'userId' | 'createdAt' | 'updatedAt' | 'isArchived' | 'isDeleted' | 'balance'>, initialBalance: number) => Promise<MutationResult>;
-  updateWallet: (id: string, updates: Partial<Wallet>) => Promise<void>;
-  deleteWallet: (id: string) => Promise<void>;
 
   // Categories & Configurable Keyword Rules
   categories: Category[];
   keywordRules: KeywordRule[];
-  addKeywordRule: (keyword: string, categoryId: string) => Promise<MutationResult>;
-  deleteKeywordRule: (id: string) => Promise<void>;
 
   // Transactions
   transactions: Transaction[];
@@ -78,23 +79,60 @@ export interface FinanceContextType {
 
   // Debts
   debts: Debt[];
-  addDebt: (debt: Omit<Debt, 'id' | 'userId' | 'createdAt' | 'updatedAt' | 'isSettled' | 'isDeleted'>) => Promise<MutationResult>;
   repayDebtAtomic: (debtId: string, walletId: string, amount: number, note?: string) => Promise<{ success: boolean; error?: string }>;
-  settleDebt: (debtId: string) => Promise<void>;
-  deleteDebt: (debtId: string) => Promise<void>;
 
   // Holistic Diary
   diaryEntries: DiaryEntry[];
   upsertDiaryEntry: (entry: Omit<DiaryEntry, 'id' | 'userId' | 'createdAt' | 'updatedAt' | 'isDeleted'>) => Promise<MutationResult>;
+
+  // Filters
+  showSoftDeleted: boolean;
+}
+
+/**
+ * The stable half: callbacks whose deps are only `[]`, `[isAuthenticated]`, or
+ * `[currentUser.id]`, so their identities hold for an entire session, plus the
+ * `useState` setter `setShowSoftDeleted`. A component reading only from here does
+ * not re-render because of a ledger write.
+ */
+export interface FinanceActionsContextType {
+  // Auth & Security
+  revokeSession: (sessionId: string) => void;
+  revokeAllOtherSessions: () => void;
+  signOut: () => Promise<void>;
+
+  // Wallets
+  // `balance` is omitted: the opening balance is supplied via `initialBalance`.
+  addWallet: (wallet: Omit<Wallet, 'id' | 'userId' | 'createdAt' | 'updatedAt' | 'isArchived' | 'isDeleted' | 'balance'>, initialBalance: number) => Promise<MutationResult>;
+  updateWallet: (id: string, updates: Partial<Wallet>) => Promise<void>;
+  deleteWallet: (id: string) => Promise<void>;
+
+  // Categories & Configurable Keyword Rules
+  addKeywordRule: (keyword: string, categoryId: string) => Promise<MutationResult>;
+  deleteKeywordRule: (id: string) => Promise<void>;
+
+  // Debts
+  addDebt: (debt: Omit<Debt, 'id' | 'userId' | 'createdAt' | 'updatedAt' | 'isSettled' | 'isDeleted'>) => Promise<MutationResult>;
+  settleDebt: (debtId: string) => Promise<void>;
+  deleteDebt: (debtId: string) => Promise<void>;
+
+  // Holistic Diary
   deleteDiaryEntry: (id: string) => Promise<void>;
 
   // Filters & State helpers
-  showSoftDeleted: boolean;
   setShowSoftDeleted: (show: boolean) => void;
   refreshFromCloud: () => Promise<void>;
 }
 
-const FinanceContext = createContext<FinanceContextType | undefined>(undefined);
+/**
+ * The full, pre-split value shape, kept as the union of the two halves so the
+ * `useFinance()` shim and anything still typed against it see exactly the same
+ * members as before the split.
+ */
+export interface FinanceContextType extends FinanceStateContextType, FinanceActionsContextType {}
+
+const FinanceStateContext = createContext<FinanceStateContextType | undefined>(undefined);
+const FinanceActionsContext = createContext<FinanceActionsContextType | undefined>(undefined);
 
 // Local Storage Safe Fallback Helper
 function safeGetLocalStorage<T>(key: string, fallback: T): T {
@@ -1490,41 +1528,31 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
   // can actually observe has changed. Without this, every render of the provider
   // produced a fresh value and re-rendered every consumer, defeating the React.memo
   // and useCallback layers throughout the app.
-  const contextValue = useMemo(
+  //
+  // The value is split in two so the two halves can invalidate independently: this
+  // one carries the state and the still-volatile mutators, so it is expected to
+  // change on every ledger write.
+  const stateValue = useMemo(
     () => ({
       currentUser,
       isAuthenticated,
       isSyncing,
       sessions,
       currentSession,
-      revokeSession,
-      revokeAllOtherSessions,
-      signOut,
       wallets,
       totalNetWorth,
-      addWallet,
-      updateWallet,
-      deleteWallet,
       categories,
       keywordRules,
-      addKeywordRule,
-      deleteKeywordRule,
       transactions,
       addTransaction,
       softDeleteTransaction,
       restoreTransaction,
       commitBulkImport,
       debts,
-      addDebt,
       repayDebtAtomic,
-      settleDebt,
-      deleteDebt,
       diaryEntries,
       upsertDiaryEntry,
-      deleteDiaryEntry,
       showSoftDeleted,
-      setShowSoftDeleted,
-      refreshFromCloud,
     }),
     [
       currentUser,
@@ -1532,51 +1560,104 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       isSyncing,
       sessions,
       currentSession,
-      revokeSession,
-      revokeAllOtherSessions,
-      signOut,
       wallets,
       totalNetWorth,
-      addWallet,
-      updateWallet,
-      deleteWallet,
       categories,
       keywordRules,
-      addKeywordRule,
-      deleteKeywordRule,
       transactions,
       addTransaction,
       softDeleteTransaction,
       restoreTransaction,
       commitBulkImport,
       debts,
-      addDebt,
       repayDebtAtomic,
-      settleDebt,
-      deleteDebt,
       diaryEntries,
       upsertDiaryEntry,
-      deleteDiaryEntry,
       showSoftDeleted,
+    ]
+  );
+
+  // The stable half. Every dependency here is a `useCallback` keyed on `[]`,
+  // `[isAuthenticated]`, or `[currentUser.id]`, or the `useState` setter, so this
+  // object's identity survives a ledger write and a consumer reading only actions
+  // does not re-render because of one.
+  const actionsValue = useMemo(
+    () => ({
+      revokeSession,
+      revokeAllOtherSessions,
+      signOut,
+      addWallet,
+      updateWallet,
+      deleteWallet,
+      addKeywordRule,
+      deleteKeywordRule,
+      addDebt,
+      settleDebt,
+      deleteDebt,
+      deleteDiaryEntry,
+      setShowSoftDeleted,
+      refreshFromCloud,
+    }),
+    [
+      revokeSession,
+      revokeAllOtherSessions,
+      signOut,
+      addWallet,
+      updateWallet,
+      deleteWallet,
+      addKeywordRule,
+      deleteKeywordRule,
+      addDebt,
+      settleDebt,
+      deleteDebt,
+      deleteDiaryEntry,
       refreshFromCloud,
     ]
   );
 
+  // Actions is the outer provider: its value is the one that almost never changes,
+  // so React can bail out of re-rendering that subtree's consumers independently of
+  // the state provider nested inside it.
   return (
-    <FinanceContext.Provider value={contextValue}>
-      {children}
-    </FinanceContext.Provider>
+    <FinanceActionsContext.Provider value={actionsValue}>
+      <FinanceStateContext.Provider value={stateValue}>
+        {children}
+      </FinanceStateContext.Provider>
+    </FinanceActionsContext.Provider>
   );
 };
 
-// The return type is annotated explicitly rather than inferred. `useContext` comes
-// from React's untyped JS fallback when React type definitions are absent, which
-// makes an inferred return type collapse to `any` and silently disables type
-// checking in every consumer of this hook.
-export function useFinance(): FinanceContextType {
-  const context = useContext(FinanceContext);
+// The return types below are annotated explicitly rather than inferred. `useContext`
+// comes from React's untyped JS fallback when React type definitions are absent,
+// which makes an inferred return type collapse to `any` and silently disables type
+// checking in every consumer of these hooks.
+
+/** Subscribe to the volatile half. Re-renders the caller on every ledger write. */
+export function useFinanceState(): FinanceStateContextType {
+  const context = useContext(FinanceStateContext);
   if (!context) {
-    throw new Error('useFinance must be used within a FinanceProvider');
+    throw new Error('useFinanceState must be used within a FinanceProvider');
   }
   return context;
+}
+
+/** Subscribe to the stable half. Does not re-render the caller on a ledger write. */
+export function useFinanceActions(): FinanceActionsContextType {
+  const context = useContext(FinanceActionsContext);
+  if (!context) {
+    throw new Error('useFinanceActions must be used within a FinanceProvider');
+  }
+  return context;
+}
+
+/**
+ * Compatibility shim over both halves, preserving the pre-split API so the value
+ * split needed no consumer changes. It subscribes to *both* contexts, so it gives
+ * up the benefit of the split — migrate call sites to `useFinanceState()` /
+ * `useFinanceActions()` (task T14), after which this is deleted.
+ */
+export function useFinance(): FinanceContextType {
+  const state = useFinanceState();
+  const actions = useFinanceActions();
+  return useMemo(() => ({ ...state, ...actions }), [state, actions]);
 }
