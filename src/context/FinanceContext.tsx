@@ -34,14 +34,14 @@ export interface MutationResult {
 }
 
 /**
- * The volatile half of the context value: every state member, plus the six
- * mutating actions whose `useCallback` deps include hot state (`transactions`,
- * `wallets`, `debts`, `categories`, `diaryEntries`). Each of these changes
- * identity on a ledger write, so a consumer of this context re-renders on writes.
- *
- * The volatile actions sit here only until T15 ref-mirrors them. They belong
- * conceptually with the stable actions below, but cannot move while their own
- * identities still churn on every write.
+ * The volatile half of the context value: every state member. Before T15, this
+ * also held the six mutators whose `useCallback` deps included hot state
+ * (`transactions`, `wallets`, `debts`, `categories`, `diaryEntries`); T15
+ * ref-mirrored that hot state (see `walletsRef` etc. in `FinanceProvider`) so
+ * those callbacks no longer need it in their own deps, and moved them into
+ * `FinanceActionsContextType` below. Only plain state values remain here now,
+ * so a consumer of this context re-renders on every write that touches a member
+ * it reads - there is no longer a stable subset hiding in this half.
  */
 export interface FinanceStateContextType {
   // Auth & Security
@@ -61,39 +61,30 @@ export interface FinanceStateContextType {
 
   // Transactions
   transactions: Transaction[];
-  addTransaction: (tx: {
-    amount: number;
-    rawInput?: string;
-    description: string;
-    walletId: string;
-    destinationWalletId?: string;
-    categoryId?: string;
-    debtId?: string;
-    type: TransactionType;
-    transactionDate: string;
-    idempotencyKey?: string;
-  }) => Promise<{ success: boolean; error?: string; txId?: string }>;
-  softDeleteTransaction: (id: string) => Promise<void>;
-  restoreTransaction: (id: string) => Promise<void>;
-  commitBulkImport: (validRows: ImportRowValidation[]) => Promise<{ insertedCount: number; totalAmount: number; skippedCount: number }>;
 
   // Debts
   debts: Debt[];
-  repayDebtAtomic: (debtId: string, walletId: string, amount: number, note?: string) => Promise<{ success: boolean; error?: string }>;
 
   // Holistic Diary
   diaryEntries: DiaryEntry[];
-  upsertDiaryEntry: (entry: Omit<DiaryEntry, 'id' | 'userId' | 'createdAt' | 'updatedAt' | 'isDeleted'>) => Promise<MutationResult>;
 
   // Filters
   showSoftDeleted: boolean;
 }
 
 /**
- * The stable half: callbacks whose deps are only `[]`, `[isAuthenticated]`, or
- * `[currentUser.id]`, so their identities hold for an entire session, plus the
- * `useState` setter `setShowSoftDeleted`. A component reading only from here does
- * not re-render because of a ledger write.
+ * The stable half: callbacks whose deps are only `[]`, `[isAuthenticated]`,
+ * `[currentUser.id]`, or another already-stable callback, so their identities
+ * hold for an entire session, plus the `useState` setter `setShowSoftDeleted`.
+ * A component reading only from here does not re-render because of a ledger
+ * write.
+ *
+ * `addTransaction`, `softDeleteTransaction`, `restoreTransaction`,
+ * `commitBulkImport`, `repayDebtAtomic`, and `upsertDiaryEntry` joined this half
+ * in T15: each now reads the hot state it needs through a ref mirror
+ * (`walletsRef`/`transactionsRef`/`debtsRef`/`categoriesRef`/`diaryEntriesRef`)
+ * instead of closing over the state variable directly, so their `useCallback`
+ * deps no longer include it.
  */
 export interface FinanceActionsContextType {
   // Auth & Security
@@ -111,12 +102,31 @@ export interface FinanceActionsContextType {
   addKeywordRule: (keyword: string, categoryId: string) => Promise<MutationResult>;
   deleteKeywordRule: (id: string) => Promise<void>;
 
+  // Transactions
+  addTransaction: (tx: {
+    amount: number;
+    rawInput?: string;
+    description: string;
+    walletId: string;
+    destinationWalletId?: string;
+    categoryId?: string;
+    debtId?: string;
+    type: TransactionType;
+    transactionDate: string;
+    idempotencyKey?: string;
+  }) => Promise<{ success: boolean; error?: string; txId?: string }>;
+  softDeleteTransaction: (id: string) => Promise<void>;
+  restoreTransaction: (id: string) => Promise<void>;
+  commitBulkImport: (validRows: ImportRowValidation[]) => Promise<{ insertedCount: number; totalAmount: number; skippedCount: number }>;
+
   // Debts
   addDebt: (debt: Omit<Debt, 'id' | 'userId' | 'createdAt' | 'updatedAt' | 'isSettled' | 'isDeleted'>) => Promise<MutationResult>;
   settleDebt: (debtId: string) => Promise<void>;
   deleteDebt: (debtId: string) => Promise<void>;
+  repayDebtAtomic: (debtId: string, walletId: string, amount: number, note?: string) => Promise<{ success: boolean; error?: string }>;
 
   // Holistic Diary
+  upsertDiaryEntry: (entry: Omit<DiaryEntry, 'id' | 'userId' | 'createdAt' | 'updatedAt' | 'isDeleted'>) => Promise<MutationResult>;
   deleteDiaryEntry: (id: string) => Promise<void>;
 
   // Filters & State helpers
@@ -411,6 +421,37 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
 
   // Client-side Idempotency Guard (P0-5)
   const inFlightIdempotencyKeys = useRef<Set<string>>(new Set());
+
+  // T15: latest-value mirrors of the hot state the volatile mutators read by
+  // closure. Each ref is updated in its own `useEffect` (never inside a `setState`
+  // updater - StrictMode double-invokes those, which would desync the mirror from
+  // committed state). A mutator that reads `xRef.current` instead of `x` no longer
+  // needs `x` in its own `useCallback` deps, so its identity stops churning on
+  // every write and it can move from `FinanceStateContextType` to
+  // `FinanceActionsContextType`. The `useEffect` runs after commit, before the
+  // next paint, so by the time a user event can invoke a mutator the mirror is
+  // already current; nothing here reads a ref during the render that wrote it.
+  const walletsRef = useRef<Wallet[]>(wallets);
+  const transactionsRef = useRef<Transaction[]>(transactions);
+  const debtsRef = useRef<Debt[]>(debts);
+  const categoriesRef = useRef<Category[]>(categories);
+  const diaryEntriesRef = useRef<DiaryEntry[]>(diaryEntries);
+
+  useEffect(() => {
+    walletsRef.current = wallets;
+  }, [wallets]);
+  useEffect(() => {
+    transactionsRef.current = transactions;
+  }, [transactions]);
+  useEffect(() => {
+    debtsRef.current = debts;
+  }, [debts]);
+  useEffect(() => {
+    categoriesRef.current = categories;
+  }, [categories]);
+  useEffect(() => {
+    diaryEntriesRef.current = diaryEntries;
+  }, [diaryEntries]);
 
   // Cache state to localStorage for instant offline access
   useEffect(() => {
@@ -899,7 +940,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     // the ids are well-formed and distinct; it cannot prove they still resolve to a
     // live wallet. Without this, a transfer to a missing/soft-deleted destination
     // debits the source and credits nobody.
-    const sourceWallet = wallets.find((w) => w.id === data.walletId && !w.isDeleted);
+    const sourceWallet = walletsRef.current.find((w) => w.id === data.walletId && !w.isDeleted);
     if (!sourceWallet) {
       return { success: false, error: 'Source wallet not found or has been deleted' };
     }
@@ -909,7 +950,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       if (!data.destinationWalletId || data.destinationWalletId === data.walletId) {
         return { success: false, error: 'Transfer requires a distinct destination wallet' };
       }
-      destWallet = wallets.find((w) => w.id === data.destinationWalletId && !w.isDeleted);
+      destWallet = walletsRef.current.find((w) => w.id === data.destinationWalletId && !w.isDeleted);
       if (!destWallet) {
         return { success: false, error: 'Destination wallet not found or has been deleted' };
       }
@@ -923,7 +964,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     }
 
     // Check if already processed
-    const existingTx = transactions.find((t) => t.idempotencyKey === clientKey);
+    const existingTx = transactionsRef.current.find((t) => t.idempotencyKey === clientKey);
     if (existingTx) {
       return { success: true, txId: existingTx.id };
     }
@@ -932,9 +973,14 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
 
     // Snapshot state for rollback if network/database fails. `transactions` is
     // included so a failed balance write cannot leave an orphan ledger row behind.
-    const previousWallets = wallets;
-    const previousDebts = debts;
-    const previousTransactions = transactions;
+    // Read via the T15 refs rather than the closured state: this function no longer
+    // depends on `wallets`/`debts`/`transactions` to stay stable across renders,
+    // but the ref mirrors are updated in `useEffect` after every commit, so by the
+    // time any event handler can invoke this callback they hold the same values
+    // the closured state would have.
+    const previousWallets = walletsRef.current;
+    const previousDebts = debtsRef.current;
+    const previousTransactions = transactionsRef.current;
 
     // Optimistic balance calculation, derived from the resolved wallets up front so
     // the state updater below stays a pure mapping with no assignment side effects.
@@ -1044,7 +1090,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
           }
         }
 
-        const validCategoryId = data.categoryId && categories.some((c) => c.id === data.categoryId)
+        const validCategoryId = data.categoryId && categoriesRef.current.some((c) => c.id === data.categoryId)
           ? data.categoryId
           : null;
 
@@ -1092,7 +1138,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
 
         // Update debt in Supabase and check errors
         if (data.type === 'DEBT_REPAYMENT' && data.debtId) {
-          const targetDebt = debts.find((d) => d.id === data.debtId);
+          const targetDebt = debtsRef.current.find((d) => d.id === data.debtId);
           if (targetDebt) {
             const updatedRem = Math.max(0, roundToCents(targetDebt.remainingAmount - data.amount));
             const { error: dErr } = await supabase.from('debts').update({
@@ -1171,14 +1217,14 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     } finally {
       inFlightIdempotencyKeys.current.delete(clientKey);
     }
-  }, [wallets, transactions, debts, categories, currentUser.id, isAuthenticated]);
+  }, [currentUser.id, isAuthenticated]);
 
   // Soft-delete and restore are exact inverses: both flip `isDeleted` and undo or
   // re-apply the transaction's effect on wallet balances. `sign` is +1 when removing
   // the transaction from the ledger and -1 when putting it back, so one body covers
   // both directions and the two can no longer drift apart.
   const setTransactionDeleted = useCallback(async (id: string, deleted: boolean) => {
-    const tx = transactions.find((t) => t.id === id);
+    const tx = transactionsRef.current.find((t) => t.id === id);
     if (!tx || tx.isDeleted === deleted) return;
 
     const sign = deleted ? 1 : -1;
@@ -1224,7 +1270,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
         await supabase.from('wallets').update({ balance: destNewBal }).eq('id', tx.destinationWalletId);
       }
     }
-  }, [transactions, isAuthenticated]);
+  }, [isAuthenticated]);
 
   const softDeleteTransaction = useCallback(
     (id: string) => setTransactionDeleted(id, true),
@@ -1241,10 +1287,10 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     // Only active records may be referenced. Importing into a soft-deleted wallet
     // would mutate the balance of a wallet the user has already removed.
     const walletMapByName = new Map<string, Wallet>(
-      wallets.filter((w) => !w.isDeleted).map((w) => [w.name.trim().toLowerCase(), w])
+      walletsRef.current.filter((w) => !w.isDeleted).map((w) => [w.name.trim().toLowerCase(), w])
     );
     const categoryMapByName = new Map<string, Category>(
-      categories.filter((c) => !c.isDeleted).map((c) => [c.name.trim().toLowerCase(), c])
+      categoriesRef.current.filter((c) => !c.isDeleted).map((c) => [c.name.trim().toLowerCase(), c])
     );
 
     const newTxs: Transaction[] = [];
@@ -1330,7 +1376,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     if (isAuthenticated && dbPayloads.length > 0) {
       await supabase.from('transactions').insert(dbPayloads);
       for (const [wId, delta] of Object.entries(walletDeltas)) {
-        const targetW = wallets.find((w) => w.id === wId);
+        const targetW = walletsRef.current.find((w) => w.id === wId);
         if (targetW) {
           const updatedB = roundToCents(targetW.balance + delta);
           await supabase.from('wallets').update({ balance: updatedB }).eq('id', wId);
@@ -1352,7 +1398,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       totalAmount: roundToCents(totalAmt),
       skippedCount,
     };
-  }, [wallets, categories, isAuthenticated, currentUser.id, refreshFromCloud]);
+  }, [isAuthenticated, currentUser.id, refreshFromCloud]);
 
   // Debts CRUD
   const addDebt = useCallback(async (
@@ -1402,15 +1448,15 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
   }, [isAuthenticated, currentUser.id]);
 
   const repayDebtAtomic = useCallback(async (debtId: string, walletId: string, amount: number, note?: string) => {
-    const debt = debts.find((d) => d.id === debtId);
-    const wallet = wallets.find((w) => w.id === walletId);
+    const debt = debtsRef.current.find((d) => d.id === debtId);
+    const wallet = walletsRef.current.find((w) => w.id === walletId);
 
     if (!debt) return { success: false, error: 'Debt goal not found' };
     if (!wallet) return { success: false, error: 'Selected wallet not found' };
     if (amount <= 0) return { success: false, error: 'Repayment amount must be positive' };
 
     // Find if a valid category exists in categories array (e.g. debt repayment category)
-    const matchedCategory = categories.find((c) => c.type === 'DEBT_REPAYMENT' || c.name.toLowerCase().includes('debt'));
+    const matchedCategory = categoriesRef.current.find((c) => c.type === 'DEBT_REPAYMENT' || c.name.toLowerCase().includes('debt'));
 
     return addTransaction({
       amount,
@@ -1422,7 +1468,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       type: 'DEBT_REPAYMENT',
       transactionDate: todayIsoDate(),
     });
-  }, [debts, wallets, categories, addTransaction]);
+  }, [addTransaction]);
 
   const settleDebt = useCallback(async (debtId: string) => {
     setDebts((prev) =>
@@ -1452,7 +1498,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     }
 
     if (isAuthenticated) {
-      const existing = diaryEntries.find((e) => e.date === entryData.date && !e.isDeleted);
+      const existing = diaryEntriesRef.current.find((e) => e.date === entryData.date && !e.isDeleted);
       const { error } = existing
         ? await supabase
             .from('diary_entries')
@@ -1506,7 +1552,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     }
 
     return { success: true };
-  }, [isAuthenticated, diaryEntries, currentUser.id, refreshFromCloud]);
+  }, [isAuthenticated, currentUser.id, refreshFromCloud]);
 
   const deleteDiaryEntry = useCallback(async (id: string) => {
     setDiaryEntries((prev) =>
@@ -1523,8 +1569,10 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
   // and useCallback layers throughout the app.
   //
   // The value is split in two so the two halves can invalidate independently: this
-  // one carries the state and the still-volatile mutators, so it is expected to
-  // change on every ledger write.
+  // one carries only state now. Before T15 it also carried the six volatile
+  // mutators; those have all moved to `actionsValue` below, so this memo changes
+  // identity only when a state member itself changes, never on the six mutators'
+  // account (they no longer have hot-state deps to change on).
   const stateValue = useMemo(
     () => ({
       currentUser,
@@ -1537,14 +1585,8 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       categories,
       keywordRules,
       transactions,
-      addTransaction,
-      softDeleteTransaction,
-      restoreTransaction,
-      commitBulkImport,
       debts,
-      repayDebtAtomic,
       diaryEntries,
-      upsertDiaryEntry,
       showSoftDeleted,
     }),
     [
@@ -1558,22 +1600,22 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       categories,
       keywordRules,
       transactions,
-      addTransaction,
-      softDeleteTransaction,
-      restoreTransaction,
-      commitBulkImport,
       debts,
-      repayDebtAtomic,
       diaryEntries,
-      upsertDiaryEntry,
       showSoftDeleted,
     ]
   );
 
   // The stable half. Every dependency here is a `useCallback` keyed on `[]`,
-  // `[isAuthenticated]`, or `[currentUser.id]`, or the `useState` setter, so this
-  // object's identity survives a ledger write and a consumer reading only actions
-  // does not re-render because of one.
+  // `[isAuthenticated]`, `[currentUser.id]`, another already-stable callback, or
+  // the `useState` setter, so this object's identity survives a ledger write and
+  // a consumer reading only actions does not re-render because of one.
+  //
+  // `addTransaction`, `softDeleteTransaction`, `restoreTransaction`,
+  // `commitBulkImport`, `repayDebtAtomic`, and `upsertDiaryEntry` joined this half
+  // in T15, ref-mirrored last (`repayDebtAtomic`) since it depends on
+  // `addTransaction` and is therefore doubly volatile until `addTransaction`
+  // itself stabilises.
   const actionsValue = useMemo(
     () => ({
       revokeSession,
@@ -1584,9 +1626,15 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       deleteWallet,
       addKeywordRule,
       deleteKeywordRule,
+      addTransaction,
+      softDeleteTransaction,
+      restoreTransaction,
+      commitBulkImport,
       addDebt,
       settleDebt,
       deleteDebt,
+      repayDebtAtomic,
+      upsertDiaryEntry,
       deleteDiaryEntry,
       setShowSoftDeleted,
       refreshFromCloud,
@@ -1600,9 +1648,15 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       deleteWallet,
       addKeywordRule,
       deleteKeywordRule,
+      addTransaction,
+      softDeleteTransaction,
+      restoreTransaction,
+      commitBulkImport,
       addDebt,
       settleDebt,
       deleteDebt,
+      repayDebtAtomic,
+      upsertDiaryEntry,
       deleteDiaryEntry,
       refreshFromCloud,
     ]

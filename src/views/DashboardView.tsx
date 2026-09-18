@@ -1,6 +1,6 @@
 ﻿import React, { useState, useMemo, useCallback } from 'react';
 import { motion, Variants } from 'framer-motion';
-import { useFinanceState } from '../context/FinanceContext';
+import { useFinanceState, useFinanceActions } from '../context/FinanceContext';
 import { useWallets } from '../hooks/useWallets';
 import { useDebts } from '../hooks/useDebts';
 import { TransactionForm } from '../components/TransactionForm';
@@ -45,7 +45,8 @@ interface DashboardViewProps {
 }
 
 export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
-  const { transactions, categories, addTransaction } = useFinanceState();
+  const { transactions, categories } = useFinanceState();
+  const { addTransaction } = useFinanceActions();
   // `wallets` here is already the active (non-deleted) set; `allWallets` still
   // includes soft-deleted ones so historic rows can resolve their wallet name.
   const { wallets: activeWallets, allWallets, totalNetWorth } = useWallets();

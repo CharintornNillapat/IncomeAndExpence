@@ -17,13 +17,15 @@ export const useTransactions = (options: UseTransactionsFilterOptions = {}) => {
     transactions,
     wallets,
     categories,
+    showSoftDeleted,
+  } = useFinanceState();
+  const {
     addTransaction,
     softDeleteTransaction,
     restoreTransaction,
     commitBulkImport,
-    showSoftDeleted,
-  } = useFinanceState();
-  const { setShowSoftDeleted } = useFinanceActions();
+    setShowSoftDeleted,
+  } = useFinanceActions();
 
   const {
     includeDeleted = showSoftDeleted,

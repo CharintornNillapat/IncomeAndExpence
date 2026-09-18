@@ -38,9 +38,8 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
     wallets,
     transactions,
     totalNetWorth,
-    addTransaction,
   } = useFinanceState();
-  const { deleteWallet } = useFinanceActions();
+  const { deleteWallet, addTransaction } = useFinanceActions();
 
   const [activeTab, setActiveTab] = useState<WalletModalTab>(initialTab);
   const [selectedWalletId, setSelectedWalletId] = useState<string>(initialWalletId || wallets[0]?.id || '');

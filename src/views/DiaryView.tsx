@@ -34,8 +34,8 @@ const EMPTY_DAY_DATA: { totalOutflow: number; totalIncome: number; transactions:
 };
 
 export const DiaryView: React.FC = () => {
-  const { diaryEntries, transactions, wallets, categories, upsertDiaryEntry } = useFinanceState();
-  const { deleteDiaryEntry } = useFinanceActions();
+  const { diaryEntries, transactions, wallets, categories } = useFinanceState();
+  const { upsertDiaryEntry, deleteDiaryEntry } = useFinanceActions();
 
   const todayIso = todayIsoDate();
   const yesterdayIso = daysAgoIsoDate(1);

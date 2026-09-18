@@ -6,12 +6,12 @@ export const useDebts = () => {
   const {
     debts,
     wallets,
-    repayDebtAtomic,
   } = useFinanceState();
   const {
     addDebt,
     settleDebt,
     deleteDebt,
+    repayDebtAtomic,
   } = useFinanceActions();
 
   // Active (non-deleted) debts

@@ -2,7 +2,7 @@ import React, { useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X } from 'lucide-react';
 import { TransactionForm } from './TransactionForm';
-import { useFinanceState } from '../context/FinanceContext';
+import { useFinanceState, useFinanceActions } from '../context/FinanceContext';
 
 interface QuickAddModalProps {
   isOpen: boolean;
@@ -19,7 +19,8 @@ interface QuickAddModalProps {
  * whether the modal was even open.
  */
 export const QuickAddModal: React.FC<QuickAddModalProps> = ({ isOpen, onClose }) => {
-  const { wallets, categories, addTransaction } = useFinanceState();
+  const { wallets, categories } = useFinanceState();
+  const { addTransaction } = useFinanceActions();
 
   // Memoized so TransactionForm doesn't receive a new array identity on
   // every render of this component (e.g. while it's closed and unmounted
