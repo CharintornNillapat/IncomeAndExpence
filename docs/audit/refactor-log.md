@@ -4,6 +4,42 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
+## Phase 11 — local-calendar date comparisons: T21 (2026-09-18, commit `e8d5236`)
+
+**Changed**
+
+- `src/views/DashboardView.tsx`:
+  - `filteredTransactions`: the `WEEK`/`MONTH` branches parsed `tx.transactionDate` (a bare `YYYY-MM-DD` local-calendar string) via `new Date(...)`, which JavaScript parses as UTC midnight, and compared it against a threshold built from `now.getTime() - N * 86400000` (a real elapsed-time epoch subtraction). Those two clocks only agree when the current local time-of-day is before the UTC offset (before 07:00 in Thailand); once local time drifts past that, the oldest day a bucket is meant to include falls on the wrong side of the cutoff and is silently dropped. Replaced with `daysAgoIsoDate(7)`/`daysAgoIsoDate(30)` compared directly against `tx.transactionDate` as plain strings - same-format ISO dates sort lexicographically exactly as they sort chronologically, so no `Date` parsing is involved at all.
+  - The `DAY` branch called `todayIsoDate()` once per transaction inside the filter predicate; moved to compute it once before filtering.
+  - `recentTransactions`'s sort comparator used `new Date(b.transactionDate).getTime() - new Date(a.transactionDate).getTime()`; replaced with a direct string comparison (`b.transactionDate > a.transactionDate ? 1 : ...`), for the same reason - no Date parsing needed to sort same-format ISO date strings.
+- `src/views/WalletsView.tsx`: the wallet card's "Created" label read `wallet.createdAt.slice(0, 10)` - `createdAt` is a full ISO *instant* (correctly built with `new Date().toISOString()`), but slicing its first 10 characters reads the **UTC** calendar date, which at UTC+7 is one day behind the local calendar date for anything created between 00:00 and 06:59 local. Replaced with `toIsoDate(new Date(wallet.createdAt))`, which reads the `Date` object's local calendar components (`getFullYear`/`getMonth`/`getDate`) instead of slicing the serialized string.
+- `src/views/SecurityView.tsx`: audited, no change. Its one date-related line (`new Date(sess.lastActiveAt).toLocaleTimeString(...)`) parses a full ISO instant and displays local time-of-day - exactly the sanctioned pattern CLAUDE.md carves out ("Full ISO timestamps... remain correct for `createdAt`/`updatedAt`, which are instants, not calendar days"). There is no calendar-day comparison anywhere in the file; `!s.revokedAt` is a presence check, not a date comparison. The `SecurityView.tsx:282` cited in the ledger and ADR no longer points at anything suspicious - see "Corrections" below.
+- `tests/date-boundary.spec.ts` (new): two specs, both pinning `test.use({ timezoneId: 'Asia/Bangkok' })` and freezing the clock with `page.clock.setFixedTime(...)` before navigation, so the app's own `new Date()` calls - including the ones that run at module-eval time building `DEFAULT_STARTER_WALLETS` - see the pinned instant regardless of the host machine's real timezone.
+
+**Why**
+
+CLAUDE.md's "Dates: local calendar days" section exists specifically because this class of bug has recurred in this codebase; T21 is the pass that swept the three files the audit flagged for it. Both fixes in `DashboardView.tsx` and the one in `WalletsView.tsx` are the same underlying mistake in two different shapes - mixing a UTC-anchored `Date` (either parsed from a bare date string, or sliced from a full ISO string) into a comparison or display that is supposed to be local-calendar-day-based - and both are fixed the same way: never construct a `Date` from ambiguous input for this purpose, only from a `Date` object's own local getters, or by comparing same-format ISO strings directly.
+
+**Verification (falsification-checked)**
+
+Both new specs were run against the pre-fix source (`git stash` of the two view files) before being accepted, to confirm they actually reproduce the bugs they claim to guard:
+- Wallet-creation spec: pre-fix showed `Created: 2026-09-17` for a wallet created at `2026-09-18T02:15:00+07:00` (one day behind). Post-fix shows `Created: 2026-09-18`.
+- Week-filter spec: pre-fix showed a `Total Expense` of `฿0.00` when "This Week" should have included a ฿1,000 transaction dated exactly 7 local days before the pinned "now" (`2026-09-18T15:00:00+07:00`, a normal afternoon - deliberately *not* inside the midnight-to-dawn window, since the WEEK/MONTH bug's failure condition is "local time-of-day past 07:00", which covers most of the day, not just the dawn hours). Post-fix shows `฿1,000.00`.
+
+```
+npm run lint                     # tsc --noEmit: clean, 0 errors
+npm run build                    # built in 5.76s; PWA precache 26 entries (1497.75 KiB)
+CI=true npx playwright test      # 81/81 passed (4.2m), 1 worker, 0 retries consumed - 75 pre-existing + 6 new (2 specs x 3 browsers)
+```
+
+**Corrections to the recorded plan**
+
+- **`SecurityView.tsx:282` was not a bug.** ADR-adjacent ledger notes cited it alongside the two real `DashboardView`/`WalletsView` bugs; on inspection its only date-related line displays a full-instant timestamp's local time-of-day, which is the correct, sanctioned use of `new Date(...)` per CLAUDE.md's own carve-out for instants. Audited and left unchanged rather than "fixed" for the sake of matching the line count in the brief.
+- **The `DashboardView.tsx` line numbers had drifted** (T14/T15 touched this file's imports and hook destructuring) - the bugs were still present, just at `:87-98` and `:150` in the pre-T21 file rather than the `:82,87-95,150` cited.
+- **The `WEEK`/`MONTH` bug's failure window is not actually the midnight-to-dawn hours.** It manifests whenever the local time-of-day is *past* 07:00 (most of the day) - the opposite of when the analogous `WalletsView`/CLAUDE.md canonical bug manifests (00:00-06:59). Both are documented explicitly in the new spec's comments so a future reader does not assume one boundary time covers both.
+
+---
+
 ## Phase 10 — ref-mirror volatile mutators: T15 (2026-09-18, commit `c1740d6`)
 
 **Changed**

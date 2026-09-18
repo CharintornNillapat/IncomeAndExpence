@@ -148,12 +148,24 @@ Status values: `todo` · `in-progress` · `done` · `dropped` (with a one-line r
 - **One additional consumer became actions-only that the ADR did not name:** `WalletTransferForm`. T14's log recorded it as blocked on this exact task; this is the commit that unblocks it.
 - **Seven consumer files touched**, not just the context: `QuickAddModal.tsx`, `WalletPopupModal.tsx`, `WalletTransferForm.tsx`, `useDebts.ts`, `useTransactions.ts`, `DashboardView.tsx`, `DiaryView.tsx`. Each split its destructure so the migrated mutator(s) come from `useFinanceActions()` while any remaining state reads stay on `useFinanceState()`.
 
+## Phase 11 — local-calendar date comparisons (approved to execute)
+
+| # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
+|---|---|---|---|---|---|---|---|---|---|---|
+| T21 | Local-calendar correctness: compare ISO strings, not `Date` objects | `DashboardView.tsx`, `WalletsView.tsx`; `SecurityView.tsx` audited (no change) | Med | Med | 2h | done | new frozen-clock spec | e8d5236 | tsc clean; `CI=true npx playwright test` 81/81 (75 existing + 6 new), 0 retries; build succeeds in 5.8s | 3 UTC-anchored `Date` comparisons/parses replaced with local-calendar-string comparisons; 1 new spec file, both cases falsification-checked against pre-fix source |
+
+**Notes on execution:**
+- **Two distinct bug shapes, one root cause.** `DashboardView`'s `WEEK`/`MONTH` cutoff mixed a real elapsed-time epoch threshold with a UTC-midnight-parsed `Date`; `WalletsView`'s "Created" label sliced the UTC portion of a full ISO instant. Both are "constructed or read a `Date` in UTC terms where a local calendar day was needed" - fixed by never doing so, only comparing same-format ISO date strings directly or reading a `Date`'s local getters.
+- **The `WEEK`/`MONTH` bug's failure window is the opposite of the canonical midnight-to-dawn one.** It manifests once local time-of-day passes 07:00 (UTC+7's offset), not during 00:00-06:59 - see the new spec's comments for the derivation. Both boundary conditions are covered: the wallet-creation spec pins 02:15 local (the canonical dawn window), the week-filter spec pins 15:00 local (where the DashboardView bug actually reproduces).
+- **`SecurityView.tsx:282` audited, not changed.** Its `new Date(sess.lastActiveAt).toLocaleTimeString(...)` is a correct display of a full ISO instant's local time-of-day, exactly the pattern CLAUDE.md sanctions for `createdAt`/`updatedAt`-style fields. No calendar-day comparison exists anywhere in the file.
+- **Both new tests were falsification-checked**, not just run green: each was run once against the pre-fix source (via `git stash` of just the two changed view files) to confirm it fails with the predicted wrong value, then re-run against the fix to confirm it passes. This is recorded in `refactor-log.md` Phase 11 rather than only asserted.
+- **`page.clock.setFixedTime` + `test.use({ timezoneId: 'Asia/Bangkok' })`, not a component-level clock mock.** Freezing time at the Playwright/browser-context level (available since Playwright 1.45; this repo runs 1.63) exercises the real app code path end-to-end, including `new Date()` calls at module-eval time (`DEFAULT_STARTER_WALLETS`), without adding any test-only seam to production code.
+
 ## Deferred — documented, awaiting separate approval
 
 | # | Task | Files | Impact | Risk | Effort | Status | Blocked by |
 |---|---|---|---|---|---|---|---|
 | T16 | Batched localStorage writer + `pagehide`/`visibilitychange` flush | `FinanceContext.tsx:390-413` | High | Med | 3h | todo | — |
-| T21 | Local-calendar correctness: compare ISO strings, not `Date` objects | `DashboardView.tsx:82,87,88,92,95,150`, `WalletsView.tsx:117`, `SecurityView.tsx:282` | Med | Med | 2h | todo | new frozen-clock spec |
 | T22 | One `<Modal>` primitive; convert 9 sites | 9 modal sites (see audit-report §E) | Med | Med | 6h | todo | T12 |
 | T24 | Promote `walletFormStyles.ts`; adopt across ~12 files | `walletFormStyles.ts` + 10 consumers | Med | Med | 6h | todo | T12 |
 | T26 | Shared `buildLookupMap` helper | 7 independent map-building copies | Low-Med | Low | 2h | todo | T12 |
