@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { animate, useMotionValue } from 'framer-motion';
+import { CURRENCY_DISPLAY_OPTIONS } from '../utils/currency';
 
 interface AnimatedCounterProps {
   value: number;
@@ -20,12 +21,7 @@ export const AnimatedCounter: React.FC<AnimatedCounterProps> = ({
       duration,
       ease: [0.16, 1, 0.3, 1], // snappy cubic-bezier spring-like ease
       onUpdate: (latest) => {
-        setDisplayValue(
-          latest.toLocaleString('en-US', {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2,
-          })
-        );
+        setDisplayValue(latest.toLocaleString('en-US', CURRENCY_DISPLAY_OPTIONS));
       },
     });
 

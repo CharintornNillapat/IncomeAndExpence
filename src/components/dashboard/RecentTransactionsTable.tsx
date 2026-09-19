@@ -2,7 +2,7 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { Calendar, ChevronRight, Receipt, ArrowDownLeft, ArrowUpRight, ArrowLeftRight, TrendingDown } from 'lucide-react';
 import { Transaction, Wallet, Category } from '../../types';
-import { APP_CURRENCY, formatCurrencyAmount } from '../../utils/currency';
+import { APP_CURRENCY, formatCurrencyAmount, MINUS } from '../../utils/currency';
 
 interface RecentTransactionsTableProps {
   transactions: Transaction[];
@@ -170,7 +170,7 @@ export const RecentTransactionsTable: React.FC<RecentTransactionsTableProps> = R
                             : 'text-indigo-600 dark:text-indigo-400'
                         }
                       >
-                        {tx.type === 'INCOME' ? '+' : tx.type === 'EXPENSE' ? '−' : ''}
+                        {tx.type === 'INCOME' ? '+' : tx.type === 'EXPENSE' ? MINUS : ''}
                         {formatCurrencyAmount(tx.amount)}
                       </span>
                       <span className="text-[10px] text-stone-400 dark:text-stone-500 ml-1 hidden sm:inline">{currency}</span>

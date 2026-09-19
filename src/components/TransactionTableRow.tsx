@@ -1,7 +1,8 @@
 import React from 'react';
-import { ArrowDownLeft, ArrowUpRight, Landmark, RefreshCw, RotateCcw, Trash2 } from 'lucide-react';
+import { Landmark, RotateCcw, Trash2 } from 'lucide-react';
 import { Transaction, Wallet, Category } from '../types';
 import { formatCurrencyAmount } from '../utils/currency';
+import { TX_TYPE_META } from './transaction/txTypeMeta';
 
 interface TransactionTableRowProps {
   tx: Transaction;
@@ -23,6 +24,8 @@ export const TransactionTableRow: React.FC<TransactionTableRowProps> = React.mem
   const isIncome = tx.type === 'INCOME';
   const isTransfer = tx.type === 'TRANSFER';
   const isDebtRepayment = tx.type === 'DEBT_REPAYMENT';
+  const meta = TX_TYPE_META[tx.type];
+  const TypeIcon = meta.icon;
 
   return (
     <tr
@@ -40,25 +43,9 @@ export const TransactionTableRow: React.FC<TransactionTableRowProps> = React.mem
       <td className="py-3 px-3 sm:px-4 max-w-[160px] sm:max-w-[260px] md:max-w-none">
         <div className="flex items-center gap-2 sm:gap-2.5">
           <div
-            className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center shrink-0 ${
-              isIncome
-                ? 'bg-emerald-100 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400'
-                : isTransfer
-                ? 'bg-blue-100 dark:bg-blue-950/50 text-blue-700 dark:text-blue-400'
-                : isDebtRepayment
-                ? 'bg-amber-100 dark:bg-amber-950/50 text-amber-700 dark:text-amber-400'
-                : 'bg-rose-100 dark:bg-rose-950/50 text-rose-700 dark:text-rose-400'
-            }`}
+            className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center shrink-0 ${meta.tint}`}
           >
-            {isIncome ? (
-              <ArrowDownLeft className="w-3.5 h-3.5" />
-            ) : isTransfer ? (
-              <RefreshCw className="w-3.5 h-3.5" />
-            ) : isDebtRepayment ? (
-              <Landmark className="w-3.5 h-3.5" />
-            ) : (
-              <ArrowUpRight className="w-3.5 h-3.5" />
-            )}
+            <TypeIcon className="w-3.5 h-3.5" />
           </div>
           <div className="min-w-0 flex-1">
             <p className={`font-semibold truncate text-xs sm:text-sm ${tx.isDeleted ? 'line-through text-stone-500 dark:text-stone-500' : 'text-stone-900 dark:text-stone-100'}`}>
@@ -115,7 +102,7 @@ export const TransactionTableRow: React.FC<TransactionTableRowProps> = React.mem
         {isDebtRepayment ? (
           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 border border-amber-200/50 dark:border-amber-800/50">
             <Landmark className="w-3 h-3" />
-            <span>Debt Repayment</span>
+            <span>{TX_TYPE_META.DEBT_REPAYMENT.label}</span>
           </span>
         ) : category ? (
           <span
@@ -132,7 +119,7 @@ export const TransactionTableRow: React.FC<TransactionTableRowProps> = React.mem
       {/* Amount */}
       <td className="py-3 px-3 sm:px-4 text-right font-mono font-bold whitespace-nowrap text-xs sm:text-sm">
         <span className={isIncome ? 'text-emerald-600 dark:text-emerald-400' : isDebtRepayment ? 'text-amber-600 dark:text-amber-400' : 'text-stone-900 dark:text-stone-100'}>
-          {isIncome ? '+' : '-'}{formatCurrencyAmount(tx.amount)}
+          {meta.sign}{formatCurrencyAmount(tx.amount)}
         </span>
       </td>
 
