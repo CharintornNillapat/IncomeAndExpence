@@ -52,8 +52,12 @@ From `package.json` (requires `npm install` prior to execution):
 - **Naming**: PascalCase for components (`TransactionForm.tsx`), camelCase for hooks and utilities (`useTheme.ts`, `mathEvaluator.ts`), SCREAMING_SNAKE_CASE for enum/union values (`INCOME`, `EXPENSE`, `BANK_ACCOUNT`).
 - **Imports**: Relative paths only — there is no `@/*` alias. Explicit `.tsx` extensions are supported and used in imports.
 - **Styling**: Tailwind CSS v4 utility classes. Warm neutral aesthetic based on `stone-*` palette. Dark mode uses `.dark` class, `data-theme="dark"`, and `colorScheme`.
+- **Form styles**: Labels, text/number/select inputs, error banners, and primary/secondary buttons come from `src/utils/formStyles.ts` (`LABEL_CLASS`/`LABEL_TEXT_CLASS`, `inputClass(tone)`, `selectClass(tone)`, `OPTION_CLASS`, `ERROR_BANNER_CLASS`, `PRIMARY_BUTTON_CLASS`/`PRIMARY_BUTTON_COMPACT_CLASS`, `SECONDARY_BUTTON_CLASS`) instead of a re-typed Tailwind string — but only where a field's styling actually matches one of those shapes. A field with a genuinely different padding scale, font size, or color stays inline (e.g. `WalletPopupModal`'s compact inline editors, `TransactionsView`'s `min-h-[44px]` touch-target filter bar, `AuthModal`/`TransactionForm`'s larger `text-sm` inputs) — forcing it through the shared class would be a visual regression, not a cleanup. See `docs/audit/refactor-log.md` Phase 17 for the audited exceptions.
+- **Lookup maps**: Build an id→entity `Map` with `buildLookupMap(items)` from `src/utils/mapUtils.ts` rather than writing `new Map(items.map(x => [x.id, x]))` inline. This covers only the id→full-item shape — a map keyed by something other than `id`, or valued by a single field instead of the whole item (e.g. id→name in `csvExchange.ts`, `useTransactions.ts`), is a different shape and stays as its own inline `new Map(...)`.
+- **Modals**: Use the shared `src/components/Modal.tsx` primitive (`isOpen`/`onClose`, `title`/`subtitle` or a `header` override slot, optional `footer`) for any dialog or mobile bottom sheet — never hand-roll a backdrop + panel + `AnimatePresence` combination. It owns the overlay fade, spring panel animation, mobile bottom-sheet layout, Escape-to-close, and `role="dialog"`/`aria-modal`/`aria-labelledby`.
 - **Data Integrity**: Soft deletion (`isDeleted: true`) on records to protect ledger and history integrity.
 - **Unused symbols**: `tsconfig.json` sets `noUnusedLocals` and `noUnusedParameters`, so `npm run lint` fails on dead imports and locals. Prefix a deliberately unused parameter with `_` (see `_event` in `FinanceContext.tsx`).
+- **Re-renders**: Never wrap a component in `React.memo` while it still subscribes to `useFinanceState()`/`useFinanceActions()` (or any other context) directly — a context value change re-renders every subscriber regardless of `React.memo`'s props comparison, so the memo would look like a fix while doing nothing. Cut the subscription first (read the data in a parent and pass it down as props, or extract a self-subscribing child), then memo the now-props-only component.
 
 ## Currency: THB only
 The app is single-currency (Thai Baht) and must stay that way unless the ledger gains real conversion.
@@ -69,14 +73,17 @@ Transaction dates, diary dates, and "today"/"yesterday" labels are **local** cal
 - **Never use `new Date().toISOString().slice(0, 10)`** for a date field. `toISOString()` formats in UTC, so at UTC+7 every moment between 00:00 and 06:59 local resolves to the *previous* day — filing transactions and diary entries under the wrong date.
 - `daysAgoIsoDate` uses `setDate` rather than millisecond subtraction so it steps exactly one calendar day across DST boundaries.
 - Full ISO timestamps (`new Date().toISOString()`) remain correct for `createdAt` / `updatedAt`, which are instants, not calendar days.
+- **Compare calendar days as ISO strings, never as parsed `Date` objects.** Two `YYYY-MM-DD` strings of the same format compare correctly with plain `<`/`>`/`===`. Constructing a `Date` from one (`new Date('2026-09-19')`) parses it as UTC midnight, which sits 7 hours behind local time at UTC+7 — comparing that against `new Date()` (a local instant) silently shifts the cutoff. This bit both a `DashboardView` week/month filter (wrong side of the cutoff once local time passed 07:00) and a `WalletsView` "Created" label (UTC-sliced instead of local-formatted); both are fixed, but the failure mode recurs anywhere a bare date string meets a `Date` instance.
 
 ## State: context + domain hooks
-- Canonical state lives in `src/context/FinanceContext.tsx`. Optimistic updates with rollback snapshots on network failure.
-- **Views should consume the domain hooks in `src/hooks/` rather than `useFinance()` directly** where one fits:
+- Canonical state lives in `src/context/FinanceContext.tsx`, split into two contexts: `FinanceStateContext` (volatile — wallets, transactions, debts, categories, diary entries, sessions, and the 6 volatile mutators like `addTransaction`) and `FinanceActionsContext` (stable — everything else, dep arrays of `[]`/`[isAuthenticated]`/`[currentUser.id]` only). Consume them via `useFinanceState()` and `useFinanceActions()`. Optimistic updates with rollback snapshots on network failure.
+- **There is no combined `useFinance()` shim** — it existed only during the state-context split and was deleted once every consumer migrated to `useFinanceState()`/`useFinanceActions()`. Do not reintroduce one; a merged `{ ...state, ...actions }` object hands every consumer a fresh identity on every render, which is the exact churn the split removes.
+- **No component above view level subscribes to finance state.** `App.tsx`'s `MainApp` and the shell it renders (`Navbar`, the swipe wrapper, `MobileBottomNav`, `AuthModal`) call neither `useFinanceState()` nor `useFinanceActions()`. A piece that needs finance data (e.g. the quick-add modal) subscribes to it itself, so a financial write re-renders only the piece that actually needs the new data — never the whole app shell.
+- **Views should consume the domain hooks in `src/hooks/` rather than `useFinanceState()`/`useFinanceActions()` directly** where one fits:
   - `useTransactions(options)` — filtering (wallet, category, type, date range, search across description / amount / rawInput / category name / wallet name), aggregate metrics, and the transaction write actions.
   - `useWallets()` — `wallets` (active only), `allWallets` (includes soft-deleted, for resolving historic names), `totalNetWorth`, `walletsByType`.
   - `useDebts()` — active/settled splits and `metrics` (totals, `progressPercent`, counts).
-- `useFinance()` is still correct for state no hook covers (categories, diary entries, sessions).
+- `useFinanceState()`/`useFinanceActions()` are still correct for state no hook covers (categories, diary entries, sessions).
 - Do not add another state library (Redux, Zustand).
 
 ## Validation & the MutationResult pattern
@@ -106,8 +113,8 @@ Without it, `FinanceContext` falls back to the legacy non-atomic path (three sep
 
 ## Testing
 - **Framework**: Playwright with Chromium, Firefox, and WebKit projects.
-- **Suite size**: 13 tests across 5 spec files, run on all three browsers = **39 test runs**. All must pass.
-- **Location**: `tests/*.spec.ts` (`transaction`, `wallets`, `diary`, `theme`, `wallet-forms`), with shared helpers in `tests/helpers.ts`.
+- **Suite size**: 29 tests across 12 spec files, run on all three browsers = **87 test runs**. All must pass.
+- **Location**: `tests/*.spec.ts` (`transaction`, `wallets`, `diary`, `theme`, `wallet-forms`, `debts`, `soft-delete`, `keywords`, `csv`, `auth`, `date-boundary`, `storage-persistence`), with shared helpers in `tests/helpers.ts`.
 - **Use the helpers**: `gotoTab(page, tabId)` waits for the tab to become active *and* for the `React.lazy` view chunk to resolve (`#view-loading-fallback` detaching). `addQuickTransaction(page, description)` seeds a transaction — a fresh context has wallets and debts but **no transactions**, so any assertion about filtering is vacuous without it.
 - **No fixed waits**: never use `page.waitForTimeout()` for debounces or async writes; assert on the resulting UI state so Playwright retries. Never guard a step with `if (await locator.isVisible())` — it does not retry and silently skips the assertion.
 - **Timeouts**: `playwright.config.ts` sets generous expect/action timeouts for Firefox, which is slowest to paint a lazy view chunk under the Vite dev server. These bound failures only and do not slow passing runs. `colorScheme` is pinned to `light` so the `system` theme resolves deterministically.

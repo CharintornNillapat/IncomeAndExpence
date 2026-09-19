@@ -275,13 +275,36 @@ CI=true npx playwright test      # 87/87 passed (4.4m), 1 worker, 0 retries
 - **`SecurityView`'s disabled email input and its `p-2.5`-sized success/error banners left untouched** - the disabled input is deliberately muted (`text-stone-500`, `cursor-not-allowed`, `font-mono`) rather than styled like a live field, and its banners use a smaller `p-2.5` with different text-color shades than `ERROR_BANNER_CLASS`'s `p-3`.
 - **T25 (unify the 4 transaction-row renderers) remains deferred**, untouched by this pass.
 
+## Phase 18 — promote verified constraints into CLAUDE.md (approved to execute)
+
+| # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
+|---|---|---|---|---|---|---|---|---|---|---|
+| T30 | Promote constraints into `CLAUDE.md` | `CLAUDE.md`, `constraints-to-promote.md` | Med | Low | 2h | done | T24 (done) | (pending) | tsc clean; `CI=true npx playwright test` 87/87, 0 retries; build succeeds in 5.29s | 7 rules promoted into `CLAUDE.md` (form styles, lookup maps, modals, context-subscription split, re-render rule, ISO-date comparison, test-suite size); `Testing` section corrected from a stale 13 tests / 5 files / 39 runs to the current 29 tests / 12 files / 87 runs |
+
+**Notes on execution:**
+- **Only 7 of the table's rows were promoted, matching this task's explicit list** — T24 (form styles), T26 (lookup maps), T22 (Modal primitive), T1 + T14 together (the `useFinanceState()`/`useFinanceActions()` split, no monolithic subscriber above view, `useFinance()` deleted), T2 (never `React.memo` a context subscriber without cutting the subscription), and T21 (ISO-string date comparison). T18, T19, T28, and T12's rows were **not** touched — T28's rule was already reflected in `CLAUDE.md`'s pre-existing Imports bullet (`there is no @/* alias`) from before this audit trail started, and T18/T19/T12 were not named in this task's instructions, so they stay in the Deferred table below rather than being promoted on inference.
+- **Each promoted rule was re-verified against the current code, not taken on the ledger's word**, per the promotion rule's own "nothing moves into CLAUDE.md until the code already complies": grepped `src/` for `useFinance\(\)` (zero matches - the shim is gone), grepped `App.tsx` for `useFinanceState`/`useFinanceActions` (zero matches - no shell-level subscription), grepped for `role="dialog"` (only `Modal.tsx` - no surviving hand-rolled modal), checked `tsconfig.json` for a `paths` entry (none), and counted `test(` declarations across `tests/*.spec.ts` (29, times 3 browsers = 87, matching the suite's actual run count) before writing the Testing section update.
+- **T24's and T26's rules were promoted with a qualifier, not verbatim from the original constraints-to-promote.md text.** The original phrasing ("never re-type Tailwind class strings...", "never write `new Map(x.map(...))`...") is a blanket ban that the actual shipped code does not satisfy and was never intended to - both T24 (Phase 17) and T26 (Phase 16)'s own refactor-log entries documented deliberate, correct exceptions (styles/maps with a genuinely different shape). Promoting the blanket version would have been "a rule the code does not satisfy," which `constraints-to-promote.md`'s own header calls worse than no rule. `CLAUDE.md`'s new bullets state the rule and name the exception category in the same breath.
+- **`constraints-to-promote.md`'s 7 promoted rows got `Holds in code?` flipped to `Yes` and their `Promoted (sha)` column filled with this phase's commit**, in the same follow-up "docs: record" commit this repo's every prior phase uses to fill in a just-created commit's own hash.
+
+**Verification**
+
+```
+npm run lint                     # tsc --noEmit: clean, 0 errors
+npm run build                    # built in 5.29s
+CI=true npx playwright test      # 87/87 passed (5.2m), 1 worker, 0 retries
+```
+
+**Deliberately not done**
+
+- **T25, T18, T19, T12, T28 rows left as-is in `constraints-to-promote.md`** (T28 excepted, already reflected pre-audit) — none were part of this task's explicit promotion list, and T25/T18 are themselves still `todo` in the task ledger, so their constraints don't yet hold in code.
+
 ## Deferred — documented, awaiting separate approval
 
 | # | Task | Files | Impact | Risk | Effort | Status | Blocked by |
 |---|---|---|---|---|---|---|---|
 | T25 | Unify the 4 transaction-row renderers | see audit-report §E | Med | High | 8h | todo | consider dropping — see plan traps §19 |
 | T18 | `Promise.all` the bulk-import wallet updates | `FinanceContext.tsx:1305-1312` | Low-Med | Med | 1h | todo | T12 CSV spec |
-| T30 | Promote constraints into `CLAUDE.md` | `CLAUDE.md`, `constraints-to-promote.md` | Med | Low | 2h | todo | drains after each task above ships |
 
 ## Not a task — explicitly out of scope this pass
 

@@ -4,6 +4,44 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
+## Phase 18 — promote verified constraints into CLAUDE.md: T30 (2026-09-19, commit `(pending)`)
+
+**Changed**
+
+- `CLAUDE.md` — Coding Conventions gained three new bullets: **Form styles** (`src/utils/formStyles.ts`, with the "only where it actually matches that shape" qualifier), **Lookup maps** (`buildLookupMap` from `src/utils/mapUtils.ts`, with the id→item-only qualifier), and **Modals** (the shared `src/components/Modal.tsx` primitive, never a hand-rolled backdrop). A fourth new bullet, **Re-renders**, states the `React.memo`-on-a-context-subscriber trap directly.
+- `CLAUDE.md`'s **Dates** section gained a bullet stating the ISO-string-comparison rule explicitly (previously the section only documented the date-construction helpers, not the comparison hazard T21 fixed).
+- `CLAUDE.md`'s **State: context + domain hooks** section rewritten: describes the `FinanceStateContext`/`FinanceActionsContext` split and `useFinanceState()`/`useFinanceActions()` (the old text still referenced a single `useFinance()`, which was deleted in Phase 9/T14 and no longer exists in the codebase), states plainly that no component above view level subscribes to finance state (T1), and warns against reintroducing a merged `useFinance()` shim.
+- `CLAUDE.md`'s **Testing** section corrected: suite size `13 tests / 5 spec files / 39 runs` -> `29 tests / 12 spec files / 87 runs`; the spec-file list extended from 5 named files to all 12 that exist today.
+- `docs/audit/constraints-to-promote.md` — the 7 rows corresponding to T24, T26, T1, T14, T2, T22, and T21 got `Holds in code?` flipped to `Yes` and `Promoted (sha)` filled with this phase's commit.
+
+**Why**
+
+`constraints-to-promote.md`'s own header: "nothing moves into `CLAUDE.md` until the code already complies." T1, T2, T14, T21, T22, T24, and T26 all shipped and passed their gates in earlier phases, so their rules had been sitting in the staging table, true in the codebase but not yet documented where a future session would actually read them. `CLAUDE.md`'s own **Dates** and **State** sections had also drifted out of sync with the shipped code (still describing a `useFinance()` hook that no longer exists), which this pass corrects at the same time as promoting the new rules.
+
+**Verification**
+
+```
+npm run lint                     # tsc --noEmit: clean, 0 errors
+npm run build                    # built in 5.29s
+CI=true npx playwright test      # 87/87 passed (5.2m), 1 worker, 0 retries
+```
+
+All three gates are docs-only sanity checks here - no `src/` file changed in this phase - but were run in full per this task's explicit instruction, and because `CLAUDE.md`'s own corrected Testing section is a claim about the suite that's worth re-verifying at the moment it's written, not just trusted from memory.
+
+**Correctness notes**
+
+- **Every promoted claim was re-verified against the current code before being written down, not copied from the ledger.** `grep -r "useFinance\(\)" src/` returned zero matches (the shim is gone); `grep "useFinanceState\|useFinanceActions" App.tsx` returned zero matches (no shell-level subscription survives); `grep -r 'role="dialog"' src/` matched only `Modal.tsx` (no hand-rolled modal survives); `tsconfig.json` has no `paths` entry; and `test(` declarations were counted across all 12 `tests/*.spec.ts` files (29, times 3 browsers = 87) rather than trusting the "87/87" figure from the task's own framing.
+- **T24 and T26's promoted rules carry a qualifier the original `constraints-to-promote.md` phrasing lacked.** Both tasks' own refactor-log entries (Phase 16, Phase 17) documented deliberate exceptions - a map keyed by something other than `id`, or valued by a single field instead of the whole item; a field styling that genuinely differs in padding/font/color. A blanket "never re-type" or "never write `new Map(...)`" promoted verbatim would itself have been a rule the code doesn't satisfy - `constraints-to-promote.md`'s own header calls that worse than no rule at all. The promoted `CLAUDE.md` bullets state the rule and its exception category together.
+- **T1 and T14 were promoted as one combined rewrite of the State section**, not two separate bullets, since they describe the same underlying architecture (the context split from T13/T14 is what makes "no component above view subscribes" from T1 sustainable - the two facts don't stand independently).
+
+**Deliberately not done**
+
+- **T18, T19, T25 remain deferred** - not part of this task's explicit promotion list, and T18/T25 are themselves still unshipped (`todo` in the task ledger), so promoting their constraints would violate the "code must already comply" rule regardless.
+- **T12's "every interactive element carries an `id`" row left unpromoted.** Its evidence (`AuthModal.tsx` had 0 `id=` attributes) was fixed for that one file, but the rule as written is a repo-wide claim this pass did not re-verify against every view - promoting it without that verification would risk exactly the "rule the code doesn't satisfy" failure mode the promotion process exists to prevent.
+- **T28's `@/*` alias row left unmarked** (not flipped to `Yes`/stamped with a sha here) even though `CLAUDE.md`'s existing Imports bullet already states it correctly - that bullet predates this audit trail's tracking, so there's no commit in this trail's history to attribute the promotion to, and this task's instructions didn't ask for it.
+
+---
+
 ## Phase 17 — shared form styles: T24 (2026-09-19, commit `7f9ef66`)
 
 **Changed**
