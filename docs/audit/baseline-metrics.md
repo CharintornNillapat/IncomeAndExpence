@@ -84,6 +84,37 @@ The 7 icon micro-chunks that existed pre-T7 (`plus`, `arrow-up-right`, `arrow-do
 | **Phase 0 baseline** | 1,116.67 kB / 326.33 kB | Yes (no manualChunks) |
 | **Phase 2** (T1/T3, unrelated to bundling) | 1,116.36 kB / 326.11 kB | Yes (no manualChunks) |
 | **Phase 3 (T7)** | 165.39 kB / 45.72 kB | No — 5 vendor chunks + all view chunks now under 500 kB |
+| **Post-T24/T26/T27 (final audit, 2026-09-19, commit `8168d10`)** | 169.08 kB / 47.39 kB | No — 5 vendor chunks + all view chunks still under 500 kB |
+
+### Post-T24/T26/T27 full chunk breakdown
+
+Captured via `npm run clean && npm run build`, same commands as every prior column, at commit `8168d10` (the tip of the T24/T26/T27/T30 documentation-consolidation work). The entry chunk grew **165.39 kB → 169.08 kB (+3.69 kB, +2.2%)** from the Phase 3 (T7) figure — expected, not a regression to chase: `useSubmitHandler.ts`, `useIdempotencyKey.ts`, `useTransientFlash.ts`, `mapUtils.ts`, and `formStyles.ts` are new app-code modules imported by components that live in the entry chunk (`TransactionForm`, `AuthModal`, `InlineMathInput`, and the modal/hook plumbing in `App.tsx`'s eagerly-loaded tree), so their new logic necessarily lands there rather than in a vendor chunk. No chunk crosses Vite's 500 kB warning threshold; the build emits 0 chunk-size warnings, same as Phase 3.
+
+| Chunk | Raw | Gzip |
+|---|---|---|
+| `index-*.js` (entry) | 169.08 kB | 47.39 kB |
+| `vendor-math-*.js` (`mathjs/number`) | 375.73 kB | 110.72 kB |
+| `vendor-supabase-*.js` (`@supabase/supabase-js` + sub-packages) | 226.44 kB | 58.66 kB |
+| `vendor-react-*.js` (`react` + `react-dom` + `scheduler`) | 194.33 kB | 60.68 kB |
+| `vendor-motion-*.js` (`framer-motion` + `motion-dom`/`motion-utils`/`tslib`) | 136.71 kB | 45.33 kB |
+| `vendor-icons-*.js` (`lucide-react`) | 25.98 kB | 5.63 kB |
+| `DashboardView-*.js` | 43.67 kB | 8.84 kB |
+| `TransactionsView-*.js` | 23.48 kB | 6.03 kB |
+| `csvExchange-*.js` | 22.02 kB | 8.31 kB |
+| `DiaryView-*.js` | 16.39 kB | 4.45 kB |
+| `SecurityView-*.js` | 15.56 kB | 3.52 kB |
+| `DebtsView-*.js` | 10.67 kB | 3.07 kB |
+| `KeywordRulesView-*.js` | 7.28 kB | 2.03 kB |
+| `workbox-window.prod.es5-*.js` | 5.75 kB | 2.36 kB |
+| `walletIcons-*.js` | 6.01 kB | 2.34 kB |
+| `WalletsView-*.js` | 4.94 kB | 1.63 kB |
+| `useDebts-*.js` | 0.90 kB | 0.48 kB |
+| CSS (`index-*.css`) | 75.34 kB | 11.54 kB |
+| PWA precache | 26 entries | 1,484.29 KiB |
+
+**Per-view deltas versus the Phase 3 (T7) column, all decreases** — the T24 (shared `formStyles.ts`) and T26 (`buildLookupMap`) consolidations removed more inline duplication from these files than the new shared-module imports added back: `DebtsView` 17.09 → 10.67 kB (−37.6%), `SecurityView` 17.11 → 15.56 kB (−9.1%), `KeywordRulesView` 8.02 → 7.28 kB (−9.2%), `DiaryView` 16.46 → 16.39 kB (−0.4%), `TransactionsView` 25.73 → 23.48 kB (−8.7%), `DashboardView` 44.59 → 43.67 kB (−2.1%), `walletIcons` 7.03 → 6.01 kB (−14.5%), `WalletsView` 7.60 → 4.94 kB (−35.0%). The 5 vendor chunks and `vendor-icons`/`vendor-math`/`vendor-react`/`vendor-motion`/`vendor-supabase` are byte-identical to Phase 3 (third-party code, untouched by T24/T26/T27's app-code-only changes).
+
+Verified via the standard audit sequence (`npm run lint` clean; `CI=true npx playwright test` 87/87, 0 retries; `npm run preview` served `index.html` at HTTP 200 with every asset reference in the page resolving to a live 200).
 
 ## Type-check time
 
