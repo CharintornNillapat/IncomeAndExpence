@@ -422,6 +422,26 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
   // Client-side Idempotency Guard (P0-5)
   const inFlightIdempotencyKeys = useRef<Set<string>>(new Set());
 
+  // T17 (ADR 0003): ids of rows this client just wrote to Supabase. The
+  // realtime subscription below checks incoming `postgres_changes` events
+  // against this set and drops any event whose row id is present - that event
+  // is this client's own write echoing back over the wire, not new
+  // information from another device. Every mutator that writes to one of the
+  // 5 `SYNCED_TABLES` and learns the affected row's id calls `markLocalWrite`
+  // with it. Each id expires on its own timer (`LOCAL_ECHO_SUPPRESS_MS`)
+  // rather than only being removed when consumed, so an id that never
+  // produces an echo (e.g. the realtime channel was disconnected, or RLS
+  // suppressed the broadcast) cannot linger for the rest of the session.
+  const recentLocalWriteIds = useRef<Set<string>>(new Set());
+  const LOCAL_ECHO_SUPPRESS_MS = 5000;
+  const markLocalWrite = useCallback((id?: string | null) => {
+    if (!id) return;
+    recentLocalWriteIds.current.add(id);
+    setTimeout(() => {
+      recentLocalWriteIds.current.delete(id);
+    }, LOCAL_ECHO_SUPPRESS_MS);
+  }, []);
+
   // T15: latest-value mirrors of the hot state the volatile mutators read by
   // closure. Each ref is updated in its own `useEffect` (never inside a `setState`
   // updater - StrictMode double-invokes those, which would desync the mirror from
@@ -785,25 +805,66 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
   }, [loadSupabaseData]);
 
   // Real-time Subscriptions across all tables for Cross-Device Sync (PC <-> Phone)
+  //
+  // T17 (ADR 0003) hardening of what was previously an unfiltered,
+  // undebounced, unsuppressed subscription:
+  //   - `filter: user_id=eq.<id>` on every table, so this client's socket only
+  //     ever receives change events for rows it owns. All 5 `SYNCED_TABLES`
+  //     carry a `user_id` column - confirmed via `mapWalletRow`/
+  //     `mapTransactionRow`/`mapDebtRow` above and the inline categories/
+  //     diary_entries mappings in `loadSupabaseData` below, every one of which
+  //     already reads `row.user_id` - and via `20260909_transfer_funds.sql`'s
+  //     own schema comment for `wallets`/`transactions`. This repo has no
+  //     tracked schema migration to check directly (see that file's header),
+  //     so the client's own read/write columns are the available evidence.
+  //   - Self-echo suppression: a change whose row id is in
+  //     `recentLocalWriteIds` is this client's own write echoing back, not
+  //     new information, so it is consumed (removed from the set) and dropped
+  //     instead of triggering a reload.
+  //   - One debounced reload shared across every event on the channel, so a
+  //     burst (a multi-row CSV import, a transfer's two wallet updates plus
+  //     its transaction insert) collapses into a single `loadSupabaseData`
+  //     call `REALTIME_RELOAD_DEBOUNCE_MS` after the last event, instead of
+  //     one call per row change.
+  //   - `loadSupabaseData` is read through `loadSupabaseDataRef` instead of
+  //     being closed over directly, dropping it from this effect's deps -
+  //     the channel no longer tears down and resubscribes every time that
+  //     callback's identity changes.
   useEffect(() => {
     if (!isAuthenticated || !currentUser.id) return;
+
+    const REALTIME_RELOAD_DEBOUNCE_MS = 400;
+    let reloadTimer: ReturnType<typeof setTimeout> | null = null;
+    const scheduleReload = () => {
+      if (reloadTimer) clearTimeout(reloadTimer);
+      reloadTimer = setTimeout(() => {
+        reloadTimer = null;
+        loadSupabaseDataRef.current?.(currentUser.id);
+      }, REALTIME_RELOAD_DEBOUNCE_MS);
+    };
 
     const channel = SYNCED_TABLES.reduce(
       (ch, table) =>
         ch.on(
           'postgres_changes',
-          { event: '*', schema: 'public', table },
-          () => {
-            loadSupabaseData(currentUser.id);
+          { event: '*', schema: 'public', table, filter: `user_id=eq.${currentUser.id}` },
+          (payload: { new?: { id?: string } | null; old?: { id?: string } | null }) => {
+            const rowId = payload.new?.id ?? payload.old?.id;
+            if (rowId && recentLocalWriteIds.current.has(rowId)) {
+              recentLocalWriteIds.current.delete(rowId);
+              return;
+            }
+            scheduleReload();
           }
         ),
       supabase.channel('schema-db-changes')
     ).subscribe();
 
     return () => {
+      if (reloadTimer) clearTimeout(reloadTimer);
       supabase.removeChannel(channel);
     };
-  }, [isAuthenticated, currentUser.id, loadSupabaseData]);
+  }, [isAuthenticated, currentUser.id]);
 
   const refreshFromCloud = useCallback(async () => {
     if (currentUser.id) {
@@ -864,6 +925,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       }
 
       setWallets((prev) => [...prev, mapWalletRow(inserted)]);
+      markLocalWrite(inserted.id);
 
       if (initialBalance > 0) {
         await supabase.from('transactions').insert({
@@ -895,7 +957,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     }
 
     return { success: true };
-  }, [isAuthenticated, currentUser.id]);
+  }, [isAuthenticated, currentUser.id, markLocalWrite]);
 
   const updateWallet = useCallback(async (id: string, updates: Partial<Wallet>) => {
     // Optimistic update
@@ -904,6 +966,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     );
 
     if (isAuthenticated) {
+      markLocalWrite(id);
       await supabase
         .from('wallets')
         .update({
@@ -919,7 +982,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
         })
         .eq('id', id);
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, markLocalWrite]);
 
   const deleteWallet = useCallback(async (id: string) => {
     await updateWallet(id, { isDeleted: true });
@@ -1147,6 +1210,9 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
                 return w;
               })
             );
+            markLocalWrite(mapped.id);
+            markLocalWrite(sourceWallet.id);
+            markLocalWrite(destWallet.id);
 
             return { success: true, txId: mapped.id };
           }
@@ -1184,15 +1250,18 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
           insertedTxId = insertedTx.id;
           const mapped = mapTransactionRow(insertedTx);
           setTransactions((prev) => [mapped, ...prev]);
+          markLocalWrite(mapped.id);
         }
 
         // Update wallet balances in Supabase and check errors
         if (sourceNewBalance !== null) {
+          markLocalWrite(sourceWallet.id);
           const { error: wErr1 } = await supabase.from('wallets').update({ balance: sourceNewBalance }).eq('id', sourceWallet.id);
           if (wErr1) throw wErr1;
           sourceDebited = true;
         }
         if (destWallet && destNewBalance !== null) {
+          markLocalWrite(destWallet.id);
           const { error: wErr2 } = await supabase.from('wallets').update({ balance: destNewBalance }).eq('id', destWallet.id);
           if (wErr2) throw wErr2;
           destCredited = true;
@@ -1203,6 +1272,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
           const targetDebt = debtsRef.current.find((d) => d.id === data.debtId);
           if (targetDebt) {
             const updatedRem = Math.max(0, roundToCents(targetDebt.remainingAmount - data.amount));
+            markLocalWrite(data.debtId);
             const { error: dErr } = await supabase.from('debts').update({
               remaining_amount: updatedRem,
               is_settled: updatedRem === 0,
@@ -1252,13 +1322,16 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       if (isAuthenticated) {
         try {
           if (destCredited && destWallet) {
+            markLocalWrite(destWallet.id);
             await supabase.from('wallets').update({ balance: destWallet.balance }).eq('id', destWallet.id);
           }
           if (sourceDebited) {
+            markLocalWrite(sourceWallet.id);
             await supabase.from('wallets').update({ balance: sourceWallet.balance }).eq('id', sourceWallet.id);
           }
           if (insertedTxId) {
             // Soft delete only - financial records are never hard deleted.
+            markLocalWrite(insertedTxId);
             await supabase
               .from('transactions')
               .update({ is_deleted: true, updated_at: new Date().toISOString() })
@@ -1279,7 +1352,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     } finally {
       inFlightIdempotencyKeys.current.delete(clientKey);
     }
-  }, [currentUser.id, isAuthenticated]);
+  }, [currentUser.id, isAuthenticated, markLocalWrite]);
 
   // Soft-delete and restore are exact inverses: both flip `isDeleted` and undo or
   // re-apply the transaction's effect on wallet balances. `sign` is +1 when removing
@@ -1321,18 +1394,21 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     );
 
     if (isAuthenticated) {
+      markLocalWrite(id);
       await supabase
         .from('transactions')
         .update({ is_deleted: deleted, updated_at: new Date().toISOString() })
         .eq('id', id);
       if (sourceNewBal !== null) {
+        markLocalWrite(tx.walletId);
         await supabase.from('wallets').update({ balance: sourceNewBal }).eq('id', tx.walletId);
       }
       if (destNewBal !== null && tx.destinationWalletId) {
+        markLocalWrite(tx.destinationWalletId);
         await supabase.from('wallets').update({ balance: destNewBal }).eq('id', tx.destinationWalletId);
       }
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, markLocalWrite]);
 
   const softDeleteTransaction = useCallback(
     (id: string) => setTransactionDeleted(id, true),
@@ -1436,11 +1512,19 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     }
 
     if (isAuthenticated && dbPayloads.length > 0) {
+      // The batch insert has no `.select()`, so the inserted transactions'
+      // server-generated ids are never learned client-side - they cannot be
+      // added to `recentLocalWriteIds` and their own realtime echoes are not
+      // suppressed. The explicit `refreshFromCloud()` below already reloads
+      // this client's state regardless, and the debounced realtime handler
+      // coalesces the resulting burst of per-row events into at most one more
+      // reload rather than one per inserted row.
       await supabase.from('transactions').insert(dbPayloads);
       for (const [wId, delta] of Object.entries(walletDeltas)) {
         const targetW = walletsRef.current.find((w) => w.id === wId);
         if (targetW) {
           const updatedB = roundToCents(targetW.balance + delta);
+          markLocalWrite(wId);
           await supabase.from('wallets').update({ balance: updatedB }).eq('id', wId);
         }
       }
@@ -1460,7 +1544,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       totalAmount: roundToCents(totalAmt),
       skippedCount,
     };
-  }, [isAuthenticated, currentUser.id, refreshFromCloud]);
+  }, [isAuthenticated, currentUser.id, refreshFromCloud, markLocalWrite]);
 
   // Debts CRUD
   const addDebt = useCallback(async (
@@ -1493,6 +1577,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       }
 
       setDebts((prev) => [mapDebtRow(inserted), ...prev]);
+      markLocalWrite(inserted.id);
     } else {
       const newDebt: Debt = {
         ...data,
@@ -1507,7 +1592,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     }
 
     return { success: true };
-  }, [isAuthenticated, currentUser.id]);
+  }, [isAuthenticated, currentUser.id, markLocalWrite]);
 
   const repayDebtAtomic = useCallback(async (debtId: string, walletId: string, amount: number, note?: string) => {
     const debt = debtsRef.current.find((d) => d.id === debtId);
@@ -1537,18 +1622,20 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       prev.map((d) => (d.id === debtId ? { ...d, remainingAmount: 0, isSettled: true, updatedAt: new Date().toISOString() } : d))
     );
     if (isAuthenticated) {
+      markLocalWrite(debtId);
       await supabase.from('debts').update({ remaining_amount: 0, is_settled: true, updated_at: new Date().toISOString() }).eq('id', debtId);
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, markLocalWrite]);
 
   const deleteDebt = useCallback(async (debtId: string) => {
     setDebts((prev) =>
       prev.map((d) => (d.id === debtId ? { ...d, isDeleted: true, updatedAt: new Date().toISOString() } : d))
     );
     if (isAuthenticated) {
+      markLocalWrite(debtId);
       await supabase.from('debts').update({ is_deleted: true, updated_at: new Date().toISOString() }).eq('id', debtId);
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, markLocalWrite]);
 
   // Holistic Diary CRUD
   const upsertDiaryEntry = useCallback(async (
@@ -1561,7 +1648,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
 
     if (isAuthenticated) {
       const existing = diaryEntriesRef.current.find((e) => e.date === entryData.date && !e.isDeleted);
-      const { error } = existing
+      const { data: upserted, error } = existing
         ? await supabase
             .from('diary_entries')
             .update({
@@ -1573,20 +1660,27 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
               updated_at: new Date().toISOString(),
             })
             .eq('id', existing.id)
-        : await supabase.from('diary_entries').insert({
-            user_id: currentUser.id,
-            date: entryData.date,
-            mood: entryData.mood,
-            workout: entryData.workout,
-            workout_note: entryData.workoutNote || null,
-            food_quality: entryData.foodQuality,
-            notes: entryData.notes || null,
-          });
+            .select()
+            .single()
+        : await supabase
+            .from('diary_entries')
+            .insert({
+              user_id: currentUser.id,
+              date: entryData.date,
+              mood: entryData.mood,
+              workout: entryData.workout,
+              workout_note: entryData.workoutNote || null,
+              food_quality: entryData.foodQuality,
+              notes: entryData.notes || null,
+            })
+            .select()
+            .single();
 
       if (error) {
         return { success: false, error: error.message || 'Failed to save diary entry' };
       }
 
+      markLocalWrite(existing?.id ?? upserted?.id);
       await refreshFromCloud();
     } else {
       setDiaryEntries((prev) => {
@@ -1614,16 +1708,17 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     }
 
     return { success: true };
-  }, [isAuthenticated, currentUser.id, refreshFromCloud]);
+  }, [isAuthenticated, currentUser.id, refreshFromCloud, markLocalWrite]);
 
   const deleteDiaryEntry = useCallback(async (id: string) => {
     setDiaryEntries((prev) =>
       prev.map((e) => (e.id === id ? { ...e, isDeleted: true, updatedAt: new Date().toISOString() } : e))
     );
     if (isAuthenticated) {
+      markLocalWrite(id);
       await supabase.from('diary_entries').update({ is_deleted: true, updated_at: new Date().toISOString() }).eq('id', id);
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, markLocalWrite]);
 
   // Memoised so the provider only hands consumers a new object when something they
   // can actually observe has changed. Without this, every render of the provider
