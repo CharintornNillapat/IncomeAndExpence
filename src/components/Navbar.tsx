@@ -6,7 +6,7 @@ import {
   Wallet as WalletIcon,
   TrendingDown,
   BookHeart,
-  Sparkles,
+  Tags,
   ShieldCheck,
   PlusCircle,
   Sun,
@@ -16,7 +16,7 @@ import {
 import { NavbarSyncBadge, NavbarBalanceAndAuth } from './navbar/NavbarLedgerStatus';
 import { useTheme } from '../hooks/useTheme';
 
-export type ActiveTab = 'dashboard' | 'transactions' | 'wallets' | 'debts' | 'diary' | 'keywords' | 'security';
+export type ActiveTab = 'dashboard' | 'transactions' | 'wallets' | 'debts' | 'diary' | 'categories' | 'security';
 
 interface NavbarProps {
   activeTab: ActiveTab;
@@ -37,7 +37,7 @@ const NAV_ITEMS: NavItemConfig[] = [
   { id: 'wallets', label: 'Wallets', icon: WalletIcon },
   { id: 'debts', label: 'Debt Payoff', icon: TrendingDown },
   { id: 'diary', label: 'Holistic Diary', icon: BookHeart },
-  { id: 'keywords', label: 'Smart Rules', icon: Sparkles },
+  { id: 'categories', label: 'Categories', icon: Tags },
   { id: 'security', label: 'Security & Sessions', icon: ShieldCheck },
 ];
 

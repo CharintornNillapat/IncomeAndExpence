@@ -1,13 +1,13 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { 
-  LayoutDashboard, 
-  ArrowLeftRight, 
-  Wallet as WalletIcon, 
-  TrendingDown, 
-  BookHeart, 
-  Sparkles, 
-  ShieldCheck 
+import {
+  LayoutDashboard,
+  ArrowLeftRight,
+  Wallet as WalletIcon,
+  TrendingDown,
+  BookHeart,
+  Tags,
+  ShieldCheck
 } from 'lucide-react';
 import { ActiveTab } from './Navbar';
 
@@ -29,7 +29,7 @@ const NAV_ITEMS: NavItemConfig[] = [
   { id: 'wallets', label: 'Wallets', shortLabel: 'Wallets', icon: WalletIcon },
   { id: 'debts', label: 'Debts', shortLabel: 'Debts', icon: TrendingDown },
   { id: 'diary', label: 'Diary', shortLabel: 'Diary', icon: BookHeart },
-  { id: 'keywords', label: 'Smart Rules', shortLabel: 'Rules', icon: Sparkles },
+  { id: 'categories', label: 'Categories', shortLabel: 'Categories', icon: Tags },
   { id: 'security', label: 'Security', shortLabel: 'Security', icon: ShieldCheck },
 ];
 

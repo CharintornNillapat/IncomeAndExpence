@@ -18,7 +18,7 @@ const TABS_ORDER: ActiveTab[] = [
   'wallets',
   'debts',
   'diary',
-  'keywords',
+  'categories',
   'security',
 ];
 
@@ -28,7 +28,7 @@ const TransactionsView = lazy(() => import('./views/TransactionsView').then(m =>
 const WalletsView = lazy(() => import('./views/WalletsView').then(m => ({ default: m.WalletsView })));
 const DebtsView = lazy(() => import('./views/DebtsView').then(m => ({ default: m.DebtsView })));
 const DiaryView = lazy(() => import('./views/DiaryView').then(m => ({ default: m.DiaryView })));
-const KeywordRulesView = lazy(() => import('./views/KeywordRulesView').then(m => ({ default: m.KeywordRulesView })));
+const CategoriesView = lazy(() => import('./views/CategoriesView').then(m => ({ default: m.CategoriesView })));
 const SecurityView = lazy(() => import('./views/SecurityView').then(m => ({ default: m.SecurityView })));
 
 // Page slide animation variants for smooth forward/backward transitions
@@ -176,8 +176,8 @@ const MainApp: React.FC = () => {
         return <DebtsView />;
       case 'diary':
         return <DiaryView />;
-      case 'keywords':
-        return <KeywordRulesView />;
+      case 'categories':
+        return <CategoriesView />;
       case 'security':
         return <SecurityView />;
       default:

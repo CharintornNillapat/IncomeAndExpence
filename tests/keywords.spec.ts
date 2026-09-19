@@ -3,15 +3,22 @@ import { gotoTab } from './helpers';
 
 /**
  * Characterizes the keyword-to-category auto-matcher (`matchSmartDescription`)
- * as exercised through KeywordRulesView's live sandbox, plus the write path
- * that adds a new rule to the configured list. `250 coffee with friends`
- * exercises one of the app's default seeded rules (`coffee` -> Food & Dining)
- * so the sandbox test needs no setup of its own.
+ * as exercised through the Categories view's "Smart Rules" sub-tab, plus the
+ * write path that adds a new rule to the configured list. `250 coffee with
+ * friends` exercises one of the app's default seeded rules (`coffee` ->
+ * Food & Dining) so the sandbox test needs no setup of its own.
+ *
+ * Phase 30: this view (formerly the standalone `KeywordRulesView` under a
+ * "Smart Rules" nav tab) merged into `CategoriesView` under a "Categories"
+ * nav tab, with the sandbox/rules table living behind a `SegmentedControl`
+ * sub-tab. Every element id/`data-testid` this spec targets is unchanged -
+ * only the navigation and the one-time sub-tab click are new.
  */
 test.describe('Keyword auto-categorization rules', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
-    await gotoTab(page, 'keywords');
+    await gotoTab(page, 'categories');
+    await page.locator('#category-subtab-rules').click();
   });
 
   test('sandbox evaluates amount, category, type, and cleaned description from a default rule', async ({ page }) => {

@@ -72,6 +72,13 @@ export const DiarySchema = z.object({
   notes: z.string().max(1000).optional(),
 });
 
+export const CategorySchema = z.object({
+  name: z.string().trim().min(1, 'Category name is required').max(60, 'Category name is too long'),
+  type: z.enum(['INCOME', 'EXPENSE', 'TRANSFER', 'ADJUSTMENT', 'DEBT_REPAYMENT']),
+  color: z.string().min(1, 'A color is required'),
+  icon: z.string().optional(),
+});
+
 export const KeywordMappingSchema = z.object({
   // trim() runs before min(1) so a whitespace-only keyword is rejected rather
   // than normalizing to an empty string.

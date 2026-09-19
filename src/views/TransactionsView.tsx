@@ -417,7 +417,7 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
           setImportPreview(null);
         }}
         title="Two-Step CSV Transaction Import"
-        subtitle={'Step 1: Dry-run parse & validate rows $\\rightarrow$ Step 2: Atomic commit into MySQL'}
+        subtitle="Step 1: Dry-run parse & validate rows → Step 2: Atomic commit into your ledger"
         maxWidthClassName="max-w-3xl"
         bodyClassName="space-y-6"
       >

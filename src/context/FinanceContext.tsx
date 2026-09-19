@@ -18,10 +18,12 @@ import {
   DebtSchema,
   DiarySchema,
   KeywordMappingSchema,
+  CategorySchema,
   formatZodIssues,
 } from '../utils/zodSchemas';
 import { APP_CURRENCY } from '../utils/currency';
 import { todayIsoDate } from '../utils/date';
+import { dedupeCategoriesByName } from '../utils/categoryUtils';
 
 /**
  * Outcome of a validated write. Every mutating call reports failure this way
@@ -99,6 +101,9 @@ export interface FinanceActionsContextType {
   deleteWallet: (id: string) => Promise<void>;
 
   // Categories & Configurable Keyword Rules
+  addCategory: (data: { name: string; type: TransactionType; color: string; icon?: string }) => Promise<MutationResult>;
+  updateCategory: (id: string, updates: { name?: string; color?: string }) => Promise<MutationResult>;
+  deleteCategory: (id: string) => Promise<MutationResult>;
   addKeywordRule: (keyword: string, categoryId: string) => Promise<MutationResult>;
   deleteKeywordRule: (id: string) => Promise<void>;
 
@@ -410,7 +415,9 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
 
   const [wallets, setWallets] = useState<Wallet[]>(() => safeGetLocalStorage('pf_wallets', DEFAULT_STARTER_WALLETS));
-  const [categories, setCategories] = useState<Category[]>(() => safeGetLocalStorage('pf_categories', DEFAULT_SYSTEM_CATEGORIES));
+  const [categories, setCategories] = useState<Category[]>(() =>
+    dedupeCategoriesByName(safeGetLocalStorage('pf_categories', DEFAULT_SYSTEM_CATEGORIES))
+  );
   const [keywordRules, setKeywordRules] = useState<KeywordRule[]>(() => safeGetLocalStorage('pf_keywords', DEFAULT_KEYWORD_RULES));
   const [transactions, setTransactions] = useState<Transaction[]>(() => safeGetLocalStorage('pf_transactions', []));
   const [debts, setDebts] = useState<Debt[]>(() => safeGetLocalStorage('pf_debts', DEFAULT_STARTER_DEBTS));
@@ -456,6 +463,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
   const debtsRef = useRef<Debt[]>(debts);
   const categoriesRef = useRef<Category[]>(categories);
   const diaryEntriesRef = useRef<DiaryEntry[]>(diaryEntries);
+  const keywordRulesRef = useRef<KeywordRule[]>(keywordRules);
 
   useEffect(() => {
     walletsRef.current = wallets;
@@ -472,6 +480,9 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
   useEffect(() => {
     diaryEntriesRef.current = diaryEntries;
   }, [diaryEntries]);
+  useEffect(() => {
+    keywordRulesRef.current = keywordRules;
+  }, [keywordRules]);
 
   // T16 (ADR 0003): batched localStorage writer. Each state-slice effect below
   // marks its key dirty in `pendingWritesRef` instead of writing immediately;
@@ -577,8 +588,23 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
   // with empty/stable deps instead of being rebuilt on every render.
   const loadSupabaseDataRef = useRef<((userId: string) => Promise<void>) | null>(null);
 
+  // Phase 30: guards against concurrent seed attempts. The auth-state effect
+  // below both awaits `getSession()` directly and subscribes to
+  // `onAuthStateChange`, which fires its own initial event for the same
+  // session - and in dev, StrictMode double-invokes the whole effect on
+  // mount. Any combination of those can call `loadSupabaseData` more than
+  // once for the same brand-new (wallets-empty) account before the first
+  // seed's insert lands, and each concurrent call would independently see
+  // "empty" and insert its own full set of starter wallets/categories - the
+  // root cause of "each default category appearing 2-3 times" in every
+  // category picker. This ref makes the insert step itself race-proof
+  // regardless of how many times it's triggered.
+  const isSeedingRef = useRef(false);
+
   // Seed initial starter account on Supabase if new user
   const seedInitialUserAccount = useCallback(async (userId: string) => {
+    if (isSeedingRef.current) return;
+    isSeedingRef.current = true;
     try {
       // 1. Create starter wallets
       await supabase
@@ -633,6 +659,8 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       await loadSupabaseDataRef.current?.(userId);
     } catch (err) {
       console.error('[Seed Error]', err);
+    } finally {
+      isSeedingRef.current = false;
     }
   }, []);
 
@@ -674,7 +702,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
           isSystem: row.is_system || false,
           isDeleted: row.is_deleted || false,
         }));
-        setCategories(mappedCategories);
+        setCategories(dedupeCategoriesByName(mappedCategories));
       }
 
       // 3. Keyword Rules
@@ -987,6 +1015,142 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
   const deleteWallet = useCallback(async (id: string) => {
     await updateWallet(id, { isDeleted: true });
   }, [updateWallet]);
+
+  // Categories CRUD (Phase 30)
+  const addCategory = useCallback(async (
+    data: { name: string; type: TransactionType; color: string; icon?: string }
+  ): Promise<MutationResult> => {
+    const validation = CategorySchema.safeParse(data);
+    if (!validation.success) {
+      return { success: false, error: formatZodIssues(validation.error) };
+    }
+    const cleanedName = validation.data.name;
+    // Guards the taxonomy the way `seedInitialUserAccount`'s new re-entrancy
+    // guard prevents duplicates at seed time - this closes the other half of
+    // the same bug class, a user (or a retried form submit) creating a
+    // second "Groceries".
+    const isDuplicate = categoriesRef.current.some(
+      (c) => !c.isDeleted && c.name.trim().toLowerCase() === cleanedName.toLowerCase()
+    );
+    if (isDuplicate) {
+      return { success: false, error: `A category named "${cleanedName}" already exists` };
+    }
+
+    if (isAuthenticated) {
+      const { data: inserted, error } = await supabase
+        .from('categories')
+        .insert({
+          user_id: currentUser.id,
+          name: cleanedName,
+          type: validation.data.type,
+          icon: validation.data.icon || 'tag',
+          color: validation.data.color,
+          is_system: false,
+        })
+        .select()
+        .single();
+
+      if (error || !inserted) {
+        return { success: false, error: error?.message || 'Failed to create category' };
+      }
+
+      setCategories((prev) => [
+        ...prev,
+        {
+          id: inserted.id,
+          userId: inserted.user_id,
+          name: inserted.name,
+          type: inserted.type,
+          icon: inserted.icon || 'tag',
+          color: inserted.color || 'stone',
+          isSystem: inserted.is_system || false,
+          isDeleted: inserted.is_deleted || false,
+        },
+      ]);
+      markLocalWrite(inserted.id);
+    } else {
+      const newCategory: Category = {
+        id: `cat-${Date.now()}`,
+        userId: currentUser.id,
+        name: cleanedName,
+        type: validation.data.type,
+        icon: validation.data.icon || 'tag',
+        color: validation.data.color,
+        isSystem: false,
+        isDeleted: false,
+      };
+      setCategories((prev) => [...prev, newCategory]);
+    }
+
+    return { success: true };
+  }, [isAuthenticated, currentUser.id, markLocalWrite]);
+
+  // Rename/recolor only - `type` is intentionally not editable here. A
+  // category's type is load-bearing for existing transactions recorded under
+  // it (and, for DEBT_REPAYMENT/ADJUSTMENT, for the fixed system taxonomy
+  // other mutators resolve by type); changing it after the fact would make
+  // those historical records visually inconsistent with what they actually
+  // were when recorded.
+  const updateCategory = useCallback(async (id: string, updates: { name?: string; color?: string }): Promise<MutationResult> => {
+    let cleanedUpdates = updates;
+    if (updates.name !== undefined) {
+      const cleaned = updates.name.trim();
+      if (!cleaned) {
+        return { success: false, error: 'Category name is required' };
+      }
+      const isDuplicate = categoriesRef.current.some(
+        (c) => c.id !== id && !c.isDeleted && c.name.trim().toLowerCase() === cleaned.toLowerCase()
+      );
+      if (isDuplicate) {
+        return { success: false, error: `A category named "${cleaned}" already exists` };
+      }
+      cleanedUpdates = { ...updates, name: cleaned };
+    }
+
+    setCategories((prev) => prev.map((c) => (c.id === id ? { ...c, ...cleanedUpdates } : c)));
+
+    if (isAuthenticated) {
+      markLocalWrite(id);
+      await supabase
+        .from('categories')
+        .update({
+          ...(cleanedUpdates.name !== undefined ? { name: cleanedUpdates.name } : {}),
+          ...(cleanedUpdates.color !== undefined ? { color: cleanedUpdates.color } : {}),
+        })
+        .eq('id', id);
+    }
+
+    return { success: true };
+  }, [isAuthenticated, markLocalWrite]);
+
+  // Soft-deletes, but only once guarded: a system default (its type is relied
+  // on elsewhere by type, not just by id) or a category still referenced by
+  // an active transaction or a keyword rule would otherwise leave those
+  // records pointing at a category no active picker or lookup can resolve.
+  const deleteCategory = useCallback(async (id: string): Promise<MutationResult> => {
+    const category = categoriesRef.current.find((c) => c.id === id);
+    if (!category) {
+      return { success: false, error: 'Category not found' };
+    }
+    if (category.isSystem) {
+      return { success: false, error: 'Default categories cannot be deleted' };
+    }
+    const isInUse =
+      transactionsRef.current.some((t) => t.categoryId === id && !t.isDeleted) ||
+      keywordRulesRef.current.some((r) => r.categoryId === id);
+    if (isInUse) {
+      return { success: false, error: 'This category is used by existing transactions or keyword rules and cannot be deleted' };
+    }
+
+    setCategories((prev) => prev.map((c) => (c.id === id ? { ...c, isDeleted: true } : c)));
+
+    if (isAuthenticated) {
+      markLocalWrite(id);
+      await supabase.from('categories').update({ is_deleted: true }).eq('id', id);
+    }
+
+    return { success: true };
+  }, [isAuthenticated, markLocalWrite]);
 
   // Keyword rules CRUD
   const addKeywordRule = useCallback(async (keyword: string, categoryId: string): Promise<MutationResult> => {
@@ -1781,6 +1945,9 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       addWallet,
       updateWallet,
       deleteWallet,
+      addCategory,
+      updateCategory,
+      deleteCategory,
       addKeywordRule,
       deleteKeywordRule,
       addTransaction,
@@ -1803,6 +1970,9 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       addWallet,
       updateWallet,
       deleteWallet,
+      addCategory,
+      updateCategory,
+      deleteCategory,
       addKeywordRule,
       deleteKeywordRule,
       addTransaction,
