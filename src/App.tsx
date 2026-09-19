@@ -121,7 +121,7 @@ const MainApp: React.FC = () => {
   const renderActiveView = () => {
     switch (activeTab) {
       case 'dashboard':
-        return <DashboardView onNavigate={handleNavigate} />;
+        return <DashboardView onNavigate={handleNavigate} onOpenQuickAdd={handleOpenQuickAdd} />;
       case 'transactions':
         return <TransactionsView />;
       case 'wallets':
@@ -135,7 +135,7 @@ const MainApp: React.FC = () => {
       case 'security':
         return <SecurityView />;
       default:
-        return <DashboardView onNavigate={handleNavigate} />;
+        return <DashboardView onNavigate={handleNavigate} onOpenQuickAdd={handleOpenQuickAdd} />;
     }
   };
 

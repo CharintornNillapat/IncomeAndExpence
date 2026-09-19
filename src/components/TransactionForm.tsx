@@ -18,6 +18,25 @@ interface TransactionFormProps {
   categories: Category[];
   /** Distinguishes this mount when more than one `TransactionForm` can be in the DOM at once (e.g. the Dashboard's inline form alongside the Quick Add modal). */
   formTestId?: string;
+  /**
+   * Overrides this form's internal field ids for the amount input, wallet
+   * select, and submit button (`${idPrefix}-amount-math`,
+   * `${idPrefix}-wallet-select`, `confirm-${idPrefix}-btn`) instead of the
+   * default `useId()`-derived ones. Exists so a caller embedding this form
+   * in its own purpose-built shell (e.g. `DebtsView`'s repay modal) can keep
+   * ids its own Playwright specs already depend on. Every other field keeps
+   * its default id - only these three have a caller-visible legacy name to
+   * preserve.
+   */
+  idPrefix?: string;
+  /** Pins the transaction type on mount instead of defaulting to `'EXPENSE'`. */
+  presetType?: TransactionType;
+  /** Hides the type segmented toggle (and this form's own header row) for a caller that only ever wants one fixed type - e.g. a debt-repayment-only modal. Form state for the type is preserved, just not user-editable. */
+  lockType?: boolean;
+  /** Pins the debt-repayment target and hides the "Debt Target" selector, for a caller that already knows which debt is being repaid. */
+  presetDebtId?: string;
+  /** Pins the initially-selected source wallet instead of defaulting to `wallets[0]`. The selector itself stays editable. */
+  presetWalletId?: string;
   onSubmitTransaction: (tx: {
     amount: number;
     rawInput: string;
@@ -36,6 +55,11 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
   wallets,
   categories,
   formTestId,
+  idPrefix,
+  presetType,
+  lockType = false,
+  presetDebtId,
+  presetWalletId,
   onSubmitTransaction,
 }) => {
   const formId = useId();
@@ -51,12 +75,20 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
   const [isAmountValid, setIsAmountValid] = useState<boolean>(false);
 
   const [description, setDescription] = useState<string>('');
-  const [type, setType] = useState<TransactionType>('EXPENSE');
-  const [walletId, setWalletId] = useState<string>(wallets[0]?.id || '');
+  const [type, setType] = useState<TransactionType>(presetType || 'EXPENSE');
+  const [walletId, setWalletId] = useState<string>(presetWalletId || wallets[0]?.id || '');
   const [destinationWalletId, setDestinationWalletId] = useState<string>(wallets[1]?.id || '');
   const [categoryId, setCategoryId] = useState<string>(categories[0]?.id || '');
-  const [debtId, setDebtId] = useState<string>(activeDebts[0]?.id || debts[0]?.id || '');
+  const [debtId, setDebtId] = useState<string>(presetDebtId || activeDebts[0]?.id || debts[0]?.id || '');
   const [date, setDate] = useState<string>(todayIsoDate());
+
+  // Ids for the three fields a caller-supplied shell (DebtsView's repay
+  // modal) already has Playwright specs targeting by a specific legacy
+  // name. Every other field keeps its default `useId()`-derived id
+  // regardless of `idPrefix`.
+  const mathInputId = idPrefix ? `${idPrefix}-amount-math` : `${formId}-math-input`;
+  const walletSelectId = idPrefix ? `${idPrefix}-wallet-select` : `${formId}-wallet`;
+  const submitBtnId = idPrefix ? `confirm-${idPrefix}-btn` : `${formId}-submit-btn`;
 
   // Keep walletId in sync when wallets are loaded
   React.useEffect(() => {
@@ -106,8 +138,13 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
   // Smart Description Keyword Matcher
   const handleDescriptionChange = (text: string) => {
     setDescription(text);
+    // A locked-type form (e.g. debt repayment) has no business letting the
+    // matcher silently switch `type` out from under it, and auto-tagging a
+    // category is irrelevant when the type - and thus the category - is
+    // already fixed by the caller.
+    if (lockType) return;
     const match = matchSmartDescription(text, keywordRules, categories);
-    
+
     if (match.categoryId) {
       setCategoryId(match.categoryId);
       if (match.type) {
@@ -193,6 +230,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
       onSubmit={handleSubmit}
       className="bg-white dark:bg-stone-900 rounded-2xl border border-stone-200 dark:border-stone-800 shadow-xs p-4 sm:p-6 space-y-5 transition-colors"
     >
+      {!lockType && (
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-stone-100 dark:border-stone-800 pb-4">
         <div>
           <h2 className="text-base sm:text-lg font-bold text-stone-900 dark:text-white">Record Transaction</h2>
@@ -222,10 +260,11 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
           ))}
         </div>
       </div>
+      )}
 
       {/* 1. Safe Inline Math Input Component */}
       <InlineMathInput
-        id={`${formId}-math-input`}
+        id={mathInputId}
         label="Transaction Amount"
         placeholder="e.g. 500+500 or 1500*0.7"
         currencyPrefix={APP_CURRENCY_SYMBOL}
@@ -281,14 +320,14 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
       {/* 3. Source Wallet & Destination/Category/Debt Selectors (Collapsed when auto-matched unless expanded) */}
       {!isCollapsed && (
         <div className="space-y-4 pt-1 animate-in fade-in duration-150">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className={`grid grid-cols-1 gap-4 ${presetDebtId ? '' : 'sm:grid-cols-2'}`}>
             {/* Source Wallet */}
             <div className="flex flex-col gap-1.5">
-              <label htmlFor={`${formId}-wallet`} className={LABEL_TEXT_CLASS}>
+              <label htmlFor={walletSelectId} className={LABEL_TEXT_CLASS}>
                 {type === 'TRANSFER' ? 'From Wallet' : 'Paying Wallet'}
               </label>
               <select
-                id={`${formId}-wallet`}
+                id={walletSelectId}
                 value={walletId}
                 onChange={(e) => setWalletId(e.target.value)}
                 className="w-full text-sm rounded-xl border border-stone-200 dark:border-stone-700 px-3 py-2.5 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-none focus:border-stone-800 dark:focus:border-stone-400 focus:ring-2 focus:ring-stone-200 dark:focus:ring-stone-700 transition-colors"
@@ -301,7 +340,8 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
               </select>
             </div>
 
-            {/* Destination Wallet for transfers, Target Debt for repayments, OR Category for regular transactions */}
+            {/* Destination Wallet for transfers, Target Debt for repayments (only when the
+                caller hasn't already pinned one via presetDebtId), OR Category for regular transactions */}
             {type === 'TRANSFER' ? (
               <div className="flex flex-col gap-1.5">
                 <label htmlFor={`${formId}-dest-wallet`} className={LABEL_TEXT_CLASS}>
@@ -320,7 +360,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
                   ))}
                 </select>
               </div>
-            ) : type === 'DEBT_REPAYMENT' ? (
+            ) : type === 'DEBT_REPAYMENT' && !presetDebtId ? (
               <div className="flex flex-col gap-1.5">
                 <label htmlFor={`${formId}-debt`} className={LABEL_TEXT_CLASS}>
                   Debt Target
@@ -338,7 +378,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
                   ))}
                 </select>
               </div>
-            ) : (
+            ) : type === 'DEBT_REPAYMENT' ? null : (
               <div className="flex flex-col gap-1.5">
                 <label htmlFor={`${formId}-category`} className={LABEL_TEXT_CLASS}>
                   Category
@@ -384,7 +424,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
       <div className="pt-2">
         <motion.button
           whileTap={!isSubmitting && isAmountValid && amount !== null ? { scale: 0.96 } : {}}
-          id={`${formId}-submit-btn`}
+          id={submitBtnId}
           type="submit"
           disabled={isSubmitting || !isAmountValid || amount === null}
           className={`w-full min-h-[48px] py-3 px-4 rounded-xl font-semibold text-sm transition-all flex items-center justify-center gap-2 cursor-pointer ${

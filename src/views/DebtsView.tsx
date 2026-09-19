@@ -1,20 +1,21 @@
 import React, { useState, useCallback } from 'react';
 import {
   Plus,
-  ArrowRight,
-  ShieldAlert
 } from 'lucide-react';
 import { useDebts } from '../hooks/useDebts';
 import { useSubmitHandler } from '../hooks/useSubmitHandler';
-import { APP_CURRENCY_SYMBOL, formatCurrencyAmount } from '../utils/currency';
+import { useFinanceState, useFinanceActions } from '../context/FinanceContext';
+import { APP_CURRENCY_SYMBOL } from '../utils/currency';
 import { Debt } from '../types';
 import { DebtCardItem } from '../components/DebtCardItem';
-import { InlineMathInput } from '../components/InlineMathInput';
+import { TransactionForm } from '../components/TransactionForm';
 import { Modal } from '../components/Modal';
-import { LABEL_CLASS, inputClass, selectClass, OPTION_CLASS, ERROR_BANNER_CLASS, PRIMARY_BUTTON_CLASS } from '../utils/formStyles';
+import { LABEL_CLASS, inputClass, ERROR_BANNER_CLASS, PRIMARY_BUTTON_CLASS } from '../utils/formStyles';
 
 export const DebtsView: React.FC = () => {
-  const { debts, wallets, addDebt, repayDebt, settleDebt, deleteDebt } = useDebts();
+  const { debts, wallets, addDebt, settleDebt, deleteDebt } = useDebts();
+  const { categories } = useFinanceState();
+  const { addTransaction } = useFinanceActions();
 
   const [isAddDebtOpen, setIsAddDebtOpen] = useState<boolean>(false);
   const [repayDebtTarget, setRepayDebtTarget] = useState<Debt | null>(null);
@@ -27,13 +28,6 @@ export const DebtsView: React.FC = () => {
   const [minimumPayment, setMinimumPayment] = useState<number>(200);
   const [dueDate, setDueDate] = useState<string>('2026-12-31');
 
-  // Repayment Form State
-  const [selectedWalletId, setSelectedWalletId] = useState<string>(wallets[0]?.id || '');
-  const [repayAmount, setRepayAmount] = useState<number | null>(null);
-  const [repayRaw, setRepayRaw] = useState<string>('');
-  const [repayValid, setRepayValid] = useState<boolean>(false);
-  const [repayNote, setRepayNote] = useState<string>('Monthly principal payment');
-
   const handleSettle = useCallback((id: string) => {
     settleDebt(id);
   }, [settleDebt]);
@@ -44,10 +38,6 @@ export const DebtsView: React.FC = () => {
 
   const handleOpenRepay = useCallback((debt: Debt) => {
     setRepayDebtTarget(debt);
-    const minPmt = debt.minimumPayment || 200;
-    setRepayAmount(minPmt);
-    setRepayRaw(minPmt.toString());
-    setRepayValid(true);
   }, []);
 
   // Keeps the form open so a rejected debt goal can be corrected.
@@ -71,20 +61,26 @@ export const DebtsView: React.FC = () => {
       })
     );
 
-  const { error: repayError, handleSubmit: submitRepay } = useSubmitHandler({
-    defaultErrorMessage: 'Failed to process debt repayment',
-    onSuccess: () => {
-      setRepayDebtTarget(null);
-      setRepayAmount(null);
-      setRepayRaw('');
+  // T38: routes through the same generic addTransaction path every other
+  // TransactionForm consumer uses, rather than the useDebts().repayDebt /
+  // repayDebtAtomic wrapper the hand-rolled form used to call. addTransaction
+  // itself decrements the target debt's remainingAmount (and auto-settles it
+  // at zero) whenever type is DEBT_REPAYMENT and a debtId is present -
+  // repayDebtAtomic was only ever a thin pre-fill of category/description
+  // around that same call, so nothing is lost by calling it directly.
+  const handleRepaySubmit = useCallback(
+    async (data: Parameters<React.ComponentProps<typeof TransactionForm>['onSubmitTransaction']>[0]) => {
+      const res = await addTransaction({
+        ...data,
+        transactionDate: data.date,
+      });
+      if (res && res.success) {
+        setRepayDebtTarget(null);
+      }
+      return res;
     },
-  });
-
-  const handleExecuteRepay = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!repayDebtTarget || !repayValid || repayAmount === null || !selectedWalletId) return;
-    return submitRepay(e, () => repayDebt(repayDebtTarget.id, selectedWalletId, repayAmount, repayNote));
-  };
+    [addTransaction]
+  );
 
   return (
     <div className="space-y-6">
@@ -252,74 +248,18 @@ export const DebtsView: React.FC = () => {
         subtitle="Deducts directly from your selected wallet"
         bodyClassName="space-y-4 sm:space-y-5"
       >
-        <form onSubmit={handleExecuteRepay} className="space-y-4">
-          <div>
-            <label className={LABEL_CLASS}>
-              Pay From Wallet *
-            </label>
-            <select
-              id="repay-wallet-select"
-              value={selectedWalletId}
-              onChange={(e) => setSelectedWalletId(e.target.value)}
-              className={selectClass('subtle')}
-            >
-              {wallets.map((w) => (
-                <option key={w.id} value={w.id} className={OPTION_CLASS}>
-                  {w.name} ({formatCurrencyAmount(w.balance)})
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Inline Math Input */}
-          <InlineMathInput
-            id="repay-amount-math"
-            label={`Repayment Amount (${APP_CURRENCY_SYMBOL})`}
-            defaultValue={repayRaw}
-            required
-            onAmountEvaluated={(val, raw, valid) => {
-              setRepayAmount(val);
-              setRepayRaw(raw);
-              setRepayValid(valid);
-            }}
+        {repayDebtTarget && (
+          <TransactionForm
+            key={repayDebtTarget.id}
+            wallets={wallets}
+            categories={categories.filter((c) => !c.isDeleted)}
+            idPrefix="repay"
+            presetType="DEBT_REPAYMENT"
+            lockType
+            presetDebtId={repayDebtTarget.id}
+            onSubmitTransaction={handleRepaySubmit}
           />
-
-          <div>
-            <label className={LABEL_CLASS}>
-              Note
-            </label>
-            <input
-              id="repay-note"
-              type="text"
-              value={repayNote}
-              onChange={(e) => setRepayNote(e.target.value)}
-              placeholder="e.g. Monthly payment"
-              className={inputClass('subtle')}
-            />
-          </div>
-
-          {repayError && (
-            <p className="text-xs text-rose-600 dark:text-rose-400 font-medium flex items-center gap-1">
-              <ShieldAlert className="w-4 h-4" /> {repayError}
-            </p>
-          )}
-
-          <div className="pt-2">
-            <button
-              id="confirm-repay-btn"
-              type="submit"
-              disabled={!repayValid || repayAmount === null}
-              className={`w-full py-2.5 sm:py-3 rounded-xl font-semibold text-xs transition-all flex items-center justify-center gap-2 cursor-pointer ${
-                repayValid && repayAmount !== null
-                  ? 'bg-stone-900 hover:bg-stone-800 dark:bg-stone-100 dark:hover:bg-white text-white dark:text-stone-900 shadow-xs'
-                  : 'bg-stone-200 dark:bg-stone-800 text-stone-400 dark:text-stone-600 cursor-not-allowed'
-              }`}
-            >
-              <span>Pay {formatCurrencyAmount(repayAmount ?? 0)}</span>
-              <ArrowRight className="w-4 h-4" />
-            </button>
-          </div>
-        </form>
+        )}
       </Modal>
     </div>
   );

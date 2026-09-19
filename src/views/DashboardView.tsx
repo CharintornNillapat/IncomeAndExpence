@@ -1,9 +1,9 @@
 ﻿import React, { useState, useMemo, useCallback } from 'react';
 import { motion, Variants } from 'framer-motion';
-import { useFinanceState, useFinanceActions } from '../context/FinanceContext';
+import { PlusCircle } from 'lucide-react';
+import { useFinanceState } from '../context/FinanceContext';
 import { useWallets } from '../hooks/useWallets';
 import { useDebts } from '../hooks/useDebts';
-import { TransactionForm } from '../components/TransactionForm';
 import { WalletPopupModal, WalletModalTab } from '../components/WalletPopupModal';
 import { TotalWealthHero } from '../components/dashboard/TotalWealthHero';
 import { WalletAccountsGrid } from '../components/dashboard/WalletAccountsGrid';
@@ -13,6 +13,7 @@ import { DebtPayoffOverview } from '../components/dashboard/DebtPayoffOverview';
 import { RecentTransactionsTable } from '../components/dashboard/RecentTransactionsTable';
 import { todayIsoDate, daysAgoIsoDate } from '../utils/date';
 import { buildLookupMap } from '../utils/mapUtils';
+import { PRIMARY_BUTTON_CLASS } from '../utils/formStyles';
 
 export type TimeFilter = 'DAY' | 'WEEK' | 'MONTH' | 'ALL';
 
@@ -43,11 +44,12 @@ const itemVariants: Variants = {
 
 interface DashboardViewProps {
   onNavigate?: (tab: string) => void;
+  /** Opens the shared Quick Add modal (owned by App.tsx) - retired the inline TransactionForm this view used to render directly (T37). */
+  onOpenQuickAdd?: () => void;
 }
 
-export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
+export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate, onOpenQuickAdd }) => {
   const { transactions, categories } = useFinanceState();
-  const { addTransaction } = useFinanceActions();
   // `wallets` here is already the active (non-deleted) set; `allWallets` still
   // includes soft-deleted ones so historic rows can resolve their wallet name.
   const { wallets: activeWallets, allWallets, totalNetWorth } = useWallets();
@@ -158,25 +160,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
 
   const categoryMap = useMemo(() => buildLookupMap(categories), [categories]);
 
-  // Form submit callback stabilized with useCallback
-  const handleTransactionSubmit = useCallback((data: {
-    amount: number;
-    rawInput?: string;
-    description: string;
-    walletId: string;
-    destinationWalletId?: string;
-    categoryId?: string;
-    debtId?: string;
-    type: any;
-    date: string;
-    idempotencyKey?: string;
-  }) => {
-    return addTransaction({
-      ...data,
-      transactionDate: data.date,
-    });
-  }, [addTransaction]);
-
   return (
     <motion.div 
       className="space-y-8"
@@ -245,14 +228,30 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
 
       {/* 4. Main Action & Breakdown Section: Add Transaction + Category & Debt Progress */}
       <motion.div variants={itemVariants} className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-        {/* Left Column: Direct Add Transaction Form (lg:col-span-6) */}
+        {/* Left Column: Quick Add Entry Point (lg:col-span-6) */}
         <div className="lg:col-span-6">
-          <TransactionForm
-            wallets={activeWallets}
-            categories={categories.filter((c) => !c.isDeleted)}
-            formTestId="tx-form-dashboard"
-            onSubmitTransaction={handleTransactionSubmit}
-          />
+          <div className="h-full flex flex-col items-center justify-center text-center gap-4 bg-white dark:bg-stone-900 rounded-2xl border border-stone-200 dark:border-stone-800 shadow-xs p-8">
+            <div className="w-14 h-14 rounded-2xl bg-stone-900 dark:bg-emerald-600 text-white flex items-center justify-center shadow-xs">
+              <PlusCircle className="w-7 h-7" />
+            </div>
+            <div>
+              <h2 className="text-base font-bold text-stone-900 dark:text-white">Record a Transaction</h2>
+              <p className="text-xs text-stone-500 dark:text-stone-400 mt-1 max-w-xs">
+                Log an expense, income, transfer, or debt payment in a few seconds.
+              </p>
+            </div>
+            <div className="w-full max-w-[220px]">
+              <button
+                id="dash-open-add-modal-btn"
+                type="button"
+                onClick={onOpenQuickAdd}
+                className={`${PRIMARY_BUTTON_CLASS} flex items-center justify-center gap-2`}
+              >
+                <PlusCircle className="w-4 h-4" />
+                <span>Add Transaction</span>
+              </button>
+            </div>
+          </div>
         </div>
 
         {/* Right Column: Category Breakdown + Debt Progress (lg:col-span-6) */}

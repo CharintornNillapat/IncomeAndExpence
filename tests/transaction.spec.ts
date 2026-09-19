@@ -47,28 +47,28 @@ test.describe('Core Transaction Flow E2E Tests', () => {
   });
 
   test('should record an income transaction directly from Dashboard quick form', async ({ page }) => {
-    // Locate the Dashboard inline transaction card (outside modal). `data-testid`
-    // (T32) replaces a `.first()` on a text-filtered `form` locator, which
-    // would become ambiguous once more than one `TransactionForm` mount can
-    // be in the DOM at the same time.
-    const dashboardForm = page.locator('[data-testid="tx-form-dashboard"]');
-    await expect(dashboardForm).toBeVisible();
-    
+    // T37: the Dashboard's inline TransactionForm was retired in favor of a
+    // button opening the same Quick Add modal Navbar uses.
+    await page.locator('#dash-open-add-modal-btn').click();
+
+    const modal = page.getByRole('dialog', { name: /Quick Record Transaction/i });
+    await expect(modal).toBeVisible();
+
     // Toggle to Income type
-    const incomeTypeBtn = dashboardForm.locator('button').filter({ hasText: /^Income$/i }).first();
+    const incomeTypeBtn = modal.locator('button').filter({ hasText: /^Income$/i }).first();
     await expect(incomeTypeBtn).toBeVisible();
     await incomeTypeBtn.click();
 
     // Enter Amount
-    const amountInput = dashboardForm.locator('input[name="amount_expression"]');
+    const amountInput = modal.locator('input[name="amount_expression"]');
     await amountInput.fill('2500');
 
     // Enter Description
-    const descInput = dashboardForm.locator('input[placeholder*="groceries"], input[id$="-desc"]');
+    const descInput = modal.locator('input[placeholder*="groceries"], input[id$="-desc"]');
     await descInput.fill('E2E Freelance Income');
 
     // Submit
-    const submitBtn = dashboardForm.locator('button[type="submit"]');
+    const submitBtn = modal.locator('button[type="submit"]');
     await expect(submitBtn).toBeEnabled();
     await submitBtn.click();
 
@@ -110,16 +110,18 @@ test.describe('Core Transaction Flow E2E Tests', () => {
   });
 
   test('should evaluate inline math expressions correctly in amount field', async ({ page }) => {
-    const dashboardForm = page.locator('[data-testid="tx-form-dashboard"]');
-    await expect(dashboardForm).toBeVisible();
+    await page.locator('#dash-open-add-modal-btn').click();
 
-    const amountInput = dashboardForm.locator('input[name="amount_expression"]');
+    const modal = page.getByRole('dialog', { name: /Quick Record Transaction/i });
+    await expect(modal).toBeVisible();
+
+    const amountInput = modal.locator('input[name="amount_expression"]');
     await amountInput.fill('120 + 30 * 2');
 
     // The inline math preview should compute 180.00. Target the "Calculated:" badge
     // specifically - the value also renders in the apply-calculation button and the
     // submit button, so a bare text match resolves to three elements.
-    const calculatedBadge = dashboardForm.locator('span', { hasText: /Calculated:/i });
+    const calculatedBadge = modal.locator('span', { hasText: /Calculated:/i });
     await expect(calculatedBadge).toBeVisible();
     await expect(calculatedBadge).toContainText('180.00');
   });
