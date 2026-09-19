@@ -522,6 +522,41 @@ CI=true npx playwright test                                                     
 
 ---
 
+## Phase 26 — Badge, ProgressMeter, EmptyState (approved to execute) · Low-Medium risk
+
+| # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
+|---|---|---|---|---|---|---|---|---|---|---|
+| T45 | `Badge`/`CategoryChip`; fix the invalid `py-0.2` typo | new `src/components/ui/Badge.tsx`; `TransactionTableRow.tsx`, `RecentTransactionsTable.tsx`, `DiaryEntryCard.tsx`, `DiaryView.tsx`, `KeywordRulesView.tsx` | Med | Low | 2h | done | — | ab1068c | tsc clean; `transaction`+`keywords`+`debts` chromium 7/7 | `py-0.2` (not a real Tailwind step - silently zero vertical padding) fixed at all 5 sites; category-chip tint alpha drift (`15`/`20`/`25`) collapsed onto one `categoryTint()` (20%) |
+| T46 | `ProgressMeter` with strict `[0,100]` clamping | new `src/components/ui/ProgressMeter.tsx`; `DebtCardItem.tsx`, `DebtPayoffOverview.tsx`, `CategoryExpenseDistribution.tsx`, `WalletAccountsGrid.tsx` | Med | Low | 1h | done | — | ab1068c | same gate | `CategoryExpenseDistribution.tsx`'s previously-unclamped fill width (a real overflow bug) now clamps like the other 3; 4 duplicated progress-bar shells → 1 |
+| T47 | `EmptyState`; adopt at 5 previously-blank surfaces | new `src/components/ui/EmptyState.tsx`; `RecentTransactionsTable.tsx`, `KeywordRulesView.tsx`, `DebtsView.tsx`, `WalletsView.tsx`, `WalletAccountsGrid.tsx`, `TransactionsView.tsx` | Med | Low | 1.5h | done | — | ab1068c | same gate | 5 surfaces that rendered nothing (or a bare line of text) when their list was empty now show an icon+title+subtitle; `TransactionsView`'s `/No transactions match your current filters/i` text preserved verbatim |
+
+**Combined gate:** tsc clean; `npm run build` succeeds in 9.28s; `CI=true npx playwright test` 87/87, 0 retries.
+
+**Verification**
+
+```
+npm run lint                                                                                       # tsc --noEmit: clean, 0 errors
+npx playwright test tests/transaction.spec.ts tests/keywords.spec.ts tests/debts.spec.ts --project=chromium   # 7/7 passed
+npx playwright test tests/soft-delete.spec.ts tests/diary.spec.ts tests/wallets.spec.ts --project=chromium    # 5/5 passed (regression re-check)
+npm run build                                                                                       # built in 9.28s
+CI=true npx playwright test                                                                         # 87/87 passed, 0 retries
+```
+
+**Notes on execution:**
+- **`Badge`'s two tones (`neutral`, `amber`) are exactly the two tones actually duplicated across the app, not a speculative palette.** `neutral` matches the plain "Today"/"Yesterday" day-badge (identical markup at `DiaryView.tsx` and `DiaryEntryCard.tsx`); `amber` matches the debt-repayment badge (`TransactionTableRow.tsx`, both its `sm` mobile and `md` desktop sizes). `DiaryEntryCard`'s workout/food-quality badges were read but not touched - they already use valid CSS (not part of the named `py-0.2` bug list) and each has its own multi-way conditional tone logic (workout: blue-vs-neutral; food: emerald/amber/rose), which would need a materially larger tone set to express losslessly than this task's two actually-duplicated tones justify.
+- **`CategoryChip`'s `rounded` prop keeps all three pre-existing roundings (`rounded`/`rounded-md`/`rounded-full`) rather than collapsing to one.** `TransactionTableRow`'s mobile chip and `RecentTransactionsTable`'s mobile chip both used bare `rounded` (0.25rem); `TransactionTableRow`'s desktop chip and `KeywordRulesView`'s chip used `rounded-md` (0.375rem) - a different value, not a typo; `RecentTransactionsTable`'s desktop chip used `rounded-full`. Forcing one rounding onto all four would visibly change three of them; each call site now passes the `rounded` value that reproduces its own prior appearance exactly.
+- **The `20%` tint alpha is a deliberate middle choice, not arbitrary.** Of the three values found (`KeywordRulesView` 15%, `TransactionTableRow` 25%, `RecentTransactionsTable` already 20%), picking 20% leaves one site (`RecentTransactionsTable`) with a zero-delta change and moves the other two by the smallest possible amount in either direction.
+- **`ProgressMeter`'s `color` prop (raw hex, for `CategoryExpenseDistribution`/`WalletAccountsGrid`) and `barClassName` prop (a Tailwind class, for `DebtCardItem`/`DebtPayoffOverview`'s fixed `bg-emerald-500`) are mutually exclusive by design** - a category's or wallet's color is a per-instance hex value that can only be applied via inline `style`, while the debt bars' color never varies, so a static class is both correct and avoids an unnecessary inline style. `color`, when present, always wins.
+- **`DebtsView`, `WalletsView`, and `WalletAccountsGrid`'s new empty states are wrapped in `Card` (Phase 25) even though `EmptyState` itself has no card chrome.** Unlike `RecentTransactionsTable`/`KeywordRulesView` (whose empty state already sits inside an existing table/card shell), these three views render their grid as a bare `<div className="grid ...">` today with no surrounding container - an unwrapped `EmptyState` would float as unstyled text directly on the page background. Wrapping in `Card` gives it the same visual footing as every other content block on those pages.
+
+**Deliberately not done**
+
+- **`DiaryEntryCard`'s workout/food-quality badges were not migrated onto `Badge`** - each has its own multi-way conditional tone logic beyond this task's two actually-duplicated tones; see notes above.
+- **`CashflowMetricsCards.tsx`'s and any other undiscovered `${color}NN` tint site were not audited** - only the three sites the phase brief named (`KeywordRulesView`, `TransactionTableRow`, `RecentTransactionsTable`) were in scope.
+- **No `SegmentedControl` primitive was introduced.** Out of scope - Phase 27.
+
+---
+
 ## Deferred — documented, awaiting separate approval
 
 | # | Task | Files | Impact | Risk | Effort | Status | Blocked by |

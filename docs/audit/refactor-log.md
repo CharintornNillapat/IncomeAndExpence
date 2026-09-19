@@ -4,6 +4,49 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
+## Phase 26 — Badge, ProgressMeter, EmptyState: T45, T46, T47 (2026-09-19, commit `ab1068c`)
+
+**Changed**
+
+- New `src/components/ui/Badge.tsx` — exports `Badge` (`tone: 'neutral'|'amber'`, `size: 'sm'|'md'`, `icon`, `className`) and `CategoryChip` (`name`, `color`, `size`, `rounded: 'sm'|'md'|'full'`, `showDot`, `className`) plus a standalone `categoryTint(color)` helper.
+- `TransactionTableRow.tsx` — mobile debt-payoff badge and desktop debt-repayment badge both now `<Badge tone="amber" .../>`; mobile and desktop category chips both now `<CategoryChip .../>`.
+- `RecentTransactionsTable.tsx` — mobile and desktop category badges now `<CategoryChip .../>`; its own empty state (the model T47 is based on) now renders through the new `EmptyState`.
+- `DiaryEntryCard.tsx`, `DiaryView.tsx` — the "Today"/"Yesterday" day-badge (identical markup at both sites) now `<Badge>{...}</Badge>`.
+- `KeywordRulesView.tsx` — its configured-rules table's category cell now `<CategoryChip .../>`; a new empty state (`Tag` icon) added for zero configured rules.
+- New `src/components/ui/ProgressMeter.tsx` — `percent` (clamped `[0, 100]` internally via `Math.min(100, Math.max(0, percent))`), `color` (raw hex, for per-instance colors) or `barClassName` (a static Tailwind class), `heightClassName`. Adopted in `DebtCardItem.tsx`, `DebtPayoffOverview.tsx` (both `barClassName="bg-emerald-500"`, `h-3`), `CategoryExpenseDistribution.tsx` (`color={item.color}`, `h-2` default - the fix, see Correctness notes), `WalletAccountsGrid.tsx` (`color={wallet.color}`, `h-1.5`).
+- New `src/components/ui/EmptyState.tsx` — `icon`, `title`, `subtitle?`, `action?`, modeled on `RecentTransactionsTable`'s pre-existing shape. Adopted in `TransactionsView.tsx` (its filtered-table empty state, text unchanged), `KeywordRulesView.tsx`, `DebtsView.tsx`, `WalletsView.tsx`, `WalletAccountsGrid.tsx` (the last three each wrapped in `Card`, since none had an existing container shell).
+- 15 files changed (3 new), net +292/-106 lines.
+
+**Why**
+
+`docs/audit/ui-ux-audit-report.md` and this phase's brief: `${color}15`/`20`/`25` tint-alpha drift and an invalid `py-0.2` class (silently zero vertical padding) were both duplicated-with-drift across the transaction-row renderers; four separate progress-bar implementations existed with inconsistent (and, in one case, absent) clamping; and five surfaces rendered nothing when their underlying list was empty, leaving a blank page rather than any orientation for a new user.
+
+**Verification**
+
+```
+npm run lint                                                                                       # tsc --noEmit: clean, 0 errors
+npx playwright test tests/transaction.spec.ts tests/keywords.spec.ts tests/debts.spec.ts --project=chromium   # 7/7 passed
+npx playwright test tests/soft-delete.spec.ts tests/diary.spec.ts tests/wallets.spec.ts --project=chromium    # 5/5 passed (regression re-check)
+npm run build                                                                                       # built in 9.28s
+CI=true npx playwright test                                                                         # 87/87 passed, 0 retries
+```
+
+**Correctness notes**
+
+- **`CategoryExpenseDistribution.tsx` previously rendered its fill bar's width as `${percent}%` with no clamp of any kind** - the only one of the four progress-bar sites with none at all (`DebtCardItem`/`DebtPayoffOverview` both had `Math.min(100, ...)`; `WalletAccountsGrid` already had the full `Math.min(100, Math.max(0, ...))`). Routing it through `ProgressMeter` closes that gap the same way as the other three, rather than patching it in place and leaving the duplication.
+- **`Badge`'s two tones were chosen by reading every `py-0.2` site before writing the component, not assumed.** Only two distinct visual treatments exist across the five bug sites: a plain, `font-bold`, borderless neutral pill (the day-badge, identical at two sites) and a bordered, `font-medium` amber pill (the debt-repayment badge, at two sizes). No other tone was fabricated speculatively.
+- **`CategoryChip`'s `rounded` prop preserves three genuinely different existing values** (`rounded` 0.25rem, `rounded-md` 0.375rem, `rounded-full`) rather than collapsing them - confirmed by reading each of the five adopting call sites' exact class list before extracting the shared component, the same discipline Phase 21's token adoption and Phase 25's `Card` adoption both used.
+- **The `20%` tint alpha was chosen as the value that minimizes total visual delta**: of the three values found (15%, 20%, 25%), 20% already matched `RecentTransactionsTable` exactly (zero-delta there) and is equidistant from the other two.
+- **Three of the five new `EmptyState` adoptions (`DebtsView`, `WalletsView`, `WalletAccountsGrid`) are wrapped in `Card`.** `EmptyState` itself is deliberately chrome-less (a plain centered icon/title/subtitle stack) so it can drop into an existing table cell (`RecentTransactionsTable`, `KeywordRulesView`) without adding a redundant nested border. Those three views render their grid as a bare `<div className="grid ...">` with no existing container, so without `Card` the empty state would float as unstyled text directly on the page background.
+
+**Deliberately not done**
+
+- **`DiaryEntryCard`'s workout and food-quality badges were not migrated onto `Badge`.** Both already use valid CSS (not part of the named `py-0.2` list) and each carries its own multi-way conditional tone (workout: blue-vs-neutral; food: emerald/amber/rose) beyond the two tones this task's actually-duplicated sites justified adding.
+- **No further `${color}NN` tint-alpha sites were searched for beyond the three the phase brief named** (`KeywordRulesView`, `TransactionTableRow`, `RecentTransactionsTable`). Any others (e.g. in components not touched by this phase) remain as-is.
+- **No `SegmentedControl` primitive was introduced.** Out of scope - Phase 27.
+
+---
+
 ## Phase 25 — SectionHeader + Card: T43, T44 (2026-09-19, commit `5b38141`)
 
 **Changed**
