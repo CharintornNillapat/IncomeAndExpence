@@ -4,6 +4,45 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
+## Phase 24 — ConfirmDialog: T42 (2026-09-19, commit `c06e444`)
+
+**Changed**
+
+- New `src/components/ui/ConfirmDialog.tsx` — wraps `Modal.tsx`. Props: `isOpen`, `title`, `description`, `confirmText` (default `"Delete"`), `cancelText` (default `"Cancel"`), `onConfirm`, `onClose`, `isDestructive` (default `true`), `isLoading`. Renders a warning-icon body and a footer with `#cancel-confirm-btn` and `#confirm-destructive-btn`; both disable while `isLoading`, and the confirm button's label swaps to "Working…".
+- `src/views/WalletsView.tsx` — the delete-wallet button's `onClick` changed from an immediate `deleteWallet(wallet.id)` call (no confirmation at all - a real bug) to `setWalletToDelete(wallet)`; a new `<ConfirmDialog>` at the bottom calls `deleteWallet` on confirm.
+- `src/components/WalletPopupModal.tsx` — the per-card delete button's `window.confirm(...)` replaced by the same `walletToDelete`/`ConfirmDialog` pattern.
+- `src/views/DebtsView.tsx` — `handleDelete` changed from calling `deleteDebt(id)` directly to looking up the `Debt` object and calling `setDebtToDelete`; a new `<ConfirmDialog>` calls `deleteDebt` on confirm. `DebtCardItem.tsx` itself is untouched - it already only calls an `onDelete(id)` prop, so the confirmation gate lives entirely in the container.
+- `tests/soft-delete.spec.ts` — both the wallet-delete and debt-delete sub-tests gained one `await page.locator('#confirm-destructive-btn').click();` immediately after the existing delete-button click; every existing assertion (grid disappearance, reload persistence) is unchanged.
+- 5 files changed (1 new), net +185/-8 lines.
+
+**Why**
+
+`docs/audit/ui-ux-audit-report.md` and this phase's own brief: wallet deletion in `WalletsView` had zero confirmation of any kind (click Trash2, wallet is gone), `WalletPopupModal` used a native, unstyled `window.confirm`, and debt deletion in `DebtsView` was likewise unconfirmed. All three are irreversible-looking, one-click actions on user data. `ConfirmDialog` gives all three one accessible, consistently-styled gate, built on the same `Modal.tsx` primitive every other dialog in the app already uses.
+
+**Verification**
+
+```
+npm run lint                                                                                  # tsc --noEmit: clean, 0 errors
+npx playwright test tests/wallets.spec.ts tests/soft-delete.spec.ts tests/debts.spec.ts --project=chromium   # 5/5 passed
+npm run build                                                                                 # built in 8.86s
+CI=true npx playwright test                                                                   # 87/87 passed, 0 retries
+```
+
+**Correctness notes**
+
+- **The phase brief pointed the spec edit at `tests/wallets.spec.ts`; the actual delete-wallet and delete-debt assertions live in `tests/soft-delete.spec.ts`.** `wallets.spec.ts` has exactly one test (wallet creation) and never clicks a delete button; `grep -rn "delete-wallet-\|delete-debt-" tests/` resolves only inside `soft-delete.spec.ts`. Edited the file that actually contains the assertions rather than the one named, and still ran `wallets.spec.ts` per the verification step (it passes unmodified, as expected - nothing about it changed).
+- **`ConfirmDialog`'s footer buttons deliberately don't reuse `PRIMARY_BUTTON_CLASS`/`SECONDARY_BUTTON_CLASS`.** Both are `w-full`, sized for one button filling a form's own width; a side-by-side Cancel/Confirm pair is a different layout shape, so forcing them through the shared classes would either wrap badly or require fighting `w-full` with overrides. Local classes instead - the same exception `WalletPopupModal`'s pre-existing inline Save/Cancel balance-editor buttons already established, per `CLAUDE.md`'s Form styles convention (only reuse a shared class where the shape actually matches).
+- **`WalletPopupModal` now stacks two `fixed inset-0` modals when deleting a wallet from inside it** - its own popup `Modal` plus `ConfirmDialog`'s. This is intentional, not an oversight: `Modal.tsx` doesn't vary z-index per instance, so the confirm dialog's later DOM position naturally paints (and backdrop-dims) on top, giving a standard modal-on-modal stack with no extra styling needed.
+- **Both `WalletsView` and `WalletPopupModal` store the pending delete target as the full `Wallet` object, not an id**, so `ConfirmDialog`'s description can name the wallet directly from the click that opened it, with no second lookup.
+
+**Deliberately not done**
+
+- **No confirmation on transaction soft-delete.** It's reversible via `restoreTransaction`; per this phase's explicit guardrail and `implementation-roadmap.md`'s "Deliberately not changed" #6, a confirm there would be friction, not safety.
+- **No error-recovery UI for a failed delete.** `deleteWallet`/`deleteDebt` both return `Promise<void>` today (no `MutationResult`, no surfaced error) - there is no existing error-handling path to plug an error banner into, and building one is outside this task's stated scope of adding a confirmation dialog.
+- **No `SectionHeader`/`Card`/`Badge`/`ProgressMeter`/`EmptyState`/`SegmentedControl` primitives were introduced.** Out of scope - Phases 25-27.
+
+---
+
 ## Phase 23 — wallet surface ownership: T39, T40, T41 (2026-09-19, commit `1f91b97`)
 
 **Changed**

@@ -459,6 +459,35 @@ CI=true npx playwright test                                                     
 
 ---
 
+## Phase 24 — ConfirmDialog (approved to execute) · Medium risk
+
+| # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
+|---|---|---|---|---|---|---|---|---|---|---|
+| T42 | Shared `ConfirmDialog` over `Modal.tsx`; gate wallet/debt delete behind it | new `src/components/ui/ConfirmDialog.tsx`; `WalletsView.tsx`; `WalletPopupModal.tsx`; `DebtsView.tsx`; `tests/soft-delete.spec.ts` | High | Med | 2h | done | — | c06e444 | tsc clean; `wallets`+`soft-delete`+`debts` chromium 5/5; `npm run build` succeeds; `CI=true npx playwright test` 87/87, 0 retries | Unconfirmed-delete surfaces: 2 (`WalletsView`'s one-click delete, a real bug) + 1 `window.confirm` (`WalletPopupModal`) + 1 unconfirmed (`DebtsView`) → 0; all 3 destructive delete sites now share one dialog and one pair of ids |
+
+**Verification**
+
+```
+npm run lint                                                                                  # tsc --noEmit: clean, 0 errors
+npx playwright test tests/wallets.spec.ts tests/soft-delete.spec.ts tests/debts.spec.ts --project=chromium   # 5/5 passed
+npm run build                                                                                 # built in 8.86s
+CI=true npx playwright test                                                                   # 87/87 passed, 0 retries
+```
+
+**Notes on execution:**
+- **The actual delete-wallet and delete-debt test cases live in `tests/soft-delete.spec.ts`, not `tests/wallets.spec.ts` as this phase's instructions named.** `tests/wallets.spec.ts` has exactly one test (creating a wallet) and asserts nothing about deletion; both `button[id^="delete-wallet-"]` and `button[id^="delete-debt-"]` clicks are exercised only in `soft-delete.spec.ts`'s wallet/debt sub-tests (confirmed via `grep -rn "delete-wallet-\|delete-debt-" tests/`). Updated the actual location instead of forcing a no-op edit into `wallets.spec.ts`; `wallets.spec.ts` was still run per the instructions' verification step and passes unmodified.
+- **`ConfirmDialog`'s two footer buttons use local Tailwind classes, not `PRIMARY_BUTTON_CLASS`/`SECONDARY_BUTTON_CLASS`.** Both shared classes are `w-full` (single full-width button per form); a side-by-side Cancel/Confirm pair is a different shape forcing them through would either wrap awkwardly or require overriding the `w-full`, so they stay local - the same call `WalletPopupModal`'s existing inline Save/Cancel balance-editor buttons already made (documented exception, `CLAUDE.md`'s Form styles convention).
+- **`WalletPopupModal`'s delete button already stacks a `ConfirmDialog` on top of its own open `Modal`.** Both are `fixed inset-0` with their own backdrop; the second (confirm) backdrop visually covers the first (wallet popup) entirely, which is the intended effect - a modal-on-modal stack, not a layout conflict. No z-index changes were needed since `Modal.tsx` doesn't vary z-index per instance and mount order alone puts the confirm dialog's DOM node - and therefore its backdrop - on top.
+- **Both `WalletsView` and `WalletPopupModal` track their delete target as the full `Wallet` object (`walletToDelete`), not just an id**, so `ConfirmDialog`'s description can name the wallet ("Delete \"Cash Wallet\"?") without a second lookup after the id is already known from the click.
+
+**Deliberately not done**
+
+- **No confirmation was added to transaction soft-delete.** Per this phase's explicit guardrail and `implementation-roadmap.md`'s "Deliberately not changed" #6: it's reversible via `restoreTransaction`, so a confirm dialog there is friction, not safety.
+- **`isLoading` has no error-recovery UI** (no error banner on a failed delete). Neither `deleteWallet` nor `deleteDebt` currently return a `MutationResult` or surface a failure to their callers (`Promise<void>`, per `FinanceContext.tsx`) - there was no existing error-handling infrastructure to wire into, and adding a new one is outside T42's stated scope (a confirm dialog, not a delete-action rewrite).
+- **No `SectionHeader`/`Card`/`Badge`/`ProgressMeter`/`EmptyState`/`SegmentedControl` primitives were introduced** - out of scope; Phases 25-27.
+
+---
+
 ## Deferred — documented, awaiting separate approval
 
 | # | Task | Files | Impact | Risk | Effort | Status | Blocked by |
