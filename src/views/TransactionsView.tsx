@@ -374,6 +374,7 @@ export const TransactionsView: React.FC = () => {
         <TransactionForm
           wallets={activeWalletsForForm}
           categories={activeCategoriesForForm}
+          formTestId="tx-form-page"
           onSubmitTransaction={async (data) => {
             const res = await addTransaction({
               ...data,

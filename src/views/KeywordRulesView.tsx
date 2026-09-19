@@ -127,23 +127,23 @@ export const KeywordRulesView: React.FC = () => {
             </div>
 
             <div className="bg-stone-50 dark:bg-stone-800/80 rounded-xl p-3.5 border border-stone-100 dark:border-stone-700 space-y-2 text-xs">
-              <div className="flex justify-between">
+              <div className="flex justify-between" data-testid="metric-extracted-amount">
                 <span className="text-stone-500 dark:text-stone-400">Extracted Amount:</span>
                 <span className="font-mono font-bold text-stone-900 dark:text-stone-100">
                   {matchResult.extractedAmount ? formatCurrencyAmount(matchResult.extractedAmount) : 'None detected'}
                 </span>
               </div>
-              <div className="flex justify-between">
+              <div className="flex justify-between" data-testid="metric-matched-category">
                 <span className="text-stone-500 dark:text-stone-400">Matched Category:</span>
                 <span className="font-semibold text-emerald-700 dark:text-emerald-400">
                   {matchResult.categoryName || 'No keyword matched'}
                 </span>
               </div>
-              <div className="flex justify-between">
+              <div className="flex justify-between" data-testid="metric-inferred-type">
                 <span className="text-stone-500 dark:text-stone-400">Inferred Type:</span>
                 <span className="font-mono text-stone-800 dark:text-stone-200">{matchResult.type || 'EXPENSE'}</span>
               </div>
-              <div className="flex justify-between">
+              <div className="flex justify-between" data-testid="metric-cleaned-description">
                 <span className="text-stone-500 dark:text-stone-400">Cleaned Description:</span>
                 <span className="text-stone-800 dark:text-stone-200 font-medium">"{matchResult.cleanDescription}"</span>
               </div>

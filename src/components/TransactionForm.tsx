@@ -16,6 +16,8 @@ import { LABEL_TEXT_CLASS, OPTION_CLASS, ERROR_BANNER_CLASS } from '../utils/for
 interface TransactionFormProps {
   wallets: Wallet[];
   categories: Category[];
+  /** Distinguishes this mount when more than one `TransactionForm` can be in the DOM at once (e.g. the Dashboard's inline form alongside the Quick Add modal). */
+  formTestId?: string;
   onSubmitTransaction: (tx: {
     amount: number;
     rawInput: string;
@@ -33,6 +35,7 @@ interface TransactionFormProps {
 export const TransactionForm: React.FC<TransactionFormProps> = ({
   wallets,
   categories,
+  formTestId,
   onSubmitTransaction,
 }) => {
   const formId = useId();
@@ -186,6 +189,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
   return (
     <form
       id={`${formId}-form`}
+      data-testid={formTestId}
       onSubmit={handleSubmit}
       className="bg-white dark:bg-stone-900 rounded-2xl border border-stone-200 dark:border-stone-800 shadow-xs p-4 sm:p-6 space-y-5 transition-colors"
     >

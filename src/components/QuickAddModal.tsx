@@ -54,6 +54,7 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({ isOpen, onClose })
       <TransactionForm
         wallets={activeWallets}
         categories={activeCategories}
+        formTestId="tx-form-quickadd"
         onSubmitTransaction={handleSubmitTransaction}
       />
     </Modal>

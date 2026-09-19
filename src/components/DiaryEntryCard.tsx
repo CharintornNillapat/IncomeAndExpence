@@ -168,7 +168,10 @@ export const DiaryEntryCard: React.FC<DiaryEntryCardProps> = React.memo(({
       )}
 
       {entry.notes && (
-        <p className="text-xs text-stone-600 dark:text-stone-400 bg-white dark:bg-stone-900 p-2.5 rounded-lg border border-stone-100 dark:border-stone-800 italic">
+        <p
+          data-testid="diary-entry-notes"
+          className="text-xs text-stone-600 dark:text-stone-400 bg-white dark:bg-stone-900 p-2.5 rounded-lg border border-stone-100 dark:border-stone-800 italic"
+        >
           "{entry.notes}"
         </p>
       )}

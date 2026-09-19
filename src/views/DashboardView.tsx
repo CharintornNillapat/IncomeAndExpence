@@ -250,6 +250,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
           <TransactionForm
             wallets={activeWallets}
             categories={categories.filter((c) => !c.isDeleted)}
+            formTestId="tx-form-dashboard"
             onSubmitTransaction={handleTransactionSubmit}
           />
         </div>

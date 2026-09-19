@@ -18,8 +18,9 @@ export const CashflowMetricsCards: React.FC<CashflowMetricsCardsProps> = React.m
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-5">
       {/* 1. Total Income Card */}
-      <motion.div 
+      <motion.div
         whileHover={{ y: -2 }}
+        data-testid="metric-card-income"
         className="bg-white dark:bg-stone-900 rounded-2xl border-2 border-emerald-200/80 dark:border-emerald-900/60 p-4 sm:p-6 shadow-sm hover:shadow-md transition-all relative overflow-hidden flex flex-col justify-between"
       >
         <div className="flex items-center justify-between">
@@ -49,8 +50,9 @@ export const CashflowMetricsCards: React.FC<CashflowMetricsCardsProps> = React.m
       </motion.div>
 
       {/* 2. Total Expense Card */}
-      <motion.div 
+      <motion.div
         whileHover={{ y: -2 }}
+        data-testid="metric-card-expense"
         className="bg-white dark:bg-stone-900 rounded-2xl border-2 border-rose-200/80 dark:border-rose-900/60 p-4 sm:p-6 shadow-sm hover:shadow-md transition-all relative overflow-hidden flex flex-col justify-between"
       >
         <div className="flex items-center justify-between">
@@ -80,8 +82,9 @@ export const CashflowMetricsCards: React.FC<CashflowMetricsCardsProps> = React.m
       </motion.div>
 
       {/* 3. Net Balance Card (Income - Expense) */}
-      <motion.div 
+      <motion.div
         whileHover={{ y: -2 }}
+        data-testid="metric-card-net"
         className={`bg-white dark:bg-stone-900 rounded-2xl border-2 p-4 sm:p-6 shadow-sm hover:shadow-md transition-all relative overflow-hidden flex flex-col justify-between ${
           netBalance >= 0 ? 'border-emerald-300 dark:border-emerald-800/80' : 'border-rose-300 dark:border-rose-800/80'
         }`}

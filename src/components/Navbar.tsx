@@ -230,6 +230,8 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, onOpenQ
                 whileTap={{ scale: 0.95 }}
                 key={item.id}
                 id={`nav-tab-${item.id}`}
+                data-testid={`nav-tab-${item.id}`}
+                aria-current={isActive ? 'page' : undefined}
                 type="button"
                 onClick={() => setActiveTab(item.id)}
                 className={`min-h-[40px] sm:min-h-[44px] inline-flex items-center justify-center gap-2 px-3 sm:px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer shrink-0 md:shrink ${
