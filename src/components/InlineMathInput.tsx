@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useId } from 'react';
-import { Calculator, Check, AlertCircle, Sparkles } from 'lucide-react';
+import { Calculator, Check, AlertCircle, Sparkles, Info } from 'lucide-react';
 import { safeEvaluateMath } from '../utils/mathEvaluator';
 import { APP_CURRENCY_SYMBOL } from '../utils/currency';
 import { LABEL_TEXT_CLASS } from '../utils/formStyles';
@@ -40,11 +40,9 @@ export const InlineMathInput: React.FC<InlineMathInputProps> = ({
     onAmountEvaluatedRef.current = onAmountEvaluated;
   });
 
-  // Synchronous change handler to prevent race conditions during testing / rapid form submission
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = e.target.value;
-    setRawInput(val);
-
+  // Shared evaluation body so both direct typing and the quick-amount chips
+  // go through identical math evaluation rules.
+  const evaluateAndNotify = (val: string) => {
     if (!val.trim()) {
       setEvaluatedAmount(null);
       setFormattedResult('');
@@ -83,6 +81,13 @@ export const InlineMathInput: React.FC<InlineMathInputProps> = ({
     }
   };
 
+  // Synchronous change handler to prevent race conditions during testing / rapid form submission
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setRawInput(val);
+    evaluateAndNotify(val);
+  };
+
   // Evaluate whenever raw input or defaultValue initializes
   useEffect(() => {
     if (defaultValue && !rawInput) {
@@ -114,12 +119,32 @@ export const InlineMathInput: React.FC<InlineMathInputProps> = ({
     });
   };
 
+  // Rapid expense recording: chip appends the amount, chaining with "+" onto
+  // whatever is already typed rather than replacing it.
+  const handleQuickAmount = (amount: number) => {
+    const trimmed = rawInput.trim();
+    const next = !trimmed
+      ? amount.toString()
+      : /[+\-*/]$/.test(trimmed)
+      ? trimmed + amount.toString()
+      : `${trimmed}+${amount.toString()}`;
+    setRawInput(next);
+    evaluateAndNotify(next);
+  };
+
   return (
     <div id={`${inputId}-container`} className="flex flex-col gap-1.5">
       {label && (
         <div className="flex items-center justify-between">
           <label htmlFor={inputId} className={LABEL_TEXT_CLASS}>
             {label} {required && <span className="text-rose-500">*</span>}
+            <span
+              className="inline-flex align-middle ml-1.5 text-stone-300 dark:text-stone-600 hover:text-stone-500 dark:hover:text-stone-400 cursor-help"
+              title="Supports formulas: 120/2 + 50"
+              aria-label="Supports formulas: 120/2 + 50"
+            >
+              <Info className="w-3.5 h-3.5" />
+            </span>
           </label>
           {hasCalculation && evaluatedAmount !== null && (
             <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-200 dark:border-emerald-800/60">
@@ -215,6 +240,24 @@ export const InlineMathInput: React.FC<InlineMathInputProps> = ({
             </div>
           )}
         </div>
+
+        {/* Quick-amount chips: accelerate rapid expense recording on mobile/compact contexts */}
+        {!disabled && (
+          <div className="flex sm:hidden items-center gap-1.5 px-1">
+            <span className="text-[11px] text-stone-400 dark:text-stone-500 font-medium mr-1">Quick amount:</span>
+            {[100, 500, 1000].map((amount) => (
+              <button
+                key={amount}
+                id={`${inputId}-chip-${amount}`}
+                type="button"
+                onClick={() => handleQuickAmount(amount)}
+                className="min-h-8 px-2.5 flex items-center justify-center text-xs font-semibold rounded-lg bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 active:bg-emerald-200 dark:active:bg-emerald-900 text-emerald-700 dark:text-emerald-300 transition-colors cursor-pointer border border-emerald-100 dark:border-emerald-800/60"
+              >
+                +{amount.toLocaleString()}
+              </button>
+            ))}
+          </div>
+        )}
     </div>
   );
 };

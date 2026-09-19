@@ -39,7 +39,7 @@ export const TotalWealthHero: React.FC<TotalWealthHeroProps> = React.memo(({
 
           <div className="flex flex-col gap-1">
             <div className="flex items-baseline gap-2 sm:gap-3 flex-wrap">
-              <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black font-mono tracking-tight text-white">
+              <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black font-mono tabular-nums tracking-tight text-white">
                 <AnimatedCounter
                   value={totalNetWorth}
                   currencyPrefix={APP_CURRENCY_SYMBOL}

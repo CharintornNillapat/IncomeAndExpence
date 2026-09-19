@@ -33,7 +33,7 @@ export const CashflowMetricsCards: React.FC<CashflowMetricsCardsProps> = React.m
           </div>
         </div>
         <div className="mt-3.5 sm:mt-5">
-          <p className="text-2xl sm:text-3xl lg:text-4xl xl:text-5xl font-black font-mono tracking-tight text-emerald-600 dark:text-emerald-400">
+          <p className="text-2xl sm:text-3xl lg:text-4xl xl:text-5xl font-black font-mono tabular-nums tracking-tight text-emerald-600 dark:text-emerald-400">
             <AnimatedCounter
               value={incomeTotal}
               currencyPrefix={APP_CURRENCY_SYMBOL}
@@ -65,7 +65,7 @@ export const CashflowMetricsCards: React.FC<CashflowMetricsCardsProps> = React.m
           </div>
         </div>
         <div className="mt-3.5 sm:mt-5">
-          <p className="text-2xl sm:text-3xl lg:text-4xl xl:text-5xl font-black font-mono tracking-tight text-rose-600 dark:text-rose-400">
+          <p className="text-2xl sm:text-3xl lg:text-4xl xl:text-5xl font-black font-mono tabular-nums tracking-tight text-rose-600 dark:text-rose-400">
             <AnimatedCounter
               value={expenseTotal}
               currencyPrefix={APP_CURRENCY_SYMBOL}
@@ -109,7 +109,7 @@ export const CashflowMetricsCards: React.FC<CashflowMetricsCardsProps> = React.m
           </div>
         </div>
         <div className="mt-3.5 sm:mt-5">
-          <p className={`text-2xl sm:text-3xl lg:text-4xl xl:text-5xl font-black font-mono tracking-tight ${
+          <p className={`text-2xl sm:text-3xl lg:text-4xl xl:text-5xl font-black font-mono tabular-nums tracking-tight ${
             netBalance >= 0 ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'
           }`}>
             {netBalance < 0 ? '-' : ''}

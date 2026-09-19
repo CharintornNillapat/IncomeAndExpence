@@ -1,6 +1,6 @@
 ﻿import React, { useState, useMemo, useCallback } from 'react';
 import { motion, Variants } from 'framer-motion';
-import { PlusCircle } from 'lucide-react';
+import { PlusCircle, Sigma, Tags, HandCoins } from 'lucide-react';
 import { useFinanceState } from '../context/FinanceContext';
 import { useWallets } from '../hooks/useWallets';
 import { useDebts } from '../hooks/useDebts';
@@ -262,10 +262,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       </motion.section>
 
       {/* 4. Main Action & Breakdown Section: Add Transaction + Category & Debt Progress */}
-      <motion.div variants={itemVariants} className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+      <motion.div variants={itemVariants} className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
         {/* Left Column: Quick Add Entry Point (lg:col-span-6) */}
         <div className="lg:col-span-6">
-          <div className="h-full flex flex-col items-center justify-center text-center gap-4 bg-white dark:bg-stone-900 rounded-2xl border border-stone-200 dark:border-stone-800 shadow-xs p-8">
+          <div className="h-full flex flex-col items-center justify-center text-center gap-5 bg-white dark:bg-stone-900 rounded-2xl border border-stone-200 dark:border-stone-800 shadow-xs p-8">
             <div className="w-14 h-14 rounded-2xl bg-stone-900 dark:bg-emerald-600 text-white flex items-center justify-center shadow-xs">
               <PlusCircle className="w-7 h-7" />
             </div>
@@ -274,6 +274,20 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <p className="text-xs text-stone-500 dark:text-stone-400 mt-1 max-w-xs">
                 Log an expense, income, transfer, or debt payment in a few seconds.
               </p>
+            </div>
+            <div className="w-full max-w-xs grid grid-cols-3 gap-2">
+              <div className="flex flex-col items-center gap-1 py-2 px-1 rounded-xl bg-stone-50 dark:bg-stone-800/60 border border-stone-100 dark:border-stone-800">
+                <Sigma className="w-4 h-4 text-stone-500 dark:text-stone-400" />
+                <span className="text-[10px] font-semibold text-stone-500 dark:text-stone-400 leading-tight">Math input</span>
+              </div>
+              <div className="flex flex-col items-center gap-1 py-2 px-1 rounded-xl bg-stone-50 dark:bg-stone-800/60 border border-stone-100 dark:border-stone-800">
+                <Tags className="w-4 h-4 text-stone-500 dark:text-stone-400" />
+                <span className="text-[10px] font-semibold text-stone-500 dark:text-stone-400 leading-tight">Smart category</span>
+              </div>
+              <div className="flex flex-col items-center gap-1 py-2 px-1 rounded-xl bg-stone-50 dark:bg-stone-800/60 border border-stone-100 dark:border-stone-800">
+                <HandCoins className="w-4 h-4 text-stone-500 dark:text-stone-400" />
+                <span className="text-[10px] font-semibold text-stone-500 dark:text-stone-400 leading-tight">Debt repay</span>
+              </div>
             </div>
             <div className="w-full max-w-[220px]">
               <button
