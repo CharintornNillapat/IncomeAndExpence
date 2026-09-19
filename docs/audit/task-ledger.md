@@ -301,6 +301,34 @@ CI=true npx playwright test      # 87/87 passed (5.2m), 1 worker, 0 retries
 
 - **T25, T18, T19, T12, T28 rows left as-is in `constraints-to-promote.md`** (T28 excepted, already reflected pre-audit) — none were part of this task's explicit promotion list, and T25/T18 are themselves still `todo` in the task ledger, so their constraints don't yet hold in code.
 
+## Phase 19 — selector hardening + UI unification audit (approved to execute)
+
+| # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
+|---|---|---|---|---|---|---|---|---|---|---|
+| T31 | `aria-current` + `data-testid` on nav tabs; migrate `gotoTab`'s active-tab assertion | `Navbar.tsx`, `MobileBottomNav.tsx`, `tests/helpers.ts` | High | Low | 1h | done | — | 371d938 / 789a310 | tsc clean; `CI=true npx playwright test` 87/87 (twice - once additive-only, once after spec migration) | `gotoTab` no longer asserts a Tailwind class; every one of the suite's 87 runs depends on this helper |
+| T32 | `data-testid` at 4 fragile-selector anchors (metric cards, keyword sandbox rows, diary notes, `TransactionForm` mounts) | `CashflowMetricsCards.tsx`, `KeywordRulesView.tsx`, `DiaryEntryCard.tsx`, `TransactionForm.tsx` + 3 call sites | High | Low | 1.5h | done | — | 371d938 / 789a310 | tsc clean; 87/87 both commits | Retires an xpath-ancestor lookup, 6 class+text-filtered row lookups, a bare `<p>` locator, and a `.first()` text filter that becomes ambiguous once Phase 22 ships |
+| T33 | UI/UX unification audit report + phased roadmap + selector contract | new `ui-ux-audit-report.md`, `implementation-roadmap.md`, `test-selector-contract.md` | High | Low | 2h | done | — | 789a310 | docs-only, no gate needed | Findings A-L cover 5 add-transaction paths, 7 transfer triggers, `WalletPopupModal`'s 3-surface duplication, 4 transaction-row designs, 6 segmented controls, badge/progress/empty-state fragmentation, and the 2 spots `CLAUDE.md` has drifted from shipped code (Navbar subscription, stale mutator-split sentence) |
+
+**Notes on execution:**
+- **Two-commit split within the phase, matching the plan's stated safety requirement.** Commit `371d938` is additive-only (new attributes + a new optional `formTestId` prop, zero spec edits) and was verified 87/87 green on its own before any spec touched the new hooks - proving the hooks add nothing that could itself break a test. Commit `789a310` then migrates 5 spec files onto those hooks and adds the three new docs, verified 87/87 green again.
+- **`transaction.spec.ts`'s Dashboard-form lookups were migrated too**, even though `tests/helpers.ts` and the other 3 fragile specs named in the plan were the direct target. The `.first()` on a text-filtered `form` locator sits right next to the file already under edit, is a live source of ambiguity risk once Phase 22 (T36-T38) makes multiple `TransactionForm` mounts routine, and the fix is a pure locator swap with the assertions untouched - in scope under the roadmap's spec-edit policy ("an assertion survives and only its locator moves").
+- **`ui-ux-audit-report.md` is a new file, not an addition to `audit-report.md`.** `audit-report.md` is frozen write-once per its own header (`docs/audit/README.md`'s "Update discipline"); the two reports cover different concerns (Phase-0 context/re-render/dead-code findings vs. this pass's duplicate-entry-point/fragmented-UI findings) and mixing them would violate the freeze.
+
+**Verification**
+
+```
+npm run lint                     # tsc --noEmit: clean, 0 errors
+npm run build                    # built in 6.06s
+CI=true npx playwright test      # 87/87 passed, both commits independently verified
+```
+
+**Deliberately not done**
+
+- **No `contexts/` directory created**, despite the originating instruction naming one. `docs/audit/` already owns this audit trail and `CLAUDE.md` points there; a second root directory would fork the trail `docs/audit/README.md` explicitly protects. Confirmed with the user before proceeding.
+- **Phases 20-29 (T34-T50) not started.** This phase covers only the test-hardening prerequisite and the audit/roadmap documents; no `src/` behavior changed beyond the additive attributes/prop in T31-T32.
+
+---
+
 ## Deferred — documented, awaiting separate approval
 
 | # | Task | Files | Impact | Risk | Effort | Status | Blocked by |

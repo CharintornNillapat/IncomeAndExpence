@@ -4,6 +4,56 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
+## Phase 19 — selector hardening + UI unification audit: T31, T32, T33 (2026-09-19, commits `371d938` / `789a310`)
+
+**Changed**
+
+- `src/components/Navbar.tsx` — desktop nav-tab buttons gained `data-testid="nav-tab-${id}"` and `aria-current={isActive ? 'page' : undefined}`, alongside their existing `id` and Tailwind classes.
+- `src/components/MobileBottomNav.tsx` — same two attributes added to the mobile nav-tab buttons, for consistency (not currently exercised by the desktop-viewport-only suite, but real a11y value at zero risk).
+- `src/components/dashboard/CashflowMetricsCards.tsx` — the three metric cards gained `data-testid="metric-card-income"|"metric-card-expense"|"metric-card-net"`.
+- `src/views/KeywordRulesView.tsx` — the four sandbox result rows gained `data-testid="metric-extracted-amount"|"metric-matched-category"|"metric-inferred-type"|"metric-cleaned-description"`.
+- `src/components/DiaryEntryCard.tsx` — the notes paragraph gained `data-testid="diary-entry-notes"`.
+- `src/components/TransactionForm.tsx` — new optional `formTestId?: string` prop rendered as `data-testid` on the `<form>` element, so a caller can identify its own mount when more than one `TransactionForm` instance can exist in the DOM at once.
+- `src/views/DashboardView.tsx`, `src/components/QuickAddModal.tsx`, `src/views/TransactionsView.tsx` — pass `formTestId="tx-form-dashboard"` / `"tx-form-quickadd"` / `"tx-form-page"` respectively to their `TransactionForm` mount.
+- `tests/helpers.ts` — `gotoTab`'s active-tab assertion switched from `toHaveClass(/bg-stone-900/)` to `toHaveAttribute('aria-current', 'page')`.
+- `tests/date-boundary.spec.ts` — the Total Expense card lookup switched from an xpath ancestor keyed on `rounded-2xl` to `[data-testid="metric-card-expense"]`.
+- `tests/keywords.spec.ts` — all 6 sandbox-row lookups switched from `div.flex.justify-between` + label-text filters to their `data-testid`s.
+- `tests/diary.spec.ts` — the saved-note assertion switched from a bare `page.locator('p')` to `[data-testid="diary-entry-notes"]`.
+- `tests/transaction.spec.ts` — the two Dashboard-form lookups switched from `.first()` on a text-filtered `form` locator to `[data-testid="tx-form-dashboard"]`.
+- New `docs/audit/ui-ux-audit-report.md` — findings A-L on duplicate entry points (5 add-transaction paths, 7 transfer triggers), `WalletPopupModal`'s 3-surface duplication of `WalletsView`/`TransactionsView`, 4 fragmented transaction-row renderers, 6 fragmented segmented controls, badge/progress-bar/empty-state/card-shell fragmentation, and 2 spots where `CLAUDE.md` has drifted from the shipped code.
+- New `docs/audit/implementation-roadmap.md` — Phases 20-29 (T34-T50) resolving those findings.
+- New `docs/audit/test-selector-contract.md` — the freeze-list of ids/testids this and future phases must preserve or deliberately migrate.
+- 12 files changed (3 new), net +285/-23 lines across the two commits.
+
+**Why**
+
+The user, acting as design-system lead, asked for a focused audit of redundant user-facing features and a phased streamlining plan, explicitly in plan-mode with no source changes until the plan was approved. Before any restyle or consolidation phase could safely proceed, the Playwright suite's own fragility had to be fixed first: `tests/helpers.ts:26`'s `toHaveClass(/bg-stone-900/)` gates every one of the 87 test runs through `gotoTab`, so a palette or active-state restyle in a later phase (25-27) would fail all of them at once, for a reason unrelated to correctness. Four more specs depended on an xpath keyed to a Tailwind radius class, class-structural row lookups, a bare tag-name locator, and a `.first()` text filter that stays safe only by accident (only one `TransactionForm` is ever mounted today because `Modal.tsx`'s `AnimatePresence` fully unmounts a closed modal) - an accident Phase 22's consolidation would end.
+
+**Verification**
+
+```
+npm run lint                     # tsc --noEmit: clean, 0 errors
+npm run build                    # built in 6.06s
+CI=true npx playwright test      # 87/87 passed - once after the additive-only commit (371d938),
+                                  # once again after the spec-migration commit (789a310)
+```
+
+Also run directly: `npx playwright test tests/date-boundary.spec.ts tests/keywords.spec.ts tests/diary.spec.ts tests/transaction.spec.ts --project=chromium` (9/9 passed) immediately after the spec migration, before spending the ~5 minutes on the full 87.
+
+**Correctness notes**
+
+- **The additive commit was verified in isolation before any spec was touched**, specifically to prove the new attributes/prop introduce zero behavior change on their own - 87/87 passed with the old `bg-stone-900` assertion and the old xpath/class/tag lookups still in place, running entirely against hooks nothing yet read.
+- **The `.first()` ambiguity in `transaction.spec.ts` is not a live bug today.** `Modal.tsx:77-78` wraps its content in `{isOpen && (...)}` inside `AnimatePresence`, so a closed `QuickAddModal` contributes zero DOM nodes - only the Dashboard's inline `TransactionForm` ever matches `locator('form').filter({hasText:/Record Transaction/i})` while the suite's Dashboard-form tests run. It was migrated anyway because Phase 22 (T36-T38) is designed to make multiple mounts routine, and the fix was a same-file, assertion-preserving locator swap.
+- **`CashflowMetricsCards.tsx` gained `data-testid`s for all three cards, though only `metric-card-expense` is referenced by a spec today** - added for symmetry since the component was already being edited, at zero marginal risk.
+
+**Deliberately not done**
+
+- **No `contexts/` directory was created**, despite the user's original phrasing asking for deliverables "under `/contexts/`". Confirmed with the user via `AskUserQuestion`: `docs/audit/` already owns this append-only trail across 18 prior phases and `CLAUDE.md` points there; a second root directory would fork the trail that `docs/audit/README.md`'s own "What this is, and is not" section protects against. The two new report files instead extend the existing convention.
+- **Phases 20-29 (T34-T50) were not started in this phase** — this phase ships only the test-hardening prerequisite (T31-T32) and the audit/roadmap documents (T33), per the plan's phase-19-first ordering: nothing in Phases 20+ should touch a component's visual output before the suite stops depending on that output's implementation details.
+- **`MobileBottomNav`'s new attributes are not yet exercised by any spec** — `playwright.config.ts` pins all three projects to desktop viewports (`devices['Desktop Chrome'|'Desktop Firefox'|'Desktop Safari']`), so `gotoTab`'s `#nav-tab-${tabId}` always resolves to `Navbar.tsx`'s desktop nav, never `MobileBottomNav.tsx`'s. Added for consistency and future mobile-viewport test coverage, not because a current test needed it.
+
+---
+
 ## Phase 18 — promote verified constraints into CLAUDE.md: T30 (2026-09-19, commit `3c441e8`)
 
 **Changed**
