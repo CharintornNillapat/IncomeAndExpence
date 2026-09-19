@@ -4,6 +4,48 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
+## Phase 31 — dashboard hierarchy polish, math input UX, mobile ergonomics verification, Supabase dedupe migration: T57-T60 (2026-09-20, commit `f053fcf`)
+
+**Changed**
+
+- `src/components/dashboard/TotalWealthHero.tsx` / `CashflowMetricsCards.tsx` - `tabular-nums` added alongside every existing `font-mono` financial figure, so digits no longer shift column width mid-`AnimatedCounter` animation.
+- `src/views/DashboardView.tsx` - the T22-era 4-way grid's `items-start` changed to `items-stretch`, letting the "Record a Transaction" CTA card's pre-existing (previously inert) `h-full` actually match the height of its sibling column's 2 stacked cards; added a 3-chip capability row (math input / smart category / debt repay) to the CTA card so the reclaimed space reads as intentional rather than empty.
+- `src/components/InlineMathInput.tsx`:
+  - Extracted `handleInputChange`'s evaluation body into a new `evaluateAndNotify(val)` function (byte-identical logic, pure extraction).
+  - New `handleQuickAmount(amount)`, reusing `evaluateAndNotify` so a chip tap is evaluated exactly like typed input.
+  - New quick-amount chip row (+100/+500/+1,000), rendered only below the `sm` breakpoint, chaining onto existing input text with `+` the same way the pre-existing quick-operator row does.
+  - New `Info`-icon hint badge next to the field label (native `title`/`aria-label` tooltip: "Supports formulas: 120/2 + 50").
+- New `supabase/migrations/20260920_dedupe_categories.sql` - one-time, idempotent, transaction-wrapped cleanup for `categories` rows already duplicated in a live project: re-points `transactions.category_id` and `keyword_rules.category_id` off every losing duplicate onto its winner, then hard-deletes the now-unreferenced losers.
+- `docs/audit/task-ledger.md` - new Phase 31 table (T57-T60) and roadmap-status line update.
+- 5 files changed (1 new).
+
+**Why**
+
+Phase 30 shipped the client-side symptom fix for duplicate categories (`dedupeCategoriesByName`) but explicitly deferred the server-side cleanup, since no database access existed in that session either. This phase closes that gap (T60) alongside three independently-requested polish items: dashboard visual hierarchy (T57), faster expense entry via `InlineMathInput` (T58), and a mobile-ergonomics check on `MobileBottomNav` (T59) that turned out to already be satisfied.
+
+**Verification**
+
+```
+npm run lint                                                                              # tsc --noEmit: clean, 0 errors
+npx playwright test tests/transaction.spec.ts tests/theme.spec.ts tests/categories.spec.ts --project=chromium   # 11/11 passed
+CI=true npx playwright test                                                              # 99/99 passed, 0 retries, 5.1m, 1 worker
+npm run build                                                                             # built in 7.54s; 0 chunks over 500 kB
+```
+
+**Correctness notes**
+
+- **T59 required no code change.** Read `MobileBottomNav.tsx` in full before touching anything: `pb-[env(safe-area-inset-bottom,0.5rem)]` (safe-area padding), `backdrop-blur-md` (backdrop blur), and `min-h-[48px]` per tab button (already >44px) were all already shipped, presumably from earlier phase work this session didn't need to re-derive. Editing already-correct code to superficially match a brief that predates its own prior fix would have been a no-op diff at best and a real visual regression at worst (the brief's literal `bg-stone-900/90` suggestion would break the light-theme nav, which is intentionally `bg-white/95`).
+- **The T58 chip-evaluation refactor was necessary, not optional.** A first-draft version set `rawInput` directly from the chip handler without re-running evaluation — since `evaluateAndNotify` only ever ran from the `<input>`'s own `onChange`, a programmatic `setRawInput` call would silently leave `evaluatedAmount`/`onAmountEvaluated` stale, so the parent form would never see the chip-driven amount. Extracting `evaluateAndNotify` and calling it explicitly after every programmatic `rawInput` change (mirroring the existing `handleQuickAdd` operator-append pattern, but actually re-evaluating) is what makes the chips functionally complete rather than cosmetic.
+- **T60's duplicate key intentionally matches `dedupeCategoriesByName`'s, including its omission of `category.type`.** Any divergence between the client healing pass and this one-time server cleanup would mean a row one of them calls a duplicate the other doesn't — see `task-ledger.md`'s Phase 31 notes for the full reasoning, including why this migration hard-deletes rather than soft-deletes (everything referencing a loser is re-pointed inside the same transaction before the delete runs, so nothing is left dangling).
+
+**Deliberately not done**
+
+- **T60 was not applied to a live database.** This sandbox has no connected Supabase project, matching Phase 30's own note that no database access existed in that session either. The migration file is written and follows `20260909_transfer_funds.sql`'s existing conventions (assumed-schema comment block, transaction-wrapped, explicit idempotency argument) but is unexecuted — applying it to a real project is the user's call, not this session's to make unilaterally.
+- **`MobileBottomNav.tsx` was read but not modified** - see the T59 correctness note above.
+- **No new domain hook, state library, or abstraction was introduced** for any of the four tasks - each change lands at the same layer (component styling, one component's local input logic, one new migration file) its own task specifies.
+
+---
+
 ## Phase 30 — Categories & Smart Rules hub, category CRUD, duplicate-category fix: T51-T56 (2026-09-19, commit `8f7e4cd`)
 
 **Changed**
