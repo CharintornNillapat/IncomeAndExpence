@@ -1,9 +1,9 @@
 import React from 'react';
 import { Landmark, RotateCcw, Trash2 } from 'lucide-react';
 import { Transaction, Wallet, Category } from '../types';
-import { formatCurrencyAmount } from '../utils/currency';
 import { TX_TYPE_META } from './transaction/txTypeMeta';
-import { Badge, CategoryChip } from './ui/Badge';
+import { TxTypeIcon, TxAmount, TxCategoryChip, TxSoftDeletedTag } from './transaction/TxCells';
+import { Badge } from './ui/Badge';
 
 interface TransactionTableRowProps {
   tx: Transaction;
@@ -22,11 +22,8 @@ export const TransactionTableRow: React.FC<TransactionTableRowProps> = React.mem
   onRestore,
   onDelete,
 }) => {
-  const isIncome = tx.type === 'INCOME';
   const isTransfer = tx.type === 'TRANSFER';
   const isDebtRepayment = tx.type === 'DEBT_REPAYMENT';
-  const meta = TX_TYPE_META[tx.type];
-  const TypeIcon = meta.icon;
 
   return (
     <tr
@@ -43,11 +40,7 @@ export const TransactionTableRow: React.FC<TransactionTableRowProps> = React.mem
       {/* Description & Progressive Disclosure for Mobile */}
       <td className="py-3 px-3 sm:px-4 max-w-[160px] sm:max-w-[260px] md:max-w-none">
         <div className="flex items-center gap-2 sm:gap-2.5">
-          <div
-            className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center shrink-0 ${meta.tint}`}
-          >
-            <TypeIcon className="w-3.5 h-3.5" />
-          </div>
+          <TxTypeIcon type={tx.type} size="md" />
           <div className="min-w-0 flex-1">
             <p className={`font-semibold truncate text-xs sm:text-sm ${tx.isDeleted ? 'line-through text-stone-500 dark:text-stone-500' : 'text-stone-900 dark:text-stone-100'}`}>
               {tx.description}
@@ -59,9 +52,9 @@ export const TransactionTableRow: React.FC<TransactionTableRowProps> = React.mem
                 <Badge tone="amber" size="sm" icon={<Landmark className="w-2.5 h-2.5" />}>
                   Debt Payoff
                 </Badge>
-              ) : category ? (
-                <CategoryChip name={category.name} color={category.color} size="sm" rounded="sm" showDot className="max-w-[100px]" />
-              ) : null}
+              ) : (
+                <TxCategoryChip category={category} size="sm" rounded="sm" showDot className="max-w-[100px]" />
+              )}
               <span className="text-[10px] text-stone-400 dark:text-stone-500 truncate max-w-[90px]">
                 {wallet?.name || 'Wallet'}
               </span>
@@ -74,11 +67,7 @@ export const TransactionTableRow: React.FC<TransactionTableRowProps> = React.mem
               </p>
             )}
 
-            {tx.isDeleted && (
-              <span className="inline-block text-[10px] font-semibold text-rose-600 dark:text-rose-400 uppercase">
-                [Soft Deleted]
-              </span>
-            )}
+            {tx.isDeleted && <TxSoftDeletedTag />}
           </div>
         </div>
       </td>
@@ -98,7 +87,7 @@ export const TransactionTableRow: React.FC<TransactionTableRowProps> = React.mem
             {TX_TYPE_META.DEBT_REPAYMENT.label}
           </Badge>
         ) : category ? (
-          <CategoryChip name={category.name} color={category.color} size="md" rounded="md" className="max-w-[130px]" />
+          <TxCategoryChip category={category} size="md" rounded="md" className="max-w-[130px]" />
         ) : (
           <span className="text-stone-400 dark:text-stone-500">—</span>
         )}
@@ -106,9 +95,7 @@ export const TransactionTableRow: React.FC<TransactionTableRowProps> = React.mem
 
       {/* Amount */}
       <td className="py-3 px-3 sm:px-4 text-right font-mono font-bold whitespace-nowrap text-xs sm:text-sm">
-        <span className={isIncome ? 'text-emerald-600 dark:text-emerald-400' : isDebtRepayment ? 'text-amber-600 dark:text-amber-400' : 'text-stone-900 dark:text-stone-100'}>
-          {meta.sign}{formatCurrencyAmount(tx.amount)}
-        </span>
+        <TxAmount amount={tx.amount} type={tx.type} />
       </td>
 
       {/* Actions with accessible 44px min touch target */}

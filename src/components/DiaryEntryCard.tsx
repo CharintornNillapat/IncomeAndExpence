@@ -4,6 +4,7 @@ import { Category, DiaryEntry, Transaction, Wallet } from '../types';
 import { formatCurrencyAmount } from '../utils/currency';
 import { DayInfo } from '../utils/date';
 import { Badge } from './ui/Badge';
+import { TxAmount } from './transaction/TxCells';
 
 interface MoodInfo {
   label: string;
@@ -157,7 +158,7 @@ export const DiaryEntryCard: React.FC<DiaryEntryCardProps> = React.memo(({
                     </span>
                   </div>
                 </div>
-                <span className="font-mono font-bold text-rose-600 dark:text-rose-400">-{formatCurrencyAmount(tx.amount)}</span>
+                <TxAmount amount={tx.amount} type={tx.type} colorClassName="text-rose-600 dark:text-rose-400" />
               </div>
             );
           })}

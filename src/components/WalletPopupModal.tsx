@@ -17,7 +17,7 @@ import { Wallet } from '../types';
 import { APP_CURRENCY, APP_CURRENCY_SYMBOL, formatCurrencyAmount } from '../utils/currency';
 import { todayIsoDate } from '../utils/date';
 import { getWalletIcon } from '../utils/walletIcons';
-import { TX_TYPE_META } from './transaction/txTypeMeta';
+import { TxTypeIcon, TxAmount } from './transaction/TxCells';
 
 // T39: TRANSFER and ADD_WALLET are retired - WalletsView (via the shared,
 // shell-level TransferFundsModal/AddWalletModal, T41) is the sole owner of
@@ -425,22 +425,19 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
               ) : (
                 <div className="space-y-2">
                   {walletTransactions.map((tx) => {
-                    const CompactIcon = TX_TYPE_META[tx.type].compactIcon;
+                    const tint =
+                      tx.type === 'INCOME'
+                        ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400'
+                        : tx.type === 'EXPENSE'
+                        ? 'bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400'
+                        : 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400';
                     return (
                     <div
                       key={tx.id}
                       className="p-3 rounded-xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900/80 flex items-center justify-between text-xs gap-3"
                     >
                       <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
-                        <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
-                          tx.type === 'INCOME'
-                            ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400'
-                            : tx.type === 'EXPENSE'
-                            ? 'bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400'
-                            : 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400'
-                        }`}>
-                          <CompactIcon className="w-3.5 h-3.5" />
-                        </div>
+                        <TxTypeIcon type={tx.type} variant="compact" size="sm" tintOverride={tint} />
                         <div className="min-w-0">
                           <p className="font-semibold text-stone-900 dark:text-stone-100 truncate">{tx.description}</p>
                           <span className="text-[10px] text-stone-400 dark:text-stone-500 font-mono">{tx.transactionDate}</span>
@@ -448,11 +445,7 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
                       </div>
 
                       <div className="text-right shrink-0">
-                        <span className={`font-mono font-bold ${
-                          tx.type === 'INCOME' ? 'text-emerald-600 dark:text-emerald-400' : 'text-stone-900 dark:text-stone-100'
-                        }`}>
-                          {TX_TYPE_META[tx.type].sign}{formatCurrencyAmount(tx.amount)}
-                        </span>
+                        <TxAmount amount={tx.amount} type={tx.type} colorScheme="incomeOnly" />
                         <span className="text-[10px] text-stone-400 dark:text-stone-500 block uppercase font-medium">{tx.type}</span>
                       </div>
                     </div>

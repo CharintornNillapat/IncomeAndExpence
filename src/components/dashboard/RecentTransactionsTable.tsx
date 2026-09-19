@@ -1,10 +1,25 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Calendar, ChevronRight, Receipt, ArrowDownLeft, ArrowUpRight, ArrowLeftRight, TrendingDown } from 'lucide-react';
-import { Transaction, Wallet, Category } from '../../types';
-import { APP_CURRENCY, formatCurrencyAmount, MINUS } from '../../utils/currency';
-import { CategoryChip } from '../ui/Badge';
+import { Transaction, TransactionType, Wallet, Category } from '../../types';
+import { APP_CURRENCY } from '../../utils/currency';
+import { TxAmount, TxCategoryChip } from '../transaction/TxCells';
 import { EmptyState } from '../ui/EmptyState';
+
+/**
+ * T49: this table's own 4-way amount color scheme (emerald/rose/amber/indigo)
+ * predates - and diverges from - `TX_TYPE_META.tint`/`TxAmount`'s 3-way
+ * standard preset (see `txTypeMeta.ts`'s note). Passed into `TxAmount` via
+ * `colorClassName` rather than added as a 3rd shared preset, since no other
+ * renderer uses it.
+ */
+const AMOUNT_COLOR_BY_TYPE: Record<TransactionType, string> = {
+  INCOME: 'text-emerald-600 dark:text-emerald-400',
+  EXPENSE: 'text-rose-600 dark:text-rose-400',
+  DEBT_REPAYMENT: 'text-amber-600 dark:text-amber-400',
+  TRANSFER: 'text-indigo-600 dark:text-indigo-400',
+  ADJUSTMENT: 'text-indigo-600 dark:text-indigo-400',
+};
 
 interface RecentTransactionsTableProps {
   transactions: Transaction[];
@@ -85,9 +100,7 @@ export const RecentTransactionsTable: React.FC<RecentTransactionsTableProps> = R
                         
                         {/* Mobile subtitled badges */}
                         <div className="flex items-center gap-1.5 mt-0.5 sm:hidden flex-wrap">
-                          {category && (
-                            <CategoryChip name={category.name} color={category.color} size="sm" rounded="sm" showDot className="max-w-[90px]" />
-                          )}
+                          <TxCategoryChip category={category} size="sm" rounded="sm" showDot className="max-w-[90px]" />
                           <span className="text-[10px] text-stone-400 dark:text-stone-500 truncate max-w-[80px]">
                             {wallet?.name || 'Wallet'}
                           </span>
@@ -98,7 +111,7 @@ export const RecentTransactionsTable: React.FC<RecentTransactionsTableProps> = R
                     {/* Category Column (Hidden on mobile) */}
                     <td className="hidden sm:table-cell py-3 px-4">
                       {category ? (
-                        <CategoryChip name={category.name} color={category.color} size="md" rounded="full" showDot className="max-w-[120px]" />
+                        <TxCategoryChip category={category} size="md" rounded="full" showDot className="max-w-[120px]" />
                       ) : (
                         <span className="text-stone-400 dark:text-stone-500 text-[11px]">
                           {tx.type === 'TRANSFER' ? 'Transfer' : tx.type === 'DEBT_REPAYMENT' ? 'Debt' : 'General'}
@@ -141,20 +154,7 @@ export const RecentTransactionsTable: React.FC<RecentTransactionsTableProps> = R
 
                     {/* Amount */}
                     <td className="py-3 px-3 sm:px-4 text-right font-mono font-bold whitespace-nowrap text-xs sm:text-sm">
-                      <span
-                        className={
-                          tx.type === 'INCOME'
-                            ? 'text-emerald-600 dark:text-emerald-400'
-                            : tx.type === 'EXPENSE'
-                            ? 'text-rose-600 dark:text-rose-400'
-                            : tx.type === 'DEBT_REPAYMENT'
-                            ? 'text-amber-600 dark:text-amber-400'
-                            : 'text-indigo-600 dark:text-indigo-400'
-                        }
-                      >
-                        {tx.type === 'INCOME' ? '+' : tx.type === 'EXPENSE' ? MINUS : ''}
-                        {formatCurrencyAmount(tx.amount)}
-                      </span>
+                      <TxAmount amount={tx.amount} type={tx.type} colorClassName={AMOUNT_COLOR_BY_TYPE[tx.type]} />
                       <span className="text-[10px] text-stone-400 dark:text-stone-500 ml-1 hidden sm:inline">{currency}</span>
                     </td>
                   </tr>
