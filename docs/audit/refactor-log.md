@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 29 — roadmap closeout & documentation alignment: T50 (2026-09-19, commit pending)
+## Phase 29 — roadmap closeout & documentation alignment: T50 (2026-09-19, commit `5132ef6`)
 
 **Changed**
 
