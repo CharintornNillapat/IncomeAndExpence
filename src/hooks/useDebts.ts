@@ -19,6 +19,12 @@ export const useDebts = () => {
     return debts.filter((d) => !d.isDeleted);
   }, [debts]);
 
+  // Active (non-deleted) wallets, matching `useWallets`' convention - a
+  // soft-deleted wallet must never be selectable as a debt-repayment source.
+  const activeWallets = useMemo(() => {
+    return wallets.filter((w) => !w.isDeleted);
+  }, [wallets]);
+
   // Settled vs Unsettled debts
   const unsettledDebts = useMemo(() => {
     return activeDebts.filter((d) => !d.isSettled);
@@ -78,7 +84,8 @@ export const useDebts = () => {
     debts: activeDebts,
     unsettledDebts,
     settledDebts,
-    wallets,
+    wallets: activeWallets,
+    allWallets: wallets,
     metrics: debtMetrics,
     addDebt: handleAddDebt,
     repayDebt: handleRepayDebt,

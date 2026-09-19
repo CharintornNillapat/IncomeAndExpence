@@ -310,13 +310,11 @@ export const DebtsView: React.FC = () => {
                   onChange={(e) => setSelectedWalletId(e.target.value)}
                   className="w-full text-xs rounded-xl border border-stone-200 dark:border-stone-700 px-3 py-2.5 bg-stone-50 dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-none focus:border-stone-800 dark:focus:border-stone-400 focus:ring-2 focus:ring-stone-200 dark:focus:ring-stone-700 transition-colors"
                 >
-                  {wallets
-                    .filter((w) => !w.isDeleted)
-                    .map((w) => (
-                      <option key={w.id} value={w.id} className="dark:bg-stone-800 dark:text-stone-100">
-                        {w.name} ({formatCurrencyAmount(w.balance)})
-                      </option>
-                    ))}
+                  {wallets.map((w) => (
+                    <option key={w.id} value={w.id} className="dark:bg-stone-800 dark:text-stone-100">
+                      {w.name} ({formatCurrencyAmount(w.balance)})
+                    </option>
+                  ))}
                 </select>
               </div>
 
