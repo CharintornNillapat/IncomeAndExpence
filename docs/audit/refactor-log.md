@@ -4,6 +4,44 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
+## Phase 27 — SegmentedControl: T48 (2026-09-19, commit `07b6394`)
+
+**Changed**
+
+- New `src/components/ui/SegmentedControl.tsx` — generic `SegmentedControl<T extends string>` over `options: Array<{value: T; label: string; id?: string}>`, `value`, `onChange`, `size: 'sm'|'md'`, `fill?: boolean` (equal-width buttons), `className` (tray-level display/layout classes only). The active option's pill background is a `motion.span` with `layoutId={`${useId()}-pill`}` and a spring `transition`, so switching options animates the pill across rather than swapping a background class instantly.
+- `DashboardView.tsx` — the period filter (`DAY`/`WEEK`/`MONTH`/`ALL`) now `<SegmentedControl<TimeFilter> size="sm" .../>`; ids `time-filter-day`/`-week`/`-month`/`-all` and label text (`Today`/`This Week`/`Past 30 Days`/`All Time`) passed through unchanged.
+- `TransactionForm.tsx` — the transaction-type toggle (`EXPENSE`/`INCOME`/`TRANSFER`/`DEBT_REPAYMENT`) now `<SegmentedControl<TransactionType> size="md" .../>` inside its existing `grid grid-cols-4 sm:flex` mobile touch-target layout, passed via `className`; ids `${formId}-type-*` and label text (`Expense`/`Income`/`Transfer`/`Debt`) unchanged.
+- `AuthModal.tsx` — the Sign In / Create Account mode tabs now `<SegmentedControl<'signin'|'signup'> size="sm" fill .../>`; ids `auth-tab-signin`/`auth-tab-signup` and label text (`Sign In`/`Create Account`) unchanged.
+- 4 files changed (1 new), net +90/-70 lines (component new file offsets the ~104 lines of duplicated hand-rolled markup removed from the 3 call sites).
+
+**Why**
+
+`implementation-roadmap.md` Phase 27: three call sites (dashboard period filter, transaction-type toggle, auth mode tabs) independently hand-rolled the same "tray of buttons, active one gets a white/dark-panel pill background" pattern, each with its own copy of the tray/pill/label class strings and no shared animation. Unifying them into one primitive with a `layoutId`-animated pill both removes the duplication and gives all three the spring transition none of them had individually.
+
+**Verification**
+
+```
+npm run lint                                                                # tsc --noEmit: clean, 0 errors
+npx playwright test tests/transaction.spec.ts tests/auth.spec.ts --project=chromium   # 9/9 passed
+CI=true npx playwright test                                                 # 87/87 passed, 0 retries
+npm run build                                                                # built in 7.28s
+```
+
+**Correctness notes**
+
+- **`layoutId` is namespaced per component instance via `useId()`, not a fixed string.** `TransactionForm` can mount twice concurrently (its own `formTestId` prop documents this — the Dashboard's inline form alongside the Quick Add modal), and `DashboardView` renders its period-filter control in the same tree as that inline form's type-toggle control. A shared `layoutId="pill"` across multiple mounted instances would make framer-motion treat unrelated pills in different controls as the same animating element.
+- **Container display mode (`flex` vs `grid grid-cols-4 sm:flex`) stays a `className` the caller supplies, not something the primitive hardcodes.** `TransactionForm`'s mobile 4-column touch-target grid and `DashboardView`'s content-sized `flex` tray are genuinely different layouts; folding either into the primitive's own default would visually break the other.
+- **`fill` (equal-width `flex-1` buttons) was added beyond the phase brief's minimum `value`/`onChange`/`size`/`className` prop list.** `AuthModal`'s two tabs were `flex-1` pre-migration with no way to express that through the other props.
+- **The phase brief's own prose named the auth tabs "Sign In / Sign Up"; the actual source text is "Sign In" / "Create Account".** Preserved the real source text verbatim per the "preserve exact label texts" guardrail, not the brief's paraphrase. `auth.spec.ts:36,40` asserts on the ids only, so this had no test-visible effect either way.
+- **`TransactionForm`'s type toggle has 4 options (`EXPENSE`/`INCOME`/`TRANSFER`/`DEBT_REPAYMENT`), not the 3 (`Expense`/`Income`/`Transfer`) the phase brief's file excerpt implied.** All 4 were carried over unchanged — dropping `DEBT_REPAYMENT` would have deleted a working feature, not adopted a primitive.
+
+**Deliberately not done**
+
+- **The Diary mood/food grids were not adopted onto `SegmentedControl`**, per this phase's own explicit exemption — they're a different interaction shape (multi-cell icon grid, not a 2-4 option text tab tray), not a pill-in-tray switcher.
+- **No visual regression testing beyond Playwright's text/id assertions.** The spring-pill animation itself has no automated visual check; confirmed manually only in the sense that the existing DOM structure (button + label) still resolves to the same accessible name and id at every site.
+
+---
+
 ## Phase 26 — Badge, ProgressMeter, EmptyState: T45, T46, T47 (2026-09-19, commit `ab1068c`)
 
 **Changed**

@@ -557,6 +557,31 @@ CI=true npx playwright test                                                     
 
 ---
 
+## Phase 27 — SegmentedControl (approved to execute) · Medium risk
+
+| # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
+|---|---|---|---|---|---|---|---|---|---|---|
+| T48 | `SegmentedControl`; adopt at 3 pill-in-tray sites | new `src/components/ui/SegmentedControl.tsx`; `DashboardView.tsx`, `TransactionForm.tsx`, `AuthModal.tsx` | Med | Med | 2h | done | — | 07b6394 | tsc clean; `transaction`+`auth` chromium 9/9; `CI=true npx playwright test` 87/87, 0 retries; `npm run build` succeeds in 7.28s | 3 hand-rolled pill-in-tray switchers (period filter, transaction-type toggle, auth mode tabs) → 1 shared component with a `layoutId`-animated active pill; all pre-existing ids (`#time-filter-*`, `#auth-tab-signin`, `#auth-tab-signup`, `${formId}-type-*`) and label text preserved verbatim |
+
+**Verification**
+
+```
+npm run lint                                                                # tsc --noEmit: clean, 0 errors
+npx playwright test tests/transaction.spec.ts tests/auth.spec.ts --project=chromium   # 9/9 passed
+CI=true npx playwright test                                                 # 87/87 passed, 0 retries
+npm run build                                                                # built in 7.28s
+```
+
+**Notes on execution:**
+- **The active pill is a `layoutId`-animated `motion.span` sibling behind the label, not a background-class swap on the button itself.** Switching options now springs the white/dark-panel pill across the tray instead of an instant class change on each button.
+- **`layoutId` is namespaced per instance via `useId()`.** `TransactionForm` can mount twice at once (Dashboard's inline form alongside the Quick Add modal, per its own `formTestId` prop), and `DashboardView` renders its period-filter `SegmentedControl` alongside that inline form's type-toggle `SegmentedControl` in the same tree - two unnamespaced `layoutId="pill"` instances would fight over the same shared layout animation.
+- **Container layout classes (`flex`/`grid`, alignment, width) stay with each call site via `className`, not baked into the primitive.** `DashboardView` passes `flex items-center self-start sm:self-auto`; `TransactionForm` passes `grid grid-cols-4 sm:flex w-full sm:w-auto` (its existing 4-column mobile touch-target grid, now including the `DEBT_REPAYMENT`/"Debt" option the phase brief's file excerpt didn't show); `AuthModal` uses the default (a plain tray) plus the new `fill` prop for its two equal-width tabs. Tray background/border/padding/pill styling is shared; only the outer display mode is call-site-owned, since the three sites genuinely differ there (content-sized pills vs. equal-width tabs vs. a 4-column mobile grid) and forcing one shape would be a layout regression at two of the three sites.
+- **A `fill` prop (equal-width buttons via `flex-1`) was added beyond the task's minimum prop list**, needed for `AuthModal`'s two-tab switcher, which was `flex-1` at both buttons pre-migration - no prop set in the brief's `value`/`onChange`/`size`/`className` list could express that without it.
+- **Minor, deliberate padding homogenization at 2 of 3 sites**, in the direction the phase's own goal ("replace fragmented tab/period/type switchers" into one shared visual style) invites: `DashboardView`'s pills (`size="sm"`, `px-3.5 py-1.5`) and `AuthModal`'s tabs (also `size="sm"`, previously no horizontal padding at all - reliant on `flex-1` alone) now share one padding scale rather than each retyping its own. `TransactionForm` keeps its own `size="md"` (`py-2 px-2 sm:px-3`) unchanged, matching its distinct grid-cell touch-target sizing.
+- **AuthModal's label text is verbatim `Sign In` / `Create Account`**, not `Sign In` / `Sign Up` as the phase brief's own prose said - the brief's guardrail ("preserve exact label texts verbatim") was followed against the actual source, not the brief's paraphrase; no test asserts on `Create Account`'s literal text, only on the ids (`auth.spec.ts:36,40`).
+
+---
+
 ## Deferred — documented, awaiting separate approval
 
 | # | Task | Files | Impact | Risk | Effort | Status | Blocked by |
