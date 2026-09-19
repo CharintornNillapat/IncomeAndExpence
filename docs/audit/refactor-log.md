@@ -4,6 +4,50 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
+## Phase 12 — batched localStorage writer: T16 (2026-09-19, commit `97ac7b4`)
+
+**Changed**
+
+- `src/context/FinanceContext.tsx`:
+  - Replaced 8 independent `useEffect`s (each calling `localStorage.setItem` synchronously on one state slice — `wallets`, `categories`, `keywordRules`, `transactions`, `debts`, `diaryEntries`, `currentUser`, `sessions`) with a single batched writer: a `pendingWritesRef` (`Map<string, unknown>`) collects dirty keys, and one debounced (250ms) `writeTimerRef` flushes all of them together via `flushPendingWrites`.
+  - Added a `didMountRef` mount-skip guard so the 8 write-trigger effects do nothing on their initial mount pass — each slice's value at that point is exactly what `safeGetLocalStorage` just read from storage, so writing it back would be pure waste (and, for `sessions`, would re-serialize `initializeSessionList`'s already-persisted transform redundantly). The guard relies on React running a commit's passive effects in declaration order: the effect that sets `didMountRef.current = true` is declared immediately after all 8 write effects, so it cannot run before them on the same commit.
+  - Added a `visibilitychange`/`pagehide` lifecycle effect that calls `flushPendingWrites()` synchronously — `visibilitychange` on `document.visibilityState === 'hidden'`, `pagehide` unconditionally — plus the same flush in that effect's own cleanup function.
+- New `tests/storage-persistence.spec.ts` (2 tests): one proves the `visibilitychange` handler flushes synchronously (checked inside the same `page.evaluate` call that dispatches the event, so it cannot pass merely because the debounce timer raced ahead of it), the other proves state survives a real `page.reload()`.
+
+1 file changed in `src/` (`FinanceContext.tsx`, +79/-17), 1 new spec file.
+
+**Why**
+
+ADR 0003 (T16 half): `FinanceContext.tsx:390-413` ran 8 separate full `JSON.stringify` + `localStorage.setItem` calls per relevant state change — a single `addTransaction` triggered 2-3 of them, a failed write's rollback 3 more, a cloud refresh up to 6. Separately, none of the 8 had any flush guarantee: a PWA tab backgrounded mid-write (the common mobile case — swipe away, lock the screen, switch apps) could lose whatever hadn't yet reached `localStorage`, since nothing forced a synchronous write before the tab was suspended.
+
+**Verification**
+
+```
+npm run lint                     # tsc --noEmit: clean, 0 errors
+npm run build                    # built in 5.14s (5.1-5.8s across runs); PWA precache 26 entries (1498.37 KiB)
+CI=true npx playwright test      # 87/87 passed (4.2m), 1 worker, 0 retries consumed -
+                                  # 81 pre-existing + 6 new (2 specs x 3 browsers)
+```
+
+`git status --short` / `git diff --stat` confirmed only `FinanceContext.tsx` (modified) and `storage-persistence.spec.ts` (new) changed.
+
+**Correctness notes**
+
+- **The debounce and the mount-skip guard cannot desync per-key state.** `pendingWritesRef` is a `Map` keyed by storage key, not an array or queue — a second write to the same key before the timer fires overwrites the pending value in place rather than queuing a stale write behind it, so `flushPendingWrites` always serializes the latest value for each dirty key, never an intermediate one.
+- **`flushPendingWrites` is idempotent and side-effect-free when there is nothing pending.** Both lifecycle listeners can fire for the same real event (a navigation away triggers both `visibilitychange`→hidden and `pagehide`) without double-writing anything incorrect — the second call simply iterates an already-empty map.
+- **No behavior change to *what* gets persisted, only *when*.** Every key, every serialized shape, and the `safeGetLocalStorage` read path are untouched; this phase only changes the write path from "8 independent immediate writers" to "1 coordinated debounced writer with mandatory flush points."
+
+**Verification spec design note**
+
+ADR 0003 flagged T16 as having "no automated regression test... verification is manual," specifically because proving a debounce-driven flush works is inherently racy against the debounce window itself. `tests/storage-persistence.spec.ts` avoids that race rather than tuning a timeout against it: the `visibilitychange` test overrides `document.visibilityState` and calls `document.dispatchEvent` and then reads `localStorage` back inside the *same* `page.evaluate` invocation — since `dispatchEvent` runs its listeners synchronously before returning, there is no `await`, poll, or timeout anywhere between the dispatch and the read for the 250ms debounce timer to race against. A regression that removed the `visibilitychange` listener entirely would fail this test deterministically, not flakily.
+
+**Deliberately not done**
+
+- **T17 (realtime debounce/`user_id` filter/self-echo suppression)** — ADR 0003's other half, `FinanceContext.tsx:132,658-677`. Explicitly out of scope for this task; still `todo` in the deferred backlog, gated on the manual two-device checklist ADR 0003 specifies.
+- **No re-render or write-count instrumentation captured.** ADR 0003's own "Consequences" section anticipates this — the collapse from up to 8 synchronous writes to 1 debounced batch is a structural guarantee of the `Map`-based writer, not something this phase additionally measured with `console.count` or similar.
+
+---
+
 ## Phase 11 — local-calendar date comparisons: T21 (2026-09-18, commit `e8d5236`)
 
 **Changed**

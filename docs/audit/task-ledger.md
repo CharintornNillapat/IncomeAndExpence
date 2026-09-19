@@ -161,11 +161,23 @@ Status values: `todo` · `in-progress` · `done` · `dropped` (with a one-line r
 - **Both new tests were falsification-checked**, not just run green: each was run once against the pre-fix source (via `git stash` of just the two changed view files) to confirm it fails with the predicted wrong value, then re-run against the fix to confirm it passes. This is recorded in `refactor-log.md` Phase 11 rather than only asserted.
 - **`page.clock.setFixedTime` + `test.use({ timezoneId: 'Asia/Bangkok' })`, not a component-level clock mock.** Freezing time at the Playwright/browser-context level (available since Playwright 1.45; this repo runs 1.63) exercises the real app code path end-to-end, including `new Date()` calls at module-eval time (`DEFAULT_STARTER_WALLETS`), without adding any test-only seam to production code.
 
+## Phase 12 — batched localStorage writer (approved to execute)
+
+| # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
+|---|---|---|---|---|---|---|---|---|---|---|
+| T16 | Batched localStorage writer + `pagehide`/`visibilitychange` flush | `FinanceContext.tsx:390-413` (pre-change line numbers) | High | Med | 3h | done | — | 97ac7b4 | tsc clean; `CI=true npx playwright test` 87/87 (81 existing + 6 new), 0 retries; build succeeds in 5.1s | 8 independent per-slice `localStorage.setItem` effects collapsed into 1 debounced (250ms) writer keyed by a `pendingWritesRef` map; 1 new spec file (2 tests), both proven non-racy against the debounce window |
+
+**Notes on execution:**
+- **Per ADR 0003 option (b), exactly.** One `pendingWritesRef: Map<string, unknown>` collects dirty keys; a single `writeTimerRef` debounces the flush at 250ms; `flushPendingWrites` (stable, `useCallback([])`) is the one function that ever calls `localStorage.setItem`, invoked either by the debounce timer or synchronously by the lifecycle listeners.
+- **Mount-skip guard uses effect declaration order, not a second render pass.** A single `didMountRef` is read (not written) by all 8 write-trigger effects, each guarded `if (didMountRef.current) scheduleStorageWrite(...)`; the effect that sets it `true` is declared immediately after all 8, so on the initial mount commit React runs the 8 guarded effects first (each seeing `false` and skipping) before the mount-flag effect runs — no `useEffect` reordering risk, no second commit needed.
+- **`visibilitychange` and `pagehide` are both wired, not just one.** `pagehide` alone would miss a tab put to the background without navigating away or closing (the common mobile-PWA case); `visibilitychange`'s `hidden` state fires there and is also more reliable than `pagehide` on iOS Safari. Both call the same `flushPendingWrites`, which is idempotent (an empty pending map is a no-op), so double-firing both on an actual page unload is harmless.
+- **Cleanup flushes, not just removes listeners.** The lifecycle effect's cleanup calls `flushPendingWrites()` in addition to removing both listeners, so a `FinanceProvider` unmount (not expected in normal app operation, but exercised implicitly by Playwright's per-test fresh context teardown) cannot strand a debounced write unflushed.
+- **Verification spec avoids the debounce race entirely rather than tuning a timeout against it.** `tests/storage-persistence.spec.ts`'s first test overrides `document.visibilityState` and dispatches `visibilitychange`, then reads `localStorage` back inside the *same* `page.evaluate` call — since `dispatchEvent` invokes listeners synchronously, this cannot pass just because the 250ms timer happened to fire first; there is no wait to race. The second test reloads the page immediately after a write and asserts the data survived, exercising the real browser-native `pagehide` a navigation fires.
+
 ## Deferred — documented, awaiting separate approval
 
 | # | Task | Files | Impact | Risk | Effort | Status | Blocked by |
 |---|---|---|---|---|---|---|---|
-| T16 | Batched localStorage writer + `pagehide`/`visibilitychange` flush | `FinanceContext.tsx:390-413` | High | Med | 3h | todo | — |
 | T22 | One `<Modal>` primitive; convert 9 sites | 9 modal sites (see audit-report §E) | Med | Med | 6h | todo | T12 |
 | T24 | Promote `walletFormStyles.ts`; adopt across ~12 files | `walletFormStyles.ts` + 10 consumers | Med | Med | 6h | todo | T12 |
 | T26 | Shared `buildLookupMap` helper | 7 independent map-building copies | Low-Med | Low | 2h | todo | T12 |
