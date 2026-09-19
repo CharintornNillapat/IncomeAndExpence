@@ -4,6 +4,49 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
+## Phase 28 — transaction row cells: T49 (2026-09-19, commit `91687df`)
+
+**Changed**
+
+- New `src/components/transaction/TxCells.tsx` — 4 atomic cells, not a unified row component:
+  - `TxTypeIcon({type, variant: 'full'|'compact', size: 'sm'|'md', tintOverride?, className?})` — icon-in-a-tinted-box, `variant`/`size` selecting between `TX_TYPE_META`'s two icon sets and the two existing box-size shapes; `tintOverride` lets a divergent site (`WalletPopupModal`) keep its own exact colors.
+  - `TxAmount({amount, type, colorScheme: 'standard'|'incomeOnly', colorClassName?, className?})` — `formatCurrencyAmount` plus the canonical `TX_TYPE_META[type].sign` glyph; `colorScheme` covers the two 3-way/2-way presets already in use verbatim, `colorClassName` overrides for a site with its own scheme entirely.
+  - `TxCategoryChip({category, size?, rounded?, showDot?, className?})` — thin pass-through over `CategoryChip` (Phase 26), `null` when no category; callers keep their own "no category" fallback branch.
+  - `TxSoftDeletedTag` — the `[Soft Deleted]` tag, no props.
+- `TransactionTableRow.tsx` — icon box, both category-chip branches, the soft-deleted tag, and the amount span all now the shared cells; `meta`/`TypeIcon`/`isIncome` locals removed as dead once their only use sites were replaced.
+- `RecentTransactionsTable.tsx` — both category-chip branches and the amount span now the shared cells (amount via a new local `AMOUNT_COLOR_BY_TYPE` map passed as `colorClassName`, preserving this file's own 4-way emerald/rose/amber/indigo scheme); the Type column (a 3rd, different icon set) untouched.
+- `WalletPopupModal.tsx` — the activity-list icon box now `<TxTypeIcon variant="compact" size="sm" tintOverride={...}>` (tint computed inline, unchanged), the amount span now `<TxAmount colorScheme="incomeOnly">`; the `TX_TYPE_META` import (previously used only for `.compactIcon`/`.sign`) removed as dead.
+- `DiaryEntryCard.tsx` — the outflow-row amount now `<TxAmount colorClassName="text-rose-600 dark:text-rose-400">` in place of a hardcoded `-{formatCurrencyAmount(...)}`; the per-item colored-dot category display and the day-level `Day Outflow` summary (not a transaction-row cell) both left untouched.
+- 5 files changed (1 new).
+
+**Why**
+
+`implementation-roadmap.md` Phase 28 / `docs/audit/ui-ux-audit-report.md` finding D: the type-icon-in-a-box, the signed formatted amount, the category chip, and the soft-deleted tag were each duplicated (with drift) across the app's 4 transaction renderers, but the renderers themselves are structurally too different (`<tr>` vs `<div>`, different columns, no table at all in 2 of the 4) to collapse into one row component without a large conditional prop surface - the same conclusion the Deferred table's T25 entry already reached ("consider dropping"). Sharing only the atomic pieces gets the deduplication without that risk.
+
+**Verification**
+
+```
+npm run lint                                                                                   # tsc --noEmit: clean, 0 errors
+npx playwright test tests/soft-delete.spec.ts tests/transaction.spec.ts tests/date-boundary.spec.ts --project=chromium   # 9/9 passed
+CI=true npx playwright test                                                                    # 87/87 passed, 0 retries
+npm run build                                                                                   # built in 20.15s; new TxCells-*.js chunk, 1.99 kB / 0.90 kB gzip
+```
+
+**Correctness notes**
+
+- **`RecentTransactionsTable`'s amount previously rendered no sign glyph at all for TRANSFER/DEBT_REPAYMENT/ADJUSTMENT** (`tx.type === 'INCOME' ? '+' : tx.type === 'EXPENSE' ? MINUS : ''` - the empty-string branch). `TxAmount` always renders `TX_TYPE_META[type].sign`, so those 3 types now show the canonical `MINUS` (U+2212) glyph, matching every other renderer. This is a deliberate fix surfaced by centralizing the format logic, not a preserved behavior - no spec asserts on the literal sign character for those types.
+- **`DiaryEntryCard`'s outflow amounts gained the same canonical `MINUS` glyph** in place of a hardcoded ASCII hyphen (`'-'`), for the same reason. Its color (always rose regardless of whether the transaction is EXPENSE or DEBT_REPAYMENT) is unchanged, passed through `colorClassName`.
+- **Every other tint/color/icon divergence was preserved exactly via an override prop, not unified.** `WalletPopupModal`'s activity-list tint (`bg-*-50`/`dark:*-950/60`, income/expense/else 3-way) and amount color (income-emerald-else-stone, 2-way) both differ from `TransactionTableRow`'s canonical `TX_TYPE_META` scheme (`bg-*-100`/`dark:*-950/50`, income/debt/else 3-way); `RecentTransactionsTable`'s amount color is a 4th scheme (emerald/rose/amber/indigo) matching none of the others. `txTypeMeta.ts`'s own T35 doc comment already flagged these as intentional divergences not to force-unify - `tintOverride`/`colorClassName` exist specifically so this phase's adoption doesn't silently pick a winner among them.
+- **`RecentTransactionsTable`'s `lg:table-cell`-only Type column (icon + label, e.g. `ArrowLeftRight` + "Transfer") was not migrated.** It uses a 3rd icon set (`ArrowLeftRight`/`TrendingDown` for TRANSFER/DEBT_REPAYMENT, not `TX_TYPE_META`'s `RefreshCw`/`Landmark`) and its own label strings (`Repayment`, not `Debt Repayment`) - adopting `TxTypeIcon` there would show the wrong icon, not just a different color.
+
+**Deliberately not done**
+
+- **No single `<TxRow>`/`<TransactionRow>` wrapper component.** Explicitly out of scope per this task's own guardrail and the existing T25 Deferred-table note; see Why.
+- **`RecentTransactionsTable`'s Type column's icon set and label strings were not unified onto `TX_TYPE_META`** - a genuine icon/label mismatch, not a stylistic one; left as a separate, unstarted concern.
+- **No pixel-level visual regression testing.** Every preserved tint/color scheme and the one deliberate glyph fix were verified by reading the diff against each file's pre-change source, not a screenshot comparison.
+
+---
+
 ## Phase 27 — SegmentedControl: T48 (2026-09-19, commit `07b6394`)
 
 **Changed**

@@ -582,6 +582,39 @@ npm run build                                                                # b
 
 ---
 
+## Phase 28 — transaction row cells (approved to execute) · High risk
+
+| # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
+|---|---|---|---|---|---|---|---|---|---|---|
+| T49 | Atomic `TxTypeIcon`/`TxAmount`/`TxCategoryChip`/`TxSoftDeletedTag` cells; adopt across 4 transaction surfaces | new `src/components/transaction/TxCells.tsx`; `TransactionTableRow.tsx`, `RecentTransactionsTable.tsx`, `WalletPopupModal.tsx`, `DiaryEntryCard.tsx` | High | High | 5h | done | — | 91687df | tsc clean; `soft-delete`+`transaction`+`date-boundary` chromium 9/9; `CI=true npx playwright test` 87/87, 0 retries; `npm run build` succeeds in 20.15s | 4 atomic cell primitives (not one row wrapper) shared across all 4 renderers; every existing `tr[id^="tx-row-"]` id and the exact `[Soft Deleted]` string preserved; `RecentTransactionsTable`'s amount glyph gained the canonical `MINUS` sign for TRANSFER/DEBT_REPAYMENT/ADJUSTMENT (previously blank - a real fix, not a preserved behavior) |
+
+**Verification**
+
+```
+npm run lint                                                                                   # tsc --noEmit: clean, 0 errors
+npx playwright test tests/soft-delete.spec.ts tests/transaction.spec.ts tests/date-boundary.spec.ts --project=chromium   # 9/9 passed
+CI=true npx playwright test                                                                    # 87/87 passed, 0 retries
+npm run build                                                                                   # built in 20.15s
+```
+
+**Notes on execution:**
+- **Deliberately 4 atomic cells, not one `<TxRow>` wrapper**, per this task's own explicit instruction and the discipline `implementation-roadmap.md` already set for this exact surface at T25 ("consider dropping" a unified row component - see the Deferred table). `TransactionTableRow` renders `<tr>`/`<td>`s, `RecentTransactionsTable` the same but with a different column set, `WalletPopupModal`'s activity list is `<div>`-based with no table at all, and `DiaryEntryCard`'s outflow rows are a third, simpler `<div>` shape - one row component could not span all three without either a large prop surface or per-caller escape hatches that would defeat the point of sharing it. Only the genuinely-identical sub-pieces (an icon-in-a-box, a formatted signed amount, a category chip, a soft-deleted tag) were extracted; each renderer keeps its own cell/row markup and calls into these where it fits.
+- **`TxTypeIcon`/`TxAmount` both take an override (`tintOverride`/`colorClassName`) precisely because 2 of the 3 icon/amount call sites have already diverged from `TX_TYPE_META`'s own canonical scheme** - a divergence `txTypeMeta.ts`'s own T35 doc comment already flagged and declined to force-unify. `WalletPopupModal`'s activity-list icon tint (bg-*-50/dark:*-950/60) and amount color (income-emerald-else-stone, no distinct debt-repayment color) both differ from `TransactionTableRow`'s (bg-*-100/dark:*-950/50, income-emerald/debt-amber/else-stone); `RecentTransactionsTable`'s amount color is a 4th scheme entirely (emerald/rose/amber/indigo). Passing each site's own exact string through the override preserves every one of these pixel-for-pixel rather than picking a winner and calling the other two visual regressions.
+- **`RecentTransactionsTable`'s Type column (the `ArrowDownLeft`/`ArrowUpRight`/`ArrowLeftRight`/`TrendingDown` icon+label row, `lg:table-cell` only) was left untouched, not migrated onto `TxTypeIcon`.** It uses a 3rd icon set (`ArrowLeftRight` for TRANSFER and `TrendingDown` for DEBT_REPAYMENT, versus `TX_TYPE_META`'s `RefreshCw`/`Landmark`) and its own label text (`Repayment`, not `Debt Repayment`) - adopting `TxTypeIcon` there would render the wrong icon, not just a differently-styled one. Same reasoning `txTypeMeta.ts` already documented for this exact column when T35 shipped.
+- **The one deliberate correctness fix: `TxAmount` always renders `TX_TYPE_META[type].sign`, the canonical `+`/`MINUS` (U+2212) glyph, rather than each site re-deriving its own ternary.** `RecentTransactionsTable`'s pre-existing inline ternary (`tx.type === 'INCOME' ? '+' : tx.type === 'EXPENSE' ? MINUS : ''`) rendered **no sign at all** for TRANSFER/DEBT_REPAYMENT/ADJUSTMENT - the only one of the 4 renderers with that gap. Adopting the shared component closes it. No spec asserts on the literal sign character for those types, so this was verified by reading the diff, not by a new test.
+- **`DiaryEntryCard`'s outflow-row amount also gained the canonical `MINUS` (U+2212) glyph in place of a hardcoded ASCII hyphen** (`-{formatCurrencyAmount(...)}` → `<TxAmount ... colorClassName="text-rose-600 dark:text-rose-400" />`). Its color (always rose, regardless of whether the underlying type is EXPENSE or DEBT_REPAYMENT - this list's own "outflow" framing, distinct from `TransactionTableRow`'s per-type debt-amber) is passed through the same `colorClassName` override, unchanged from before.
+- **`TxCategoryChip` is a thin pass-through over `CategoryChip` (Phase 26), not a new visual component.** It renders `null` when no category is given, so each call site's own "no category" fallback branch (a debt `Badge` in `TransactionTableRow`, an em dash or type-name string in both table renderers) stays local and unchanged - only the category-present branch was actually duplicated across renderers.
+- **`DiaryEntryCard`'s per-item category display (a 2px color dot + plain name text, `:152`) was left as-is, not converted to `TxCategoryChip`.** It was never a chip - a different, simpler shape - so there was nothing to adopt losslessly there.
+- **`WalletPopupModal`'s activity list has no category display at all** (it never rendered one pre-migration) - nothing to adopt there beyond the icon and amount.
+
+**Deliberately not done**
+
+- **T25 (a single unified `<TxRow>`/`<TransactionRow>` component spanning all 4 surfaces) remains explicitly out of scope**, per this phase's own guardrail and the Deferred table's existing "consider dropping" note - the 4 surfaces' underlying DOM shapes (`<tr>` vs `<div>`, different column sets, no table at all) are too structurally different to share one component without a large conditional prop surface.
+- **`RecentTransactionsTable`'s Type column's own icon set/labels were not unified onto `TX_TYPE_META`** - a real icon mismatch, not just a color one; see notes.
+- **No visual regression testing beyond Playwright's text/id assertions** - the amount-glyph fix and every preserved tint/color scheme were verified by reading the diff against each file's pre-change source, not a pixel-level screenshot comparison.
+
+---
+
 ## Deferred — documented, awaiting separate approval
 
 | # | Task | Files | Impact | Risk | Effort | Status | Blocked by |
