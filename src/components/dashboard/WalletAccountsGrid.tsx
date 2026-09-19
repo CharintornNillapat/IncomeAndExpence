@@ -9,7 +9,10 @@ import { getWalletIcon } from '../../utils/walletIcons';
 interface WalletAccountsGridProps {
   wallets: Wallet[];
   totalNetWorth: number;
-  onOpenWalletModal: (tab: 'OVERVIEW' | 'TRANSFER' | 'ADD_WALLET', walletId?: string) => void;
+  /** Opens the WalletPopupModal's Overview tab for this wallet (card click). */
+  onOpenWallet: (walletId: string) => void;
+  /** Opens the shared TransferFundsModal seeded to this wallet (T41 - the modal's own TRANSFER tab was retired in T39). */
+  onOpenTransfer: (walletId: string) => void;
 }
 
 const itemVariants: Variants = {
@@ -28,7 +31,8 @@ const itemVariants: Variants = {
 export const WalletAccountsGrid: React.FC<WalletAccountsGridProps> = React.memo(({
   wallets,
   totalNetWorth,
-  onOpenWalletModal,
+  onOpenWallet,
+  onOpenTransfer,
 }) => {
   return (
     <div className="space-y-3 sm:space-y-4">
@@ -64,7 +68,7 @@ export const WalletAccountsGrid: React.FC<WalletAccountsGridProps> = React.memo(
               whileTap={{ scale: 0.97 }}
               key={wallet.id}
               id={`dashboard-wallet-card-${wallet.id}`}
-              onClick={() => onOpenWalletModal('OVERVIEW', wallet.id)}
+              onClick={() => onOpenWallet(wallet.id)}
               className="group bg-white dark:bg-stone-900 rounded-2xl border border-stone-200 dark:border-stone-800 hover:border-stone-400 dark:hover:border-stone-600 p-4 sm:p-5 shadow-2xs hover:shadow-md transition-all cursor-pointer flex flex-col justify-between relative overflow-hidden"
             >
               {/* Top Accent bar based on wallet color */}
@@ -140,7 +144,7 @@ export const WalletAccountsGrid: React.FC<WalletAccountsGridProps> = React.memo(
                     type="button"
                     onClick={(e) => {
                       e.stopPropagation();
-                      onOpenWalletModal('TRANSFER', wallet.id);
+                      onOpenTransfer(wallet.id);
                     }}
                     className="min-h-[44px] -my-2 inline-flex items-center gap-1 text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 font-semibold hover:underline cursor-pointer"
                   >

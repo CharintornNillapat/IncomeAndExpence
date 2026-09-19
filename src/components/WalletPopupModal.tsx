@@ -2,8 +2,8 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
   X,
-  Plus,
   ArrowLeftRight,
+  ChevronRight,
   Trash2,
   Sliders,
   Wallet as WalletIcon,
@@ -11,29 +11,52 @@ import {
   Layers
 } from 'lucide-react';
 import { useFinanceState, useFinanceActions } from '../context/FinanceContext';
-import { AddWalletForm } from './wallet/AddWalletForm';
-import { WalletTransferForm } from './wallet/WalletTransferForm';
 import { Modal } from './Modal';
-import { useTransientFlash } from '../hooks/useTransientFlash';
 import { APP_CURRENCY, APP_CURRENCY_SYMBOL, formatCurrencyAmount } from '../utils/currency';
 import { todayIsoDate } from '../utils/date';
 import { getWalletIcon } from '../utils/walletIcons';
 import { TX_TYPE_META } from './transaction/txTypeMeta';
 
-export type WalletModalTab = 'OVERVIEW' | 'TRANSFER' | 'ADD_WALLET' | 'TRANSACTIONS';
+// T39: TRANSFER and ADD_WALLET are retired - WalletsView (via the shared,
+// shell-level TransferFundsModal/AddWalletModal, T41) is the sole owner of
+// those flows now. OVERVIEW keeps its inline per-wallet balance adjustment
+// editor (there never was a dedicated ADJUST tab to retain - it has always
+// lived inline in OVERVIEW) and TRANSACTIONS becomes a preview (T40).
+export type WalletModalTab = 'OVERVIEW' | 'TRANSACTIONS';
+
+// T39: hardcoded tab header buttons collapsed into a mapped array now that
+// only 2 of the original 4 tabs survive. `buttonId` preserves each tab's
+// pre-existing element id verbatim (no spec depends on them today, but they
+// are still API per docs/audit/test-selector-contract.md).
+const TAB_DEFS: Array<{
+  id: WalletModalTab;
+  buttonId: string;
+  label: string;
+  icon: React.FC<{ className?: string }>;
+  iconClassName: string;
+}> = [
+  { id: 'OVERVIEW', buttonId: 'tab-btn-overview', label: 'Wallets', icon: Layers, iconClassName: '' },
+  { id: 'TRANSACTIONS', buttonId: 'tab-btn-txs', label: 'Activity', icon: Receipt, iconClassName: 'text-amber-600 dark:text-amber-400' },
+];
 
 interface WalletPopupModalProps {
   isOpen: boolean;
   onClose: () => void;
   initialTab?: WalletModalTab;
   initialWalletId?: string;
+  /** Opens the shared TransferFundsModal seeded to this wallet (T41) - replaces the retired in-modal TRANSFER tab. */
+  onOpenTransfer: (walletId: string) => void;
+  /** Navigates to TransactionsView pre-filtered by this wallet (T40) - the preview hands off rather than reimplementing pagination/search/filters. */
+  onViewAllTransactions?: (walletId: string) => void;
 }
 
 export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
   isOpen,
   onClose,
   initialTab = 'OVERVIEW',
-  initialWalletId
+  initialWalletId,
+  onOpenTransfer,
+  onViewAllTransactions,
 }) => {
   const {
     wallets,
@@ -44,11 +67,6 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
 
   const [activeTab, setActiveTab] = useState<WalletModalTab>(initialTab);
   const [selectedWalletId, setSelectedWalletId] = useState<string>(initialWalletId || wallets[0]?.id || '');
-
-  // The overview's "Transfer" shortcuts preselect which wallet the transfer
-  // starts from; the form itself owns the rest of the transfer state.
-  const [transferSourceId, setTransferSourceId] = useState<string>(initialWalletId || '');
-  const { value: transferStatus, flash: flashTransferStatus } = useTransientFlash<string | null>(null);
 
   // Edit / Adjust Balance State
   const [isAdjustingBalance, setIsAdjustingBalance] = useState<string | null>(null);
@@ -61,12 +79,14 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
     return activeWallets.find((w) => w.id === selectedWalletId) || activeWallets[0];
   }, [activeWallets, selectedWalletId]);
 
-  // Transactions specific to the selected wallet
+  // Transactions specific to the selected wallet. T40: a 5-row preview that
+  // hands off to TransactionsView via "View all" rather than reimplementing
+  // its pagination, search, type filter, and soft-delete toggle here.
   const walletTransactions = useMemo(() => {
     if (!currentWallet) return [];
     return transactions
       .filter((t) => !t.isDeleted && (t.walletId === currentWallet.id || t.destinationWalletId === currentWallet.id))
-      .slice(0, 15);
+      .slice(0, 5);
   }, [transactions, currentWallet]);
 
   /**
@@ -74,7 +94,9 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
    * while closed, so it never unmounts and the useState initialisers above run
    * exactly once. Without this sync it reopens on whichever tab and wallet were
    * last used, ignoring what the caller asked for - which is why the dashboard's
-   * "Transfer" and "Add Wallet" shortcuts always landed on the Overview tab.
+   * "Add Wallet" shortcut used to land on the Overview tab (that shortcut, and
+   * "Transfer", now open the shared shell-level modals directly - T41 - and no
+   * longer touch this modal's own tab state at all).
    */
   useEffect(() => {
     if (!isOpen) return;
@@ -83,7 +105,6 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
     // generically should keep whatever the user was last looking at.
     if (initialWalletId) {
       setSelectedWalletId(initialWalletId);
-      setTransferSourceId(initialWalletId);
     }
   }, [isOpen, initialTab, initialWalletId]);
 
@@ -141,63 +162,27 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
         </motion.button>
       </div>
 
-      {/* Tab Navigation Navigation Controls */}
+      {/* Tab Navigation Controls (T39: mapped array over the 2 surviving tabs) */}
       <div className="flex border-b border-stone-200 dark:border-stone-800 px-3 sm:px-6 bg-white dark:bg-stone-900 gap-1 sm:gap-3 overflow-x-auto text-xs font-semibold shrink-0 no-scrollbar">
-        <button
-          type="button"
-          id="tab-btn-overview"
-          onClick={() => setActiveTab('OVERVIEW')}
-          className={`py-3 px-2 sm:px-3 border-b-2 transition-colors flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
-            activeTab === 'OVERVIEW'
-              ? 'border-stone-900 dark:border-stone-100 text-stone-900 dark:text-white'
-              : 'border-transparent text-stone-500 dark:text-stone-400 hover:text-stone-800 dark:hover:text-stone-200'
-          }`}
-        >
-          <Layers className="w-4 h-4" />
-          <span>Wallets</span>
-        </button>
-
-        <button
-          type="button"
-          id="tab-btn-transfer"
-          onClick={() => setActiveTab('TRANSFER')}
-          className={`py-3 px-2 sm:px-3 border-b-2 transition-colors flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
-            activeTab === 'TRANSFER'
-              ? 'border-stone-900 dark:border-stone-100 text-stone-900 dark:text-white'
-              : 'border-transparent text-stone-500 dark:text-stone-400 hover:text-stone-800 dark:hover:text-stone-200'
-          }`}
-        >
-          <ArrowLeftRight className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-          <span>Transfer</span>
-        </button>
-
-        <button
-          type="button"
-          id="tab-btn-add"
-          onClick={() => setActiveTab('ADD_WALLET')}
-          className={`py-3 px-2 sm:px-3 border-b-2 transition-colors flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
-            activeTab === 'ADD_WALLET'
-              ? 'border-stone-900 dark:border-stone-100 text-stone-900 dark:text-white'
-              : 'border-transparent text-stone-500 dark:text-stone-400 hover:text-stone-800 dark:hover:text-stone-200'
-          }`}
-        >
-          <Plus className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-          <span>Add Wallet</span>
-        </button>
-
-        <button
-          type="button"
-          id="tab-btn-txs"
-          onClick={() => setActiveTab('TRANSACTIONS')}
-          className={`py-3 px-2 sm:px-3 border-b-2 transition-colors flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
-            activeTab === 'TRANSACTIONS'
-              ? 'border-stone-900 dark:border-stone-100 text-stone-900 dark:text-white'
-              : 'border-transparent text-stone-500 dark:text-stone-400 hover:text-stone-800 dark:hover:text-stone-200'
-          }`}
-        >
-          <Receipt className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-          <span>Activity</span>
-        </button>
+        {TAB_DEFS.map((tab) => {
+          const TabIcon = tab.icon;
+          return (
+            <button
+              key={tab.id}
+              type="button"
+              id={tab.buttonId}
+              onClick={() => setActiveTab(tab.id)}
+              className={`py-3 px-2 sm:px-3 border-b-2 transition-colors flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
+                activeTab === tab.id
+                  ? 'border-stone-900 dark:border-stone-100 text-stone-900 dark:text-white'
+                  : 'border-transparent text-stone-500 dark:text-stone-400 hover:text-stone-800 dark:hover:text-stone-200'
+              }`}
+            >
+              <TabIcon className={`w-4 h-4 ${tab.iconClassName}`} />
+              <span>{tab.label}</span>
+            </button>
+          );
+        })}
       </div>
     </>
   );
@@ -333,8 +318,7 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation();
-                            setTransferSourceId(wallet.id);
-                            setActiveTab('TRANSFER');
+                            onOpenTransfer(wallet.id);
                           }}
                           className="text-indigo-600 dark:text-indigo-400 font-semibold hover:underline flex items-center gap-1 cursor-pointer"
                         >
@@ -368,10 +352,7 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
                   <div className="flex flex-wrap items-center gap-2">
                     <button
                       type="button"
-                      onClick={() => {
-                        setTransferSourceId(currentWallet.id);
-                        setActiveTab('TRANSFER');
-                      }}
+                      onClick={() => onOpenTransfer(currentWallet.id)}
                       className="flex-1 sm:flex-none px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-semibold transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
                     >
                       <ArrowLeftRight className="w-3.5 h-3.5 text-emerald-400" />
@@ -391,70 +372,36 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
             </div>
           )}
 
-          {/* TAB 2: TRANSFER FUNDS */}
-          {activeTab === 'TRANSFER' && (
-            <div className="space-y-4 max-w-lg mx-auto">
-              <div className="bg-indigo-50/80 dark:bg-indigo-950/50 border border-indigo-100 dark:border-indigo-800/60 rounded-xl p-3 text-xs text-indigo-900 dark:text-indigo-300 flex items-center gap-2.5">
-                <ArrowLeftRight className="w-4 h-4 text-indigo-600 dark:text-indigo-400 shrink-0" />
-                <span>Transfers move money between your accounts directly.</span>
-              </div>
-
-              <WalletTransferForm
-                key={transferSourceId}
-                wallets={activeWallets}
-                initialSourceWalletId={transferSourceId}
-                tone="plain"
-                errorPlacement="top"
-                statusMessage={transferStatus}
-                amountPlaceholder="e.g. 250 or 500/2"
-                ids={{
-                  source: 'modal-transfer-source',
-                  dest: 'modal-transfer-dest',
-                  amount: 'modal-transfer-amount-input',
-                  note: 'modal-transfer-note-input',
-                  submit: 'modal-submit-transfer-btn',
-                }}
-                onTransferred={() => {
-                  flashTransferStatus('Transfer completed successfully!', 1000, () => setActiveTab('OVERVIEW'));
-                }}
-              />
-            </div>
-          )}
-
-          {/* TAB 3: ADD NEW WALLET */}
-          {activeTab === 'ADD_WALLET' && (
-            <AddWalletForm
-              tone="plain"
-              className="max-w-lg mx-auto"
-              ids={{
-                name: 'modal-new-wallet-name',
-                type: 'modal-new-wallet-type',
-                currency: 'modal-new-wallet-currency',
-                balance: 'modal-new-wallet-balance',
-                submit: 'modal-create-wallet-submit',
-              }}
-              onCreated={() => setActiveTab('OVERVIEW')}
-            />
-          )}
-
-          {/* TAB 4: WALLET SPECIFIC ACTIVITY */}
+          {/* TAB 2: WALLET SPECIFIC ACTIVITY (T40: 5-row preview + handoff) */}
           {activeTab === 'TRANSACTIONS' && (
             <div className="space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-stone-50 dark:bg-stone-800/80 p-3 rounded-xl border border-stone-200 dark:border-stone-700">
-                <span className="text-xs font-semibold text-stone-700 dark:text-stone-300">
-                  Account Activity:
-                </span>
-                <select
-                  value={selectedWalletId}
-                  onChange={(e) => setSelectedWalletId(e.target.value)}
-                  className="text-xs font-semibold bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-lg px-2.5 py-1.5 text-stone-900 dark:text-white focus:outline-none"
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-semibold text-stone-700 dark:text-stone-300">
+                    Account Activity:
+                  </span>
+                  <select
+                    value={selectedWalletId}
+                    onChange={(e) => setSelectedWalletId(e.target.value)}
+                    className="text-xs font-semibold bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-lg px-2.5 py-1.5 text-stone-900 dark:text-white focus:outline-none"
+                  >
+                    {activeWallets.map((w) => (
+                      <option key={w.id} value={w.id}>
+                        {w.name} ({formatCurrencyAmount(w.balance)})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <button
+                  type="button"
+                  id="wallet-modal-view-all-tx-btn"
+                  onClick={() => onViewAllTransactions?.(selectedWalletId)}
+                  className="inline-flex items-center gap-1 text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer shrink-0"
                 >
-                  {activeWallets.map((w) => (
-                    <option key={w.id} value={w.id}>
-                      {w.name} ({formatCurrencyAmount(w.balance)})
-                    </option>
-                  ))}
-                </select>
+                  <span>View all</span>
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </button>
               </div>
 
               {walletTransactions.length === 0 ? (

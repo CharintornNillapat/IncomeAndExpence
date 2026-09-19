@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import { motion } from 'framer-motion';
 import {
   Plus,
@@ -10,16 +10,17 @@ import { AnimatedCounter } from '../components/AnimatedCounter';
 import { APP_CURRENCY, APP_CURRENCY_SYMBOL } from '../utils/currency';
 import { getWalletIcon } from '../utils/walletIcons';
 import { toIsoDate } from '../utils/date';
-import { AddWalletForm } from '../components/wallet/AddWalletForm';
-import { WalletTransferForm } from '../components/wallet/WalletTransferForm';
-import { Modal } from '../components/Modal';
 
-export const WalletsView: React.FC = () => {
+interface WalletsViewProps {
+  /** Opens the shared, shell-level TransferFundsModal (owned by App.tsx, T41) - this view no longer mounts its own copy. */
+  onOpenTransfer?: () => void;
+  /** Opens the shared, shell-level AddWalletModal (owned by App.tsx, T41) - this view no longer mounts its own copy. */
+  onOpenAddWallet?: () => void;
+}
+
+export const WalletsView: React.FC<WalletsViewProps> = ({ onOpenTransfer, onOpenAddWallet }) => {
   const { wallets } = useFinanceState();
   const { deleteWallet } = useFinanceActions();
-
-  const [isAddWalletOpen, setIsAddWalletOpen] = useState<boolean>(false);
-  const [isTransferOpen, setIsTransferOpen] = useState<boolean>(false);
 
   const activeWallets = useMemo(() => wallets.filter((w) => !w.isDeleted), [wallets]);
 
@@ -38,7 +39,7 @@ export const WalletsView: React.FC = () => {
           <button
             id="wallet-transfer-modal-btn"
             type="button"
-            onClick={() => setIsTransferOpen(true)}
+            onClick={() => onOpenTransfer?.()}
             className="inline-flex items-center gap-1.5 px-3 sm:px-3.5 py-2 text-xs font-semibold text-stone-700 dark:text-stone-300 bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 rounded-xl transition-all cursor-pointer"
           >
             <ArrowLeftRight className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
@@ -48,7 +49,7 @@ export const WalletsView: React.FC = () => {
           <button
             id="wallet-add-modal-btn"
             type="button"
-            onClick={() => setIsAddWalletOpen(true)}
+            onClick={() => onOpenAddWallet?.()}
             className="inline-flex items-center gap-1.5 px-3 sm:px-3.5 py-2 text-xs font-semibold text-white dark:text-stone-900 bg-stone-900 hover:bg-stone-800 dark:bg-stone-100 dark:hover:bg-white rounded-xl shadow-xs transition-all cursor-pointer"
           >
             <Plus className="w-4 h-4 text-emerald-400 dark:text-emerald-600" />
@@ -130,46 +131,16 @@ export const WalletsView: React.FC = () => {
         })}
       </div>
 
-      {/* Add Wallet Modal / Responsive Mobile Bottom Sheet */}
-      <Modal
-        isOpen={isAddWalletOpen}
-        onClose={() => setIsAddWalletOpen(false)}
-        title="Add Wallet"
-        bodyClassName="space-y-4 sm:space-y-5"
-      >
-        <AddWalletForm
-          tone="subtle"
-          ids={{
-            name: 'new-wallet-name',
-            type: 'new-wallet-type',
-            currency: 'new-wallet-currency',
-            balance: 'new-wallet-init-balance',
-            submit: 'save-new-wallet-btn',
-          }}
-          onCreated={() => setIsAddWalletOpen(false)}
-        />
-      </Modal>
-
-      {/* Transfer Funds Modal / Responsive Mobile Bottom Sheet */}
-      <Modal
-        isOpen={isTransferOpen}
-        onClose={() => setIsTransferOpen(false)}
-        title="Transfer Funds"
-        bodyClassName="space-y-4 sm:space-y-5"
-      >
-        <WalletTransferForm
-          wallets={activeWallets}
-          tone="subtle"
-          ids={{
-            source: 'transfer-source-wallet',
-            dest: 'transfer-dest-wallet',
-            amount: 'transfer-amount-math',
-            note: 'transfer-note',
-            submit: 'execute-transfer-btn',
-          }}
-          onTransferred={() => setIsTransferOpen(false)}
-        />
-      </Modal>
+      {/*
+        T41: the Add Wallet and Transfer Funds modals used to be rendered
+        here, locally. They now live at shell level (App.tsx) as
+        `AddWalletModal`/`TransferFundsModal` - self-subscribing components
+        mounted once, exactly like `QuickAddModal` - so the *same* modal
+        instance (and the same ids: #new-wallet-name, #transfer-source-wallet,
+        etc.) is reachable from this view's header buttons above AND from
+        DashboardView's hero/wallet-card triggers, which live in a different
+        view and could never open a modal only WalletsView mounted locally.
+      */}
     </div>
   );
 };

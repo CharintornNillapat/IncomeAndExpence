@@ -22,7 +22,17 @@ import { buildLookupMap } from '../utils/mapUtils';
 import { useTransientFlash } from '../hooks/useTransientFlash';
 import { OPTION_CLASS } from '../utils/formStyles';
 
-export const TransactionsView: React.FC = () => {
+interface TransactionsViewProps {
+  /** Pre-selects the wallet filter (T40: the wallet popup's Activity preview hands off here via "View all"). */
+  initialWalletFilter?: string;
+  /** Called once, right after mount, when `initialWalletFilter` was set - lets the caller clear its own state so a later, unrelated navigation to this tab does not inherit a stale filter. */
+  onConsumeInitialWalletFilter?: () => void;
+}
+
+export const TransactionsView: React.FC<TransactionsViewProps> = ({
+  initialWalletFilter,
+  onConsumeInitialWalletFilter,
+}) => {
   const {
     wallets,
     categories,
@@ -32,8 +42,20 @@ export const TransactionsView: React.FC = () => {
   // Filter States
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState<string>('');
-  const [selectedWalletId, setSelectedWalletId] = useState<string>('ALL');
+  const [selectedWalletId, setSelectedWalletId] = useState<string>(initialWalletFilter || 'ALL');
   const [selectedType, setSelectedType] = useState<string>('ALL');
+
+  // This view remounts fresh on every navigation to the tab (App.tsx keys the
+  // active view by `activeTab`, so switching away and back unmounts it), so
+  // the initializer above only ever needs to run once per mount - consuming
+  // the filter here (rather than leaving it in App.tsx state) prevents a
+  // later, unrelated tab switch from silently inheriting a stale wallet id.
+  useEffect(() => {
+    if (initialWalletFilter) {
+      onConsumeInitialWalletFilter?.();
+    }
+    // eslint-disable-next-line
+  }, []);
 
   // Filtering, soft-delete visibility and the write actions all come from the
   // domain hook; 'ALL' is the view's sentinel for "no filter", which the hook

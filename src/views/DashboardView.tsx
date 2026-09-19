@@ -46,9 +46,21 @@ interface DashboardViewProps {
   onNavigate?: (tab: string) => void;
   /** Opens the shared Quick Add modal (owned by App.tsx) - retired the inline TransactionForm this view used to render directly (T37). */
   onOpenQuickAdd?: () => void;
+  /** Opens the shared, shell-level TransferFundsModal (owned by App.tsx), optionally seeded to a wallet (T41). */
+  onOpenTransfer?: (walletId?: string) => void;
+  /** Opens the shared, shell-level AddWalletModal (owned by App.tsx, T41). */
+  onOpenAddWallet?: () => void;
+  /** Navigates to TransactionsView pre-filtered by a wallet (T40 handoff from the wallet popup's Activity preview). */
+  onOpenWalletTransactions?: (walletId: string) => void;
 }
 
-export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate, onOpenQuickAdd }) => {
+export const DashboardView: React.FC<DashboardViewProps> = ({
+  onNavigate,
+  onOpenQuickAdd,
+  onOpenTransfer,
+  onOpenAddWallet,
+  onOpenWalletTransactions,
+}) => {
   const { transactions, categories } = useFinanceState();
   // `wallets` here is already the active (non-deleted) set; `allWallets` still
   // includes soft-deleted ones so historic rows can resolve their wallet name.
@@ -67,17 +79,47 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate, onOpen
     setIsWalletModalOpen(true);
   }, []);
 
-  const handleOpenTransfer = useCallback(() => {
-    openWalletModal('TRANSFER');
-  }, [openWalletModal]);
+  // T41: Transfer and Add Wallet no longer open tabs inside this view's own
+  // WalletPopupModal (T39 retired those tabs) - they open the shared,
+  // shell-level TransferFundsModal/AddWalletModal that App.tsx owns, so the
+  // exact same modal (and ids) is reachable from WalletsView too.
+  const handleHeroOpenTransfer = useCallback(() => {
+    onOpenTransfer?.();
+  }, [onOpenTransfer]);
 
-  const handleOpenAddWallet = useCallback(() => {
-    openWalletModal('ADD_WALLET');
-  }, [openWalletModal]);
+  const handleHeroOpenAddWallet = useCallback(() => {
+    onOpenAddWallet?.();
+  }, [onOpenAddWallet]);
 
   const handleOpenManageWallets = useCallback(() => {
     openWalletModal('OVERVIEW');
   }, [openWalletModal]);
+
+  const handleWalletCardOpen = useCallback(
+    (walletId: string) => openWalletModal('OVERVIEW', walletId),
+    [openWalletModal]
+  );
+
+  const handleGridOpenTransfer = useCallback(
+    (walletId: string) => onOpenTransfer?.(walletId),
+    [onOpenTransfer]
+  );
+
+  const handlePopupOpenTransfer = useCallback(
+    (walletId: string) => {
+      setIsWalletModalOpen(false);
+      onOpenTransfer?.(walletId);
+    },
+    [onOpenTransfer]
+  );
+
+  const handlePopupViewAllTransactions = useCallback(
+    (walletId: string) => {
+      setIsWalletModalOpen(false);
+      onOpenWalletTransactions?.(walletId);
+    },
+    [onOpenWalletTransactions]
+  );
 
   // Filter transactions based on time breakdown (Memoized). `transactionDate`
   // is a local-calendar `YYYY-MM-DD` string, so every cutoff is computed once,
@@ -172,8 +214,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate, onOpen
         <TotalWealthHero
           totalNetWorth={totalNetWorth}
           activeWalletCount={activeWallets.length}
-          onOpenTransfer={handleOpenTransfer}
-          onOpenAddWallet={handleOpenAddWallet}
+          onOpenTransfer={handleHeroOpenTransfer}
+          onOpenAddWallet={handleHeroOpenAddWallet}
           onOpenManageWallets={handleOpenManageWallets}
         />
       </motion.section>
@@ -183,7 +225,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate, onOpen
         <WalletAccountsGrid
           wallets={activeWallets}
           totalNetWorth={totalNetWorth}
-          onOpenWalletModal={openWalletModal}
+          onOpenWallet={handleWalletCardOpen}
+          onOpenTransfer={handleGridOpenTransfer}
         />
       </motion.section>
 
@@ -286,6 +329,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate, onOpen
         onClose={() => setIsWalletModalOpen(false)}
         initialTab={walletModalTab}
         initialWalletId={selectedWalletIdForModal}
+        onOpenTransfer={handlePopupOpenTransfer}
+        onViewAllTransactions={handlePopupViewAllTransactions}
       />
     </motion.div>
   );

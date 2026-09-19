@@ -2,13 +2,13 @@ import { test, expect } from '@playwright/test';
 import { gotoTab } from './helpers';
 
 /**
- * Covers the wallet add/transfer flows shared by WalletsView and
- * WalletPopupModal. Both render the same extracted form components, so these
- * exercise each container's wiring: id sets, seeding, and success callbacks.
- *
- * The modal cases go through the dashboard hero buttons rather than the modal's
- * own tabs, so they also cover the open-sync: the modal stays mounted between
- * opens, so it has to re-apply `initialTab` each time it is opened.
+ * Covers the wallet add/transfer flows shared by WalletsView and the
+ * shell-level TransferFundsModal/AddWalletModal (T41). All four render the
+ * same extracted form components, and since T41 the dashboard hero buttons
+ * and WalletsView's own header buttons open the *same* modal instance (owned
+ * by App.tsx, mounted once) rather than two separate copies - so both sets of
+ * cases below assert against the same canonical ids
+ * (#transfer-source-wallet, #new-wallet-name, etc.).
  */
 test.describe('Wallet forms (shared AddWalletForm / WalletTransferForm)', () => {
   test.beforeEach(async ({ page }) => { await page.goto('/'); });
@@ -41,14 +41,18 @@ test.describe('Wallet forms (shared AddWalletForm / WalletTransferForm)', () => 
   test('Modal: transfer from dashboard seeds distinct wallets and reports status', async ({ page }) => {
     await page.locator('#hero-transfer-funds-btn').click();
 
-    const src = page.locator('#modal-transfer-source');
-    const dst = page.locator('#modal-transfer-dest');
+    // T41: the dashboard hero button now opens the same shell-level
+    // TransferFundsModal WalletsView uses, so this targets WalletsView's
+    // canonical ids rather than the retired WalletPopupModal TRANSFER tab's
+    // own `#modal-transfer-*` ids.
+    const src = page.locator('#transfer-source-wallet');
+    const dst = page.locator('#transfer-dest-wallet');
     await expect(src).toBeVisible();
     // Regression guard: these used to seed to the SAME wallet from the dashboard.
     expect(await src.inputValue()).not.toBe(await dst.inputValue());
 
-    await page.locator('#modal-transfer-amount-input').fill('75');
-    const submit = page.locator('#modal-submit-transfer-btn');
+    await page.locator('#transfer-amount-math').fill('75');
+    const submit = page.locator('#execute-transfer-btn');
     await expect(submit).toBeEnabled();
     await submit.click();
 
@@ -58,23 +62,25 @@ test.describe('Wallet forms (shared AddWalletForm / WalletTransferForm)', () => 
   test('Modal: add wallet works and returns to overview', async ({ page }) => {
     await page.locator('#hero-add-wallet-btn').click();
 
-    const name = page.locator('#modal-new-wallet-name');
+    // T41: same shell-level AddWalletModal WalletsView uses - canonical ids,
+    // not the retired WalletPopupModal ADD_WALLET tab's `#modal-new-wallet-*`.
+    const name = page.locator('#new-wallet-name');
     await expect(name).toBeVisible();
     await name.fill('Modal Vault');
-    await page.locator('#modal-new-wallet-balance').fill('900');
-    await page.locator('#modal-create-wallet-submit').click();
+    await page.locator('#new-wallet-init-balance').fill('900');
+    await page.locator('#save-new-wallet-btn').click();
 
     await expect(page.getByText('Modal Vault').first()).toBeVisible();
   });
 
   test('Modal: rejects an unnamed wallet without losing input', async ({ page }) => {
     await page.locator('#hero-add-wallet-btn').click();
-    await page.locator('#modal-new-wallet-balance').fill('50');
+    await page.locator('#new-wallet-init-balance').fill('50');
     // Bypass the native required attribute to reach the Zod layer.
-    await page.locator('#modal-new-wallet-name').evaluate((el: HTMLInputElement) => el.removeAttribute('required'));
-    await page.locator('#modal-create-wallet-submit').click();
+    await page.locator('#new-wallet-name').evaluate((el: HTMLInputElement) => el.removeAttribute('required'));
+    await page.locator('#save-new-wallet-btn').click();
 
     await expect(page.getByText(/Wallet name is required/i)).toBeVisible();
-    await expect(page.locator('#modal-new-wallet-balance')).toHaveValue('50');
+    await expect(page.locator('#new-wallet-init-balance')).toHaveValue('50');
   });
 });

@@ -6,6 +6,8 @@ import { Navbar, ActiveTab } from './components/Navbar';
 import { MobileBottomNav } from './components/MobileBottomNav';
 import { ViewLoadingFallback } from './components/ViewLoadingFallback';
 import { QuickAddModal } from './components/QuickAddModal';
+import { TransferFundsModal } from './components/wallet/TransferFundsModal';
+import { AddWalletModal } from './components/wallet/AddWalletModal';
 import { AuthModal } from './components/AuthModal';
 import { ReloadPrompt } from './components/ReloadPrompt';
 
@@ -57,6 +59,20 @@ const MainApp: React.FC = () => {
   const [direction, setDirection] = useState<number>(0);
   const [isQuickAddOpen, setIsQuickAddOpen] = useState<boolean>(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
+  // T41 (Phase 23): Transfer Funds and Add Wallet are each mounted once here,
+  // the same self-subscribing-shell-component pattern as QuickAddModal, so
+  // DashboardView's hero/wallet-card triggers and WalletsView's own header
+  // buttons open the exact same modal instance regardless of which view is
+  // active - a modal owned by one view's local state could never be reached
+  // from the other.
+  const [isTransferModalOpen, setIsTransferModalOpen] = useState<boolean>(false);
+  const [transferSourceWalletId, setTransferSourceWalletId] = useState<string | undefined>(undefined);
+  const [isAddWalletModalOpen, setIsAddWalletModalOpen] = useState<boolean>(false);
+  // T40: seeds TransactionsView's wallet filter when the wallet popup's
+  // Activity preview hands off via "View all". Cleared by TransactionsView
+  // itself right after it reads the value, so a later, unrelated navigation
+  // to the tab does not inherit a stale filter.
+  const [transactionsWalletFilter, setTransactionsWalletFilter] = useState<string | undefined>(undefined);
 
   // T1 (Phase 2): MainApp no longer subscribes to the finance context. It did so
   // only to feed the quick-add modal, which meant every financial write
@@ -108,6 +124,23 @@ const MainApp: React.FC = () => {
   const handleOpenAuth = useCallback(() => setIsAuthModalOpen(true), []);
   const handleCloseAuth = useCallback(() => setIsAuthModalOpen(false), []);
 
+  const handleOpenTransfer = useCallback((walletId?: string) => {
+    setTransferSourceWalletId(walletId);
+    setIsTransferModalOpen(true);
+  }, []);
+  const handleCloseTransfer = useCallback(() => setIsTransferModalOpen(false), []);
+  const handleOpenAddWallet = useCallback(() => setIsAddWalletModalOpen(true), []);
+  const handleCloseAddWallet = useCallback(() => setIsAddWalletModalOpen(false), []);
+
+  const handleOpenWalletTransactions = useCallback(
+    (walletId: string) => {
+      setTransactionsWalletFilter(walletId);
+      handleTabChange('transactions');
+    },
+    [handleTabChange]
+  );
+  const handleConsumeTransactionsWalletFilter = useCallback(() => setTransactionsWalletFilter(undefined), []);
+
   // Touch swipe gesture hook for iOS/Android native app feel
   const swipeHandlers = useSwipeable({
     onSwipedLeft: handleNextTab,
@@ -121,11 +154,24 @@ const MainApp: React.FC = () => {
   const renderActiveView = () => {
     switch (activeTab) {
       case 'dashboard':
-        return <DashboardView onNavigate={handleNavigate} onOpenQuickAdd={handleOpenQuickAdd} />;
+        return (
+          <DashboardView
+            onNavigate={handleNavigate}
+            onOpenQuickAdd={handleOpenQuickAdd}
+            onOpenTransfer={handleOpenTransfer}
+            onOpenAddWallet={handleOpenAddWallet}
+            onOpenWalletTransactions={handleOpenWalletTransactions}
+          />
+        );
       case 'transactions':
-        return <TransactionsView />;
+        return (
+          <TransactionsView
+            initialWalletFilter={transactionsWalletFilter}
+            onConsumeInitialWalletFilter={handleConsumeTransactionsWalletFilter}
+          />
+        );
       case 'wallets':
-        return <WalletsView />;
+        return <WalletsView onOpenTransfer={handleOpenTransfer} onOpenAddWallet={handleOpenAddWallet} />;
       case 'debts':
         return <DebtsView />;
       case 'diary':
@@ -135,7 +181,15 @@ const MainApp: React.FC = () => {
       case 'security':
         return <SecurityView />;
       default:
-        return <DashboardView onNavigate={handleNavigate} onOpenQuickAdd={handleOpenQuickAdd} />;
+        return (
+          <DashboardView
+            onNavigate={handleNavigate}
+            onOpenQuickAdd={handleOpenQuickAdd}
+            onOpenTransfer={handleOpenTransfer}
+            onOpenAddWallet={handleOpenAddWallet}
+            onOpenWalletTransactions={handleOpenWalletTransactions}
+          />
+        );
     }
   };
 
@@ -197,6 +251,14 @@ const MainApp: React.FC = () => {
 
       {/* Quick Add Modal / Responsive Mobile Bottom Sheet with Glassmorphism */}
       <QuickAddModal isOpen={isQuickAddOpen} onClose={handleCloseQuickAdd} />
+
+      {/* Transfer Funds & Add Wallet Modals (T41) - single shell-level instances shared by DashboardView and WalletsView */}
+      <TransferFundsModal
+        isOpen={isTransferModalOpen}
+        onClose={handleCloseTransfer}
+        initialSourceWalletId={transferSourceWalletId}
+      />
+      <AddWalletModal isOpen={isAddWalletModalOpen} onClose={handleCloseAddWallet} />
     </div>
   );
 };
