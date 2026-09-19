@@ -12,6 +12,7 @@ import { safeEvaluateMath } from '../utils/mathEvaluator';
 import { APP_CURRENCY_SYMBOL, formatCurrencyAmount } from '../utils/currency';
 import { todayIsoDate } from '../utils/date';
 import { LABEL_TEXT_CLASS, OPTION_CLASS, ERROR_BANNER_CLASS } from '../utils/formStyles';
+import { SegmentedControl } from './ui/SegmentedControl';
 
 interface TransactionFormProps {
   wallets: Wallet[];
@@ -238,27 +239,19 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
         </div>
 
         {/* Transaction Type Segmented Toggle with mobile touch targets */}
-        <div className="grid grid-cols-4 sm:flex bg-stone-100 dark:bg-stone-800 p-1 rounded-xl gap-1 w-full sm:w-auto border border-stone-200 dark:border-stone-700">
-          {(['EXPENSE', 'INCOME', 'TRANSFER', 'DEBT_REPAYMENT'] as TransactionType[]).map((t) => (
-            <motion.button
-              whileTap={{ scale: 0.95 }}
-              key={t}
-              type="button"
-              id={`${formId}-type-${t.toLowerCase()}`}
-              onClick={() => {
-                setType(t);
-                if (isAutoParsed) setShowManualOverrides(true);
-              }}
-              className={`py-2 px-2 sm:px-3 text-center text-xs font-semibold rounded-lg transition-all cursor-pointer truncate ${
-                type === t
-                  ? 'bg-white dark:bg-stone-700 text-stone-900 dark:text-white shadow-xs'
-                  : 'text-stone-500 dark:text-stone-400 hover:text-stone-800 dark:hover:text-stone-200'
-              }`}
-            >
-              {t === 'DEBT_REPAYMENT' ? 'Debt' : t.charAt(0) + t.slice(1).toLowerCase()}
-            </motion.button>
-          ))}
-        </div>
+        <SegmentedControl<TransactionType>
+          className="grid grid-cols-4 sm:flex w-full sm:w-auto"
+          value={type}
+          onChange={(t) => {
+            setType(t);
+            if (isAutoParsed) setShowManualOverrides(true);
+          }}
+          options={(['EXPENSE', 'INCOME', 'TRANSFER', 'DEBT_REPAYMENT'] as TransactionType[]).map((t) => ({
+            value: t,
+            id: `${formId}-type-${t.toLowerCase()}`,
+            label: t === 'DEBT_REPAYMENT' ? 'Debt' : t.charAt(0) + t.slice(1).toLowerCase(),
+          }))}
+        />
       </div>
       )}
 

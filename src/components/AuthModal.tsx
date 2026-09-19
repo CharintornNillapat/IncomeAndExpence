@@ -5,6 +5,7 @@ import { AuthLoginSchema, formatZodIssues } from '../utils/zodSchemas';
 import { Lock, Mail, User as UserIcon, AlertCircle, CheckCircle2, ArrowRight, X, KeyRound } from 'lucide-react';
 import { Modal } from './Modal';
 import { LABEL_TEXT_CLASS } from '../utils/formStyles';
+import { SegmentedControl } from './ui/SegmentedControl';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -124,40 +125,20 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
     <Modal isOpen={isOpen} onClose={onClose} header={header} titleId="auth-modal-title" bodyClassName="space-y-5">
       {/* Mode Toggle Tabs */}
       {mode !== 'forgot' && (
-        <div className="flex bg-stone-100 dark:bg-stone-800 p-1 rounded-xl gap-1 border border-stone-200 dark:border-stone-700">
-          <button
-            type="button"
-            id="auth-tab-signin"
-            onClick={() => {
-              setMode('signin');
-              setErrorMessage(null);
-              setSuccessMessage(null);
-            }}
-            className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
-              mode === 'signin'
-                ? 'bg-white dark:bg-stone-700 text-stone-900 dark:text-white shadow-xs'
-                : 'text-stone-500 dark:text-stone-400 hover:text-stone-800 dark:hover:text-stone-200'
-            }`}
-          >
-            Sign In
-          </button>
-          <button
-            type="button"
-            id="auth-tab-signup"
-            onClick={() => {
-              setMode('signup');
-              setErrorMessage(null);
-              setSuccessMessage(null);
-            }}
-            className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
-              mode === 'signup'
-                ? 'bg-white dark:bg-stone-700 text-stone-900 dark:text-white shadow-xs'
-                : 'text-stone-500 dark:text-stone-400 hover:text-stone-800 dark:hover:text-stone-200'
-            }`}
-          >
-            Create Account
-          </button>
-        </div>
+        <SegmentedControl<'signin' | 'signup'>
+          size="sm"
+          fill
+          value={mode === 'signup' ? 'signup' : 'signin'}
+          onChange={(next) => {
+            setMode(next);
+            setErrorMessage(null);
+            setSuccessMessage(null);
+          }}
+          options={[
+            { value: 'signin', id: 'auth-tab-signin', label: 'Sign In' },
+            { value: 'signup', id: 'auth-tab-signup', label: 'Create Account' },
+          ]}
+        />
       )}
 
       {/* Feedback alerts */}
