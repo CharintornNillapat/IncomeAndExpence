@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 17 — shared form styles: T24 (2026-09-19, commit `(pending)`)
+## Phase 17 — shared form styles: T24 (2026-09-19, commit `7f9ef66`)
 
 **Changed**
 
@@ -47,7 +47,7 @@ CI=true npx playwright test      # 87/87 passed (4.4m), 1 worker, 0 retries
 
 - **`WalletPopupModal.tsx` audited and left untouched** - its inline balance-adjustment editor and activity-tab wallet select use a distinct, more compact style family (`text-[10px]` micro-labels, `rounded-lg`, different padding) with no exact matches to the shared module.
 - **T25 (unify the 4 transaction-row renderers) remains deferred**, exactly as recorded in `task-ledger.md` before this phase.
-- **Commit hash left as `(pending)`**, filled in by the follow-up "docs: record phase 17 commit hash" commit, per this repo's established two-commit pattern (see Phase 14-16's git history).
+- **Commit hash (`7f9ef66`) filled in by this follow-up commit**, per this repo's established two-commit pattern (see Phase 14-16's git history).
 
 ---
 
