@@ -22,6 +22,7 @@ import { useFinanceState, useFinanceActions } from '../context/FinanceContext';
 import { useSubmitHandler } from '../hooks/useSubmitHandler';
 import { useTransientFlash } from '../hooks/useTransientFlash';
 import { supabase } from '../lib/supabase';
+import { SectionHeader } from '../components/ui/SectionHeader';
 import { LABEL_CLASS, inputClass, PRIMARY_BUTTON_COMPACT_CLASS } from '../utils/formStyles';
 
 export const SecurityView: React.FC = () => {
@@ -122,37 +123,33 @@ export const SecurityView: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header Banner */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-stone-900 p-5 rounded-2xl border border-stone-200 dark:border-stone-800 shadow-2xs">
-        <div>
-          <h2 className="text-base font-bold text-stone-900 dark:text-white">Security & Sessions</h2>
-          <p className="text-xs text-stone-500 dark:text-stone-400">
-            Manage your authorized devices, security credentials, and cloud sync
-          </p>
-        </div>
+      <SectionHeader
+        title="Security & Sessions"
+        subtitle="Manage your authorized devices, security credentials, and cloud sync"
+        action={
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={handleManualSync}
+              disabled={isSyncing || isManualSyncing}
+              className="inline-flex items-center gap-1.5 px-3 sm:px-3.5 py-2 text-xs font-semibold text-stone-700 dark:text-stone-300 bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 border border-stone-200 dark:border-stone-700 rounded-xl transition-all cursor-pointer disabled:opacity-50"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isSyncing || isManualSyncing ? 'animate-spin' : ''}`} />
+              <span>{isSyncing || isManualSyncing ? 'Syncing...' : 'Sync Cloud'}</span>
+            </button>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={handleManualSync}
-            disabled={isSyncing || isManualSyncing}
-            className="inline-flex items-center gap-1.5 px-3 sm:px-3.5 py-2 text-xs font-semibold text-stone-700 dark:text-stone-300 bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 border border-stone-200 dark:border-stone-700 rounded-xl transition-all cursor-pointer disabled:opacity-50"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${isSyncing || isManualSyncing ? 'animate-spin' : ''}`} />
-            <span>{isSyncing || isManualSyncing ? 'Syncing...' : 'Sync Cloud'}</span>
-          </button>
-          
-          <button
-            id="revoke-all-others-btn"
-            type="button"
-            onClick={revokeAllOtherSessions}
-            className="inline-flex items-center gap-1.5 px-3 sm:px-3.5 py-2 text-xs font-semibold text-rose-700 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/50 hover:bg-rose-100 dark:hover:bg-rose-900/60 border border-rose-200 dark:border-rose-800 rounded-xl transition-all cursor-pointer"
-          >
-            <Trash2 className="w-3.5 h-3.5" />
-            <span>Revoke Other Devices</span>
-          </button>
-        </div>
-      </div>
+            <button
+              id="revoke-all-others-btn"
+              type="button"
+              onClick={revokeAllOtherSessions}
+              className="inline-flex items-center gap-1.5 px-3 sm:px-3.5 py-2 text-xs font-semibold text-rose-700 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/50 hover:bg-rose-100 dark:hover:bg-rose-900/60 border border-rose-200 dark:border-rose-800 rounded-xl transition-all cursor-pointer"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>Revoke Other Devices</span>
+            </button>
+          </div>
+        }
+      />
 
       {syncFeedback && (
         <div className="p-3 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 rounded-xl text-xs font-semibold flex items-center gap-2 animate-in fade-in">

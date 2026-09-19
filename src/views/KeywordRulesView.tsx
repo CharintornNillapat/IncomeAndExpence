@@ -5,6 +5,8 @@ import { useSubmitHandler } from '../hooks/useSubmitHandler';
 import { matchSmartDescription } from '../utils/smartMatcher';
 import { formatCurrencyAmount } from '../utils/currency';
 import { buildLookupMap } from '../utils/mapUtils';
+import { SectionHeader } from '../components/ui/SectionHeader';
+import { Card } from '../components/ui/Card';
 import { LABEL_CLASS, inputClass, ERROR_BANNER_CLASS, PRIMARY_BUTTON_COMPACT_CLASS } from '../utils/formStyles';
 
 export const KeywordRulesView: React.FC = () => {
@@ -35,21 +37,16 @@ export const KeywordRulesView: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header Banner */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-stone-900 p-5 rounded-2xl border border-stone-200 dark:border-stone-800 shadow-2xs">
-        <div>
-          <h2 className="text-base font-bold text-stone-900 dark:text-white">Auto-Categorization Rules</h2>
-          <p className="text-xs text-stone-500 dark:text-stone-400">
-            Set up keywords to automatically assign categories to matching transactions
-          </p>
-        </div>
-      </div>
+      <SectionHeader
+        title="Auto-Categorization Rules"
+        subtitle="Set up keywords to automatically assign categories to matching transactions"
+      />
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         {/* Left: Add Rule + Live Test Sandbox (5 cols) */}
         <div className="lg:col-span-5 space-y-6">
           {/* Add Rule Form */}
-          <div className="bg-white dark:bg-stone-900 rounded-2xl border border-stone-200 dark:border-stone-800 p-6 shadow-xs space-y-4">
+          <Card padding="lg" className="space-y-4">
             <div className="flex items-center gap-2 pb-3 border-b border-stone-100 dark:border-stone-800">
               <Plus className="w-4 h-4 text-stone-700 dark:text-stone-300" />
               <h3 className="text-sm font-bold text-stone-900 dark:text-white">Add Keyword Rule</h3>
@@ -103,10 +100,10 @@ export const KeywordRulesView: React.FC = () => {
                 Add Rule
               </button>
             </form>
-          </div>
+          </Card>
 
           {/* Smart Parser Live Sandbox */}
-          <div className="bg-white dark:bg-stone-900 rounded-2xl border border-stone-200 dark:border-stone-800 p-6 shadow-xs space-y-4">
+          <Card padding="lg" className="space-y-4">
             <div className="flex items-center gap-2 pb-3 border-b border-stone-100 dark:border-stone-800">
               <Sparkles className="w-4 h-4 text-amber-600 dark:text-amber-400" />
               <h3 className="text-sm font-bold text-stone-900 dark:text-white">Try Quick-Input Test</h3>
@@ -148,11 +145,11 @@ export const KeywordRulesView: React.FC = () => {
                 <span className="text-stone-800 dark:text-stone-200 font-medium">"{matchResult.cleanDescription}"</span>
               </div>
             </div>
-          </div>
+          </Card>
         </div>
 
         {/* Right: Configured Rules Table (7 cols) */}
-        <div className="lg:col-span-7 bg-white dark:bg-stone-900 rounded-2xl border border-stone-200 dark:border-stone-800 p-6 shadow-xs space-y-4">
+        <Card padding="lg" className="lg:col-span-7 space-y-4">
           <div className="flex items-center justify-between pb-3 border-b border-stone-100 dark:border-stone-800">
             <div className="flex items-center gap-2">
               <Tag className="w-4 h-4 text-stone-600 dark:text-stone-400" />
@@ -205,7 +202,7 @@ export const KeywordRulesView: React.FC = () => {
               </tbody>
             </table>
           </div>
-        </div>
+        </Card>
       </div>
     </div>
   );

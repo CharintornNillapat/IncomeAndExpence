@@ -8,6 +8,7 @@ import {
 import { useFinanceState, useFinanceActions } from '../context/FinanceContext';
 import { AnimatedCounter } from '../components/AnimatedCounter';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
+import { SectionHeader } from '../components/ui/SectionHeader';
 import { Wallet } from '../types';
 import { APP_CURRENCY, APP_CURRENCY_SYMBOL } from '../utils/currency';
 import { getWalletIcon } from '../utils/walletIcons';
@@ -41,37 +42,33 @@ export const WalletsView: React.FC<WalletsViewProps> = ({ onOpenTransfer, onOpen
 
   return (
     <div className="space-y-6">
-      {/* Header & Net Worth Banner */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-stone-900 p-5 rounded-2xl border border-stone-200 dark:border-stone-800 shadow-2xs">
-        <div>
-          <h2 className="text-base font-bold text-stone-900 dark:text-white">Wallets & Accounts</h2>
-          <p className="text-xs text-stone-500 dark:text-stone-400">
-            Manage your accounts, balances, and transfers
-          </p>
-        </div>
+      <SectionHeader
+        title="Wallets & Accounts"
+        subtitle="Manage your accounts, balances, and transfers"
+        action={
+          <div className="flex items-center gap-2 sm:gap-3">
+            <button
+              id="wallet-transfer-modal-btn"
+              type="button"
+              onClick={() => onOpenTransfer?.()}
+              className="inline-flex items-center gap-1.5 px-3 sm:px-3.5 py-2 text-xs font-semibold text-stone-700 dark:text-stone-300 bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 rounded-xl transition-all cursor-pointer"
+            >
+              <ArrowLeftRight className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+              <span>Transfer</span>
+            </button>
 
-        <div className="flex items-center gap-2 sm:gap-3">
-          <button
-            id="wallet-transfer-modal-btn"
-            type="button"
-            onClick={() => onOpenTransfer?.()}
-            className="inline-flex items-center gap-1.5 px-3 sm:px-3.5 py-2 text-xs font-semibold text-stone-700 dark:text-stone-300 bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 rounded-xl transition-all cursor-pointer"
-          >
-            <ArrowLeftRight className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-            <span>Transfer</span>
-          </button>
-
-          <button
-            id="wallet-add-modal-btn"
-            type="button"
-            onClick={() => onOpenAddWallet?.()}
-            className="inline-flex items-center gap-1.5 px-3 sm:px-3.5 py-2 text-xs font-semibold text-white dark:text-stone-900 bg-stone-900 hover:bg-stone-800 dark:bg-stone-100 dark:hover:bg-white rounded-xl shadow-xs transition-all cursor-pointer"
-          >
-            <Plus className="w-4 h-4 text-emerald-400 dark:text-emerald-600" />
-            <span>Add Wallet</span>
-          </button>
-        </div>
-      </div>
+            <button
+              id="wallet-add-modal-btn"
+              type="button"
+              onClick={() => onOpenAddWallet?.()}
+              className="inline-flex items-center gap-1.5 px-3 sm:px-3.5 py-2 text-xs font-semibold text-white dark:text-stone-900 bg-stone-900 hover:bg-stone-800 dark:bg-stone-100 dark:hover:bg-white rounded-xl shadow-xs transition-all cursor-pointer"
+            >
+              <Plus className="w-4 h-4 text-emerald-400 dark:text-emerald-600" />
+              <span>Add Wallet</span>
+            </button>
+          </div>
+        }
+      />
 
       {/* Wallets Cards Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">

@@ -11,6 +11,7 @@ import { DebtCardItem } from '../components/DebtCardItem';
 import { TransactionForm } from '../components/TransactionForm';
 import { Modal } from '../components/Modal';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
+import { SectionHeader } from '../components/ui/SectionHeader';
 import { LABEL_CLASS, inputClass, ERROR_BANNER_CLASS, PRIMARY_BUTTON_CLASS } from '../utils/formStyles';
 
 export const DebtsView: React.FC = () => {
@@ -100,25 +101,21 @@ export const DebtsView: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header Banner */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-stone-900 p-5 rounded-2xl border border-stone-200 dark:border-stone-800 shadow-2xs">
-        <div>
-          <h2 className="text-base font-bold text-stone-900 dark:text-white">Debts & Loans</h2>
-          <p className="text-xs text-stone-500 dark:text-stone-400">
-            Track payoff goals and make repayments from your wallets
-          </p>
-        </div>
-
-        <button
-          id="open-add-debt-btn"
-          type="button"
-          onClick={() => setIsAddDebtOpen(true)}
-          className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white dark:text-stone-900 bg-stone-900 hover:bg-stone-800 dark:bg-stone-100 dark:hover:bg-white rounded-xl shadow-xs transition-all cursor-pointer"
-        >
-          <Plus className="w-4 h-4 text-emerald-400 dark:text-emerald-600" />
-          <span>Add Debt</span>
-        </button>
-      </div>
+      <SectionHeader
+        title="Debts & Loans"
+        subtitle="Track payoff goals and make repayments from your wallets"
+        action={
+          <button
+            id="open-add-debt-btn"
+            type="button"
+            onClick={() => setIsAddDebtOpen(true)}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white dark:text-stone-900 bg-stone-900 hover:bg-stone-800 dark:bg-stone-100 dark:hover:bg-white rounded-xl shadow-xs transition-all cursor-pointer"
+          >
+            <Plus className="w-4 h-4 text-emerald-400 dark:text-emerald-600" />
+            <span>Add Debt</span>
+          </button>
+        }
+      />
 
       {/* Debt Targets Cards Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">

@@ -18,6 +18,8 @@ import { exportTransactionsToCsv, exportDiaryToJson, parseAndValidateTransaction
 import { TransactionForm } from '../components/TransactionForm';
 import { TransactionTableRow } from '../components/TransactionTableRow';
 import { Modal } from '../components/Modal';
+import { SectionHeader } from '../components/ui/SectionHeader';
+import { Card } from '../components/ui/Card';
 import { buildLookupMap } from '../utils/mapUtils';
 import { useTransientFlash } from '../hooks/useTransientFlash';
 import { OPTION_CLASS } from '../utils/formStyles';
@@ -176,62 +178,58 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
 
   return (
     <div className="space-y-4 sm:space-y-6">
-      {/* Header & Action Toolbar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 bg-white dark:bg-stone-900 p-4 sm:p-5 rounded-2xl border border-stone-200 dark:border-stone-800 shadow-2xs">
-        <div>
-          <h2 className="text-base font-bold text-stone-900 dark:text-white">Transaction Management</h2>
-          <p className="hidden sm:block text-xs text-stone-500 dark:text-stone-400">
-            CRUD operations with soft-delete safety, math parser, and 2-step CSV synchronization
-          </p>
-        </div>
+      <SectionHeader
+        title="Transaction Management"
+        subtitle="CRUD operations with soft-delete safety, math parser, and 2-step CSV synchronization"
+        action={
+          <div className="flex flex-wrap items-center gap-2">
+            {/* CSV Export */}
+            <button
+              id="tx-export-csv-btn"
+              type="button"
+              onClick={() => exportTransactionsToCsv(rawTransactions, wallets, categories)}
+              className="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-stone-700 dark:text-stone-300 bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 rounded-xl transition-all cursor-pointer"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span>Export CSV</span>
+            </button>
 
-        <div className="flex flex-wrap items-center gap-2">
-          {/* CSV Export */}
-          <button
-            id="tx-export-csv-btn"
-            type="button"
-            onClick={() => exportTransactionsToCsv(rawTransactions, wallets, categories)}
-            className="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-stone-700 dark:text-stone-300 bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 rounded-xl transition-all cursor-pointer"
-          >
-            <Download className="w-3.5 h-3.5" />
-            <span>Export CSV</span>
-          </button>
+            {/* Diary JSON Export */}
+            <button
+              id="diary-export-json-btn"
+              type="button"
+              onClick={() => exportDiaryToJson(diaryEntries)}
+              className="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-stone-700 dark:text-stone-300 bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 rounded-xl transition-all cursor-pointer"
+            >
+              <FileText className="w-3.5 h-3.5 text-stone-500 dark:text-stone-400" />
+              <span className="hidden sm:inline">Export Diary (JSON)</span>
+              <span className="sm:hidden">Diary</span>
+            </button>
 
-          {/* Diary JSON Export */}
-          <button
-            id="diary-export-json-btn"
-            type="button"
-            onClick={() => exportDiaryToJson(diaryEntries)}
-            className="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-stone-700 dark:text-stone-300 bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 rounded-xl transition-all cursor-pointer"
-          >
-            <FileText className="w-3.5 h-3.5 text-stone-500 dark:text-stone-400" />
-            <span className="hidden sm:inline">Export Diary (JSON)</span>
-            <span className="sm:hidden">Diary</span>
-          </button>
+            {/* 2-Step Import CSV */}
+            <button
+              id="tx-import-csv-btn"
+              type="button"
+              onClick={() => setIsImportModalOpen(true)}
+              className="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/40 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 rounded-xl border border-indigo-200 dark:border-indigo-800/60 transition-all cursor-pointer"
+            >
+              <Upload className="w-3.5 h-3.5" />
+              <span>Import CSV</span>
+            </button>
 
-          {/* 2-Step Import CSV */}
-          <button
-            id="tx-import-csv-btn"
-            type="button"
-            onClick={() => setIsImportModalOpen(true)}
-            className="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/40 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 rounded-xl border border-indigo-200 dark:border-indigo-800/60 transition-all cursor-pointer"
-          >
-            <Upload className="w-3.5 h-3.5" />
-            <span>Import CSV</span>
-          </button>
-
-          {/* Add Transaction */}
-          <button
-            id="tx-open-add-modal-btn"
-            type="button"
-            onClick={() => setIsAddModalOpen(true)}
-            className="min-h-[44px] inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white dark:text-stone-900 bg-stone-900 hover:bg-stone-800 dark:bg-stone-100 dark:hover:bg-white rounded-xl shadow-xs transition-all cursor-pointer"
-          >
-            <Plus className="w-4 h-4 text-emerald-400 dark:text-emerald-600" />
-            <span>Add Transaction</span>
-          </button>
-        </div>
-      </div>
+            {/* Add Transaction */}
+            <button
+              id="tx-open-add-modal-btn"
+              type="button"
+              onClick={() => setIsAddModalOpen(true)}
+              className="min-h-[44px] inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white dark:text-stone-900 bg-stone-900 hover:bg-stone-800 dark:bg-stone-100 dark:hover:bg-white rounded-xl shadow-xs transition-all cursor-pointer"
+            >
+              <Plus className="w-4 h-4 text-emerald-400 dark:text-emerald-600" />
+              <span>Add Transaction</span>
+            </button>
+          </div>
+        }
+      />
 
       {/* Filter & Search Bar */}
       <div className="bg-white dark:bg-stone-900 p-3.5 sm:p-4 rounded-2xl border border-stone-200 dark:border-stone-800 shadow-2xs space-y-3">
@@ -313,7 +311,7 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
       </div>
 
       {/* Transaction Table */}
-      <div className="bg-white dark:bg-stone-900 rounded-2xl border border-stone-200 dark:border-stone-800 shadow-2xs overflow-hidden">
+      <Card padding="none" className="overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
             <thead className="bg-stone-50 dark:bg-stone-800/80 border-b border-stone-200 dark:border-stone-800 text-stone-500 dark:text-stone-400 uppercase tracking-wider font-semibold text-[10px]">
@@ -381,7 +379,7 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
             </button>
           </div>
         </div>
-      </div>
+      </Card>
 
       {/* Add Transaction Modal / Responsive Mobile Bottom Sheet */}
       <Modal

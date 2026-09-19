@@ -12,6 +12,8 @@ import { useFinanceState, useFinanceActions } from '../context/FinanceContext';
 import { useSubmitHandler } from '../hooks/useSubmitHandler';
 import { useTransientFlash } from '../hooks/useTransientFlash';
 import { DiaryEntryCard } from '../components/DiaryEntryCard';
+import { SectionHeader } from '../components/ui/SectionHeader';
+import { Card } from '../components/ui/Card';
 import { FoodQuality, Transaction } from '../types';
 import { formatCurrencyAmount } from '../utils/currency';
 import { todayIsoDate, daysAgoIsoDate, formatDayInfo } from '../utils/date';
@@ -170,29 +172,25 @@ export const DiaryView: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header Banner */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-stone-900 p-5 rounded-2xl border border-stone-200 dark:border-stone-800 shadow-2xs">
-        <div>
-          <h2 className="text-base font-bold text-stone-900 dark:text-white">Holistic Mini Diary</h2>
-          <p className="text-xs text-stone-500 dark:text-stone-400">
-            Track daily mood, physical workouts, food quality, and correlate with daily spending behavior
-          </p>
-        </div>
-
-        <button
-          id="export-diary-btn"
-          type="button"
-          onClick={() => exportDiaryToJson(diaryEntries)}
-          className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-stone-700 dark:text-stone-300 bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 rounded-xl transition-all cursor-pointer"
-        >
-          <Download className="w-3.5 h-3.5" />
-          <span>Export Diary (JSON)</span>
-        </button>
-      </div>
+      <SectionHeader
+        title="Holistic Mini Diary"
+        subtitle="Track daily mood, physical workouts, food quality, and correlate with daily spending behavior"
+        action={
+          <button
+            id="export-diary-btn"
+            type="button"
+            onClick={() => exportDiaryToJson(diaryEntries)}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-stone-700 dark:text-stone-300 bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 rounded-xl transition-all cursor-pointer"
+          >
+            <Download className="w-3.5 h-3.5" />
+            <span>Export Diary (JSON)</span>
+          </button>
+        }
+      />
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         {/* Left Column: Daily Logger Form (6 cols) */}
-        <div className="lg:col-span-6 bg-white dark:bg-stone-900 rounded-2xl border border-stone-200 dark:border-stone-800 p-6 shadow-xs space-y-6">
+        <Card padding="lg" className="lg:col-span-6 space-y-6">
           <div className="flex items-center justify-between pb-4 border-b border-stone-100 dark:border-stone-800">
             <div className="flex items-center gap-2">
               <BookHeart className="w-5 h-5 text-stone-800 dark:text-stone-200" />
@@ -372,10 +370,10 @@ export const DiaryView: React.FC = () => {
               )}
             </div>
           </form>
-        </div>
+        </Card>
 
         {/* Right Column: Historical Diary Logs & Spending Correlation (6 cols) */}
-        <div className="lg:col-span-6 bg-white dark:bg-stone-900 rounded-2xl border border-stone-200 dark:border-stone-800 p-6 shadow-xs space-y-4">
+        <Card padding="lg" className="lg:col-span-6 space-y-4">
           <div className="flex items-center justify-between pb-3 border-b border-stone-100 dark:border-stone-800">
             <div className="flex items-center gap-2">
               <Calendar className="w-4 h-4 text-stone-600 dark:text-stone-400" />
@@ -405,7 +403,7 @@ export const DiaryView: React.FC = () => {
               ))
             )}
           </div>
-        </div>
+        </Card>
       </div>
     </div>
   );
