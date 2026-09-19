@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 18 — promote verified constraints into CLAUDE.md: T30 (2026-09-19, commit `(pending)`)
+## Phase 18 — promote verified constraints into CLAUDE.md: T30 (2026-09-19, commit `3c441e8`)
 
 **Changed**
 
