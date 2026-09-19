@@ -1,10 +1,9 @@
 import React, { useState, useMemo } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  Plus, 
-  ArrowLeftRight, 
-  Trash2, 
-  X,
+import { motion } from 'framer-motion';
+import {
+  Plus,
+  ArrowLeftRight,
+  Trash2,
 } from 'lucide-react';
 import { useFinanceState, useFinanceActions } from '../context/FinanceContext';
 import { AnimatedCounter } from '../components/AnimatedCounter';
@@ -13,6 +12,7 @@ import { getWalletIcon } from '../utils/walletIcons';
 import { toIsoDate } from '../utils/date';
 import { AddWalletForm } from '../components/wallet/AddWalletForm';
 import { WalletTransferForm } from '../components/wallet/WalletTransferForm';
+import { Modal } from '../components/Modal';
 
 export const WalletsView: React.FC = () => {
   const { wallets } = useFinanceState();
@@ -131,111 +131,45 @@ export const WalletsView: React.FC = () => {
       </div>
 
       {/* Add Wallet Modal / Responsive Mobile Bottom Sheet */}
-      <AnimatePresence>
-        {isAddWalletOpen && (
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="fixed inset-0 z-50 bg-stone-900/60 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-4"
-            onClick={(e) => {
-              if (e.target === e.currentTarget) setIsAddWalletOpen(false);
-            }}
-          >
-            <motion.div 
-              initial={{ y: 40, scale: 0.96, opacity: 0 }}
-              animate={{ y: 0, scale: 1, opacity: 1 }}
-              exit={{ y: 40, scale: 0.96, opacity: 0 }}
-              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-              className="bg-white/95 dark:bg-stone-900/95 backdrop-blur-xl rounded-t-3xl sm:rounded-2xl max-w-md w-full max-h-[92vh] sm:max-h-[90vh] overflow-y-auto shadow-2xl border border-stone-200/80 dark:border-stone-800 p-4 sm:p-6 space-y-4 sm:space-y-5 overscroll-contain"
-            >
-              {/* Mobile Drag Indicator */}
-              <div className="sm:hidden -mt-1 pb-1 flex justify-center cursor-pointer" onClick={() => setIsAddWalletOpen(false)}>
-                <div className="w-12 h-1.5 rounded-full bg-stone-300 dark:bg-stone-700" />
-              </div>
-
-              <div className="flex items-center justify-between pb-3 border-b border-stone-100/80 dark:border-stone-800">
-                <h3 className="text-sm sm:text-base font-bold text-stone-900 dark:text-white">Add Wallet</h3>
-                <motion.button
-                  whileTap={{ scale: 0.9 }}
-                  type="button"
-                  onClick={() => setIsAddWalletOpen(false)}
-                  className="p-2 rounded-xl text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 hover:bg-stone-100 dark:hover:bg-stone-800 active:bg-stone-200 cursor-pointer"
-                >
-                  <X className="w-5 h-5" />
-                </motion.button>
-              </div>
-
-              <AddWalletForm
-                tone="subtle"
-                ids={{
-                  name: 'new-wallet-name',
-                  type: 'new-wallet-type',
-                  currency: 'new-wallet-currency',
-                  balance: 'new-wallet-init-balance',
-                  submit: 'save-new-wallet-btn',
-                }}
-                onCreated={() => setIsAddWalletOpen(false)}
-              />
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <Modal
+        isOpen={isAddWalletOpen}
+        onClose={() => setIsAddWalletOpen(false)}
+        title="Add Wallet"
+        bodyClassName="space-y-4 sm:space-y-5"
+      >
+        <AddWalletForm
+          tone="subtle"
+          ids={{
+            name: 'new-wallet-name',
+            type: 'new-wallet-type',
+            currency: 'new-wallet-currency',
+            balance: 'new-wallet-init-balance',
+            submit: 'save-new-wallet-btn',
+          }}
+          onCreated={() => setIsAddWalletOpen(false)}
+        />
+      </Modal>
 
       {/* Transfer Funds Modal / Responsive Mobile Bottom Sheet */}
-      <AnimatePresence>
-        {isTransferOpen && (
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="fixed inset-0 z-50 bg-stone-900/60 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-4"
-            onClick={(e) => {
-              if (e.target === e.currentTarget) setIsTransferOpen(false);
-            }}
-          >
-            <motion.div 
-              initial={{ y: 40, scale: 0.96, opacity: 0 }}
-              animate={{ y: 0, scale: 1, opacity: 1 }}
-              exit={{ y: 40, scale: 0.96, opacity: 0 }}
-              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-              className="bg-white/95 dark:bg-stone-900/95 backdrop-blur-xl rounded-t-3xl sm:rounded-2xl max-w-md w-full max-h-[92vh] sm:max-h-[90vh] overflow-y-auto shadow-2xl border border-stone-200/80 dark:border-stone-800 p-4 sm:p-6 space-y-4 sm:space-y-5 overscroll-contain"
-            >
-              {/* Mobile Drag Indicator */}
-              <div className="sm:hidden -mt-1 pb-1 flex justify-center cursor-pointer" onClick={() => setIsTransferOpen(false)}>
-                <div className="w-12 h-1.5 rounded-full bg-stone-300 dark:bg-stone-700" />
-              </div>
-
-              <div className="flex items-center justify-between pb-3 border-b border-stone-100/80 dark:border-stone-800">
-                <h3 className="text-sm sm:text-base font-bold text-stone-900 dark:text-white">Transfer Funds</h3>
-                <motion.button
-                  whileTap={{ scale: 0.9 }}
-                  type="button"
-                  onClick={() => setIsTransferOpen(false)}
-                  className="p-2 rounded-xl text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 hover:bg-stone-100 dark:hover:bg-stone-800 active:bg-stone-200 cursor-pointer"
-                >
-                  <X className="w-5 h-5" />
-                </motion.button>
-              </div>
-
-              <WalletTransferForm
-                wallets={activeWallets}
-                tone="subtle"
-                ids={{
-                  source: 'transfer-source-wallet',
-                  dest: 'transfer-dest-wallet',
-                  amount: 'transfer-amount-math',
-                  note: 'transfer-note',
-                  submit: 'execute-transfer-btn',
-                }}
-                onTransferred={() => setIsTransferOpen(false)}
-              />
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <Modal
+        isOpen={isTransferOpen}
+        onClose={() => setIsTransferOpen(false)}
+        title="Transfer Funds"
+        bodyClassName="space-y-4 sm:space-y-5"
+      >
+        <WalletTransferForm
+          wallets={activeWallets}
+          tone="subtle"
+          ids={{
+            source: 'transfer-source-wallet',
+            dest: 'transfer-dest-wallet',
+            amount: 'transfer-amount-math',
+            note: 'transfer-note',
+            submit: 'execute-transfer-btn',
+          }}
+          onTransferred={() => setIsTransferOpen(false)}
+        />
+      </Modal>
     </div>
   );
 };

@@ -17,6 +17,7 @@ import { formatCurrencyAmount } from '../utils/currency';
 import { exportTransactionsToCsv, exportDiaryToJson, parseAndValidateTransactionCsv } from '../utils/csvExchange';
 import { TransactionForm } from '../components/TransactionForm';
 import { TransactionTableRow } from '../components/TransactionTableRow';
+import { Modal } from '../components/Modal';
 
 export const TransactionsView: React.FC = () => {
   const {
@@ -362,219 +363,174 @@ export const TransactionsView: React.FC = () => {
       </div>
 
       {/* Add Transaction Modal / Responsive Mobile Bottom Sheet */}
-      {isAddModalOpen && (
-        <div 
-          className="fixed inset-0 z-50 bg-stone-900/60 dark:bg-black/70 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-4 transition-opacity"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setIsAddModalOpen(false);
+      <Modal
+        isOpen={isAddModalOpen}
+        onClose={() => setIsAddModalOpen(false)}
+        title="Record New Transaction"
+        subtitle="Add an expense, income, transfer, or debt payment"
+        titleId="add-transaction-modal-title"
+        closeButtonId="close-add-transaction-modal-btn"
+        maxWidthClassName="max-w-xl"
+      >
+        <TransactionForm
+          wallets={activeWalletsForForm}
+          categories={activeCategoriesForForm}
+          onSubmitTransaction={async (data) => {
+            const res = await addTransaction({
+              ...data,
+              transactionDate: data.date,
+            });
+            if (res && res.success) {
+              setIsAddModalOpen(false);
+            }
+            return res;
           }}
-        >
-          <div 
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="add-transaction-modal-title"
-            className="bg-white dark:bg-stone-900 rounded-t-3xl sm:rounded-2xl max-w-xl w-full max-h-[92vh] sm:max-h-[90vh] flex flex-col shadow-2xl border border-stone-200 dark:border-stone-800 animate-in fade-in slide-in-from-bottom-6 sm:slide-in-from-bottom-0 duration-200"
-          >
-            {/* Mobile Drag Indicator */}
-            <div className="sm:hidden pt-3 pb-1 flex justify-center cursor-pointer" onClick={() => setIsAddModalOpen(false)}>
-              <div className="w-12 h-1.5 rounded-full bg-stone-300 dark:bg-stone-700" />
-            </div>
-
-            <div className="px-4 sm:px-6 py-3.5 sm:py-4 border-b border-stone-100 dark:border-stone-800 flex items-center justify-between">
-              <div>
-                <h3 id="add-transaction-modal-title" className="text-base sm:text-lg font-bold text-stone-900 dark:text-white">
-                  Record New Transaction
-                </h3>
-                <p className="text-xs text-stone-500 dark:text-stone-400 hidden sm:block">
-                  Add an expense, income, transfer, or debt payment
-                </p>
-              </div>
-              <button
-                type="button"
-                id="close-add-transaction-modal-btn"
-                onClick={() => setIsAddModalOpen(false)}
-                className="p-2 rounded-xl text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 hover:bg-stone-100 dark:hover:bg-stone-800 active:bg-stone-200 transition-colors cursor-pointer"
-                aria-label="Close modal"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <div className="p-4 sm:p-6 overflow-y-auto max-h-[calc(92vh-70px)] sm:max-h-[calc(90vh-80px)] overscroll-contain">
-              <TransactionForm
-                wallets={activeWalletsForForm}
-                categories={activeCategoriesForForm}
-                onSubmitTransaction={async (data) => {
-                  const res = await addTransaction({
-                    ...data,
-                    transactionDate: data.date,
-                  });
-                  if (res && res.success) {
-                    setIsAddModalOpen(false);
-                  }
-                  return res;
-                }}
-              />
-            </div>
-          </div>
-        </div>
-      )}
+        />
+      </Modal>
 
       {/* Two-Step CSV Import Modal */}
-      {isImportModalOpen && (
-        <div className="fixed inset-0 z-50 bg-stone-900/60 dark:bg-black/70 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-stone-900 rounded-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto shadow-xl border border-stone-200 dark:border-stone-800 p-6 space-y-6">
-            <div className="flex items-center justify-between pb-4 border-b border-stone-100 dark:border-stone-800">
+      <Modal
+        isOpen={isImportModalOpen}
+        onClose={() => {
+          setIsImportModalOpen(false);
+          setImportPreview(null);
+        }}
+        title="Two-Step CSV Transaction Import"
+        subtitle={'Step 1: Dry-run parse & validate rows $\\rightarrow$ Step 2: Atomic commit into MySQL'}
+        maxWidthClassName="max-w-3xl"
+        bodyClassName="space-y-6"
+      >
+        {/* Step 1: Upload File */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <label className="text-xs font-semibold uppercase tracking-wider text-stone-700 dark:text-stone-300">
+              Select CSV File
+            </label>
+            <button
+              type="button"
+              onClick={handleDownloadSampleCsv}
+              className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1 cursor-pointer"
+            >
+              <Download className="w-3 h-3" /> Download Sample CSV Template
+            </button>
+          </div>
+
+          <input
+            id="csv-file-input"
+            type="file"
+            accept=".csv,text/csv"
+            onChange={handleCsvFileUpload}
+            className="w-full text-xs text-stone-600 dark:text-stone-400 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-stone-900 dark:file:bg-stone-100 file:text-white dark:file:text-stone-900 hover:file:bg-stone-800 dark:hover:file:bg-white cursor-pointer border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 rounded-xl p-2"
+          />
+
+          {isParsingCsv && (
+            <p className="text-xs text-stone-500 dark:text-stone-400 animate-pulse">Running dry-run validation checks...</p>
+          )}
+
+          {importFileError && (
+            <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 text-xs flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 shrink-0" />
+              <span>{importFileError}</span>
+            </div>
+          )}
+
+          {importSuccessMsg && (
+            <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 text-xs flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 shrink-0" />
+              <span>{importSuccessMsg}</span>
+            </div>
+          )}
+        </div>
+
+        {/* Dry Run Preview Summary & Table */}
+        {importPreview && (
+          <div className="space-y-4 pt-2">
+            <div className="grid grid-cols-4 gap-3 bg-stone-50 dark:bg-stone-800/80 p-3 rounded-xl border border-stone-200 dark:border-stone-700 text-xs">
               <div>
-                <h3 className="text-base font-bold text-stone-900 dark:text-white">Two-Step CSV Transaction Import</h3>
-                <p className="text-xs text-stone-500 dark:text-stone-400">
-                  Step 1: Dry-run parse & validate rows $\rightarrow$ Step 2: Atomic commit into MySQL
-                </p>
+                <span className="text-stone-500 dark:text-stone-400 block">Total Rows</span>
+                <span className="font-bold text-stone-900 dark:text-stone-100 font-mono text-sm">{importPreview.totalRows}</span>
               </div>
+              <div>
+                <span className="text-stone-500 dark:text-stone-400 block">Valid Rows</span>
+                <span className="font-bold text-emerald-600 dark:text-emerald-400 font-mono text-sm">{importPreview.validRowsCount}</span>
+              </div>
+              <div>
+                <span className="text-stone-500 dark:text-stone-400 block">Errors / Invalid</span>
+                <span className="font-bold text-rose-600 dark:text-rose-400 font-mono text-sm">{importPreview.invalidRowsCount}</span>
+              </div>
+              <div>
+                <span className="text-stone-500 dark:text-stone-400 block">Total Amount</span>
+                <span className="font-bold text-stone-900 dark:text-stone-100 font-mono text-sm">{formatCurrencyAmount(importPreview.totalAmount)}</span>
+              </div>
+            </div>
+
+            {/* Dry Run Row Table */}
+            <div className="max-h-60 overflow-y-auto rounded-xl border border-stone-200 dark:border-stone-700 text-xs">
+              <table className="w-full text-left">
+                <thead className="bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300 sticky top-0 font-semibold">
+                  <tr>
+                    <th className="p-2">Row</th>
+                    <th className="p-2">Status</th>
+                    <th className="p-2">Date</th>
+                    <th className="p-2">Wallet</th>
+                    <th className="p-2">Amount</th>
+                    <th className="p-2">Description / Error</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-stone-100 dark:divide-stone-800">
+                  {importPreview.rows.map((row) => (
+                    <tr key={row.rowIndex} className={row.isValid ? 'bg-white dark:bg-stone-900' : 'bg-rose-50/50 dark:bg-rose-950/30'}>
+                      <td className="p-2 font-mono text-stone-500 dark:text-stone-400">{row.rowIndex}</td>
+                      <td className="p-2">
+                        {row.isValid ? (
+                          <span className="inline-flex items-center gap-1 text-emerald-700 dark:text-emerald-400 font-semibold text-[11px]">
+                            <CheckCircle2 className="w-3.5 h-3.5" /> Valid
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 text-rose-700 dark:text-rose-400 font-semibold text-[11px]">
+                            <AlertCircle className="w-3.5 h-3.5" /> Error
+                          </span>
+                        )}
+                      </td>
+                      <td className="p-2 font-mono text-stone-700 dark:text-stone-300">{row.date}</td>
+                      <td className="p-2 text-stone-700 dark:text-stone-300">{row.walletName}</td>
+                      <td className="p-2 font-mono font-bold text-stone-900 dark:text-stone-100">{formatCurrencyAmount(row.amount)}</td>
+                      <td className="p-2">
+                        {row.isValid ? (
+                          <span className="text-stone-700 dark:text-stone-300">{row.description}</span>
+                        ) : (
+                          <span className="text-rose-600 dark:text-rose-400 font-medium">{row.errorMessage}</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Step 2 Confirmation Actions */}
+            <div className="flex items-center justify-between pt-3 border-t border-stone-100 dark:border-stone-800">
+              <p className="text-xs text-stone-500 dark:text-stone-400">
+                Executing commit will insert valid entries & update wallet balances inside a single transaction.
+              </p>
               <button
+                id="commit-import-btn"
                 type="button"
-                onClick={() => {
-                  setIsImportModalOpen(false);
-                  setImportPreview(null);
-                }}
-                className="p-1 rounded-lg text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 hover:bg-stone-100 dark:hover:bg-stone-800 cursor-pointer"
+                disabled={importPreview.validRowsCount === 0}
+                onClick={handleCommitImport}
+                className={`px-4 py-2.5 rounded-xl font-semibold text-xs transition-all flex items-center gap-2 cursor-pointer ${
+                  importPreview.validRowsCount > 0
+                    ? 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-xs'
+                    : 'bg-stone-200 dark:bg-stone-800 text-stone-400 dark:text-stone-600 cursor-not-allowed'
+                }`}
               >
-                <X className="w-5 h-5" />
+                <CheckCircle2 className="w-4 h-4" />
+                <span>Confirm & Commit ({importPreview.validRowsCount} Rows)</span>
               </button>
             </div>
-
-            {/* Step 1: Upload File */}
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <label className="text-xs font-semibold uppercase tracking-wider text-stone-700 dark:text-stone-300">
-                  Select CSV File
-                </label>
-                <button
-                  type="button"
-                  onClick={handleDownloadSampleCsv}
-                  className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1 cursor-pointer"
-                >
-                  <Download className="w-3 h-3" /> Download Sample CSV Template
-                </button>
-              </div>
-
-              <input
-                id="csv-file-input"
-                type="file"
-                accept=".csv,text/csv"
-                onChange={handleCsvFileUpload}
-                className="w-full text-xs text-stone-600 dark:text-stone-400 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-stone-900 dark:file:bg-stone-100 file:text-white dark:file:text-stone-900 hover:file:bg-stone-800 dark:hover:file:bg-white cursor-pointer border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 rounded-xl p-2"
-              />
-
-              {isParsingCsv && (
-                <p className="text-xs text-stone-500 dark:text-stone-400 animate-pulse">Running dry-run validation checks...</p>
-              )}
-
-              {importFileError && (
-                <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 text-xs flex items-center gap-2">
-                  <AlertCircle className="w-4 h-4 shrink-0" />
-                  <span>{importFileError}</span>
-                </div>
-              )}
-
-              {importSuccessMsg && (
-                <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 text-xs flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 shrink-0" />
-                  <span>{importSuccessMsg}</span>
-                </div>
-              )}
-            </div>
-
-            {/* Dry Run Preview Summary & Table */}
-            {importPreview && (
-              <div className="space-y-4 pt-2">
-                <div className="grid grid-cols-4 gap-3 bg-stone-50 dark:bg-stone-800/80 p-3 rounded-xl border border-stone-200 dark:border-stone-700 text-xs">
-                  <div>
-                    <span className="text-stone-500 dark:text-stone-400 block">Total Rows</span>
-                    <span className="font-bold text-stone-900 dark:text-stone-100 font-mono text-sm">{importPreview.totalRows}</span>
-                  </div>
-                  <div>
-                    <span className="text-stone-500 dark:text-stone-400 block">Valid Rows</span>
-                    <span className="font-bold text-emerald-600 dark:text-emerald-400 font-mono text-sm">{importPreview.validRowsCount}</span>
-                  </div>
-                  <div>
-                    <span className="text-stone-500 dark:text-stone-400 block">Errors / Invalid</span>
-                    <span className="font-bold text-rose-600 dark:text-rose-400 font-mono text-sm">{importPreview.invalidRowsCount}</span>
-                  </div>
-                  <div>
-                    <span className="text-stone-500 dark:text-stone-400 block">Total Amount</span>
-                    <span className="font-bold text-stone-900 dark:text-stone-100 font-mono text-sm">{formatCurrencyAmount(importPreview.totalAmount)}</span>
-                  </div>
-                </div>
-
-                {/* Dry Run Row Table */}
-                <div className="max-h-60 overflow-y-auto rounded-xl border border-stone-200 dark:border-stone-700 text-xs">
-                  <table className="w-full text-left">
-                    <thead className="bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300 sticky top-0 font-semibold">
-                      <tr>
-                        <th className="p-2">Row</th>
-                        <th className="p-2">Status</th>
-                        <th className="p-2">Date</th>
-                        <th className="p-2">Wallet</th>
-                        <th className="p-2">Amount</th>
-                        <th className="p-2">Description / Error</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-stone-100 dark:divide-stone-800">
-                      {importPreview.rows.map((row) => (
-                        <tr key={row.rowIndex} className={row.isValid ? 'bg-white dark:bg-stone-900' : 'bg-rose-50/50 dark:bg-rose-950/30'}>
-                          <td className="p-2 font-mono text-stone-500 dark:text-stone-400">{row.rowIndex}</td>
-                          <td className="p-2">
-                            {row.isValid ? (
-                              <span className="inline-flex items-center gap-1 text-emerald-700 dark:text-emerald-400 font-semibold text-[11px]">
-                                <CheckCircle2 className="w-3.5 h-3.5" /> Valid
-                              </span>
-                            ) : (
-                              <span className="inline-flex items-center gap-1 text-rose-700 dark:text-rose-400 font-semibold text-[11px]">
-                                <AlertCircle className="w-3.5 h-3.5" /> Error
-                              </span>
-                            )}
-                          </td>
-                          <td className="p-2 font-mono text-stone-700 dark:text-stone-300">{row.date}</td>
-                          <td className="p-2 text-stone-700 dark:text-stone-300">{row.walletName}</td>
-                          <td className="p-2 font-mono font-bold text-stone-900 dark:text-stone-100">{formatCurrencyAmount(row.amount)}</td>
-                          <td className="p-2">
-                            {row.isValid ? (
-                              <span className="text-stone-700 dark:text-stone-300">{row.description}</span>
-                            ) : (
-                              <span className="text-rose-600 dark:text-rose-400 font-medium">{row.errorMessage}</span>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-
-                {/* Step 2 Confirmation Actions */}
-                <div className="flex items-center justify-between pt-3 border-t border-stone-100 dark:border-stone-800">
-                  <p className="text-xs text-stone-500 dark:text-stone-400">
-                    Executing commit will insert valid entries & update wallet balances inside a single transaction.
-                  </p>
-                  <button
-                    id="commit-import-btn"
-                    type="button"
-                    disabled={importPreview.validRowsCount === 0}
-                    onClick={handleCommitImport}
-                    className={`px-4 py-2.5 rounded-xl font-semibold text-xs transition-all flex items-center gap-2 cursor-pointer ${
-                      importPreview.validRowsCount > 0
-                        ? 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-xs'
-                        : 'bg-stone-200 dark:bg-stone-800 text-stone-400 dark:text-stone-600 cursor-not-allowed'
-                    }`}
-                  >
-                    <CheckCircle2 className="w-4 h-4" />
-                    <span>Confirm & Commit ({importPreview.validRowsCount} Rows)</span>
-                  </button>
-                </div>
-              </div>
-            )}
           </div>
-        </div>
-      )}
+        )}
+      </Modal>
     </div>
   );
 };

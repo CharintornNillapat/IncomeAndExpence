@@ -1,13 +1,13 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  X, 
-  Plus, 
-  ArrowLeftRight, 
-  Trash2, 
-  Sliders, 
-  TrendingUp, 
-  TrendingDown, 
+import { motion } from 'framer-motion';
+import {
+  X,
+  Plus,
+  ArrowLeftRight,
+  Trash2,
+  Sliders,
+  TrendingUp,
+  TrendingDown,
   Wallet as WalletIcon,
   Receipt,
   Layers
@@ -15,6 +15,7 @@ import {
 import { useFinanceState, useFinanceActions } from '../context/FinanceContext';
 import { AddWalletForm } from './wallet/AddWalletForm';
 import { WalletTransferForm } from './wallet/WalletTransferForm';
+import { Modal } from './Modal';
 import { APP_CURRENCY, APP_CURRENCY_SYMBOL, formatCurrencyAmount } from '../utils/currency';
 import { todayIsoDate } from '../utils/date';
 import { getWalletIcon } from '../utils/walletIcons';
@@ -108,123 +109,109 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
     setIsAdjustingBalance(null);
   };
 
-  return (
-    <AnimatePresence>
-      {isOpen && (
-        <motion.div 
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.2 }}
-          className="fixed inset-0 z-50 bg-stone-900/60 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-4"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) onClose();
-          }}
-        >
-          <motion.div 
-            id="wallet-popup-modal"
-            initial={{ y: 40, scale: 0.96, opacity: 0 }}
-            animate={{ y: 0, scale: 1, opacity: 1 }}
-            exit={{ y: 40, scale: 0.96, opacity: 0 }}
-            transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-            className="bg-white/95 dark:bg-stone-900/95 backdrop-blur-xl rounded-t-3xl sm:rounded-2xl max-w-3xl w-full max-h-[92vh] sm:max-h-[88vh] flex flex-col shadow-2xl border border-stone-200/80 dark:border-stone-800 overflow-hidden"
-          >
-            {/* Mobile Swipe Handle */}
-            <div className="sm:hidden pt-3 pb-1 flex justify-center cursor-pointer" onClick={onClose}>
-              <div className="w-12 h-1.5 rounded-full bg-stone-300 dark:bg-stone-700" />
+  const header = (
+    <>
+      {/* Modal Header */}
+      <div className="px-4 sm:px-6 py-3.5 sm:py-4 border-b border-stone-200/70 dark:border-stone-800 flex items-center justify-between bg-stone-50/70 dark:bg-stone-900/70 backdrop-blur-xs shrink-0">
+        <div className="flex items-center gap-3">
+          <div className="w-9 sm:w-10 h-9 sm:h-10 rounded-xl bg-stone-900 dark:bg-stone-800 text-white flex items-center justify-center shadow-xs shrink-0 border border-stone-700">
+            <WalletIcon className="w-4 sm:w-5 h-4 sm:h-5 text-emerald-400" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h3 id="wallet-popup-modal-title" className="text-sm sm:text-base font-bold text-stone-900 dark:text-white">Wallets & Accounts</h3>
+              <span className="text-[10px] sm:text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/60">
+                {activeWallets.length}
+              </span>
             </div>
-
-            {/* Modal Header */}
-            <div className="px-4 sm:px-6 py-3.5 sm:py-4 border-b border-stone-200/70 dark:border-stone-800 flex items-center justify-between bg-stone-50/70 dark:bg-stone-900/70 backdrop-blur-xs shrink-0">
-              <div className="flex items-center gap-3">
-                <div className="w-9 sm:w-10 h-9 sm:h-10 rounded-xl bg-stone-900 dark:bg-stone-800 text-white flex items-center justify-center shadow-xs shrink-0 border border-stone-700">
-                  <WalletIcon className="w-4 sm:w-5 h-4 sm:h-5 text-emerald-400" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-sm sm:text-base font-bold text-stone-900 dark:text-white">Wallets & Accounts</h3>
-                    <span className="text-[10px] sm:text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/60">
-                      {activeWallets.length}
-                    </span>
-                  </div>
-                  <p className="text-xs text-stone-500 dark:text-stone-400 font-mono">
-                    Total: <strong className="text-stone-900 dark:text-stone-100">{formatCurrencyAmount(totalNetWorth)}</strong>
-                  </p>
-                </div>
-              </div>
-
-              <motion.button
-                whileTap={{ scale: 0.9 }}
-                id="close-wallet-modal-btn"
-                type="button"
-                onClick={onClose}
-                className="p-2 rounded-xl text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 hover:bg-stone-200/80 dark:hover:bg-stone-800 transition-colors cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </motion.button>
-            </div>
-
-        {/* Tab Navigation Navigation Controls */}
-        <div className="flex border-b border-stone-200 dark:border-stone-800 px-3 sm:px-6 bg-white dark:bg-stone-900 gap-1 sm:gap-3 overflow-x-auto text-xs font-semibold shrink-0 no-scrollbar">
-          <button
-            type="button"
-            id="tab-btn-overview"
-            onClick={() => setActiveTab('OVERVIEW')}
-            className={`py-3 px-2 sm:px-3 border-b-2 transition-colors flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
-              activeTab === 'OVERVIEW'
-                ? 'border-stone-900 dark:border-stone-100 text-stone-900 dark:text-white'
-                : 'border-transparent text-stone-500 dark:text-stone-400 hover:text-stone-800 dark:hover:text-stone-200'
-            }`}
-          >
-            <Layers className="w-4 h-4" />
-            <span>Wallets</span>
-          </button>
-
-          <button
-            type="button"
-            id="tab-btn-transfer"
-            onClick={() => setActiveTab('TRANSFER')}
-            className={`py-3 px-2 sm:px-3 border-b-2 transition-colors flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
-              activeTab === 'TRANSFER'
-                ? 'border-stone-900 dark:border-stone-100 text-stone-900 dark:text-white'
-                : 'border-transparent text-stone-500 dark:text-stone-400 hover:text-stone-800 dark:hover:text-stone-200'
-            }`}
-          >
-            <ArrowLeftRight className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-            <span>Transfer</span>
-          </button>
-
-          <button
-            type="button"
-            id="tab-btn-add"
-            onClick={() => setActiveTab('ADD_WALLET')}
-            className={`py-3 px-2 sm:px-3 border-b-2 transition-colors flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
-              activeTab === 'ADD_WALLET'
-                ? 'border-stone-900 dark:border-stone-100 text-stone-900 dark:text-white'
-                : 'border-transparent text-stone-500 dark:text-stone-400 hover:text-stone-800 dark:hover:text-stone-200'
-            }`}
-          >
-            <Plus className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-            <span>Add Wallet</span>
-          </button>
-
-          <button
-            type="button"
-            id="tab-btn-txs"
-            onClick={() => setActiveTab('TRANSACTIONS')}
-            className={`py-3 px-2 sm:px-3 border-b-2 transition-colors flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
-              activeTab === 'TRANSACTIONS'
-                ? 'border-stone-900 dark:border-stone-100 text-stone-900 dark:text-white'
-                : 'border-transparent text-stone-500 dark:text-stone-400 hover:text-stone-800 dark:hover:text-stone-200'
-            }`}
-          >
-            <Receipt className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-            <span>Activity</span>
-          </button>
+            <p className="text-xs text-stone-500 dark:text-stone-400 font-mono">
+              Total: <strong className="text-stone-900 dark:text-stone-100">{formatCurrencyAmount(totalNetWorth)}</strong>
+            </p>
+          </div>
         </div>
 
-        {/* Modal Scrollable Body */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5 sm:space-y-6 overscroll-contain">
+        <motion.button
+          whileTap={{ scale: 0.9 }}
+          id="close-wallet-modal-btn"
+          type="button"
+          onClick={onClose}
+          className="p-2 rounded-xl text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 hover:bg-stone-200/80 dark:hover:bg-stone-800 transition-colors cursor-pointer"
+        >
+          <X className="w-5 h-5" />
+        </motion.button>
+      </div>
+
+      {/* Tab Navigation Navigation Controls */}
+      <div className="flex border-b border-stone-200 dark:border-stone-800 px-3 sm:px-6 bg-white dark:bg-stone-900 gap-1 sm:gap-3 overflow-x-auto text-xs font-semibold shrink-0 no-scrollbar">
+        <button
+          type="button"
+          id="tab-btn-overview"
+          onClick={() => setActiveTab('OVERVIEW')}
+          className={`py-3 px-2 sm:px-3 border-b-2 transition-colors flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
+            activeTab === 'OVERVIEW'
+              ? 'border-stone-900 dark:border-stone-100 text-stone-900 dark:text-white'
+              : 'border-transparent text-stone-500 dark:text-stone-400 hover:text-stone-800 dark:hover:text-stone-200'
+          }`}
+        >
+          <Layers className="w-4 h-4" />
+          <span>Wallets</span>
+        </button>
+
+        <button
+          type="button"
+          id="tab-btn-transfer"
+          onClick={() => setActiveTab('TRANSFER')}
+          className={`py-3 px-2 sm:px-3 border-b-2 transition-colors flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
+            activeTab === 'TRANSFER'
+              ? 'border-stone-900 dark:border-stone-100 text-stone-900 dark:text-white'
+              : 'border-transparent text-stone-500 dark:text-stone-400 hover:text-stone-800 dark:hover:text-stone-200'
+          }`}
+        >
+          <ArrowLeftRight className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+          <span>Transfer</span>
+        </button>
+
+        <button
+          type="button"
+          id="tab-btn-add"
+          onClick={() => setActiveTab('ADD_WALLET')}
+          className={`py-3 px-2 sm:px-3 border-b-2 transition-colors flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
+            activeTab === 'ADD_WALLET'
+              ? 'border-stone-900 dark:border-stone-100 text-stone-900 dark:text-white'
+              : 'border-transparent text-stone-500 dark:text-stone-400 hover:text-stone-800 dark:hover:text-stone-200'
+          }`}
+        >
+          <Plus className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+          <span>Add Wallet</span>
+        </button>
+
+        <button
+          type="button"
+          id="tab-btn-txs"
+          onClick={() => setActiveTab('TRANSACTIONS')}
+          className={`py-3 px-2 sm:px-3 border-b-2 transition-colors flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
+            activeTab === 'TRANSACTIONS'
+              ? 'border-stone-900 dark:border-stone-100 text-stone-900 dark:text-white'
+              : 'border-transparent text-stone-500 dark:text-stone-400 hover:text-stone-800 dark:hover:text-stone-200'
+          }`}
+        >
+          <Receipt className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+          <span>Activity</span>
+        </button>
+      </div>
+    </>
+  );
+
+  return (
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      header={header}
+      titleId="wallet-popup-modal-title"
+      panelId="wallet-popup-modal"
+      maxWidthClassName="max-w-3xl"
+      bodyClassName="space-y-5 sm:space-y-6"
+    >
           {/* TAB 1: OVERVIEW */}
           {activeTab === 'OVERVIEW' && (
             <div className="space-y-5">
@@ -515,10 +502,6 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
               )}
             </div>
           )}
-        </div>
-      </motion.div>
-    </motion.div>
-  )}
-</AnimatePresence>
+    </Modal>
   );
 };
