@@ -87,9 +87,11 @@ test.describe('Local-calendar date boundary correctness (UTC+7)', () => {
     await weekFilterBtn.click();
 
     // Scope to the Total Expense card so the assertion targets the
-    // filtered aggregate, not any other total on the page.
-    const expenseHeading = page.getByText('Total Expense', { exact: true });
-    const expenseCard = expenseHeading.locator('xpath=ancestor::div[contains(@class,"rounded-2xl")][1]');
+    // filtered aggregate, not any other total on the page. `data-testid`
+    // (T32) replaces an xpath ancestor lookup keyed on the card's Tailwind
+    // radius class, which a restyle could break independently of any real
+    // behavior change.
+    const expenseCard = page.locator('[data-testid="metric-card-expense"]');
 
     // Only the 1,000 transaction (7 days ago) should count; the 2,000
     // transaction (8 days ago) must not be added into the same total.

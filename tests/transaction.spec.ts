@@ -47,8 +47,11 @@ test.describe('Core Transaction Flow E2E Tests', () => {
   });
 
   test('should record an income transaction directly from Dashboard quick form', async ({ page }) => {
-    // Locate the Dashboard inline transaction card (outside modal)
-    const dashboardForm = page.locator('form').filter({ hasText: /Record Transaction/i }).first();
+    // Locate the Dashboard inline transaction card (outside modal). `data-testid`
+    // (T32) replaces a `.first()` on a text-filtered `form` locator, which
+    // would become ambiguous once more than one `TransactionForm` mount can
+    // be in the DOM at the same time.
+    const dashboardForm = page.locator('[data-testid="tx-form-dashboard"]');
     await expect(dashboardForm).toBeVisible();
     
     // Toggle to Income type
@@ -107,7 +110,7 @@ test.describe('Core Transaction Flow E2E Tests', () => {
   });
 
   test('should evaluate inline math expressions correctly in amount field', async ({ page }) => {
-    const dashboardForm = page.locator('form').filter({ hasText: /Record Transaction/i }).first();
+    const dashboardForm = page.locator('[data-testid="tx-form-dashboard"]');
     await expect(dashboardForm).toBeVisible();
 
     const amountInput = dashboardForm.locator('input[name="amount_expression"]');

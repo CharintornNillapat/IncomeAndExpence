@@ -31,6 +31,10 @@ test.describe('Holistic Mini Diary E2E Tests', () => {
     // historical list. Saving is async (validation + persistence), so assert on
     // the success badge first rather than racing straight to the list.
     await expect(page.getByText(/Diary entry logged/i)).toBeVisible();
-    await expect(page.locator('p').filter({ hasText: /Playwright automated wellbeing log/i })).toBeVisible();
+    // `data-testid` (T32) replaces a bare `page.locator('p')`, which broke
+    // if the note element ever stopped being a `<p>`.
+    await expect(page.locator('[data-testid="diary-entry-notes"]')).toContainText(
+      /Playwright automated wellbeing log/i
+    );
   });
 });

@@ -22,8 +22,11 @@ export async function gotoTab(page: Page, tabId: string): Promise<void> {
   await expect(tab).toBeVisible();
   await tab.click();
 
-  // The active tab is the only one carrying the solid `bg-stone-900` fill.
-  await expect(tab).toHaveClass(/bg-stone-900/);
+  // The active tab carries `aria-current="page"` (T31) - a semantic
+  // attribute, not a Tailwind class, so a restyle of the active-tab fill
+  // cannot silently break every navigation in the suite the way asserting
+  // on `bg-stone-900` could.
+  await expect(tab).toHaveAttribute('aria-current', 'page');
 
   // Suspense fallback is removed once the lazy chunk has resolved.
   await expect(page.locator('#view-loading-fallback')).toHaveCount(0);
