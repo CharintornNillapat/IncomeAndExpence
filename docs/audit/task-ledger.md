@@ -174,6 +174,19 @@ Status values: `todo` · `in-progress` · `done` · `dropped` (with a one-line r
 - **Cleanup flushes, not just removes listeners.** The lifecycle effect's cleanup calls `flushPendingWrites()` in addition to removing both listeners, so a `FinanceProvider` unmount (not expected in normal app operation, but exercised implicitly by Playwright's per-test fresh context teardown) cannot strand a debounced write unflushed.
 - **Verification spec avoids the debounce race entirely rather than tuning a timeout against it.** `tests/storage-persistence.spec.ts`'s first test overrides `document.visibilityState` and dispatches `visibilitychange`, then reads `localStorage` back inside the *same* `page.evaluate` call — since `dispatchEvent` invokes listeners synchronously, this cannot pass just because the 250ms timer happened to fire first; there is no wait to race. The second test reloads the page immediately after a write and asserts the data survived, exercising the real browser-native `pagehide` a navigation fires.
 
+## Phase 13 — Supabase realtime sync hardening (approved to execute)
+
+| # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
+|---|---|---|---|---|---|---|---|---|---|---|
+| T17 | Realtime: debounce, `user_id` filter, suppress self-echo | `FinanceContext.tsx` (realtime subscription effect + ~13 mutator call sites) | High | High | 4h | done (automated gates only — see notes) | manual 2-device checklist | 0f67edc | tsc clean; `CI=true npx playwright test` 87/87, 0 retries; build succeeds in 5.1s | Realtime channel now filters by `user_id`, debounces reloads 400ms, and suppresses self-authored echoes for every mutator that learns its row id; see refactor-log.md Phase 13 for the manual 2-device checklist and the structural before/after of `loadSupabaseData` invocation patterns |
+
+**Notes on execution:**
+- **"Done" here covers the code change and the automated gates only.** ADR 0003 states plainly that T17 has no automated regression path — every Playwright spec runs against the unauthenticated localStorage fallback, never against a real Supabase realtime channel — so the 87/87 pass proves the offline-first path and optimistic-rollback mechanics are undisturbed, not that the realtime hardening behaves correctly under real cross-device load. That requires the manual 2-device checklist in `refactor-log.md`, which needs two live sessions signed into the same Supabase account and has **not** been executed in this session (no second device/account available here). Left as an explicit follow-up for whoever runs it, per the checklist's own steps.
+- **`keyword_rules` was deliberately left out of the self-echo instrumentation.** It is not a member of `SYNCED_TABLES` (`wallets`, `transactions`, `debts`, `diary_entries`, `categories` only) — no realtime channel listens to it at all, so marking its writes into `recentLocalWriteIds` would be dead code with nothing to ever consume it.
+- **`commitBulkImport`'s inserted transaction ids are not suppressible.** Its batch `insert(dbPayloads)` has no `.select()`, so the server-generated ids are never learned client-side. Documented inline at the call site rather than silently accepted — the 400ms debounce still collapses that burst into at most one extra reload (on top of the function's own explicit `refreshFromCloud()`) instead of one per inserted row, which is the ADR's actual target metric.
+- **`upsertDiaryEntry`'s insert branch gained `.select().single()`** (it previously fired-and-forgot) specifically so its newly-created row's id could be captured and marked — a small, additive change, not a behavior change to what gets persisted.
+- **`user_id` column existence verified against the client's own code, not a schema migration** — this repo has no tracked schema file (`supabase/migrations/20260909_transfer_funds.sql`'s own header says so explicitly). Every one of the 5 `SYNCED_TABLES`' row-mapping functions (`mapWalletRow`, `mapTransactionRow`, `mapDebtRow`, plus the inline `categories`/`diary_entries` mappings in `loadSupabaseData`) already reads `row.user_id`, which is the available evidence that the column exists and is populated on all five.
+
 ## Deferred — documented, awaiting separate approval
 
 | # | Task | Files | Impact | Risk | Effort | Status | Blocked by |
@@ -183,7 +196,6 @@ Status values: `todo` · `in-progress` · `done` · `dropped` (with a one-line r
 | T26 | Shared `buildLookupMap` helper | 7 independent map-building copies | Low-Med | Low | 2h | todo | T12 |
 | T27 | `useSubmitHandler`, `useIdempotencyKey`, `useTransientFlash` | 6 duplicate submit shapes, 3 duplicate amount callbacks, 7 flash timeouts | Med | Med | 5h | todo | T12 |
 | T29 | Fix `useDebts` returning unfiltered `wallets` | `useDebts.ts:84`, `DebtsView.tsx:29,313-314` | Med (correctness) | Med | 1h | todo | T12 debts spec |
-| T17 | Realtime: debounce, `user_id` filter, suppress self-echo | `FinanceContext.tsx:132,658-677` | High | High | 4h | todo | manual 2-device checklist |
 | T25 | Unify the 4 transaction-row renderers | see audit-report §E | Med | High | 8h | todo | consider dropping — see plan traps §19 |
 | T18 | `Promise.all` the bulk-import wallet updates | `FinanceContext.tsx:1305-1312` | Low-Med | Med | 1h | todo | T12 CSV spec |
 | T30 | Promote constraints into `CLAUDE.md` | `CLAUDE.md`, `constraints-to-promote.md` | Med | Low | 2h | todo | drains after each task above ships |

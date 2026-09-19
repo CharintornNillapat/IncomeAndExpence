@@ -4,6 +4,80 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
+## Phase 13 — Supabase realtime sync hardening: T17 (2026-09-19, commit `0f67edc`)
+
+**Changed**
+
+- `src/context/FinanceContext.tsx`:
+  - Added `recentLocalWriteIds` (`Set<string>`) and `markLocalWrite(id)`, declared beside the existing `inFlightIdempotencyKeys` idempotency guard. Each id added expires on its own 5s timer (`LOCAL_ECHO_SUPPRESS_MS`).
+  - Rewrote the realtime subscription effect (previously: one unfiltered `postgres_changes` listener per `SYNCED_TABLES` entry, calling `loadSupabaseData` unconditionally on every event):
+    - Every table's listener now carries `filter: user_id=eq.<currentUser.id>`.
+    - The callback reads `payload.new?.id ?? payload.old?.id`; if that id is in `recentLocalWriteIds`, it is consumed (removed from the set) and the event is dropped. Otherwise a shared, per-effect debounce (`REALTIME_RELOAD_DEBOUNCE_MS = 400`) schedules `loadSupabaseDataRef.current?.(currentUser.id)`.
+    - `loadSupabaseData` is read through the pre-existing `loadSupabaseDataRef` instead of being closed over, dropping it from the effect's own dependency array (now `[isAuthenticated, currentUser.id]`, was `[isAuthenticated, currentUser.id, loadSupabaseData]`).
+  - Threaded `markLocalWrite(id)` through every mutator that writes to one of the 5 `SYNCED_TABLES` and learns the affected row's id: `addWallet`, `updateWallet` (covers `deleteWallet`, which delegates to it), `addTransaction` (both the `transfer_funds` RPC path and the legacy 3-write fallback, including its failure-path compensation writes), `setTransactionDeleted` (covers `softDeleteTransaction`/`restoreTransaction`), `commitBulkImport` (wallet-balance updates only — see Deliberately not done), `addDebt`, `settleDebt`, `deleteDebt`, `upsertDiaryEntry` (both branches — see below), `deleteDiaryEntry`.
+  - `upsertDiaryEntry`'s insert branch gained `.select().single()` (previously fire-and-forget) so its newly created row's id could be captured for `markLocalWrite`; the update branch already had `.select().single()` added for the same reason.
+
+1 file changed (`FinanceContext.tsx`, +119/-24).
+
+**Why**
+
+ADR 0003 (T17 half): the realtime subscription had three independent problems, all present since it was first written. No `user_id` filter meant every client received every other user's change events on all 5 tables (the query inside `loadSupabaseData` is still scoped correctly by RLS, so no cross-tenant *data* ever leaked into state, but every client's socket was needlessly processing every other tenant's write traffic). No debounce meant a burst of N row changes — a transfer's transaction insert plus two wallet updates, or a 20-row CSV import — triggered N separate full 6-table refetches. No self-echo suppression meant a client's own write, once it round-tripped through Postgres's replication stream back to the same client's socket, triggered a redundant refetch of data that client had just optimistically applied to its own state.
+
+**Structural before/after of `loadSupabaseData` invocation patterns**
+
+This is derived from reading the code paths, not from a live measurement (see the manual checklist below for that):
+
+| Scenario | Before | After |
+|---|---|---|
+| Client A adds one non-transfer transaction (1 tx insert + 1 wallet update, 2 row-change events) | Client A's own socket receives both events (no filter) and calls `loadSupabaseData` twice, ~immediately, redundant with the optimistic state already applied | Both row ids are in `recentLocalWriteIds` (marked right after each write's response); both events are consumed and dropped. Client A's `loadSupabaseData` call count from this write: **0** |
+| Client A adds one TRANSFER (RPC path: 1 tx insert + 2 wallet updates, 3 events) | 3 calls | All 3 ids marked (`mapped.id`, `sourceWallet.id`, `destWallet.id`); **0** calls |
+| Client B (a second device, same account) receives Client A's single-transaction write | 2 calls (once per event, no debounce) | The 2 events arrive within the same ~400ms window and share one debounce timer; **1** call |
+| Client A imports a 20-row CSV (20 tx inserts with no `.select()`, plus up to 20 wallet-delta updates) | Up to ~40 calls (1 per row-change event) on whichever client(s) are subscribed, plus 1 more from `commitBulkImport`'s own explicit `refreshFromCloud()` | Wallet-update ids are marked and suppressed; the 20 transaction-insert events (ids unknown, undocumented gap) share the same debounce window and collapse to at most **1** additional call, on top of the function's own 1 explicit `refreshFromCloud()` call — **~2 total** instead of ~41 |
+| Client A and Client B are different Supabase users (different accounts) | Both received all of each other's events (no filter) — extra socket/CPU work discarded only because `loadSupabaseData`'s own query is scoped by the caller's session | Client A's channel is never sent Client B's events at all (`filter: user_id=eq.<A's id>` excludes them server-side) — **0** events received, not just 0 acted on |
+
+**Manual 2-device verification checklist**
+
+Per ADR 0003, this half of T17 has no automated regression path — every Playwright spec in this repo runs against the unauthenticated localStorage fallback (`tests/auth.spec.ts`'s own finding notes this environment's `.env` has live demo-project Supabase credentials, but CI never sets them, so neither environment's automated run ever reaches a signed-in realtime channel). **This checklist has not been executed in this session** — it requires two live sessions signed into the same Supabase account, which this environment does not have. It is recorded here for whoever runs it next.
+
+Setup:
+1. Confirm `.env` has real `VITE_SUPABASE_URL`/`VITE_SUPABASE_ANON_KEY` pointing at a project with `supabase/migrations/20260909_transfer_funds.sql` applied.
+2. Open two separate authenticated sessions on the same account — e.g. a desktop browser (Device A) and either a phone or a second browser profile/private window (Device B). Sign in on both via `AuthModal`.
+3. Open DevTools console on both devices. Temporarily add `console.count('loadSupabaseData')` as the first line inside `loadSupabaseData`'s body for the duration of this checklist only — revert it afterward, it is not shipped instrumentation.
+
+Steps:
+1. **Self-echo suppression (single device, no concurrent writer).** On Device A only, add one transaction via Quick Add. Expected: Device A's `loadSupabaseData` count does **not** increment within ~1s of the write (both the transaction-insert and wallet-update echoes are suppressed). If it increments once or twice, self-echo suppression has regressed.
+2. **Concurrent writes (2 devices).** With both devices idle, add a transaction on Device B. Expected on Device A: exactly **one** count increment, ~400ms after Device B's write, with the UI updating to show the new transaction/balance without a double-flash. Then, within the same ~400ms window, add a second unrelated transaction on Device B. Expected: Device A's count increments by **one more** (not two) — the two bursts coalesce.
+3. **Burst / bulk import coalescing.** On Device A, import a 15-20 row CSV. Expected on Device B: the count increases by a small number — ideally 1, at most 2-3 depending on network timing — not by ~20-40. This is the ADR's original target metric ("count collapses from N events to close to 1").
+4. **Reconnection.** On Device A, use DevTools' Network throttling (or airplane mode on a real device) to go offline for ~15-20s. While Device A is offline, add a transaction on Device B. Restore Device A's connectivity. Expected: Supabase's client reconnects the channel automatically, and Device A's count increments once shortly after reconnection, picking up the transaction written while it was offline — no repeated reconnect/refetch loop visible in the console.
+5. **Cross-tenant isolation.** Sign Device A and Device B into two *different* accounts. Write a transaction on Device B. Expected on Device A: **zero** count increments — the `user_id` filter means Device A's channel is never even sent the event, not merely that it chooses to ignore it.
+
+Revert the temporary `console.count` line after finishing.
+
+**Verification (automated gates)**
+
+```
+npm run lint                     # tsc --noEmit: clean, 0 errors
+npm run build                    # built in 5.05-5.1s; PWA precache 26 entries (1499.07 KiB)
+CI=true npx playwright test      # 87/87 passed (4.1m), 1 worker, 0 retries consumed
+```
+
+`git status --short` / `git diff --stat` confirmed only `FinanceContext.tsx` changed (119 insertions, 24 deletions).
+
+**Correctness notes**
+
+- **Every change is inside an `if (isAuthenticated)` branch.** The unauthenticated/local-storage fallback path — what all 87 Playwright runs actually exercise — is byte-identical before and after this phase. This is also why the automated suite passing is meaningful evidence for "did not break offline-first or optimistic rollback," despite being unable to exercise the realtime code at all.
+- **`markLocalWrite` never suppresses a legitimate concurrent edit to the same row.** The 5s expiry is a safety margin against realtime propagation delay, not a lock: if a genuine second write to the same id (from this client or another) lands after the first id has already been consumed by its own echo (or has expired), it is treated normally. The only failure mode is a false negative (an id expires 5s before its own echo arrives, so that one echo is not suppressed and causes one harmless extra reload) — never a false positive that could hide a real remote change.
+- **The debounce and self-echo suppression compose correctly.** A suppressed event returns immediately without calling `scheduleReload()`, so a burst that is *entirely* self-authored (every row id known and marked) never starts the debounce timer at all — not even one reload fires, which is the ideal case the checklist's step 1 is designed to catch a regression in.
+
+**Deliberately not done**
+
+- **`commitBulkImport`'s inserted transaction ids remain unsuppressed.** Its batch `insert(dbPayloads)` call has no `.select()`, so the ids Postgres generates are never returned to the client. Adding one would require either N individual inserts (defeating the point of a batch call) or a follow-up `.select()` query keyed on the batch's shared idempotency-key prefix — judged out of scope for this task, and documented inline at the call site rather than silently accepted. The debounce still bounds the damage to roughly one extra reload for the whole import, not one per row.
+- **No change to `keyword_rules`.** It is not in `SYNCED_TABLES` — no realtime channel subscribes to it at all, so there was nothing to filter, debounce, or suppress.
+- **The manual 2-device checklist above was not executed in this session** — see its own header note. This is the one piece of this task's own verification requirements that remains outstanding, consistent with ADR 0003 flagging T17 as "the highest-risk, least-verifiable item in the whole plan."
+- **T18 (`Promise.all` the bulk-import wallet updates)** — a related but separate optimization (parallelizing `commitBulkImport`'s sequential per-wallet `await`s) remains untouched, still `todo` in the deferred backlog.
+
+---
+
 ## Phase 12 — batched localStorage writer: T16 (2026-09-19, commit `97ac7b4`)
 
 **Changed**
