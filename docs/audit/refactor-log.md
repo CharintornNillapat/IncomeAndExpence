@@ -4,6 +4,57 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
+## Phase 30 — Categories & Smart Rules hub, category CRUD, duplicate-category fix: T51-T56 (2026-09-19, commit `8f7e4cd`)
+
+**Changed**
+
+- `src/context/FinanceContext.tsx`:
+  - New `isSeedingRef` mutex around `seedInitialUserAccount` - closes the race that let a brand-new account's starter categories/wallets be inserted 2+ times.
+  - New `keywordRulesRef` (mirrors the existing `walletsRef`/`transactionsRef`/`debtsRef`/`categoriesRef`/`diaryEntriesRef` pattern exactly), needed by `deleteCategory`'s in-use check.
+  - `categories` `useState` initializer and `loadSupabaseData`'s categories branch both now run through the new `dedupeCategoriesByName` before committing to state.
+  - 3 new mutators: `addCategory`, `updateCategory` (name/color only), `deleteCategory` (guarded - system defaults and anything referenced by an active transaction or keyword rule are rejected), added to `FinanceActionsContextType` and both halves of `actionsValue`.
+- New `src/utils/categoryUtils.ts` - `dedupeCategoriesByName(categories)`, collapsing active same-name duplicates down to one by marking the losers `isDeleted: true` (never dropping an id).
+- `src/utils/zodSchemas.ts` - new `CategorySchema` (`name`/`type`/`color`/optional `icon`), guarding `addCategory`.
+- New `src/views/CategoriesView.tsx`, replacing deleted `src/views/KeywordRulesView.tsx` - a `SectionHeader` + `SegmentedControl` hub with two sub-tabs: "Categories" (new - add/edit/delete-guarded management list, built from `Card`/`EmptyState`/`Modal`/`ConfirmDialog`) and "Smart Rules" (the retired view's sandbox + rules table, ported verbatim - every element id and `data-testid` unchanged).
+- `src/components/Navbar.tsx` / `src/components/MobileBottomNav.tsx` / `src/App.tsx` - `ActiveTab`'s `'keywords'` member renamed to `'categories'`; `NAV_ITEMS` label "Smart Rules" → "Categories" (icon `Sparkles` → `Tags`); `TABS_ORDER`, the lazy import, and the view switch case updated to match.
+- `src/views/TransactionsView.tsx` - the CSV import modal's subtitle had a literal, unrendered `$\rightarrow$` LaTeX fragment and a factually wrong "MySQL" mention; fixed to a real arrow character and accurate wording.
+- `tests/keywords.spec.ts` - navigates to the renamed `categories` tab and clicks into the new "Smart Rules" sub-tab; every other assertion (ids, `data-testid`s) is unchanged.
+- New `tests/categories.spec.ts` (4 tests) - default-category uniqueness, delete-guard-hides-control, zero-duplicate dropdown options, create-appears-everywhere-immediately.
+- `CLAUDE.md` - test count (29/12/87 → 33/13/99, plus the new file in the suite list), `CategorySchema` added to the validation table.
+- 12 files changed (2 new, 1 deleted).
+
+**Why**
+
+Two independent problems, requested together: (1) a real correctness bug - every default category (and, by the same mechanism, the starter wallets) could be inserted 2-3 times into a real Supabase-backed account on first sign-up, because the auth-state effect can call `loadSupabaseData` more than once for the same brand-new account before the first seed attempt's insert lands, and nothing guarded the insert itself against a second racer; and (2) a feature request - categories had no management UI at all (no `addCategory`/`updateCategory`/`deleteCategory` existed anywhere in the codebase before this phase), and the standalone "Smart Rules" view was a natural place to fold that in, since every category picker already lived downstream of the same state this phase was already touching to fix the bug.
+
+**Verification**
+
+```
+npm run lint                                                                  # tsc --noEmit: clean, 0 errors
+npx playwright test tests/keywords.spec.ts tests/categories.spec.ts tests/transaction.spec.ts --project=chromium   # 10/10 passed
+CI=true npx playwright test                                                  # 99/99 passed, 0 retries
+npm run build                                                                 # built in 5.31s; new CategoriesView-*.js chunk, 13.07 kB / 3.43 kB gzip
+```
+
+**Correctness notes**
+
+- **The bug's actual mechanism, read from the source rather than guessed at:** `FinanceContext.tsx`'s auth-state `useEffect` calls `loadSupabaseData(session.user.id)` directly after an explicit `getSession()`, then immediately subscribes `supabase.auth.onAuthStateChange(...)`, which fires its own initial event for that same session per Supabase-js v2's documented behavior - two calls to `loadSupabaseData` for one real sign-in, before either has necessarily finished. `main.tsx`'s `<StrictMode>` can double-invoke the whole effect in dev on top of that. `loadSupabaseData` seeds only when it observes zero wallets (`mappedWallets.length === 0`), which is true for every one of these racing calls on a brand-new account, and the pre-fix `seedInitialUserAccount` had no guard at all against running more than once concurrently - each racer independently ran its own `INSERT` of the full starter wallet/category set.
+- **This exact bug could not be reproduced in this sandbox** (no `.env`, so the app runs in offline Local Storage Mode, where `seedInitialUserAccount` is unreachable code). The fix is a from-the-source root-cause close (an `isSeedingRef` mutex making the insert step itself safe against any number of concurrent callers), not a fix verified against a live reproduction - flagged explicitly rather than claimed as tested against the real symptom.
+- **The healing dedup pass is provably safe against orphaning a historical reference**, because of *when* duplicates can form: only at first-ever seeding of a brand-new account, before any transaction exists yet to reference one of the about-to-be-duplicated ids. `dedupeCategoriesByName` marks every losing duplicate `isDeleted: true` rather than removing it from the array, so even outside that safe window, any id that turned out to be referenced would still resolve via `buildLookupMap`/`categoryMap.get()` for historical chip rendering - it just stops appearing in any of the app's existing `!isDeleted`-filtered pickers.
+- **Every existing category `<select>` inherited the fix automatically, with zero additional edits at its own call site.** `QuickAddModal`, `TransactionsView`'s Add Transaction modal, and `DebtsView`'s repay modal all already did `categories.filter((c) => !c.isDeleted)` before handing the array to `TransactionForm` - once the underlying `categories` state itself is deduped-and-flagged, those pre-existing filters simply stop seeing the losing duplicates. Confirmed by reading all 3 call sites before writing the fix, not assumed.
+- **`deleteCategory` is guarded in two independent places, matching this codebase's existing double-enforcement pattern** (Zod validation lives in the action, not just the form): the action itself rejects a system category or one referenced by an active transaction/keyword rule (server-authoritative, returns a `MutationResult`), and `CategoriesView` separately precomputes which categories are eligible to hide the delete control entirely for ineligible rows (better UX - no dead-end confirm-then-fail).
+- **The one real `$` sweep finding was not a currency bug.** Every transaction/wallet/debt submit button and label already routes through `formatCurrencyAmount`/`APP_CURRENCY_SYMBOL` (closed in Phases 4 and 21) - confirmed by grepping the literal character across every `.tsx` file, which turned up exactly one hit: `TransactionsView.tsx`'s CSV import subtitle, an unrendered LaTeX `$\rightarrow$` fragment (plus an unrelated, factually wrong "MySQL" mention - this app has no MySQL anywhere in its stack). Fixed as a real, if minor, rendering bug; not the currency-symbol issue the phase brief anticipated finding.
+
+**Deliberately not done**
+
+- **No migration or admin tool to find and physically remove already-duplicated rows in a real Supabase project.** This phase heals the *symptom* everywhere the app reads `categories` and prevents *new* duplicates; it cannot and does not touch a live project's already-corrupted data - no database access exists in this sandbox, and doing so blind would be exactly the kind of destructive action this session's operating guardrails call for pausing on rather than guessing at.
+- **`ActiveTab` was not relocated to `types.ts`.** The phase brief assumed it lived there; it has always lived in and been exported from `Navbar.tsx`. Renamed in place rather than moving it to match an incorrect premise - see `task-ledger.md`'s note on this same point.
+- **No `useCategories` domain hook was introduced** - `CategoriesView` reads `useFinanceState()`/`useFinanceActions()` directly, consistent with `CLAUDE.md`'s existing carve-out for state no hook covers (categories, diary entries, sessions).
+- **Category type is fixed after creation, and only EXPENSE/INCOME are creatable at all** - both deliberate scope boundaries; see `task-ledger.md`'s notes for the reasoning (historical-record consistency, and the fixed one-category-per-type system taxonomy for TRANSFER/ADJUSTMENT/DEBT_REPAYMENT).
+- **No icon picker was built for `Category.icon`** - the field is stored and round-tripped but rendered nowhere in the app today; confirmed by grep before deciding not to build UI for it.
+
+---
+
 ## Phase 29 — roadmap closeout & documentation alignment: T50 (2026-09-19, commit `5132ef6`)
 
 **Changed**
