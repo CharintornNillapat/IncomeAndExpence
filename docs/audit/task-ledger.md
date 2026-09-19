@@ -387,6 +387,42 @@ CI=true npx playwright test                                                     
 
 ---
 
+## Phase 22 — one transaction entry engine (approved to execute) · High risk
+
+| # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
+|---|---|---|---|---|---|---|---|---|---|---|
+| T36 | `TransactionForm` gains `idPrefix`/`presetType`/`lockType`/`presetDebtId`/`presetWalletId` | `TransactionForm.tsx` | High | Med | 2h | done | — | 6885930 | tsc clean; `transaction.spec.ts` 4/4 chromium | New optional props, zero behavior change for existing callers (no prop = old behavior exactly) |
+| T37 | Retire DashboardView's inline form for a Quick-Add button | `DashboardView.tsx`, `App.tsx`, `tests/transaction.spec.ts` | High | High | 1.5h | done | T36 | 6885930 | tsc clean; `transaction.spec.ts` 4/4 chromium | Add-transaction surfaces: 5 → 4 (finding A). Dashboard `TransactionForm` mount removed entirely |
+| T38 | Consolidate DebtsView repay onto `TransactionForm` | `DebtsView.tsx` | High | High | 2h | done | T36 | 6885930 | tsc clean; `debts.spec.ts`+`soft-delete.spec.ts` 4/4 chromium | Add-transaction surfaces: 4 → 3 remaining (Navbar quick-add, TransactionsView modal, WalletPopupModal's Adjust Balance - deliberately not unified, see `implementation-roadmap.md`) |
+
+**Combined gate:** tsc clean; `npm run build` succeeds in 7.51s; `CI=true npx playwright test` 87/87, 0 retries.
+
+**Notes on execution:**
+- **T38's most consequential discovery: `repayDebtAtomic` is not a distinct atomic code path, it is a thin wrapper around the exact same `addTransaction` call `TransactionForm` already makes.** Before touching `DebtsView.tsx`, `FinanceContext.tsx:1597-1618` was read in full: `repayDebtAtomic(debtId, walletId, amount, note)` validates the debt/wallet exist, looks up the debt-repayment category, and calls `addTransaction({..., type: 'DEBT_REPAYMENT', debtId, categoryId})` - nothing more. The actual remainingAmount decrement (and auto-settle at zero) lives inside `addTransaction` itself (`FinanceContext.tsx:1137-1148` for the local path, `:1271-1274` for the Supabase path), gated only on `data.type === 'DEBT_REPAYMENT' && data.debtId`, with **no dependency on which function called it**. `TransactionForm`'s own `handleSubmit` already supplies both fields identically (`debtId` at `:207`, the same category-matching expression at `:197` that `repayDebtAtomic` uses at `FinanceContext.tsx:1606`). This is why T38 could route DebtsView's repay through a direct `addTransaction` call instead of `useDebts().repayDebt` with zero loss of the debt-decrement/auto-settle behavior `debts.spec.ts` exercises - confirmed by that spec still passing unmodified.
+- **`repayDebt`/`repayDebtAtomic` are now unused but were deliberately not deleted.** `grep -rn "repayDebt" src/` after the change shows zero remaining call sites outside `useDebts.ts` and `FinanceContext.tsx` themselves. Removing them is dead-code cleanup outside this task's stated scope (extend `TransactionForm`, retire two forms) and touches `FinanceContext.tsx`, whose blast radius this already-high-risk phase avoided expanding further. Left as a candidate for a future dead-code pass.
+- **The id-naming scheme for `idPrefix` had to special-case 3 fields rather than apply one uniform template.** The exact legacy ids (`#repay-amount-math`, `#repay-wallet-select`, `#confirm-repay-btn`) don't share a common suffix pattern with each other or with `TransactionForm`'s own default `useId()`-derived ids (`${formId}-math-input`, `${formId}-wallet`, `${formId}-submit-btn`) - notably `confirm-repay-btn` puts the word "confirm" *before* the prefix, the opposite order of the other two. `mathInputId`/`walletSelectId`/`submitBtnId` are each computed with their own ternary rather than a shared helper, since a "clean" uniform template couldn't produce all three exactly.
+- **The debt-repayment amount field no longer pre-fills with the debt's minimum payment.** The old hand-rolled form did this (`handleOpenRepay` seeded `repayAmount`/`repayRaw` from `debt.minimumPayment`); `TransactionForm` has no equivalent prop and adding one wasn't part of T36's listed prop set. `debts.spec.ts` fills the amount itself in both its repayment steps, so nothing broke, but this is a real, user-visible behavior change - flagged rather than silently absorbed. A `presetAmount` prop would restore it if wanted in a future task.
+- **`WalletPopupModal`'s "Adjust Balance" editor was left untouched, deliberately.** It creates an `ADJUSTMENT` transaction via a bespoke one-field form, not a duplicate of `TransactionForm` - per `implementation-roadmap.md`'s "Deliberately not changed" #4, routing it through `TransactionForm` would expose a type toggle, category, and destination-wallet field the user must ignore for what is a one-field wallet reconciliation.
+
+**Verification**
+
+```
+npm run lint                                                                              # tsc --noEmit: clean, 0 errors
+npx playwright test tests/transaction.spec.ts --project=chromium                          # 4/4 passed (T36+T37)
+npx playwright test tests/debts.spec.ts --project=chromium                                # 1/1 passed (T38)
+npx playwright test tests/transaction.spec.ts tests/debts.spec.ts tests/soft-delete.spec.ts --project=chromium   # 8/8 passed (combined re-check)
+npm run build                                                                             # built in 7.51s
+CI=true npx playwright test                                                               # 87/87 passed, 0 retries
+```
+
+**Deliberately not done**
+
+- **`repayDebt`/`repayDebtAtomic` were not deleted** - see notes above.
+- **No `presetAmount` prop was added** to restore the minimum-payment pre-fill - not in T36's listed prop set; see notes above.
+- **`WalletPopupModal`'s Adjust Balance and the TransactionsView/Navbar quick-add surfaces were not touched** - only the two named retirements (Dashboard inline form, DebtsView repay form) were in scope for this phase, per `implementation-roadmap.md`'s Phase 22 entry.
+
+---
+
 ## Deferred — documented, awaiting separate approval
 
 | # | Task | Files | Impact | Risk | Effort | Status | Blocked by |

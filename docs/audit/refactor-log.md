@@ -4,6 +4,46 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
+## Phase 22 — one transaction entry engine: T36, T37, T38 (2026-09-19, commit `6885930`)
+
+**Changed**
+
+- `src/components/TransactionForm.tsx` — new optional props `idPrefix`, `presetType`, `lockType`, `presetDebtId`, `presetWalletId`. When `lockType` is true, the header row and type-segmented-toggle are hidden entirely, and the smart-description matcher (`handleDescriptionChange`) returns early instead of auto-switching `type`/`categoryId`. When `presetDebtId` is set, the "Debt Target" selector is hidden (the grid collapses to a single column) and `debtId` state initializes to it. `idPrefix`, when provided, overrides exactly 3 field ids - `${idPrefix}-amount-math`, `${idPrefix}-wallet-select`, `confirm-${idPrefix}-btn` - matching `DebtsView`'s pre-existing hand-rolled ids; every other field keeps its default `useId()`-derived id regardless of `idPrefix`.
+- `src/views/DashboardView.tsx` — the always-visible inline `TransactionForm` (and its `handleTransactionSubmit`/`addTransaction` plumbing) removed; replaced with a `#dash-open-add-modal-btn` button in a compact CTA card, calling a new `onOpenQuickAdd` prop.
+- `src/App.tsx` — `onOpenQuickAdd={handleOpenQuickAdd}` threaded to both `<DashboardView>` mounts (the `dashboard` case and the `default` fallback in `renderActiveView`), alongside the existing `onNavigate`.
+- `src/views/DebtsView.tsx` — the hand-rolled repay `<form>` (wallet select, `InlineMathInput`, note field, submit button, ~75 lines) replaced by `<TransactionForm idPrefix="repay" presetType="DEBT_REPAYMENT" lockType presetDebtId={repayDebtTarget.id} categories={categories.filter(c => !c.isDeleted)} onSubmitTransaction={handleRepaySubmit} />`, where `handleRepaySubmit` calls `addTransaction` directly. `useDebts().repayDebt` no longer imported; `categories` now read via a direct `useFinanceState()` call (the view already indirectly subscribed to finance state through `useDebts()`). Dropped `InlineMathInput`/`ArrowRight`/`ShieldAlert`/`selectClass`/`formatCurrencyAmount` imports that only served the removed form.
+- `tests/transaction.spec.ts` — the two Dashboard-form tests' locators changed from `page.locator('[data-testid="tx-form-dashboard"]')` to a `#dash-open-add-modal-btn` click followed by `getByRole('dialog', {name: /Quick Record Transaction/i})`; every assertion inside (`^Income$` toggle, amount fill, description fill, submit, `Calculated:` badge) is unchanged, only the locator that reaches it moved.
+- 5 files changed, net -19 lines (a net removal despite `TransactionForm` growing, since two hand-rolled forms - Dashboard's and DebtsView's repay - shrank to a button and a 9-prop component call respectively).
+
+**Why**
+
+`docs/audit/ui-ux-audit-report.md` finding A catalogued 5 independent add-transaction surfaces, with the roadmap's Phase 22 (`implementation-roadmap.md`) targeting two for retirement: the Dashboard's always-visible inline form (a permanent duplicate of the Quick Add modal already reachable from the navbar) and DebtsView's hand-rolled repay form (which already re-implemented `TransactionForm`'s existing `DEBT_REPAYMENT` type support field-for-field). Both retirements needed `TransactionForm` to support a caller that wants one fixed type with no user-facing toggle - the prerequisite T36 ships first.
+
+**Verification**
+
+```
+npm run lint                                                                              # tsc --noEmit: clean, 0 errors
+npx playwright test tests/transaction.spec.ts --project=chromium                          # 4/4 passed
+npx playwright test tests/debts.spec.ts --project=chromium                                # 1/1 passed
+npx playwright test tests/transaction.spec.ts tests/debts.spec.ts tests/soft-delete.spec.ts --project=chromium   # 8/8 passed
+npm run build                                                                             # built in 7.51s
+CI=true npx playwright test                                                               # 87/87 passed, 0 retries
+```
+
+**Correctness notes**
+
+- **T38's routing decision rests on reading `FinanceContext.tsx:1597-1618` (`repayDebtAtomic`) in full before writing any DebtsView code.** `repayDebtAtomic(debtId, walletId, amount, note)` does nothing more than resolve the debt-repayment category and call `addTransaction({..., type: 'DEBT_REPAYMENT', debtId, categoryId})`. The debt's `remainingAmount` decrement and auto-settle-at-zero logic live inside `addTransaction` itself (`:1137-1148` local path, `:1271-1274` Supabase path), gated only on `data.type === 'DEBT_REPAYMENT' && data.debtId` - **not** on which function called it. `TransactionForm`'s existing `handleSubmit` already supplies an equivalent `debtId` and category match (`:197,207`), so routing DebtsView's repay through a direct `addTransaction` call carries zero functional loss versus the old `useDebts().repayDebt` → `repayDebtAtomic` path. `debts.spec.ts`'s full partial-repayment-then-auto-settle lifecycle passing unmodified is the empirical confirmation.
+- **The `idPrefix` id scheme could not be one uniform template.** `#confirm-repay-btn` puts "confirm" before the prefix; `#repay-amount-math`/`#repay-wallet-select` put it after, with suffixes (`amount-math`, `wallet-select`) that don't match `TransactionForm`'s own default suffixes (`math-input`, `wallet`) either. Each of the three ids is computed with its own ternary rather than forcing a "clean" but incorrect shared helper.
+- **`repayDebt`/`repayDebtAtomic` have no remaining callers** (`grep -rn "repayDebt" src/` after this change resolves only to their own definitions in `useDebts.ts`/`FinanceContext.tsx`) but were deliberately not deleted - see Deliberately not done.
+
+**Deliberately not done**
+
+- **`repayDebt` (in `useDebts.ts`) and `repayDebtAtomic` (in `FinanceContext.tsx`) were not deleted**, despite becoming unused by this change. Removing them is dead-code cleanup outside this task's stated scope and would touch `FinanceContext.tsx`, whose blast radius this already-high-risk phase deliberately avoided expanding further. Candidate for a future dead-code task.
+- **No `presetAmount` prop was added to `TransactionForm`.** The old hand-rolled repay form pre-filled the amount with the debt's minimum payment (`handleOpenRepay` seeded `repayRaw` from `debt.minimumPayment`); the new one starts empty. This is a real, user-visible regression, accepted because restoring it wasn't in T36's listed prop set - `debts.spec.ts` fills the amount explicitly either way, so no test depends on the old default.
+- **`WalletPopupModal`'s "Adjust Balance" editor, the Navbar quick-add modal, and the TransactionsView add-modal were left untouched** - they are the surfaces the roadmap's Phase 22 entry explicitly keeps (Adjust Balance is a one-field wallet reconciliation, not a duplicate; the other two are this consolidation's two *surviving* entry points, not targets for removal).
+
+---
+
 ## Phase 21 — transaction type tokens: T35 (2026-09-19, commit `b958750`)
 
 **Changed**
