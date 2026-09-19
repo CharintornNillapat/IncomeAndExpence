@@ -453,31 +453,93 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     diaryEntriesRef.current = diaryEntries;
   }, [diaryEntries]);
 
-  // Cache state to localStorage for instant offline access
+  // T16 (ADR 0003): batched localStorage writer. Each state-slice effect below
+  // marks its key dirty in `pendingWritesRef` instead of writing immediately;
+  // one debounced timer flushes every dirty key together, collapsing what used
+  // to be up to 8 independent synchronous `JSON.stringify` calls per render
+  // cycle into a single batch. `flushPendingWrites` is also invoked
+  // synchronously from `pagehide`/`visibilitychange` below so a debounce window
+  // in flight when a PWA tab is backgrounded is never lost.
+  const STORAGE_WRITE_DEBOUNCE_MS = 250;
+  const pendingWritesRef = useRef<Map<string, unknown>>(new Map());
+  const writeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Skips the write effects on their initial mount pass, when every slice's
+  // value is exactly what `safeGetLocalStorage` just read from storage - so the
+  // batched writer never re-serializes hydration data straight back over
+  // itself. Set `true` by the effect declared immediately after the write
+  // effects below, which - because React runs a commit's passive effects in
+  // declaration order - is guaranteed to fire after all of them on mount.
+  const didMountRef = useRef(false);
+
+  const flushPendingWrites = useCallback(() => {
+    if (writeTimerRef.current) {
+      clearTimeout(writeTimerRef.current);
+      writeTimerRef.current = null;
+    }
+    pendingWritesRef.current.forEach((value, key) => {
+      try {
+        localStorage.setItem(key, JSON.stringify(value));
+      } catch (err) {
+        console.warn(`[SafeStorage] Failed to persist ${key}`, err);
+      }
+    });
+    pendingWritesRef.current.clear();
+  }, []);
+
+  const scheduleStorageWrite = useCallback((key: string, value: unknown) => {
+    pendingWritesRef.current.set(key, value);
+    if (writeTimerRef.current) clearTimeout(writeTimerRef.current);
+    writeTimerRef.current = setTimeout(flushPendingWrites, STORAGE_WRITE_DEBOUNCE_MS);
+  }, [flushPendingWrites]);
+
   useEffect(() => {
-    localStorage.setItem('pf_wallets', JSON.stringify(wallets));
-  }, [wallets]);
+    if (didMountRef.current) scheduleStorageWrite('pf_wallets', wallets);
+  }, [wallets, scheduleStorageWrite]);
   useEffect(() => {
-    localStorage.setItem('pf_categories', JSON.stringify(categories));
-  }, [categories]);
+    if (didMountRef.current) scheduleStorageWrite('pf_categories', categories);
+  }, [categories, scheduleStorageWrite]);
   useEffect(() => {
-    localStorage.setItem('pf_keywords', JSON.stringify(keywordRules));
-  }, [keywordRules]);
+    if (didMountRef.current) scheduleStorageWrite('pf_keywords', keywordRules);
+  }, [keywordRules, scheduleStorageWrite]);
   useEffect(() => {
-    localStorage.setItem('pf_transactions', JSON.stringify(transactions));
-  }, [transactions]);
+    if (didMountRef.current) scheduleStorageWrite('pf_transactions', transactions);
+  }, [transactions, scheduleStorageWrite]);
   useEffect(() => {
-    localStorage.setItem('pf_debts', JSON.stringify(debts));
-  }, [debts]);
+    if (didMountRef.current) scheduleStorageWrite('pf_debts', debts);
+  }, [debts, scheduleStorageWrite]);
   useEffect(() => {
-    localStorage.setItem('pf_diary', JSON.stringify(diaryEntries));
-  }, [diaryEntries]);
+    if (didMountRef.current) scheduleStorageWrite('pf_diary', diaryEntries);
+  }, [diaryEntries, scheduleStorageWrite]);
   useEffect(() => {
-    localStorage.setItem('pf_user', JSON.stringify(currentUser));
-  }, [currentUser]);
+    if (didMountRef.current) scheduleStorageWrite('pf_user', currentUser);
+  }, [currentUser, scheduleStorageWrite]);
   useEffect(() => {
-    localStorage.setItem('pf_sessions', JSON.stringify(sessions));
-  }, [sessions]);
+    if (didMountRef.current) scheduleStorageWrite('pf_sessions', sessions);
+  }, [sessions, scheduleStorageWrite]);
+
+  useEffect(() => {
+    didMountRef.current = true;
+  }, []);
+
+  // Mandatory flush points: a PWA gets backgrounded aggressively on mobile, and
+  // `visibilitychange`->hidden fires before `pagehide` and on more platforms
+  // (notably iOS Safari, which does not reliably fire `pagehide` on swipe-away),
+  // so both are wired to the same synchronous flush rather than relying on one.
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') flushPendingWrites();
+    };
+    const handlePageHide = () => flushPendingWrites();
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('pagehide', handlePageHide);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('pagehide', handlePageHide);
+      flushPendingWrites();
+    };
+  }, [flushPendingWrites]);
 
   // Net Worth aggregation
   const totalNetWorth = useMemo(() => {
