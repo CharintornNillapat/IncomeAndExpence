@@ -4,6 +4,45 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
+## Phase 21 — transaction type tokens: T35 (2026-09-19, commit `b958750`)
+
+**Changed**
+
+- New `src/components/transaction/txTypeMeta.ts` — `TX_TYPE_META: Record<TransactionType, TxTypeMeta>` with `label`, `icon` (full badge icon, `TransactionTableRow`'s existing 4-way vocabulary), `compactIcon` (`TrendingUp`/`TrendingDown`, `WalletPopupModal`'s existing binary vocabulary), `tint` (badge bg+text classes, light+dark), and `sign` (`+` for INCOME, the new `MINUS` constant for everything else). `ADJUSTMENT` mirrors `EXPENSE`'s values, matching its existing fallback appearance everywhere it isn't explicitly branched on today.
+- `src/utils/currency.ts` — new `MINUS` constant (U+2212) and `CURRENCY_DISPLAY_OPTIONS` (the `toLocaleString` options object `formatCurrencyAmount` and `AnimatedCounter` both need); `formatCurrencyAmount` itself refactored to use the new constant (identical output).
+- `src/components/AnimatedCounter.tsx` — imports `CURRENCY_DISPLAY_OPTIONS` instead of re-typing the same options object inline (closes the "soft drift" finding J flagged: a future precision change could previously desync the hero counters from `formatCurrencyAmount`).
+- `src/components/TransactionTableRow.tsx` — full adoption: the 4-way icon ternary and 4-way badge-tint ternary both replaced by `TX_TYPE_META[tx.type]`; amount sign (`isIncome ? '+' : '-'`) replaced by `meta.sign`; the desktop "Debt Repayment" category-cell label replaced by `TX_TYPE_META.DEBT_REPAYMENT.label` (identical string).
+- `src/components/WalletPopupModal.tsx` — activity-tab icon ternary (`TrendingUp`/`TrendingDown`) replaced by `TX_TYPE_META[tx.type].compactIcon`; amount sign replaced by `TX_TYPE_META[tx.type].sign`. Badge background classes left as local logic (see Correctness notes).
+- `src/components/dashboard/RecentTransactionsTable.tsx` — the EXPENSE amount sign's hardcoded `'−'` literal replaced by the imported `MINUS` constant (already U+2212, so this is a pure single-sourcing, zero visual change). Its Type-column icon/label vocabulary and its sign-suppression for TRANSFER/DEBT_REPAYMENT/ADJUSTMENT are untouched (see Correctness notes).
+- 6 files changed (1 new), net +70/-43 lines.
+
+**Why**
+
+`docs/audit/ui-ux-audit-report.md` finding D: four independent transaction-row renderers each re-implement the type→icon/color mapping, the single most duplicated fragment the audit found. Finding J additionally flagged `AnimatedCounter`'s currency-format options as a silent duplicate of `formatCurrencyAmount`'s, and the minus glyph as inconsistent (U+2212 in some renderers, ASCII `-` in others). Centralizing the mapping - and, per this task's explicit second goal, standardizing the glyph - is the prerequisite Phase 22 (transaction entry consolidation) and Phase 28 (shared row cells) both build on, per `implementation-roadmap.md`.
+
+**Verification**
+
+```
+npm run lint                                                                          # tsc --noEmit: clean, 0 errors
+npx playwright test tests/transaction.spec.ts tests/soft-delete.spec.ts --project=chromium   # 7/7 passed
+npm run build                                                                         # built in 6.99s
+CI=true npx playwright test                                                           # 87/87 passed, 0 retries
+```
+
+**Correctness notes**
+
+- **Adoption is deliberately non-uniform across the three named files, discovered by reading all three before editing any of them.** Their type→icon/color schemes have already diverged, not just duplicated: `RecentTransactionsTable`'s Type column uses `ArrowLeftRight`/`TrendingDown` for TRANSFER/DEBT_REPAYMENT (the canonical/`TransactionTableRow` vocabulary is `RefreshCw`/`Landmark`), labels `DEBT_REPAYMENT` as "Repayment" rather than "Debt Repayment", and shows no sign at all for TRANSFER/DEBT_REPAYMENT/ADJUSTMENT where the other two renderers show `-`. `WalletPopupModal`'s activity-tab badge background collapses TRANSFER/DEBT_REPAYMENT/ADJUSTMENT into one indigo color, unlike the canonical 4-way `tint`. Forcing full adoption into either file would have changed on-screen output, contradicting this task's explicit "without altering DOM layout or behaviour" goal - so adoption was scoped per-field to only what already matched exactly, and the remaining divergence was left local and is documented here rather than silently smoothed over.
+- **The MINUS glyph swap in `TransactionTableRow`/`WalletPopupModal` is an intentional, requested visual change** (this task's own step 2: "standardizing... across display surfaces"), not an inadvertent one. Verified no spec asserts on a sign glyph before making the change.
+- **`ADJUSTMENT` got a token entry despite the task naming only 4 of `TransactionType`'s 5 members**, so `Record<TransactionType, TxTypeMeta>` type-checks with a compile-time guarantee of full coverage rather than a runtime `undefined` risk; its values mirror `EXPENSE`, its existing fallback appearance everywhere.
+
+**Deliberately not done**
+
+- **`RecentTransactionsTable`'s Type-column icon/label and `WalletPopupModal`'s badge background were not migrated onto the canonical tokens** - see Correctness notes. Matches the roadmap's Phase 28 stance that each of the app's transaction renderers keeps its own layout; shared *cells*, not a forced shared *scheme*, is the later plan.
+- **`CashflowMetricsCards.tsx` and `DiaryEntryCard.tsx`'s own sign-glyph inconsistency (also in finding J) were left untouched** - outside this task's named file list. `MINUS` is exported and ready for whichever future task picks them up.
+- **No shared row/cell component was extracted.** That is Phase 28's (T49) explicit scope, which consumes these tokens once Phases 22-27 have run.
+
+---
+
 ## Phase 20 — Navbar de-subscription: T34 (2026-09-19, commit `e3fe540`)
 
 **Changed**

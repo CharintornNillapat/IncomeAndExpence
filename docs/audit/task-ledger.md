@@ -358,6 +358,35 @@ CI=true npx playwright test                                           # 87/87 pa
 
 ---
 
+## Phase 21 — transaction type tokens (approved to execute)
+
+| # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
+|---|---|---|---|---|---|---|---|---|---|---|
+| T35 | Centralize transaction type icon/label/tint/sign; standardize minus glyph | new `src/components/transaction/txTypeMeta.ts`; `currency.ts`; `AnimatedCounter.tsx`; `TransactionTableRow.tsx`; `WalletPopupModal.tsx`; `RecentTransactionsTable.tsx` | Med | Low | 1.5h | done | — | b958750 | tsc clean; `transaction.spec.ts`+`soft-delete.spec.ts` 7/7 chromium; `npm run build` succeeds; `CI=true npx playwright test` 87/87, 0 retries | Type-to-icon/color mapping (`ui-ux-audit-report.md` finding D, the single most duplicated fragment) now single-sourced for `TransactionTableRow` and half-adopted (icon/sign only) elsewhere; `AnimatedCounter`'s currency-format drift from finding J closed |
+
+**Notes on execution:**
+- **Adoption is not uniform across the 3 named files, and this was a discovery made during implementation, not a deviation from instructions taken lightly.** Reading all three renderers before touching any of them showed their type→icon/color schemes have already diverged, not just duplicated: `RecentTransactionsTable`'s Type column uses `ArrowLeftRight`/`TrendingDown` for TRANSFER/DEBT_REPAYMENT where the canonical (and `TransactionTableRow`'s existing) vocabulary is `RefreshCw`/`Landmark`; its label for `DEBT_REPAYMENT` is "Repayment", not "Debt Repayment"; and it shows no sign at all for TRANSFER/DEBT_REPAYMENT/ADJUSTMENT where `TransactionTableRow` and `WalletPopupModal` both show `-`. `WalletPopupModal`'s activity-tab badge background is its own 3-way scheme that collapses TRANSFER/DEBT_REPAYMENT/ADJUSTMENT into one indigo color, unlike the canonical 4-way `tint`. Forcing full adoption in either file would have changed what's on screen, directly contradicting this task's "without altering DOM layout or behaviour" goal. Adoption was scoped per-field to only what already matched exactly: `TransactionTableRow` gets full adoption (icon, tint, sign - a lossless 1:1 replacement of its own existing logic); `WalletPopupModal` gets `compactIcon`+`sign` only (its existing binary INCOME-vs-everything-else ternary already matches the canonical binary exactly); `RecentTransactionsTable` gets only the `MINUS` constant (its EXPENSE sign was already U+2212, so this is a pure single-sourcing with zero visual change).
+- **The MINUS glyph swap is an intentional, requested visual change, not a bug.** Per this task's own step 2 ("standardizing the negative glyph... across display surfaces"), `TransactionTableRow` and `WalletPopupModal`'s ASCII `-` for EXPENSE/TRANSFER/DEBT_REPAYMENT/ADJUSTMENT amounts now render as U+2212 (`−`). Confirmed no spec asserts on the sign glyph before making this change (`grep` across `tests/` for `'-'`/`'−'`/`MINUS` returned nothing sign-related).
+- **`ADJUSTMENT` was given an explicit token entry (mirroring `EXPENSE`'s tint/icon/sign) even though the task's file-list named only EXPENSE/INCOME/TRANSFER/DEBT_REPAYMENT.** `TransactionType` is a 5-member union; typing `TX_TYPE_META` as `Record<TransactionType, TxTypeMeta>` gives a compile-time guarantee every type is covered rather than a runtime `undefined` risk on an unhandled case, and `EXPENSE`'s appearance is exactly `ADJUSTMENT`'s existing fallback in every file that doesn't special-case it today.
+- **CashflowMetricsCards.tsx and DiaryEntryCard.tsx's own sign-glyph drift (also documented in finding J) were left untouched** - not part of this task's named file list, and `MINUS` is now exported for a future pass to pick up without re-deriving it.
+
+**Verification**
+
+```
+npm run lint                                                                          # tsc --noEmit: clean, 0 errors
+npx playwright test tests/transaction.spec.ts tests/soft-delete.spec.ts --project=chromium   # 7/7 passed
+npm run build                                                                         # built in 6.99s
+CI=true npx playwright test                                                           # 87/87 passed, 0 retries
+```
+
+**Deliberately not done**
+
+- **`RecentTransactionsTable`'s Type column icon/label vocabulary was not migrated onto the canonical tokens.** It is a 4th, independently-evolved scheme (see notes above); migrating it would change TRANSFER's and DEBT_REPAYMENT's rendered icon and label text. Left as its own local logic, matching the Phase 28 roadmap's stance that "each of the 4 [transaction] renderers keeps its own layout."
+- **`WalletPopupModal`'s activity-tab badge background was not migrated onto the canonical `tint`.** Same reasoning - it would recolor TRANSFER/DEBT_REPAYMENT/ADJUSTMENT badges from indigo to blue/amber/rose respectively.
+- **No new shared component was extracted** (e.g. a `<TxTypeIcon>` cell) - that is Phase 28's explicit scope (T49), which builds on these tokens once the roadmap's other consolidation phases (22-27) have run.
+
+---
+
 ## Deferred — documented, awaiting separate approval
 
 | # | Task | Files | Impact | Risk | Effort | Status | Blocked by |
