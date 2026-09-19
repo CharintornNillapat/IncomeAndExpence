@@ -16,6 +16,7 @@ import { useFinanceState, useFinanceActions } from '../context/FinanceContext';
 import { AddWalletForm } from './wallet/AddWalletForm';
 import { WalletTransferForm } from './wallet/WalletTransferForm';
 import { Modal } from './Modal';
+import { useTransientFlash } from '../hooks/useTransientFlash';
 import { APP_CURRENCY, APP_CURRENCY_SYMBOL, formatCurrencyAmount } from '../utils/currency';
 import { todayIsoDate } from '../utils/date';
 import { getWalletIcon } from '../utils/walletIcons';
@@ -48,7 +49,7 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
   // The overview's "Transfer" shortcuts preselect which wallet the transfer
   // starts from; the form itself owns the rest of the transfer state.
   const [transferSourceId, setTransferSourceId] = useState<string>(initialWalletId || '');
-  const [transferStatus, setTransferStatus] = useState<string | null>(null);
+  const { value: transferStatus, flash: flashTransferStatus } = useTransientFlash<string | null>(null);
 
   // Edit / Adjust Balance State
   const [isAdjustingBalance, setIsAdjustingBalance] = useState<string | null>(null);
@@ -415,11 +416,7 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
                   submit: 'modal-submit-transfer-btn',
                 }}
                 onTransferred={() => {
-                  setTransferStatus('Transfer completed successfully!');
-                  setTimeout(() => {
-                    setTransferStatus(null);
-                    setActiveTab('OVERVIEW');
-                  }, 1000);
+                  flashTransferStatus('Transfer completed successfully!', 1000, () => setActiveTab('OVERVIEW'));
                 }}
               />
             </div>

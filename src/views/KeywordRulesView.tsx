@@ -1,8 +1,10 @@
 import React, { useState, useMemo } from 'react';
 import { Sparkles, Plus, Trash2, Tag } from 'lucide-react';
 import { useFinanceState, useFinanceActions } from '../context/FinanceContext';
+import { useSubmitHandler } from '../hooks/useSubmitHandler';
 import { matchSmartDescription } from '../utils/smartMatcher';
 import { formatCurrencyAmount } from '../utils/currency';
+import { buildLookupMap } from '../utils/mapUtils';
 
 export const KeywordRulesView: React.FC = () => {
   const { keywordRules, categories } = useFinanceState();
@@ -10,7 +12,6 @@ export const KeywordRulesView: React.FC = () => {
 
   const [keyword, setKeyword] = useState<string>('');
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>(categories[0]?.id || '');
-  const [ruleError, setRuleError] = useState<string | null>(null);
 
   // Sandbox Test
   const [testInput, setTestInput] = useState<string>('500 buy new shirt');
@@ -20,25 +21,16 @@ export const KeywordRulesView: React.FC = () => {
     [testInput, keywordRules, categories]
   );
 
-  const handleAddRule = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setRuleError(null);
+  // Keeps the typed keyword when the rule is rejected.
+  const { error: ruleError, handleSubmit: submitKeywordRule } = useSubmitHandler({
+    defaultErrorMessage: 'Failed to save keyword rule',
+    onSuccess: () => setKeyword(''),
+  });
 
-    const res = await addKeywordRule(keyword, selectedCategoryId);
+  const handleAddRule = (e: React.FormEvent) =>
+    submitKeywordRule(e, () => addKeywordRule(keyword, selectedCategoryId));
 
-    // Keep the typed keyword when the rule is rejected.
-    if (!res.success) {
-      setRuleError(res.error || 'Failed to save keyword rule');
-      return;
-    }
-
-    setKeyword('');
-  };
-
-  const categoryMap = useMemo(
-    () => new Map<string, typeof categories[0]>(categories.map((c) => [c.id, c])),
-    [categories]
-  );
+  const categoryMap = useMemo(() => buildLookupMap(categories), [categories]);
 
   return (
     <div className="space-y-6">

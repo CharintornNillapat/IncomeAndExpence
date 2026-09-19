@@ -1,4 +1,5 @@
 import { Category, KeywordRule, TransactionType } from '../types';
+import { buildLookupMap } from './mapUtils';
 
 export interface SmartMatchResult {
   categoryId?: string;
@@ -22,7 +23,7 @@ export function matchSmartDescription(
     return { cleanDescription: '' };
   }
 
-  const categoryMap = new Map(categories.map((c) => [c.id, c]));
+  const categoryMap = buildLookupMap(categories);
 
   // Check for leading amount e.g. "500 coffee" or "25.50 lunch"
   let extractedAmount: number | undefined = undefined;

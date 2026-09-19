@@ -5,6 +5,7 @@ import {
   ShieldAlert
 } from 'lucide-react';
 import { useDebts } from '../hooks/useDebts';
+import { useSubmitHandler } from '../hooks/useSubmitHandler';
 import { APP_CURRENCY_SYMBOL, formatCurrencyAmount } from '../utils/currency';
 import { Debt } from '../types';
 import { DebtCardItem } from '../components/DebtCardItem';
@@ -31,8 +32,6 @@ export const DebtsView: React.FC = () => {
   const [repayRaw, setRepayRaw] = useState<string>('');
   const [repayValid, setRepayValid] = useState<boolean>(false);
   const [repayNote, setRepayNote] = useState<string>('Monthly principal payment');
-  const [repayError, setRepayError] = useState<string | null>(null);
-  const [createDebtError, setCreateDebtError] = useState<string | null>(null);
 
   const handleSettle = useCallback((id: string) => {
     settleDebt(id);
@@ -50,47 +49,40 @@ export const DebtsView: React.FC = () => {
     setRepayValid(true);
   }, []);
 
-  const handleCreateDebt = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setCreateDebtError(null);
+  // Keeps the form open so a rejected debt goal can be corrected.
+  const { error: createDebtError, handleSubmit: submitCreateDebt } = useSubmitHandler({
+    defaultErrorMessage: 'Failed to create debt goal',
+    onSuccess: () => {
+      setIsAddDebtOpen(false);
+      setDebtName('');
+    },
+  });
 
-    const res = await addDebt({
-      name: debtName.trim(),
-      totalAmount,
-      remainingAmount: remainingAmount > 0 ? remainingAmount : totalAmount,
-      interestRate,
-      minimumPayment,
-      dueDate,
-    });
+  const handleCreateDebt = (e: React.FormEvent) =>
+    submitCreateDebt(e, () =>
+      addDebt({
+        name: debtName.trim(),
+        totalAmount,
+        remainingAmount: remainingAmount > 0 ? remainingAmount : totalAmount,
+        interestRate,
+        minimumPayment,
+        dueDate,
+      })
+    );
 
-    // Keep the form open so a rejected debt goal can be corrected.
-    if (!res.success) {
-      setCreateDebtError(res.error || 'Failed to create debt goal');
-      return;
-    }
-
-    setIsAddDebtOpen(false);
-    setDebtName('');
-  };
-
-  const handleExecuteRepay = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!repayDebtTarget || !repayValid || repayAmount === null || !selectedWalletId) return;
-
-    try {
-      const result = await repayDebt(repayDebtTarget.id, selectedWalletId, repayAmount, repayNote);
-      if (result && !result.success) {
-        setRepayError(result.error || 'Failed to process debt repayment');
-        return;
-      }
-
+  const { error: repayError, handleSubmit: submitRepay } = useSubmitHandler({
+    defaultErrorMessage: 'Failed to process debt repayment',
+    onSuccess: () => {
       setRepayDebtTarget(null);
       setRepayAmount(null);
       setRepayRaw('');
-      setRepayError(null);
-    } catch (err: unknown) {
-      setRepayError(err instanceof Error ? err.message : 'An error occurred during repayment');
-    }
+    },
+  });
+
+  const handleExecuteRepay = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!repayDebtTarget || !repayValid || repayAmount === null || !selectedWalletId) return;
+    return submitRepay(e, () => repayDebt(repayDebtTarget.id, selectedWalletId, repayAmount, repayNote));
   };
 
   return (

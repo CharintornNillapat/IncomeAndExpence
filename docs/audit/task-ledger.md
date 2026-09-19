@@ -215,13 +215,39 @@ Status values: `todo` · `in-progress` · `done` · `dropped` (with a one-line r
 - **All existing test-targeted ids preserved exactly**, passed through via `Modal`'s `closeButtonId`/`panelId`/`titleId` props: `close-quick-record-modal-btn`, `auth-close-btn`, `close-wallet-modal-btn`, `close-add-transaction-modal-btn`, plus every id inside each modal's own body content (`new-wallet-name`, `repay-wallet-select`, `csv-file-input`, etc.), none of which lived in the extracted chrome to begin with.
 - **`role="dialog"`/`aria-modal="true"`/`aria-labelledby` now apply uniformly to all 9 modals.** Previously only `QuickAddModal` and `TransactionsView`'s Add Transaction modal had these attributes at all; the other 7 had none. This is an accessibility improvement bundled into the consolidation, not a separate task.
 
+## Phase 16 — shared map/form hooks (approved to execute)
+
+| # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
+|---|---|---|---|---|---|---|---|---|---|---|
+| T26 | Shared `buildLookupMap` helper | new `mapUtils.ts`; `DashboardView.tsx`, `DiaryView.tsx`, `smartMatcher.ts`, `KeywordRulesView.tsx`, `TransactionsView.tsx` | Low-Med | Low | 2h | done | T12 (done) | (pending) | tsc clean; `CI=true npx playwright test` 87/87, 0 retries; build succeeds in 5.23s | 9 `new Map(items.map(x => [x.id, x]))` call sites across 5 files collapsed to one `buildLookupMap<T extends {id: string}>` generic |
+| T27 | `useSubmitHandler`, `useIdempotencyKey`, `useTransientFlash` | new `useSubmitHandler.ts`, `useIdempotencyKey.ts`, `useTransientFlash.ts`; `AddWalletForm.tsx`, `WalletTransferForm.tsx`, `TransactionForm.tsx`, `DiaryView.tsx`, `KeywordRulesView.tsx`, `DebtsView.tsx`, `SecurityView.tsx`, `TransactionsView.tsx`, `WalletPopupModal.tsx` | Med | Med | 5h | done | T12 (done) | (pending) | tsc clean; `CI=true npx playwright test` 87/87, 0 retries; build succeeds in 5.23s | 9 submit handlers across 7 files now share `useSubmitHandler`'s validate/mutate/error-or-reset shape; 2 idempotency keys (`WalletTransferForm`, `TransactionForm`) now share `useIdempotencyKey`'s arm-reuse-rotate lifecycle; 7 flash timeouts across 5 files now share `useTransientFlash`. 11 files touched net -46 lines despite 4 new hook/util files |
+
+**Notes on execution:**
+- **`buildLookupMap` only replaced the id -> full-item shape.** Two lookalikes were deliberately left alone: `useTransactions.ts:43,48` and `csvExchange.ts:10-11` build id -> *name string* maps (not id -> item), and `csvExchange.ts:83` keys by lowercased wallet *name*, not id — none match the generic's `Map<string, T>` contract, and forcing them through it would mean calling `.name` on the result at every use site for no reduction in duplication.
+- **`useSubmitHandler` centralizes re-entrancy guarding and error surfacing, not each form's own field-reset logic.** Every caller still owns what "success" resets (`onSuccess` callback) - the hook only unifies `e.preventDefault()`, the in-flight guard, `setError(null)` before the attempt, catching both a `{success:false}` `MutationResult` and a thrown error (`DebtsView`'s repay handler was the one caller that already wrapped its action in try/catch; that catch is now inside the hook for every caller, not just that one).
+- **`AddWalletForm`, `DiaryView`, and `KeywordRulesView` gained a re-entrant-submit guard they didn't previously have** (`useSubmitHandler`'s `isSubmitting` check) as a side effect of adopting the shared hook. None of their submit buttons were wired to a `disabled` state before or after this change, so this is invisible in the UI - it only closes a latent double-submit-on-double-click window, consistent with how `WalletTransferForm` and `TransactionForm` already behaved.
+- **`SecurityView`'s two Supabase-backed forms (`handleUpdateProfile`, `handleUpdatePassword`) fit `useSubmitHandler` despite not returning `MutationResult`.** They already followed the identical try/throw/catch/finally shape by hand; their Supabase calls now just run inside the hook's `submit()` callback and throw on `{ error }` the same way they always did. Pre-mutation validation (password length/match) still short-circuits before the hook is ever invoked, exactly as before, so a validation failure still never toggles the loading state.
+- **`useTransientFlash` picked up two call sites beyond the ledger's original "~7" estimate** (`TransactionsView.tsx`'s `importSuccessMsg` and `WalletPopupModal.tsx`'s `transferStatus`), both of which combine a self-clearing message with a side effect on clear (closing the import modal; switching the popup back to the `OVERVIEW` tab) - `flash()`'s optional third `onClear` parameter exists specifically for these two. `AuthModal.tsx`'s two `setTimeout(() => onClose(), ms)` calls were left untouched - they delay a fixed action with no local message state to clear, which isn't the flash shape.
+- **`FinanceContext.tsx`'s three `setTimeout` call sites (storage-write debounce, realtime-reload debounce) were not touched**, per this task's explicit "do not modify core ledger/realtime sync" guardrail - they debounce a batched operation, not a self-clearing UI message, so they were never a `useTransientFlash` fit regardless.
+- **`repayDebt`'s and `handleUpdatePassword`'s two different fallback error strings collapsed into one `defaultErrorMessage` each.** `DebtsView`'s pre-refactor repay handler showed "Failed to process debt repayment" for a `{success:false}` result but "An error occurred during repayment" for a thrown error with no message; `useSubmitHandler` uses a single default for both branches per hook instance. Neither spec (`debts.spec.ts`) asserts on failure-path copy, and a thrown error without a `.message` is already the unlikely case (Supabase/local-fallback errors normally carry one).
+
+**Verification**
+
+```
+npm run lint                     # tsc --noEmit: clean, 0 errors
+npm run build                    # built in 5.23s
+CI=true npx playwright test      # 87/87 passed (4.4m), 1 worker, 0 retries
+```
+
+**Deliberately not done**
+
+- **T24 (`walletFormStyles.ts` promotion) and T25 (unify the 4 transaction-row renderers) remain deferred**, untouched by this pass - out of this task's stated scope (T26/T27 only).
+
 ## Deferred — documented, awaiting separate approval
 
 | # | Task | Files | Impact | Risk | Effort | Status | Blocked by |
 |---|---|---|---|---|---|---|---|
 | T24 | Promote `walletFormStyles.ts`; adopt across ~12 files | `walletFormStyles.ts` + 10 consumers | Med | Med | 6h | todo | T12 |
-| T26 | Shared `buildLookupMap` helper | 7 independent map-building copies | Low-Med | Low | 2h | todo | T12 |
-| T27 | `useSubmitHandler`, `useIdempotencyKey`, `useTransientFlash` | 6 duplicate submit shapes, 3 duplicate amount callbacks, 7 flash timeouts | Med | Med | 5h | todo | T12 |
 | T25 | Unify the 4 transaction-row renderers | see audit-report §E | Med | High | 8h | todo | consider dropping — see plan traps §19 |
 | T18 | `Promise.all` the bulk-import wallet updates | `FinanceContext.tsx:1305-1312` | Low-Med | Med | 1h | todo | T12 CSV spec |
 | T30 | Promote constraints into `CLAUDE.md` | `CLAUDE.md`, `constraints-to-promote.md` | Med | Low | 2h | todo | drains after each task above ships |

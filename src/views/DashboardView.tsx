@@ -12,6 +12,7 @@ import { CategoryExpenseDistribution } from '../components/dashboard/CategoryExp
 import { DebtPayoffOverview } from '../components/dashboard/DebtPayoffOverview';
 import { RecentTransactionsTable } from '../components/dashboard/RecentTransactionsTable';
 import { todayIsoDate, daysAgoIsoDate } from '../utils/date';
+import { buildLookupMap } from '../utils/mapUtils';
 
 export type TimeFilter = 'DAY' | 'WEEK' | 'MONTH' | 'ALL';
 
@@ -124,7 +125,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
 
   // Category Expense Distribution (Memoized)
   const categoryBreakdown = useMemo(() => {
-    const catMap = new Map<string, typeof categories[0]>(categories.map((c) => [c.id, c]));
+    const catMap = buildLookupMap(categories);
     const expenseMap: Record<string, { name: string; amount: number; color: string }> = {};
 
     filteredTransactions
@@ -153,13 +154,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
       .slice(0, 5);
   }, [transactions]);
 
-  const walletMap = useMemo(() => {
-    return new Map(allWallets.map((w) => [w.id, w]));
-  }, [allWallets]);
+  const walletMap = useMemo(() => buildLookupMap(allWallets), [allWallets]);
 
-  const categoryMap = useMemo(() => {
-    return new Map(categories.map((c) => [c.id, c]));
-  }, [categories]);
+  const categoryMap = useMemo(() => buildLookupMap(categories), [categories]);
 
   // Form submit callback stabilized with useCallback
   const handleTransactionSubmit = useCallback((data: {

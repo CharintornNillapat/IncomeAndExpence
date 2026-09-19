@@ -18,6 +18,8 @@ import { exportTransactionsToCsv, exportDiaryToJson, parseAndValidateTransaction
 import { TransactionForm } from '../components/TransactionForm';
 import { TransactionTableRow } from '../components/TransactionTableRow';
 import { Modal } from '../components/Modal';
+import { buildLookupMap } from '../utils/mapUtils';
+import { useTransientFlash } from '../hooks/useTransientFlash';
 
 export const TransactionsView: React.FC = () => {
   const {
@@ -73,16 +75,12 @@ export const TransactionsView: React.FC = () => {
   const [importPreview, setImportPreview] = useState<ImportPreviewSummary | null>(null);
   const [importFileError, setImportFileError] = useState<string | null>(null);
   const [isParsingCsv, setIsParsingCsv] = useState<boolean>(false);
-  const [importSuccessMsg, setImportSuccessMsg] = useState<string | null>(null);
+  const { value: importSuccessMsg, flash: flashImportSuccess, clear: clearImportSuccess } = useTransientFlash<string | null>(null);
 
   // Maps for O(1) row lookups
-  const walletMap = useMemo(() => {
-    return new Map(wallets.map((w) => [w.id, w]));
-  }, [wallets]);
+  const walletMap = useMemo(() => buildLookupMap(wallets), [wallets]);
 
-  const categoryMap = useMemo(() => {
-    return new Map(categories.map((c) => [c.id, c]));
-  }, [categories]);
+  const categoryMap = useMemo(() => buildLookupMap(categories), [categories]);
 
   // Active-only slices for the Add Transaction modal (Memoized, T9)
   const activeWalletsForForm = useMemo(() => wallets.filter((w) => !w.isDeleted), [wallets]);
@@ -109,7 +107,7 @@ export const TransactionsView: React.FC = () => {
     if (!file) return;
 
     setImportFileError(null);
-    setImportSuccessMsg(null);
+    clearImportSuccess();
     setIsParsingCsv(true);
 
     try {
@@ -133,12 +131,12 @@ export const TransactionsView: React.FC = () => {
     const skippedNote = result.skippedCount > 0
       ? ` ${result.skippedCount} row${result.skippedCount === 1 ? '' : 's'} skipped (unknown or deleted wallet).`
       : '';
-    setImportSuccessMsg(`Successfully imported ${result.insertedCount} transactions (${formatCurrencyAmount(result.totalAmount)})!${skippedNote}`);
     setImportPreview(null);
-    setTimeout(() => {
-      setIsImportModalOpen(false);
-      setImportSuccessMsg(null);
-    }, 2000);
+    flashImportSuccess(
+      `Successfully imported ${result.insertedCount} transactions (${formatCurrencyAmount(result.totalAmount)})!${skippedNote}`,
+      2000,
+      () => setIsImportModalOpen(false)
+    );
   };
 
   // Download Sample CSV

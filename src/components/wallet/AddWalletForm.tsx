@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useFinanceActions } from '../../context/FinanceContext';
+import { useSubmitHandler } from '../../hooks/useSubmitHandler';
 import { WalletType } from '../../types';
 import { APP_CURRENCY, APP_CURRENCY_SYMBOL } from '../../utils/currency';
 import {
@@ -56,34 +57,31 @@ export const AddWalletForm: React.FC<AddWalletFormProps> = ({
   const [walletType, setWalletType] = useState<WalletType>('BANK_ACCOUNT');
   const [initialBalance, setInitialBalance] = useState<number>(0);
   const [walletColor, setWalletColor] = useState<string>(WALLET_COLOR_PALETTE[0]);
-  const [createWalletError, setCreateWalletError] = useState<string | null>(null);
 
-  const handleCreateWallet = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setCreateWalletError(null);
+  // Keeps the form open and populated when the write is rejected, so the user
+  // can correct the input rather than losing it.
+  const { error: createWalletError, handleSubmit: submitCreateWallet } = useSubmitHandler({
+    defaultErrorMessage: 'Failed to create wallet',
+    onSuccess: () => {
+      setWalletName('');
+      setInitialBalance(0);
+      onCreated();
+    },
+  });
 
-    const res = await addWallet(
-      {
-        name: walletName.trim(),
-        type: walletType,
-        currency: APP_CURRENCY,
-        color: walletColor,
-        icon: walletType.toLowerCase(),
-      },
-      initialBalance
+  const handleCreateWallet = (e: React.FormEvent) =>
+    submitCreateWallet(e, () =>
+      addWallet(
+        {
+          name: walletName.trim(),
+          type: walletType,
+          currency: APP_CURRENCY,
+          color: walletColor,
+          icon: walletType.toLowerCase(),
+        },
+        initialBalance
+      )
     );
-
-    // Keep the form open and populated when the write is rejected, so the user
-    // can correct the input rather than losing it.
-    if (!res.success) {
-      setCreateWalletError(res.error || 'Failed to create wallet');
-      return;
-    }
-
-    setWalletName('');
-    setInitialBalance(0);
-    onCreated();
-  };
 
   return (
     <form onSubmit={handleCreateWallet} className={`space-y-4 ${className}`.trim()}>

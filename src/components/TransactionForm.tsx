@@ -4,6 +4,9 @@ import { Sparkles, ArrowRight, SlidersHorizontal, AlertCircle } from 'lucide-rea
 import { InlineMathInput } from './InlineMathInput';
 import { Wallet, Category, TransactionType } from '../types';
 import { useFinanceState } from '../context/FinanceContext';
+import { useSubmitHandler } from '../hooks/useSubmitHandler';
+import { useIdempotencyKey } from '../hooks/useIdempotencyKey';
+import { useTransientFlash } from '../hooks/useTransientFlash';
 import { matchSmartDescription } from '../utils/smartMatcher';
 import { safeEvaluateMath } from '../utils/mathEvaluator';
 import { APP_CURRENCY_SYMBOL, formatCurrencyAmount } from '../utils/currency';
@@ -74,12 +77,21 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
 
   const [autoMatchedCategory, setAutoMatchedCategory] = useState<string | null>(null);
   const [showManualOverrides, setShowManualOverrides] = useState<boolean>(false);
-  const [isSubmitted, setIsSubmitted] = useState<boolean>(false);
-  const [submitError, setSubmitError] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const { value: isSubmitted, flash: flashSubmitted } = useTransientFlash(false, 2500);
   // One key per armed form. Retrying after a failure reuses it so the retry is
   // deduplicated rather than double-spending; it is regenerated only on success.
-  const [submitKey, setSubmitKey] = useState<string>(() => crypto.randomUUID());
+  const { idempotencyKey: submitKey, rotateIdempotencyKey } = useIdempotencyKey();
+
+  const { isSubmitting, error: submitError, handleSubmit: submitTransaction } = useSubmitHandler({
+    defaultErrorMessage: 'Failed to save transaction',
+    onSuccess: () => {
+      setDescription('');
+      setAutoMatchedCategory(null);
+      setShowManualOverrides(false);
+      rotateIdempotencyKey();
+      flashSubmitted(true);
+    },
+  });
 
   const handleAmountEvaluated = React.useCallback((val: number | null, raw: string, valid: boolean) => {
     setAmount(val);
@@ -103,7 +115,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (isSubmitting) return;
     let effectiveAmount = amount;
@@ -124,6 +136,10 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
     if (!effectiveValid || effectiveAmount === null || effectiveAmount <= 0 || !effectiveWalletId) {
       return;
     }
+    // Narrowed to non-null/non-empty here, so the closure below can rely on
+    // these without TypeScript re-widening the outer `let`s.
+    const finalAmount = effectiveAmount;
+    const finalWalletId = effectiveWalletId;
 
     const selectedDebt = debts.find((d) => d.id === debtId);
     let finalDescription = description.trim();
@@ -139,38 +155,20 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
 
     const debtCategory = categories.find((c) => c.type === 'DEBT_REPAYMENT' || c.name.toLowerCase().includes('debt'));
 
-    setSubmitError(null);
-    setIsSubmitting(true);
-
-    try {
-      const res = await onSubmitTransaction({
-        amount: effectiveAmount,
+    submitTransaction(e, () =>
+      onSubmitTransaction({
+        amount: finalAmount,
         rawInput: effectiveRaw,
         description: finalDescription,
-        walletId: effectiveWalletId,
+        walletId: finalWalletId,
         destinationWalletId: type === 'TRANSFER' ? destinationWalletId : undefined,
         categoryId: type === 'EXPENSE' || type === 'INCOME' || type === 'ADJUSTMENT' ? categoryId : type === 'DEBT_REPAYMENT' ? debtCategory?.id : undefined,
         debtId: type === 'DEBT_REPAYMENT' ? debtId : undefined,
         type,
         date,
         idempotencyKey: submitKey,
-      });
-
-      if (res && typeof res === 'object' && 'success' in res && !res.success) {
-        setSubmitError(res.error || 'Failed to save transaction');
-        return;
-      }
-
-      // Reset form fields
-      setDescription('');
-      setAutoMatchedCategory(null);
-      setShowManualOverrides(false);
-      setSubmitKey(crypto.randomUUID());
-      setIsSubmitted(true);
-      setTimeout(() => setIsSubmitted(false), 2500);
-    } finally {
-      setIsSubmitting(false);
-    }
+      })
+    );
   };
 
   const selectedWallet = wallets.find((w) => w.id === walletId);

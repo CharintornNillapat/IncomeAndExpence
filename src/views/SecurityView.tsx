@@ -19,6 +19,8 @@ import {
   Check
 } from 'lucide-react';
 import { useFinanceState, useFinanceActions } from '../context/FinanceContext';
+import { useSubmitHandler } from '../hooks/useSubmitHandler';
+import { useTransientFlash } from '../hooks/useTransientFlash';
 import { supabase } from '../lib/supabase';
 
 export const SecurityView: React.FC = () => {
@@ -37,63 +39,65 @@ export const SecurityView: React.FC = () => {
   } = useFinanceActions();
 
   const [isManualSyncing, setIsManualSyncing] = useState<boolean>(false);
-  const [syncFeedback, setSyncFeedback] = useState<string | null>(null);
+  const { value: syncFeedback, flash: flashSyncFeedback, clear: clearSyncFeedback } = useTransientFlash<string | null>(null, 3500);
 
   // Profile update state
   const [nameInput, setNameInput] = useState<string>(currentUser.name || '');
-  const [isUpdatingProfile, setIsUpdatingProfile] = useState<boolean>(false);
-  const [profileSuccess, setProfileSuccess] = useState<string | null>(null);
-  const [profileError, setProfileError] = useState<string | null>(null);
+  const { value: profileSuccess, flash: flashProfileSuccess, clear: clearProfileSuccess } = useTransientFlash<string | null>(null, 3500);
+  const { isSubmitting: isUpdatingProfile, error: profileError, handleSubmit: submitProfileUpdate } = useSubmitHandler({
+    defaultErrorMessage: 'Failed to update profile name',
+    onSuccess: () => flashProfileSuccess('Profile display name updated successfully!'),
+  });
 
   // Password change state
   const [newPassword, setNewPassword] = useState<string>('');
   const [confirmPassword, setConfirmPassword] = useState<string>('');
-  const [isUpdatingPassword, setIsUpdatingPassword] = useState<boolean>(false);
-  const [passwordSuccess, setPasswordSuccess] = useState<string | null>(null);
-  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const { value: passwordSuccess, flash: flashPasswordSuccess, clear: clearPasswordSuccess } = useTransientFlash<string | null>(null, 4000);
+  const {
+    isSubmitting: isUpdatingPassword,
+    error: passwordError,
+    setError: setPasswordError,
+    handleSubmit: submitPasswordUpdate,
+  } = useSubmitHandler({
+    defaultErrorMessage: 'Failed to update password',
+    onSuccess: () => {
+      flashPasswordSuccess('Password successfully updated and secured!');
+      setNewPassword('');
+      setConfirmPassword('');
+    },
+  });
 
   const handleManualSync = async () => {
     setIsManualSyncing(true);
-    setSyncFeedback(null);
+    clearSyncFeedback();
     try {
       await refreshFromCloud();
-      setSyncFeedback('Data synchronized with cloud successfully!');
-      setTimeout(() => setSyncFeedback(null), 3500);
+      flashSyncFeedback('Data synchronized with cloud successfully!');
     } catch (err: any) {
-      setSyncFeedback('Sync completed with local cache.');
-      setTimeout(() => setSyncFeedback(null), 3500);
+      flashSyncFeedback('Sync completed with local cache.');
     } finally {
       setIsManualSyncing(false);
     }
   };
 
-  const handleUpdateProfile = async (e: React.FormEvent) => {
+  const handleUpdateProfile = (e: React.FormEvent) => {
     e.preventDefault();
     if (!nameInput.trim()) return;
+    clearProfileSuccess();
 
-    setIsUpdatingProfile(true);
-    setProfileSuccess(null);
-    setProfileError(null);
-
-    try {
+    return submitProfileUpdate(e, async () => {
       if (isAuthenticated) {
         const { error } = await supabase.auth.updateUser({
           data: { name: nameInput.trim() },
         });
         if (error) throw error;
       }
-      setProfileSuccess('Profile display name updated successfully!');
-      setTimeout(() => setProfileSuccess(null), 3500);
-    } catch (err: any) {
-      setProfileError(err.message || 'Failed to update profile name');
-    } finally {
-      setIsUpdatingProfile(false);
-    }
+    });
   };
 
-  const handleUpdatePassword = async (e: React.FormEvent) => {
+  const handleUpdatePassword = (e: React.FormEvent) => {
     e.preventDefault();
-    setPasswordSuccess(null);
+    clearPasswordSuccess();
     setPasswordError(null);
 
     if (newPassword.length < 6) {
@@ -106,26 +110,13 @@ export const SecurityView: React.FC = () => {
       return;
     }
 
-    setIsUpdatingPassword(true);
-
-    try {
-      if (isAuthenticated) {
-        const { error } = await supabase.auth.updateUser({
-          password: newPassword,
-        });
-        if (error) throw error;
-        setPasswordSuccess('Password successfully updated and secured!');
-        setNewPassword('');
-        setConfirmPassword('');
-        setTimeout(() => setPasswordSuccess(null), 4000);
-      } else {
-        setPasswordError('Please sign in to update your cloud account password.');
+    return submitPasswordUpdate(e, async () => {
+      if (!isAuthenticated) {
+        throw new Error('Please sign in to update your cloud account password.');
       }
-    } catch (err: any) {
-      setPasswordError(err.message || 'Failed to update password');
-    } finally {
-      setIsUpdatingPassword(false);
-    }
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      if (error) throw error;
+    });
   };
 
   return (
@@ -293,8 +284,7 @@ export const SecurityView: React.FC = () => {
                         type="button"
                         onClick={() => {
                           revokeSession(sess.id);
-                          setSyncFeedback(`Session for ${sess.deviceName} terminated.`);
-                          setTimeout(() => setSyncFeedback(null), 3000);
+                          flashSyncFeedback(`Session for ${sess.deviceName} terminated.`, 3000);
                         }}
                         className="px-3 py-1.5 text-xs font-semibold text-rose-600 dark:text-rose-400 hover:text-white hover:bg-rose-600 border border-rose-200 dark:border-rose-800 hover:border-rose-600 rounded-lg transition-colors cursor-pointer self-start sm:self-center shrink-0"
                       >

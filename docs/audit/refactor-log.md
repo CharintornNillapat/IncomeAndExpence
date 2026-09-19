@@ -4,6 +4,45 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
+## Phase 16 — shared map/form hooks: T26, T27 (2026-09-19, commit `(pending)`)
+
+**Changed**
+
+- New `src/utils/mapUtils.ts`: `buildLookupMap<T extends { id: string }>(items: T[]): Map<string, T>` — a one-line generic replacing `new Map(items.map(x => [x.id, x]))`. Adopted at 9 call sites across 5 files: `DashboardView.tsx` (`catMap`, `walletMap`, `categoryMap`), `DiaryView.tsx` (`categoryMap`, `walletMap`), `smartMatcher.ts` (`categoryMap`), `KeywordRulesView.tsx` (`categoryMap`), `TransactionsView.tsx` (`walletMap`, `categoryMap`).
+- New `src/hooks/useSubmitHandler.ts`: owns `isSubmitting`/`error` state and one `handleSubmit(e, submit)` that calls `e.preventDefault()`, guards re-entrant submits, clears the error, awaits `submit()`, surfaces a `{success:false}` `MutationResult`'s `error` (or `defaultErrorMessage`) or a thrown error's `.message`, and calls `onSuccess()` otherwise. Adopted by 9 handlers across 7 files: `AddWalletForm.handleCreateWallet`, `WalletTransferForm.handleExecuteTransfer`, `TransactionForm.handleSubmit`, `DiaryView.handleSaveEntry`, `KeywordRulesView.handleAddRule`, `DebtsView.handleCreateDebt` + `handleExecuteRepay`, `SecurityView.handleUpdateProfile` + `handleUpdatePassword`.
+- New `src/hooks/useIdempotencyKey.ts`: `{ idempotencyKey, rotateIdempotencyKey }`, one `crypto.randomUUID()` armed per form. Adopted by `WalletTransferForm` (`transferKey`) and `TransactionForm` (`submitKey`), both wired so `rotateIdempotencyKey()` is called only from a `useSubmitHandler` `onSuccess` callback - a failed submit leaves the key untouched, matching the pre-refactor reuse-on-failure/rotate-on-success behavior exactly.
+- New `src/hooks/useTransientFlash.ts`: `{ value, flash, clear }` - a value that self-clears after `durationMs`, with `flash`'s optional third argument running a callback when the timer fires (for the two callers that pair the clear with a side effect). Adopted at 7 sites across 5 files: `DiaryView` (`saveSuccess`), `SecurityView` (`syncFeedback`, `profileSuccess`, `passwordSuccess`), `TransactionForm` (`isSubmitted`), `TransactionsView` (`importSuccessMsg`, paired with closing the import modal), `WalletPopupModal` (`transferStatus`, paired with switching back to the `OVERVIEW` tab).
+
+11 files changed (4 new): `mapUtils.ts`, `useSubmitHandler.ts`, `useIdempotencyKey.ts`, `useTransientFlash.ts` (all new) plus `TransactionForm.tsx`, `WalletPopupModal.tsx`, `AddWalletForm.tsx`, `WalletTransferForm.tsx`, `smartMatcher.ts`, `DashboardView.tsx`, `DebtsView.tsx`, `DiaryView.tsx`, `KeywordRulesView.tsx`, `SecurityView.tsx`, `TransactionsView.tsx` — net -46 lines across the 11 modified files despite each gaining 1-3 new imports.
+
+**Why**
+
+`audit-report.md`'s duplication findings behind the deferred T26/T27 rows: the same `new Map(items.map(x => [x.id, x]))` shape independently written 9 times, the same submit -> validate -> mutate -> error-or-reset shape independently written 9 times (2 of them additionally hand-rolling the idempotency-key arm/reuse/rotate lifecycle CLAUDE.md requires), and the same `setX(value); setTimeout(() => setX(cleared), N)` transient-banner shape independently written 7 times. None of these were behavior bugs - `audit-report.md` flagged them as duplication risk: any future change to, say, the idempotency-key rotation rule would have meant remembering to edit both `WalletTransferForm` and `TransactionForm` by hand, with no shared seam to change once.
+
+**Verification**
+
+```
+npm run lint                     # tsc --noEmit: clean, 0 errors
+npm run build                    # built in 5.23s; PWA precache unchanged in entry count
+CI=true npx playwright test      # 87/87 passed (4.4m), 1 worker, 0 retries
+```
+
+Ran once as a full suite after all 11 files were migrated, rather than per-file batches - unlike T22 (Phase 15), these changes are behavior-preserving refactors of already-isolated per-form state (no shared component tree being restructured), and `wallet-forms.spec.ts`, `transaction.spec.ts`, `debts.spec.ts`, `keywords.spec.ts`, `diary.spec.ts`, and `csv.spec.ts` between them exercise every migrated submit handler and every migrated flash banner at least once.
+
+**Correctness notes**
+
+- **Idempotency-key rotation was the highest-risk piece and was verified explicitly, not just by inspection.** Both `useIdempotencyKey` adoptions (`WalletTransferForm`, `TransactionForm`) call `rotateIdempotencyKey()` exclusively from inside a `useSubmitHandler` `onSuccess` callback, which only runs after `submit()` resolves without a `{success:false}` result or a thrown error - so a rejected transfer or transaction keeps its armed key for the retry, exactly matching CLAUDE.md's "reuse on failure, rotate only on success" rule. `wallet-forms.spec.ts`'s transfer tests and `transaction.spec.ts`'s submit tests both exercise the success path end-to-end; no existing spec forces a failed-then-retried submit for either form, so the failure-path key-reuse itself is verified by code inspection of the callback wiring (the key literally cannot be read by `rotateIdempotencyKey` unless `onSuccess` runs), not by a dedicated retry test - consistent with the pre-existing test coverage for this behavior, which was the same before this refactor.
+- **`buildLookupMap` is a pure structural substitution.** `new Map(items.map(x => [x.id, x]))` and `buildLookupMap(items)` produce an identical `Map` for the same input array - same key type, same value type, same insertion order - so every consumer of the 9 replaced maps (`.get(id)` lookups in JSX, `useMemo` dependents) needed no further change.
+- **Two `useTransientFlash` adoptions needed the hook's `onClear` callback, not just `flash`/`clear`.** `TransactionsView.handleCommitImport` and `WalletPopupModal`'s transfer-success handler each pair the message's self-clear with an unrelated side effect (closing the CSV import modal; switching the popup's active tab). Both now pass that side effect as `flash`'s third argument rather than duplicating a `setTimeout` alongside the hook.
+
+**Deliberately not done**
+
+- **No `disabled={isSubmitting}` wiring added to buttons that didn't already have it.** `AddWalletForm`, `DiaryView`'s save button, and `KeywordRulesView`'s add-rule button gained the hook's re-entrancy guard (submits are ignored while one is in flight) but their buttons were not additionally given a `disabled` prop or loading label - out of scope for a boilerplate-elimination pass, and changing visible button state on 3 more forms wasn't asked for.
+- **T24 (`walletFormStyles.ts` promotion) and T25 (transaction-row renderer unification) remain deferred**, exactly as recorded in `task-ledger.md` before this phase - this pass touched only the T26/T27 scope.
+- **Commit hash left as `(pending)` in this entry's header and in `task-ledger.md`'s Commit column**, filled in by the follow-up "docs: record phase 16 commit hash" commit, per this repo's established two-commit pattern for phase completion (see Phase 14/15's git history).
+
+---
+
 ## Phase 15 — unified `<Modal>` primitive: T22 (2026-09-19, commit `52f4f8a`)
 
 **Changed**

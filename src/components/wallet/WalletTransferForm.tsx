@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { ArrowLeftRight, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { useFinanceActions } from '../../context/FinanceContext';
+import { useSubmitHandler } from '../../hooks/useSubmitHandler';
+import { useIdempotencyKey } from '../../hooks/useIdempotencyKey';
 import { Wallet } from '../../types';
 import { APP_CURRENCY_SYMBOL, formatCurrencyAmount } from '../../utils/currency';
 import { todayIsoDate } from '../../utils/date';
@@ -76,9 +78,20 @@ export const WalletTransferForm: React.FC<WalletTransferFormProps> = ({
   const [transferRaw, setTransferRaw] = useState<string>('');
   const [transferValid, setTransferValid] = useState<boolean>(false);
   const [transferNote, setTransferNote] = useState<string>('Funds transfer');
-  const [transferError, setTransferError] = useState<string | null>(null);
-  const [isTransferring, setIsTransferring] = useState<boolean>(false);
-  const [transferKey, setTransferKey] = useState<string>(() => crypto.randomUUID());
+  const { idempotencyKey: transferKey, rotateIdempotencyKey } = useIdempotencyKey();
+
+  const { isSubmitting: isTransferring, error: transferError, handleSubmit: submitTransfer } = useSubmitHandler({
+    defaultErrorMessage: 'Failed to complete transfer',
+    onSuccess: () => {
+      // Clear the armed amount immediately so the form cannot be resubmitted.
+      // Rotating the key also remounts the amount input, clearing its value.
+      setTransferAmount(null);
+      setTransferRaw('');
+      setTransferValid(false);
+      rotateIdempotencyKey();
+      onTransferred();
+    },
+  });
 
   const canSubmit =
     !isTransferring &&
@@ -88,16 +101,12 @@ export const WalletTransferForm: React.FC<WalletTransferFormProps> = ({
     !!destWalletId &&
     sourceWalletId !== destWalletId;
 
-  const handleExecuteTransfer = async (e: React.FormEvent) => {
+  const handleExecuteTransfer = (e: React.FormEvent) => {
     e.preventDefault();
-    if (isTransferring) return;
     if (!canSubmit || transferAmount === null) return;
 
-    setTransferError(null);
-    setIsTransferring(true);
-
-    try {
-      const res = await addTransaction({
+    return submitTransfer(e, () =>
+      addTransaction({
         amount: transferAmount,
         rawInput: transferRaw,
         description: transferNote || 'Transfer between wallets',
@@ -106,23 +115,8 @@ export const WalletTransferForm: React.FC<WalletTransferFormProps> = ({
         type: 'TRANSFER',
         transactionDate: todayIsoDate(),
         idempotencyKey: transferKey,
-      });
-
-      if (res && !res.success) {
-        setTransferError(res.error || 'Failed to complete transfer');
-        return;
-      }
-
-      // Clear the armed amount immediately so the form cannot be resubmitted.
-      // Rotating the key also remounts the amount input, clearing its value.
-      setTransferAmount(null);
-      setTransferRaw('');
-      setTransferValid(false);
-      setTransferKey(crypto.randomUUID());
-      onTransferred();
-    } finally {
-      setIsTransferring(false);
-    }
+      })
+    );
   };
 
   const errorBanner = transferError && (

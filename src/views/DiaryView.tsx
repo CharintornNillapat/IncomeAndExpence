@@ -9,11 +9,14 @@ import {
   ArrowUpRight,
 } from 'lucide-react';
 import { useFinanceState, useFinanceActions } from '../context/FinanceContext';
+import { useSubmitHandler } from '../hooks/useSubmitHandler';
+import { useTransientFlash } from '../hooks/useTransientFlash';
 import { DiaryEntryCard } from '../components/DiaryEntryCard';
 import { FoodQuality, Transaction } from '../types';
 import { formatCurrencyAmount } from '../utils/currency';
 import { todayIsoDate, daysAgoIsoDate, formatDayInfo } from '../utils/date';
 import { exportDiaryToJson } from '../utils/csvExchange';
+import { buildLookupMap } from '../utils/mapUtils';
 
 // Static (never depends on component state), so it lives outside the
 // component instead of being recreated - or even re-useMemo'd - every render.
@@ -48,12 +51,15 @@ export const DiaryView: React.FC = () => {
   const [workoutNote, setWorkoutNote] = useState<string>('Morning cardio & bodyweight exercises');
   const [foodQuality, setFoodQuality] = useState<FoodQuality>('HEALTHY');
   const [notes, setNotes] = useState<string>('');
-  const [saveSuccess, setSaveSuccess] = useState<boolean>(false);
-  const [saveError, setSaveError] = useState<string | null>(null);
+  const { value: saveSuccess, flash: flashSaveSuccess } = useTransientFlash(false, 2500);
+  const { error: saveError, handleSubmit: submitDiaryEntry } = useSubmitHandler({
+    defaultErrorMessage: 'Failed to save diary entry',
+    onSuccess: () => flashSaveSuccess(true),
+  });
 
   // Map category and wallet helpers
-  const categoryMap = useMemo(() => new Map(categories.map((c) => [c.id, c])), [categories]);
-  const walletMap = useMemo(() => new Map(wallets.map((w) => [w.id, w])), [wallets]);
+  const categoryMap = useMemo(() => buildLookupMap(categories), [categories]);
+  const walletMap = useMemo(() => buildLookupMap(wallets), [wallets]);
 
   // Aggregated daily transaction data by ISO date string (YYYY-MM-DD)
   const dailyTransactionsMap = useMemo(() => {
@@ -81,28 +87,19 @@ export const DiaryView: React.FC = () => {
     return map;
   }, [transactions]);
 
-  const handleSaveEntry = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSaveError(null);
-
-    const res = await upsertDiaryEntry({
-      date: selectedDate,
-      mood,
-      workout,
-      workoutNote: workout ? workoutNote : undefined,
-      foodQuality,
-      notes: notes.trim() || undefined,
-    });
-
-    // Only confirm once the entry is actually persisted.
-    if (!res.success) {
-      setSaveError(res.error || 'Failed to save diary entry');
-      return;
-    }
-
-    setSaveSuccess(true);
-    setTimeout(() => setSaveSuccess(false), 2500);
-  };
+  // Only confirms once the entry is actually persisted (onSuccess fires after
+  // upsertDiaryEntry resolves with success: true).
+  const handleSaveEntry = (e: React.FormEvent) =>
+    submitDiaryEntry(e, () =>
+      upsertDiaryEntry({
+        date: selectedDate,
+        mood,
+        workout,
+        workoutNote: workout ? workoutNote : undefined,
+        foodQuality,
+        notes: notes.trim() || undefined,
+      })
+    );
 
   const loadEntryForDate = (dateStr: string) => {
     setSelectedDate(dateStr);
