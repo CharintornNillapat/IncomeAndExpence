@@ -10,11 +10,10 @@ import {
   OPTION_CLASS,
   ERROR_BANNER_CLASS,
   PRIMARY_BUTTON_CLASS,
-  WALLET_COLOR_PALETTE,
-  WALLET_TYPE_OPTIONS,
   inputClass,
   selectClass,
-} from './walletFormStyles';
+} from '../../utils/formStyles';
+import { WALLET_COLOR_PALETTE, WALLET_TYPE_OPTIONS } from './walletFormStyles';
 
 /**
  * Element ids are supplied by the caller rather than derived from a prefix:

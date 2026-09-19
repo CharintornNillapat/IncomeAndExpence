@@ -4,6 +4,7 @@ import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { AuthLoginSchema, formatZodIssues } from '../utils/zodSchemas';
 import { Lock, Mail, User as UserIcon, AlertCircle, CheckCircle2, ArrowRight, X, KeyRound } from 'lucide-react';
 import { Modal } from './Modal';
+import { LABEL_TEXT_CLASS } from '../utils/formStyles';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -178,7 +179,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
       <form onSubmit={handleAuth} className="space-y-4">
         {mode === 'signup' && (
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold uppercase tracking-wider text-stone-600 dark:text-stone-300">Full Name</label>
+            <label className={LABEL_TEXT_CLASS}>Full Name</label>
             <div className="relative">
               <UserIcon className="w-4 h-4 text-stone-400 dark:text-stone-500 absolute left-3 top-3" />
               <input
@@ -195,7 +196,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
         )}
 
         <div className="space-y-1.5">
-          <label className="text-xs font-semibold uppercase tracking-wider text-stone-600 dark:text-stone-300">Email Address</label>
+          <label className={LABEL_TEXT_CLASS}>Email Address</label>
           <div className="relative">
             <Mail className="w-4 h-4 text-stone-400 dark:text-stone-500 absolute left-3 top-3" />
             <input
@@ -213,7 +214,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
         {mode !== 'forgot' && (
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
-              <label className="text-xs font-semibold uppercase tracking-wider text-stone-600 dark:text-stone-300">Password</label>
+              <label className={LABEL_TEXT_CLASS}>Password</label>
               {mode === 'signin' && (
                 <button
                   type="button"

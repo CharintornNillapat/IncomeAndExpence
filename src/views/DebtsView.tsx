@@ -11,6 +11,7 @@ import { Debt } from '../types';
 import { DebtCardItem } from '../components/DebtCardItem';
 import { InlineMathInput } from '../components/InlineMathInput';
 import { Modal } from '../components/Modal';
+import { LABEL_CLASS, inputClass, selectClass, OPTION_CLASS, ERROR_BANNER_CLASS, PRIMARY_BUTTON_CLASS } from '../utils/formStyles';
 
 export const DebtsView: React.FC = () => {
   const { debts, wallets, addDebt, repayDebt, settleDebt, deleteDebt } = useDebts();
@@ -129,7 +130,7 @@ export const DebtsView: React.FC = () => {
       >
         <form onSubmit={handleCreateDebt} className="space-y-4">
           <div>
-            <label className="text-xs font-semibold uppercase tracking-wider text-stone-600 dark:text-stone-300 block mb-1">
+            <label className={LABEL_CLASS}>
               Debt Title *
             </label>
             <input
@@ -139,13 +140,13 @@ export const DebtsView: React.FC = () => {
               value={debtName}
               onChange={(e) => setDebtName(e.target.value)}
               placeholder="e.g. Student Loan, Car Loan"
-              className="w-full text-xs rounded-xl border border-stone-200 dark:border-stone-700 px-3.5 py-2.5 bg-stone-50 dark:bg-stone-800 text-stone-900 dark:text-stone-100 placeholder:text-stone-400 dark:placeholder:text-stone-500 focus:outline-none focus:border-stone-800 dark:focus:border-stone-400 focus:ring-2 focus:ring-stone-200 dark:focus:ring-stone-700 transition-colors"
+              className={inputClass('subtle')}
             />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <div>
-              <label className="text-xs font-semibold uppercase tracking-wider text-stone-600 dark:text-stone-300 block mb-1">
+              <label className={LABEL_CLASS}>
                 Total Amount ({APP_CURRENCY_SYMBOL}) *
               </label>
               <input
@@ -160,12 +161,12 @@ export const DebtsView: React.FC = () => {
                   setTotalAmount(val);
                   setRemainingAmount(val);
                 }}
-                className="w-full text-xs rounded-xl border border-stone-200 dark:border-stone-700 px-3.5 py-2.5 bg-stone-50 dark:bg-stone-800 text-stone-900 dark:text-stone-100 font-mono placeholder:text-stone-400 dark:placeholder:text-stone-500 focus:outline-none focus:border-stone-800 dark:focus:border-stone-400 focus:ring-2 focus:ring-stone-200 dark:focus:ring-stone-700 transition-colors"
+                className={`${inputClass('subtle')} font-mono`}
               />
             </div>
 
             <div>
-              <label className="text-xs font-semibold uppercase tracking-wider text-stone-600 dark:text-stone-300 block mb-1">
+              <label className={LABEL_CLASS}>
                 Remaining ({APP_CURRENCY_SYMBOL})
               </label>
               <input
@@ -175,14 +176,14 @@ export const DebtsView: React.FC = () => {
                 min="0"
                 value={remainingAmount}
                 onChange={(e) => setRemainingAmount(parseFloat(e.target.value) || 0)}
-                className="w-full text-xs rounded-xl border border-stone-200 dark:border-stone-700 px-3.5 py-2.5 bg-stone-50 dark:bg-stone-800 text-stone-900 dark:text-stone-100 font-mono placeholder:text-stone-400 dark:placeholder:text-stone-500 focus:outline-none focus:border-stone-800 dark:focus:border-stone-400 focus:ring-2 focus:ring-stone-200 dark:focus:ring-stone-700 transition-colors"
+                className={`${inputClass('subtle')} font-mono`}
               />
             </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <div>
-              <label className="text-xs font-semibold uppercase tracking-wider text-stone-600 dark:text-stone-300 block mb-1">
+              <label className={LABEL_CLASS}>
                 Interest Rate (% APR)
               </label>
               <input
@@ -192,12 +193,12 @@ export const DebtsView: React.FC = () => {
                 min="0"
                 value={interestRate}
                 onChange={(e) => setInterestRate(parseFloat(e.target.value) || 0)}
-                className="w-full text-xs rounded-xl border border-stone-200 dark:border-stone-700 px-3.5 py-2.5 bg-stone-50 dark:bg-stone-800 text-stone-900 dark:text-stone-100 font-mono placeholder:text-stone-400 dark:placeholder:text-stone-500 focus:outline-none focus:border-stone-800 dark:focus:border-stone-400 focus:ring-2 focus:ring-stone-200 dark:focus:ring-stone-700 transition-colors"
+                className={`${inputClass('subtle')} font-mono`}
               />
             </div>
 
             <div>
-              <label className="text-xs font-semibold uppercase tracking-wider text-stone-600 dark:text-stone-300 block mb-1">
+              <label className={LABEL_CLASS}>
                 Min Monthly ({APP_CURRENCY_SYMBOL})
               </label>
               <input
@@ -207,13 +208,13 @@ export const DebtsView: React.FC = () => {
                 min="0"
                 value={minimumPayment}
                 onChange={(e) => setMinimumPayment(parseFloat(e.target.value) || 0)}
-                className="w-full text-xs rounded-xl border border-stone-200 dark:border-stone-700 px-3.5 py-2.5 bg-stone-50 dark:bg-stone-800 text-stone-900 dark:text-stone-100 font-mono placeholder:text-stone-400 dark:placeholder:text-stone-500 focus:outline-none focus:border-stone-800 dark:focus:border-stone-400 focus:ring-2 focus:ring-stone-200 dark:focus:ring-stone-700 transition-colors"
+                className={`${inputClass('subtle')} font-mono`}
               />
             </div>
           </div>
 
           <div>
-            <label className="text-xs font-semibold uppercase tracking-wider text-stone-600 dark:text-stone-300 block mb-1">
+            <label className={LABEL_CLASS}>
               Target Payoff Date
             </label>
             <input
@@ -221,13 +222,13 @@ export const DebtsView: React.FC = () => {
               type="date"
               value={dueDate}
               onChange={(e) => setDueDate(e.target.value)}
-              className="w-full text-xs rounded-xl border border-stone-200 dark:border-stone-700 px-3.5 py-2.5 bg-stone-50 dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-none focus:border-stone-800 dark:focus:border-stone-400 focus:ring-2 focus:ring-stone-200 dark:focus:ring-stone-700 transition-colors"
+              className={inputClass('subtle')}
             />
           </div>
 
           <div className="pt-2">
             {createDebtError && (
-              <div className="bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 p-3 rounded-xl text-xs font-medium">
+              <div className={ERROR_BANNER_CLASS}>
                 {createDebtError}
               </div>
             )}
@@ -235,7 +236,7 @@ export const DebtsView: React.FC = () => {
             <button
               id="save-new-debt-btn"
               type="submit"
-              className="w-full py-2.5 sm:py-3 bg-stone-900 hover:bg-stone-800 dark:bg-stone-100 dark:hover:bg-white text-white dark:text-stone-900 rounded-xl font-semibold text-xs transition-all shadow-xs cursor-pointer"
+              className={PRIMARY_BUTTON_CLASS}
             >
               Add Debt
             </button>
@@ -253,17 +254,17 @@ export const DebtsView: React.FC = () => {
       >
         <form onSubmit={handleExecuteRepay} className="space-y-4">
           <div>
-            <label className="text-xs font-semibold uppercase tracking-wider text-stone-600 dark:text-stone-300 block mb-1">
+            <label className={LABEL_CLASS}>
               Pay From Wallet *
             </label>
             <select
               id="repay-wallet-select"
               value={selectedWalletId}
               onChange={(e) => setSelectedWalletId(e.target.value)}
-              className="w-full text-xs rounded-xl border border-stone-200 dark:border-stone-700 px-3 py-2.5 bg-stone-50 dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-none focus:border-stone-800 dark:focus:border-stone-400 focus:ring-2 focus:ring-stone-200 dark:focus:ring-stone-700 transition-colors"
+              className={selectClass('subtle')}
             >
               {wallets.map((w) => (
-                <option key={w.id} value={w.id} className="dark:bg-stone-800 dark:text-stone-100">
+                <option key={w.id} value={w.id} className={OPTION_CLASS}>
                   {w.name} ({formatCurrencyAmount(w.balance)})
                 </option>
               ))}
@@ -284,7 +285,7 @@ export const DebtsView: React.FC = () => {
           />
 
           <div>
-            <label className="text-xs font-semibold uppercase tracking-wider text-stone-600 dark:text-stone-300 block mb-1">
+            <label className={LABEL_CLASS}>
               Note
             </label>
             <input
@@ -293,7 +294,7 @@ export const DebtsView: React.FC = () => {
               value={repayNote}
               onChange={(e) => setRepayNote(e.target.value)}
               placeholder="e.g. Monthly payment"
-              className="w-full text-xs rounded-xl border border-stone-200 dark:border-stone-700 px-3.5 py-2.5 bg-stone-50 dark:bg-stone-800 text-stone-900 dark:text-stone-100 placeholder:text-stone-400 dark:placeholder:text-stone-500 focus:outline-none focus:border-stone-800 dark:focus:border-stone-400 focus:ring-2 focus:ring-stone-200 dark:focus:ring-stone-700 transition-colors"
+              className={inputClass('subtle')}
             />
           </div>
 

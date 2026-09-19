@@ -11,6 +11,7 @@ import { matchSmartDescription } from '../utils/smartMatcher';
 import { safeEvaluateMath } from '../utils/mathEvaluator';
 import { APP_CURRENCY_SYMBOL, formatCurrencyAmount } from '../utils/currency';
 import { todayIsoDate } from '../utils/date';
+import { LABEL_TEXT_CLASS, OPTION_CLASS, ERROR_BANNER_CLASS } from '../utils/formStyles';
 
 interface TransactionFormProps {
   wallets: Wallet[];
@@ -231,7 +232,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
       {/* 2. Smart Description Input with auto-tagging */}
       <div className="flex flex-col gap-1.5">
         <div className="flex items-center justify-between flex-wrap gap-1">
-          <label htmlFor={`${formId}-desc`} className="text-xs font-semibold uppercase tracking-wider text-stone-600 dark:text-stone-300">
+          <label htmlFor={`${formId}-desc`} className={LABEL_TEXT_CLASS}>
             Description / Note
           </label>
           {autoMatchedCategory && (
@@ -279,7 +280,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {/* Source Wallet */}
             <div className="flex flex-col gap-1.5">
-              <label htmlFor={`${formId}-wallet`} className="text-xs font-semibold uppercase tracking-wider text-stone-600 dark:text-stone-300">
+              <label htmlFor={`${formId}-wallet`} className={LABEL_TEXT_CLASS}>
                 {type === 'TRANSFER' ? 'From Wallet' : 'Paying Wallet'}
               </label>
               <select
@@ -289,7 +290,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
                 className="w-full text-sm rounded-xl border border-stone-200 dark:border-stone-700 px-3 py-2.5 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-none focus:border-stone-800 dark:focus:border-stone-400 focus:ring-2 focus:ring-stone-200 dark:focus:ring-stone-700 transition-colors"
               >
                 {wallets.map((w) => (
-                  <option key={w.id} value={w.id} className="dark:bg-stone-800 dark:text-stone-100">
+                  <option key={w.id} value={w.id} className={OPTION_CLASS}>
                     {w.name} ({formatCurrencyAmount(w.balance)})
                   </option>
                 ))}
@@ -299,7 +300,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
             {/* Destination Wallet for transfers, Target Debt for repayments, OR Category for regular transactions */}
             {type === 'TRANSFER' ? (
               <div className="flex flex-col gap-1.5">
-                <label htmlFor={`${formId}-dest-wallet`} className="text-xs font-semibold uppercase tracking-wider text-stone-600 dark:text-stone-300">
+                <label htmlFor={`${formId}-dest-wallet`} className={LABEL_TEXT_CLASS}>
                   To Wallet
                 </label>
                 <select
@@ -309,7 +310,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
                   className="w-full text-sm rounded-xl border border-stone-200 dark:border-stone-700 px-3 py-2.5 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-none focus:border-stone-800 dark:focus:border-stone-400 focus:ring-2 focus:ring-stone-200 dark:focus:ring-stone-700 transition-colors"
                 >
                   {destinationWalletOptions.map((w) => (
-                    <option key={w.id} value={w.id} className="dark:bg-stone-800 dark:text-stone-100">
+                    <option key={w.id} value={w.id} className={OPTION_CLASS}>
                       {w.name} ({formatCurrencyAmount(w.balance)})
                     </option>
                   ))}
@@ -317,7 +318,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
               </div>
             ) : type === 'DEBT_REPAYMENT' ? (
               <div className="flex flex-col gap-1.5">
-                <label htmlFor={`${formId}-debt`} className="text-xs font-semibold uppercase tracking-wider text-stone-600 dark:text-stone-300">
+                <label htmlFor={`${formId}-debt`} className={LABEL_TEXT_CLASS}>
                   Debt Target
                 </label>
                 <select
@@ -327,7 +328,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
                   className="w-full text-sm rounded-xl border border-stone-200 dark:border-stone-700 px-3 py-2.5 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-none focus:border-stone-800 dark:focus:border-stone-400 focus:ring-2 focus:ring-stone-200 dark:focus:ring-stone-700 transition-colors"
                 >
                   {debts.map((d) => (
-                    <option key={d.id} value={d.id} className="dark:bg-stone-800 dark:text-stone-100">
+                    <option key={d.id} value={d.id} className={OPTION_CLASS}>
                       {d.name} ({formatCurrencyAmount(d.remainingAmount)} remaining)
                     </option>
                   ))}
@@ -335,7 +336,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
               </div>
             ) : (
               <div className="flex flex-col gap-1.5">
-                <label htmlFor={`${formId}-category`} className="text-xs font-semibold uppercase tracking-wider text-stone-600 dark:text-stone-300">
+                <label htmlFor={`${formId}-category`} className={LABEL_TEXT_CLASS}>
                   Category
                 </label>
                 <div className="relative">
@@ -349,7 +350,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
                     className="w-full text-sm rounded-xl border border-stone-200 dark:border-stone-700 px-3 py-2.5 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-none focus:border-stone-800 dark:focus:border-stone-400 focus:ring-2 focus:ring-stone-200 dark:focus:ring-stone-700 transition-colors"
                   >
                     {categories.map((c) => (
-                      <option key={c.id} value={c.id} className="dark:bg-stone-800 dark:text-stone-100">
+                      <option key={c.id} value={c.id} className={OPTION_CLASS}>
                         {c.name}
                       </option>
                     ))}
@@ -361,7 +362,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
 
           {/* 4. Date Picker */}
           <div className="flex flex-col gap-1.5">
-            <label htmlFor={`${formId}-date`} className="text-xs font-semibold uppercase tracking-wider text-stone-600 dark:text-stone-300">
+            <label htmlFor={`${formId}-date`} className={LABEL_TEXT_CLASS}>
               Transaction Date
             </label>
             <input
@@ -402,7 +403,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
         </motion.button>
 
         {submitError && (
-          <div className="bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 p-3 rounded-xl text-xs font-medium flex items-center gap-2 mt-2">
+          <div className={`${ERROR_BANNER_CLASS} flex items-center gap-2 mt-2`}>
             <AlertCircle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0" />
             <span>{submitError}</span>
           </div>

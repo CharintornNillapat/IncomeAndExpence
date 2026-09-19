@@ -5,6 +5,7 @@ import { useSubmitHandler } from '../hooks/useSubmitHandler';
 import { matchSmartDescription } from '../utils/smartMatcher';
 import { formatCurrencyAmount } from '../utils/currency';
 import { buildLookupMap } from '../utils/mapUtils';
+import { LABEL_CLASS, inputClass, ERROR_BANNER_CLASS, PRIMARY_BUTTON_COMPACT_CLASS } from '../utils/formStyles';
 
 export const KeywordRulesView: React.FC = () => {
   const { keywordRules, categories } = useFinanceState();
@@ -56,7 +57,7 @@ export const KeywordRulesView: React.FC = () => {
 
             <form onSubmit={handleAddRule} className="space-y-4">
               <div>
-                <label className="text-xs font-semibold uppercase tracking-wider text-stone-600 dark:text-stone-300 block mb-1">
+                <label className={LABEL_CLASS}>
                   Trigger Keyword / Phrase *
                 </label>
                 <input
@@ -66,12 +67,12 @@ export const KeywordRulesView: React.FC = () => {
                   value={keyword}
                   onChange={(e) => setKeyword(e.target.value)}
                   placeholder="e.g., starbucks, netflix, gas, groceries"
-                  className="w-full text-xs rounded-xl border border-stone-200 dark:border-stone-700 px-3.5 py-2.5 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 placeholder:text-stone-400 dark:placeholder:text-stone-500 focus:outline-none focus:border-stone-800 dark:focus:border-stone-400"
+                  className={inputClass('plain')}
                 />
               </div>
 
               <div>
-                <label className="text-xs font-semibold uppercase tracking-wider text-stone-600 dark:text-stone-300 block mb-1">
+                <label className={LABEL_CLASS}>
                   Assign to Category *
                 </label>
                 <select
@@ -89,7 +90,7 @@ export const KeywordRulesView: React.FC = () => {
               </div>
 
               {ruleError && (
-                <div className="bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 p-3 rounded-xl text-xs font-medium">
+                <div className={ERROR_BANNER_CLASS}>
                   {ruleError}
                 </div>
               )}
@@ -97,7 +98,7 @@ export const KeywordRulesView: React.FC = () => {
               <button
                 id="save-keyword-rule-btn"
                 type="submit"
-                className="w-full py-2.5 bg-stone-900 hover:bg-stone-800 dark:bg-stone-100 dark:hover:bg-white text-white dark:text-stone-900 rounded-xl font-semibold text-xs transition-all shadow-xs cursor-pointer"
+                className={PRIMARY_BUTTON_COMPACT_CLASS}
               >
                 Add Rule
               </button>

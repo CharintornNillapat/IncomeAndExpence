@@ -20,6 +20,7 @@ import { TransactionTableRow } from '../components/TransactionTableRow';
 import { Modal } from '../components/Modal';
 import { buildLookupMap } from '../utils/mapUtils';
 import { useTransientFlash } from '../hooks/useTransientFlash';
+import { OPTION_CLASS } from '../utils/formStyles';
 
 export const TransactionsView: React.FC = () => {
   const {
@@ -249,7 +250,7 @@ export const TransactionsView: React.FC = () => {
             >
               <option value="ALL">All Wallets</option>
               {wallets.map((w) => (
-                <option key={w.id} value={w.id} className="dark:bg-stone-800 dark:text-stone-100">
+                <option key={w.id} value={w.id} className={OPTION_CLASS}>
                   {w.name}
                 </option>
               ))}

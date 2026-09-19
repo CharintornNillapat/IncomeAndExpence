@@ -243,11 +243,42 @@ CI=true npx playwright test      # 87/87 passed (4.4m), 1 worker, 0 retries
 
 - **T24 (`walletFormStyles.ts` promotion) and T25 (unify the 4 transaction-row renderers) remain deferred**, untouched by this pass - out of this task's stated scope (T26/T27 only).
 
+## Phase 17 — shared form styles (approved to execute)
+
+| # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
+|---|---|---|---|---|---|---|---|---|---|---|
+| T24 | Promote `walletFormStyles.ts`; adopt across ~12 files | new `src/utils/formStyles.ts`; `walletFormStyles.ts` (trimmed), `AddWalletForm.tsx`, `WalletTransferForm.tsx`, `TransactionForm.tsx`, `AuthModal.tsx`, `InlineMathInput.tsx`, `DiaryView.tsx`, `KeywordRulesView.tsx`, `DebtsView.tsx`, `SecurityView.tsx`, `TransactionsView.tsx`, `DebtCardItem.tsx` | Med | Med | 6h | done | T12 (done) | (pending) | tsc clean; `CI=true npx playwright test` 87/87, 0 retries; build succeeds in 4.98s | 12 consumer files migrated onto the promoted module (2 pre-existing + 10 newly adopted); net -24 lines across those 12 files plus the new module; `DebtsView`/`SecurityView` JS chunks shrank (14.55→10.67 kB, 17.07→15.56 kB) |
+
+**Notes on execution:**
+- **Every migrated class string was verified as a byte-for-byte (order-insensitive) token match to the shared constant before swapping**, per this task's own "do not alter visual styling unexpectedly" guardrail. Where a file's existing class string was a strict *superset* of a shared constant (extra non-conflicting utilities like `flex items-center gap-2` or `font-mono`), the swap composed `` `${SHARED_CLASS} ...extra}` `` rather than dropping the extras. Where a string differed in a rendering-relevant token (padding scale, font size, color shade, or a missing/extra responsive modifier), it was left untouched - see the divergences below.
+- **Two label shapes existed, not one.** `walletFormStyles.ts`'s original `LABEL_CLASS` bakes in `block mb-1`, which is correct only for labels in a bare (non-gapped) wrapper `<div>` - `AddWalletForm`, `DebtsView`, `KeywordRulesView`, `SecurityView`, and one `DiaryView` label all use that pattern. `TransactionForm`, `AuthModal`, and `InlineMathInput` instead wrap label+input in a `flex flex-col gap-1.5` / `space-y-1.5` container, so their labels carry no margin of their own - the parent's gap owns the spacing. Adding `block mb-1` there would have stacked an extra ~4px under the parent's own gap. The promoted module splits this into `LABEL_TEXT_CLASS` (bare) and `LABEL_CLASS` (`= LABEL_TEXT_CLASS + ' block mb-1'`), and each of the 8 consumers uses whichever matches its existing wrapper.
+- **A second, previously untracked duplicate was found and centralized: a "compact" primary button (no `sm:py-3` responsive growth).** `DebtCardItem`, `DiaryView`'s save button, `SecurityView`'s two account-action buttons, and `KeywordRulesView`'s submit all independently retyped an identical string that differs from the original `PRIMARY_BUTTON_CLASS` by exactly one token (missing `sm:py-3`). Promoted as `PRIMARY_BUTTON_COMPACT_CLASS`, closing a 5-site duplicate the original audit finding didn't name explicitly.
+- **`SECONDARY_BUTTON_CLASS` is defined but not yet adopted anywhere** - no consumer in scope has a genuine full-width secondary/cancel form action (the visually similar `bg-stone-100`-style buttons found elsewhere are compact toolbar/icon buttons, a different UI role). Exported per this task's explicit "Primary & Secondary" ask and ready for the next form that needs it, same precedent as T22's unused `footer` slot.
+- **`walletFormStyles.ts` kept as a thin wallet-domain file**, not deleted: it still owns `WALLET_COLOR_PALETTE` and `WALLET_TYPE_OPTIONS` (data specific to wallets, not generic form styling) and re-exports `FieldTone` for convenience. `AddWalletForm`/`WalletTransferForm` now import style primitives from `utils/formStyles.ts` and the two domain constants from the trimmed `walletFormStyles.ts`.
+
+**Verification**
+
+```
+npm run lint                     # tsc --noEmit: clean, 0 errors
+npm run build                    # built in 4.98s; PWA precache 26 entries (1484.29 KiB, down from 1491.34 KiB)
+CI=true npx playwright test      # 87/87 passed (4.4m), 1 worker, 0 retries
+```
+
+**Deliberately not done**
+
+- **`WalletPopupModal.tsx` audited, not touched.** Its inline balance-adjustment editor and wallet-activity filter use a genuinely different, more compact style family (`text-[10px]` micro-labels, `rounded-lg` instead of `rounded-xl`, different padding scale) - none of its label/input/select/button strings are an exact match to any shared constant. Forcing them through the shared module would shrink padding and font sizes that were deliberately sized for a dense inline popover, which is exactly the kind of "unexpected visual change" this task's guardrail forbids.
+- **`TransactionsView`'s filter-bar and CSV-import inputs left untouched**, despite being named in this task's scope, for the same reason: every one of them bakes in `min-h-[44px]` (a deliberate mobile touch-target minimum used consistently across that view's toolbar) and `py-2`/icon-affordance padding (`pl-9 pr-8` for the search field), neither of which the shared `inputClass`/`selectClass` provide. The one exact match available there - the wallet-filter `<option>` elements - was adopted (`OPTION_CLASS`); the rest is a distinct "toolbar filter" style, not a "write-form field" style, and unifying it would have meant shrinking touch targets or extending the shared module's API for a single caller.
+- **`TransactionForm`'s and `AuthModal`'s primary text inputs left untouched.** Both use `text-sm` (a deliberately larger, more prominent field for the app's two "front door" forms - quick-add and sign-in) where the shared `inputClass` is `text-xs`; `AuthModal`'s inputs are additionally icon-prefixed (`pl-9`) with a different border/ring/background recipe entirely. Neither is a re-typed duplicate of the wallet-form style, so neither was forced onto it.
+- **`AuthModal`'s error/success banners left untouched** - its banner uses `text-rose-800`/no `font-medium` plus an icon-row layout, versus the shared `ERROR_BANNER_CLASS`'s `text-rose-700`/`font-medium`, a real (if subtle) color and weight difference, not just extra classes.
+- **`KeywordRulesView`'s category `<select>` left untouched** - it uses `px-3.5` (matching its sibling text input) where `selectClass` always applies `px-3`; swapping would have shrunk its horizontal padding.
+- **`DiaryView`'s two `mb-2` section labels (mood rating, physical activity) and its date-picker/notes-textarea inputs left untouched** - the `mb-2` labels are a real, different spacing value from the `mb-1` `LABEL_CLASS` (not a duplicate), and the date picker / textarea both use a distinct compact padding recipe (`px-3 py-1.5` / `p-3`) not covered by `inputClass`.
+- **`SecurityView`'s disabled email input and its `p-2.5`-sized success/error banners left untouched** - the disabled input is deliberately muted (`text-stone-500`, `cursor-not-allowed`, `font-mono`) rather than styled like a live field, and its banners use a smaller `p-2.5` with different text-color shades than `ERROR_BANNER_CLASS`'s `p-3`.
+- **T25 (unify the 4 transaction-row renderers) remains deferred**, untouched by this pass.
+
 ## Deferred — documented, awaiting separate approval
 
 | # | Task | Files | Impact | Risk | Effort | Status | Blocked by |
 |---|---|---|---|---|---|---|---|
-| T24 | Promote `walletFormStyles.ts`; adopt across ~12 files | `walletFormStyles.ts` + 10 consumers | Med | Med | 6h | todo | T12 |
 | T25 | Unify the 4 transaction-row renderers | see audit-report §E | Med | High | 8h | todo | consider dropping — see plan traps §19 |
 | T18 | `Promise.all` the bulk-import wallet updates | `FinanceContext.tsx:1305-1312` | Low-Med | Med | 1h | todo | T12 CSV spec |
 | T30 | Promote constraints into `CLAUDE.md` | `CLAUDE.md`, `constraints-to-promote.md` | Med | Low | 2h | todo | drains after each task above ships |

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useId } from 'react';
 import { Calculator, Check, AlertCircle, Sparkles } from 'lucide-react';
 import { safeEvaluateMath } from '../utils/mathEvaluator';
 import { APP_CURRENCY_SYMBOL } from '../utils/currency';
+import { LABEL_TEXT_CLASS } from '../utils/formStyles';
 
 export interface InlineMathInputProps {
   id?: string;
@@ -117,7 +118,7 @@ export const InlineMathInput: React.FC<InlineMathInputProps> = ({
     <div id={`${inputId}-container`} className="flex flex-col gap-1.5">
       {label && (
         <div className="flex items-center justify-between">
-          <label htmlFor={inputId} className="text-xs font-semibold uppercase tracking-wider text-stone-600 dark:text-stone-300">
+          <label htmlFor={inputId} className={LABEL_TEXT_CLASS}>
             {label} {required && <span className="text-rose-500">*</span>}
           </label>
           {hasCalculation && evaluatedAmount !== null && (

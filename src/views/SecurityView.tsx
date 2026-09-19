@@ -22,6 +22,7 @@ import { useFinanceState, useFinanceActions } from '../context/FinanceContext';
 import { useSubmitHandler } from '../hooks/useSubmitHandler';
 import { useTransientFlash } from '../hooks/useTransientFlash';
 import { supabase } from '../lib/supabase';
+import { LABEL_CLASS, inputClass, PRIMARY_BUTTON_COMPACT_CLASS } from '../utils/formStyles';
 
 export const SecurityView: React.FC = () => {
   const {
@@ -339,7 +340,7 @@ export const SecurityView: React.FC = () => {
 
             <form onSubmit={handleUpdateProfile} className="space-y-3.5">
               <div>
-                <label className="text-xs font-semibold uppercase tracking-wider text-stone-600 dark:text-stone-300 block mb-1">
+                <label className={LABEL_CLASS}>
                   Display Name
                 </label>
                 <input
@@ -348,12 +349,12 @@ export const SecurityView: React.FC = () => {
                   value={nameInput}
                   onChange={(e) => setNameInput(e.target.value)}
                   placeholder="e.g. Alex Hunter"
-                  className="w-full text-xs rounded-xl border border-stone-200 dark:border-stone-700 px-3.5 py-2.5 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 placeholder:text-stone-400 dark:placeholder:text-stone-500 focus:outline-none focus:border-stone-800 dark:focus:border-stone-400"
+                  className={inputClass('plain')}
                 />
               </div>
 
               <div>
-                <label className="text-xs font-semibold uppercase tracking-wider text-stone-600 dark:text-stone-300 block mb-1">
+                <label className={LABEL_CLASS}>
                   Email Address
                 </label>
                 <input
@@ -381,7 +382,7 @@ export const SecurityView: React.FC = () => {
               <button
                 type="submit"
                 disabled={isUpdatingProfile}
-                className="w-full py-2.5 bg-stone-900 hover:bg-stone-800 dark:bg-stone-100 dark:hover:bg-white text-white dark:text-stone-900 rounded-xl font-semibold text-xs transition-all shadow-xs flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                className={`${PRIMARY_BUTTON_COMPACT_CLASS} flex items-center justify-center gap-2 disabled:opacity-50`}
               >
                 <Save className="w-3.5 h-3.5" />
                 <span>{isUpdatingProfile ? 'Saving...' : 'Save Profile'}</span>
@@ -401,7 +402,7 @@ export const SecurityView: React.FC = () => {
 
             <form onSubmit={handleUpdatePassword} className="space-y-3.5">
               <div>
-                <label className="text-xs font-semibold uppercase tracking-wider text-stone-600 dark:text-stone-300 block mb-1">
+                <label className={LABEL_CLASS}>
                   New Password
                 </label>
                 <input
@@ -410,12 +411,12 @@ export const SecurityView: React.FC = () => {
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
                   placeholder="Min 6 characters"
-                  className="w-full text-xs rounded-xl border border-stone-200 dark:border-stone-700 px-3.5 py-2.5 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 placeholder:text-stone-400 dark:placeholder:text-stone-500 focus:outline-none focus:border-stone-800 dark:focus:border-stone-400"
+                  className={inputClass('plain')}
                 />
               </div>
 
               <div>
-                <label className="text-xs font-semibold uppercase tracking-wider text-stone-600 dark:text-stone-300 block mb-1">
+                <label className={LABEL_CLASS}>
                   Confirm Password
                 </label>
                 <input
@@ -424,7 +425,7 @@ export const SecurityView: React.FC = () => {
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   placeholder="Repeat new password"
-                  className="w-full text-xs rounded-xl border border-stone-200 dark:border-stone-700 px-3.5 py-2.5 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 placeholder:text-stone-400 dark:placeholder:text-stone-500 focus:outline-none focus:border-stone-800 dark:focus:border-stone-400"
+                  className={inputClass('plain')}
                 />
               </div>
 
@@ -445,7 +446,7 @@ export const SecurityView: React.FC = () => {
               <button
                 type="submit"
                 disabled={isUpdatingPassword || !newPassword}
-                className="w-full py-2.5 bg-stone-900 hover:bg-stone-800 dark:bg-stone-100 dark:hover:bg-white text-white dark:text-stone-900 rounded-xl font-semibold text-xs transition-all shadow-xs flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                className={`${PRIMARY_BUTTON_COMPACT_CLASS} flex items-center justify-center gap-2 disabled:opacity-50`}
               >
                 <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
                 <span>{isUpdatingPassword ? 'Updating...' : 'Update Password'}</span>

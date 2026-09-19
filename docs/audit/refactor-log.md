@@ -4,6 +4,53 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
+## Phase 17 — shared form styles: T24 (2026-09-19, commit `(pending)`)
+
+**Changed**
+
+- New `src/utils/formStyles.ts`, promoted from `wallet/walletFormStyles.ts`: `FieldTone`, `LABEL_TEXT_CLASS` (bare label text), `LABEL_CLASS` (`= LABEL_TEXT_CLASS + ' block mb-1'`), `inputClass(tone)`, `selectClass(tone)`, `OPTION_CLASS`, `ERROR_BANNER_CLASS`, `PRIMARY_BUTTON_CLASS`, `PRIMARY_BUTTON_COMPACT_CLASS` (new - see below), `SECONDARY_BUTTON_CLASS` (new, unadopted).
+- `src/components/wallet/walletFormStyles.ts` trimmed to wallet-only domain data (`WALLET_COLOR_PALETTE`, `WALLET_TYPE_OPTIONS`) plus a `FieldTone` re-export; its style primitives now live in `formStyles.ts`.
+- `AddWalletForm.tsx`, `WalletTransferForm.tsx`: import path updated to the promoted module (no behavior change - the two files that already used the old module's classes).
+- `TransactionForm.tsx`: 5 labels -> `LABEL_TEXT_CLASS`, 4 `<option>` elements -> `OPTION_CLASS`, 1 error banner -> `` `${ERROR_BANNER_CLASS} flex items-center gap-2 mt-2` ``.
+- `AuthModal.tsx`: 3 labels -> `LABEL_TEXT_CLASS`.
+- `InlineMathInput.tsx`: 1 label -> `LABEL_TEXT_CLASS`.
+- `DiaryView.tsx`: 1 label (the `mb-1` one - see Correctness notes) -> `LABEL_CLASS`; save button -> `` `${PRIMARY_BUTTON_COMPACT_CLASS} flex items-center justify-center gap-2` ``.
+- `KeywordRulesView.tsx`: 2 labels -> `LABEL_CLASS`, keyword input -> `inputClass('plain')`, error banner -> `ERROR_BANNER_CLASS`, submit button -> `PRIMARY_BUTTON_COMPACT_CLASS`.
+- `DebtsView.tsx`: 8 labels -> `LABEL_CLASS`; 6 inputs -> `inputClass('subtle')` (4 with a `font-mono` suffix); repay-wallet `<select>` -> `selectClass('subtle')` + `OPTION_CLASS`; error banner -> `ERROR_BANNER_CLASS`; Add Debt submit -> `PRIMARY_BUTTON_CLASS`.
+- `SecurityView.tsx`: 4 labels -> `LABEL_CLASS`; 3 inputs (profile name, new password, confirm password) -> `inputClass('plain')`; 2 submit buttons -> `` `${PRIMARY_BUTTON_COMPACT_CLASS} flex items-center justify-center gap-2 disabled:opacity-50` ``.
+- `TransactionsView.tsx`: wallet-filter `<option>` elements -> `OPTION_CLASS`.
+- `DebtCardItem.tsx`: repay button -> `` `${PRIMARY_BUTTON_COMPACT_CLASS} flex items-center justify-center gap-2` ``.
+
+12 files changed (1 new): `formStyles.ts` (new) plus the 11 files above - net -24 lines across the 12 modified files despite each gaining an import.
+
+**Why**
+
+`audit-report.md`'s finding: `walletFormStyles.ts` centralized label/input/select/option/error/button classes, but only its own two consumers (`AddWalletForm`, `WalletTransferForm`) used it - the identical Tailwind strings were independently re-typed across `DebtsView`, `KeywordRulesView`, `DiaryView`, `SecurityView`, `TransactionsView`, `TransactionForm`, `AuthModal`, `DebtCardItem`, and `InlineMathInput`. Any future styling change (a new focus-ring color, a border-radius tweak) would have meant hand-editing every one of those call sites and hoping none were missed - the same duplication-risk shape as T26/T27, applied to CSS classes instead of Map construction or submit handlers.
+
+**Verification**
+
+```
+npm run lint                     # tsc --noEmit: clean, 0 errors
+npm run build                    # built in 4.98s; PWA precache 1491.34 -> 1484.29 KiB
+CI=true npx playwright test      # 87/87 passed (4.4m), 1 worker, 0 retries
+```
+
+**Correctness notes**
+
+- **Every migration was gated on an exact (order-insensitive) token match**, per this task's explicit "do not alter visual styling unexpectedly" guardrail - see `task-ledger.md`'s Phase 17 entry for the full list of near-miss strings that were deliberately left alone (`WalletPopupModal`'s compact inline editors, `TransactionsView`'s `min-h-[44px]` touch-target filter bar, `TransactionForm`/`AuthModal`'s intentionally-larger `text-sm` inputs, `AuthModal`'s differently-colored banners, `KeywordRulesView`'s wider-padded category select, `DiaryView`'s `mb-2` section labels and compact textarea/date-picker, `SecurityView`'s muted disabled-email input and smaller `p-2.5` banners). Where a real per-property difference existed (padding scale, font size, color shade, a present/missing responsive modifier), the element was left untouched rather than forced through the shared constant.
+- **Two label shapes, not one - `LABEL_TEXT_CLASS` vs `LABEL_CLASS`.** The original `walletFormStyles.ts` had only the `block mb-1` variant, correct for labels in a bare wrapper `<div>` with no `gap`/`space-y`. `TransactionForm`, `AuthModal`, and `InlineMathInput` instead wrap label+input in a `flex flex-col gap-1.5` / `space-y-1.5` container, where the label itself carries no margin - the wrapper's gap owns the spacing. Promoting only the `block mb-1` variant and applying it everywhere would have added a spurious ~4px under 3 files' label/input gaps. Verified by inspecting each label's parent wrapper before choosing which constant to apply, not by visual diffing.
+- **A second real duplicate was found during this pass that the original audit finding didn't name: a "compact" primary button missing `sm:py-3`.** `DebtCardItem`, `DiaryView`, `SecurityView` (x2), and `KeywordRulesView` all independently retyped a string identical to `PRIMARY_BUTTON_CLASS` except for that one responsive token. Promoted as `PRIMARY_BUTTON_COMPACT_CLASS` rather than silently forcing all 5 onto `PRIMARY_BUTTON_CLASS` (which would have added padding growth at the `sm:` breakpoint none of the 5 previously had).
+- **`SECONDARY_BUTTON_CLASS` was defined but has zero adopters.** No in-scope file has a genuine full-width secondary/cancel form action - the visually similar `bg-stone-100` buttons elsewhere in the app are compact toolbar/icon buttons, a different UI role entirely. Exported anyway per the task's explicit "Primary & Secondary" ask, same precedent as `Modal.tsx`'s unused `footer` slot from T22 (Phase 15).
+- **DiaryView had 3 labels sharing the same base text, only 1 of which was an exact `LABEL_CLASS` match.** Its two `1. Daily Mood Rating` / `3. Physical Activity` section labels use `block mb-2` (larger spacing, since they precede a button grid rather than a single input) - a real, different value from `LABEL_CLASS`'s `mb-1`, not a duplicate of it. Only the "4. Daily Reflection Notes" label (genuinely `mb-1`) was migrated.
+
+**Deliberately not done**
+
+- **`WalletPopupModal.tsx` audited and left untouched** - its inline balance-adjustment editor and activity-tab wallet select use a distinct, more compact style family (`text-[10px]` micro-labels, `rounded-lg`, different padding) with no exact matches to the shared module.
+- **T25 (unify the 4 transaction-row renderers) remains deferred**, exactly as recorded in `task-ledger.md` before this phase.
+- **Commit hash left as `(pending)`**, filled in by the follow-up "docs: record phase 17 commit hash" commit, per this repo's established two-commit pattern (see Phase 14-16's git history).
+
+---
+
 ## Phase 16 — shared map/form hooks: T26, T27 (2026-09-19, commit `b72b8e9`)
 
 **Changed**

@@ -15,7 +15,7 @@ import {
   ERROR_BANNER_CLASS,
   inputClass,
   selectClass,
-} from './walletFormStyles';
+} from '../../utils/formStyles';
 
 export interface WalletTransferFormIds {
   source: string;

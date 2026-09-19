@@ -4,7 +4,7 @@ Promotion rule: **nothing moves into `CLAUDE.md` until the code already complies
 
 | Rule (imperative, present tense) | Evidence (`path:line`) | Holds in code? | Target `CLAUDE.md` section | After task | Promoted (sha) |
 |---|---|---|---|---|---|
-| Field styling comes from `walletFormStyles.ts`; never re-type Tailwind class strings for inputs/labels/buttons/error banners | `walletFormStyles.ts` used by only 2 of ~12 eligible files | No | Coding Conventions → Styling | T24 | |
+| Field styling comes from `src/utils/formStyles.ts` for any input/label/button/error banner that matches its shared shape; a genuinely distinct style (different padding scale, font size, or color, documented in refactor-log.md Phase 17) may stay inline | `formStyles.ts` now used by 12 files (was 2) | Partially — rule text needs the "matches its shared shape" qualifier before promotion, since several audited exceptions (`WalletPopupModal`, `TransactionsView`'s touch-target filter bar, `AuthModal`'s larger inputs) are correct as inline, not violations | Coding Conventions → Styling | T24 | |
 | Build id→entity lookup maps through a shared helper; never write `new Map(x.map(...))` in a component body | 7 independent copies, audit-report §E | No | Coding Conventions | T26 | |
 | No component above a view subscribes to finance state | `App.tsx:61` | No | State: context + domain hooks | T1 | |
 | Views read state via `useFinanceState()` / domain hooks and actions via `useFinanceActions()`; `useFinance()` no longer exists | `FinanceContext.tsx:1498-1572` today has one combined value | No | State: context + domain hooks | T14 | |

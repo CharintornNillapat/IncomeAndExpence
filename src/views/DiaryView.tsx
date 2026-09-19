@@ -15,6 +15,7 @@ import { DiaryEntryCard } from '../components/DiaryEntryCard';
 import { FoodQuality, Transaction } from '../types';
 import { formatCurrencyAmount } from '../utils/currency';
 import { todayIsoDate, daysAgoIsoDate, formatDayInfo } from '../utils/date';
+import { LABEL_CLASS, PRIMARY_BUTTON_COMPACT_CLASS } from '../utils/formStyles';
 import { exportDiaryToJson } from '../utils/csvExchange';
 import { buildLookupMap } from '../utils/mapUtils';
 
@@ -336,7 +337,7 @@ export const DiaryView: React.FC = () => {
 
             {/* 4. Journal / Mindful Reflection */}
             <div>
-              <label className="text-xs font-semibold uppercase tracking-wider text-stone-600 dark:text-stone-300 block mb-1">
+              <label className={LABEL_CLASS}>
                 4. Daily Reflection Notes (Optional)
               </label>
               <textarea
@@ -354,7 +355,7 @@ export const DiaryView: React.FC = () => {
               <button
                 id="save-diary-entry-btn"
                 type="submit"
-                className="w-full py-2.5 bg-stone-900 hover:bg-stone-800 dark:bg-stone-100 dark:hover:bg-white text-white dark:text-stone-900 rounded-xl font-semibold text-xs transition-all shadow-xs flex items-center justify-center gap-2 cursor-pointer"
+                className={`${PRIMARY_BUTTON_COMPACT_CLASS} flex items-center justify-center gap-2`}
               >
                 <Check className="w-4 h-4" />
                 <span>Save Diary Log for {selectedDayInfo.dayName} ({selectedDate})</span>

@@ -2,6 +2,7 @@ import React from 'react';
 import { TrendingDown, CheckCircle2, Check, Trash2, CreditCard } from 'lucide-react';
 import { Debt } from '../types';
 import { formatCurrencyAmount } from '../utils/currency';
+import { PRIMARY_BUTTON_COMPACT_CLASS } from '../utils/formStyles';
 
 interface DebtCardItemProps {
   debt: Debt;
@@ -122,7 +123,7 @@ export const DebtCardItem: React.FC<DebtCardItemProps> = React.memo(({
             id={`open-repay-modal-${debt.id}`}
             type="button"
             onClick={() => onOpenRepay(debt)}
-            className="w-full py-2.5 bg-stone-900 hover:bg-stone-800 dark:bg-stone-100 dark:hover:bg-white text-white dark:text-stone-900 rounded-xl font-semibold text-xs transition-all shadow-xs flex items-center justify-center gap-2 cursor-pointer"
+            className={`${PRIMARY_BUTTON_COMPACT_CLASS} flex items-center justify-center gap-2`}
           >
             <CreditCard className="w-4 h-4 text-stone-300 dark:text-stone-700" />
             <span>Make Repayment</span>
