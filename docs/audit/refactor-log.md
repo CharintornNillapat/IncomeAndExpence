@@ -4,6 +4,54 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
+## Phase 15 — unified `<Modal>` primitive: T22 (2026-09-19, commit `52f4f8a`)
+
+**Changed**
+
+- New `src/components/Modal.tsx`: the shared modal shell. Props: `isOpen`/`onClose` (required); `title`/`subtitle` for the standard header (title text + optional subtitle + close button); `header` as a full override slot for custom chrome (skips the standard header entirely when given); `footer` as a thin optional trailing slot; `maxWidthClassName`, `panelClassName`, `bodyClassName` for per-caller layout; `panelId`/`titleId`/`closeButtonId` so existing test-targeted DOM ids pass straight through; `showCloseButton`/`showMobileHandle`/`closeOnBackdropClick` as opt-outs, all defaulting to the behavior every existing modal already had. Internally: one `AnimatePresence` + backdrop `motion.div` (opacity fade, click-outside-to-close) wrapping one panel `motion.div` (`flex flex-col`, spring y/scale/opacity transition, `role="dialog"` `aria-modal="true"` `aria-labelledby`), a mobile drag-handle bar, the header slot, a `flex-1 overflow-y-auto` body wrapping `children`, and the optional footer. A `document`-level `keydown` listener closes on Escape while `isOpen`.
+- `src/components/QuickAddModal.tsx`: its hand-rolled backdrop/panel (~55 lines) replaced by `<Modal title="Quick Record Transaction" subtitle="..." titleId="quick-record-modal-title" closeButtonId="close-quick-record-modal-btn" maxWidthClassName="max-w-xl">`.
+- `src/components/AuthModal.tsx`: backdrop/panel replaced by `<Modal header={...} titleId="auth-modal-title" bodyClassName="space-y-5">`, where `header` is the icon-badge + title/subtitle + close-button row extracted verbatim from the old markup. Mode tabs, alerts, form, and footer note all became `children` (previously part of one scrolling panel; now sit in the body below a sticky header — the form's content is short enough that this is imperceptible in practice).
+- `src/views/WalletsView.tsx`: both modals (Add Wallet, Transfer Funds) replaced by `<Modal title="..." bodyClassName="space-y-4 sm:space-y-5">` wrapping their existing `AddWalletForm`/`WalletTransferForm` calls unchanged.
+- `src/views/DebtsView.tsx`: both modals (Add Debt, Repay) replaced the same way; `title` is a template string (`` `Repay: ${repayDebtTarget.name}` ``) and `isOpen={!!repayDebtTarget}` since this modal's visibility is driven by a nullable target object, not a boolean.
+- `src/views/TransactionsView.tsx`: the Add Transaction modal replaced with `<Modal title="Record New Transaction" subtitle="..." titleId="add-transaction-modal-title" closeButtonId="close-add-transaction-modal-btn" maxWidthClassName="max-w-xl">`; the two-step CSV Import modal replaced with `<Modal title="Two-Step CSV Transaction Import" subtitle="..." maxWidthClassName="max-w-3xl" bodyClassName="space-y-6">`.
+- `src/components/WalletPopupModal.tsx`: backdrop/panel replaced by `<Modal header={...} titleId="wallet-popup-modal-title" panelId="wallet-popup-modal" maxWidthClassName="max-w-3xl" bodyClassName="space-y-5 sm:space-y-6">`, where `header` is a fragment containing both the icon+badge+subtitle row *and* the 4-button tab navigation bar (both were already non-scrolling siblings above the body in the pre-migration markup). The redundant inner `flex-1 overflow-y-auto p-4 sm:p-6 ...` body wrapper was removed since `Modal`'s own body div now provides it. The component's `if (!isOpen) return null;` guard (line 90, predating this change) was kept exactly as-is, ahead of the `<Modal>` call.
+
+7 files changed (1 new): `Modal.tsx` (+148 new), `AuthModal.tsx`, `QuickAddModal.tsx`, `WalletPopupModal.tsx`, `DebtsView.tsx`, `TransactionsView.tsx`, `WalletsView.tsx` — net -237 lines across the 6 modified files despite every one of them gaining an import.
+
+**Why**
+
+`audit-report.md` finding E: 9 modals across 6 files each hand-rolled the same ~20-30 lines of backdrop/panel/animation/responsiveness boilerplate, with no Escape-key handling anywhere and inconsistent accessibility attributes (only 2 of 9 had `role="dialog"`). Any future change to how modals look or behave — a new animation curve, a dark-mode backdrop tweak, adding focus-trapping — previously meant editing 9 near-identical call sites and hoping none were missed.
+
+**Verification**
+
+```
+npm run lint                     # tsc --noEmit: clean, 0 errors (checked after each of the 3 migration batches)
+npm run build                    # built in 5.09-5.1s; PWA precache 26 entries (1490.77 KiB, down from 1499.10 KiB)
+CI=true npx playwright test      # 87/87 passed (4.4m), 1 worker, 0 retries consumed
+```
+
+Batch verification (per the task's own "2-3 modals per step" instruction), each run before moving to the next batch:
+- Batch 1 (`QuickAddModal`, `AuthModal`): `auth.spec.ts` + `transaction.spec.ts` — 27/27.
+- Batch 2 (`WalletsView`, `DebtsView`): `debts.spec.ts` + `wallet-forms.spec.ts` + `wallets.spec.ts` — 18/18.
+- Batch 3 (`TransactionsView`, `WalletPopupModal`): `transaction.spec.ts` + `csv.spec.ts` + `soft-delete.spec.ts` + `keywords.spec.ts` — 30/30, then `wallet-forms.spec.ts` + `wallets.spec.ts` + `theme.spec.ts` again (24/24) specifically to re-exercise `WalletPopupModal`'s dashboard-shortcut open-sync behavior, since that file was the highest-risk migration.
+
+`git status --short` / `git diff --stat` confirmed exactly the 6 files named in the task's scope changed, plus the new `Modal.tsx`.
+
+**Correctness notes**
+
+- **`WalletPopupModal`'s never-unmounts lifecycle is unaffected.** Its `if (!isOpen) return null;` guard sits *before* the `return <Modal ...>` call, unchanged from pre-migration. `Modal`'s own `isOpen` prop is therefore always `true` at the point this component ever renders it — `Modal`'s internal `AnimatePresence` never sees this particular modal's closing transition, and the component function itself is still called every render regardless of `isOpen` (React never unmounts it), so every `useState`/`useEffect` above the guard — including the `useEffect(() => { setActiveTab(initialTab); ... }, [isOpen, initialTab, initialWalletId])` re-sync this file's own comment and `CLAUDE.md` call out — behaves identically to before. This was verified both by inspection and by re-running `wallet-forms.spec.ts`'s two modal-shortcut tests, which specifically assert the dashboard's "Transfer"/"Add Wallet" shortcuts land on the correct tab and wallet each time the modal reopens.
+- **Panel layout moved from calc(vh − fixed px) to flexbox**, which is a robustness improvement bundled into the migration: `Modal`'s panel is `flex flex-col ... overflow-hidden` and its body is `flex-1 overflow-y-auto`, so "sticky header, scrollable body, bounded overall height" falls out of the box model instead of each modal hand-computing a pixel offset to subtract from `92vh`/`90vh` (the pre-migration `QuickAddModal` and Add Transaction modal used two *different* guessed offsets, `calc(92vh-70px)` and the same value, that happened to work only because their headers were near-identical height).
+- **Two accessibility gaps closed, not preserved:** Escape-to-close (grepped the pre-migration tree for `Escape`/`keydown`/`onKeyDown` — zero matches anywhere) and `role="dialog"`/`aria-modal`/`aria-labelledby` (previously present on only `QuickAddModal` and the Add Transaction modal; now uniform across all 9). Neither is a preserved behavior being ported — both are new, low-risk additions bundled into the consolidation because the shared primitive is the natural place to fix a gap that existed identically at every call site.
+- **Two modals gained real (not just structural) visual changes:** `DebtsView`'s Add Debt/Repay modals and `TransactionsView`'s CSV Import modal previously had no framer-motion animation (`animate-in` Tailwind classes on two of them, nothing at all on CSV Import, which also lacked the mobile bottom-sheet `items-end sm:items-center` responsive layout every other modal had). All three now animate and lay out identically to the rest of the app. This is the point of the task, not an incidental side effect — flagged here so it isn't mistaken for scope creep if noticed in a visual QA pass.
+
+**Deliberately not done**
+
+- **No focus-trapping added.** None of the 9 pre-migration modals trapped focus inside the dialog (Tab could still reach the page behind the backdrop), and adding it was not in this task's stated scope (`isOpen`, `onClose`, `title`, `children`, footer slot, `role="dialog"`/`aria-modal`). Noted as a reasonable follow-on for a future accessibility pass, not silently added here.
+- **`footer` slot is unused by all 9 current call sites.** Included because the task explicitly asked for an "optional footer/action slot," but every existing modal's primary action button lives inside its own form body, not a separate footer bar. Left as a cheap, already-wired capability for the next modal that needs one, not retrofitted onto existing forms that don't.
+- **The ~2vh difference between `WalletPopupModal`'s old `max-h-[88vh]` (small breakpoint) and `Modal`'s default `max-h-[90vh]` was not specially preserved.** Judged not worth a one-off override for a barely-perceptible difference, consistent with this phase's goal of visual convergence across all 9 modals.
+
+---
+
 ## Phase 14 — `useDebts` wallet-filtering fix: T29 (2026-09-19, commit `7a7e5a4`)
 
 **Changed**
