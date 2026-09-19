@@ -4,6 +4,44 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
+## Phase 25 — SectionHeader + Card: T43, T44 (2026-09-19, commit `5b38141`)
+
+**Changed**
+
+- New `src/components/ui/Card.tsx` — a shell primitive (`children`, `className`, `padding: 'none'|'sm'|'md'|'lg'` → `''`/`p-3.5 sm:p-4`/`p-5`/`p-6`, `interactive`) standardizing on `rounded-2xl`, a subtle border, the white/`stone-900` background, and `shadow-xs`.
+- New `src/components/ui/SectionHeader.tsx` — `title`/`subtitle`/`action`/`className`, built on `Card`. Renders the title/subtitle block on the left and `action` verbatim on the right (no extra wrapping div, since every caller already supplies its own single-root action markup).
+- `SectionHeader` adopted for the top banner in all 7 views (`DashboardView.tsx`'s "Periodic Cashflow" section, `DiaryView.tsx`, `DebtsView.tsx`, `WalletsView.tsx`, `TransactionsView.tsx`, `SecurityView.tsx`, `KeywordRulesView.tsx`) — 8 near-identical hand-rolled `flex justify-between` banners collapsed onto 1 component.
+- `Card` adopted at 6 shell sites that already matched its shape losslessly: `KeywordRulesView.tsx`'s Add Rule form, Sandbox panel, and Configured Rules table (all `padding="lg"`); `DiaryView.tsx`'s Daily Logger and Recent Entries columns (both `padding="lg"`); `TransactionsView.tsx`'s transaction table container (`padding="none"`, since it pads internally via its own table cells).
+- 9 files changed (2 new), net +264/-202 lines.
+
+**Why**
+
+`docs/audit/ui-ux-audit-report.md` and `implementation-roadmap.md`'s Phase 25 entry: the `flex justify-between` + `h2` + `p` header banner was near-identical across all 7 views, and ~25 card-shaped shells across the app had each been hand-typed rather than sharing one implementation. Establishing consistent spacing, typography, and border treatment behind two small primitives removes the duplication at its most repeated points without touching heading semantics or breaking any `getByRole('heading', {name})` assertion.
+
+**Verification**
+
+```
+npm run lint                                                                                                     # tsc --noEmit: clean, 0 errors
+npx playwright test tests/keywords.spec.ts tests/wallets.spec.ts tests/debts.spec.ts tests/diary.spec.ts tests/theme.spec.ts --project=chromium   # 8/8 passed
+npx playwright test tests/soft-delete.spec.ts tests/transaction.spec.ts --project=chromium                        # 7/7 passed (regression re-check)
+npm run build                                                                                                     # built in 9.93s
+CI=true npx playwright test                                                                                       # 87/87 passed, 0 retries
+```
+
+**Correctness notes**
+
+- **Two intentional, minor spacing/visibility unifications - both what this phase's "establishing consistent spacing" goal explicitly asked for, not silent regressions.** Every adopting banner now uses `Card`'s flat `p-5` and `shadow-xs` (previously `shadow-2xs` everywhere; `TransactionsView` and Dashboard's "Periodic Cashflow" section additionally used stepped `p-4 sm:p-5`/`gap-3 sm:gap-4`). `TransactionsView`'s subtitle, previously `hidden sm:block` to save room in its crowded 4-button mobile toolbar, is now always visible like every other view's subtitle. Verified neither string is asserted on by any spec before making the change.
+- **`Card` adoption is scoped to shells that already matched its static, four-value padding shape - not the full ~25-site surface the roadmap describes for the entire Phase 25 concept.** Read every candidate shell before touching any of them (same discipline as Phase 21's token adoption) and found four genuinely different shapes that `Card` as specified (a plain `<div>`, static classes, a fixed `none`/`sm`/`md`/`lg` padding enum) cannot express losslessly: framer-motion `motion.div` cards with `whileHover`/`whileTap` (`WalletsView`, `WalletAccountsGrid` wallet cards - converting would drop the tap/hover animation entirely); a conditional per-state className swap (`DebtCardItem`'s settled/unsettled background and border - appending an override via `Card`'s `className` prop risks losing to `Card`'s own base classes, since Tailwind's cascade order follows source-file order, not the order classes appear in a rendered `className` string); stepped responsive padding with no matching scale value (`SecurityView`'s `p-5 sm:p-6` session/profile/password cards, its `p-4 sm:p-5` RLS info card, `TransactionsView`'s `p-3.5 sm:p-4` filter bar); and a non-white background paired with stepped padding (`SecurityView`'s RLS info card is `bg-stone-50`, not `Card`'s white/`stone-900`). All were left local rather than forced.
+- **`KeywordRulesView`'s `SectionHeader` call omits `action` entirely** - its only header-adjacent button ("Add Rule") already lives inside its own left-column card, not the page banner, so this is the one adopting view with no header action at all. Confirms `action` behaves correctly as a genuinely optional prop, not one every caller happens to fill.
+
+**Deliberately not done**
+
+- **`SecurityView`'s five card-shaped shells, `TransactionsView`'s filter/search bar, and Dashboard's "Record a Transaction" CTA card (`p-8`, matching none of `Card`'s four padding values) were not converted** - see Correctness notes.
+- **`WalletsView`/`WalletAccountsGrid`'s wallet cards and `DebtCardItem`'s debt cards were not converted** - framer-motion animation and conditional per-state styling respectively; see Correctness notes.
+- **No `Badge`/`ProgressMeter`/`EmptyState`/`SegmentedControl` primitives were introduced.** Out of scope - Phases 26-27.
+
+---
+
 ## Phase 24 — ConfirmDialog: T42 (2026-09-19, commit `c06e444`)
 
 **Changed**

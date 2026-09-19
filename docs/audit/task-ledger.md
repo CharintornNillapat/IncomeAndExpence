@@ -488,6 +488,40 @@ CI=true npx playwright test                                                     
 
 ---
 
+## Phase 25 — SectionHeader + Card (approved to execute) · Medium risk
+
+| # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
+|---|---|---|---|---|---|---|---|---|---|---|
+| T43 | Create & adopt `SectionHeader` across all 7 views | new `src/components/ui/SectionHeader.tsx`; `DashboardView.tsx`, `DiaryView.tsx`, `DebtsView.tsx`, `WalletsView.tsx`, `TransactionsView.tsx`, `SecurityView.tsx`, `KeywordRulesView.tsx` | High | Med | 2h | done | — | 5b38141 | tsc clean; `keywords`+`wallets`+`debts`+`diary`+`theme` chromium 8/8 | 8 near-identical hand-rolled header banners (7 views + Dashboard's "Periodic Cashflow" section) → 1 shared component; every `getByRole('heading', {name})` assertion (`theme.spec.ts`, `diary.spec.ts`) still resolves, unchanged |
+| T44 | Create & adopt `Card` at matching shell sites | new `src/components/ui/Card.tsx`; `KeywordRulesView.tsx` (×3), `DiaryView.tsx` (×2), `TransactionsView.tsx` (×1 table container) | Med | Med | 1.5h | done | — | 5b38141 | same gate | 6 plain container shells → `Card`; ~14 further candidate shells surveyed and left local (see notes) |
+
+**Combined gate:** tsc clean; `npm run build` succeeds in 9.93s; `CI=true npx playwright test` 87/87, 0 retries.
+
+**Verification**
+
+```
+npm run lint                                                                                                     # tsc --noEmit: clean, 0 errors
+npx playwright test tests/keywords.spec.ts tests/wallets.spec.ts tests/debts.spec.ts tests/diary.spec.ts tests/theme.spec.ts --project=chromium   # 8/8 passed
+npx playwright test tests/soft-delete.spec.ts tests/transaction.spec.ts --project=chromium                        # 7/7 passed (regression re-check)
+npm run build                                                                                                     # built in 9.93s
+CI=true npx playwright test                                                                                       # 87/87 passed, 0 retries
+```
+
+**Notes on execution:**
+- **`SectionHeader` is built on `Card`, not a separate shell**, so both primitives share one visual language rather than two near-identical `rounded-2xl`/border/background implementations. `action` is rendered as-is (no extra wrapping `<div>`) since every existing caller already supplies its own single-root action markup - a bare button (`DebtsView`, `DiaryView`) or its own `<div className="flex ...">` wrapping several (`WalletsView`, `SecurityView`, `TransactionsView`, Dashboard's time-filter tray).
+- **Two intentional, minor spacing unifications, both explicitly invited by this phase's "establishing consistent spacing" goal, not unnoticed regressions:** every banner now uses `Card`'s flat `p-5`/`shadow-xs` (previously `shadow-2xs` everywhere, and `TransactionsView` plus Dashboard's "Periodic Cashflow" section used stepped `p-4 sm:p-5`/`gap-3 sm:gap-4`); and `TransactionsView`'s subtitle, previously `hidden sm:block` (hidden on mobile to save room in its 4-button toolbar), is now always visible like every other view's subtitle. Neither changes any text a test asserts on.
+- **`KeywordRulesView`'s header has no `action` at all** - it never had a header-level button (its "Add Rule" button lives inside its own left-column card, not the banner) - so `SectionHeader` is called there with `title`/`subtitle` only, exercising the prop as genuinely optional rather than always supplying an empty slot.
+- **`Card` adoption was scoped to shells that already matched its shape losslessly, not the full ~25-site surface `implementation-roadmap.md`'s Phase 25 section describes for the whole roadmap.** Surveyed and left local, each for a distinct reason: `WalletsView`'s and `WalletAccountsGrid`'s wallet cards (framer-motion `motion.div` with `whileHover`/`whileTap` - `Card` isn't a motion component, converting would drop the tap/hover spring animation); `DebtCardItem`'s debt cards (a conditional per-state className swap for settled/unsettled - appending an override via `Card`'s `className` prop risks an unpredictable win/lose against `Card`'s own base classes, since Tailwind's cascade order depends on source-file order, not className string order); `SecurityView`'s five card-shaped shells (three use stepped `p-5 sm:p-6` padding, one uses `p-4 sm:p-5` with a non-white `bg-stone-50` background - none match the fixed `none`/`sm`/`md`/`lg` padding scale or the always-white background `Card` standardizes on); `TransactionsView`'s filter/search bar (`p-3.5 sm:p-4`, stepped); Dashboard's "Record a Transaction" CTA card (`p-8`, matching none of the four padding options without shrinking it). Forcing any of these through `Card` would have changed on-screen padding, background, or animation behavior - this phase's task list did not ask for that, so they stay local, matching the discipline `implementation-roadmap.md` itself sets for Phase 28's row renderers.
+- **`Card`'s `padding` scale (`none`/`sm`/`md`/`lg` → `''`/`p-3.5 sm:p-4`/`p-5`/`p-6`) was derived from the two most common existing fixed-padding shapes (`p-5` for banners, `p-6` for the two-column form/log panels in `DiaryView`/`KeywordRulesView`) plus a bare `none` for `TransactionsView`'s table container, which pads internally via its own `<th>`/`<td>` cells.** No stepped-responsive padding value was added to the scale, since the props list this task specified is a fixed 4-value enum.
+
+**Deliberately not done**
+
+- **`SecurityView`'s five card-shaped shells, `TransactionsView`'s filter bar, and Dashboard's "Record a Transaction" CTA card were not converted to `Card`** - shape mismatches (stepped padding, non-white background, unique padding value); see notes above.
+- **`WalletsView`/`WalletAccountsGrid`'s wallet cards and `DebtCardItem`'s debt cards were not converted** - framer-motion animation and conditional per-state styling respectively, neither of which `Card` as specified (a plain `<div>` with static classes) can express losslessly.
+- **No `Badge`/`ProgressMeter`/`EmptyState`/`SegmentedControl`/`ConfirmDialog`-adjacent primitives were introduced** - out of scope; Phases 26-27 (`ConfirmDialog` itself already shipped in Phase 24).
+
+---
+
 ## Deferred — documented, awaiting separate approval
 
 | # | Task | Files | Impact | Risk | Effort | Status | Blocked by |
