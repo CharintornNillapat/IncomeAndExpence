@@ -4,6 +4,44 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
+## Phase 29 — roadmap closeout & documentation alignment: T50 (2026-09-19, commit pending)
+
+**Changed**
+
+- New `docs/audit/decisions/0006-ui-primitive-inventory.md` — catalogs all 9 shared UI primitives + 1 design-token module extracted across Phases 15/21/24–28, and records the recurring pattern behind all of them: a shared component plus a narrow override prop for whichever field a specific call site had already diverged on, rather than forcing every site onto one fixed appearance or forking the component per site.
+- New `docs/audit/decisions/0007-transaction-entry-consolidation.md` — records `TransactionForm` as the one configurable entry engine (`idPrefix`/`presetType`/`lockType`/`presetDebtId`/`presetWalletId`) behind 3 of the app's transaction-creating surfaces, why `WalletPopupModal`'s Adjust Balance editor deliberately stays off it, and why the wallet-to-wallet Transfer flow is a *separate*, deliberately-not-merged path (`WalletTransferForm`/`TransferFundsModal`, not `TransactionForm`'s own TRANSFER option) — correcting the roadmap brief's looser framing that transfer itself was "unified" onto this engine.
+- New `docs/audit/decisions/0008-wallet-surface-ownership.md` — records `WalletPopupModal`'s collapse from 4 tabs to 2 (OVERVIEW + TRANSACTIONS), why the modal itself was *not* promoted above view level (no reachability problem existed for it), and why Transfer/Add-Wallet *were* lifted to 2 new shell-level, self-subscribing modals in `App.tsx` instead (a concrete reachability constraint `wallet-forms.spec.ts` enforces, that a per-view local instance can't satisfy).
+- `docs/audit/baseline-metrics.md` — final "Phase 29 closeout" column appended to every metric table (bundle/chunk breakdown, type-check time, Playwright wall-clock, source LOC), captured at commit `91687df` with the file's own documented reproduction commands.
+- `docs/audit/task-ledger.md` — added a roadmap-status banner ("all 29 phases done, `T25`/`T18` remain explicitly deferred"), the Phase 29/T50 row itself.
+- `CLAUDE.md` — new UI-primitives-inventory section (paths, import convention, the override-prop pattern); new transaction-entry-engine convention section; corrected the stale "`AddWalletForm`/`WalletTransferForm` used by both `WalletsView` and `WalletPopupModal`" line (T41 moved both forms' only call sites to the shell-level `AddWalletModal`/`TransferFundsModal`); `WalletPopupModal`'s gotcha entry updated to name its current 2 tabs.
+- 0 `src/` files changed - this phase is documentation-only, per its own stated scope.
+
+**Why**
+
+Phases 19-28 (T31-T49) shipped 11 architectural decisions and 9 shared primitives without a single ADR recording *why* - each phase's own `task-ledger.md`/`refactor-log.md` notes captured the reasoning at the time, but nothing formalized the durable decisions (where does a new primitive go, why does Adjust Balance stay off `TransactionForm`, why is `WalletPopupModal` itself not shell-level while Transfer/Add-Wallet are) in the ADR format the rest of the project already uses for exactly this purpose (`0001`-`0005`). Left undocumented, each of those 3 decisions is exactly the kind of thing a future change could quietly re-open without realizing it was already deliberately settled.
+
+**Verification**
+
+```
+npm run lint                     # tsc --noEmit: clean, 0 errors
+CI=true npx playwright test      # 87/87 passed, 0 retries (5.5m, CI=true forces 1 worker)
+npm run build                    # built in 7.60s; entry chunk 176.93 kB / 49.69 kB gzip
+```
+
+**Correctness notes**
+
+- **The `CLAUDE.md` wallet-forms line was corrected, not just left stale with a note.** Reading `WalletsView.tsx`, `WalletPopupModal.tsx`, and `TransferFundsModal.tsx`/`AddWalletModal.tsx` before writing ADR 0008 confirmed neither view mounts `AddWalletForm`/`WalletTransferForm` directly anymore (`WalletsView` only calls `onOpenTransfer`/`onOpenAddWallet` props; `WalletPopupModal`'s TRANSFER/ADD_WALLET tabs were retired in T39) - this promotion pass fixes the line to name the actual 2 current call sites instead of repeating what was true before Phase 23.
+- **ADR 0007 does not repeat this phase's own brief verbatim where the brief overstated reality.** The brief's framing ("unifying standard/transfer/repay on `TransactionForm`") is accurate for standard-entry and repay, but the wallet-to-wallet transfer flow was consolidated separately in Phase 23 onto `WalletTransferForm`/`TransferFundsModal`, not onto `TransactionForm`. The ADR states the actual split (`TransactionForm`'s own TRANSFER option exists for its 3 generic-entry consumers; the dedicated wallet-first Transfer button/shortcut uses the separate form) and cross-references ADR 0008, rather than asserting a single-form unification for transfer that didn't happen.
+- **Every promoted `CLAUDE.md` constraint was checked against the live tree before being written**, per this task's own "only promote constraints that hold true right now" instruction - not copied from the ledger's historical notes. `WalletPopupModal`'s tab count, `TransactionForm`'s consumer list, and the primitive inventory's file paths were each grepped/read fresh in this pass.
+
+**Deliberately not done**
+
+- **`T25`/`T18` were not started or re-scoped.** Both remain in `task-ledger.md`'s Deferred table, each still blocked on a separate approval this phase was not asked to obtain.
+- **No re-render scenario replay.** Nothing in Phases 19-28 changed a subscription pattern this closeout's own scope (ADRs + metrics + `CLAUDE.md`) asked to re-measure; the existing Post-Phase-4/Post-T34 snapshots in `baseline-metrics.md` stand unchanged.
+- **`RecentTransactionsTable`'s Type-column icon/label scheme and the still-unmerged `repayDebt`/`repayDebtAtomic` dead code were not touched** - both already flagged as their own future candidates in Phases 21/22's notes; this phase records the roadmap's decisions, it doesn't open new implementation work.
+
+---
+
 ## Phase 28 — transaction row cells: T49 (2026-09-19, commit `91687df`)
 
 **Changed**

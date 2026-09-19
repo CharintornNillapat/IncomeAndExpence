@@ -4,6 +4,8 @@ Numbers are never rewritten — a regression must stay visible in its own column
 
 **Environment:** Windows 11, Node v24.19.0, npm 11.17.0, Vite 6.4.3, Playwright 1.63.0. Captured 2026-09-17 at commit `1a02a4a`, clean working tree, `node_modules` already installed.
 
+**Final closeout column** ("Phase 29 closeout") captured 2026-09-19 at commit `91687df` (Phase 28's tip, the last `src/` change of the roadmap), same environment, same reproduction commands, clean working tree.
+
 ## How to reproduce
 
 ```powershell
@@ -85,6 +87,42 @@ The 7 icon micro-chunks that existed pre-T7 (`plus`, `arrow-up-right`, `arrow-do
 | **Phase 2** (T1/T3, unrelated to bundling) | 1,116.36 kB / 326.11 kB | Yes (no manualChunks) |
 | **Phase 3 (T7)** | 165.39 kB / 45.72 kB | No — 5 vendor chunks + all view chunks now under 500 kB |
 | **Post-T24/T26/T27 (final audit, 2026-09-19, commit `8168d10`)** | 169.08 kB / 47.39 kB | No — 5 vendor chunks + all view chunks still under 500 kB |
+| **Phase 29 closeout (final, 2026-09-19, commit `91687df`)** | 176.93 kB / 49.69 kB | No — 5 vendor chunks + all view chunks still under 500 kB |
+
+### Phase 29 closeout — final full chunk breakdown
+
+Captured via `npm run clean && npm run build`, same commands as every prior column, at commit `91687df` (Phase 28's tip — the last `src/` change before this closeout phase, which adds no `src/` code). The entry chunk grew **169.08 kB → 176.93 kB (+7.85 kB, +4.6%)** from the Post-T24/T26/T27 figure — the expected footprint of Phases 25–28's own new eagerly-loaded modules (`SectionHeader.tsx`, `Card.tsx`, `Badge.tsx`, `ProgressMeter.tsx`, `EmptyState.tsx`, `ConfirmDialog.tsx`, `SegmentedControl.tsx` are all imported from `TransactionForm`/`AuthModal`/other entry-tree components), not a regression to chase. `TxCells.tsx` — the one Phase 28 addition actually used only by lazy view chunks and `WalletPopupModal`/`DiaryEntryCard` (also entry-tree, via `App.tsx`'s unconditionally-rendered `WalletPopupModal`) — split into its own 1.99 kB/0.90 kB chunk rather than inflating the entry further. No chunk crosses Vite's 500 kB warning threshold; the build emits 0 chunk-size warnings, same as every column since Phase 3.
+
+| Chunk | Raw | Gzip |
+|---|---|---|
+| `index-*.js` (entry) | 176.93 kB | 49.69 kB |
+| `vendor-math-*.js` (`mathjs/number`) | 375.73 kB | 110.72 kB |
+| `vendor-supabase-*.js` (`@supabase/supabase-js` + sub-packages) | 226.44 kB | 58.66 kB |
+| `vendor-react-*.js` (`react` + `react-dom` + `scheduler`) | 194.33 kB | 60.68 kB |
+| `vendor-motion-*.js` (`framer-motion` + `motion-dom`/`motion-utils`/`tslib`) | 136.71 kB | 45.33 kB |
+| `vendor-icons-*.js` (`lucide-react`) | 25.89 kB | 5.67 kB |
+| `DashboardView-*.js` | 40.97 kB | 8.86 kB |
+| `TransactionsView-*.js` | 21.69 kB | 5.90 kB |
+| `csvExchange-*.js` | 22.02 kB | 8.31 kB |
+| `DiaryView-*.js` | 15.75 kB | 4.49 kB |
+| `SecurityView-*.js` | 15.24 kB | 3.54 kB |
+| `DebtsView-*.js` | 9.24 kB | 2.90 kB |
+| `KeywordRulesView-*.js` | 7.03 kB | 2.10 kB |
+| `workbox-window.prod.es5-*.js` | 5.75 kB | 2.36 kB |
+| `WalletsView-*.js` | 4.62 kB | 1.73 kB |
+| `TxCells-*.js` (new, Phase 28) | 1.99 kB | 0.90 kB |
+| `ConfirmDialog-*.js` (Phase 24) | 1.61 kB | 0.73 kB |
+| `ProgressMeter-*.js` (Phase 26) | 1.33 kB | 0.70 kB |
+| `Badge-*.js` (Phase 26) | 1.19 kB | 0.57 kB |
+| `SectionHeader-*.js` (Phase 25) | 0.82 kB | 0.48 kB |
+| `EmptyState-*.js` (Phase 26) | 0.54 kB | 0.32 kB |
+| `walletIcons-*.js` | 0.23 kB | 0.19 kB |
+| CSS (`index-*.css`) | 75.59 kB | 11.58 kB |
+| PWA precache | 31 entries | 1,485.61 KiB |
+
+**Per-view deltas versus the Post-T24/T26/T27 column** — all further decreases from Phase 28's cell-extraction, except `DashboardView` (unchanged in shape, `SegmentedControl` adoption is a wash) and the two new views absorbing the primitives they didn't have before: `TransactionsView` 23.48 → 21.69 kB (−7.6%, `TxCells` adoption removed more inline markup than the import added), `DebtsView` 10.67 → 9.24 kB (−13.4%), `KeywordRulesView` 7.28 → 7.03 kB (−3.4%), `DashboardView` 43.67 → 40.97 kB (−6.2%, `SegmentedControl` + `TxCells`-adjacent cleanup combined), `WalletsView` 4.94 → 4.62 kB (−6.5%), `DiaryView` 16.39 → 15.75 kB (−3.9%), `SecurityView` 15.56 → 15.24 kB (−2.1%). `Card.tsx`/`SectionHeader.tsx`/`Badge.tsx`/`ProgressMeter.tsx`/`ConfirmDialog.tsx` each split into their own micro-chunk (Phases 24–26) rather than inflating every view that imports them.
+
+Verified via the standard audit sequence: `npm run lint` clean; `CI=true npx playwright test` 87/87, 0 retries; build emits 0 chunk-size warnings.
 
 ### Post-T24/T26/T27 full chunk breakdown
 
@@ -131,6 +169,9 @@ Verified via the standard audit sequence (`npm run lint` clean; `CI=true npx pla
 | Phase | Median warm `tsc --noEmit` time | Files checked |
 |---|---|---|
 | **Phase 0 baseline** | 2.40s | 373 (excludes `tests/` — see finding H / C4) |
+| **Phase 29 closeout (final, 2026-09-19)** | 4.15s (3 runs: 2.70s cold, 4.18s/4.11s warm; median of the 2 warm runs) | 426 (includes `tests/`, per T4; +53 files since baseline from the 15 new UI/domain modules and shared hooks Phases 8–28 added) |
+
+The warm-run increase (2.40s → ~4.15s) tracks the file-count growth (373 → 426, +14%) plus this machine's own run-to-run variance (the 3 runs above ranged 2.70s–4.18s with no other process changes) more than any single phase's cost — no phase's own gate ever flagged a `tsc` regression in isolation. Read as "still well under 5s, still fast enough not to be a workflow complaint," not as a precise per-phase cost.
 
 ## Playwright wall-clock
 
@@ -144,6 +185,9 @@ Run included a fresh `npm run dev` server boot (no server was pre-warmed). All 3
 | Phase | Wall-clock | Server state | Pass count |
 |---|---|---|---|
 | **Phase 0 baseline** | 1m16.2s | Cold boot (fresh `npm run dev`) | 39 / 39 |
+| **Phase 29 closeout (final, 2026-09-19)** | 5.5m (`CI=true`, 1 worker per `playwright.config.ts`) | Cold boot | 87 / 87, 0 retries |
+
+Not a like-for-like comparison with the Phase 0 row: the baseline ran all 39 (then-)existing tests with Playwright's default worker parallelism; the closeout figure runs the full current 87 (`CI=true` forces `workers: 1`, serially, per `playwright.config.ts` and `CLAUDE.md`'s CI-mode note) — slower per-run by design, not a performance regression. The like-for-like number is the pass count: 39/39 → 87/87, 0 retries, across 12 spec files instead of the original 5.
 
 ## Source LOC
 
@@ -171,6 +215,26 @@ Top 12 files under `src/`:
 | Phase | Total src+tests LOC | `FinanceContext.tsx` LOC |
 |---|---|---|
 | **Phase 0 baseline** | 9,529 | 1,589 |
+| **Phase 29 closeout (final, 2026-09-19)** | 11,261 | 1,855 |
+
+Top 12 files under `src/`, final:
+
+| File | Lines |
+|---|---|
+| `src/context/FinanceContext.tsx` | 1,855 |
+| `src/views/TransactionsView.tsx` | 557 |
+| `src/components/WalletPopupModal.tsx` | 475 |
+| `src/components/TransactionForm.tsx` | 458 |
+| `src/views/SecurityView.tsx` | 457 |
+| `src/views/DiaryView.tsx` | 407 |
+| `src/views/DashboardView.tsx` | 329 |
+| `src/views/DebtsView.tsx` | 306 |
+| `src/components/AuthModal.tsx` | 276 |
+| `src/App.tsx` | 273 |
+| `src/components/wallet/WalletTransferForm.tsx` | 226 |
+| `src/components/InlineMathInput.tsx` | 220 |
+
+**Both totals grew, and that is expected, not a regression to explain away.** `FinanceContext.tsx` (1,589 → 1,855, +16.7%) grew from Phase 13's context split (more type surface, not more logic), Phase 15's `repayDebtAtomic`/idempotency plumbing, and Phase 17's realtime-sync hardening — all additive correctness/architecture work, not duplication this roadmap was trying to remove. Total `src+tests` LOC (9,529 → 11,261, +18.2%) reflects 12 new characterization spec files (Phase 7) plus every new shared primitive/hook/domain-utility module this roadmap added (`Modal`, `SectionHeader`, `Card`, `Badge`, `ProgressMeter`, `EmptyState`, `ConfirmDialog`, `SegmentedControl`, `TxCells`, `txTypeMeta`, `mapUtils`, `formStyles`, `useSubmitHandler`, `useIdempotencyKey`, `useTransientFlash`, `TransferFundsModal`, `AddWalletModal`) — each one net-negative for the specific duplicated call sites it replaced (see each phase's own "Metric delta" column in `task-ledger.md` for the per-file shrinkage), but a net-positive line count once counted as new files. The roadmap's target was duplication and re-render cost, never raw line count.
 
 ## Re-render counts (scenario replay)
 

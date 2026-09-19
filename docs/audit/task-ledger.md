@@ -4,6 +4,8 @@ The only file in `docs/audit/` edited mid-phase. Flip `Status` to `in-progress` 
 
 Status values: `todo` · `in-progress` · `done` · `dropped` (with a one-line reason).
 
+**Roadmap status: closed out.** All 29 phases (T1–T50) below are `done`. Phase 29 (T50, 2026-09-19) is the closeout pass — ADRs 0006–0008, final metrics, and constraint promotion into `CLAUDE.md`. Two items remain outside the closed roadmap by their own explicit design, not by oversight: `T25`/`T18` in the **Deferred** table below, each blocked on a separate approval this session never received. See that table's own notes for why each stayed out.
+
 ## Phase 1 — zero-risk (approved to execute)
 
 | # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
@@ -612,6 +614,33 @@ npm run build                                                                   
 - **T25 (a single unified `<TxRow>`/`<TransactionRow>` component spanning all 4 surfaces) remains explicitly out of scope**, per this phase's own guardrail and the Deferred table's existing "consider dropping" note - the 4 surfaces' underlying DOM shapes (`<tr>` vs `<div>`, different column sets, no table at all) are too structurally different to share one component without a large conditional prop surface.
 - **`RecentTransactionsTable`'s Type column's own icon set/labels were not unified onto `TX_TYPE_META`** - a real icon mismatch, not just a color one; see notes.
 - **No visual regression testing beyond Playwright's text/id assertions** - the amount-glyph fix and every preserved tint/color scheme were verified by reading the diff against each file's pre-change source, not a pixel-level screenshot comparison.
+
+---
+
+## Phase 29 — roadmap closeout & documentation alignment (approved to execute)
+
+| # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
+|---|---|---|---|---|---|---|---|---|---|---|
+| T50 | ADRs 0006–0008; final metrics column; promote verified constraints into `CLAUDE.md` | new `docs/audit/decisions/0006-ui-primitive-inventory.md`, `0007-transaction-entry-consolidation.md`, `0008-wallet-surface-ownership.md`; `docs/audit/baseline-metrics.md`, `task-ledger.md`, `refactor-log.md`; `CLAUDE.md` | High (closeout) | Low | 3h | done | Phases 19-28 (all done) | (pending) | tsc clean; `CI=true npx playwright test` 87/87, 0 retries; `npm run build` succeeds in 7.60s | 3 new ADRs; final metrics column appended (entry chunk 169.08 kB → 176.93 kB, +4.6%; `tsc` 2.40s → ~4.15s warm median; 39/39 → 87/87 tests; source LOC 9,529 → 11,261); `CLAUDE.md` gains a UI-primitives-inventory section, corrects the stale wallet-forms-ownership line, and documents the transaction-entry-engine convention |
+
+**Verification**
+
+```
+npm run lint                     # tsc --noEmit: clean, 0 errors
+CI=true npx playwright test      # 87/87 passed, 0 retries
+npm run build                    # built in 7.60s
+```
+
+**Notes on execution:**
+- **Every ADR and every `CLAUDE.md` promotion was written only after reading the current source** (`App.tsx`, `WalletPopupModal.tsx`, `WalletsView.tsx`, `DebtsView.tsx`, `DashboardView.tsx`, `TransferFundsModal.tsx`), not transcribed from the Phase 22/23 ledger notes alone. This surfaced one real drift: `CLAUDE.md`'s pre-existing "Wallet forms are shared: `AddWalletForm`/`WalletTransferForm`... used by both `WalletsView` and `WalletPopupModal`" line (written at Phase 18/T30, before Phase 23 existed) is stale — as of T41, neither view mounts those forms directly; their only 2 call sites are the shell-level `AddWalletModal`/`TransferFundsModal`. Corrected as part of this promotion, per the promotion rule's own "only what holds true right now" standard - not left as a known-stale note.
+- **ADR 0007 explicitly does not claim "transfer" was unified onto `TransactionForm`.** Two transfer paths coexist by design: `TransactionForm`'s own TRANSFER type option (for the 3 generic-entry consumers) and the dedicated `WalletTransferForm`/`TransferFundsModal` (for the wallet-first "Transfer" button/shortcut, Phase 23's decision). Writing the ADR surfaced that the roadmap brief's framing ("unifying standard/transfer/repay") slightly overstates what actually happened for transfer specifically; the ADR documents the real split with a cross-reference to 0008, rather than repeating the imprecise framing as fact.
+- **No `src/` behavior changed in this phase** - purely documentation (3 ADRs, a metrics column, ledger/log entries, `CLAUDE.md` promotions). The verification gate runs anyway, per this phase's own instruction, to confirm the documentation-only claim is actually true and nothing else drifted since Phase 28's commit.
+- **The `tsc --noEmit --extendedDiagnostics` timing increase (2.40s → ~4.15s warm median) is reported without attributing it to any single phase.** The file count grew from 373 to 426 (+14%, tracking the roadmap's own new modules and Phase 4's `tests/` inclusion), but three runs captured back-to-back on this measurement ranged 2.70s-4.18s on their own, meaning machine-load variance is at least as large a factor as the file-count growth. See `baseline-metrics.md`'s own caveat.
+
+**Deliberately not done**
+
+- **`T25` (unify the 4 transaction-row renderers into one component) and `T18` (`Promise.all` the bulk-import wallet updates) remain in the Deferred table below, unstarted.** Both are explicitly blocked on a separate approval this closeout phase was not asked to obtain — see that table's own notes, and ADR 0006's "Options considered (a)" for why a single unified transaction-row component was rejected rather than merely postponed.
+- **No re-render scenario replay (S1-S5) was re-run for this closeout.** `baseline-metrics.md`'s existing Post-Phase-4 and Post-T34 snapshots stand; nothing in Phases 19-28 changed a re-render-affecting subscription pattern in a way this closeout's own scope (ADRs + metrics + `CLAUDE.md`) asked to re-verify.
 
 ---
 
