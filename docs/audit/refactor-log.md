@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 16 — shared map/form hooks: T26, T27 (2026-09-19, commit `(pending)`)
+## Phase 16 — shared map/form hooks: T26, T27 (2026-09-19, commit `b72b8e9`)
 
 **Changed**
 
@@ -39,7 +39,7 @@ Ran once as a full suite after all 11 files were migrated, rather than per-file 
 
 - **No `disabled={isSubmitting}` wiring added to buttons that didn't already have it.** `AddWalletForm`, `DiaryView`'s save button, and `KeywordRulesView`'s add-rule button gained the hook's re-entrancy guard (submits are ignored while one is in flight) but their buttons were not additionally given a `disabled` prop or loading label - out of scope for a boilerplate-elimination pass, and changing visible button state on 3 more forms wasn't asked for.
 - **T24 (`walletFormStyles.ts` promotion) and T25 (transaction-row renderer unification) remain deferred**, exactly as recorded in `task-ledger.md` before this phase - this pass touched only the T26/T27 scope.
-- **Commit hash left as `(pending)` in this entry's header and in `task-ledger.md`'s Commit column**, filled in by the follow-up "docs: record phase 16 commit hash" commit, per this repo's established two-commit pattern for phase completion (see Phase 14/15's git history).
+- **Commit hash (`b72b8e9`) filled in by this follow-up commit**, per this repo's established two-commit pattern for phase completion (see Phase 14/15's git history).
 
 ---
 
