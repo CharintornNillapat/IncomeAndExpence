@@ -62,6 +62,8 @@ test.describe('Soft-delete lifecycle', () => {
     await expect(card).toBeVisible();
 
     await card.locator('button[id^="delete-wallet-"]').click();
+    // T42: deletion now gates behind a confirmation dialog.
+    await page.locator('#confirm-destructive-btn').click();
     await expect(page.locator('div[id^="wallet-entity-"]').filter({ hasText: walletName })).toHaveCount(0);
 
     await page.reload();
@@ -81,6 +83,8 @@ test.describe('Soft-delete lifecycle', () => {
     await expect(card).toBeVisible();
 
     await card.locator('button[id^="delete-debt-"]').click();
+    // T42: deletion now gates behind a confirmation dialog.
+    await page.locator('#confirm-destructive-btn').click();
     await expect(page.locator('div[id^="debt-card-"]').filter({ hasText: debtName })).toHaveCount(0);
 
     await page.reload();

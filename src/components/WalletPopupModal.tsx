@@ -12,6 +12,8 @@ import {
 } from 'lucide-react';
 import { useFinanceState, useFinanceActions } from '../context/FinanceContext';
 import { Modal } from './Modal';
+import { ConfirmDialog } from './ui/ConfirmDialog';
+import { Wallet } from '../types';
 import { APP_CURRENCY, APP_CURRENCY_SYMBOL, formatCurrencyAmount } from '../utils/currency';
 import { todayIsoDate } from '../utils/date';
 import { getWalletIcon } from '../utils/walletIcons';
@@ -72,6 +74,11 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
   const [isAdjustingBalance, setIsAdjustingBalance] = useState<string | null>(null);
   const [adjustedBalance, setAdjustedBalance] = useState<number>(0);
 
+  // T42: wallet deletion used to fire on a bare `window.confirm` - replaced
+  // with the shared `ConfirmDialog` for a consistent, accessible dialog.
+  const [walletToDelete, setWalletToDelete] = useState<Wallet | null>(null);
+  const [isDeletingWallet, setIsDeletingWallet] = useState<boolean>(false);
+
   const activeWallets = useMemo(() => wallets.filter((w) => !w.isDeleted), [wallets]);
 
   // Selected Wallet
@@ -128,6 +135,14 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
     });
 
     setIsAdjustingBalance(null);
+  };
+
+  const handleConfirmDeleteWallet = async () => {
+    if (!walletToDelete) return;
+    setIsDeletingWallet(true);
+    await deleteWallet(walletToDelete.id);
+    setIsDeletingWallet(false);
+    setWalletToDelete(null);
   };
 
   const header = (
@@ -188,6 +203,7 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
   );
 
   return (
+    <>
     <Modal
       isOpen={isOpen}
       onClose={onClose}
@@ -252,9 +268,7 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
                               title="Delete Wallet"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                if (window.confirm(`Delete wallet "${wallet.name}"?`)) {
-                                  deleteWallet(wallet.id);
-                                }
+                                setWalletToDelete(wallet);
                               }}
                               className="p-1.5 rounded-lg text-stone-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
                             >
@@ -449,5 +463,20 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
             </div>
           )}
     </Modal>
+
+    {/* Delete Wallet Confirmation (T42) */}
+    <ConfirmDialog
+      isOpen={!!walletToDelete}
+      onClose={() => setWalletToDelete(null)}
+      onConfirm={handleConfirmDeleteWallet}
+      isLoading={isDeletingWallet}
+      title="Delete Wallet"
+      description={
+        walletToDelete
+          ? `Delete "${walletToDelete.name}"? Its transaction history is kept, but the wallet itself will no longer appear in your active accounts.`
+          : ''
+      }
+    />
+    </>
   );
 };

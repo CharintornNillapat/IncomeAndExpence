@@ -10,6 +10,7 @@ import { Debt } from '../types';
 import { DebtCardItem } from '../components/DebtCardItem';
 import { TransactionForm } from '../components/TransactionForm';
 import { Modal } from '../components/Modal';
+import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { LABEL_CLASS, inputClass, ERROR_BANNER_CLASS, PRIMARY_BUTTON_CLASS } from '../utils/formStyles';
 
 export const DebtsView: React.FC = () => {
@@ -19,6 +20,9 @@ export const DebtsView: React.FC = () => {
 
   const [isAddDebtOpen, setIsAddDebtOpen] = useState<boolean>(false);
   const [repayDebtTarget, setRepayDebtTarget] = useState<Debt | null>(null);
+  // T42: debt deletion had no confirmation - gate it behind `ConfirmDialog`.
+  const [debtToDelete, setDebtToDelete] = useState<Debt | null>(null);
+  const [isDeletingDebt, setIsDeletingDebt] = useState<boolean>(false);
 
   // New Debt Form State
   const [debtName, setDebtName] = useState<string>('');
@@ -32,9 +36,21 @@ export const DebtsView: React.FC = () => {
     settleDebt(id);
   }, [settleDebt]);
 
-  const handleDelete = useCallback((id: string) => {
-    deleteDebt(id);
-  }, [deleteDebt]);
+  const handleDelete = useCallback(
+    (id: string) => {
+      const target = debts.find((d) => d.id === id) || null;
+      setDebtToDelete(target);
+    },
+    [debts]
+  );
+
+  const handleConfirmDeleteDebt = useCallback(async () => {
+    if (!debtToDelete) return;
+    setIsDeletingDebt(true);
+    await deleteDebt(debtToDelete.id);
+    setIsDeletingDebt(false);
+    setDebtToDelete(null);
+  }, [debtToDelete, deleteDebt]);
 
   const handleOpenRepay = useCallback((debt: Debt) => {
     setRepayDebtTarget(debt);
@@ -261,6 +277,20 @@ export const DebtsView: React.FC = () => {
           />
         )}
       </Modal>
+
+      {/* Delete Debt Confirmation (T42) */}
+      <ConfirmDialog
+        isOpen={!!debtToDelete}
+        onClose={() => setDebtToDelete(null)}
+        onConfirm={handleConfirmDeleteDebt}
+        isLoading={isDeletingDebt}
+        title="Delete Debt"
+        description={
+          debtToDelete
+            ? `Delete "${debtToDelete.name}"? This removes it from your payoff goals; its repayment transactions are kept.`
+            : ''
+        }
+      />
     </div>
   );
 };

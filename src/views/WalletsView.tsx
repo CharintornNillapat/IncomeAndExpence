@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import {
   Plus,
@@ -7,6 +7,8 @@ import {
 } from 'lucide-react';
 import { useFinanceState, useFinanceActions } from '../context/FinanceContext';
 import { AnimatedCounter } from '../components/AnimatedCounter';
+import { ConfirmDialog } from '../components/ui/ConfirmDialog';
+import { Wallet } from '../types';
 import { APP_CURRENCY, APP_CURRENCY_SYMBOL } from '../utils/currency';
 import { getWalletIcon } from '../utils/walletIcons';
 import { toIsoDate } from '../utils/date';
@@ -22,7 +24,20 @@ export const WalletsView: React.FC<WalletsViewProps> = ({ onOpenTransfer, onOpen
   const { wallets } = useFinanceState();
   const { deleteWallet } = useFinanceActions();
 
+  // T42: wallet deletion had no confirmation at all (a real bug, not a
+  // stylistic gap) - `walletToDelete` gates it behind `ConfirmDialog`.
+  const [walletToDelete, setWalletToDelete] = useState<Wallet | null>(null);
+  const [isDeletingWallet, setIsDeletingWallet] = useState<boolean>(false);
+
   const activeWallets = useMemo(() => wallets.filter((w) => !w.isDeleted), [wallets]);
+
+  const handleConfirmDeleteWallet = useCallback(async () => {
+    if (!walletToDelete) return;
+    setIsDeletingWallet(true);
+    await deleteWallet(walletToDelete.id);
+    setIsDeletingWallet(false);
+    setWalletToDelete(null);
+  }, [walletToDelete, deleteWallet]);
 
   return (
     <div className="space-y-6">
@@ -91,7 +106,7 @@ export const WalletsView: React.FC<WalletsViewProps> = ({ onOpenTransfer, onOpen
                     whileTap={{ scale: 0.9 }}
                     id={`delete-wallet-${wallet.id}`}
                     type="button"
-                    onClick={() => deleteWallet(wallet.id)}
+                    onClick={() => setWalletToDelete(wallet)}
                     title="Delete wallet"
                     className="p-1.5 text-stone-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg transition-colors cursor-pointer"
                   >
@@ -141,6 +156,20 @@ export const WalletsView: React.FC<WalletsViewProps> = ({ onOpenTransfer, onOpen
         DashboardView's hero/wallet-card triggers, which live in a different
         view and could never open a modal only WalletsView mounted locally.
       */}
+
+      {/* Delete Wallet Confirmation (T42) */}
+      <ConfirmDialog
+        isOpen={!!walletToDelete}
+        onClose={() => setWalletToDelete(null)}
+        onConfirm={handleConfirmDeleteWallet}
+        isLoading={isDeletingWallet}
+        title="Delete Wallet"
+        description={
+          walletToDelete
+            ? `Delete "${walletToDelete.name}"? Its transaction history is kept, but the wallet itself will no longer appear in your active accounts.`
+            : ''
+        }
+      />
     </div>
   );
 };
