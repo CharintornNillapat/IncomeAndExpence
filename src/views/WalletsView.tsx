@@ -4,11 +4,14 @@ import {
   Plus,
   ArrowLeftRight,
   Trash2,
+  Wallet as WalletIcon,
 } from 'lucide-react';
 import { useFinanceState, useFinanceActions } from '../context/FinanceContext';
 import { AnimatedCounter } from '../components/AnimatedCounter';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { SectionHeader } from '../components/ui/SectionHeader';
+import { Card } from '../components/ui/Card';
+import { EmptyState } from '../components/ui/EmptyState';
 import { Wallet } from '../types';
 import { APP_CURRENCY, APP_CURRENCY_SYMBOL } from '../utils/currency';
 import { getWalletIcon } from '../utils/walletIcons';
@@ -71,6 +74,15 @@ export const WalletsView: React.FC<WalletsViewProps> = ({ onOpenTransfer, onOpen
       />
 
       {/* Wallets Cards Grid */}
+      {activeWallets.length === 0 ? (
+        <Card>
+          <EmptyState
+            icon={WalletIcon}
+            title="No wallets yet"
+            subtitle="Add a wallet to start tracking balances, transfers, and transactions"
+          />
+        </Card>
+      ) : (
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
         {activeWallets.map((wallet) => {
           const Icon = getWalletIcon(wallet.type);
@@ -142,6 +154,7 @@ export const WalletsView: React.FC<WalletsViewProps> = ({ onOpenTransfer, onOpen
           );
         })}
       </div>
+      )}
 
       {/*
         T41: the Add Wallet and Transfer Funds modals used to be rendered

@@ -1,6 +1,7 @@
 import React from 'react';
 import { PieChart } from 'lucide-react';
 import { formatCurrencyAmount } from '../../utils/currency';
+import { ProgressMeter } from '../ui/ProgressMeter';
 
 interface CategoryBreakdownItem {
   name: string;
@@ -47,12 +48,7 @@ export const CategoryExpenseDistribution: React.FC<CategoryExpenseDistributionPr
                   </div>
                 </div>
                 {/* Progress bar */}
-                <div className="w-full h-2 bg-stone-100 dark:bg-stone-800 rounded-full overflow-hidden">
-                  <div
-                    className="h-full rounded-full transition-all duration-500"
-                    style={{ width: `${percent}%`, backgroundColor: item.color }}
-                  />
-                </div>
+                <ProgressMeter percent={percent} color={item.color} />
               </div>
             );
           })

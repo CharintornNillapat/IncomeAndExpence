@@ -7,6 +7,8 @@ import { formatCurrencyAmount } from '../utils/currency';
 import { buildLookupMap } from '../utils/mapUtils';
 import { SectionHeader } from '../components/ui/SectionHeader';
 import { Card } from '../components/ui/Card';
+import { CategoryChip } from '../components/ui/Badge';
+import { EmptyState } from '../components/ui/EmptyState';
 import { LABEL_CLASS, inputClass, ERROR_BANNER_CLASS, PRIMARY_BUTTON_COMPACT_CLASS } from '../utils/formStyles';
 
 export const KeywordRulesView: React.FC = () => {
@@ -168,7 +170,18 @@ export const KeywordRulesView: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-stone-100 dark:divide-stone-800">
-                {keywordRules.map((rule) => {
+                {keywordRules.length === 0 ? (
+                  <tr>
+                    <td colSpan={3}>
+                      <EmptyState
+                        icon={Tag}
+                        title="No keyword rules configured yet"
+                        subtitle="Add a rule on the left to auto-categorize matching transactions"
+                      />
+                    </td>
+                  </tr>
+                ) : (
+                keywordRules.map((rule) => {
                   const cat = categoryMap.get(rule.categoryId);
                   return (
                     <tr key={rule.id} id={`rule-row-${rule.id}`} className="hover:bg-stone-50 dark:hover:bg-stone-800/50">
@@ -177,12 +190,7 @@ export const KeywordRulesView: React.FC = () => {
                       </td>
                       <td className="py-3 px-4">
                         {cat ? (
-                          <span
-                            className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium"
-                            style={{ backgroundColor: `${cat.color}15`, color: cat.color }}
-                          >
-                            {cat.name}
-                          </span>
+                          <CategoryChip name={cat.name} color={cat.color} size="md" rounded="md" />
                         ) : (
                           <span className="text-stone-400 dark:text-stone-500">Unknown</span>
                         )}
@@ -198,7 +206,8 @@ export const KeywordRulesView: React.FC = () => {
                       </td>
                     </tr>
                   );
-                })}
+                })
+                )}
               </tbody>
             </table>
           </div>

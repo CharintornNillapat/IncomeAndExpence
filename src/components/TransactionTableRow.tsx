@@ -3,6 +3,7 @@ import { Landmark, RotateCcw, Trash2 } from 'lucide-react';
 import { Transaction, Wallet, Category } from '../types';
 import { formatCurrencyAmount } from '../utils/currency';
 import { TX_TYPE_META } from './transaction/txTypeMeta';
+import { Badge, CategoryChip } from './ui/Badge';
 
 interface TransactionTableRowProps {
   tx: Transaction;
@@ -55,18 +56,11 @@ export const TransactionTableRow: React.FC<TransactionTableRowProps> = React.mem
             {/* Mobile-only secondary info: wallet & category badges */}
             <div className="flex items-center gap-1.5 mt-0.5 sm:hidden flex-wrap">
               {isDebtRepayment ? (
-                <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded text-[10px] font-medium bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 border border-amber-200/50 dark:border-amber-800/50">
-                  <Landmark className="w-2.5 h-2.5" />
-                  <span>Debt Payoff</span>
-                </span>
+                <Badge tone="amber" size="sm" icon={<Landmark className="w-2.5 h-2.5" />}>
+                  Debt Payoff
+                </Badge>
               ) : category ? (
-                <span
-                  className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded text-[10px] font-medium truncate max-w-[100px]"
-                  style={{ backgroundColor: `${category.color}25`, color: category.color }}
-                >
-                  <span className="w-1 h-1 rounded-full shrink-0" style={{ backgroundColor: category.color }} />
-                  <span className="truncate">{category.name}</span>
-                </span>
+                <CategoryChip name={category.name} color={category.color} size="sm" rounded="sm" showDot className="max-w-[100px]" />
               ) : null}
               <span className="text-[10px] text-stone-400 dark:text-stone-500 truncate max-w-[90px]">
                 {wallet?.name || 'Wallet'}
@@ -100,17 +94,11 @@ export const TransactionTableRow: React.FC<TransactionTableRowProps> = React.mem
       {/* Category (Hidden on mobile, displayed inline in description cell) */}
       <td className="hidden sm:table-cell py-3.5 px-4">
         {isDebtRepayment ? (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 border border-amber-200/50 dark:border-amber-800/50">
-            <Landmark className="w-3 h-3" />
-            <span>{TX_TYPE_META.DEBT_REPAYMENT.label}</span>
-          </span>
+          <Badge tone="amber" size="md" icon={<Landmark className="w-3 h-3" />}>
+            {TX_TYPE_META.DEBT_REPAYMENT.label}
+          </Badge>
         ) : category ? (
-          <span
-            className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium truncate max-w-[130px]"
-            style={{ backgroundColor: `${category.color}25`, color: category.color }}
-          >
-            {category.name}
-          </span>
+          <CategoryChip name={category.name} color={category.color} size="md" rounded="md" className="max-w-[130px]" />
         ) : (
           <span className="text-stone-400 dark:text-stone-500">—</span>
         )}

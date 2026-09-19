@@ -1,6 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import {
   Plus,
+  Landmark,
 } from 'lucide-react';
 import { useDebts } from '../hooks/useDebts';
 import { useSubmitHandler } from '../hooks/useSubmitHandler';
@@ -12,6 +13,8 @@ import { TransactionForm } from '../components/TransactionForm';
 import { Modal } from '../components/Modal';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { SectionHeader } from '../components/ui/SectionHeader';
+import { Card } from '../components/ui/Card';
+import { EmptyState } from '../components/ui/EmptyState';
 import { LABEL_CLASS, inputClass, ERROR_BANNER_CLASS, PRIMARY_BUTTON_CLASS } from '../utils/formStyles';
 
 export const DebtsView: React.FC = () => {
@@ -118,17 +121,27 @@ export const DebtsView: React.FC = () => {
       />
 
       {/* Debt Targets Cards Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-        {debts.map((debt) => (
-          <DebtCardItem
-            key={debt.id}
-            debt={debt}
-            onSettle={handleSettle}
-            onDelete={handleDelete}
-            onOpenRepay={handleOpenRepay}
+      {debts.length === 0 ? (
+        <Card>
+          <EmptyState
+            icon={Landmark}
+            title="No debts tracked yet"
+            subtitle="Add a payoff goal to start tracking repayment progress against a wallet"
           />
-        ))}
-      </div>
+        </Card>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          {debts.map((debt) => (
+            <DebtCardItem
+              key={debt.id}
+              debt={debt}
+              onSettle={handleSettle}
+              onDelete={handleDelete}
+              onOpenRepay={handleOpenRepay}
+            />
+          ))}
+        </div>
+      )}
 
       {/* Add Debt Modal / Responsive Mobile Bottom Sheet */}
       <Modal

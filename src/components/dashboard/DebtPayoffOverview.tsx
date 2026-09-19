@@ -1,6 +1,7 @@
 import React from 'react';
 import { TrendingDown } from 'lucide-react';
 import { formatCurrencyAmount } from '../../utils/currency';
+import { ProgressMeter } from '../ui/ProgressMeter';
 
 interface DebtPayoffOverviewProps {
   activeDebtCount: number;
@@ -34,12 +35,7 @@ export const DebtPayoffOverview: React.FC<DebtPayoffOverviewProps> = React.memo(
               <span className="text-stone-500 dark:text-stone-400">Payoff Progress:</span>
               <span className="font-mono font-bold text-stone-900 dark:text-white">{debtProgressPercent.toFixed(1)}%</span>
             </div>
-            <div className="w-full h-3 bg-stone-100 dark:bg-stone-800 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-emerald-500 rounded-full transition-all duration-500"
-                style={{ width: `${Math.min(100, debtProgressPercent)}%` }}
-              />
-            </div>
+            <ProgressMeter percent={debtProgressPercent} heightClassName="h-3" />
           </div>
 
           <div className="grid grid-cols-2 gap-3 pt-2">

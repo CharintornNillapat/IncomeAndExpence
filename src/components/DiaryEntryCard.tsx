@@ -3,6 +3,7 @@ import { Dumbbell, Utensils, Trash2, Receipt, ChevronDown, ChevronUp } from 'luc
 import { Category, DiaryEntry, Transaction, Wallet } from '../types';
 import { formatCurrencyAmount } from '../utils/currency';
 import { DayInfo } from '../utils/date';
+import { Badge } from './ui/Badge';
 
 interface MoodInfo {
   label: string;
@@ -65,11 +66,7 @@ export const DiaryEntryCard: React.FC<DiaryEntryCardProps> = React.memo(({
               <p className="text-xs font-bold text-stone-900 dark:text-white">
                 {dayInfo.dayName}, {dayInfo.fullDate}
               </p>
-              {dayInfo.badge && (
-                <span className="text-[10px] font-bold bg-stone-200 dark:bg-stone-700 text-stone-800 dark:text-stone-200 px-1.5 py-0.2 rounded">
-                  {dayInfo.badge}
-                </span>
-              )}
+              {dayInfo.badge && <Badge>{dayInfo.badge}</Badge>}
             </div>
             <span className="text-[11px] text-stone-500 dark:text-stone-400 font-medium">
               Mood: {entry.mood}/5 ★ ({moodInfo.label})

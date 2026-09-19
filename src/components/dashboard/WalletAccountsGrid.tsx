@@ -3,6 +3,9 @@ import { motion, Variants } from 'framer-motion';
 import { Wallet as WalletIcon, ChevronRight, ArrowLeftRight } from 'lucide-react';
 import { Wallet } from '../../types';
 import { AnimatedCounter } from '../AnimatedCounter';
+import { Card } from '../ui/Card';
+import { ProgressMeter } from '../ui/ProgressMeter';
+import { EmptyState } from '../ui/EmptyState';
 import { APP_CURRENCY_SYMBOL } from '../../utils/currency';
 import { getWalletIcon } from '../../utils/walletIcons';
 
@@ -56,6 +59,15 @@ export const WalletAccountsGrid: React.FC<WalletAccountsGridProps> = React.memo(
       </div>
 
       {/* Wallets Cards Grid with Stagger & Tap scale */}
+      {wallets.length === 0 ? (
+        <Card>
+          <EmptyState
+            icon={WalletIcon}
+            title="No wallets yet"
+            subtitle="Add a wallet to start tracking balances, transfers, and transactions"
+          />
+        </Card>
+      ) : (
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
         {wallets.map((wallet) => {
           const Icon = getWalletIcon(wallet.type);
@@ -127,15 +139,7 @@ export const WalletAccountsGrid: React.FC<WalletAccountsGridProps> = React.memo(
                     {percentOfNetWorth > 0 ? `${percentOfNetWorth.toFixed(1)}%` : '0%'}
                   </span>
                 </div>
-                <div className="w-full h-1.5 bg-stone-100 dark:bg-stone-800 rounded-full overflow-hidden">
-                  <div
-                    className="h-full rounded-full transition-all duration-500"
-                    style={{ 
-                      width: `${Math.min(100, Math.max(0, percentOfNetWorth))}%`,
-                      backgroundColor: wallet.color 
-                    }}
-                  />
-                </div>
+                <ProgressMeter percent={percentOfNetWorth} color={wallet.color} heightClassName="h-1.5" />
 
                 <div className="flex items-center justify-between mt-2.5 pt-1 text-[11px]">
                   <span className="text-stone-400 dark:text-stone-500 text-[10px]">Tap to inspect</span>
@@ -157,6 +161,7 @@ export const WalletAccountsGrid: React.FC<WalletAccountsGridProps> = React.memo(
           );
         })}
       </div>
+      )}
     </div>
   );
 });

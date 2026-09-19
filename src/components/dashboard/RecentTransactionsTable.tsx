@@ -3,6 +3,8 @@ import { motion } from 'framer-motion';
 import { Calendar, ChevronRight, Receipt, ArrowDownLeft, ArrowUpRight, ArrowLeftRight, TrendingDown } from 'lucide-react';
 import { Transaction, Wallet, Category } from '../../types';
 import { APP_CURRENCY, formatCurrencyAmount, MINUS } from '../../utils/currency';
+import { CategoryChip } from '../ui/Badge';
+import { EmptyState } from '../ui/EmptyState';
 
 interface RecentTransactionsTableProps {
   transactions: Transaction[];
@@ -56,14 +58,12 @@ export const RecentTransactionsTable: React.FC<RecentTransactionsTableProps> = R
           <tbody className="divide-y divide-stone-100 dark:divide-stone-800/60 bg-white dark:bg-stone-900">
             {transactions.length === 0 ? (
               <tr>
-                <td colSpan={6} className="py-10 text-center text-stone-400 dark:text-stone-500">
-                  <div className="flex flex-col items-center justify-center gap-2">
-                    <Receipt className="w-8 h-8 text-stone-300 dark:text-stone-600" />
-                    <p className="text-xs font-semibold text-stone-600 dark:text-stone-300">No transactions recorded yet</p>
-                    <p className="text-[11px] text-stone-400 dark:text-stone-500">
-                      Use the quick recorder above to log your first transaction
-                    </p>
-                  </div>
+                <td colSpan={6}>
+                  <EmptyState
+                    icon={Receipt}
+                    title="No transactions recorded yet"
+                    subtitle="Use the quick recorder above to log your first transaction"
+                  />
                 </td>
               </tr>
             ) : (
@@ -86,13 +86,7 @@ export const RecentTransactionsTable: React.FC<RecentTransactionsTableProps> = R
                         {/* Mobile subtitled badges */}
                         <div className="flex items-center gap-1.5 mt-0.5 sm:hidden flex-wrap">
                           {category && (
-                            <span
-                              className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded text-[10px] font-medium truncate max-w-[90px]"
-                              style={{ backgroundColor: `${category.color}20`, color: category.color }}
-                            >
-                              <span className="w-1 h-1 rounded-full shrink-0" style={{ backgroundColor: category.color }} />
-                              <span className="truncate">{category.name}</span>
-                            </span>
+                            <CategoryChip name={category.name} color={category.color} size="sm" rounded="sm" showDot className="max-w-[90px]" />
                           )}
                           <span className="text-[10px] text-stone-400 dark:text-stone-500 truncate max-w-[80px]">
                             {wallet?.name || 'Wallet'}
@@ -104,19 +98,7 @@ export const RecentTransactionsTable: React.FC<RecentTransactionsTableProps> = R
                     {/* Category Column (Hidden on mobile) */}
                     <td className="hidden sm:table-cell py-3 px-4">
                       {category ? (
-                        <span
-                          className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium truncate max-w-[120px]"
-                          style={{
-                            backgroundColor: `${category.color}20`,
-                            color: category.color,
-                          }}
-                        >
-                          <span
-                            className="w-1.5 h-1.5 rounded-full shrink-0"
-                            style={{ backgroundColor: category.color }}
-                          />
-                          <span className="truncate">{category.name}</span>
-                        </span>
+                        <CategoryChip name={category.name} color={category.color} size="md" rounded="full" showDot className="max-w-[120px]" />
                       ) : (
                         <span className="text-stone-400 dark:text-stone-500 text-[11px]">
                           {tx.type === 'TRANSFER' ? 'Transfer' : tx.type === 'DEBT_REPAYMENT' ? 'Debt' : 'General'}

@@ -14,6 +14,7 @@ import { useTransientFlash } from '../hooks/useTransientFlash';
 import { DiaryEntryCard } from '../components/DiaryEntryCard';
 import { SectionHeader } from '../components/ui/SectionHeader';
 import { Card } from '../components/ui/Card';
+import { Badge } from '../components/ui/Badge';
 import { FoodQuality, Transaction } from '../types';
 import { formatCurrencyAmount } from '../utils/currency';
 import { todayIsoDate, daysAgoIsoDate, formatDayInfo } from '../utils/date';
@@ -198,11 +199,7 @@ export const DiaryView: React.FC = () => {
                 <h3 className="text-sm font-bold text-stone-900 dark:text-white">Daily Wellbeing Entry</h3>
                 <div className="flex items-center gap-1.5 mt-0.5">
                   <span className="text-xs font-semibold text-stone-700 dark:text-stone-300">{selectedDayInfo.dayName}, {selectedDayInfo.fullDate}</span>
-                  {selectedDayInfo.badge && (
-                    <span className="text-[10px] font-bold bg-stone-200 dark:bg-stone-700 text-stone-800 dark:text-stone-200 px-1.5 py-0.2 rounded">
-                      {selectedDayInfo.badge}
-                    </span>
-                  )}
+                  {selectedDayInfo.badge && <Badge>{selectedDayInfo.badge}</Badge>}
                 </div>
               </div>
             </div>

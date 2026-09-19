@@ -20,6 +20,7 @@ import { TransactionTableRow } from '../components/TransactionTableRow';
 import { Modal } from '../components/Modal';
 import { SectionHeader } from '../components/ui/SectionHeader';
 import { Card } from '../components/ui/Card';
+import { EmptyState } from '../components/ui/EmptyState';
 import { buildLookupMap } from '../utils/mapUtils';
 import { useTransientFlash } from '../hooks/useTransientFlash';
 import { OPTION_CLASS } from '../utils/formStyles';
@@ -327,8 +328,8 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
             <tbody className="divide-y divide-stone-100 dark:divide-stone-800/60">
               {paginatedTransactions.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="text-center py-10 text-stone-400 dark:text-stone-500">
-                    No transactions match your current filters.
+                  <td colSpan={6}>
+                    <EmptyState icon={Search} title="No transactions match your current filters." />
                   </td>
                 </tr>
               ) : (
