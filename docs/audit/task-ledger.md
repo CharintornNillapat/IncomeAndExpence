@@ -423,6 +423,42 @@ CI=true npx playwright test                                                     
 
 ---
 
+## Phase 23 — wallet surface ownership (approved to execute) · High risk
+
+| # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
+|---|---|---|---|---|---|---|---|---|---|---|
+| T39 | Collapse `WalletPopupModal` to OVERVIEW + TRANSACTIONS; retire TRANSFER/ADD_WALLET tabs | `WalletPopupModal.tsx` | High | Med | 1.5h | done | — | 1f91b97 | tsc clean; `wallet-forms`+`wallets`+`date-boundary` chromium 7/7 | Tabs 4 → 2; 4 hardcoded tab buttons collapsed into one mapped array (`TAB_DEFS`) |
+| T40 | TRANSACTIONS tab becomes a 5-row preview with a "View all" handoff to `TransactionsView`, pre-filtered by wallet | `WalletPopupModal.tsx`, `TransactionsView.tsx`, `App.tsx` | Med | Med | 1.5h | done | T39 | 1f91b97 | same gate | `walletTransactions.slice(0, 15)` → `.slice(0, 5)`; new `#wallet-modal-view-all-tx-btn` wired through a wallet-filter state lifted to `App.tsx` |
+| T41 | Consolidate Transfer/Add-Wallet triggers onto one shared, shell-level modal | new `src/components/wallet/TransferFundsModal.tsx`, `AddWalletModal.tsx`; `App.tsx`; `WalletsView.tsx`; `DashboardView.tsx`; `WalletAccountsGrid.tsx`; `tests/wallet-forms.spec.ts` | High | High | 2.5h | done | T39 | 1f91b97 | `wallet-forms`+`wallets`+`date-boundary` chromium 7/7; `CI=true npx playwright test` 87/87, 0 retries | 2 independent Transfer/Add-Wallet modal instances (`WalletsView`'s own local `<Modal>`s + `WalletPopupModal`'s retired tabs) → 1 shared instance, mounted once in `App.tsx` |
+
+**Combined gate:** tsc clean; `npm run build` succeeds in 24.6s; `CI=true npx playwright test` 87/87, 0 retries.
+
+**Notes on execution:**
+- **"OVERVIEW + ADJUST" in the phase brief does not name a 4th tab that needs building.** There has never been a dedicated ADJUST tab - the per-wallet balance-adjustment editor has always lived inline inside OVERVIEW's wallet cards (`isAdjustingBalance`/`Sliders` icon), and it stays exactly where it was. Read literally, "keep OVERVIEW + ADJUST only" would also imply dropping TRANSACTIONS, but T40's own instructions immediately go on to modify "the TRANSACTIONS tab" - so the two tasks are only consistent if TRANSACTIONS survives. Retained it as the second of the two surviving tabs; only TRANSFER and ADD_WALLET were actually retired.
+- **T41's shell-level design (rather than a per-view duplicate, as `WalletPopupModal` itself uses) was chosen deliberately, not by default.** `implementation-roadmap.md`'s Phase 23 intro explicitly rejects promoting `WalletPopupModal` above view level and has each view mount its own copy instead, "fixing reachability at zero architectural cost" - because that modal is only ever opened by clicking a wallet card, and a wallet card already lives inside whichever view opens it. Transfer/Add-Wallet have the same reachability shape (triggers only in `DashboardView`'s hero/grid and `WalletsView`'s header) but a different constraint: `wallet-forms.spec.ts`'s existing test clicks `#hero-transfer-funds-btn` once and immediately asserts the transfer fields are visible, with no intermediate navigation step - so whatever renders those fields must already exist and be reachable the instant the Dashboard-rendered button is clicked, which a `WalletsView`-local modal instance cannot be (only one view is mounted at a time). `TransferFundsModal`/`AddWalletModal` follow the exact precedent `QuickAddModal` already set for this: a small, self-subscribing component mounted once in `App.tsx`, holding no finance state itself, with only its `isOpen` boolean (and, for transfer, an optional preselected wallet id) owned by `App.tsx` - preserving `CLAUDE.md`'s "no component above view level subscribes to finance state" rule exactly as `QuickAddModal` already does.
+- **Discovered - and fixed - during the targeted spec run, not anticipated up front: the retired `WalletPopupModal` TRANSFER tab's "Transfer completed successfully!" success flash had to be reproduced in the new `TransferFundsModal`, not just its fields.** The first `TransferFundsModal` implementation called `onTransferred={onClose}` directly (an immediate close, matching what `WalletsView`'s own retired local modal did). `wallet-forms.spec.ts:59`'s `/Transfer completed successfully/i` assertion - explicitly named as a "must remain unchanged" outcome assertion in this phase's own instructions - then failed, because that text was never `WalletsView`'s behavior; it only ever came from the popup's `useTransientFlash`-driven `statusMessage` banner. Fixed by giving `TransferFundsModal` the same `useTransientFlash`+`errorPlacement="top"`+1000ms-delayed-close pattern the retired TRANSFER tab used. This is now `WalletsView`'s behavior too (previously it closed instantly) - an intentional, accepted side effect of both views sharing one modal instance, not a separate change.
+- **`tests/date-boundary.spec.ts` needed no changes**, despite the roadmap listing it as an expected break (`:31,34`, targeting the wallet-popup's old wallet-card markup). Both of its tests already assert against `#wallet-entity-wal-main-checking` and `#time-filter-week` - `WalletsView`'s and `DashboardView`'s own ids, hardened in Phase 19 - not anything `WalletPopupModal` renders. The roadmap's line numbers describe the file's state before that earlier hardening pass; verified via a clean run rather than edited.
+- **T40's wallet-filter handoff is a plain `useState` initializer + one-time consume effect in `TransactionsView`, not a re-sync effect like `WalletPopupModal`'s.** `App.tsx` keys the active view by `activeTab` inside its `AnimatePresence`, so `TransactionsView` fully unmounts and remounts on every tab switch (unlike `WalletPopupModal`, which its parent renders unconditionally and which therefore needs an `isOpen`-effect resync per `CLAUDE.md`'s documented gotcha). `initialWalletFilter` only needs to seed `selectedWalletId`'s initializer once per mount; a `useEffect(() => { if (initialWalletFilter) onConsumeInitialWalletFilter?.(); }, [])` then clears `App.tsx`'s copy so a later, unrelated navigation to the tab doesn't inherit a stale wallet id.
+
+**Verification**
+
+```
+npm run lint                                                                                          # tsc --noEmit: clean, 0 errors
+npx playwright test tests/wallet-forms.spec.ts tests/wallets.spec.ts tests/date-boundary.spec.ts --project=chromium   # 7/7 passed
+npx playwright test tests/transaction.spec.ts tests/debts.spec.ts tests/soft-delete.spec.ts --project=chromium        # 8/8 passed (regression re-check)
+npm run build                                                                                         # built in 24.62s
+CI=true npx playwright test                                                                           # 87/87 passed, 0 retries
+```
+
+**Deliberately not done**
+
+- **No `ConfirmDialog` was added** to wallet or debt delete (`WalletPopupModal`'s `window.confirm`, `WalletsView`'s unconfirmed delete button) - that is Phase 24's explicit scope (T42), not this phase's.
+- **`WalletsView`'s own wallet cards still don't open `WalletPopupModal`.** They never did before this phase either (they are display-only, with an inline delete button); nothing in T39-T41 asked for that, so it was not added.
+- **The TRANSACTIONS preview shows no "showing 5 of N" count or similar** - not specified by T40, and the "View all" handoff already communicates that more exist.
+- **No `SectionHeader`/`Card`/`Badge`/`ConfirmDialog` primitives were introduced** - out of scope; Phases 24-26.
+
+---
+
 ## Deferred — documented, awaiting separate approval
 
 | # | Task | Files | Impact | Risk | Effort | Status | Blocked by |
