@@ -4,6 +4,43 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
+## Phase 14 — `useDebts` wallet-filtering fix: T29 (2026-09-19, commit `7a7e5a4`)
+
+**Changed**
+
+- `src/hooks/useDebts.ts`: added an `activeWallets` memo (`wallets.filter((w) => !w.isDeleted)`, deps `[wallets]`), and changed the returned shape from `{ wallets }` to `{ wallets: activeWallets, allWallets: wallets }` — an exact match for `useWallets()`'s own `{ wallets: activeWallets, allWallets: wallets, totalNetWorth }` shape.
+- `src/views/DebtsView.tsx`: removed the inline `.filter((w) => !w.isDeleted)` that previously ran on `wallets` immediately before mapping it to the repay-wallet `<select>`'s `<option>`s — now redundant, since the array the view receives from `useDebts()` is already filtered.
+
+2 files changed: `useDebts.ts` (+8/-1), `DebtsView.tsx` (+5/-7, net smaller).
+
+**Why**
+
+`useWallets()` established the convention that a hook's `wallets` member is active-only, with a separate `allWallets` for callers that need to resolve a soft-deleted wallet's historical identity. `useDebts()` never followed that convention — it returned `useFinanceState()`'s raw `wallets` untouched. `DebtsView.tsx` compensated for this at its single point of consumption (the repay-wallet `<select>`'s options), but missed the modal's initial `selectedWalletId` state (`useState<string>(wallets[0]?.id || '')`, line 29), which read the same unfiltered array. If a soft-deleted wallet ever sorted first — wallets are ordered by `created_at` ascending, so any wallet created early and deleted later is a candidate — the repay modal would default to selecting an id that had no corresponding `<option>` in the (correctly filtered) dropdown: a controlled `<select>` whose `value` matches nothing renders with no option visibly selected, silently breaking the "the form's default value is always a valid choice" invariant every other form in this app relies on.
+
+**Verification**
+
+```
+npm run lint                                       # tsc --noEmit: clean, 0 errors
+CI=true npx playwright test tests/debts.spec.ts     # 3/3 passed (16.9s)
+CI=true npx playwright test                         # 87/87 passed (4.3m), 1 worker, 0 retries consumed
+npm run build                                        # built in 8.95s; PWA precache 26 entries (1499.10 KiB)
+```
+
+`git status --short` / `git diff --stat` confirmed only the two intended files changed.
+
+**Correctness notes**
+
+- **Fixed at the hook, not the view.** Filtering happens once inside `useDebts()` rather than at each call site, so any future consumer of `useDebts()`'s `wallets` inherits the correct active-only behavior automatically instead of needing to remember `DebtsView`'s old local `.filter()`.
+- **Both existing `useDebts()` consumers checked.** `DebtsView.tsx` is the only one reading `wallets`; `DashboardView.tsx`'s call site destructures only `metrics`. Neither needed further changes beyond the hook fix and the one redundant-filter removal.
+- **`tests/debts.spec.ts` needed no changes.** Its own header comment already named this exact task ("pin that behavior before... T29's wallet-filtering fix touches this view") — the spec drives the repay flow through the default first wallet, and every wallet in a fresh seeded context is active, so the fix is behavior-neutral for it. The bug this phase fixes has no automated regression coverage (it would require seeding a soft-deleted wallet that sorts before an active one, then asserting on the `<select>`'s initial `value` matching a real `<option>` — a plausible follow-on spec, not added here since it was not requested).
+
+**Deliberately not done**
+
+- **No new Playwright spec added** to reproduce the soft-deleted-wallet-sorts-first scenario directly. The fix itself is a straightforward one-line filter matching an established convention elsewhere in the codebase (`useWallets`), and the existing `debts.spec.ts` plus the full 87-run suite passing confirms no regression to the happy path.
+- **`allWallets` is exposed but not yet consumed anywhere.** Added for shape-parity with `useWallets` and because a future debt-history feature resolving a repayment's source wallet name (including a since-deleted one) is the same class of need `useWallets`'s own `allWallets` exists for — not because any current call site needs it today.
+
+---
+
 ## Phase 13 — Supabase realtime sync hardening: T17 (2026-09-19, commit `0f67edc`)
 
 **Changed**

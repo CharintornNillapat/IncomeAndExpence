@@ -187,6 +187,18 @@ Status values: `todo` · `in-progress` · `done` · `dropped` (with a one-line r
 - **`upsertDiaryEntry`'s insert branch gained `.select().single()`** (it previously fired-and-forgot) specifically so its newly-created row's id could be captured and marked — a small, additive change, not a behavior change to what gets persisted.
 - **`user_id` column existence verified against the client's own code, not a schema migration** — this repo has no tracked schema file (`supabase/migrations/20260909_transfer_funds.sql`'s own header says so explicitly). Every one of the 5 `SYNCED_TABLES`' row-mapping functions (`mapWalletRow`, `mapTransactionRow`, `mapDebtRow`, plus the inline `categories`/`diary_entries` mappings in `loadSupabaseData`) already reads `row.user_id`, which is the available evidence that the column exists and is populated on all five.
 
+## Phase 14 — `useDebts` wallet-filtering fix (approved to execute)
+
+| # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
+|---|---|---|---|---|---|---|---|---|---|---|
+| T29 | Fix `useDebts` returning unfiltered `wallets` | `useDebts.ts`, `DebtsView.tsx` | Med (correctness) | Med | 1h | done | T12 debts spec (done) | 7a7e5a4 | tsc clean; `CI=true npx playwright test tests/debts.spec.ts` 3/3; `CI=true npx playwright test` 87/87, 0 retries; build succeeds in 8.95s | `useDebts` now returns `wallets: activeWallets` + `allWallets: wallets`, matching `useWallets`' exact shape; `DebtsView`'s redundant inline `.filter(!isDeleted)` on the `<select>` options removed (the array it maps is already filtered) |
+
+**Notes on execution:**
+- **The real bug was the initial `selectedWalletId`, not the dropdown options.** `DebtsView.tsx`'s `<select>` already had its own inline `.filter((w) => !w.isDeleted)` on the rendered `<option>`s, so a soft-deleted wallet never appeared as a choice. But `useState<string>(wallets[0]?.id || '')` (line 29) read the *unfiltered* array from the hook — if a soft-deleted wallet happened to sort first (wallets are ordered by `created_at` ascending, so an early-created-then-later-deleted wallet easily lands at index 0), the repay modal's default selected value pointed at an id with no matching `<option>` in the actually-rendered list. A controlled `<select>` whose `value` matches no option renders with nothing visibly selected, which is exactly the kind of small state/UI mismatch that's easy to miss in manual testing but breaks the "form defaults are always valid" invariant every other form in this codebase relies on.
+- **Fix at the hook, not the view.** Matching `useWallets`' own shape (`wallets: activeOnly`, `allWallets: everything`) means any other view that starts consuming `useDebts()`'s wallets in the future inherits the same correct-by-default filtering, rather than needing to remember to filter locally the way `DebtsView` previously did.
+- **`allWallets` is exposed but currently unconsumed.** `DebtsView.tsx` and `DashboardView.tsx` (the only two `useDebts()` call sites) have no need to resolve a soft-deleted wallet's historical name today — `DebtCardItem` doesn't reference wallets at all. Exposed anyway for shape-parity with `useWallets` and because a future debt-history view resolving a repayment's source wallet name (including a since-deleted one) is a realistic need, per the same reasoning `useWallets` itself documents for `allWallets`.
+- **`tests/debts.spec.ts`'s own comment already anticipated this exact task** ("pin that behavior before... T29's wallet-filtering fix touches this view") — the spec needed no changes; it exercises the repay flow through the default first wallet, which is unaffected by the fix since this checkout's seeded wallets are all active.
+
 ## Deferred — documented, awaiting separate approval
 
 | # | Task | Files | Impact | Risk | Effort | Status | Blocked by |
@@ -195,7 +207,6 @@ Status values: `todo` · `in-progress` · `done` · `dropped` (with a one-line r
 | T24 | Promote `walletFormStyles.ts`; adopt across ~12 files | `walletFormStyles.ts` + 10 consumers | Med | Med | 6h | todo | T12 |
 | T26 | Shared `buildLookupMap` helper | 7 independent map-building copies | Low-Med | Low | 2h | todo | T12 |
 | T27 | `useSubmitHandler`, `useIdempotencyKey`, `useTransientFlash` | 6 duplicate submit shapes, 3 duplicate amount callbacks, 7 flash timeouts | Med | Med | 5h | todo | T12 |
-| T29 | Fix `useDebts` returning unfiltered `wallets` | `useDebts.ts:84`, `DebtsView.tsx:29,313-314` | Med (correctness) | Med | 1h | todo | T12 debts spec |
 | T25 | Unify the 4 transaction-row renderers | see audit-report §E | Med | High | 8h | todo | consider dropping — see plan traps §19 |
 | T18 | `Promise.all` the bulk-import wallet updates | `FinanceContext.tsx:1305-1312` | Low-Med | Med | 1h | todo | T12 CSV spec |
 | T30 | Promote constraints into `CLAUDE.md` | `CLAUDE.md`, `constraints-to-promote.md` | Med | Low | 2h | todo | drains after each task above ships |
