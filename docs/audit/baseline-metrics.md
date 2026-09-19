@@ -238,3 +238,18 @@ Per-component `__rc` deltas during each scenario's action (a component absent fr
 - `commits` (true DOM commits, not StrictMode-inflated) tracks the `__rc` numbers proportionally across scenarios (S1 ~52, S2 ~69, S3 ~32, S4 17, S5 3) — S5's very low commit count (3, one per tab transition) versus its relatively high `__rc` deltas (6 across several components) is the clearest illustration of the StrictMode-inflation caveat above: 3 real DOM updates, each counted twice at the function-invocation level.
 
 **Reproducibility:** all findings above (the T1/T2/T8 confirmations and the new unmemoized-siblings finding) were identical in shape across both runs with the S4 fix in place. Only `AnimatedCounter`'s magnitude and `DashboardView`'s cold-load (S1) count varied between runs (both timing-sensitive, as noted).
+
+### Post-T34 (`Navbar` de-subscription) — S2 delta, `Navbar` row only
+
+**Method:** a lighter, targeted variant of the harness above, scoped to the one claim T34 makes (CLAUDE.md's "no component above view level subscribes to finance state" — `Navbar` was the one violation). Rather than the full `<Profiler>` + per-component `__rc` matrix (which required a throwaway branch that no longer exists), a single temporary counter was added directly to the top of `Navbar`'s function body — `window.__navbarFnCalls++` — incremented once per actual function-body execution (so a `React.memo` bail-out, which skips the call entirely, correctly reads as zero). The counter and its call site were never committed; both were removed before this phase's commit (`grep -rn "__navbarFnCalls" src/ tests/` returns nothing on the committed tree).
+
+Same S2 scenario as above (open Quick Add → fill amount/wallet/description → submit → modal closes), reset immediately after cold load so only the write itself is measured:
+
+| | `Navbar` function-body executions during S2 |
+|---|---|
+| **Pre-T34** (measured just now, on the pre-T34 committed `Navbar.tsx` restored via `git stash`) | 6 |
+| **Post-T34** (current tree) | 0 |
+
+The pre-T34 figure (6) matches the original Phase-4 baseline's `Navbar` S2 row exactly (see the table above), which is a useful cross-check that this lighter probe measures the same thing the original harness did, not an artifact of a different methodology. Post-T34, `Navbar` is `React.memo`'d and receives no props that change during a write, so it never re-executes — the write's effect is now confined to `NavbarSyncBadge` and `NavbarBalanceAndAuth` (the two new subscribing sub-components), which are expected and intended to re-render, being a small fraction of what `Navbar` used to render as one unmemoized whole.
+
+**Reproduction:** `git stash push -- src/components/Navbar.tsx` to restore the pre-T34 file, add one line at the top of the function body incrementing a `window` counter, run a temporary Playwright spec that resets the counter after `page.goto('/')` and reads it after one `addQuickTransaction` call, then `git checkout -- src/components/Navbar.tsx && git stash pop` to restore and discard the probe.

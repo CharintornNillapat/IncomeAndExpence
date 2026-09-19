@@ -4,6 +4,43 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
+## Phase 20 — Navbar de-subscription: T34 (2026-09-19, commit `e3fe540`)
+
+**Changed**
+
+- New `src/components/navbar/NavbarLedgerStatus.tsx` — exports `NavbarSyncBadge` (the condensed cloud-sync/local-only badge, reading `isAuthenticated`/`isSyncing`) and `NavbarBalanceAndAuth` (the live net-worth `AnimatedCounter` block plus the signed-in/sign-in-button cluster, reading `totalNetWorth`/`isAuthenticated`/`currentUser` and the `signOut` action). Both are the only finance-context subscribers left in the Navbar area.
+- `src/components/Navbar.tsx` — deleted its `useFinanceState()`/`useFinanceActions()` calls and the `Cloud`/`CloudOff`/`UserCheck`/`LogIn`/`LogOut`/`AnimatedCounter`/`APP_CURRENCY`/`APP_CURRENCY_SYMBOL` imports those reads needed; renders `<NavbarSyncBadge onOpenAuth={onOpenAuth} />` and `<NavbarBalanceAndAuth onOpenAuth={onOpenAuth} />` in the exact DOM positions the inline JSX previously occupied. Wrapped the whole component in `React.memo` with a `displayName`, matching the pattern already used by `MobileBottomNav`.
+- `CLAUDE.md`'s **State: context + domain hooks** section — corrected the description of `FinanceStateContext`/`FinanceActionsContext` to reflect the post-T15 architecture: the 6 mutators that touch hot state (`addTransaction`, `softDeleteTransaction`, `restoreTransaction`, `commitBulkImport`, `repayDebtAtomic`, `upsertDiaryEntry`) live in `FinanceActionsContext`, reading that state through a ref mirror rather than a closure, not in `FinanceStateContext` as the previous text said.
+- `docs/audit/baseline-metrics.md` — new "Post-T34" subsection under "Re-render counts."
+- 3 `src/` files changed (1 new), net +50/-89 lines (the extraction removed more inline JSX-adjacent logic than it added, since the two new components share `Navbar`'s existing imports for `motion`/icons instead of duplicating them).
+
+**Why**
+
+`docs/audit/ui-ux-audit-report.md` finding K, carried over from a live discrepancy first surfaced while writing this audit: `Navbar.tsx:52-53` called both finance-context hooks despite being app-shell chrome `App.tsx` renders unconditionally, directly contradicting `CLAUDE.md:81`'s claim that the shell "call[s] neither." Every financial write re-rendered the navbar as a result — the exact churn `useFinance()`'s deletion (T1/T14) and the state/actions split (T13) were meant to prevent everywhere above view level, with this one component left out. Fixing it as its own phase, ahead of the visual-unification phases 21-28, keeps the re-render-elimination claim measurable on its own rather than blended into a later pixel diff.
+
+**Verification**
+
+```
+npm run lint                                                                    # tsc --noEmit: clean, 0 errors
+npx playwright test tests/auth.spec.ts tests/theme.spec.ts --project=chromium   # 8/8 passed
+npm run build                                                                   # built in 4.93s
+CI=true npx playwright test                                                     # 87/87 passed, 0 retries
+```
+
+**Correctness notes**
+
+- **The re-render claim was measured, not just argued from the code.** A temporary `window.__navbarFnCalls` counter, incremented once per actual execution of `Navbar`'s function body (so a `React.memo` bail-out correctly reads as zero, since the function is never called), was added to the committed tree (0 during a scripted Quick-Add write), then to the pre-T34 file restored via `git stash push -- src/components/Navbar.tsx` (6 during the same scripted write), then removed from both before committing. `grep -rn "__navbarFnCalls" src/ tests/` against the final tree returns nothing.
+- **The pre-T34 figure (6) matches the original Phase-4 `Profiler`-based baseline's `Navbar`/S2 row exactly** (see `baseline-metrics.md`'s S1-S5 table) — a useful cross-check that this lighter, single-component probe measures the same underlying quantity the original multi-component harness did, despite using a different mechanism (a raw call counter vs. React's `Profiler` API) and running long after that harness's throwaway branch was deleted.
+- **An earlier full-suite run was discarded as unreliable, not reported as a passing gate.** It was launched in the background before the probe work began; while it was still executing, the `git stash`/`stash pop` sequence swapped `Navbar.tsx` twice, and a process occupying port 3000 was killed to unblock a later run attempt — that process was this same run's own dev server, terminated mid-test. It still finished green only through Playwright's CI retry budget (84 passed, 3 flaky, exit 0), which is not trustworthy given the concurrent interference. The verification above cites only the second, clean run (launched after all stash/probe work and cleanup were finished), which passed 87/87 with 0 retries on the first attempt.
+
+**Deliberately not done**
+
+- **No full S1-S5 × per-component `Profiler` replay.** T34's claim is scoped to one component; reconstructing the original throwaway-branch harness to re-run all five scenarios across a dozen components would answer questions this task didn't ask. A future phase touching multiple components at once (e.g. Phase 28's shared cells) is a better point to justify that cost again.
+- **`MobileBottomNav` untouched** — it has no finance-context subscription today (fixed in an earlier phase; `audit-report.md` correction C3) and was never part of this task's scope.
+- **The theme toggle and quick-add button stayed in `Navbar.tsx`** rather than moving into `NavbarLedgerStatus.tsx` — neither reads finance state, so moving them would be indirection without a re-render benefit.
+
+---
+
 ## Phase 19 — selector hardening + UI unification audit: T31, T32, T33 (2026-09-19, commits `371d938` / `789a310`)
 
 **Changed**

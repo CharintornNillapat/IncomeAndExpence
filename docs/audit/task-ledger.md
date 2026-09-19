@@ -329,6 +329,35 @@ CI=true npx playwright test      # 87/87 passed, both commits independently veri
 
 ---
 
+## Phase 20 — Navbar de-subscription (approved to execute)
+
+| # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
+|---|---|---|---|---|---|---|---|---|---|---|
+| T34 | De-subscribe `Navbar` from finance context; fix stale `CLAUDE.md:79` | new `src/components/navbar/NavbarLedgerStatus.tsx`; `Navbar.tsx`; `CLAUDE.md` | High | Low-Med | 2h | done | — | e3fe540 | tsc clean; `auth.spec.ts`+`theme.spec.ts` 8/8 chromium; `npm run build` succeeds; `CI=true npx playwright test` 87/87, 0 retries | `Navbar` function-body executions during one ledger write: 6 → 0. See `baseline-metrics.md`'s "Post-T34" section |
+
+**Notes on execution:**
+- **`NavbarLedgerStatus.tsx` exports two components, not one**, because the finance-derived DOM Navbar rendered lived in two non-adjacent places: the sync badge in the left logo cluster, the net-worth/auth cluster in the right action row. A single wrapper component could only occupy one spot in the tree; two small components let each slot into its original position with identical DOM structure and sibling order, including `#navbar-signin-btn`'s exact position.
+- **The quick-add button and theme toggle stayed in `Navbar.tsx`** — neither reads finance state, so extracting them would have been unnecessary indirection.
+- **The re-render delta was measured, not asserted.** A temporary counter (`window.__navbarFnCalls`, incremented once per actual execution of `Navbar`'s function body) was added directly to the file, measured against the current tree (0 during a scripted Quick Add write), then `git stash` was used to temporarily restore the pre-T34 committed `Navbar.tsx`, the same counter line added to that reverted file, and the identical scripted write re-run (6). The stash was then popped to restore the T34 changes, the probe line removed, and `grep -rn "__navbarFnCalls" src/ tests/` confirmed zero leftovers before committing. The pre-T34 figure (6) matches the original Phase-4 baseline's `Navbar`/S2 row exactly (see `baseline-metrics.md`), cross-validating the lighter probe against the original `Profiler`-based harness.
+- **A full `<Profiler>` + per-component `__rc` replay (the original Phase-4 methodology) was not repeated.** That harness lived on a throwaway branch that no longer exists and would need reconstructing from scratch; T34's claim is specific to one component (`Navbar` itself), so a single targeted counter answers it directly without rebuilding the multi-component matrix.
+- **One contaminated full-suite run was discarded, not reported.** An initial `CI=true npx playwright test` was launched in the background before the render-count probe work; while it was still mid-run, `git stash`/`stash pop` swapped `Navbar.tsx`'s content twice for the measurement, and a leftover process on port 3000 was killed to unblock a second run attempt — that leftover process turned out to be the first run's own dev server, killed mid-test. That run finished "green" only via Playwright's CI retry budget (84 passed, 3 flaky retries, exit 0) and is not trustworthy evidence given the concurrent file-swapping. A second, clean run — launched only after all probe work and cleanup were complete — passed 87/87 with 0 retries and is the run cited above.
+
+**Verification**
+
+```
+npm run lint                                                          # tsc --noEmit: clean, 0 errors
+npx playwright test tests/auth.spec.ts tests/theme.spec.ts --project=chromium   # 8/8 passed
+npm run build                                                         # built in 4.93s (post-probe-cleanup: 10.26s, cold cache)
+CI=true npx playwright test                                           # 87/87 passed, 0 retries
+```
+
+**Deliberately not done**
+
+- **No full S1-S5 × per-component re-render matrix was re-run.** See notes above — out of proportion to a single-component fix; the targeted probe directly answers T34's specific claim.
+- **`MobileBottomNav` was not touched.** It already had zero finance-context subscription (fixed in an earlier phase per `audit-report.md` correction C3) and was not part of this task's scope.
+
+---
+
 ## Deferred — documented, awaiting separate approval
 
 | # | Task | Files | Impact | Risk | Effort | Status | Blocked by |
