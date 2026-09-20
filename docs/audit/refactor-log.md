@@ -4,6 +4,39 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
+## Phase 38 — clear the deferred backlog + CI housekeeping: T18, T25 (2026-09-20, commit `PENDING`)
+
+**Changed**
+
+- `src/context/FinanceContext.tsx` — `commitBulkImport`'s authenticated wallet-update loop (`for...of` with a per-iteration `await supabase.from('wallets').update(...)`) rewritten as `Object.entries(walletDeltas).map(async ...)` wrapped in `Promise.all`. The transactions insert and `refreshFromCloud()` calls on either side of the loop are unchanged — they were already single calls, not loops.
+- `.github/workflows/playwright.yml` — `actions/checkout` v4→v5, `actions/setup-node` v4→v5 (`node-version` 20→22), `actions/upload-artifact` v4→v5, `runs-on` `ubuntu-latest`→`ubuntu-24.04`.
+- `docs/audit/task-ledger.md` — new Phase 38 table (T18 `done`, T25 `rejected / closed`); Deferred table replaced with a "none remaining" note; roadmap-status banner updated to reflect zero `todo`/deferred tasks.
+
+**Why**
+
+T18 and T25 were the only 2 rows left in the Deferred table since Phase 29, each explicitly blocked on a separate approval no prior session had received. This phase was explicitly asked to clear that backlog: T18 (parallelize the bulk-import wallet writes) is a straightforward, low-risk change with an existing CSV spec to gate it, so it shipped. T25 (unify the 4 transaction-row renderers) was re-evaluated against the same reasoning that put "consider dropping" on its row from the start — the 4 surfaces' DOM shapes are too different to share one component without a worse conditional-prop surface than the duplication it replaces — and is now closed formally rather than left open indefinitely. The CI annotations (Node 20 runtime deprecation, upcoming Ubuntu label migration) were fixed in the same phase since they were flagged directly against the run this phase's own predecessor pushed.
+
+**Verification**
+
+```
+npx playwright test tests/csv.spec.ts --project=chromium   # 1/1 passed
+npm run lint                                                # tsc --noEmit: clean
+CI=true npx playwright test                                 # 102/102 passed, 0 retries
+npm run build                                                # succeeded
+```
+
+**Correctness notes**
+
+- **`Promise.all` does not change which balance value gets written.** Every entry in `walletDeltas` reads its base balance from the same `walletsRef.current` snapshot taken before any request starts (`targetW.balance`, looked up once per entry) — none of the concurrent writes depends on another's result, so running them concurrently instead of sequentially cannot produce a different final balance. `markLocalWrite(wId)` still fires once per wallet, before that wallet's own request, same as before.
+- **T25's closure is a documentation-only change** — no `src/` files touched for that row. See ADR `0006`, "Options considered (a)", for the original rejection rationale, unchanged by this phase.
+
+**Deliberately not done**
+
+- No new ADR was written for T25's closure — ADR `0006` already covers the rejection rationale in full; formally closing the ledger row cites it rather than duplicating it.
+- `refreshFromCloud()` and the batch `transactions.insert(...)` call were not touched — T18's ledger row scoped only the per-wallet update loop, and neither of those is a loop to parallelize.
+
+---
+
 ## Phase 37 — closeout: ADRs, metrics, `CLAUDE.md` promotion + drift repair: T78 (2026-09-20, commit `24e9ee6`)
 
 **Changed**

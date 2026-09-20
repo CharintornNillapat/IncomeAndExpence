@@ -1871,14 +1871,16 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       // coalesces the resulting burst of per-row events into at most one more
       // reload rather than one per inserted row.
       await supabase.from('transactions').insert(dbPayloads);
-      for (const [wId, delta] of Object.entries(walletDeltas)) {
-        const targetW = walletsRef.current.find((w) => w.id === wId);
-        if (targetW) {
-          const updatedB = roundToCents(targetW.balance + delta);
-          markLocalWrite(wId);
-          await supabase.from('wallets').update({ balance: updatedB }).eq('id', wId);
-        }
-      }
+      await Promise.all(
+        Object.entries(walletDeltas).map(async ([wId, delta]) => {
+          const targetW = walletsRef.current.find((w) => w.id === wId);
+          if (targetW) {
+            const updatedB = roundToCents(targetW.balance + delta);
+            markLocalWrite(wId);
+            await supabase.from('wallets').update({ balance: updatedB }).eq('id', wId);
+          }
+        })
+      );
       await refreshFromCloud();
     } else {
       setWallets((prev) =>
