@@ -9,7 +9,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 **Changed**
 
 - `src/context/FinanceContext.tsx` — `commitBulkImport`'s authenticated wallet-update loop (`for...of` with a per-iteration `await supabase.from('wallets').update(...)`) rewritten as `Object.entries(walletDeltas).map(async ...)` wrapped in `Promise.all`. The transactions insert and `refreshFromCloud()` calls on either side of the loop are unchanged — they were already single calls, not loops.
-- `.github/workflows/playwright.yml` — `actions/checkout` v4→v5, `actions/setup-node` v4→v5 (`node-version` 20→22), `actions/upload-artifact` v4→v5, `runs-on` `ubuntu-latest`→`ubuntu-24.04`.
+- `.github/workflows/playwright.yml` — `actions/checkout` v4→v5, `actions/setup-node` v4→v5 (`node-version` 20→22), `actions/upload-artifact` v4→v7 (v5 alone still targeted the deprecated Node 20 runtime internally, caught on the follow-up CI run and bumped further), `runs-on` `ubuntu-latest`→`ubuntu-24.04`.
 - `docs/audit/task-ledger.md` — new Phase 38 table (T18 `done`, T25 `rejected / closed`); Deferred table replaced with a "none remaining" note; roadmap-status banner updated to reflect zero `todo`/deferred tasks.
 
 **Why**
