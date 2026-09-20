@@ -89,6 +89,43 @@ The 7 icon micro-chunks that existed pre-T7 (`plus`, `arrow-up-right`, `arrow-do
 | **Post-T24/T26/T27 (final audit, 2026-09-19, commit `8168d10`)** | 169.08 kB / 47.39 kB | No — 5 vendor chunks + all view chunks still under 500 kB |
 | **Phase 29 closeout (final, 2026-09-19, commit `91687df`)** | 176.93 kB / 49.69 kB | No — 5 vendor chunks + all view chunks still under 500 kB |
 
+### Post-Phase-31 full chunk breakdown
+
+Captured via `npm run clean && npm run build`, same commands as every prior column, at commit `6c5d7df` (Phase 31's tip — the last `src/` change before Phase 32's audit pass, which adds no `src/` code). This column closes a gap: Phases 30 (category dedupe + Categories & Smart Rules hub, `CategoriesView.tsx`) and 31 (dashboard visual polish, `InlineMathInput` UX, mobile-ergonomics verification, Supabase migration) both shipped `src/` changes with no metrics capture, so this is the first column since Phase 29 closeout and folds two phases' delta together rather than one.
+
+The entry chunk grew **176.93 kB → 180.57 kB (+3.64 kB, +2.1%)** — expected: Phase 31's `InlineMathInput.tsx` quick-amount chips and dashboard `tabular-nums` polish (`T57`/`T58`) are entry-tree changes, not new code paths. `vendor-icons` grew **25.89 kB → 28.06 kB (+2.17 kB)** from the Categories & Smart Rules hub's additional icon usage. A new `CategoriesView-*.js` lazy chunk (13.07 kB / 3.43 kB gzip) did not exist in the Phase 29 column — it is the Phase 30 feature build. No chunk crosses Vite's 500 kB warning threshold; the build emits 0 chunk-size warnings, same as every column since Phase 3.
+
+| Chunk | Raw | Gzip |
+|---|---|---|
+| `index-*.js` (entry) | 180.57 kB | 50.46 kB |
+| `vendor-math-*.js` (`mathjs/number`) | 375.73 kB | 110.72 kB |
+| `vendor-supabase-*.js` (`@supabase/supabase-js` + sub-packages) | 226.44 kB | 58.66 kB |
+| `vendor-react-*.js` (`react` + `react-dom` + `scheduler`) | 194.33 kB | 60.68 kB |
+| `vendor-motion-*.js` (`framer-motion` + `motion-dom`/`motion-utils`/`tslib`) | 136.71 kB | 45.33 kB |
+| `vendor-icons-*.js` (`lucide-react`) | 28.06 kB | 6.14 kB |
+| `DashboardView-*.js` | 42.22 kB | 8.98 kB |
+| `csvExchange-*.js` | 22.02 kB | 8.31 kB |
+| `TransactionsView-*.js` | 21.68 kB | 5.90 kB |
+| `DiaryView-*.js` | 15.75 kB | 4.49 kB |
+| `SecurityView-*.js` | 15.24 kB | 3.53 kB |
+| `CategoriesView-*.js` (new, Phase 30) | 13.07 kB | 3.43 kB |
+| `DebtsView-*.js` | 9.24 kB | 2.90 kB |
+| `workbox-window.prod.es5-*.js` | 5.75 kB | 2.36 kB |
+| `WalletsView-*.js` | 4.62 kB | 1.73 kB |
+| `TxCells-*.js` | 1.99 kB | 0.90 kB |
+| `ConfirmDialog-*.js` | 1.61 kB | 0.73 kB |
+| `ProgressMeter-*.js` | 1.33 kB | 0.70 kB |
+| `Badge-*.js` | 1.19 kB | 0.57 kB |
+| `SectionHeader-*.js` | 0.82 kB | 0.48 kB |
+| `EmptyState-*.js` | 0.54 kB | 0.32 kB |
+| `walletIcons-*.js` | 0.23 kB | 0.19 kB |
+| CSS (`index-*.css`) | 77.22 kB | 11.87 kB |
+| PWA precache | 31 entries | 1,500.00 KiB |
+
+**`KeywordRulesView` is gone from this column** — Phase 30's Categories & Smart Rules hub folded the standalone keyword-rules view into `CategoriesView`, so its 7.03 kB chunk no longer exists as a separate entry; that surface area now lives inside the new `CategoriesView-*.js` chunk above.
+
+Verified via the standard audit sequence: `npm run build` emits 0 chunk-size warnings, build succeeds in 20.49s. (Full `CI=true npx playwright test` and `npm run lint` re-verified as part of this phase's own gate — see `task-ledger.md` Phase 32.)
+
 ### Phase 29 closeout — final full chunk breakdown
 
 Captured via `npm run clean && npm run build`, same commands as every prior column, at commit `91687df` (Phase 28's tip — the last `src/` change before this closeout phase, which adds no `src/` code). The entry chunk grew **169.08 kB → 176.93 kB (+7.85 kB, +4.6%)** from the Post-T24/T26/T27 figure — the expected footprint of Phases 25–28's own new eagerly-loaded modules (`SectionHeader.tsx`, `Card.tsx`, `Badge.tsx`, `ProgressMeter.tsx`, `EmptyState.tsx`, `ConfirmDialog.tsx`, `SegmentedControl.tsx` are all imported from `TransactionForm`/`AuthModal`/other entry-tree components), not a regression to chase. `TxCells.tsx` — the one Phase 28 addition actually used only by lazy view chunks and `WalletPopupModal`/`DiaryEntryCard` (also entry-tree, via `App.tsx`'s unconditionally-rendered `WalletPopupModal`) — split into its own 1.99 kB/0.90 kB chunk rather than inflating the entry further. No chunk crosses Vite's 500 kB warning threshold; the build emits 0 chunk-size warnings, same as every column since Phase 3.

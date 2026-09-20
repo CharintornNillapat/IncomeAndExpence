@@ -132,7 +132,7 @@ Without it, `FinanceContext` falls back to the legacy non-atomic path (three sep
 
 ## Testing
 - **Framework**: Playwright with Chromium, Firefox, and WebKit projects.
-- **Suite size**: 33 tests across 13 spec files, run on all three browsers = **99 test runs**. All must pass.
+- **Suite size**: 34 tests across 13 spec files, run on all three browsers = **102 test runs**. All must pass.
 - **Location**: `tests/*.spec.ts` (`transaction`, `wallets`, `diary`, `theme`, `wallet-forms`, `debts`, `soft-delete`, `keywords`, `categories`, `csv`, `auth`, `date-boundary`, `storage-persistence`), with shared helpers in `tests/helpers.ts`.
 - **Use the helpers**: `gotoTab(page, tabId)` waits for the tab to become active *and* for the `React.lazy` view chunk to resolve (`#view-loading-fallback` detaching). `addQuickTransaction(page, description)` seeds a transaction — a fresh context has wallets and debts but **no transactions**, so any assertion about filtering is vacuous without it.
 - **No fixed waits**: never use `page.waitForTimeout()` for debounces or async writes; assert on the resulting UI state so Playwright retries. Never guard a step with `if (await locator.isVisible())` — it does not retry and silently skips the assertion.

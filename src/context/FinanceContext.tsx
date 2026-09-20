@@ -1528,30 +1528,49 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
 
     const sign = deleted ? 1 : -1;
 
+    // Resolve every participating wallet and compute both new balances BEFORE
+    // any setState call, mirroring `addTransaction`'s pattern above. This
+    // function used to assign `sourceNewBal`/`destNewBal` from inside the
+    // `setWallets` updater and read them back immediately after - but the
+    // preceding `setTransactions` call already schedules a state update, so
+    // React no longer takes the synchronous first-call fast path for the
+    // `setWallets` call that follows it, and the updater does not run before
+    // the read. Both variables silently stayed `null`, and the two remote
+    // wallet-balance UPDATEs below never fired, desyncing the cloud balance
+    // from the local one on every soft-delete and restore. Computing the
+    // values here keeps both updaters pure mappings with no assignment side
+    // effects, so there is nothing left to race.
+    const sourceWallet = walletsRef.current.find((w) => w.id === tx.walletId);
+    const destWallet = tx.destinationWalletId
+      ? walletsRef.current.find((w) => w.id === tx.destinationWalletId)
+      : undefined;
+
+    let sourceNewBal: number | null = null;
+    if (sourceWallet) {
+      if (tx.type === 'EXPENSE' || tx.type === 'DEBT_REPAYMENT' || tx.type === 'TRANSFER') {
+        sourceNewBal = roundToCents(sourceWallet.balance + sign * tx.amount);
+      } else if (tx.type === 'INCOME' || tx.type === 'ADJUSTMENT') {
+        sourceNewBal = roundToCents(sourceWallet.balance - sign * tx.amount);
+      }
+    }
+
+    const destNewBal: number | null =
+      tx.type === 'TRANSFER' && destWallet
+        ? roundToCents(destWallet.balance - sign * tx.amount)
+        : null;
+
     // Optimistic flag flip
     setTransactions((prev) =>
       prev.map((t) => (t.id === id ? { ...t, isDeleted: deleted, updatedAt: new Date().toISOString() } : t))
     );
 
-    let sourceNewBal: number | null = null;
-    let destNewBal: number | null = null;
-
     setWallets((prev) =>
       prev.map((w) => {
-        if (w.id === tx.walletId) {
-          let b = w.balance;
-          if (tx.type === 'EXPENSE' || tx.type === 'DEBT_REPAYMENT' || tx.type === 'TRANSFER') {
-            b = roundToCents(w.balance + sign * tx.amount);
-          } else if (tx.type === 'INCOME' || tx.type === 'ADJUSTMENT') {
-            b = roundToCents(w.balance - sign * tx.amount);
-          }
-          sourceNewBal = b;
-          return { ...w, balance: b };
+        if (sourceWallet && w.id === sourceWallet.id && sourceNewBal !== null) {
+          return { ...w, balance: sourceNewBal };
         }
-        if (tx.type === 'TRANSFER' && w.id === tx.destinationWalletId) {
-          const b = roundToCents(w.balance - sign * tx.amount);
-          destNewBal = b;
-          return { ...w, balance: b };
+        if (destWallet && w.id === destWallet.id && destNewBal !== null) {
+          return { ...w, balance: destNewBal };
         }
         return w;
       })
@@ -1563,13 +1582,13 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
         .from('transactions')
         .update({ is_deleted: deleted, updated_at: new Date().toISOString() })
         .eq('id', id);
-      if (sourceNewBal !== null) {
-        markLocalWrite(tx.walletId);
-        await supabase.from('wallets').update({ balance: sourceNewBal }).eq('id', tx.walletId);
+      if (sourceNewBal !== null && sourceWallet) {
+        markLocalWrite(sourceWallet.id);
+        await supabase.from('wallets').update({ balance: sourceNewBal }).eq('id', sourceWallet.id);
       }
-      if (destNewBal !== null && tx.destinationWalletId) {
-        markLocalWrite(tx.destinationWalletId);
-        await supabase.from('wallets').update({ balance: destNewBal }).eq('id', tx.destinationWalletId);
+      if (destNewBal !== null && destWallet) {
+        markLocalWrite(destWallet.id);
+        await supabase.from('wallets').update({ balance: destNewBal }).eq('id', destWallet.id);
       }
     }
   }, [isAuthenticated, markLocalWrite]);

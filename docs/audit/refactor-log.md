@@ -4,6 +4,47 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
+## Phase 32 — audit report and soft-delete balance desync: T61-T63 (2026-09-20, commit `pending`)
+
+**Changed**
+
+- New `docs/audit/perf-audit-report.md` — second-pass audit (correctness, render cost, dead code, bundle weight), frozen with corrections table (D1-D12) documenting what was cut and why after re-verifying every finding against the running code.
+- `docs/audit/baseline-metrics.md` — new "Post-Phase-31" bundle-size column at commit `6c5d7df`, closing the gap left by Phases 30-31 shipping with no metrics capture.
+- `tests/soft-delete.spec.ts` — new 4th test asserting the wallet balance invariant across a soft-delete/restore cycle, against `#wallet-entity-wal-cash`'s own balance text.
+- `CLAUDE.md` — suite count 33 tests/99 runs → 34 tests/102 runs.
+- `src/context/FinanceContext.tsx:1525-1585` (`setTransactionDeleted`) — resolves the source/destination wallet and computes both new balances from `walletsRef.current` before either `setState` call, instead of assigning them from inside the `setWallets` updater and reading them back synchronously afterward.
+- `docs/audit/task-ledger.md` — new Phase 32 table (T61-T63) and roadmap-status line update.
+- 5 files changed (2 new).
+
+**Why**
+
+A second full audit pass (requested after Phase 29's closeout and Phases 30-31's feature/polish work) turned up a money-affecting correctness bug that no existing test could catch: `setTransactionDeleted` silently stopped writing wallet balance updates to Supabase on every soft-delete and restore, once authenticated cloud sync was in use. The transaction's own `is_deleted` flag still flipped correctly — only the balance write was dropped — which is exactly why it shipped unnoticed through every prior phase. This phase fixes that one function under a test-first discipline; the surrounding write-path hardening (dead-mutator removal, rollback parity on 9 other mutators) is Phase 33, scoped separately so this phase stays small and independently revertible.
+
+**Verification**
+
+```
+npm run lint                                                                                    # tsc --noEmit: clean, 0 errors
+npx playwright test tests/soft-delete.spec.ts --project=chromium                                # 4/4 passed (run before T63, to confirm the local invariant already held)
+npx playwright test tests/soft-delete.spec.ts tests/transaction.spec.ts tests/storage-persistence.spec.ts --project=chromium   # 10/10 passed (run after T63)
+CI=true npx playwright test                                                                      # 102/102 passed, 0 retries, 6.7m, 1 worker
+npm run build                                                                                     # built in 16.36s; entry chunk unchanged at 180.57 kB / 50.46 kB gzip; 0 chunks over 500 kB
+```
+
+**Correctness notes**
+
+- **The bug:** `sourceNewBal`/`destNewBal` were declared `let ... = null`, assigned inside the `setWallets` updater passed to `setTransactionDeleted`'s second `setState` call, and read back synchronously two lines later to decide whether to fire the two remote `wallets` UPDATE calls. The preceding `setTransactions` call had already scheduled a state update for this component, so the `setWallets` call that followed it no longer took the synchronous first-call fast path — the updater ran later, during React's own commit, not before the read. Both variables read back `null`, the `!== null` guards were always false, and the two remote wallet-balance writes never fired. The transaction's own `is_deleted` UPDATE fired regardless (it doesn't depend on those variables), so the row visibly flipped in the UI while the wallet's cloud balance silently diverged from the correct local value — compounding on every subsequent soft-delete or restore.
+- **The fix mirrors `addTransaction`'s own pattern** (`FinanceContext.tsx:1256-1298`, unchanged by this phase): resolve every participating wallet from the ref mirror and compute both new balances *before* calling any `setState`, so every updater downstream is a pure mapping with a precomputed value, never an assignment. `addTransaction` already had to solve this exact race for its own two-`setState`-call sequence; `setTransactionDeleted` had drifted from that pattern rather than following it.
+- **Verified against `noUnusedLocals`/`tsc --noEmit`: the bug is invisible to the type gate.** `sourceNewBal: number | null` type-checks identically whether the preceding updater ran in time or not — there is no type-level signal that an assignment inside a closure passed to `setState` races anything. This is a runtime-scheduling bug, not a type error, and no amount of stricter `tsconfig.json` settings would have caught it.
+- **T62 was written and run against the pre-fix code first, per the plan's test-first requirement**, and passed 4/4 on chromium before `:1525-1585` was touched — confirming what the audit report's Testing section states: the *local* balance invariant was already correct (the bug lives entirely in the `if (isAuthenticated)` branch, which the unauthenticated Playwright harness never enters), so T62's role is to guard local behavior through the refactor, not to reproduce the bug itself.
+
+**Deliberately not done**
+
+- **The cloud-balance desync itself was not covered by an automated test, and cannot be with the current harness.** Every Playwright spec runs unauthenticated; `FinanceContext.tsx:1560-1574` (the branch containing both the bug and the fix) is unreachable without a signed-in Supabase session. Proving the fix required diff review against `addTransaction`'s established pattern plus reasoning through the exact React scheduling mechanism, not a passing red-to-green test. A future pass adding an authenticated-session test fixture (mocking or a real Supabase test project) would close this gap; out of scope here.
+- **No RPC or migration was added.** The fix is a client-side reordering of existing logic, not a new database function — unlike `transfer_funds`, which needed a `security definer` RPC to make its multi-row update atomic. `setTransactionDeleted`'s two wallet writes remain two separate round-trips, same as before the fix; only whether they fire at all changed.
+- **T64-T78 (dead-mutator removal, rollback parity on the other 9 mutators, `AnimatedCounter`, targeted render-cost fixes, deferred shell modals) are separate, later phases**, not folded into this one — each is independently gated and revertible per the approved plan.
+
+---
+
 ## Phase 31 — dashboard hierarchy polish, math input UX, mobile ergonomics verification, Supabase dedupe migration: T57-T60 (2026-09-20, commit `f053fcf`)
 
 **Changed**

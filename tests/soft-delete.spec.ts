@@ -91,4 +91,48 @@ test.describe('Soft-delete lifecycle', () => {
     await gotoTab(page, 'debts');
     await expect(page.locator('div[id^="debt-card-"]').filter({ hasText: debtName })).toHaveCount(0);
   });
+
+  test('transaction soft-delete and restore reverses and reapplies its exact effect on wallet balance', async ({ page }) => {
+    const marker = `E2E Balance Invariant ${Date.now().toString().slice(-6)}`;
+
+    // Seeded default wallets are Main Checking (฿2,500), Cash Wallet (฿150),
+    // Savings Reserve (฿5,000) - `addQuickTransaction` selects the 2nd
+    // <option> in the Quick Add wallet select whenever more than one wallet
+    // exists, which is Cash Wallet (`wal-cash`). Asserting against this one
+    // wallet's own card (not a dashboard total) keeps the test independent
+    // of any other wallet's balance and of AnimatedCounter's own render
+    // strategy - only its settled text content is asserted, never a
+    // render count, so a later change there cannot break this spec.
+    await gotoTab(page, 'wallets');
+    const cashWalletCard = page.locator('#wallet-entity-wal-cash');
+    const balance = cashWalletCard.locator('div.text-2xl.font-bold.font-mono');
+    await expect(balance).toContainText('฿150.00');
+
+    // A ฿150 EXPENSE against Cash Wallet must drop its balance to exactly ฿0.00.
+    await addQuickTransaction(page, marker);
+    await gotoTab(page, 'wallets');
+    await expect(balance).toContainText('฿0.00');
+    await expect(balance).not.toContainText('฿150.00');
+
+    // Soft-deleting the expense must reverse its effect: the balance returns
+    // to exactly ฿150.00, not merely "no longer zero."
+    await gotoTab(page, 'transactions');
+    const row = page.locator('tr[id^="tx-row-"]').filter({ hasText: marker });
+    await expect(row).toBeVisible();
+    await row.locator('button[id^="tx-delete-btn-"]').click();
+
+    await gotoTab(page, 'wallets');
+    await expect(balance).toContainText('฿150.00');
+
+    // Restoring the transaction must reapply the expense: the balance drops
+    // back to exactly ฿0.00.
+    await gotoTab(page, 'transactions');
+    await page.locator('#tx-show-deleted').check();
+    const deletedRow = page.locator('tr[id^="tx-row-"]').filter({ hasText: marker });
+    await expect(deletedRow).toBeVisible();
+    await deletedRow.locator('button[id^="tx-restore-btn-"]').click();
+
+    await gotoTab(page, 'wallets');
+    await expect(balance).toContainText('฿0.00');
+  });
 });
