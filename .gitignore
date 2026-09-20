@@ -70,6 +70,9 @@ Thumbs.db
 *~
 test.txt
 
+# Local session aid, not shared via git
+HANDOFF.md
+
 # Mobile / Capacitor (Optional builds)
 android/app/build/
 android/.gradle/
