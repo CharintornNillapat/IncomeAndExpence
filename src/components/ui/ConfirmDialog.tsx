@@ -1,6 +1,7 @@
 import React from 'react';
 import { AlertTriangle } from 'lucide-react';
 import { Modal } from '../Modal';
+import { ERROR_BANNER_CLASS } from '../../utils/formStyles';
 
 interface ConfirmDialogProps {
   isOpen: boolean;
@@ -14,6 +15,8 @@ interface ConfirmDialogProps {
   isDestructive?: boolean;
   /** Disables both buttons and swaps the confirm label to a busy state while an async `onConfirm` is in flight. */
   isLoading?: boolean;
+  /** Shown as an `ERROR_BANNER_CLASS` banner below the description when a confirmed action's write failed - the dialog stays open (caller's responsibility) so the user sees why, instead of it silently closing on a rejected write. */
+  error?: string | null;
 }
 
 /**
@@ -36,6 +39,7 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
   onClose,
   isDestructive = true,
   isLoading = false,
+  error = null,
 }) => {
   return (
     <Modal
@@ -78,7 +82,10 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
             <AlertTriangle className="w-4.5 h-4.5" />
           </div>
         )}
-        <p className="text-xs text-stone-600 dark:text-stone-300 leading-relaxed pt-1.5">{description}</p>
+        <div className="flex-1 pt-1.5 space-y-2">
+          <p className="text-xs text-stone-600 dark:text-stone-300 leading-relaxed">{description}</p>
+          {error && <div className={ERROR_BANNER_CLASS}>{error}</div>}
+        </div>
       </div>
     </Modal>
   );

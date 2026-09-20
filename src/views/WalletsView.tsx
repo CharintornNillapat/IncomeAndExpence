@@ -32,14 +32,33 @@ export const WalletsView: React.FC<WalletsViewProps> = ({ onOpenTransfer, onOpen
   // stylistic gap) - `walletToDelete` gates it behind `ConfirmDialog`.
   const [walletToDelete, setWalletToDelete] = useState<Wallet | null>(null);
   const [isDeletingWallet, setIsDeletingWallet] = useState<boolean>(false);
+  const [deleteWalletError, setDeleteWalletError] = useState<string | null>(null);
 
   const activeWallets = useMemo(() => wallets.filter((w) => !w.isDeleted), [wallets]);
 
+  const handleOpenDeleteWallet = useCallback((wallet: Wallet) => {
+    setDeleteWalletError(null);
+    setWalletToDelete(wallet);
+  }, []);
+
+  const handleCloseDeleteWallet = useCallback(() => {
+    setWalletToDelete(null);
+    setDeleteWalletError(null);
+  }, []);
+
+  // Rejected write keeps the dialog open with the reason shown, instead of
+  // closing as if nothing happened - the same MutationResult convention every
+  // write form in this app follows.
   const handleConfirmDeleteWallet = useCallback(async () => {
     if (!walletToDelete) return;
     setIsDeletingWallet(true);
-    await deleteWallet(walletToDelete.id);
+    setDeleteWalletError(null);
+    const result = await deleteWallet(walletToDelete.id);
     setIsDeletingWallet(false);
+    if (!result.success) {
+      setDeleteWalletError(result.error || 'Failed to delete wallet');
+      return;
+    }
     setWalletToDelete(null);
   }, [walletToDelete, deleteWallet]);
 
@@ -115,7 +134,7 @@ export const WalletsView: React.FC<WalletsViewProps> = ({ onOpenTransfer, onOpen
                     whileTap={{ scale: 0.9 }}
                     id={`delete-wallet-${wallet.id}`}
                     type="button"
-                    onClick={() => setWalletToDelete(wallet)}
+                    onClick={() => handleOpenDeleteWallet(wallet)}
                     title="Delete wallet"
                     className="p-1.5 text-stone-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg transition-colors cursor-pointer"
                   >
@@ -170,9 +189,10 @@ export const WalletsView: React.FC<WalletsViewProps> = ({ onOpenTransfer, onOpen
       {/* Delete Wallet Confirmation (T42) */}
       <ConfirmDialog
         isOpen={!!walletToDelete}
-        onClose={() => setWalletToDelete(null)}
+        onClose={handleCloseDeleteWallet}
         onConfirm={handleConfirmDeleteWallet}
         isLoading={isDeletingWallet}
+        error={deleteWalletError}
         title="Delete Wallet"
         description={
           walletToDelete

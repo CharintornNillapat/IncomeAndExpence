@@ -27,6 +27,7 @@ export const DebtsView: React.FC = () => {
   // T42: debt deletion had no confirmation - gate it behind `ConfirmDialog`.
   const [debtToDelete, setDebtToDelete] = useState<Debt | null>(null);
   const [isDeletingDebt, setIsDeletingDebt] = useState<boolean>(false);
+  const [deleteDebtError, setDeleteDebtError] = useState<string | null>(null);
 
   // New Debt Form State
   const [debtName, setDebtName] = useState<string>('');
@@ -43,16 +44,30 @@ export const DebtsView: React.FC = () => {
   const handleDelete = useCallback(
     (id: string) => {
       const target = debts.find((d) => d.id === id) || null;
+      setDeleteDebtError(null);
       setDebtToDelete(target);
     },
     [debts]
   );
 
+  const handleCloseDeleteDebt = useCallback(() => {
+    setDebtToDelete(null);
+    setDeleteDebtError(null);
+  }, []);
+
+  // Rejected write keeps the dialog open with the reason shown, instead of
+  // closing as if nothing happened - the same MutationResult convention every
+  // write form in this app follows.
   const handleConfirmDeleteDebt = useCallback(async () => {
     if (!debtToDelete) return;
     setIsDeletingDebt(true);
-    await deleteDebt(debtToDelete.id);
+    setDeleteDebtError(null);
+    const result = await deleteDebt(debtToDelete.id);
     setIsDeletingDebt(false);
+    if (!result.success) {
+      setDeleteDebtError(result.error || 'Failed to delete debt');
+      return;
+    }
     setDebtToDelete(null);
   }, [debtToDelete, deleteDebt]);
 
@@ -291,9 +306,10 @@ export const DebtsView: React.FC = () => {
       {/* Delete Debt Confirmation (T42) */}
       <ConfirmDialog
         isOpen={!!debtToDelete}
-        onClose={() => setDebtToDelete(null)}
+        onClose={handleCloseDeleteDebt}
         onConfirm={handleConfirmDeleteDebt}
         isLoading={isDeletingDebt}
+        error={deleteDebtError}
         title="Delete Debt"
         description={
           debtToDelete

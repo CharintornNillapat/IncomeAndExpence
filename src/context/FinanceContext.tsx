@@ -24,6 +24,7 @@ import {
 import { APP_CURRENCY } from '../utils/currency';
 import { todayIsoDate } from '../utils/date';
 import { dedupeCategoriesByName } from '../utils/categoryUtils';
+import { generateIdempotencyKey } from '../utils/ids';
 
 /**
  * Outcome of a validated write. Every mutating call reports failure this way
@@ -82,7 +83,7 @@ export interface FinanceStateContextType {
  * write.
  *
  * `addTransaction`, `softDeleteTransaction`, `restoreTransaction`,
- * `commitBulkImport`, `repayDebtAtomic`, and `upsertDiaryEntry` joined this half
+ * `commitBulkImport`, and `upsertDiaryEntry` joined this half
  * in T15: each now reads the hot state it needs through a ref mirror
  * (`walletsRef`/`transactionsRef`/`debtsRef`/`categoriesRef`/`diaryEntriesRef`)
  * instead of closing over the state variable directly, so their `useCallback`
@@ -97,15 +98,14 @@ export interface FinanceActionsContextType {
   // Wallets
   // `balance` is omitted: the opening balance is supplied via `initialBalance`.
   addWallet: (wallet: Omit<Wallet, 'id' | 'userId' | 'createdAt' | 'updatedAt' | 'isArchived' | 'isDeleted' | 'balance'>, initialBalance: number) => Promise<MutationResult>;
-  updateWallet: (id: string, updates: Partial<Wallet>) => Promise<void>;
-  deleteWallet: (id: string) => Promise<void>;
+  deleteWallet: (id: string) => Promise<MutationResult>;
 
   // Categories & Configurable Keyword Rules
   addCategory: (data: { name: string; type: TransactionType; color: string; icon?: string }) => Promise<MutationResult>;
   updateCategory: (id: string, updates: { name?: string; color?: string }) => Promise<MutationResult>;
   deleteCategory: (id: string) => Promise<MutationResult>;
   addKeywordRule: (keyword: string, categoryId: string) => Promise<MutationResult>;
-  deleteKeywordRule: (id: string) => Promise<void>;
+  deleteKeywordRule: (id: string) => Promise<MutationResult>;
 
   // Transactions
   addTransaction: (tx: {
@@ -120,19 +120,18 @@ export interface FinanceActionsContextType {
     transactionDate: string;
     idempotencyKey?: string;
   }) => Promise<{ success: boolean; error?: string; txId?: string }>;
-  softDeleteTransaction: (id: string) => Promise<void>;
-  restoreTransaction: (id: string) => Promise<void>;
+  softDeleteTransaction: (id: string) => Promise<MutationResult>;
+  restoreTransaction: (id: string) => Promise<MutationResult>;
   commitBulkImport: (validRows: ImportRowValidation[]) => Promise<{ insertedCount: number; totalAmount: number; skippedCount: number }>;
 
   // Debts
   addDebt: (debt: Omit<Debt, 'id' | 'userId' | 'createdAt' | 'updatedAt' | 'isSettled' | 'isDeleted'>) => Promise<MutationResult>;
-  settleDebt: (debtId: string) => Promise<void>;
-  deleteDebt: (debtId: string) => Promise<void>;
-  repayDebtAtomic: (debtId: string, walletId: string, amount: number, note?: string) => Promise<{ success: boolean; error?: string }>;
+  settleDebt: (debtId: string) => Promise<MutationResult>;
+  deleteDebt: (debtId: string) => Promise<MutationResult>;
 
   // Holistic Diary
   upsertDiaryEntry: (entry: Omit<DiaryEntry, 'id' | 'userId' | 'createdAt' | 'updatedAt' | 'isDeleted'>) => Promise<MutationResult>;
-  deleteDiaryEntry: (id: string) => Promise<void>;
+  deleteDiaryEntry: (id: string) => Promise<MutationResult>;
 
   // Filters & State helpers
   setShowSoftDeleted: (show: boolean) => void;
@@ -159,17 +158,6 @@ function safeGetLocalStorage<T>(key: string, fallback: T): T {
 // normalised back to whole cents to avoid float drift accumulating in the ledger.
 function roundToCents(value: number): number {
   return Math.round(value * 100) / 100;
-}
-
-// Collision-resistant idempotency key. `crypto.randomUUID` is used where available
-// (all PWA/secure contexts); the fallback still mixes two independent random draws
-// so that two submissions inside the same millisecond cannot produce the same key.
-function generateIdempotencyKey(): string {
-  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-    return `idemp-${crypto.randomUUID()}`;
-  }
-  const rand = () => Math.random().toString(36).slice(2, 11);
-  return `idemp-${Date.now()}-${rand()}-${rand()}`;
 }
 
 // Tables mirrored into local state. Every one of them re-runs the full loader on
@@ -601,6 +589,19 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
   // regardless of how many times it's triggered.
   const isSeedingRef = useRef(false);
 
+  // T69: bumped once per successful `loadSupabaseData` commit. `addTransaction`
+  // snapshots this alongside its rollback state; if a realtime reload lands
+  // mid-flight (another device wrote while this one's write was in-flight),
+  // the snapshot is server truth that is now stale, and restoring it on
+  // failure would silently discard what the other device just committed. A
+  // plain ref-identity check on `walletsRef` cannot tell this apart from the
+  // ordinary case, because `addTransaction` writes its own optimistic update
+  // to that same ref before awaiting - the ref always differs from the
+  // snapshot by the time any catch block runs, for either reason. Only a
+  // counter tied specifically to `loadSupabaseData` commits can distinguish
+  // "no concurrent reload happened" from "one did."
+  const cloudRevisionRef = useRef(0);
+
   // Seed initial starter account on Supabase if new user
   const seedInitialUserAccount = useCallback(async (userId: string) => {
     if (isSeedingRef.current) return;
@@ -766,6 +767,8 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
           }))
         );
       }
+
+      cloudRevisionRef.current += 1;
     } catch (err) {
       console.error('[Supabase Sync Error]', err);
     } finally {
@@ -987,15 +990,25 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     return { success: true };
   }, [isAuthenticated, currentUser.id, markLocalWrite]);
 
-  const updateWallet = useCallback(async (id: string, updates: Partial<Wallet>) => {
+  // Provider-internal helper (T64: not on the public actions context - its
+  // only caller is `deleteWallet` below). Snapshots for rollback and checks
+  // the Supabase result rather than discarding it (T66), matching
+  // `addTransaction`'s established error/rollback shape.
+  const updateWallet = useCallback(async (id: string, updates: Partial<Wallet>): Promise<MutationResult> => {
+    const previousWallets = walletsRef.current;
+
     // Optimistic update
     setWallets((prev) =>
       prev.map((w) => (w.id === id ? { ...w, ...updates, updatedAt: new Date().toISOString() } : w))
     );
 
-    if (isAuthenticated) {
+    if (!isAuthenticated) {
+      return { success: true };
+    }
+
+    try {
       markLocalWrite(id);
-      await supabase
+      const { error } = await supabase
         .from('wallets')
         .update({
           name: updates.name,
@@ -1009,11 +1022,25 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
           updated_at: new Date().toISOString(),
         })
         .eq('id', id);
+      if (error) throw error;
+      return { success: true };
+    } catch (err: unknown) {
+      console.error('[Update Wallet Failed]', err);
+      setWallets(previousWallets);
+      const postgrestErr = err as { message?: string; details?: string; hint?: string };
+      return {
+        success: false,
+        error:
+          postgrestErr?.message ||
+          postgrestErr?.details ||
+          postgrestErr?.hint ||
+          (err instanceof Error ? err.message : 'Failed to update wallet'),
+      };
     }
   }, [isAuthenticated, markLocalWrite]);
 
-  const deleteWallet = useCallback(async (id: string) => {
-    await updateWallet(id, { isDeleted: true });
+  const deleteWallet = useCallback(async (id: string): Promise<MutationResult> => {
+    return updateWallet(id, { isDeleted: true });
   }, [updateWallet]);
 
   // Categories CRUD (Phase 30)
@@ -1107,20 +1134,38 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       cleanedUpdates = { ...updates, name: cleaned };
     }
 
+    const previousCategories = categoriesRef.current;
+
     setCategories((prev) => prev.map((c) => (c.id === id ? { ...c, ...cleanedUpdates } : c)));
 
-    if (isAuthenticated) {
+    if (!isAuthenticated) {
+      return { success: true };
+    }
+
+    try {
       markLocalWrite(id);
-      await supabase
+      const { error } = await supabase
         .from('categories')
         .update({
           ...(cleanedUpdates.name !== undefined ? { name: cleanedUpdates.name } : {}),
           ...(cleanedUpdates.color !== undefined ? { color: cleanedUpdates.color } : {}),
         })
         .eq('id', id);
+      if (error) throw error;
+      return { success: true };
+    } catch (err: unknown) {
+      console.error('[Update Category Failed]', err);
+      setCategories(previousCategories);
+      const postgrestErr = err as { message?: string; details?: string; hint?: string };
+      return {
+        success: false,
+        error:
+          postgrestErr?.message ||
+          postgrestErr?.details ||
+          postgrestErr?.hint ||
+          (err instanceof Error ? err.message : 'Failed to update category'),
+      };
     }
-
-    return { success: true };
   }, [isAuthenticated, markLocalWrite]);
 
   // Soft-deletes, but only once guarded: a system default (its type is relied
@@ -1142,14 +1187,32 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       return { success: false, error: 'This category is used by existing transactions or keyword rules and cannot be deleted' };
     }
 
+    const previousCategories = categoriesRef.current;
+
     setCategories((prev) => prev.map((c) => (c.id === id ? { ...c, isDeleted: true } : c)));
 
-    if (isAuthenticated) {
-      markLocalWrite(id);
-      await supabase.from('categories').update({ is_deleted: true }).eq('id', id);
+    if (!isAuthenticated) {
+      return { success: true };
     }
 
-    return { success: true };
+    try {
+      markLocalWrite(id);
+      const { error } = await supabase.from('categories').update({ is_deleted: true }).eq('id', id);
+      if (error) throw error;
+      return { success: true };
+    } catch (err: unknown) {
+      console.error('[Delete Category Failed]', err);
+      setCategories(previousCategories);
+      const postgrestErr = err as { message?: string; details?: string; hint?: string };
+      return {
+        success: false,
+        error:
+          postgrestErr?.message ||
+          postgrestErr?.details ||
+          postgrestErr?.hint ||
+          (err instanceof Error ? err.message : 'Failed to delete category'),
+      };
+    }
   }, [isAuthenticated, markLocalWrite]);
 
   // Keyword rules CRUD
@@ -1200,10 +1263,44 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     return { success: true };
   }, [isAuthenticated, currentUser.id]);
 
-  const deleteKeywordRule = useCallback(async (id: string) => {
+  // Hard delete, not soft: `KeywordRule` has no `isDeleted` field and no
+  // migration adds one - it is categorization config, not a financial record,
+  // so CLAUDE.md's soft-delete rule does not apply here.
+  const deleteKeywordRule = useCallback(async (id: string): Promise<MutationResult> => {
+    const previousIndex = keywordRulesRef.current.findIndex((r) => r.id === id);
+    const previousRule = previousIndex >= 0 ? keywordRulesRef.current[previousIndex] : undefined;
+
     setKeywordRules((prev) => prev.filter((r) => r.id !== id));
-    if (isAuthenticated) {
-      await supabase.from('keyword_rules').delete().eq('id', id);
+
+    if (!isAuthenticated) {
+      return { success: true };
+    }
+
+    try {
+      const { error } = await supabase.from('keyword_rules').delete().eq('id', id);
+      if (error) throw error;
+      return { success: true };
+    } catch (err: unknown) {
+      console.error('[Delete Keyword Rule Failed]', err);
+      // Local removal drops the row from the array rather than flipping a
+      // flag, so rollback re-inserts it at its original index instead of
+      // restoring a snapshot of the whole array.
+      if (previousRule) {
+        setKeywordRules((prev) => {
+          const next = [...prev];
+          next.splice(previousIndex, 0, previousRule);
+          return next;
+        });
+      }
+      const postgrestErr = err as { message?: string; details?: string; hint?: string };
+      return {
+        success: false,
+        error:
+          postgrestErr?.message ||
+          postgrestErr?.details ||
+          postgrestErr?.hint ||
+          (err instanceof Error ? err.message : 'Failed to delete keyword rule'),
+      };
     }
   }, [isAuthenticated]);
 
@@ -1270,6 +1367,9 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     const previousWallets = walletsRef.current;
     const previousDebts = debtsRef.current;
     const previousTransactions = transactionsRef.current;
+    // T69: see `cloudRevisionRef`'s own comment for why this, not a ref-identity
+    // check, is what detects a concurrent realtime reload landing mid-flight.
+    const cloudRevisionAtStart = cloudRevisionRef.current;
 
     // Optimistic balance calculation, derived from the resolved wallets up front so
     // the state updater below stays a pure mapping with no assignment side effects.
@@ -1474,11 +1574,20 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     } catch (err: unknown) {
       console.error('[Add Transaction Failed]', err);
 
-      // Rollback optimistic local state. Wallets, debts and transactions are
-      // restored together so the ledger and the balances can never disagree.
-      setWallets(previousWallets);
-      setDebts(previousDebts);
-      setTransactions(previousTransactions);
+      if (cloudRevisionRef.current !== cloudRevisionAtStart) {
+        // T69: a realtime reload landed while this write was in flight, so
+        // `previousWallets`/`previousDebts`/`previousTransactions` are a stale
+        // pre-fetch snapshot, not server truth - restoring them would silently
+        // discard whatever another device just committed. Re-fetch instead of
+        // guessing which parts of the snapshot are still valid.
+        await refreshFromCloud();
+      } else {
+        // Rollback optimistic local state. Wallets, debts and transactions are
+        // restored together so the ledger and the balances can never disagree.
+        setWallets(previousWallets);
+        setDebts(previousDebts);
+        setTransactions(previousTransactions);
+      }
 
       // Compensate any remote writes that already committed. The three writes are
       // not a single database transaction, so a failure part-way through leaves the
@@ -1516,30 +1625,35 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     } finally {
       inFlightIdempotencyKeys.current.delete(clientKey);
     }
-  }, [currentUser.id, isAuthenticated, markLocalWrite]);
+  }, [currentUser.id, isAuthenticated, markLocalWrite, refreshFromCloud]);
 
   // Soft-delete and restore are exact inverses: both flip `isDeleted` and undo or
   // re-apply the transaction's effect on wallet balances. `sign` is +1 when removing
   // the transaction from the ledger and -1 when putting it back, so one body covers
   // both directions and the two can no longer drift apart.
-  const setTransactionDeleted = useCallback(async (id: string, deleted: boolean) => {
+  const setTransactionDeleted = useCallback(async (id: string, deleted: boolean): Promise<MutationResult> => {
     const tx = transactionsRef.current.find((t) => t.id === id);
-    if (!tx || tx.isDeleted === deleted) return;
+    if (!tx) return { success: false, error: 'Transaction not found' };
+    if (tx.isDeleted === deleted) return { success: true };
 
     const sign = deleted ? 1 : -1;
 
+    // Snapshot for rollback before any optimistic write, mirroring
+    // `addTransaction`'s pattern above.
+    const previousTransactions = transactionsRef.current;
+    const previousWallets = walletsRef.current;
+
     // Resolve every participating wallet and compute both new balances BEFORE
-    // any setState call, mirroring `addTransaction`'s pattern above. This
-    // function used to assign `sourceNewBal`/`destNewBal` from inside the
-    // `setWallets` updater and read them back immediately after - but the
-    // preceding `setTransactions` call already schedules a state update, so
-    // React no longer takes the synchronous first-call fast path for the
-    // `setWallets` call that follows it, and the updater does not run before
-    // the read. Both variables silently stayed `null`, and the two remote
-    // wallet-balance UPDATEs below never fired, desyncing the cloud balance
-    // from the local one on every soft-delete and restore. Computing the
-    // values here keeps both updaters pure mappings with no assignment side
-    // effects, so there is nothing left to race.
+    // any setState call. This function used to assign `sourceNewBal`/
+    // `destNewBal` from inside the `setWallets` updater and read them back
+    // immediately after - but the preceding `setTransactions` call already
+    // schedules a state update, so React no longer takes the synchronous
+    // first-call fast path for the `setWallets` call that follows it, and the
+    // updater does not run before the read. Both variables silently stayed
+    // `null`, and the two remote wallet-balance UPDATEs below never fired,
+    // desyncing the cloud balance from the local one on every soft-delete and
+    // restore. Computing the values here keeps both updaters pure mappings
+    // with no assignment side effects, so there is nothing left to race.
     const sourceWallet = walletsRef.current.find((w) => w.id === tx.walletId);
     const destWallet = tx.destinationWalletId
       ? walletsRef.current.find((w) => w.id === tx.destinationWalletId)
@@ -1559,7 +1673,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
         ? roundToCents(destWallet.balance - sign * tx.amount)
         : null;
 
-    // Optimistic flag flip
+    // Optimistic local writes
     setTransactions((prev) =>
       prev.map((t) => (t.id === id ? { ...t, isDeleted: deleted, updatedAt: new Date().toISOString() } : t))
     );
@@ -1576,20 +1690,74 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       })
     );
 
-    if (isAuthenticated) {
-      markLocalWrite(id);
-      await supabase
-        .from('transactions')
-        .update({ is_deleted: deleted, updated_at: new Date().toISOString() })
-        .eq('id', id);
+    if (!isAuthenticated) {
+      return { success: true };
+    }
+
+    // Track which remote writes committed so a mid-sequence failure can be
+    // undone precisely, mirroring `addTransaction`'s compensation pattern.
+    // Wallet balances are written FIRST and the `is_deleted` flag LAST: the
+    // flag is what makes the row count as active/inactive again, so a wallet
+    // write failing must leave the cloud row in its pre-change state with
+    // only the already-committed balance writes to compensate - not a
+    // flipped flag pointing at balances that were never actually written.
+    let sourceWalletUpdated = false;
+    let destWalletUpdated = false;
+
+    try {
       if (sourceNewBal !== null && sourceWallet) {
         markLocalWrite(sourceWallet.id);
-        await supabase.from('wallets').update({ balance: sourceNewBal }).eq('id', sourceWallet.id);
+        const { error } = await supabase.from('wallets').update({ balance: sourceNewBal }).eq('id', sourceWallet.id);
+        if (error) throw error;
+        sourceWalletUpdated = true;
       }
       if (destNewBal !== null && destWallet) {
         markLocalWrite(destWallet.id);
-        await supabase.from('wallets').update({ balance: destNewBal }).eq('id', destWallet.id);
+        const { error } = await supabase.from('wallets').update({ balance: destNewBal }).eq('id', destWallet.id);
+        if (error) throw error;
+        destWalletUpdated = true;
       }
+
+      markLocalWrite(id);
+      const { error: txError } = await supabase
+        .from('transactions')
+        .update({ is_deleted: deleted, updated_at: new Date().toISOString() })
+        .eq('id', id);
+      if (txError) throw txError;
+
+      return { success: true };
+    } catch (err: unknown) {
+      console.error('[Set Transaction Deleted Failed]', err);
+
+      // Roll back the optimistic local state. Wallets and the transaction flag
+      // are restored together so the ledger and the balances can never disagree.
+      setTransactions(previousTransactions);
+      setWallets(previousWallets);
+
+      // Compensate any remote wallet writes that already committed - the two
+      // wallet writes and the flag write are not a single database
+      // transaction, so a failure part-way through leaves a wallet balance
+      // changed with nothing to reflect it unless explicitly undone.
+      try {
+        if (sourceWalletUpdated && sourceWallet) {
+          markLocalWrite(sourceWallet.id);
+          await supabase.from('wallets').update({ balance: sourceWallet.balance }).eq('id', sourceWallet.id);
+        }
+        if (destWalletUpdated && destWallet) {
+          markLocalWrite(destWallet.id);
+          await supabase.from('wallets').update({ balance: destWallet.balance }).eq('id', destWallet.id);
+        }
+      } catch (compErr) {
+        console.error('[Set Transaction Deleted Compensation Failed]', compErr);
+      }
+
+      const postgrestErr = err as { message?: string; details?: string; hint?: string };
+      const detailedError =
+        postgrestErr?.message ||
+        postgrestErr?.details ||
+        postgrestErr?.hint ||
+        (err instanceof Error ? err.message : 'Database error');
+      return { success: false, error: detailedError };
     }
   }, [isAuthenticated, markLocalWrite]);
 
@@ -1777,46 +1945,71 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     return { success: true };
   }, [isAuthenticated, currentUser.id, markLocalWrite]);
 
-  const repayDebtAtomic = useCallback(async (debtId: string, walletId: string, amount: number, note?: string) => {
-    const debt = debtsRef.current.find((d) => d.id === debtId);
-    const wallet = walletsRef.current.find((w) => w.id === walletId);
+  const settleDebt = useCallback(async (debtId: string): Promise<MutationResult> => {
+    const previousDebts = debtsRef.current;
 
-    if (!debt) return { success: false, error: 'Debt goal not found' };
-    if (!wallet) return { success: false, error: 'Selected wallet not found' };
-    if (amount <= 0) return { success: false, error: 'Repayment amount must be positive' };
-
-    // Find if a valid category exists in categories array (e.g. debt repayment category)
-    const matchedCategory = categoriesRef.current.find((c) => c.type === 'DEBT_REPAYMENT' || c.name.toLowerCase().includes('debt'));
-
-    return addTransaction({
-      amount,
-      rawInput: amount.toString(),
-      description: note ? `Debt Repayment: ${debt.name} (${note})` : `Debt Repayment: ${debt.name}`,
-      walletId,
-      categoryId: matchedCategory ? matchedCategory.id : undefined,
-      debtId,
-      type: 'DEBT_REPAYMENT',
-      transactionDate: todayIsoDate(),
-    });
-  }, [addTransaction]);
-
-  const settleDebt = useCallback(async (debtId: string) => {
     setDebts((prev) =>
       prev.map((d) => (d.id === debtId ? { ...d, remainingAmount: 0, isSettled: true, updatedAt: new Date().toISOString() } : d))
     );
-    if (isAuthenticated) {
+
+    if (!isAuthenticated) {
+      return { success: true };
+    }
+
+    try {
       markLocalWrite(debtId);
-      await supabase.from('debts').update({ remaining_amount: 0, is_settled: true, updated_at: new Date().toISOString() }).eq('id', debtId);
+      const { error } = await supabase
+        .from('debts')
+        .update({ remaining_amount: 0, is_settled: true, updated_at: new Date().toISOString() })
+        .eq('id', debtId);
+      if (error) throw error;
+      return { success: true };
+    } catch (err: unknown) {
+      console.error('[Settle Debt Failed]', err);
+      setDebts(previousDebts);
+      const postgrestErr = err as { message?: string; details?: string; hint?: string };
+      return {
+        success: false,
+        error:
+          postgrestErr?.message ||
+          postgrestErr?.details ||
+          postgrestErr?.hint ||
+          (err instanceof Error ? err.message : 'Failed to settle debt'),
+      };
     }
   }, [isAuthenticated, markLocalWrite]);
 
-  const deleteDebt = useCallback(async (debtId: string) => {
+  const deleteDebt = useCallback(async (debtId: string): Promise<MutationResult> => {
+    const previousDebts = debtsRef.current;
+
     setDebts((prev) =>
       prev.map((d) => (d.id === debtId ? { ...d, isDeleted: true, updatedAt: new Date().toISOString() } : d))
     );
-    if (isAuthenticated) {
+
+    if (!isAuthenticated) {
+      return { success: true };
+    }
+
+    try {
       markLocalWrite(debtId);
-      await supabase.from('debts').update({ is_deleted: true, updated_at: new Date().toISOString() }).eq('id', debtId);
+      const { error } = await supabase
+        .from('debts')
+        .update({ is_deleted: true, updated_at: new Date().toISOString() })
+        .eq('id', debtId);
+      if (error) throw error;
+      return { success: true };
+    } catch (err: unknown) {
+      console.error('[Delete Debt Failed]', err);
+      setDebts(previousDebts);
+      const postgrestErr = err as { message?: string; details?: string; hint?: string };
+      return {
+        success: false,
+        error:
+          postgrestErr?.message ||
+          postgrestErr?.details ||
+          postgrestErr?.hint ||
+          (err instanceof Error ? err.message : 'Failed to delete debt'),
+      };
     }
   }, [isAuthenticated, markLocalWrite]);
 
@@ -1893,13 +2086,37 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     return { success: true };
   }, [isAuthenticated, currentUser.id, refreshFromCloud, markLocalWrite]);
 
-  const deleteDiaryEntry = useCallback(async (id: string) => {
+  const deleteDiaryEntry = useCallback(async (id: string): Promise<MutationResult> => {
+    const previousDiaryEntries = diaryEntriesRef.current;
+
     setDiaryEntries((prev) =>
       prev.map((e) => (e.id === id ? { ...e, isDeleted: true, updatedAt: new Date().toISOString() } : e))
     );
-    if (isAuthenticated) {
+
+    if (!isAuthenticated) {
+      return { success: true };
+    }
+
+    try {
       markLocalWrite(id);
-      await supabase.from('diary_entries').update({ is_deleted: true, updated_at: new Date().toISOString() }).eq('id', id);
+      const { error } = await supabase
+        .from('diary_entries')
+        .update({ is_deleted: true, updated_at: new Date().toISOString() })
+        .eq('id', id);
+      if (error) throw error;
+      return { success: true };
+    } catch (err: unknown) {
+      console.error('[Delete Diary Entry Failed]', err);
+      setDiaryEntries(previousDiaryEntries);
+      const postgrestErr = err as { message?: string; details?: string; hint?: string };
+      return {
+        success: false,
+        error:
+          postgrestErr?.message ||
+          postgrestErr?.details ||
+          postgrestErr?.hint ||
+          (err instanceof Error ? err.message : 'Failed to delete diary entry'),
+      };
     }
   }, [isAuthenticated, markLocalWrite]);
 
@@ -1952,17 +2169,17 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
   // a consumer reading only actions does not re-render because of one.
   //
   // `addTransaction`, `softDeleteTransaction`, `restoreTransaction`,
-  // `commitBulkImport`, `repayDebtAtomic`, and `upsertDiaryEntry` joined this half
-  // in T15, ref-mirrored last (`repayDebtAtomic`) since it depends on
-  // `addTransaction` and is therefore doubly volatile until `addTransaction`
-  // itself stabilises.
+  // `commitBulkImport`, and `upsertDiaryEntry` joined this half in T15.
+  //
+  // `updateWallet` is deliberately absent from this object (T64): it has no
+  // external caller, only `deleteWallet` (below) uses it internally, so it
+  // stays a provider-local helper instead of public API surface.
   const actionsValue = useMemo(
     () => ({
       revokeSession,
       revokeAllOtherSessions,
       signOut,
       addWallet,
-      updateWallet,
       deleteWallet,
       addCategory,
       updateCategory,
@@ -1976,7 +2193,6 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       addDebt,
       settleDebt,
       deleteDebt,
-      repayDebtAtomic,
       upsertDiaryEntry,
       deleteDiaryEntry,
       setShowSoftDeleted,
@@ -1987,7 +2203,6 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       revokeAllOtherSessions,
       signOut,
       addWallet,
-      updateWallet,
       deleteWallet,
       addCategory,
       updateCategory,
@@ -2001,7 +2216,6 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       addDebt,
       settleDebt,
       deleteDebt,
-      repayDebtAtomic,
       upsertDiaryEntry,
       deleteDiaryEntry,
       refreshFromCloud,

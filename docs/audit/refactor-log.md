@@ -4,6 +4,55 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
+## Phase 33 — write-path hardening: prune, error checks, rollback parity: T64-T69 (2026-09-20, commit `pending`)
+
+**Changed**
+
+- `src/context/FinanceContext.tsx`:
+  - Deleted `repayDebtAtomic` end-to-end (interface member, implementation, `actionsValue` entry and dep).
+  - Removed `updateWallet` from `FinanceActionsContextType`/`actionsValue`; it remains a provider-internal helper `deleteWallet` calls.
+  - `setTransactionDeleted` (T63's fix, extended): snapshots `transactionsRef`/`walletsRef` before the optimistic write; remote writes reordered wallet-balances-first, `is_deleted`-flag-last; `try/catch` compensates any committed wallet write and restores the local snapshot on failure; returns `MutationResult`.
+  - `updateWallet`, `settleDebt`, `deleteDebt`, `updateCategory`, `deleteCategory`, `deleteDiaryEntry`, `deleteKeywordRule`: each now snapshots before its optimistic write, checks the Supabase `{ error }` result instead of discarding it, rolls back on failure, and returns `MutationResult`. `deleteKeywordRule` stays a hard delete (no `isDeleted` field on `KeywordRule`) but its rollback re-inserts the removed row at its original array index.
+  - New `cloudRevisionRef`, incremented once per successful `loadSupabaseData` commit; `addTransaction` snapshots it alongside its existing rollback state and, on failure, re-fetches from the cloud instead of restoring a stale local snapshot if a realtime reload landed mid-flight.
+  - `generateIdempotencyKey` moved out to `src/utils/ids.ts`.
+- New `src/utils/ids.ts` - the guarded idempotency-key generator, now the single implementation.
+- `src/hooks/useIdempotencyKey.ts` - calls `generateIdempotencyKey()` instead of a bare `crypto.randomUUID()`.
+- `src/hooks/useDebts.ts` - `repayDebt`/`settledDebts`/`unsettledDebts`(return entry)/`allWallets` removed; the `unsettledDebts` *memo* itself is kept (feeds `debtMetrics.activeCount`); `handleSettleDebt`/`handleDeleteDebt` now return their mutator's `MutationResult` instead of discarding it.
+- `src/hooks/useTransactions.ts` - `handleDelete`/`handleRestore` now return `softDeleteTransaction`/`restoreTransaction`'s `MutationResult`.
+- `src/components/ui/ConfirmDialog.tsx` - new optional `error?: string | null` prop, rendered as an `ERROR_BANNER_CLASS` banner below the description.
+- `src/views/WalletsView.tsx` / `src/views/DebtsView.tsx` - delete-confirm flows now capture their mutator's `MutationResult`, keep the dialog open with the error shown on failure, and close only on success.
+- `CLAUDE.md` - the `repayDebtAtomic`/`repayDebt` dead-code paragraph updated to record their removal.
+- 9 files changed (1 new).
+
+**Why**
+
+Phase 32 fixed one money-affecting bug in `setTransactionDeleted`; this phase generalizes the fix. The second-pass audit (`perf-audit-report.md`) found 9 mutators across wallets, debts, categories, diary entries, and keyword rules that discarded their Supabase call's result entirely - no error check, no rollback - leaving local state permanently ahead of cloud state on any rejected write (offline, RLS failure, expired session), with nothing telling the user it happened. `addTransaction` was the only mutator in the file with a real rollback; this phase brings every other write-path mutator up to that same standard, following its established pattern, rather than leaving `addTransaction` as an island of correctness in an otherwise-unguarded file. Pruning the dead `repayDebtAtomic`/`repayDebt` path first meant the hardening work never touched code about to be deleted. The two smaller fixes (T68's insecure-origin crash guard, T69's realtime-reload race guard) came out of the same audit pass and share this phase because both touch the same write paths being hardened here.
+
+**Verification**
+
+```
+npm run lint                                                                                              # tsc --noEmit: clean, 0 errors (checked after each of T64-T69)
+npx playwright test tests/soft-delete.spec.ts tests/debts.spec.ts tests/categories.spec.ts --project=chromium   # 9/9 passed
+CI=true npx playwright test                                                                                # 102/102 passed, 0 retries, 6.0m, 1 worker
+npm run build                                                                                               # built in 8.21s; entry chunk 180.57 -> 183.07 kB (+2.5 kB raw / +0.36 kB gzip); 0 chunks over 500 kB
+```
+
+**Correctness notes**
+
+- **`setTransactionDeleted`'s remote-write ordering is deliberate, not incidental.** Wallet balances are written before the `is_deleted` flag because the flag is what makes the row count as active/inactive again - a wallet-write failure must leave the cloud row in its pre-change state with only the already-committed balance writes to compensate, never a flipped flag pointing at balances that were never actually written. This is the same reasoning `addTransaction`'s existing compensation order already applies to its own three writes.
+- **`updateWallet` remaining provider-internal (not deleted) is intentional.** T64 removed it from the public actions context because it had no external caller, but `deleteWallet` still needs a partial-update primitive with error handling and rollback - keeping that logic in one function that `deleteWallet` calls and forwards, rather than duplicating the try/catch/rollback shape directly inside `deleteWallet`, is the smaller diff and the one place to fix a bug in wallet-write handling later.
+- **`deleteKeywordRule`'s rollback shape differs from every other mutator's in this phase on purpose.** Every other rollback restores a snapshot of the whole array; `deleteKeywordRule`'s local write removes the row from the array entirely (matching its hard-delete semantics) rather than flipping a flag, so its rollback re-inserts the captured row at its original index instead. A whole-array snapshot restore would also have worked, but the audit report's cut list already established `KeywordRule` has no `isDeleted` field to model a soft-delete flag on, and the array-splice approach makes the hard-delete/rollback shapes consistent with each other rather than mixing two different rollback strategies in one function.
+- **`ConfirmDialog`'s new `error` prop is additive.** Every existing call site that does not pass it (there are others in the app beyond `WalletsView`/`DebtsView`) is unaffected - the prop defaults to `null` and renders nothing.
+
+**Deliberately not done**
+
+- **T68 (insecure-origin crash guard) and T69 (realtime-reload race guard) have no automated test coverage, and cannot with the current harness.** T68's fix only matters when `crypto.randomUUID` is undefined, which never happens on `localhost` or the dev server's own origin - both secure contexts Playwright always runs against. T69's guard only matters when a second authenticated client commits a realtime-visible change while a first client's `addTransaction` is mid-flight and then fails - this sandbox has no second live Supabase session to construct that race with. Both are verified by code review against their own in-code reasoning comments, not by a red-to-green test, matching the same gap Phase 32 already accepted for the cloud-balance desync itself.
+- **`settleDebt`'s `MutationResult` is not surfaced in `DebtsView`'s UI.** It is a direct button action, not gated behind a `ConfirmDialog` - the plan's UI-wiring instruction named only the two delete-confirm sites (wallets, debts). Its rollback still applies on a rejected write; only the visible error message was scoped to the confirm dialogs this phase touches.
+- **No RPC or migration was added for any of the 7 hardened mutators.** Each keeps its existing shape of one-or-two separate Supabase round-trips; only whether an error is checked and whether a failure rolls back changed. Making any of these atomic server-side (the way `transfer_funds` is) would be a separate, migration-bearing phase.
+- **`deleteKeywordRule` was not converted to a soft delete.** `KeywordRule` has no `isDeleted` field and no migration adds one; adding both is out of proportion to this phase's scope, which is error-handling parity, not a schema change. The audit report's cut list already made this determination before the phase began.
+
+---
+
 ## Phase 32 — audit report and soft-delete balance desync: T61-T63 (2026-09-20, commit `c0c1371`)
 
 **Changed**

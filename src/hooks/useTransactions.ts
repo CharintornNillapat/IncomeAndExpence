@@ -139,14 +139,14 @@ export const useTransactions = (options: UseTransactionsFilterOptions = {}) => {
 
   const handleDelete = useCallback(
     async (id: string) => {
-      await softDeleteTransaction(id);
+      return await softDeleteTransaction(id);
     },
     [softDeleteTransaction]
   );
 
   const handleRestore = useCallback(
     async (id: string) => {
-      await restoreTransaction(id);
+      return await restoreTransaction(id);
     },
     [restoreTransaction]
   );

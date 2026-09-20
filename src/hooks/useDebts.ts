@@ -11,7 +11,6 @@ export const useDebts = () => {
     addDebt,
     settleDebt,
     deleteDebt,
-    repayDebtAtomic,
   } = useFinanceActions();
 
   // Active (non-deleted) debts
@@ -25,13 +24,10 @@ export const useDebts = () => {
     return wallets.filter((w) => !w.isDeleted);
   }, [wallets]);
 
-  // Settled vs Unsettled debts
+  // Feeds `debtMetrics.activeCount` below - not returned externally, no
+  // consumer destructures it (T64).
   const unsettledDebts = useMemo(() => {
     return activeDebts.filter((d) => !d.isSettled);
-  }, [activeDebts]);
-
-  const settledDebts = useMemo(() => {
-    return activeDebts.filter((d) => d.isSettled);
   }, [activeDebts]);
 
   // Aggregated Debt Metrics
@@ -59,36 +55,25 @@ export const useDebts = () => {
     [addDebt]
   );
 
-  const handleRepayDebt = useCallback(
-    (debtId: string, walletId: string, amount: number, note?: string) => {
-      return repayDebtAtomic(debtId, walletId, amount, note);
-    },
-    [repayDebtAtomic]
-  );
-
   const handleSettleDebt = useCallback(
     (debtId: string) => {
-      settleDebt(debtId);
+      return settleDebt(debtId);
     },
     [settleDebt]
   );
 
   const handleDeleteDebt = useCallback(
     (debtId: string) => {
-      deleteDebt(debtId);
+      return deleteDebt(debtId);
     },
     [deleteDebt]
   );
 
   return {
     debts: activeDebts,
-    unsettledDebts,
-    settledDebts,
     wallets: activeWallets,
-    allWallets: wallets,
     metrics: debtMetrics,
     addDebt: handleAddDebt,
-    repayDebt: handleRepayDebt,
     settleDebt: handleSettleDebt,
     deleteDebt: handleDeleteDebt,
   };

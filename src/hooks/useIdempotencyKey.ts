@@ -1,4 +1,5 @@
 import { useCallback, useState } from 'react';
+import { generateIdempotencyKey } from '../utils/ids';
 
 /**
  * One key armed per form. CLAUDE.md's client-idempotency convention: a failed
@@ -6,7 +7,7 @@ import { useCallback, useState } from 'react';
  * rotates only after a successful write.
  */
 export function useIdempotencyKey() {
-  const [idempotencyKey, setIdempotencyKey] = useState<string>(() => crypto.randomUUID());
-  const rotateIdempotencyKey = useCallback(() => setIdempotencyKey(crypto.randomUUID()), []);
+  const [idempotencyKey, setIdempotencyKey] = useState<string>(() => generateIdempotencyKey());
+  const rotateIdempotencyKey = useCallback(() => setIdempotencyKey(generateIdempotencyKey()), []);
   return { idempotencyKey, rotateIdempotencyKey };
 }
