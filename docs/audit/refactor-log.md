@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 37 — closeout: ADRs, metrics, `CLAUDE.md` promotion + drift repair: T78 (2026-09-20, commit `pending`)
+## Phase 37 — closeout: ADRs, metrics, `CLAUDE.md` promotion + drift repair: T78 (2026-09-20, commit `24e9ee6`)
 
 **Changed**
 
@@ -13,7 +13,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 - `docs/audit/task-ledger.md` — new Phase 37 table (T78), roadmap-status banner updated from "closed out at Phase 29; Phases 30–37 are a separately-requested second pass" to "closed out at Phase 37 — both audit passes are complete".
 - `docs/audit/constraints-to-promote.md` — 2 of the 3 previously-unpromoted rows (batched `localStorage` writer, `roundToCents`-is-the-only-ledger-rounder) re-verified against the live tree and marked promoted; the 3rd (repo-wide interactive-element `id` convention) re-checked, still holds only for `AuthModal.tsx` specifically, left open with an updated note rather than promoted on an unverified repo-wide claim.
 - `CLAUDE.md`:
-  - 5 verified constraints promoted: the setState-updater/ref-mirror rule, the `MutationResult` rollback-and-compensation rule, the `generateIdempotencyKey()` rule, the `AnimatedCounter` `textContent`-ownership rule, and the shell-modal `hasOpened`-latch rule.
+  - 7 verified constraints promoted: the plan's 5 scheduled ones (the setState-updater/ref-mirror rule, the `MutationResult` rollback-and-compensation rule, the `generateIdempotencyKey()` rule, the `AnimatedCounter` `textContent`-ownership rule, the shell-modal `hasOpened`-latch rule) plus 2 resolved from `constraints-to-promote.md`'s own backlog (the batched-`localStorage`-writer rule, the `roundToCents`-is-the-only-ledger-rounder rule).
   - 2 stale claims repaired: `useWallets()`'s bullet no longer lists the long-deleted `walletsByType`; the "State: context + domain hooks" section's `FinanceActionsContext` example-members list no longer names `repayDebtAtomic` (deleted Phase 33/T64).
 - 5 files changed, 0 `src/` files.
 

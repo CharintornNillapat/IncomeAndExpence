@@ -88,7 +88,7 @@ The 7 icon micro-chunks that existed pre-T7 (`plus`, `arrow-up-right`, `arrow-do
 | **Phase 3 (T7)** | 165.39 kB / 45.72 kB | No — 5 vendor chunks + all view chunks now under 500 kB |
 | **Post-T24/T26/T27 (final audit, 2026-09-19, commit `8168d10`)** | 169.08 kB / 47.39 kB | No — 5 vendor chunks + all view chunks still under 500 kB |
 | **Phase 29 closeout (final, 2026-09-19, commit `91687df`)** | 176.93 kB / 49.69 kB | No — 5 vendor chunks + all view chunks still under 500 kB |
-| **Phase 37 closeout (final, 2026-09-20, commit `pending`)** | 158.93 kB / 44.81 kB | No — 8 vendor/shared chunks + all view chunks still under 500 kB |
+| **Phase 37 closeout (final, 2026-09-20, commit `24e9ee6`)** | 158.93 kB / 44.81 kB | No — 8 vendor/shared chunks + all view chunks still under 500 kB |
 
 ### Phase 37 closeout — final full chunk breakdown
 
