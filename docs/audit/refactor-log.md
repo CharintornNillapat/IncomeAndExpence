@@ -4,6 +4,52 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
+## Phase 34 — `AnimatedCounter` direct DOM write: T70 (2026-09-20, commit `pending`)
+
+**Changed**
+
+- New `docs/audit/decisions/0009-animated-counter-dom-writes.md` - written before the code change, per `README.md`'s convention.
+- `src/components/AnimatedCounter.tsx` - `useState<string>` replaced with `useRef<HTMLSpanElement>`; the `animate()` call's `onUpdate` now writes `valueRef.current.textContent = latest.toLocaleString(...)` directly instead of calling `setState`; a mount-only `useLayoutEffect` seeds the same `'0.00'` the old `useState` initializer produced, so there is no empty-span flash before the animation effect arms; the rendered `<span ref={valueRef} />` has no React children. `currencyPrefix`, `duration`, the `[0.16, 1, 0.3, 1]` ease curve, and the `count`/`animate`/cleanup mechanics are unchanged.
+- 2 files changed (1 new).
+
+**Why**
+
+`perf-audit-report.md` (§C) identified `AnimatedCounter`'s per-animation-frame `setState` call as the single largest source of React render work in the app - `baseline-metrics.md`'s existing Phase-4 Profiler harness had already measured it at 590 renders on cold load and 636 on one write, an order of magnitude above every other component in that table, and it is mounted 6+ times simultaneously (every wallet card, 3 cashflow cards, the hero, the navbar). The animation's visual output was never wrong; only the mechanism producing it - a React state update ~60 times a second - was the problem. Writing the formatted string directly to the DOM node removes that mechanism without changing what the user sees.
+
+**Verification**
+
+```
+npm run lint                                                                 # tsc --noEmit: clean, 0 errors
+npx playwright test tests/date-boundary.spec.ts tests/theme.spec.ts --project=chromium   # 5/5 passed
+CI=true npx playwright test                                                  # 102/102 passed, 0 retries, 5.1m, 1 worker
+npm run build                                                                 # built in 6.92s; entry chunk 183.07 -> 183.18 kB (+0.11 kB, negligible); 0 chunks over 500 kB
+```
+
+**Render-count re-measurement (not part of the standard gate above, performed separately)**
+
+The standard Playwright gate proves the refactor is behaviorally identical; it does not measure render counts. To verify the actual claim, a temporary `(window as any).__acFnCalls = ((window as any).__acFnCalls || 0) + 1;` line was added to the top of `AnimatedCounter`'s function body, and a throwaway `tests/_tmp-ac-probe.spec.ts` measured it across the same two scenarios `baseline-metrics.md`'s original harness used: S1 (cold load, settle ~1.5s, read the counter) and S2 (reset the counter, run one `addQuickTransaction`, settle ~1.5s, read the counter again).
+
+| | S1 (cold load) | S2 (one write) |
+|---|---|---|
+| **Before this phase** (`baseline-metrics.md`, Phase 4) | 590 | 636 |
+| **After T70** (this probe) | 16 | 16 |
+
+Both the counter line and the probe spec were removed before committing - `grep -rn "__acFnCalls" src/ tests/` returns nothing on the committed tree, and `git status --short` was clean of both before staging. This mirrors `baseline-metrics.md`'s own "Post-T34 (`Navbar` de-subscription)" precedent for a targeted, disposable re-measurement of one specific claim rather than re-running the full multi-component Profiler branch.
+
+**Correctness notes**
+
+- **The remaining 16 function-body executions on both S1 and S2 are real renders, not a residual per-frame cost.** They come from each counter instance mounting (and StrictMode double-invoking that in dev) and from props (`value`) changing when a write settles - not from the animation's ~70-85 intermediate frames, which is the category of render this task set out to eliminate entirely. `baseline-metrics.md`'s own caveat about this component's counts being run-to-run noisy (236-596 across three runs for S1 alone) applied to the *old* frame-driven mechanism; it does not apply to the new count, which is driven by discrete mount/prop-change events like every other component in that table.
+- **`useTransform`/`motion.span` was considered and rejected**, not merely unconsidered - see ADR 0009's Options section. Framer-motion has no built-in way to bind a `MotionValue<string>` to a DOM text node the way it binds numeric values to style/attribute props, so that route would still flow the formatted string through React's reconciler once per frame.
+- **ADR 0004's currency-formatting exemption is unchanged.** `AnimatedCounter` still calls `toLocaleString('en-US', CURRENCY_DISPLAY_OPTIONS)` - the same shared constant `formatCurrencyAmount` uses - and still does not call `formatCurrencyAmount` itself, for the reason ADR 0004 already recorded (it formats a `MotionValue`'s in-flight ticks, not one settled amount). Only where the formatted string is written changed.
+
+**Deliberately not done**
+
+- **No call site was touched.** All 6 (`CashflowMetricsCards.tsx`, `TotalWealthHero.tsx`, `WalletAccountsGrid.tsx`, `NavbarLedgerStatus.tsx`, `WalletsView.tsx`) pass the same props as before; the component's public interface (`value`/`currencyPrefix`/`duration`) is unchanged.
+- **`baseline-metrics.md` was not given a new dated column for this phase.** The re-measurement above is narrowly scoped to the one claim this task makes (matching the "Post-T34" precedent's own scope), not a full baseline refresh; a full Profiler re-run across all 5 scenarios is a larger, separate effort this phase did not need in order to verify its own change.
+- **No accessibility live-region was added for the settled value.** ADR 0009's Revisit-if section names this as a plausible future need (e.g. announcing the settled balance to a screen reader) but nothing in this phase's scope asked for it, and adding one now would be speculative.
+
+---
+
 ## Phase 33 — write-path hardening: prune, error checks, rollback parity: T64-T69 (2026-09-20, commit `1e0e4ad`)
 
 **Changed**
