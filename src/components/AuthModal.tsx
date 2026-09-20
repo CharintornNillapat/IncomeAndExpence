@@ -12,7 +12,12 @@ interface AuthModalProps {
   onClose: () => void;
 }
 
-export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
+// T75: neither this component nor any child it renders subscribes to finance
+// context, so `React.memo` isn't defeated the way CLAUDE.md warns a context
+// subscriber would defeat it - `MainApp` (its only parent) re-renders on
+// every tab-cycle/UI-state change, and this stops that from re-rendering
+// `AuthModal` when neither of its two props actually changed.
+export const AuthModal: React.FC<AuthModalProps> = React.memo(({ isOpen, onClose }) => {
   const [mode, setMode] = useState<'signin' | 'signup' | 'forgot'>('signin');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -273,4 +278,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
       </div>
     </Modal>
   );
-};
+});
+
+AuthModal.displayName = 'AuthModal';

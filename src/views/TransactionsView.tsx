@@ -25,6 +25,12 @@ import { buildLookupMap } from '../utils/mapUtils';
 import { useTransientFlash } from '../hooks/useTransientFlash';
 import { OPTION_CLASS } from '../utils/formStyles';
 
+// Caps the CSV dry-run preview's rendered rows so a large import doesn't put
+// thousands of `<tr>`s in the DOM at once - the summary counts above the
+// table already total the whole file, and every valid row still commits
+// regardless of whether it was rendered in this preview.
+const CSV_PREVIEW_ROW_CAP = 100;
+
 interface TransactionsViewProps {
   /** Pre-selects the wallet filter (T40: the wallet popup's Activity preview hands off here via "View all"). */
   initialWalletFilter?: string;
@@ -499,7 +505,7 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-stone-100 dark:divide-stone-800">
-                  {importPreview.rows.map((row) => (
+                  {importPreview.rows.slice(0, CSV_PREVIEW_ROW_CAP).map((row) => (
                     <tr key={row.rowIndex} className={row.isValid ? 'bg-white dark:bg-stone-900' : 'bg-rose-50/50 dark:bg-rose-950/30'}>
                       <td className="p-2 font-mono text-stone-500 dark:text-stone-400">{row.rowIndex}</td>
                       <td className="p-2">
@@ -526,6 +532,15 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
                     </tr>
                   ))}
                 </tbody>
+                {importPreview.rows.length > CSV_PREVIEW_ROW_CAP && (
+                  <tfoot>
+                    <tr>
+                      <td colSpan={6} className="p-2 text-center text-stone-500 dark:text-stone-400 italic">
+                        +{importPreview.rows.length - CSV_PREVIEW_ROW_CAP} more rows omitted from preview
+                      </td>
+                    </tr>
+                  </tfoot>
+                )}
               </table>
             </div>
 

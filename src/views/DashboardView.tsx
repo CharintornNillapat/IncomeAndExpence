@@ -2,6 +2,7 @@
 import { motion, Variants } from 'framer-motion';
 import { PlusCircle, Sigma, Tags, HandCoins } from 'lucide-react';
 import { useFinanceState } from '../context/FinanceContext';
+import { Transaction } from '../types';
 import { useWallets } from '../hooks/useWallets';
 import { useDebts } from '../hooks/useDebts';
 import { WalletPopupModal, WalletModalTab } from '../components/WalletPopupModal';
@@ -169,15 +170,20 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     return incomeTotal - expenseTotal;
   }, [incomeTotal, expenseTotal]);
 
-  // Category Expense Distribution (Memoized)
+  const walletMap = useMemo(() => buildLookupMap(allWallets), [allWallets]);
+
+  const categoryMap = useMemo(() => buildLookupMap(categories), [categories]);
+
+  // Category Expense Distribution (Memoized). Reuses `categoryMap` above
+  // instead of building a second, identical id->Category lookup over the
+  // same `categories` array.
   const categoryBreakdown = useMemo(() => {
-    const catMap = buildLookupMap(categories);
     const expenseMap: Record<string, { name: string; amount: number; color: string }> = {};
 
     filteredTransactions
       .filter((t) => t.type === 'EXPENSE' || t.type === 'DEBT_REPAYMENT')
       .forEach((tx) => {
-        const cat = tx.categoryId ? catMap.get(tx.categoryId) : undefined;
+        const cat = tx.categoryId ? categoryMap.get(tx.categoryId) : undefined;
         const name = cat ? cat.name : 'Uncategorized';
         const color = cat?.color || '#94a3b8';
         if (!expenseMap[name]) {
@@ -187,22 +193,35 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       });
 
     return Object.values(expenseMap).sort((a, b) => b.amount - a.amount);
-  }, [filteredTransactions, categories]);
+  }, [filteredTransactions, categoryMap]);
 
-  // Compact Recent 5 Transactions for Dashboard Preview (Memoized)
+  // Compact Recent 5 Transactions for Dashboard Preview (Memoized). A single
+  // linear pass keeping a running top-5 (by `transactionDate`, newest first)
+  // instead of sorting the entire ledger just to keep 5 rows of it - O(n)
+  // instead of O(n log n), and the only per-transaction work is a handful of
+  // string comparisons against an at-most-5-element buffer.
   const recentTransactions = useMemo(() => {
-    return transactions
-      .filter((t) => !t.isDeleted)
-      // Newest first. `transactionDate` strings compare chronologically as
-      // plain strings (see `filteredTransactions` above) - no `new Date(...)`
-      // parsing needed for a same-format ISO date sort.
-      .sort((a, b) => (b.transactionDate > a.transactionDate ? 1 : b.transactionDate < a.transactionDate ? -1 : 0))
-      .slice(0, 5);
+    // Ascending by date while filling; index 0 is always the oldest (and
+    // therefore first to be evicted) of the currently-held top 5.
+    const top: Transaction[] = [];
+
+    for (const t of transactions) {
+      if (t.isDeleted) continue;
+
+      if (top.length < 5) {
+        let i = top.length - 1;
+        while (i >= 0 && top[i].transactionDate > t.transactionDate) i--;
+        top.splice(i + 1, 0, t);
+      } else if (t.transactionDate > top[0].transactionDate) {
+        top.shift();
+        let i = top.length - 1;
+        while (i >= 0 && top[i].transactionDate > t.transactionDate) i--;
+        top.splice(i + 1, 0, t);
+      }
+    }
+
+    return top.reverse();
   }, [transactions]);
-
-  const walletMap = useMemo(() => buildLookupMap(allWallets), [allWallets]);
-
-  const categoryMap = useMemo(() => buildLookupMap(categories), [categories]);
 
   return (
     <motion.div 

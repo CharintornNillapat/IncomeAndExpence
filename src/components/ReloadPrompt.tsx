@@ -2,7 +2,12 @@ import React from 'react';
 import { useRegisterSW } from 'virtual:pwa-register/react';
 import { RefreshCw, CheckCircle2, X } from 'lucide-react';
 
-export const ReloadPrompt: React.FC = () => {
+// T75: takes no props and subscribes to no finance context - `React.memo`
+// here means `MainApp` (its only parent) re-rendering for an unrelated
+// UI-state change (e.g. a tab switch) no longer re-renders this component;
+// it still re-renders on its own `useRegisterSW` state changes exactly as
+// before.
+export const ReloadPrompt: React.FC = React.memo(() => {
   const {
     offlineReady: [offlineReady, setOfflineReady],
     needRefresh: [needRefresh, setNeedRefresh],
@@ -87,4 +92,6 @@ export const ReloadPrompt: React.FC = () => {
       </div>
     </aside>
   );
-};
+});
+
+ReloadPrompt.displayName = 'ReloadPrompt';

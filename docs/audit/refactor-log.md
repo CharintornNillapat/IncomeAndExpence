@@ -4,6 +4,46 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
+## Phase 35 — targeted render-cost fixes: T71-T75 (2026-09-20, commit `pending`)
+
+**Changed**
+
+- `src/hooks/useTransactions.ts` - `filteredTransactions` split into a Stage 1 memo (every non-search predicate, no `wallets`/`categories` dependency) and a Stage 2 memo (keyword search) that returns Stage 1 by reference when no search is active. `walletNameMap`/`categoryNameMap` are now `null` and unbuilt whenever no search is active, gated on a `hasSearchQuery` boolean rather than the raw query string so they don't rebuild every keystroke.
+- `src/views/DashboardView.tsx` - `categoryMap` hoisted above `categoryBreakdown`, which now reuses it instead of building its own second `buildLookupMap(categories)`; `recentTransactions` replaced a full `.sort()` + `.slice(0, 5)` with a single-pass O(n) top-5 selection.
+- `src/views/DebtsView.tsx` - `debtToDelete` state now stores an id (`debtToDeleteId`) instead of the full `Debt` object; the object is resolved from `debts` at render time. `handleDelete`'s `useCallback` deps go from `[debts]` to `[]`.
+- `src/views/TransactionsView.tsx` - new module-level `CSV_PREVIEW_ROW_CAP = 100`; the dry-run preview's `<tbody>` renders at most that many rows, with a `<tfoot>` row reporting how many were omitted when the file exceeds it.
+- `src/components/AuthModal.tsx` / `src/components/ReloadPrompt.tsx` - wrapped in `React.memo`, matching the existing convention (`TotalWealthHero.tsx` et al.) of an inline `React.memo(...)` plus a `.displayName` assignment.
+- 6 files changed.
+
+**Why**
+
+`perf-audit-report.md` (§C) identified five render-cost findings below `AnimatedCounter`'s (Phase 34's) in severity but still worth fixing at low risk: a wallet-balance change silently invalidating the entire transaction-search machinery, a duplicated category lookup map, an unmemoized callback that was actually defeating a real `React.memo` (unlike four other "unmemoized prop" sites the report's cut list rejected), an unbounded CSV preview table, and two components re-rendering on every unrelated parent update. None of these individually rivaled `AnimatedCounter`'s per-frame `setState` cost, but each is a small, self-contained, easily-verified fix - the right shape of work for a Low-risk phase.
+
+**Verification**
+
+```
+npm run lint                                                                          # tsc --noEmit: clean, 0 errors (checked after each of T71-T75)
+npx playwright test tests/transaction.spec.ts tests/debts.spec.ts tests/csv.spec.ts --project=chromium   # 6/6 passed
+CI=true npx playwright test                                                           # 102/102 passed, 0 retries, 5.4m, 1 worker
+npm run build                                                                          # built in 6.98s; entry chunk 183.18 -> 183.26 kB (+0.08 kB, negligible); 0 chunks over 500 kB
+```
+
+**Correctness notes**
+
+- **T71's split preserves exact filtering semantics.** Stage 1 applies the identical six predicates the old single-pass filter did, in the same order; Stage 2 applies the identical five-field search-match logic (description, amount, raw input, category name, wallet name) to Stage 1's result instead of the raw ledger. The only behavioral difference is *when* the two lookup maps get built - not what they contain or how they're used.
+- **T72's `recentTransactions` rewrite trades one specific guarantee (exact stable-sort tie order) for O(n) instead of O(n log n).** See the task-ledger's note on this - it's a cosmetic ordering nuance for same-day transactions in a 5-row preview, not a data-correctness issue, and `transaction.spec.ts`'s assertions about "recent transactions" check presence/content, not tie order.
+- **T73 is the one place in this whole audit pass where an unmemoized callback actually mattered.** `perf-audit-report.md`'s cut list (finding D1) already established that four similar-looking "inline array/callback" sites feed components that aren't `React.memo`'d at all, so fixing them would have changed nothing observable. `DebtsView.handleDelete` was different because `DebtCardItem` genuinely is memoized - this task is the one member of that original finding group that survived verification.
+- **T74's row cap does not affect which rows import.** `commitBulkImport`'s caller (`TransactionsView`'s confirm handler) still reads `importPreview.rows.filter(r => r.isValid)` over the complete, uncapped array - only the `<tbody>`'s `.map()` is capped. A 5,000-row CSV still imports all valid rows; only the preview table stops rendering after the first 100.
+- **T75's `React.memo` calls are correctly unguarded by the CLAUDE.md rule against memoizing a context subscriber** - both `AuthModal.tsx` and `ReloadPrompt.tsx` were checked import-by-import (neither imports `useFinanceState`/`useFinanceActions` from `FinanceContext`, nor any hook that does) before wrapping, not memoized on the assumption that "it looks safe."
+
+**Deliberately not done**
+
+- **The other four "unmemoized prop" sites from the original audit pass were not touched in this phase either** - `perf-audit-report.md` already cut them (finding D1) before task planning began, on the grounds that their target components (`SegmentedControl`, `TransactionForm`) are not `React.memo`'d and therefore have nothing for an unstable prop to defeat. Revisiting this would require memoizing those components first, which is out of this phase's scope.
+- **No `baseline-metrics.md` column was captured for this phase.** None of T71-T75's claims are bundle-size claims - the metric deltas are structural (fewer map rebuilds, O(n) vs O(n log n), fewer re-renders) and are argued from the code, matching how `perf-audit-report.md` itself scoped these findings as "not directly measurable" without a disposable Profiler branch, which this phase's low-risk, five-small-fixes shape didn't warrant standing up.
+- **`SecurityView`'s four in-render `.filter()` calls and `WalletsView.tsx`'s per-card `Date` construction were not touched** - both were explicitly cut in `perf-audit-report.md` (findings D6/D7) as measurement noise at the N these views actually see (1-8 sessions, 2-10 wallets).
+
+---
+
 ## Phase 34 — `AnimatedCounter` direct DOM write: T70 (2026-09-20, commit `155c882`)
 
 **Changed**

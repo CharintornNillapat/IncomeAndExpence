@@ -25,7 +25,11 @@ export const DebtsView: React.FC = () => {
   const [isAddDebtOpen, setIsAddDebtOpen] = useState<boolean>(false);
   const [repayDebtTarget, setRepayDebtTarget] = useState<Debt | null>(null);
   // T42: debt deletion had no confirmation - gate it behind `ConfirmDialog`.
-  const [debtToDelete, setDebtToDelete] = useState<Debt | null>(null);
+  // T73: stores only the id, not the `Debt` object, so `handleDelete` below
+  // never needs to close over the `debts` array - the target is resolved at
+  // render time instead, keeping `handleDelete`'s identity stable across
+  // every debt-array change and preserving `DebtCardItem`'s `React.memo`.
+  const [debtToDeleteId, setDebtToDeleteId] = useState<string | null>(null);
   const [isDeletingDebt, setIsDeletingDebt] = useState<boolean>(false);
   const [deleteDebtError, setDeleteDebtError] = useState<string | null>(null);
 
@@ -37,21 +41,21 @@ export const DebtsView: React.FC = () => {
   const [minimumPayment, setMinimumPayment] = useState<number>(200);
   const [dueDate, setDueDate] = useState<string>('2026-12-31');
 
+  // Resolved at render time from the id above, rather than stored directly -
+  // see the state declaration's comment for why.
+  const debtToDelete = debtToDeleteId ? debts.find((d) => d.id === debtToDeleteId) ?? null : null;
+
   const handleSettle = useCallback((id: string) => {
     settleDebt(id);
   }, [settleDebt]);
 
-  const handleDelete = useCallback(
-    (id: string) => {
-      const target = debts.find((d) => d.id === id) || null;
-      setDeleteDebtError(null);
-      setDebtToDelete(target);
-    },
-    [debts]
-  );
+  const handleDelete = useCallback((id: string) => {
+    setDeleteDebtError(null);
+    setDebtToDeleteId(id);
+  }, []);
 
   const handleCloseDeleteDebt = useCallback(() => {
-    setDebtToDelete(null);
+    setDebtToDeleteId(null);
     setDeleteDebtError(null);
   }, []);
 
@@ -59,17 +63,17 @@ export const DebtsView: React.FC = () => {
   // closing as if nothing happened - the same MutationResult convention every
   // write form in this app follows.
   const handleConfirmDeleteDebt = useCallback(async () => {
-    if (!debtToDelete) return;
+    if (!debtToDeleteId) return;
     setIsDeletingDebt(true);
     setDeleteDebtError(null);
-    const result = await deleteDebt(debtToDelete.id);
+    const result = await deleteDebt(debtToDeleteId);
     setIsDeletingDebt(false);
     if (!result.success) {
       setDeleteDebtError(result.error || 'Failed to delete debt');
       return;
     }
-    setDebtToDelete(null);
-  }, [debtToDelete, deleteDebt]);
+    setDebtToDeleteId(null);
+  }, [debtToDeleteId, deleteDebt]);
 
   const handleOpenRepay = useCallback((debt: Debt) => {
     setRepayDebtTarget(debt);
@@ -305,7 +309,7 @@ export const DebtsView: React.FC = () => {
 
       {/* Delete Debt Confirmation (T42) */}
       <ConfirmDialog
-        isOpen={!!debtToDelete}
+        isOpen={!!debtToDeleteId}
         onClose={handleCloseDeleteDebt}
         onConfirm={handleConfirmDeleteDebt}
         isLoading={isDeletingDebt}

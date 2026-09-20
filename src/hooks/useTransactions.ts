@@ -37,20 +37,30 @@ export const useTransactions = (options: UseTransactionsFilterOptions = {}) => {
     searchQuery,
   } = options;
 
+  const trimmedQuery = (searchQuery ?? '').trim().toLowerCase();
+  const hasSearchQuery = trimmedQuery.length > 0;
+
   // Name lookups: Transaction only stores ids, so resolve display names from the
-  // wallet / category collections for keyword search.
-  const walletNameMap = useMemo(
-    () => new Map(wallets.map((w) => [w.id, w.name.toLowerCase()])),
-    [wallets]
-  );
+  // wallet / category collections for keyword search. Built only while a search
+  // is active, and rebuilt only when the underlying collection changes or a
+  // search starts/stops - not on every keystroke. Before this split these were
+  // unconditional and keyed on the whole `wallets`/`categories` arrays, so any
+  // wallet BALANCE change (which allocates a new `wallets` array) invalidated
+  // them and forced a full re-filter of the ledger below even when nobody was
+  // searching.
+  const walletNameMap = useMemo(() => {
+    if (!hasSearchQuery) return null;
+    return new Map(wallets.map((w) => [w.id, w.name.toLowerCase()]));
+  }, [wallets, hasSearchQuery]);
 
-  const categoryNameMap = useMemo(
-    () => new Map(categories.map((c) => [c.id, c.name.toLowerCase()])),
-    [categories]
-  );
+  const categoryNameMap = useMemo(() => {
+    if (!hasSearchQuery) return null;
+    return new Map(categories.map((c) => [c.id, c.name.toLowerCase()]));
+  }, [categories, hasSearchQuery]);
 
-  // Memoized filtered transactions list
-  const filteredTransactions = useMemo(() => {
+  // Stage 1: every non-search predicate. No dependency on `wallets` or
+  // `categories`, so a wallet balance change no longer invalidates this memo.
+  const baseFilteredTransactions = useMemo(() => {
     return transactions.filter((tx) => {
       // Soft-deletion check
       if (!includeDeleted && tx.isDeleted) return false;
@@ -79,44 +89,38 @@ export const useTransactions = (options: UseTransactionsFilterOptions = {}) => {
         return false;
       }
 
-      // Keyword search. Matches across all five user-visible fields: the
-      // description, the raw amount, the original calculation input, and the
-      // resolved category / wallet names.
-      if (searchQuery && searchQuery.trim().length > 0) {
-        const q = searchQuery.trim().toLowerCase();
-        const categoryName = tx.categoryId ? categoryNameMap.get(tx.categoryId) : undefined;
-        const sourceWalletName = walletNameMap.get(tx.walletId);
-        const destWalletName = tx.destinationWalletId
-          ? walletNameMap.get(tx.destinationWalletId)
-          : undefined;
-
-        const matchesDesc = tx.description.toLowerCase().includes(q);
-        const matchesAmount = tx.amount.toString().includes(q);
-        const matchesRaw = tx.rawInput?.toLowerCase().includes(q) ?? false;
-        const matchesCategory = categoryName?.includes(q) ?? false;
-        const matchesWallet =
-          (sourceWalletName?.includes(q) ?? false) || (destWalletName?.includes(q) ?? false);
-
-        if (!matchesDesc && !matchesAmount && !matchesRaw && !matchesCategory && !matchesWallet) {
-          return false;
-        }
-      }
-
       return true;
     });
-  }, [
-    transactions,
-    includeDeleted,
-    showSoftDeleted,
-    walletId,
-    categoryId,
-    type,
-    startDate,
-    endDate,
-    searchQuery,
-    walletNameMap,
-    categoryNameMap,
-  ]);
+  }, [transactions, includeDeleted, showSoftDeleted, walletId, categoryId, type, startDate, endDate]);
+
+  // Stage 2: keyword search over Stage 1's result. Matches across all five
+  // user-visible fields: the description, the raw amount, the original
+  // calculation input, and the resolved category / wallet names. Returns
+  // Stage 1 BY REFERENCE when no search is active - the default in every
+  // view - so a wallet balance change costs an O(1) identity return instead
+  // of a second pass over the ledger.
+  const filteredTransactions = useMemo(() => {
+    if (!hasSearchQuery || !walletNameMap || !categoryNameMap) {
+      return baseFilteredTransactions;
+    }
+
+    return baseFilteredTransactions.filter((tx) => {
+      const categoryName = tx.categoryId ? categoryNameMap.get(tx.categoryId) : undefined;
+      const sourceWalletName = walletNameMap.get(tx.walletId);
+      const destWalletName = tx.destinationWalletId
+        ? walletNameMap.get(tx.destinationWalletId)
+        : undefined;
+
+      const matchesDesc = tx.description.toLowerCase().includes(trimmedQuery);
+      const matchesAmount = tx.amount.toString().includes(trimmedQuery);
+      const matchesRaw = tx.rawInput?.toLowerCase().includes(trimmedQuery) ?? false;
+      const matchesCategory = categoryName?.includes(trimmedQuery) ?? false;
+      const matchesWallet =
+        (sourceWalletName?.includes(trimmedQuery) ?? false) || (destWalletName?.includes(trimmedQuery) ?? false);
+
+      return matchesDesc || matchesAmount || matchesRaw || matchesCategory || matchesWallet;
+    });
+  }, [baseFilteredTransactions, hasSearchQuery, trimmedQuery, walletNameMap, categoryNameMap]);
 
   // Action handlers stabilized with useCallback
   const handleAdd = useCallback(
