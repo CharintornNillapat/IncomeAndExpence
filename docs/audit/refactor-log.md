@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 36 — bundle: deferred shell modals, diary/papaparse split: T76-T77 (2026-09-20, commit `pending`)
+## Phase 36 — bundle: deferred shell modals, diary/papaparse split: T76-T77 (2026-09-20, commit `01fbdb8`)
 
 **Changed**
 
