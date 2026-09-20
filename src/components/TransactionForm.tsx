@@ -2,8 +2,8 @@ import React, { useState, useId } from 'react';
 import { motion } from 'framer-motion';
 import { Sparkles, ArrowRight, SlidersHorizontal, AlertCircle } from 'lucide-react';
 import { InlineMathInput } from './InlineMathInput';
-import { Wallet, Category, TransactionType } from '../types';
-import { useFinanceState } from '../context/FinanceContext';
+import { Wallet, Category, TransactionType, Preset } from '../types';
+import { useFinanceState, useFinanceActions } from '../context/FinanceContext';
 import { useSubmitHandler } from '../hooks/useSubmitHandler';
 import { useIdempotencyKey } from '../hooks/useIdempotencyKey';
 import { useTransientFlash } from '../hooks/useTransientFlash';
@@ -64,7 +64,8 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
   onSubmitTransaction,
 }) => {
   const formId = useId();
-  const { keywordRules, debts } = useFinanceState();
+  const { keywordRules, debts, presets } = useFinanceState();
+  const { addPreset } = useFinanceActions();
 
   const activeDebts = React.useMemo(
     () => debts.filter((d) => !d.isDeleted && !d.isSettled),
@@ -82,6 +83,16 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
   const [categoryId, setCategoryId] = useState<string>(categories[0]?.id || '');
   const [debtId, setDebtId] = useState<string>(presetDebtId || activeDebts[0]?.id || debts[0]?.id || '');
   const [date, setDate] = useState<string>(todayIsoDate());
+
+  // Applying a template re-seeds the amount field. `InlineMathInput` only
+  // honors its own `defaultValue` prop on mount (it ignores later prop
+  // changes once the user has typed anything), so re-seeding it requires
+  // remounting via a changing `key` rather than just passing a new
+  // `defaultValue`.
+  const [amountSeed, setAmountSeed] = useState<{ key: number; value: string }>({ key: 0, value: '' });
+  const [saveAsTemplate, setSaveAsTemplate] = useState<boolean>(false);
+  const [templateName, setTemplateName] = useState<string>('');
+  const [templateSaveError, setTemplateSaveError] = useState<string | null>(null);
 
   // Ids for the three fields a caller-supplied shell (DebtsView's repay
   // modal) already has Playwright specs targeting by a specific legacy
@@ -157,6 +168,24 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
     }
   };
 
+  // Prefills the form from a saved template. The amount field is reseeded via
+  // `amountSeed`'s changing `key` (see its declaration above); category/wallet
+  // are only applied if they still resolve to a live option, since a template
+  // can outlive the category or wallet it was created against.
+  const handleApplyPreset = (preset: Preset) => {
+    setType(preset.type);
+    setDescription(preset.description);
+    setAutoMatchedCategory(null);
+    setShowManualOverrides(true);
+    if (preset.categoryId && categories.some((c) => c.id === preset.categoryId)) {
+      setCategoryId(preset.categoryId);
+    }
+    if (preset.walletId && wallets.some((w) => w.id === preset.walletId)) {
+      setWalletId(preset.walletId);
+    }
+    setAmountSeed((prev) => ({ key: prev.key + 1, value: preset.amount.toString() }));
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (isSubmitting) return;
@@ -197,20 +226,50 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
 
     const debtCategory = categories.find((c) => c.type === 'DEBT_REPAYMENT' || c.name.toLowerCase().includes('debt'));
 
-    submitTransaction(e, () =>
-      onSubmitTransaction({
+    // Presets only support EXPENSE/INCOME (see `Preset` in types.ts), so a
+    // TRANSFER/DEBT_REPAYMENT/ADJUSTMENT submission never triggers a save even
+    // if the checkbox was left checked from a prior EXPENSE/INCOME entry.
+    const shouldSaveTemplate =
+      !lockType && saveAsTemplate && (type === 'EXPENSE' || type === 'INCOME') && templateName.trim().length > 0;
+    const finalCategoryId =
+      type === 'EXPENSE' || type === 'INCOME' || type === 'ADJUSTMENT' ? categoryId : type === 'DEBT_REPAYMENT' ? debtCategory?.id : undefined;
+
+    submitTransaction(e, async () => {
+      const res = await onSubmitTransaction({
         amount: finalAmount,
         rawInput: effectiveRaw,
         description: finalDescription,
         walletId: finalWalletId,
         destinationWalletId: type === 'TRANSFER' ? destinationWalletId : undefined,
-        categoryId: type === 'EXPENSE' || type === 'INCOME' || type === 'ADJUSTMENT' ? categoryId : type === 'DEBT_REPAYMENT' ? debtCategory?.id : undefined,
+        categoryId: finalCategoryId,
         debtId: type === 'DEBT_REPAYMENT' ? debtId : undefined,
         type,
         date,
         idempotencyKey: submitKey,
-      })
-    );
+      });
+
+      const failed = res && typeof res === 'object' && 'success' in res && !res.success;
+      if (failed || !shouldSaveTemplate) {
+        return res;
+      }
+
+      const presetRes = await addPreset({
+        name: templateName.trim(),
+        type,
+        amount: finalAmount,
+        description: finalDescription,
+        categoryId: finalCategoryId,
+        walletId: finalWalletId,
+      });
+      if (presetRes.success) {
+        setSaveAsTemplate(false);
+        setTemplateName('');
+        setTemplateSaveError(null);
+      } else {
+        setTemplateSaveError(presetRes.error || 'Failed to save template');
+      }
+      return res;
+    });
   };
 
   const selectedWallet = wallets.find((w) => w.id === walletId);
@@ -255,12 +314,37 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
       </div>
       )}
 
+      {/* Quick templates: reuses a saved preset (name/amount/description/category/wallet)
+          to prefill the fields below instead of re-typing a recurring entry. Hidden on a
+          locked-type form (e.g. the debt repay modal), which has no business letting a
+          template silently override its fixed type. */}
+      {!lockType && presets.length > 0 && (
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="text-[11px] font-semibold text-stone-400 dark:text-stone-500 uppercase tracking-wide mr-0.5">
+            Templates
+          </span>
+          {presets.map((preset) => (
+            <button
+              key={preset.id}
+              type="button"
+              id={`${formId}-preset-chip-${preset.id}`}
+              onClick={() => handleApplyPreset(preset)}
+              className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-full bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-300 border border-stone-200 dark:border-stone-700 transition-colors cursor-pointer"
+            >
+              {preset.name}
+            </button>
+          ))}
+        </div>
+      )}
+
       {/* 1. Safe Inline Math Input Component */}
       <InlineMathInput
+        key={amountSeed.key}
         id={mathInputId}
         label="Transaction Amount"
         placeholder="e.g. 500+500 or 1500*0.7"
         currencyPrefix={APP_CURRENCY_SYMBOL}
+        defaultValue={amountSeed.value}
         required
         onAmountEvaluated={handleAmountEvaluated}
       />
@@ -410,6 +494,42 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
               className="w-full text-sm rounded-xl border border-stone-200 dark:border-stone-700 px-3.5 py-2.5 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-none focus:border-stone-800 dark:focus:border-stone-400 focus:ring-2 focus:ring-stone-200 dark:focus:ring-stone-700 [color-scheme:light] dark:[color-scheme:dark] transition-colors"
             />
           </div>
+        </div>
+      )}
+
+      {/* Save-as-template: only offered for EXPENSE/INCOME (the two types `Preset`
+          supports - see types.ts) on a form that isn't locked to one fixed type. */}
+      {!lockType && (type === 'EXPENSE' || type === 'INCOME') && (
+        <div className="flex flex-col gap-2 rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800/60 p-3">
+          <label
+            htmlFor={`${formId}-save-template-checkbox`}
+            className="flex items-center gap-2 text-xs font-medium text-stone-700 dark:text-stone-300 cursor-pointer"
+          >
+            <input
+              id={`${formId}-save-template-checkbox`}
+              type="checkbox"
+              checked={saveAsTemplate}
+              onChange={(e) => {
+                setSaveAsTemplate(e.target.checked);
+                if (!e.target.checked) setTemplateSaveError(null);
+              }}
+              className="rounded border-stone-300 dark:border-stone-600 text-stone-900 dark:text-stone-100 focus:ring-stone-400 cursor-pointer"
+            />
+            Save as a quick template
+          </label>
+          {saveAsTemplate && (
+            <input
+              id={`${formId}-template-name`}
+              type="text"
+              value={templateName}
+              onChange={(e) => setTemplateName(e.target.value)}
+              placeholder="Template name, e.g. Morning Coffee"
+              className="w-full text-sm rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 px-3.5 py-2.5 text-stone-900 dark:text-stone-100 placeholder:text-stone-400 dark:placeholder:text-stone-500 focus:outline-none focus:border-stone-800 dark:focus:border-stone-400 focus:ring-2 focus:ring-stone-200 dark:focus:ring-stone-700 transition-colors"
+            />
+          )}
+          {templateSaveError && (
+            <p className="text-[11px] font-medium text-rose-600 dark:text-rose-400">{templateSaveError}</p>
+          )}
         </div>
       )}
 

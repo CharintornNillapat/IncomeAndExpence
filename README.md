@@ -7,7 +7,7 @@
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-v4-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)
 ![Supabase](https://img.shields.io/badge/Supabase-Database%20%26%20Auth-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white)
 ![Vite](https://img.shields.io/badge/Vite-6-646CFF?style=for-the-badge&logo=vite&logoColor=white)
-![Playwright](https://img.shields.io/badge/Playwright-111%20E2E%20tests-2EAD33?style=for-the-badge&logo=playwright&logoColor=white)
+![Playwright](https://img.shields.io/badge/Playwright-129%20E2E%20tests-2EAD33?style=for-the-badge&logo=playwright&logoColor=white)
 ![PWA](https://img.shields.io/badge/PWA-Offline%20Ready-5A0FC8?style=for-the-badge&logo=pwa&logoColor=white)
 
 <br />
@@ -186,8 +186,8 @@ Then open `http://localhost:3000`.
 # tsconfig enables noUnusedLocals + noUnusedParameters, so dead imports fail the build.
 npm run lint
 
-# Run the Playwright E2E suite: 37 tests across 13 spec files,
-# executed on Chromium, Firefox and WebKit (111 test runs).
+# Run the Playwright E2E suite: 43 tests across 14 spec files,
+# executed on Chromium, Firefox and WebKit (129 test runs).
 # Playwright starts the dev server automatically.
 npm test
 
@@ -198,7 +198,7 @@ npx playwright test tests/wallets.spec.ts --project=chromium
 npx playwright install
 ```
 
-Specs live in [`tests/`](tests/) across 13 files — transactions, wallets, wallet forms, diary, theme, debts, soft-delete, keywords, categories, CSV, auth, date-boundary, and storage-persistence. Shared helpers in `tests/helpers.ts` handle tab navigation (including waiting for lazy view chunks) and seeding a transaction.
+Specs live in [`tests/`](tests/) across 14 files — transactions, wallets, wallet forms, diary, theme, debts, soft-delete, keywords, categories, CSV, auth, date-boundary, storage-persistence, and presets. Shared helpers in `tests/helpers.ts` handle tab navigation (including waiting for lazy view chunks) and seeding a transaction.
 
 ```bash
 # Production build

@@ -68,6 +68,26 @@ export interface KeywordRule {
   createdAt: string;
 }
 
+/**
+ * A saved transaction template ("quick preset") a user can re-apply to log a
+ * recurring EXPENSE/INCOME in one tap instead of re-typing the same amount,
+ * description, category, and wallet every time. Restricted to EXPENSE/INCOME
+ * only - TRANSFER (needs a destination wallet) and DEBT_REPAYMENT (needs an
+ * active debt target) don't fit a one-tap replay the same way, and adding
+ * those fields here would mostly sit unused.
+ */
+export interface Preset {
+  id: string;
+  userId?: string | null;
+  name: string;
+  type: 'INCOME' | 'EXPENSE';
+  amount: number;
+  description: string;
+  categoryId?: string;
+  walletId?: string;
+  createdAt: string;
+}
+
 export interface Transaction {
   id: string;
   userId: string;

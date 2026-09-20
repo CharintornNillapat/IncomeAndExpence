@@ -86,6 +86,15 @@ export const KeywordMappingSchema = z.object({
   categoryId: z.string().min(1, 'Category is required'),
 });
 
+export const PresetSchema = z.object({
+  name: z.string().trim().min(1, 'Template name is required').max(60, 'Template name is too long'),
+  type: z.enum(['INCOME', 'EXPENSE']),
+  amount: z.number().positive('Amount must be greater than 0').max(999999999.99, 'Amount too large'),
+  description: z.string().trim().min(1, 'Description is required').max(255),
+  categoryId: z.string().optional(),
+  walletId: z.string().optional(),
+});
+
 export const AuthLoginSchema = z.object({
   email: z.string().email('Invalid email address'),
   password: z.string().min(6, 'Password must be at least 6 characters'),

@@ -10,6 +10,7 @@ import {
   DiaryEntry,
   ImportRowValidation,
   TransactionType,
+  Preset,
 } from '../types';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import {
@@ -19,6 +20,7 @@ import {
   DiarySchema,
   KeywordMappingSchema,
   CategorySchema,
+  PresetSchema,
   formatZodIssues,
 } from '../utils/zodSchemas';
 import { APP_CURRENCY } from '../utils/currency';
@@ -61,6 +63,9 @@ export interface FinanceStateContextType {
   // Categories & Configurable Keyword Rules
   categories: Category[];
   keywordRules: KeywordRule[];
+
+  // Transaction Templates ("quick presets")
+  presets: Preset[];
 
   // Transactions
   transactions: Transaction[];
@@ -106,6 +111,23 @@ export interface FinanceActionsContextType {
   deleteCategory: (id: string) => Promise<MutationResult>;
   addKeywordRule: (keyword: string, categoryId: string) => Promise<MutationResult>;
   deleteKeywordRule: (id: string) => Promise<MutationResult>;
+
+  // Transaction Templates ("quick presets")
+  addPreset: (data: {
+    name: string;
+    type: 'INCOME' | 'EXPENSE';
+    amount: number;
+    description: string;
+    categoryId?: string;
+    walletId?: string;
+  }) => Promise<MutationResult>;
+  updatePreset: (
+    id: string,
+    updates: Partial<{ name: string; amount: number; description: string; categoryId: string; walletId: string }>
+  ) => Promise<MutationResult>;
+  deletePreset: (id: string) => Promise<MutationResult>;
+  /** Applies a saved template as a brand-new transaction dated today (or `transactionDate`, if given), reusing `addTransaction` rather than duplicating its ledger/wallet-balance logic. */
+  applyPreset: (id: string, transactionDate?: string) => Promise<{ success: boolean; error?: string; txId?: string }>;
 
   // Transactions
   addTransaction: (tx: {
@@ -407,6 +429,11 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     dedupeCategoriesByName(safeGetLocalStorage('pf_categories', DEFAULT_SYSTEM_CATEGORIES))
   );
   const [keywordRules, setKeywordRules] = useState<KeywordRule[]>(() => safeGetLocalStorage('pf_keywords', DEFAULT_KEYWORD_RULES));
+  // Local-only, like `sessions`: no `presets` table exists in the Supabase
+  // migrations, so these never leave `localStorage` regardless of
+  // `isAuthenticated` - unlike `categories`/`keywordRules`, which sync when
+  // authenticated. A template is a personal shortcut, not shared ledger data.
+  const [presets, setPresets] = useState<Preset[]>(() => safeGetLocalStorage('pf_presets', []));
   const [transactions, setTransactions] = useState<Transaction[]>(() => safeGetLocalStorage('pf_transactions', []));
   const [debts, setDebts] = useState<Debt[]>(() => safeGetLocalStorage('pf_debts', DEFAULT_STARTER_DEBTS));
   const [diaryEntries, setDiaryEntries] = useState<DiaryEntry[]>(() => safeGetLocalStorage('pf_diary', []));
@@ -452,6 +479,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
   const categoriesRef = useRef<Category[]>(categories);
   const diaryEntriesRef = useRef<DiaryEntry[]>(diaryEntries);
   const keywordRulesRef = useRef<KeywordRule[]>(keywordRules);
+  const presetsRef = useRef<Preset[]>(presets);
 
   useEffect(() => {
     walletsRef.current = wallets;
@@ -471,6 +499,9 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
   useEffect(() => {
     keywordRulesRef.current = keywordRules;
   }, [keywordRules]);
+  useEffect(() => {
+    presetsRef.current = presets;
+  }, [presets]);
 
   // T16 (ADR 0003): batched localStorage writer. Each state-slice effect below
   // marks its key dirty in `pendingWritesRef` instead of writing immediately;
@@ -520,6 +551,9 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
   useEffect(() => {
     if (didMountRef.current) scheduleStorageWrite('pf_keywords', keywordRules);
   }, [keywordRules, scheduleStorageWrite]);
+  useEffect(() => {
+    if (didMountRef.current) scheduleStorageWrite('pf_presets', presets);
+  }, [presets, scheduleStorageWrite]);
   useEffect(() => {
     if (didMountRef.current) scheduleStorageWrite('pf_transactions', transactions);
   }, [transactions, scheduleStorageWrite]);
@@ -1305,6 +1339,87 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     }
   }, [isAuthenticated]);
 
+  // Preset (quick-template) CRUD. Local-only (see the `presets` state
+  // declaration above) - hard delete, like keyword rules, since a template is
+  // configuration, not a financial record `isDeleted` needs to protect.
+  const addPreset = useCallback(async (data: {
+    name: string;
+    type: 'INCOME' | 'EXPENSE';
+    amount: number;
+    description: string;
+    categoryId?: string;
+    walletId?: string;
+  }): Promise<MutationResult> => {
+    const validation = PresetSchema.safeParse(data);
+    if (!validation.success) {
+      return { success: false, error: formatZodIssues(validation.error) };
+    }
+    const cleaned = validation.data;
+    const isDuplicate = presetsRef.current.some(
+      (p) => p.name.trim().toLowerCase() === cleaned.name.toLowerCase()
+    );
+    if (isDuplicate) {
+      return { success: false, error: `A template named "${cleaned.name}" already exists` };
+    }
+
+    const newPreset: Preset = {
+      id: `preset-${Date.now()}`,
+      userId: currentUser.id,
+      name: cleaned.name,
+      type: cleaned.type,
+      amount: cleaned.amount,
+      description: cleaned.description,
+      categoryId: cleaned.categoryId,
+      walletId: cleaned.walletId,
+      createdAt: new Date().toISOString(),
+    };
+    setPresets((prev) => [newPreset, ...prev]);
+    return { success: true };
+  }, [currentUser.id]);
+
+  const updatePreset = useCallback(async (
+    id: string,
+    updates: Partial<{ name: string; amount: number; description: string; categoryId: string; walletId: string }>
+  ): Promise<MutationResult> => {
+    const existing = presetsRef.current.find((p) => p.id === id);
+    if (!existing) {
+      return { success: false, error: 'Template not found' };
+    }
+
+    let cleanedUpdates = updates;
+    if (updates.name !== undefined) {
+      const cleanedName = updates.name.trim();
+      if (!cleanedName) {
+        return { success: false, error: 'Template name is required' };
+      }
+      const isDuplicate = presetsRef.current.some(
+        (p) => p.id !== id && p.name.trim().toLowerCase() === cleanedName.toLowerCase()
+      );
+      if (isDuplicate) {
+        return { success: false, error: `A template named "${cleanedName}" already exists` };
+      }
+      cleanedUpdates = { ...updates, name: cleanedName };
+    }
+    if (updates.amount !== undefined && !(updates.amount > 0)) {
+      return { success: false, error: 'Amount must be greater than 0' };
+    }
+    if (updates.description !== undefined && !updates.description.trim()) {
+      return { success: false, error: 'Description is required' };
+    }
+
+    setPresets((prev) => prev.map((p) => (p.id === id ? { ...p, ...cleanedUpdates } : p)));
+    return { success: true };
+  }, []);
+
+  const deletePreset = useCallback(async (id: string): Promise<MutationResult> => {
+    const exists = presetsRef.current.some((p) => p.id === id);
+    if (!exists) {
+      return { success: false, error: 'Template not found' };
+    }
+    setPresets((prev) => prev.filter((p) => p.id !== id));
+    return { success: true };
+  }, []);
+
   // Transactions CRUD
   const addTransaction = useCallback(async (data: {
     amount: number;
@@ -1627,6 +1742,39 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       inFlightIdempotencyKeys.current.delete(clientKey);
     }
   }, [currentUser.id, isAuthenticated, markLocalWrite, refreshFromCloud]);
+
+  // Fires a saved template as a brand-new transaction. Deliberately reuses
+  // `addTransaction` instead of its own insert/balance-update path - CLAUDE.md's
+  // "no second repayment code path" lesson (T64) applies here too: the ledger
+  // and wallet-balance logic must have exactly one implementation.
+  const applyPreset = useCallback(async (id: string, transactionDate?: string) => {
+    const preset = presetsRef.current.find((p) => p.id === id);
+    if (!preset) {
+      return { success: false, error: 'Template not found' };
+    }
+
+    const walletId =
+      preset.walletId && walletsRef.current.some((w) => w.id === preset.walletId && !w.isDeleted)
+        ? preset.walletId
+        : walletsRef.current.find((w) => !w.isDeleted)?.id;
+    if (!walletId) {
+      return { success: false, error: 'No wallet available to apply this template' };
+    }
+
+    const categoryId =
+      preset.categoryId && categoriesRef.current.some((c) => c.id === preset.categoryId && !c.isDeleted)
+        ? preset.categoryId
+        : undefined;
+
+    return addTransaction({
+      amount: preset.amount,
+      description: preset.description,
+      walletId,
+      categoryId,
+      type: preset.type,
+      transactionDate: transactionDate || todayIsoDate(),
+    });
+  }, [addTransaction]);
 
   // Soft-delete and restore are exact inverses: both flip `isDeleted` and undo or
   // re-apply the transaction's effect on wallet balances. `sign` is +1 when removing
@@ -2144,6 +2292,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       totalNetWorth,
       categories,
       keywordRules,
+      presets,
       transactions,
       debts,
       diaryEntries,
@@ -2159,6 +2308,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       totalNetWorth,
       categories,
       keywordRules,
+      presets,
       transactions,
       debts,
       diaryEntries,
@@ -2189,6 +2339,10 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       deleteCategory,
       addKeywordRule,
       deleteKeywordRule,
+      addPreset,
+      updatePreset,
+      deletePreset,
+      applyPreset,
       addTransaction,
       softDeleteTransaction,
       restoreTransaction,
@@ -2212,6 +2366,10 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       deleteCategory,
       addKeywordRule,
       deleteKeywordRule,
+      addPreset,
+      updatePreset,
+      deletePreset,
+      applyPreset,
       addTransaction,
       softDeleteTransaction,
       restoreTransaction,
