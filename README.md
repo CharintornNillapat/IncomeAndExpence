@@ -7,7 +7,7 @@
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-v4-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)
 ![Supabase](https://img.shields.io/badge/Supabase-Database%20%26%20Auth-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white)
 ![Vite](https://img.shields.io/badge/Vite-6-646CFF?style=for-the-badge&logo=vite&logoColor=white)
-![Playwright](https://img.shields.io/badge/Playwright-39%20E2E%20tests-2EAD33?style=for-the-badge&logo=playwright&logoColor=white)
+![Playwright](https://img.shields.io/badge/Playwright-102%20E2E%20tests-2EAD33?style=for-the-badge&logo=playwright&logoColor=white)
 ![PWA](https://img.shields.io/badge/PWA-Offline%20Ready-5A0FC8?style=for-the-badge&logo=pwa&logoColor=white)
 
 <br />
@@ -64,6 +64,10 @@ It runs fully offline against `localStorage`, and syncs bi-directionally with Su
 ```
 src/
 ├── components/
+│   ├── ui/              # Generic primitives: Modal, SectionHeader, Card, Badge,
+│   │                    # CategoryChip, ProgressMeter, EmptyState, SegmentedControl,
+│   │                    # ConfirmDialog
+│   ├── transaction/     # TxTypeIcon, TxAmount, TxCategoryChip, TxSoftDeletedTag
 │   ├── dashboard/       # Hero, metric cards, wallet grid, recent transactions
 │   ├── wallet/          # AddWalletForm + WalletTransferForm (shared by view & modal)
 │   ├── AuthModal.tsx    # Supabase email/password auth
@@ -88,7 +92,7 @@ src/
 ├── views/               # Lazy-loaded via React.lazy
 │   ├── DashboardView.tsx    ├── DebtsView.tsx
 │   ├── TransactionsView.tsx ├── DiaryView.tsx
-│   ├── WalletsView.tsx      ├── KeywordRulesView.tsx
+│   ├── WalletsView.tsx      ├── CategoriesView.tsx  # "Categories & Smart Rules" hub
 │   └── SecurityView.tsx
 └── types.ts
 ```
@@ -101,6 +105,15 @@ src/
 - **Route-level code splitting.** Views load on demand via `React.lazy()` behind a `Suspense` fallback.
 - **Optimistic writes with rollback.** Balances update immediately and are restored from a snapshot if the remote write fails, with compensating updates for any partial commit.
 - **Row-Level Security.** Supabase RLS scopes every row to its owner.
+- **Shared UI primitives.** `src/components/ui/` holds generic, domain-agnostic building blocks used across views: `Modal`, `SectionHeader`, `Card`, `Badge`/`CategoryChip`, `ProgressMeter`, `EmptyState`, `SegmentedControl`, `ConfirmDialog`.
+
+---
+
+## ⚡ Performance Highlights
+
+- **Initial entry bundle cut from ~1,116 kB to ~158.9 kB raw (‑85.8%), ~326.3 kB to ~44.8 kB gzip (‑86.3%)** across a two-phase audit of `src/`.
+- **`vendor-math` (110.72 kB gzip) deferred off the critical path** — the Quick Add, Transfer, and Add Wallet shell modals mount behind `React.lazy` on first open, so `mathjs` only loads when one of them is actually used.
+- **`AnimatedCounter` eliminated its per-frame `setState`**, writing animated values straight to a ref'd DOM node instead — removing what had been the single largest source of React render work in the app.
 
 ---
 
@@ -173,8 +186,8 @@ Then open `http://localhost:3000`.
 # tsconfig enables noUnusedLocals + noUnusedParameters, so dead imports fail the build.
 npm run lint
 
-# Run the Playwright E2E suite: 13 tests across 5 spec files,
-# executed on Chromium, Firefox and WebKit (39 test runs).
+# Run the Playwright E2E suite: 34 tests across 13 spec files,
+# executed on Chromium, Firefox and WebKit (102 test runs).
 # Playwright starts the dev server automatically.
 npm test
 
@@ -185,7 +198,7 @@ npx playwright test tests/wallets.spec.ts --project=chromium
 npx playwright install
 ```
 
-Specs live in [`tests/`](tests/) and cover transactions, wallets, the shared wallet forms, the diary, and theme/navigation. Shared helpers in `tests/helpers.ts` handle tab navigation (including waiting for lazy view chunks) and seeding a transaction.
+Specs live in [`tests/`](tests/) across 13 files — transactions, wallets, wallet forms, diary, theme, debts, soft-delete, keywords, categories, CSV, auth, date-boundary, and storage-persistence. Shared helpers in `tests/helpers.ts` handle tab navigation (including waiting for lazy view chunks) and seeding a transaction.
 
 ```bash
 # Production build
