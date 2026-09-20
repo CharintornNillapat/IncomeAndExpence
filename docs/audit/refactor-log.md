@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 38 — clear the deferred backlog + CI housekeeping: T18, T25 (2026-09-20, commit `PENDING`)
+## Phase 38 — clear the deferred backlog + CI housekeeping: T18, T25 (2026-09-20, commit `9aa6732`)
 
 **Changed**
 
