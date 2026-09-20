@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 34 — `AnimatedCounter` direct DOM write: T70 (2026-09-20, commit `pending`)
+## Phase 34 — `AnimatedCounter` direct DOM write: T70 (2026-09-20, commit `155c882`)
 
 **Changed**
 
