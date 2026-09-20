@@ -4,6 +4,46 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
+## Phase 37 — closeout: ADRs, metrics, `CLAUDE.md` promotion + drift repair: T78 (2026-09-20, commit `pending`)
+
+**Changed**
+
+- `docs/audit/decisions/0009-animated-counter-dom-writes.md` / `0010-deferred-shell-modal-mounting.md` — re-read in full against the current tree; both already carried `Status: Accepted` with a complete Context/Options/Decision/Consequences/Revisit-if shape from the phase that wrote them, and needed no edits.
+- `docs/audit/baseline-metrics.md` — new "Phase 37 closeout" full chunk breakdown, the roadmap's final column, plus a new row in the entry-chunk summary table.
+- `docs/audit/task-ledger.md` — new Phase 37 table (T78), roadmap-status banner updated from "closed out at Phase 29; Phases 30–37 are a separately-requested second pass" to "closed out at Phase 37 — both audit passes are complete".
+- `docs/audit/constraints-to-promote.md` — 2 of the 3 previously-unpromoted rows (batched `localStorage` writer, `roundToCents`-is-the-only-ledger-rounder) re-verified against the live tree and marked promoted; the 3rd (repo-wide interactive-element `id` convention) re-checked, still holds only for `AuthModal.tsx` specifically, left open with an updated note rather than promoted on an unverified repo-wide claim.
+- `CLAUDE.md`:
+  - 5 verified constraints promoted: the setState-updater/ref-mirror rule, the `MutationResult` rollback-and-compensation rule, the `generateIdempotencyKey()` rule, the `AnimatedCounter` `textContent`-ownership rule, and the shell-modal `hasOpened`-latch rule.
+  - 2 stale claims repaired: `useWallets()`'s bullet no longer lists the long-deleted `walletsByType`; the "State: context + domain hooks" section's `FinanceActionsContext` example-members list no longer names `repayDebtAtomic` (deleted Phase 33/T64).
+- 5 files changed, 0 `src/` files.
+
+**Why**
+
+Every prior closeout in this project (Phase 29 for the first audit pass) has followed the same shape: once every phase's code has shipped and gated clean, freeze the ADRs, capture one final metrics column, and promote only the constraints the code now actually demonstrates — never in advance of the code, per `constraints-to-promote.md`'s own standing rule that a rule the code doesn't satisfy is worse than no rule at all. Phase 37 closes the second pass (Phases 32–36, T61–T77) the same way, and additionally repairs 2 documentation claims that had drifted true-to-false during those phases without CLAUDE.md being updated to match — exactly the kind of gap a closeout phase exists to catch before it compounds further.
+
+**Verification**
+
+```
+npm run lint                     # tsc --noEmit: clean, 0 errors
+npm run clean && npm run build   # built in 6.22s; entry chunk 158.93 kB / 44.81 kB gzip (unchanged from Phase 36 — no src/ change this phase); 0 chunk-size warnings
+CI=true npx playwright test      # 102/102 passed, 0 retries
+```
+
+**Correctness notes**
+
+- **Both ADRs were verified against the running code before being declared final, not merely re-read.** ADR 0009's claims (`AnimatedCounter`'s ref-based `textContent` write, no React children on the value span) were checked against the current `AnimatedCounter.tsx`; ADR 0010's claims (the 3 latches, `Suspense fallback={null}`, `AuthModal`/`ReloadPrompt` staying eager) were checked against the current `App.tsx`. Neither needed a correction.
+- **The `walletsByType` claim had been wrong for 30+ phases.** `grep -rn "walletsByType" src/` returns zero matches, and `useWallets.ts`'s actual return shape (`wallets`, `allWallets`, `totalNetWorth`) has had 3 members, not 4, since Phase 1/T5 deleted the dead export. This was caught by grep during this phase's drift-repair step, not carried over from the plan's own framing — the plan named it as a known stale claim to fix, but the actual current shape still had to be confirmed rather than assumed.
+- **A second, previously unflagged instance of `repayDebtAtomic` drift was found and fixed in the same pass.** The plan named only the Transaction-entry section's dead-code paragraph (already fixed in Phase 33/T64 itself, confirmed unchanged and accurate here) — but the "State: context + domain hooks" section's own opening paragraph still listed `repayDebtAtomic` among `FinanceActionsContext`'s example members. `grep -rn "repayDebtAtomic" src/` returns zero matches; this sentence was stale and is now fixed. Finding this required reading the whole file for the promotion pass rather than only touching the lines the plan pointed at.
+- **The `constraints-to-promote.md` resolution was a real re-check, not a rubber stamp.** Two rows were re-verified true against the live tree (`localStorage.setItem` call-site count, `roundToCents`'s single implementation) and promoted; the third (id-attribute convention) was re-checked and found to still only be true for the one file (`AuthModal.tsx`, 8 `id=` attributes) it was originally scoped to — auditing every interactive element across the other 12 views/components for compliance is unscoped work this phase was not asked to do, so it was left open rather than promoted on an unverified repo-wide claim, which would have repeated the exact kind of drift this phase exists to close.
+
+**Deliberately not done**
+
+- **No new `src/` code.** T78 is documentation, metrics, and `CLAUDE.md` alignment only, matching Phase 29's own precedent for a closeout phase.
+- **No repo-wide audit of the interactive-element `id` convention.** See the correctness note above — this was a real finding (the rule doesn't hold as a repo-wide invariant yet), recorded rather than silently promoted or silently dropped.
+- **`T25`/`T18` remain in `task-ledger.md`'s Deferred table, untouched.** Both stayed out of both audit passes by the same explicit, unchanged reasoning recorded when each was first deferred — this phase closes the roadmap that scoped around them, it doesn't reopen the scoping decision itself.
+
+---
+
 ## Phase 36 — bundle: deferred shell modals, diary/papaparse split: T76-T77 (2026-09-20, commit `01fbdb8`)
 
 **Changed**

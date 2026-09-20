@@ -88,6 +88,54 @@ The 7 icon micro-chunks that existed pre-T7 (`plus`, `arrow-up-right`, `arrow-do
 | **Phase 3 (T7)** | 165.39 kB / 45.72 kB | No — 5 vendor chunks + all view chunks now under 500 kB |
 | **Post-T24/T26/T27 (final audit, 2026-09-19, commit `8168d10`)** | 169.08 kB / 47.39 kB | No — 5 vendor chunks + all view chunks still under 500 kB |
 | **Phase 29 closeout (final, 2026-09-19, commit `91687df`)** | 176.93 kB / 49.69 kB | No — 5 vendor chunks + all view chunks still under 500 kB |
+| **Phase 37 closeout (final, 2026-09-20, commit `pending`)** | 158.93 kB / 44.81 kB | No — 8 vendor/shared chunks + all view chunks still under 500 kB |
+
+### Phase 37 closeout — final full chunk breakdown
+
+Captured via `npm run clean && npm run build`, same commands as every prior column, on the second audit pass's tip (Phases 32–37, T61–T78; no `src/` change lands in T78 itself). This is the roadmap's final column.
+
+The entry chunk **dropped** for the first time in this file's history — **180.57 kB → 158.93 kB (−21.64 kB, −12.0%)** — the net effect of Phase 36/T76 deferring `QuickAddModal`/`TransferFundsModal`/`AddWalletModal` behind `React.lazy` (each now its own small chunk: 1.15/4.10/3.15 kB) and pulling their dependency graph (`TransactionForm`, `useIdempotencyKey`, and transitively `vendor-math`) out of the entry tree along with them. `TransactionForm-*.js` (10.45 kB/3.28 kB gzip) and `useIdempotencyKey-*.js` (6.99 kB/2.43 kB gzip) are new standalone chunks that previously lived inside the entry; `vendor-math` (110.72 kB gzip) is no longer reachable from any eagerly-loaded module at all — see Phase 36's `refactor-log.md` entry for the network-level proof. `csvExchange-*.js` no longer exists as its own chunk — T77 split `exportDiaryToJson` into `diaryExport.ts` and Rollup folded the remaining `csvExchange.ts` (now single-consumer, `TransactionsView`) directly into `TransactionsView-*.js`, which grew accordingly (21.68 → 43.56 kB).
+
+| Chunk | Raw | Gzip |
+|---|---|---|
+| `index-*.js` (entry) | 158.93 kB | 44.81 kB |
+| `vendor-math-*.js` (`mathjs/number`, no longer on the critical path — see Phase 36) | 375.73 kB | 110.72 kB |
+| `vendor-supabase-*.js` (`@supabase/supabase-js` + sub-packages) | 226.44 kB | 58.66 kB |
+| `vendor-react-*.js` (`react` + `react-dom` + `scheduler`) | 194.33 kB | 60.68 kB |
+| `vendor-motion-*.js` (`framer-motion` + `motion-dom`/`motion-utils`/`tslib`) | 136.71 kB | 45.33 kB |
+| `vendor-icons-*.js` (`lucide-react`) | 28.06 kB | 6.14 kB |
+| `TransactionsView-*.js` (absorbed `csvExchange.ts`, Phase 36/T77) | 43.56 kB | 13.93 kB |
+| `DashboardView-*.js` | 42.44 kB | 9.06 kB |
+| `DiaryView-*.js` | 15.85 kB | 4.53 kB |
+| `SecurityView-*.js` | 15.30 kB | 3.56 kB |
+| `CategoriesView-*.js` | 13.15 kB | 3.47 kB |
+| `TransactionForm-*.js` (new — left the entry tree, Phase 36/T76) | 10.45 kB | 3.28 kB |
+| `DebtsView-*.js` | 9.63 kB | 3.07 kB |
+| `useIdempotencyKey-*.js` (new — left the entry tree, Phase 36/T76) | 6.99 kB | 2.43 kB |
+| `workbox-window.prod.es5-*.js` | 5.75 kB | 2.36 kB |
+| `WalletsView-*.js` | 4.77 kB | 1.78 kB |
+| `TransferFundsModal-*.js` (new lazy chunk, Phase 36/T76) | 4.10 kB | 1.76 kB |
+| `AddWalletModal-*.js` (new lazy chunk, Phase 36/T76) | 3.15 kB | 1.45 kB |
+| `TxCells-*.js` | 1.99 kB | 0.90 kB |
+| `ConfirmDialog-*.js` | 1.72 kB | 0.76 kB |
+| `Badge-*.js` | 1.19 kB | 0.57 kB |
+| `ProgressMeter-*.js` | 1.16 kB | 0.64 kB |
+| `QuickAddModal-*.js` (new lazy chunk, Phase 36/T76) | 1.15 kB | 0.65 kB |
+| `SectionHeader-*.js` | 0.82 kB | 0.48 kB |
+| `diaryExport-*.js` (new, Phase 36/T77 — split off `csvExchange.ts`) | 0.68 kB | 0.45 kB |
+| `smartMatcher-*.js` | 0.56 kB | 0.39 kB |
+| `EmptyState-*.js` | 0.54 kB | 0.32 kB |
+| `useSubmitHandler-*.js` | 0.46 kB | 0.33 kB |
+| `useTransientFlash-*.js` | 0.43 kB | 0.26 kB |
+| `useWallets-*.js` | 0.24 kB | 0.19 kB |
+| `walletIcons-*.js` | 0.23 kB | 0.19 kB |
+| `mapUtils-*.js` | 0.07 kB | 0.09 kB |
+| CSS (`index-*.css`) | 77.25 kB | 11.87 kB |
+| PWA precache | 41 entries | 1,507.21 KiB |
+
+**Whole-roadmap delta, Phase 0 baseline → Phase 37 closeout:** entry chunk **1,116.67 kB → 158.93 kB (−85.8% raw), 326.33 kB → 44.81 kB gzip (−86.3%)**. The two passes attacked different costs — the first (Phases 1–29) split vendor code out of a single monolithic bundle and eliminated render-storm/duplication issues; the second (Phases 32–36) fixed 2 money-affecting correctness bugs no test had caught, hardened 9 more write paths to the same rollback standard, removed the single largest remaining per-frame render cost (`AnimatedCounter`), and took the single largest vendor chunk (`vendor-math`, 110.72 kB gzip) off the critical path entirely.
+
+Verified via the standard audit sequence: `npm run lint` clean; `npm run build` emits 0 chunk-size warnings, build succeeds in 6.22s. (Full `CI=true npx playwright test` re-verified as part of this phase's own gate — see `task-ledger.md` Phase 37.)
 
 ### Post-Phase-31 full chunk breakdown
 
