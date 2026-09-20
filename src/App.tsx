@@ -1,4 +1,4 @@
-import React, { useState, useCallback, lazy, Suspense } from 'react';
+import React, { useState, useCallback, useEffect, lazy, Suspense } from 'react';
 import { motion, AnimatePresence, Transition } from 'framer-motion';
 import { useSwipeable } from 'react-swipeable';
 import { FinanceProvider } from './context/FinanceContext';
@@ -89,6 +89,19 @@ const MainApp: React.FC = () => {
   // itself right after it reads the value, so a later, unrelated navigation
   // to the tab does not inherit a stale filter.
   const [transactionsWalletFilter, setTransactionsWalletFilter] = useState<string | undefined>(undefined);
+
+  // PWA app shortcut "Quick Add Transaction" launches to `/?action=quick-add`.
+  // Strip the query param immediately so it doesn't linger in the address bar
+  // or get treated as app state on subsequent navigations, then open the
+  // modal through the same latch+flag pair its own trigger button uses.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('action') === 'quick-add') {
+      window.history.replaceState({}, '', window.location.pathname);
+      setHasOpenedQuickAdd(true);
+      setIsQuickAddOpen(true);
+    }
+  }, []);
 
   // T1 (Phase 2): MainApp no longer subscribes to the finance context. It did so
   // only to feed the quick-add modal, which meant every financial write

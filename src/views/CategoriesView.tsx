@@ -1,6 +1,23 @@
 import React, { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { Plus, Trash2, Pencil, Tag, Sparkles } from 'lucide-react';
+import {
+  Plus,
+  Trash2,
+  Pencil,
+  Tag,
+  Sparkles,
+  Utensils,
+  ShoppingCart,
+  Car,
+  ShoppingBag,
+  Home,
+  Briefcase,
+  Laptop,
+  CreditCard,
+  Gift,
+  Gamepad,
+  LucideIcon,
+} from 'lucide-react';
 import { useFinanceState, useFinanceActions } from '../context/FinanceContext';
 import { useSubmitHandler } from '../hooks/useSubmitHandler';
 import { matchSmartDescription } from '../utils/smartMatcher';
@@ -42,6 +59,22 @@ const CATEGORY_TYPE_OPTIONS: ReadonlyArray<{ value: CreatableCategoryType; label
 const CATEGORY_COLOR_PALETTE = [
   '#f87171', '#fb923c', '#facc15', '#4ade80', '#34d399',
   '#38bdf8', '#818cf8', '#a78bfa', '#f472b6', '#94a3b8',
+] as const;
+
+/** Icon offered when re-iconing a category in the edit modal - kebab-case values match `DEFAULT_SYSTEM_CATEGORIES`'s existing icon convention in `FinanceContext.tsx`. */
+const CATEGORY_ICON_OPTIONS: ReadonlyArray<{ value: string; Icon: LucideIcon }> = [
+  { value: 'tag', Icon: Tag },
+  { value: 'utensils', Icon: Utensils },
+  { value: 'shopping-cart', Icon: ShoppingCart },
+  { value: 'car', Icon: Car },
+  { value: 'shopping-bag', Icon: ShoppingBag },
+  { value: 'home', Icon: Home },
+  { value: 'briefcase', Icon: Briefcase },
+  { value: 'laptop', Icon: Laptop },
+  { value: 'credit-card', Icon: CreditCard },
+  { value: 'gift', Icon: Gift },
+  { value: 'gamepad', Icon: Gamepad },
+  { value: 'plus', Icon: Plus },
 ] as const;
 
 /**
@@ -93,6 +126,7 @@ export const CategoriesView: React.FC = () => {
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [editName, setEditName] = useState<string>('');
   const [editColor, setEditColor] = useState<string>(CATEGORY_COLOR_PALETTE[0]);
+  const [editIcon, setEditIcon] = useState<string>(CATEGORY_ICON_OPTIONS[0].value);
 
   const {
     error: editCategoryError,
@@ -107,12 +141,15 @@ export const CategoriesView: React.FC = () => {
     setEditingCategory(cat);
     setEditName(cat.name);
     setEditColor(cat.color);
+    setEditIcon(cat.icon || CATEGORY_ICON_OPTIONS[0].value);
     setEditCategoryError(null);
   };
 
   const handleEditCategory = (e: React.FormEvent) =>
     submitEditCategory(e, () =>
-      editingCategory ? updateCategory(editingCategory.id, { name: editName, color: editColor }) : undefined
+      editingCategory
+        ? updateCategory(editingCategory.id, { name: editName, color: editColor, icon: editIcon })
+        : undefined
     );
 
   // --- Delete Category ---
@@ -514,6 +551,28 @@ export const CategoriesView: React.FC = () => {
                   }`}
                   style={{ backgroundColor: c }}
                 />
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label className={`${LABEL_CLASS} mb-1.5`}>Icon</label>
+            <div className="flex flex-wrap items-center gap-2">
+              {CATEGORY_ICON_OPTIONS.map(({ value, Icon }) => (
+                <motion.button
+                  whileTap={{ scale: 0.9 }}
+                  key={value}
+                  type="button"
+                  onClick={() => setEditIcon(value)}
+                  title={value}
+                  className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors cursor-pointer ${
+                    editIcon === value
+                      ? 'bg-stone-900 text-white dark:bg-stone-100 dark:text-stone-900'
+                      : 'bg-stone-100 text-stone-500 hover:bg-stone-200 dark:bg-stone-800 dark:text-stone-400 dark:hover:bg-stone-700'
+                  }`}
+                >
+                  <Icon className="w-4 h-4" />
+                </motion.button>
               ))}
             </div>
           </div>

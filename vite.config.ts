@@ -39,6 +39,21 @@ export default defineConfig(() => {
               purpose: 'any maskable',
             },
           ],
+          shortcuts: [
+            {
+              name: 'Quick Add Transaction',
+              short_name: 'Quick Add',
+              description: 'Quickly record an expense, income, or transfer',
+              url: '/?action=quick-add',
+              icons: [
+                {
+                  src: '/pwa-192x192.png',
+                  sizes: '192x192',
+                  type: 'image/png',
+                },
+              ],
+            },
+          ],
         },
         workbox: {
           globPatterns: ['**/*.{js,css,html,ico,png,svg,json}'],

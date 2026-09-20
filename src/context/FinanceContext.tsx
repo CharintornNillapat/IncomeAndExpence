@@ -102,7 +102,7 @@ export interface FinanceActionsContextType {
 
   // Categories & Configurable Keyword Rules
   addCategory: (data: { name: string; type: TransactionType; color: string; icon?: string }) => Promise<MutationResult>;
-  updateCategory: (id: string, updates: { name?: string; color?: string }) => Promise<MutationResult>;
+  updateCategory: (id: string, updates: { name?: string; color?: string; icon?: string }) => Promise<MutationResult>;
   deleteCategory: (id: string) => Promise<MutationResult>;
   addKeywordRule: (keyword: string, categoryId: string) => Promise<MutationResult>;
   deleteKeywordRule: (id: string) => Promise<MutationResult>;
@@ -1112,13 +1112,13 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     return { success: true };
   }, [isAuthenticated, currentUser.id, markLocalWrite]);
 
-  // Rename/recolor only - `type` is intentionally not editable here. A
+  // Rename/recolor/re-icon only - `type` is intentionally not editable here. A
   // category's type is load-bearing for existing transactions recorded under
   // it (and, for DEBT_REPAYMENT/ADJUSTMENT, for the fixed system taxonomy
   // other mutators resolve by type); changing it after the fact would make
   // those historical records visually inconsistent with what they actually
   // were when recorded.
-  const updateCategory = useCallback(async (id: string, updates: { name?: string; color?: string }): Promise<MutationResult> => {
+  const updateCategory = useCallback(async (id: string, updates: { name?: string; color?: string; icon?: string }): Promise<MutationResult> => {
     let cleanedUpdates = updates;
     if (updates.name !== undefined) {
       const cleaned = updates.name.trim();
@@ -1149,6 +1149,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
         .update({
           ...(cleanedUpdates.name !== undefined ? { name: cleanedUpdates.name } : {}),
           ...(cleanedUpdates.color !== undefined ? { color: cleanedUpdates.color } : {}),
+          ...(cleanedUpdates.icon !== undefined ? { icon: cleanedUpdates.icon } : {}),
         })
         .eq('id', id);
       if (error) throw error;

@@ -54,4 +54,88 @@ test.describe('Categories hub', () => {
     const option = page.locator('#keyword-category-select option', { hasText: uniqueName });
     await expect(option).toHaveCount(1);
   });
+
+  test('editing a category name updates the management list', async ({ page }) => {
+    const originalName = `ZZZ Edit Source ${Date.now().toString().slice(-6)}`;
+    const renamedName = `ZZZ Edit Target ${Date.now().toString().slice(-6)}`;
+
+    await page.locator('#new-category-name').fill(originalName);
+    await page.locator('#new-category-type').selectOption({ label: 'Expense' });
+    await page.locator('#save-category-btn').click();
+
+    const newRow = page.locator('[id^="category-row-"]').filter({ hasText: originalName });
+    await expect(newRow).toBeVisible();
+    const categoryId = await newRow.getAttribute('id');
+    const catId = categoryId!.replace('category-row-', '');
+
+    await page.locator(`#edit-category-${catId}`).click();
+    const editNameInput = page.locator('#edit-category-name');
+    await expect(editNameInput).toBeVisible();
+    await editNameInput.fill(renamedName);
+    await page.locator('#edit-category-save-btn').click();
+
+    await expect(page.locator(`#edit-category-name`)).toHaveCount(0);
+    await expect(page.locator(`#category-row-${catId}`)).toContainText(renamedName);
+  });
+
+  test('deleting an unused user-created category removes it from the management list', async ({ page }) => {
+    const uniqueName = `ZZZ Delete Me ${Date.now().toString().slice(-6)}`;
+
+    await page.locator('#new-category-name').fill(uniqueName);
+    await page.locator('#new-category-type').selectOption({ label: 'Expense' });
+    await page.locator('#save-category-btn').click();
+
+    const newRow = page.locator('[id^="category-row-"]').filter({ hasText: uniqueName });
+    await expect(newRow).toBeVisible();
+    const categoryId = await newRow.getAttribute('id');
+    const catId = categoryId!.replace('category-row-', '');
+
+    await page.locator(`#delete-category-${catId}`).click();
+    await expect(page.getByRole('dialog', { name: 'Delete Category' })).toBeVisible();
+    await page.locator('#confirm-destructive-btn').click();
+
+    await expect(page.locator(`#category-row-${catId}`)).toHaveCount(0);
+  });
+
+  test('attempting to delete an in-use category surfaces the guard error in the confirm dialog', async ({ page }) => {
+    // `deleteCategory`'s in-use guard is a server-side re-check independent
+    // of the UI's own `canDelete` precondition (which pre-emptively hides the
+    // delete button once a category is referenced). To exercise the guard
+    // itself, open the confirm dialog while the category is still unused,
+    // then reference it from the globally-mounted Quick Add modal before
+    // confirming the delete. The confirm dialog's own full-viewport overlay
+    // sits on top of the navbar at that point, so a coordinate-based click
+    // (even with `force: true`, which only skips Playwright's actionability
+    // checks, not real hit-testing) would land on the overlay instead -
+    // `dispatchEvent` fires directly on the target node and reaches the
+    // button's React handler regardless of what's visually on top.
+    const uniqueName = `ZZZ In Use ${Date.now().toString().slice(-6)}`;
+
+    await page.locator('#new-category-name').fill(uniqueName);
+    await page.locator('#new-category-type').selectOption({ label: 'Expense' });
+    await page.locator('#save-category-btn').click();
+
+    const newRow = page.locator('[id^="category-row-"]').filter({ hasText: uniqueName });
+    await expect(newRow).toBeVisible();
+    const categoryId = await newRow.getAttribute('id');
+    const catId = categoryId!.replace('category-row-', '');
+
+    await page.locator(`#delete-category-${catId}`).click();
+    const confirmDialog = page.getByRole('dialog', { name: 'Delete Category' });
+    await expect(confirmDialog).toBeVisible();
+
+    await page.locator('#navbar-quick-add-btn').dispatchEvent('click');
+    const quickAddModal = page.getByRole('dialog', { name: /Quick Record Transaction/i });
+    await expect(quickAddModal).toBeVisible();
+
+    await quickAddModal.locator('input[name="amount_expression"]').fill('50');
+    await quickAddModal.locator('select[id$="-category"]').selectOption({ label: uniqueName });
+    await quickAddModal.locator('button[type="submit"]').click();
+    await expect(quickAddModal).not.toBeVisible();
+
+    await expect(confirmDialog).toBeVisible();
+    await page.locator('#confirm-destructive-btn').click();
+
+    await expect(confirmDialog).toContainText('used by existing transactions or keyword rules');
+  });
 });
