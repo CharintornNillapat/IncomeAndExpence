@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 32 — audit report and soft-delete balance desync: T61-T63 (2026-09-20, commit `pending`)
+## Phase 32 — audit report and soft-delete balance desync: T61-T63 (2026-09-20, commit `c0c1371`)
 
 **Changed**
 
