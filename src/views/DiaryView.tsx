@@ -19,7 +19,7 @@ import { FoodQuality, Transaction } from '../types';
 import { formatCurrencyAmount } from '../utils/currency';
 import { todayIsoDate, daysAgoIsoDate, formatDayInfo } from '../utils/date';
 import { LABEL_CLASS, PRIMARY_BUTTON_COMPACT_CLASS } from '../utils/formStyles';
-import { exportDiaryToJson } from '../utils/csvExchange';
+import { exportDiaryToJson } from '../utils/diaryExport';
 import { buildLookupMap } from '../utils/mapUtils';
 
 // Static (never depends on component state), so it lives outside the

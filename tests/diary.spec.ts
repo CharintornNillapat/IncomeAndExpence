@@ -1,3 +1,4 @@
+import fs from 'fs';
 import { test, expect } from '@playwright/test';
 import { gotoTab } from './helpers';
 
@@ -36,5 +37,18 @@ test.describe('Holistic Mini Diary E2E Tests', () => {
     await expect(page.locator('[data-testid="diary-entry-notes"]')).toContainText(
       /Playwright automated wellbeing log/i
     );
+
+    // 7. Export downloads a JSON file (T77: split from `csvExchange.ts` into
+    // its own module) - the one action in this view with no other coverage;
+    // a broken export would otherwise only surface as "nothing happens".
+    const downloadPromise = page.waitForEvent('download');
+    await page.locator('#export-diary-btn').click();
+    const download = await downloadPromise;
+
+    expect(download.suggestedFilename()).toMatch(/^holistic_diary_export_\d{4}-\d{2}-\d{2}\.json$/);
+    const jsonPath = await download.path();
+    expect(jsonPath).not.toBeNull();
+    const jsonContent = fs.readFileSync(jsonPath as string, 'utf-8');
+    expect(jsonContent).toContain('Playwright automated wellbeing log');
   });
 });

@@ -5,9 +5,6 @@ import { FinanceProvider } from './context/FinanceContext';
 import { Navbar, ActiveTab } from './components/Navbar';
 import { MobileBottomNav } from './components/MobileBottomNav';
 import { ViewLoadingFallback } from './components/ViewLoadingFallback';
-import { QuickAddModal } from './components/QuickAddModal';
-import { TransferFundsModal } from './components/wallet/TransferFundsModal';
-import { AddWalletModal } from './components/wallet/AddWalletModal';
 import { AuthModal } from './components/AuthModal';
 import { ReloadPrompt } from './components/ReloadPrompt';
 
@@ -30,6 +27,16 @@ const DebtsView = lazy(() => import('./views/DebtsView').then(m => ({ default: m
 const DiaryView = lazy(() => import('./views/DiaryView').then(m => ({ default: m.DiaryView })));
 const CategoriesView = lazy(() => import('./views/CategoriesView').then(m => ({ default: m.CategoriesView })));
 const SecurityView = lazy(() => import('./views/SecurityView').then(m => ({ default: m.SecurityView })));
+
+// ADR 0010: deferred shell modals. Each is unreachable until its trigger is
+// clicked, and (Quick Add, Transfer) uniquely reaches `vendor-math` - lazy
+// importing keeps that weight off the initial critical path. See the ADR for
+// why a bare `React.lazy` swap alone is insufficient (and would break the
+// exit animation / delayed-close flash) and why `AuthModal`/`ReloadPrompt`
+// are not deferred the same way.
+const QuickAddModal = lazy(() => import('./components/QuickAddModal').then(m => ({ default: m.QuickAddModal })));
+const TransferFundsModal = lazy(() => import('./components/wallet/TransferFundsModal').then(m => ({ default: m.TransferFundsModal })));
+const AddWalletModal = lazy(() => import('./components/wallet/AddWalletModal').then(m => ({ default: m.AddWalletModal })));
 
 // Page slide animation variants for smooth forward/backward transitions
 const pageVariants = {
@@ -68,6 +75,15 @@ const MainApp: React.FC = () => {
   const [isTransferModalOpen, setIsTransferModalOpen] = useState<boolean>(false);
   const [transferSourceWalletId, setTransferSourceWalletId] = useState<string | undefined>(undefined);
   const [isAddWalletModalOpen, setIsAddWalletModalOpen] = useState<boolean>(false);
+  // ADR 0010: latches, not mirrors of the `isOpen*` state above. Each flips to
+  // `true` on first open and never flips back, so the lazy-loaded modal below
+  // mounts once and stays mounted - only `isOpen` toggles thereafter, exactly
+  // as it did before these were deferred. Gating on the bare `isOpen` state
+  // instead would unmount the modal (and its exit animation) the instant it
+  // closes.
+  const [hasOpenedQuickAdd, setHasOpenedQuickAdd] = useState<boolean>(false);
+  const [hasOpenedTransfer, setHasOpenedTransfer] = useState<boolean>(false);
+  const [hasOpenedAddWallet, setHasOpenedAddWallet] = useState<boolean>(false);
   // T40: seeds TransactionsView's wallet filter when the wallet popup's
   // Activity preview hands off via "View all". Cleared by TransactionsView
   // itself right after it reads the value, so a later, unrelated navigation
@@ -119,17 +135,24 @@ const MainApp: React.FC = () => {
     [handleTabChange]
   );
 
-  const handleOpenQuickAdd = useCallback(() => setIsQuickAddOpen(true), []);
+  const handleOpenQuickAdd = useCallback(() => {
+    setHasOpenedQuickAdd(true);
+    setIsQuickAddOpen(true);
+  }, []);
   const handleCloseQuickAdd = useCallback(() => setIsQuickAddOpen(false), []);
   const handleOpenAuth = useCallback(() => setIsAuthModalOpen(true), []);
   const handleCloseAuth = useCallback(() => setIsAuthModalOpen(false), []);
 
   const handleOpenTransfer = useCallback((walletId?: string) => {
+    setHasOpenedTransfer(true);
     setTransferSourceWalletId(walletId);
     setIsTransferModalOpen(true);
   }, []);
   const handleCloseTransfer = useCallback(() => setIsTransferModalOpen(false), []);
-  const handleOpenAddWallet = useCallback(() => setIsAddWalletModalOpen(true), []);
+  const handleOpenAddWallet = useCallback(() => {
+    setHasOpenedAddWallet(true);
+    setIsAddWalletModalOpen(true);
+  }, []);
   const handleCloseAddWallet = useCallback(() => setIsAddWalletModalOpen(false), []);
 
   const handleOpenWalletTransactions = useCallback(
@@ -249,16 +272,30 @@ const MainApp: React.FC = () => {
         </div>
       </footer>
 
-      {/* Quick Add Modal / Responsive Mobile Bottom Sheet with Glassmorphism */}
-      <QuickAddModal isOpen={isQuickAddOpen} onClose={handleCloseQuickAdd} />
+      {/* Quick Add Modal / Responsive Mobile Bottom Sheet with Glassmorphism.
+          ADR 0010: lazy-loaded, mounted on first open via the `hasOpened*`
+          latch, and never unmounted after - only `isOpen` toggles thereafter. */}
+      {hasOpenedQuickAdd && (
+        <Suspense fallback={null}>
+          <QuickAddModal isOpen={isQuickAddOpen} onClose={handleCloseQuickAdd} />
+        </Suspense>
+      )}
 
       {/* Transfer Funds & Add Wallet Modals (T41) - single shell-level instances shared by DashboardView and WalletsView */}
-      <TransferFundsModal
-        isOpen={isTransferModalOpen}
-        onClose={handleCloseTransfer}
-        initialSourceWalletId={transferSourceWalletId}
-      />
-      <AddWalletModal isOpen={isAddWalletModalOpen} onClose={handleCloseAddWallet} />
+      {hasOpenedTransfer && (
+        <Suspense fallback={null}>
+          <TransferFundsModal
+            isOpen={isTransferModalOpen}
+            onClose={handleCloseTransfer}
+            initialSourceWalletId={transferSourceWalletId}
+          />
+        </Suspense>
+      )}
+      {hasOpenedAddWallet && (
+        <Suspense fallback={null}>
+          <AddWalletModal isOpen={isAddWalletModalOpen} onClose={handleCloseAddWallet} />
+        </Suspense>
+      )}
     </div>
   );
 };

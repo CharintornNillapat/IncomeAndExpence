@@ -4,6 +4,62 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
+## Phase 36 — bundle: deferred shell modals, diary/papaparse split: T76-T77 (2026-09-20, commit `pending`)
+
+**Changed**
+
+- New `docs/audit/decisions/0010-deferred-shell-modal-mounting.md` - written before the code change, per `README.md`'s convention.
+- `src/App.tsx`:
+  - `QuickAddModal`, `TransferFundsModal`, `AddWalletModal` converted from static imports to `React.lazy(() => import(...))`, matching the pattern the 7 view components already use.
+  - Three new latches (`hasOpenedQuickAdd`, `hasOpenedTransfer`, `hasOpenedAddWallet`), each set `true` inside the corresponding `handleOpen*` callback alongside the existing `isOpen` state.
+  - Each modal now renders behind `{hasOpened* && <Suspense fallback={null}>...}` instead of unconditionally.
+  - `AuthModal` and `ReloadPrompt` are unchanged - still eager, still unconditional.
+- New `src/utils/diaryExport.ts` - `exportDiaryToJson`, moved out of `csvExchange.ts` verbatim.
+- `src/utils/csvExchange.ts` - `exportDiaryToJson` and its now-unused `DiaryEntry` type import removed.
+- `src/views/DiaryView.tsx` / `src/views/TransactionsView.tsx` - both updated to import `exportDiaryToJson` from the new module (`TransactionsView` also calls it, from its own "Export Diary (JSON)" button - see Correctness notes).
+- `tests/diary.spec.ts` - new assertion: the export button's click triggers a `download` event, with the correct filename pattern and JSON content.
+- 8 files changed (2 new).
+
+**Why**
+
+`perf-audit-report.md` (finding D12) identified that `mathjs/number` (`vendor-math`, 110.72 kB gzip, unchanged since Phase 3/T7) was reachable eagerly only through the three modals this phase defers, and only because those modals were unconditionally mounted at shell level for reachability reasons that ADR 0008 already solved with self-subscription - reachability never required them to be *eager*, only mounted once and shared across views. Deferring them until first open removes the single largest vendor chunk in the app from the initial critical path. T77 is a smaller, unrelated bundle fix from the same audit pass: `DiaryView` was pulling in `papaparse` for a JSON-export function that never used it.
+
+**Verification**
+
+```
+npm run lint                                                                                              # tsc --noEmit: clean, 0 errors
+npx playwright test tests/wallet-forms.spec.ts tests/diary.spec.ts tests/transaction.spec.ts --project=chromium --repeat-each=2   # 18/18 passed
+npx playwright test tests/wallet-forms.spec.ts tests/theme.spec.ts --project=firefox --repeat-each=2      # 14/14 passed (Firefox is this suite's slow-chunk-fetch case)
+CI=true npx playwright test                                                                                # 102/102 passed, 0 retries, 6.3m, 1 worker
+npm run build                                                                                               # entry chunk 183.26 -> 158.93 kB raw / 50.89 -> 44.81 kB gzip; 0 chunks over 500 kB
+```
+
+**Bundle verification, beyond the standard gate**
+
+The standard gate proves behavior is unchanged; it does not prove the bundle claim on its own, since a `grep` of the built entry file for `vendor-math`'s filename returns a match either way - Vite embeds every chunk's filename in a preload-dependency manifest string array used by its `__vitePreload` runtime helper, regardless of whether that chunk is eagerly executed or only fetched on a later dynamic import. Confirming *which* case applies here required checking what the reference sits inside (the manifest array, not an executed top-level `import` statement) and, to remove any doubt, a real network-level check: a throwaway Node script (never committed) booted the actual production build via `vite preview`, opened it in a real Chromium instance via `@playwright/test`'s `chromium.launch()`, and recorded every network request during initial load and again after clicking the Quick Add trigger.
+
+```
+[VERIFY] Requests containing "vendor-math" during initial load: 0
+[VERIFY] Requests containing "vendor-math" after opening Quick Add: 1
+  - http://localhost:4173/assets/vendor-math-D9WQvjt3.js
+```
+
+The script and its output were not committed; `git status --short` was clean of it before staging this phase's changes.
+
+**Correctness notes**
+
+- **The `hasOpened` latch is load-bearing, not defensive over-engineering.** It was checked against `TransferFundsModal.tsx:54`'s actual delayed-close call (`flashTransferStatus('Transfer completed successfully!', 1000, onClose)`) before deciding it was necessary: gating the wrapper on the bare `isOpen` prop would unmount the whole subtree - including `Modal`'s own `<AnimatePresence>` - the instant that 1-second timer calls `onClose`, before the exit animation or even the success text could be seen. The 18/18 and 14/14 repeat-guard runs specifically exercise this path (`wallet-forms.spec.ts` asserts on the flash text).
+- **T77's `TransactionsView` fix was necessary, not optional cleanup.** Its own "Export Diary (JSON)" button was undiscovered until `grep`ping every call site of `exportDiaryToJson` before editing - had it been missed, `TransactionsView.tsx`'s import of a now-deleted export from `csvExchange.ts` would have failed `npm run lint` and the build, not silently broken.
+- **The `csvExchange-*.js` chunk vanishing entirely (not merely shrinking) is a Rollup consequence, verified against the full untruncated build output**, not assumed from the diff alone. With `DiaryView` no longer a consumer, `csvExchange.ts` has exactly one remaining importer (`TransactionsView`), so Rollup folds it directly into that view's own chunk instead of keeping it as a separately-fetched shared file - `TransactionsView-*.js` grew from 21.68 to 43.56 kB accordingly. Total bytes for a Transactions-only session are roughly unchanged (one file instead of two, minus a little shared-chunk overhead); a Diary-only session now fetches neither.
+
+**Deliberately not done**
+
+- **No idle-time or hover-triggered prefetch was added for the three deferred modals.** ADR 0010's Revisit-if section names this as a plausible follow-up (fetch the chunk on hover/focus of the trigger button rather than only on click), but bundling it into this phase would have made the entry-chunk measurement above attributable to two changes at once instead of one.
+- **`AuthModal` was not deferred.** Its dependencies (`zod`, `@supabase/supabase-js`) are already eager via `FinanceContext.tsx`; deferring it would add complexity for no measurable bundle benefit. Recorded in ADR 0010's Context section, not silently skipped.
+- **No new Playwright spec was added to assert on network requests or bundle composition.** The network-level verification above is a one-time confirmation of this phase's specific claim, following the same disposable-instrumentation precedent Phase 34's render-count re-measurement set - it is not meant to be a permanently-running check, and Playwright's own config always targets the dev server (`playwright.config.ts`'s `webServer` runs `npm run dev`), which does not code-split the same way the production build does, so a committed version of this check would need its own `vite preview`-based test infrastructure this phase did not build.
+
+---
+
 ## Phase 35 — targeted render-cost fixes: T71-T75 (2026-09-20, commit `b9ed84f`)
 
 **Changed**
