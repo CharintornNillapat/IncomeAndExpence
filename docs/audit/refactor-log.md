@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 33 — write-path hardening: prune, error checks, rollback parity: T64-T69 (2026-09-20, commit `pending`)
+## Phase 33 — write-path hardening: prune, error checks, rollback parity: T64-T69 (2026-09-20, commit `1e0e4ad`)
 
 **Changed**
 
