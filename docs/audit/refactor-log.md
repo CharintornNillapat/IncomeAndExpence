@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 35 — targeted render-cost fixes: T71-T75 (2026-09-20, commit `pending`)
+## Phase 35 — targeted render-cost fixes: T71-T75 (2026-09-20, commit `b9ed84f`)
 
 **Changed**
 
