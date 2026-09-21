@@ -193,7 +193,6 @@ const MainApp: React.FC = () => {
         return (
           <DashboardView
             onNavigate={handleNavigate}
-            onOpenQuickAdd={handleOpenQuickAdd}
             onOpenTransfer={handleOpenTransfer}
             onOpenAddWallet={handleOpenAddWallet}
             onOpenWalletTransactions={handleOpenWalletTransactions}
@@ -220,7 +219,6 @@ const MainApp: React.FC = () => {
         return (
           <DashboardView
             onNavigate={handleNavigate}
-            onOpenQuickAdd={handleOpenQuickAdd}
             onOpenTransfer={handleOpenTransfer}
             onOpenAddWallet={handleOpenAddWallet}
             onOpenWalletTransactions={handleOpenWalletTransactions}

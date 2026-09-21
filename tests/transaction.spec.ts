@@ -46,10 +46,10 @@ test.describe('Core Transaction Flow E2E Tests', () => {
     await expect(modal).not.toBeVisible();
   });
 
-  test('should record an income transaction directly from Dashboard quick form', async ({ page }) => {
-    // T37: the Dashboard's inline TransactionForm was retired in favor of a
-    // button opening the same Quick Add modal Navbar uses.
-    await page.locator('#dash-open-add-modal-btn').click();
+  test('should record an income transaction via the Navbar Quick Add modal', async ({ page }) => {
+    // The Dashboard's "Record a Transaction" CTA card was removed; the Navbar
+    // quick-add button is now the only entry point into this same modal.
+    await page.locator('#navbar-quick-add-btn').click();
 
     const modal = page.getByRole('dialog', { name: /Quick Record Transaction/i });
     await expect(modal).toBeVisible();
@@ -110,7 +110,7 @@ test.describe('Core Transaction Flow E2E Tests', () => {
   });
 
   test('should evaluate inline math expressions correctly in amount field', async ({ page }) => {
-    await page.locator('#dash-open-add-modal-btn').click();
+    await page.locator('#navbar-quick-add-btn').click();
 
     const modal = page.getByRole('dialog', { name: /Quick Record Transaction/i });
     await expect(modal).toBeVisible();

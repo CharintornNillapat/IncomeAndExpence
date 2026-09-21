@@ -1,6 +1,5 @@
 ﻿import React, { useState, useMemo, useCallback } from 'react';
 import { motion, Variants } from 'framer-motion';
-import { PlusCircle, Sigma, Tags, HandCoins } from 'lucide-react';
 import { useFinanceState } from '../context/FinanceContext';
 import { Transaction } from '../types';
 import { useWallets } from '../hooks/useWallets';
@@ -16,7 +15,6 @@ import { SectionHeader } from '../components/ui/SectionHeader';
 import { SegmentedControl } from '../components/ui/SegmentedControl';
 import { todayIsoDate, daysAgoIsoDate } from '../utils/date';
 import { buildLookupMap } from '../utils/mapUtils';
-import { PRIMARY_BUTTON_CLASS } from '../utils/formStyles';
 
 export type TimeFilter = 'DAY' | 'WEEK' | 'MONTH' | 'ALL';
 
@@ -47,8 +45,6 @@ const itemVariants: Variants = {
 
 interface DashboardViewProps {
   onNavigate?: (tab: string) => void;
-  /** Opens the shared Quick Add modal (owned by App.tsx) - retired the inline TransactionForm this view used to render directly (T37). */
-  onOpenQuickAdd?: () => void;
   /** Opens the shared, shell-level TransferFundsModal (owned by App.tsx), optionally seeded to a wallet (T41). */
   onOpenTransfer?: (walletId?: string) => void;
   /** Opens the shared, shell-level AddWalletModal (owned by App.tsx, T41). */
@@ -59,7 +55,6 @@ interface DashboardViewProps {
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
   onNavigate,
-  onOpenQuickAdd,
   onOpenTransfer,
   onOpenAddWallet,
   onOpenWalletTransactions,
@@ -280,62 +275,19 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         />
       </motion.section>
 
-      {/* 4. Main Action & Breakdown Section: Add Transaction + Category & Debt Progress */}
-      <motion.div variants={itemVariants} className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
-        {/* Left Column: Quick Add Entry Point (lg:col-span-6) */}
-        <div className="lg:col-span-6">
-          <div className="h-full flex flex-col items-center justify-center text-center gap-5 bg-white dark:bg-stone-900 rounded-2xl border border-stone-200 dark:border-stone-800 shadow-xs p-8">
-            <div className="w-14 h-14 rounded-2xl bg-stone-900 dark:bg-emerald-600 text-white flex items-center justify-center shadow-xs">
-              <PlusCircle className="w-7 h-7" />
-            </div>
-            <div>
-              <h2 className="text-base font-bold text-stone-900 dark:text-white">Record a Transaction</h2>
-              <p className="text-xs text-stone-500 dark:text-stone-400 mt-1 max-w-xs">
-                Log an expense, income, transfer, or debt payment in a few seconds.
-              </p>
-            </div>
-            <div className="w-full max-w-xs grid grid-cols-3 gap-2">
-              <div className="flex flex-col items-center gap-1 py-2 px-1 rounded-xl bg-stone-50 dark:bg-stone-800/60 border border-stone-100 dark:border-stone-800">
-                <Sigma className="w-4 h-4 text-stone-500 dark:text-stone-400" />
-                <span className="text-[10px] font-semibold text-stone-500 dark:text-stone-400 leading-tight">Math input</span>
-              </div>
-              <div className="flex flex-col items-center gap-1 py-2 px-1 rounded-xl bg-stone-50 dark:bg-stone-800/60 border border-stone-100 dark:border-stone-800">
-                <Tags className="w-4 h-4 text-stone-500 dark:text-stone-400" />
-                <span className="text-[10px] font-semibold text-stone-500 dark:text-stone-400 leading-tight">Smart category</span>
-              </div>
-              <div className="flex flex-col items-center gap-1 py-2 px-1 rounded-xl bg-stone-50 dark:bg-stone-800/60 border border-stone-100 dark:border-stone-800">
-                <HandCoins className="w-4 h-4 text-stone-500 dark:text-stone-400" />
-                <span className="text-[10px] font-semibold text-stone-500 dark:text-stone-400 leading-tight">Debt repay</span>
-              </div>
-            </div>
-            <div className="w-full max-w-[220px]">
-              <button
-                id="dash-open-add-modal-btn"
-                type="button"
-                onClick={onOpenQuickAdd}
-                className={`${PRIMARY_BUTTON_CLASS} flex items-center justify-center gap-2`}
-              >
-                <PlusCircle className="w-4 h-4" />
-                <span>Add Transaction</span>
-              </button>
-            </div>
-          </div>
-        </div>
+      {/* 4. Category & Debt Progress Breakdown */}
+      <motion.div variants={itemVariants} className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-stretch">
+        <CategoryExpenseDistribution
+          categoryBreakdown={categoryBreakdown}
+          totalExpenseAmount={expenseTotal + debtRepaymentTotal}
+        />
 
-        {/* Right Column: Category Breakdown + Debt Progress (lg:col-span-6) */}
-        <div className="lg:col-span-6 space-y-6">
-          <CategoryExpenseDistribution
-            categoryBreakdown={categoryBreakdown}
-            totalExpenseAmount={expenseTotal + debtRepaymentTotal}
-          />
-
-          <DebtPayoffOverview
-            activeDebtCount={debtSummary.activeCount}
-            debtProgressPercent={debtSummary.progressPercent}
-            remainingDebtTarget={debtSummary.remainingTarget}
-            paidDebtTarget={debtSummary.paidTarget}
-          />
-        </div>
+        <DebtPayoffOverview
+          activeDebtCount={debtSummary.activeCount}
+          debtProgressPercent={debtSummary.progressPercent}
+          remainingDebtTarget={debtSummary.remainingTarget}
+          paidDebtTarget={debtSummary.paidTarget}
+        />
       </motion.div>
 
       {/* 5. Compact Recent 5 Transactions List with View All Button */}
