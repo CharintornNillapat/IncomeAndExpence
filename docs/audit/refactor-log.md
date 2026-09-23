@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 43 — Debt payoff chips and live repayment preview: T99–T103 (2026-09-23, uncommitted)
+## Phase 43 — Debt payoff chips and live repayment preview: T99–T103 (2026-09-23, commits `b6e5ba8`…`44a9747`)
 
 **Changed**
 - `docs/audit/decisions/0015-debt-repayment-preview.md` (new) — written **before** the code, per `README.md:28`. Records why the block lives inside the shared engine rather than in `DebtsView`'s shell, why overpayment warns instead of blocking, why a chip sets the manual-amount latch itself, why the block stays mounted where Phase 42's preview vanishes, and the full-debit/floored-debt asymmetry the warning exists to describe.
