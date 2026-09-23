@@ -404,6 +404,18 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
   const overpayment = plannedPayment > remainingDebt ? roundToCents(plannedPayment - remainingDebt) : 0;
   const settlesExactly = plannedPayment > 0 && projectedRemaining === 0 && overpayment === 0;
 
+  /*
+   * ADR 0016: an overpayment now blocks submission rather than warning.
+   *
+   * The `repayTargetDebt !== null` test is not defensive padding. On a
+   * non-debt form `repayTargetDebt` is null, so `remainingDebt` falls back to
+   * 0 and `overpayment` equals the entire amount - harmless while it is only
+   * read inside `{repayTargetDebt && ...}`, but the moment it feeds the submit
+   * gate below, every EXPENSE and INCOME submission in the app would be
+   * permanently disabled. Covered by its own regression test.
+   */
+  const isOverpaying = repayTargetDebt !== null && overpayment > 0;
+
   // Mirrors `DebtCardItem`'s formula with its `isSettled ? 0 : remaining`
   // branch collapsed - `projectedRemaining` is already the post-payment
   // figure, and a settled debt is zero by construction.
@@ -430,6 +442,10 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
     userTouchedRef.current.amount = true;
     setAmountSeed((prev) => ({ key: prev.key + 1, value: String(value) }));
   };
+
+  // One definition for what used to be the same expression written out three
+  // times (the `whileTap`, the `disabled` and the className ternary below).
+  const canSubmit = !isSubmitting && isAmountValid && amount !== null && !isOverpaying;
 
   const showShortcuts = !lockType && Boolean(onRequestTransfer || onRequestRepayDebt);
   const shortcutLinkClass =
@@ -644,19 +660,20 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
             </div>
           </div>
 
-          {/* Mutually exclusive: the overpayment note already says the debt
-              settles, so the settle note would only repeat it. Neither gates
-              submit - a CREDIT_CARD-style deliberate overpayment (interest or
-              fees the debt model does not carry) stays possible. */}
-          {overpayment > 0 ? (
+          {/* Mutually exclusive. The constraint note now *gates* submission
+              (ADR 0016) rather than warning about a consequence the user was
+              about to accept - the ledger rejects an overpayment outright, so
+              letting the button stay live would only produce an error banner
+              after the fact. Same testid, opposite meaning. */}
+          {isOverpaying ? (
             <p
               data-testid={`${idBase}-overpayment-note`}
               className="flex items-start gap-1.5 text-[11px] font-medium rounded-lg border border-amber-200 dark:border-amber-800/60 bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 px-2.5 py-2"
             >
               <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-px" />
               <span>
-                {formatCurrencyAmount(overpayment)} more than this debt needs. It settles either way, and
-                the full {formatCurrencyAmount(plannedPayment)} still leaves your wallet.
+                Maximum payable is <strong className="font-mono">{formatCurrencyAmount(remainingDebt)}</strong> &mdash;
+                that is all that remains on {repayTargetDebt.name}. Use <strong>Pay in full</strong> to clear it exactly.
               </span>
             </p>
           ) : settlesExactly ? (
@@ -809,12 +826,12 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
       {/* 5. Submit Button */}
       <div className="pt-2">
         <motion.button
-          whileTap={!isSubmitting && isAmountValid && amount !== null ? { scale: 0.96 } : {}}
+          whileTap={canSubmit ? { scale: 0.96 } : {}}
           id={submitBtnId}
           type="submit"
-          disabled={isSubmitting || !isAmountValid || amount === null}
+          disabled={!canSubmit}
           className={`w-full min-h-[48px] py-3 px-4 rounded-xl font-semibold text-sm transition-all flex items-center justify-center gap-2 cursor-pointer ${
-            !isSubmitting && isAmountValid && amount !== null
+            canSubmit
               ? 'bg-stone-900 hover:bg-stone-800 dark:bg-stone-100 dark:hover:bg-white text-white dark:text-stone-900 shadow-sm'
               : 'bg-stone-200 dark:bg-stone-800 text-stone-400 dark:text-stone-600 cursor-not-allowed'
           }`}
