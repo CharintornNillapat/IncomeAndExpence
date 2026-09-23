@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 41 — Express note entry; TRANSFER leaves the transaction form: T89–T93 (2026-09-23, uncommitted)
+## Phase 41 — Express note entry; TRANSFER leaves the transaction form: T89–T93 (2026-09-23, commits `cb999ab`…`ba1690a`)
 
 **Changed**
 - `docs/audit/decisions/0013-express-transaction-entry.md` (new) — written **before** the code, per `README.md:28`. Records the note-first inversion, the manual-amount latch, why TRANSFER goes and `DEBT_REPAYMENT` stays, and the collapse removal. Amends ADR `0007`.
@@ -26,6 +26,7 @@ npm run lint                     # tsc --noEmit && tsc -p api/tsconfig.json: cle
 npx playwright test --workers=4  # 165/165 passed, 0 retries, 4.5m
 npm run clean && npm run build   # built in 6.90s; 0 chunk-size warnings
 ```
+CI run `35855547475` on `ba1690a`: Run Playwright Tests **success** (verified via `gh api`, not just `gh run view`). Vercel deployment `dpl_CbNfDbXiP1VzgMGZdmmBD261NAv9` READY on production.
 Plus a 27-case throwaway esbuild+Node probe of `parseExpressInput` against the real `safeEvaluateMath` (not committed — it duplicates no committed assertion and needs no fixture): all three anchors, Thai and Latin notes, the currency marker, thousands commas, decimals, `iphone 15 pro 32000` (trailing wins over the mid-string `15`), `7-11 lunch` and `ค่าไฟ1200` (correctly refused — no whitespace boundary), `buy 2 - 3 items`, `a 0`, `x 99999999999`, empty/whitespace, and the three E2E marker shapes. 27/27 matched the ADR's table.
 
 **Bundle verification** (`git stash -u` → `clean && build` → `stash pop` → rebuild; same machine, Node v24.19.0, clean tree both times)

@@ -449,3 +449,27 @@ Same method as the Phase 39 section: `git stash push -u` the whole phase, `npm r
 - **`api/classify.ts` still contributes zero client bytes.** Its only link to `src/` remains an `import type`, which TypeScript erases; Vercel builds it as a serverless function outside the Vite graph.
 
 **Test-suite size:** 144 → **150 runs** (48 → 50 tests, 15 spec files unchanged). Wall clock `npx playwright test --workers=4`: 3.5 m → 4.1 m.
+
+## Phase 41 (express note entry) — bundle delta, measured against a rebuild of HEAD
+
+Same method as the Phase 39 and 40 sections: `git stash push -u` the whole phase, `npm run clean && npm run build`, record, `git stash pop`, rebuild. Same machine, Node v24.19.0, same `node_modules`, clean tree both times, no dev server running. HEAD here is `5a67726`.
+
+| Chunk | HEAD (stashed) | Phase 41 | Delta |
+|---|---|---|---|
+| entry `index-*.js` | 163.10 kB / 46.05 kB gzip | **163.30 kB / 46.11 kB gzip** | **+0.20 kB / +0.06 kB** |
+| `TransactionForm-*.js` (lazy) | 17.77 kB / 5.57 kB gzip | 17.90 kB / 5.84 kB gzip | +0.13 kB / +0.27 kB |
+| `QuickAddModal-*.js` (lazy) | 2.53 kB / 1.19 kB gzip | 2.60 kB / 1.22 kB gzip | +0.07 kB / +0.03 kB |
+| `index-*.css` | 77.68 kB / 11.93 kB gzip | 77.02 kB / 11.85 kB gzip | **−0.66 kB / −0.08 kB** |
+| `vendor-math-*.js` | 375.73 kB / 110.72 kB gzip | 375.73 kB / 110.72 kB gzip | 0 / 0 |
+| vendor chunk count | 5 | 5 | 0 |
+| build time | 16.04 s | 6.90 s | *(baseline was the session's first build, cold cache; not comparable)* |
+
+**Findings**
+
+- **The entry delta is `App.tsx` and nothing else.** `App.tsx` is eager, and it gained three `useCallback`s (`handleQuickAddTransfer`, `handleQuickAddRepayDebt`, `handleNavigateToDebts`) plus four JSX props. +0.20 kB raw is the whole cost of making the shortcut row reachable.
+- **The parser is entirely off the critical path.** `grep -l 'baht' dist/assets/*.js` resolves **only** to `TransactionForm-*.js`, so `expressInput.ts` ships inside the lazy chunk that ADR `0010` already defers. `grep -l '/api/classify' dist/assets/*.js` still resolves only to the same chunk.
+- **The `TransactionForm` chunk barely moved despite a large rewrite**, because the phase deleted roughly as much as it added: the destination-wallet select, its validity effect, the `destinationWalletOptions` memo, the TRANSFER submit/label/description branches, and the entire collapse block all came out. Gzip grew slightly more than raw (+0.27 vs +0.13 kB) — the new parser's regex literals compress worse than the repetitive Tailwind strings that were removed.
+- **The CSS shrank, which was not a goal.** The deleted collapse banner and "To Wallet" block took their utility classes out of the Tailwind scan with them.
+- **No new dependency and no new vendor chunk.** `manualChunks` is unmodified, so ADR `0010`'s `vendor-math` deferral (110.72 kB gzip, still the largest chunk in the build) is intact.
+
+**Test-suite size:** 150 → **165 runs** (50 → 55 tests, 15 → **16** spec files — the first new spec file since Phase 39). Wall clock `npx playwright test --workers=4`: 4.1 m → 4.5 m.
