@@ -1,6 +1,6 @@
 import React, { useState, useId } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Sparkles, ArrowRight, AlertCircle } from 'lucide-react';
+import { Sparkles, ArrowRight, AlertCircle, Mic } from 'lucide-react';
 import { InlineMathInput } from './InlineMathInput';
 import { Wallet, Category, TransactionType, Preset } from '../types';
 import { useFinanceState, useFinanceActions } from '../context/FinanceContext';
@@ -8,6 +8,7 @@ import { useSubmitHandler } from '../hooks/useSubmitHandler';
 import { useIdempotencyKey } from '../hooks/useIdempotencyKey';
 import { useTransientFlash } from '../hooks/useTransientFlash';
 import { useDescriptionClassifier } from '../hooks/useDescriptionClassifier';
+import { useSpeechRecognition } from '../hooks/useSpeechRecognition';
 import { CategorySuggestionChip } from './transaction/CategorySuggestionChip';
 import { SaveRuleChip } from './transaction/SaveRuleChip';
 import type { JevSuggestion } from '../utils/jevClassifier';
@@ -308,6 +309,54 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
       setAutoMatchedCategory(null);
       classify(textToClassify);
     }
+  };
+
+  /*
+   * Voice input (ADR 0018).
+   *
+   * The whole design is the line marked below: a transcript goes through
+   * `handleDescriptionChange`, the same function `onChange` calls. Voice gets
+   * no pipeline of its own, so amount extraction, the keyword matcher, Jev's
+   * arming, the auto-categorized badge and ADR 0017's rule chip all treat a
+   * spoken note identically to a typed one - including ADR 0013's
+   * manual-amount latch, which is what stops a transcript ending in digits
+   * from overwriting an amount the user typed by hand.
+   */
+
+  /** Whatever was in the note when dictation started. Dictation appends to it, never replaces it. */
+  const voiceBaseRef = React.useRef<string>('');
+
+  /*
+   * Deliberately NOT memoized. `handleDescriptionChange` is redefined every
+   * render because it closes over live form state - `keywordRules` above all,
+   * which ADR 0017's rule chip mutates mid-session. A `useCallback([])` here
+   * would pin the first render's closure and quietly match transcripts
+   * against a stale rule set. The hook mirrors this into a ref and always
+   * invokes the latest one, so a fresh identity each render costs nothing.
+   */
+  const handleTranscript = (transcript: string) => {
+    if (!transcript) return;
+    const base = voiceBaseRef.current;
+    // This form has no undo and the mic sits inside the field it would
+    // otherwise wipe, so a mis-tap must not be able to destroy typed text.
+    handleDescriptionChange(base ? `${base} ${transcript}` : transcript);
+  };
+
+  const {
+    isSupported: isVoiceSupported,
+    isListening,
+    error: voiceError,
+    start: startListening,
+    stop: stopListening,
+  } = useSpeechRecognition({ onTranscript: handleTranscript });
+
+  const handleToggleVoice = () => {
+    if (isListening) {
+      stopListening();
+      return;
+    }
+    voiceBaseRef.current = description.trim();
+    startListening();
   };
 
   // Prefills the form from a saved template. The amount field is re-seeded via
@@ -636,8 +685,59 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
                 ? 'e.g., Monthly student loan payment 4000'
                 : 'e.g. ข้าวมันไก่ 60, bts 45, or ค่าไฟ 1200'
             }
-            className="w-full text-sm rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 px-3.5 py-2.5 text-stone-900 dark:text-stone-100 placeholder:text-stone-400 dark:placeholder:text-stone-500 focus:outline-none focus:border-stone-800 dark:focus:border-stone-400 focus:ring-2 focus:ring-stone-200 dark:focus:ring-stone-700 transition-colors"
+            className={`w-full text-sm rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 py-2.5 pl-3.5 text-stone-900 dark:text-stone-100 placeholder:text-stone-400 dark:placeholder:text-stone-500 focus:outline-none focus:border-stone-800 dark:focus:border-stone-400 focus:ring-2 focus:ring-stone-200 dark:focus:ring-stone-700 transition-colors ${
+              isVoiceSupported ? 'pr-11' : 'pr-3.5'
+            }`}
           />
+
+          {/*
+            Dictation (ADR 0018). Renders only where the API is actually
+            usable - the check includes `isSecureContext`, so this is absent
+            on an insecure origin rather than present and broken. Blocked
+            permission disables it with a reason instead of hiding it: a
+            button that vanishes the instant it is tapped is worse than one
+            that explains itself.
+          */}
+          {isVoiceSupported && (
+            <button
+              type="button"
+              id={`${formId}-voice-btn`}
+              onClick={handleToggleVoice}
+              disabled={voiceError?.disabling === true}
+              aria-pressed={isListening}
+              aria-label={isListening ? 'Stop dictation' : 'Dictate the note'}
+              title={isListening ? 'Stop dictation' : 'Dictate the note'}
+              className={`absolute right-2 top-1/2 -translate-y-1/2 flex items-center justify-center w-8 h-8 rounded-lg transition-colors cursor-pointer disabled:cursor-not-allowed disabled:opacity-40 ${
+                isListening
+                  ? 'bg-rose-100 text-rose-600 dark:bg-rose-950/60 dark:text-rose-400'
+                  : 'text-stone-400 hover:text-stone-700 hover:bg-stone-100 dark:hover:text-stone-200 dark:hover:bg-stone-700'
+              }`}
+            >
+              <Mic className={`w-4 h-4 ${isListening ? 'animate-pulse' : ''}`} />
+            </button>
+          )}
+        </div>
+
+        {/* State is announced, not just coloured - the pulse alone is invisible to a screen reader. */}
+        <div aria-live="polite" className="contents">
+          {isListening && (
+            <p
+              data-testid="tx-voice-listening"
+              className="flex items-center gap-1.5 text-[11px] font-medium text-rose-600 dark:text-rose-400"
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
+              Listening&hellip; speak the note and the amount, e.g. &ldquo;ข้าวมันไก่ 60&rdquo;
+            </p>
+          )}
+          {voiceError && !isListening && (
+            <p
+              data-testid="tx-voice-error"
+              className="flex items-start gap-1.5 text-[11px] font-medium text-amber-700 dark:text-amber-400"
+            >
+              <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-px" />
+              <span>{voiceError.message}</span>
+            </p>
+          )}
         </div>
 
         {/*
