@@ -9,6 +9,7 @@ import { useIdempotencyKey } from '../hooks/useIdempotencyKey';
 import { useTransientFlash } from '../hooks/useTransientFlash';
 import { useDescriptionClassifier } from '../hooks/useDescriptionClassifier';
 import { CategorySuggestionChip } from './transaction/CategorySuggestionChip';
+import { SaveRuleChip } from './transaction/SaveRuleChip';
 import type { JevSuggestion } from '../utils/jevClassifier';
 import { matchSmartDescription } from '../utils/smartMatcher';
 import { parseExpressInput } from '../utils/expressInput';
@@ -74,6 +75,22 @@ interface TransactionFormProps {
 const QUICK_CHIP_CLASS =
   'inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-full bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-300 border border-stone-200 dark:border-stone-700 transition-colors cursor-pointer';
 
+/*
+ * Bounds on a keyword this form will offer to save as a rule (ADR 0017).
+ *
+ * The floor is a safety guard, not padding: `matchSmartDescription` matches
+ * with `lower.includes(kw)`, so a one- or two-character rule would capture
+ * nearly every future note the user writes, and nothing on screen would
+ * connect that symptom back to this chip. The ceiling stops a sentence-long
+ * note becoming a rule that can never match anything again.
+ *
+ * Outside the band the chip simply does not render. It never truncates to
+ * fit - saving a keyword the user did not type is the same sin ADR 0015
+ * rejected when it refused to clamp a typed amount down to the remainder.
+ */
+const MIN_RULE_KEYWORD_LENGTH = 3;
+const MAX_RULE_KEYWORD_LENGTH = 32;
+
 export const TransactionForm: React.FC<TransactionFormProps> = ({
   wallets,
   categories,
@@ -89,7 +106,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
 }) => {
   const formId = useId();
   const { keywordRules, debts, presets } = useFinanceState();
-  const { addPreset } = useFinanceActions();
+  const { addPreset, addKeywordRule } = useFinanceActions();
 
   const activeDebts = React.useMemo(
     () => debts.filter((d) => !d.isDeleted && !d.isSettled),
@@ -115,6 +132,15 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
   const [templateName, setTemplateName] = useState<string>('');
   const [templateSaveError, setTemplateSaveError] = useState<string | null>(null);
 
+  // Smart-rule capture (ADR 0017).
+  const [isSavingRule, setIsSavingRule] = useState<boolean>(false);
+  const [ruleSaveError, setRuleSaveError] = useState<string | null>(null);
+  // `keyword##categoryId` pairings waved off in this form's lifetime. Mirrors
+  // `useDescriptionClassifier`'s own `dismissedRef`; state rather than a ref
+  // because dismissing has to repaint, and the array is replaced rather than
+  // mutated so React actually sees the change.
+  const [dismissedRules, setDismissedRules] = useState<string[]>([]);
+
   // Ids for the three fields a caller-supplied shell (DebtsView's repay
   // modal) already has Playwright specs targeting by a specific legacy
   // name. Every other field keeps its default `useId()`-derived id
@@ -136,6 +162,16 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
 
   const [autoMatchedCategory, setAutoMatchedCategory] = useState<string | null>(null);
   const { value: isSubmitted, flash: flashSubmitted } = useTransientFlash(false, 2500);
+  /*
+   * The saved-rule confirmation, and the one piece of this feature that
+   * cannot be derived: a successful `addKeywordRule` lands in `keywordRules`,
+   * which makes `ruleCandidate` below null on the very next render. Derived
+   * from the same conditions as the offer, the confirmation would be erased
+   * by its own success before the user could read it.
+   */
+  const { value: savedRule, flash: flashSavedRule } = useTransientFlash<
+    { keyword: string; categoryName: string } | null
+  >(null, 4000);
   // One key per armed form. Retrying after a failure reuses it so the retry is
   // deduplicated rather than double-spending; it is regenerated only on success.
   const { idempotencyKey: submitKey, rotateIdempotencyKey } = useIdempotencyKey();
@@ -164,6 +200,11 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
       // Both are declared below this closure; it only ever runs at submit time.
       clearSuggestion();
       userTouchedRef.current = { category: false, type: false, amount: false };
+      // Resetting the latch already retires any rule offer on screen; this
+      // just stops a stale rejection banner riding into the next entry.
+      // `dismissedRules` deliberately survives - a pairing waved off once
+      // should stay waved off for this form's lifetime.
+      setRuleSaveError(null);
       rotateIdempotencyKey();
       flashSubmitted(true);
     },
@@ -452,6 +493,64 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
   // One definition for what used to be the same expression written out three
   // times (the `whileTap`, the `disabled` and the className ternary below).
   const canSubmit = !isSubmitting && isAmountValid && amount !== null && !isOverpaying;
+
+  /*
+   * Smart-rule capture (ADR 0017). Derived on render, for the same reason the
+   * payoff block above is: every path that can change one of these inputs -
+   * including the `userTouchedRef` write in the category select's `onChange`
+   * and in `applySuggestion` - already sets state alongside it, so a ref read
+   * here is never stale by a render.
+   *
+   * Ordered cheapest-first on purpose. `matchSmartDescription` is a linear
+   * scan with an `includes` per rule and it runs on every render of this
+   * form, so it sits behind the latch and length checks rather than in front
+   * of them.
+   */
+  const ruleCandidateCategory = categories.find((c) => c.id === categoryId) ?? null;
+  const ruleKeyword = parseExpressInput(description).cleanDescription.trim();
+
+  const ruleCandidate =
+    // A locked form skips categorization entirely, so there is nothing to learn from it.
+    !lockType &&
+    // The human chose this category - not the matcher, not Jev's auto-fill.
+    userTouchedRef.current.category &&
+    ruleCandidateCategory !== null &&
+    // The category select is unfiltered, so an EXPENSE can be filed under an
+    // INCOME category. A rule built from that would flip the type on every
+    // future match, which is more than the user asked for.
+    ruleCandidateCategory.type === type &&
+    ruleKeyword.length >= MIN_RULE_KEYWORD_LENGTH &&
+    ruleKeyword.length <= MAX_RULE_KEYWORD_LENGTH &&
+    // An existing rule already governs this text. This is an invariant, not a
+    // politeness: `addKeywordRule` does not dedupe, so offering here would let
+    // a second rule with the same keyword shadow the first one silently.
+    !matchSmartDescription(ruleKeyword, keywordRules, categories).categoryId &&
+    !dismissedRules.includes(`${ruleKeyword.toLowerCase()}##${ruleCandidateCategory.id}`)
+      ? { keyword: ruleKeyword, categoryId: ruleCandidateCategory.id, categoryName: ruleCandidateCategory.name }
+      : null;
+
+  const handleSaveRule = async () => {
+    if (!ruleCandidate || isSavingRule) return;
+    setIsSavingRule(true);
+    setRuleSaveError(null);
+
+    const res = await addKeywordRule(ruleCandidate.keyword, ruleCandidate.categoryId);
+
+    setIsSavingRule(false);
+    if (res.success) {
+      flashSavedRule({ keyword: ruleCandidate.keyword, categoryName: ruleCandidate.categoryName });
+    } else {
+      // `keywordRules` is unchanged on failure, so the offer above still
+      // holds and the retry is the same button.
+      setRuleSaveError(res.error || 'Failed to save rule');
+    }
+  };
+
+  const handleDismissRule = () => {
+    if (!ruleCandidate) return;
+    setRuleSaveError(null);
+    setDismissedRules((prev) => [...prev, `${ruleCandidate.keyword.toLowerCase()}##${ruleCandidate.categoryId}`]);
+  };
 
   const showShortcuts = !lockType && Boolean(onRequestTransfer || onRequestRepayDebt);
   const shortcutLinkClass =
@@ -774,6 +873,38 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
                   ))}
                 </select>
               </div>
+
+              {/*
+                Smart-rule capture (ADR 0017). Sits under the field it is about,
+                and is entirely non-blocking: nothing in the submit path reads
+                or waits on it, so the transaction flow is unaffected whether
+                this is saved, dismissed or ignored.
+
+                The confirmation outranks the offer because saving makes the
+                offer's own conditions false - see `savedRule` above.
+              */}
+              <AnimatePresence mode="wait">
+                {savedRule ? (
+                  <SaveRuleChip
+                    key="rule-saved"
+                    status="saved"
+                    keyword={savedRule.keyword}
+                    categoryName={savedRule.categoryName}
+                    idPrefix={formId}
+                  />
+                ) : ruleCandidate ? (
+                  <SaveRuleChip
+                    key="rule-offer"
+                    status={isSavingRule ? 'saving' : 'idle'}
+                    keyword={ruleCandidate.keyword}
+                    categoryName={ruleCandidate.categoryName}
+                    idPrefix={formId}
+                    error={ruleSaveError}
+                    onSave={handleSaveRule}
+                    onDismiss={handleDismissRule}
+                  />
+                ) : null}
+              </AnimatePresence>
             </div>
           )}
         </div>
