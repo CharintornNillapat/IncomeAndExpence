@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 42 — Visual transfer layout and live balance preview: T94–T98 (2026-09-23, uncommitted)
+## Phase 42 — Visual transfer layout and live balance preview: T94–T98 (2026-09-23, commits `67a8bc7`…`ad5490e`)
 
 **Changed**
 - `docs/audit/decisions/0014-visual-transfer-layout.md` (new) — written **before** the code, per `README.md:28`. Records why the `<select>`s stay, why the preview uses `formatCurrencyAmount` rather than `AnimatedCounter`, why overdraft warns instead of blocking, and why the wallet panel is local rather than a fifth shared primitive.
@@ -23,6 +23,7 @@ npm run lint                     # tsc --noEmit && tsc -p api/tsconfig.json: cle
 npx playwright test --workers=4  # 186/186 passed, 0 retries, 4.3m
 npm run clean && npm run build   # built in 5.26s; 0 chunk-size warnings
 ```
+CI run `35864986693` on `ad5490e`: Run Playwright Tests **success**, zero failed steps (verified via `gh api`, not just `gh run view`). Vercel deployment `dpl_FvXrr2CSrc4namsBVa4fjtfu4YkB` on production.
 `tests/wallet-forms.spec.ts` passed **unedited**, before and after — it is the regression guard for this phase and the reason option (a) in ADR `0014` was rejected.
 
 **Bundle verification** (`git stash -u` → `clean && build` → `stash pop` → rebuild; same machine, Node v24.19.0, clean tree both times). HEAD here is `84c4400`.
