@@ -1,6 +1,6 @@
 import React, { useState, useId } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Sparkles, ArrowRight, SlidersHorizontal, AlertCircle } from 'lucide-react';
+import { Sparkles, ArrowRight, AlertCircle } from 'lucide-react';
 import { InlineMathInput } from './InlineMathInput';
 import { Wallet, Category, TransactionType, Preset } from '../types';
 import { useFinanceState, useFinanceActions } from '../context/FinanceContext';
@@ -11,6 +11,7 @@ import { useDescriptionClassifier } from '../hooks/useDescriptionClassifier';
 import { CategorySuggestionChip } from './transaction/CategorySuggestionChip';
 import type { JevSuggestion } from '../utils/jevClassifier';
 import { matchSmartDescription } from '../utils/smartMatcher';
+import { parseExpressInput } from '../utils/expressInput';
 import { safeEvaluateMath } from '../utils/mathEvaluator';
 import { APP_CURRENCY_SYMBOL, formatCurrencyAmount } from '../utils/currency';
 import { todayIsoDate } from '../utils/date';
@@ -20,7 +21,7 @@ import { SegmentedControl } from './ui/SegmentedControl';
 interface TransactionFormProps {
   wallets: Wallet[];
   categories: Category[];
-  /** Distinguishes this mount when more than one `TransactionForm` can be in the DOM at once (e.g. the Dashboard's inline form alongside the Quick Add modal). */
+  /** Distinguishes this mount when more than one `TransactionForm` can be in the DOM at once (e.g. the page-level Add modal alongside the Quick Add modal). */
   formTestId?: string;
   /**
    * Overrides this form's internal field ids for the amount input, wallet
@@ -41,12 +42,19 @@ interface TransactionFormProps {
   presetDebtId?: string;
   /** Pins the initially-selected source wallet instead of defaulting to `wallets[0]`. The selector itself stays editable. */
   presetWalletId?: string;
+  /**
+   * Renders the "Transfer Funds" shortcut link below the submit button.
+   * Omitted means no link at all: TRANSFER left this form's type toggle in
+   * ADR 0013, and a link that goes nowhere is worse than no link.
+   */
+  onRequestTransfer?: () => void;
+  /** Renders the "Repay Debt" shortcut link below the submit button. Same contract as `onRequestTransfer`. */
+  onRequestRepayDebt?: () => void;
   onSubmitTransaction: (tx: {
     amount: number;
     rawInput: string;
     description: string;
     walletId: string;
-    destinationWalletId?: string;
     categoryId?: string;
     debtId?: string;
     type: TransactionType;
@@ -64,6 +72,8 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
   lockType = false,
   presetDebtId,
   presetWalletId,
+  onRequestTransfer,
+  onRequestRepayDebt,
   onSubmitTransaction,
 }) => {
   const formId = useId();
@@ -82,16 +92,13 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
   const [description, setDescription] = useState<string>('');
   const [type, setType] = useState<TransactionType>(presetType || 'EXPENSE');
   const [walletId, setWalletId] = useState<string>(presetWalletId || wallets[0]?.id || '');
-  const [destinationWalletId, setDestinationWalletId] = useState<string>(wallets[1]?.id || '');
   const [categoryId, setCategoryId] = useState<string>(categories[0]?.id || '');
   const [debtId, setDebtId] = useState<string>(presetDebtId || activeDebts[0]?.id || debts[0]?.id || '');
   const [date, setDate] = useState<string>(todayIsoDate());
 
-  // Applying a template re-seeds the amount field. `InlineMathInput` only
-  // honors its own `defaultValue` prop on mount (it ignores later prop
-  // changes once the user has typed anything), so re-seeding it requires
-  // remounting via a changing `key` rather than just passing a new
-  // `defaultValue`.
+  // Drives `InlineMathInput`'s `seed` prop. Both the express note parser and
+  // an applied template push through here; bumping `key` is what makes the
+  // push land even when the text is unchanged from a previous seed.
   const [amountSeed, setAmountSeed] = useState<{ key: number; value: string }>({ key: 0, value: '' });
   const [saveAsTemplate, setSaveAsTemplate] = useState<boolean>(false);
   const [templateName, setTemplateName] = useState<string>('');
@@ -112,36 +119,36 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
     }
   }, [wallets, walletId]);
 
-  // Keep destinationWalletId valid: it must resolve to a real wallet and must never
-  // collide with the source, otherwise the form looks fine but the transfer is
-  // rejected as "requires a distinct destination wallet".
-  React.useEffect(() => {
-    const candidates = wallets.filter((w) => w.id !== walletId);
-    if (candidates.length === 0) {
-      if (destinationWalletId) setDestinationWalletId('');
-      return;
-    }
-    if (!destinationWalletId || !candidates.some((w) => w.id === destinationWalletId)) {
-      setDestinationWalletId(candidates[0].id);
-    }
-  }, [wallets, walletId, destinationWalletId]);
-
   const [autoMatchedCategory, setAutoMatchedCategory] = useState<string | null>(null);
-  const [showManualOverrides, setShowManualOverrides] = useState<boolean>(false);
   const { value: isSubmitted, flash: flashSubmitted } = useTransientFlash(false, 2500);
   // One key per armed form. Retrying after a failure reuses it so the retry is
   // deduplicated rather than double-spending; it is regenerated only on success.
   const { idempotencyKey: submitKey, rotateIdempotencyKey } = useIdempotencyKey();
+
+  // Once the user picks a category or type by hand - or types in the amount
+  // field - a later automatic write must not overwrite it. Refs rather than
+  // state: every path that flips one of these already triggers its own render.
+  //
+  // `amount` is the load-bearing one (ADR 0013). Without it, a note ending in
+  // digits would silently replace an amount the user already entered, which is
+  // both wrong and what `csv`/`soft-delete`/`presets` depend on not happening.
+  const userTouchedRef = React.useRef({ category: false, type: false, amount: false });
+
+  /** The last expression the note parser pushed, so an unchanged parse is not re-seeded on every keystroke. */
+  const lastSeededExprRef = React.useRef<string | null>(null);
 
   const { isSubmitting, error: submitError, handleSubmit: submitTransaction } = useSubmitHandler({
     defaultErrorMessage: 'Failed to save transaction',
     onSuccess: () => {
       setDescription('');
       setAutoMatchedCategory(null);
-      setShowManualOverrides(false);
+      // Clear the amount too: with the note now driving it, leaving a stale
+      // amount behind after a successful save invites double-recording it.
+      setAmountSeed((prev) => ({ key: prev.key + 1, value: '' }));
+      lastSeededExprRef.current = null;
       // Both are declared below this closure; it only ever runs at submit time.
       clearSuggestion();
-      userTouchedRef.current = { category: false, type: false };
+      userTouchedRef.current = { category: false, type: false, amount: false };
       rotateIdempotencyKey();
       flashSubmitted(true);
     },
@@ -153,10 +160,9 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
     setIsAmountValid(valid);
   }, []);
 
-  // Once the user picks a category or type by hand, a late-arriving
-  // classification must not overwrite it. Refs rather than state: every path
-  // that flips one of these already triggers its own re-render.
-  const userTouchedRef = React.useRef({ category: false, type: false });
+  const handleAmountUserEdit = React.useCallback(() => {
+    userTouchedRef.current.amount = true;
+  }, []);
 
   /**
    * Async half of the two-layer categorization (ADR 0011). The keyword matcher
@@ -191,16 +197,41 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
     }
   }, [suggestion, applySuggestion]);
 
-  // Smart Description Keyword Matcher, then Jev on a miss
+  /**
+   * The express note field (ADR 0013). Three things happen here, in order:
+   *
+   *   1. The amount is parsed out of the note and pushed into the amount field
+   *      - unless the user has taken that field over by hand.
+   *   2. The keyword matcher runs on the *stripped* text (layer 1, sync, free).
+   *   3. Jev is consulted only on a rule miss (layer 2).
+   *
+   * Step 1 runs even on a locked-type form: pulling "4000" out of "pay off
+   * loan 4000" is type-agnostic. Steps 2 and 3 do not, for the reasons below.
+   */
   const handleDescriptionChange = (text: string) => {
     setDescription(text);
+
+    const parsed = parseExpressInput(text);
+    if (
+      parsed.amountExpression &&
+      !userTouchedRef.current.amount &&
+      parsed.amountExpression !== lastSeededExprRef.current
+    ) {
+      lastSeededExprRef.current = parsed.amountExpression;
+      setAmountSeed((prev) => ({ key: prev.key + 1, value: parsed.amountExpression as string }));
+    }
+
     // A locked-type form (e.g. debt repayment) has no business letting the
     // matcher silently switch `type` out from under it, and auto-tagging a
     // category is irrelevant when the type - and thus the category - is
     // already fixed by the caller. The classifier is skipped for the same
     // reason, which also means a repay modal never issues a network call.
     if (lockType) return;
-    const match = matchSmartDescription(text, keywordRules, categories);
+
+    // Both layers see the note with the amount stripped out: "ข้าวมันไก่ 60"
+    // classifies as "ข้าวมันไก่". The ledger still stores the full text.
+    const textToClassify = parsed.cleanDescription || text;
+    const match = matchSmartDescription(textToClassify, keywordRules, categories);
 
     if (match.categoryId) {
       setCategoryId(match.categoryId);
@@ -213,23 +244,23 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
       clearSuggestion();
     } else {
       setAutoMatchedCategory(null);
-      classify(text);
+      classify(textToClassify);
     }
   };
 
-  // Prefills the form from a saved template. The amount field is reseeded via
-  // `amountSeed`'s changing `key` (see its declaration above); category/wallet
-  // are only applied if they still resolve to a live option, since a template
-  // can outlive the category or wallet it was created against.
+  // Prefills the form from a saved template. The amount field is re-seeded via
+  // `amountSeed` (see its declaration above); category/wallet are only applied
+  // if they still resolve to a live option, since a template can outlive the
+  // category or wallet it was created against.
   const handleApplyPreset = (preset: Preset) => {
     setType(preset.type);
     setDescription(preset.description);
     setAutoMatchedCategory(null);
-    setShowManualOverrides(true);
-    // A template is an explicit user choice of category and type, so it counts
-    // as touching both - a classification racing in behind it must not win.
+    // A template is an explicit user choice of category, type and amount, so it
+    // counts as touching all three - a classification or a note-parsed amount
+    // racing in behind it must not win.
     clearSuggestion();
-    userTouchedRef.current = { category: true, type: true };
+    userTouchedRef.current = { category: true, type: true, amount: true };
     if (preset.categoryId && categories.some((c) => c.id === preset.categoryId)) {
       setCategoryId(preset.categoryId);
     }
@@ -243,7 +274,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
     e.preventDefault();
     if (isSubmitting) return;
     let effectiveAmount = amount;
-    let effectiveRaw = rawAmountInput;
+    const effectiveRaw = rawAmountInput;
     let effectiveValid = isAmountValid;
 
     if (effectiveAmount === null || !effectiveValid) {
@@ -266,11 +297,12 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
     const finalWalletId = effectiveWalletId;
 
     const selectedDebt = debts.find((d) => d.id === debtId);
+    // The note is stored exactly as typed, amount and all (ADR 0013): stripping
+    // it here would be lossy, and a wrong parse would mangle the note as well
+    // as the amount.
     let finalDescription = description.trim();
     if (!finalDescription) {
-      if (type === 'TRANSFER') {
-        finalDescription = 'Transfer';
-      } else if (type === 'DEBT_REPAYMENT' && selectedDebt) {
+      if (type === 'DEBT_REPAYMENT' && selectedDebt) {
         finalDescription = `Debt Repayment: ${selectedDebt.name}`;
       } else {
         finalDescription = 'Transaction';
@@ -280,8 +312,8 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
     const debtCategory = categories.find((c) => c.type === 'DEBT_REPAYMENT' || c.name.toLowerCase().includes('debt'));
 
     // Presets only support EXPENSE/INCOME (see `Preset` in types.ts), so a
-    // TRANSFER/DEBT_REPAYMENT/ADJUSTMENT submission never triggers a save even
-    // if the checkbox was left checked from a prior EXPENSE/INCOME entry.
+    // DEBT_REPAYMENT/ADJUSTMENT submission never triggers a save even if the
+    // checkbox was left checked from a prior EXPENSE/INCOME entry.
     const shouldSaveTemplate =
       !lockType && saveAsTemplate && (type === 'EXPENSE' || type === 'INCOME') && templateName.trim().length > 0;
     const finalCategoryId =
@@ -293,7 +325,6 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
         rawInput: effectiveRaw,
         description: finalDescription,
         walletId: finalWalletId,
-        destinationWalletId: type === 'TRANSFER' ? destinationWalletId : undefined,
         categoryId: finalCategoryId,
         debtId: type === 'DEBT_REPAYMENT' ? debtId : undefined,
         type,
@@ -325,16 +356,9 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
     });
   };
 
-  const selectedWallet = wallets.find((w) => w.id === walletId);
-  const matchedCategoryObj = categories.find((c) => c.id === categoryId);
-  const destinationWalletOptions = React.useMemo(
-    () => wallets.filter((w) => w.id !== walletId),
-    [wallets, walletId]
-  );
-
-  // Determine if manual fields should be collapsed by default
-  const isAutoParsed = Boolean(autoMatchedCategory);
-  const isCollapsed = isAutoParsed && !showManualOverrides;
+  const showShortcuts = !lockType && Boolean(onRequestTransfer || onRequestRepayDebt);
+  const shortcutLinkClass =
+    'font-semibold text-stone-700 dark:text-stone-300 underline underline-offset-2 hover:text-stone-900 dark:hover:text-white cursor-pointer transition-colors';
 
   return (
     <form
@@ -347,22 +371,24 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-stone-100 dark:border-stone-800 pb-4">
         <div>
           <h2 className="text-base sm:text-lg font-bold text-stone-900 dark:text-white">Record Transaction</h2>
-          <p className="text-xs text-stone-500 dark:text-stone-400">Log an expense, income, transfer, or debt payment</p>
+          <p className="text-xs text-stone-500 dark:text-stone-400">Log an expense or income</p>
         </div>
 
-        {/* Transaction Type Segmented Toggle with mobile touch targets */}
+        {/* Transaction Type Segmented Toggle with mobile touch targets.
+            EXPENSE/INCOME only (ADR 0013) - transfers belong to
+            `TransferFundsModal` and repayments to `DebtsView`, both linked
+            from the shortcut row at the bottom of this form. */}
         <SegmentedControl<TransactionType>
-          className="grid grid-cols-4 sm:flex w-full sm:w-auto"
+          className="grid grid-cols-2 sm:flex w-full sm:w-auto"
           value={type}
           onChange={(t) => {
             setType(t);
             userTouchedRef.current.type = true;
-            if (isAutoParsed) setShowManualOverrides(true);
           }}
-          options={(['EXPENSE', 'INCOME', 'TRANSFER', 'DEBT_REPAYMENT'] as TransactionType[]).map((t) => ({
+          options={(['EXPENSE', 'INCOME'] as TransactionType[]).map((t) => ({
             value: t,
             id: `${formId}-type-${t.toLowerCase()}`,
-            label: t === 'DEBT_REPAYMENT' ? 'Debt' : t.charAt(0) + t.slice(1).toLowerCase(),
+            label: t.charAt(0) + t.slice(1).toLowerCase(),
           }))}
         />
       </div>
@@ -391,30 +417,16 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
         </div>
       )}
 
-      {/* 1. Safe Inline Math Input Component */}
-      <InlineMathInput
-        key={amountSeed.key}
-        id={mathInputId}
-        label="Transaction Amount"
-        placeholder="e.g. 500+500 or 1500*0.7"
-        currencyPrefix={APP_CURRENCY_SYMBOL}
-        defaultValue={amountSeed.value}
-        required
-        onAmountEvaluated={handleAmountEvaluated}
-      />
-
-      {/* 2. Smart Description Input with auto-tagging */}
+      {/* 1. The omni note - the field that drives the whole form. It fills the
+             amount below it, the category, and the type. */}
       <div className="flex flex-col gap-1.5">
         <div className="flex items-center justify-between flex-wrap gap-1">
           <label htmlFor={`${formId}-desc`} className={LABEL_TEXT_CLASS}>
-            Description / Note
+            Note
           </label>
-          {autoMatchedCategory && (
-            <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-800 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded-md border border-emerald-200 dark:border-emerald-800">
-              <Sparkles className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
-              Auto-categorized: <strong>{autoMatchedCategory}</strong>
-            </span>
-          )}
+          <span className="text-[11px] text-stone-400 dark:text-stone-500">
+            Type the amount right in the note
+          </span>
         </div>
         <div className="relative">
           <input
@@ -422,16 +434,21 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
             type="text"
             value={description}
             onChange={(e) => handleDescriptionChange(e.target.value)}
-            placeholder={type === 'DEBT_REPAYMENT' ? 'e.g., Monthly student loan payment' : 'e.g., lunch with team or groceries'}
+            autoComplete="off"
+            placeholder={
+              type === 'DEBT_REPAYMENT'
+                ? 'e.g., Monthly student loan payment 4000'
+                : 'e.g. ข้าวมันไก่ 60, bts 45, or ค่าไฟ 1200'
+            }
             className="w-full text-sm rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 px-3.5 py-2.5 text-stone-900 dark:text-stone-100 placeholder:text-stone-400 dark:placeholder:text-stone-500 focus:outline-none focus:border-stone-800 dark:focus:border-stone-400 focus:ring-2 focus:ring-stone-200 dark:focus:ring-stone-700 transition-colors"
           />
         </div>
 
         {/*
           Mid-confidence classifications only. A high-confidence one has already
-          filled the fields and reports itself through the badge above, and
-          anything below the floor is silent. Non-blocking by construction:
-          the form stays usable and submittable while this sits here.
+          filled the fields and reports itself through the badge on the Category
+          label, and anything below the floor is silent. Non-blocking by
+          construction: the form stays usable and submittable while this sits here.
         */}
         <AnimatePresence>
           {suggestion && suggestion.strength === 'SUGGEST' && (
@@ -446,131 +463,117 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
         </AnimatePresence>
       </div>
 
-      {/* Smart Auto-Fill Notification & Manual Toggle */}
-      {isAutoParsed && (
-        <div className="flex items-center justify-between p-3 bg-emerald-50/60 dark:bg-emerald-950/40 rounded-xl border border-emerald-200/60 dark:border-emerald-800/60 text-xs">
-          <div className="flex items-center gap-2 text-emerald-900 dark:text-emerald-200">
-            <Sparkles className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-            <span>
-              Applied <strong>{matchedCategoryObj?.name}</strong> • Paying from <strong>{selectedWallet?.name}</strong>
-            </span>
-          </div>
-          <button
-            type="button"
-            onClick={() => setShowManualOverrides(!showManualOverrides)}
-            className="text-[11px] font-semibold text-emerald-800 dark:text-emerald-300 hover:text-emerald-950 dark:hover:text-emerald-100 underline cursor-pointer flex items-center gap-1"
-          >
-            <SlidersHorizontal className="w-3 h-3" />
-            {showManualOverrides ? 'Hide details' : 'Edit details'}
-          </button>
-        </div>
-      )}
+      {/* 2. Amount - pre-filled from the note above, always editable, and still
+             a full inline-math field in its own right. */}
+      <InlineMathInput
+        id={mathInputId}
+        label="Transaction Amount"
+        placeholder="e.g. 500+500 or 1500*0.7"
+        currencyPrefix={APP_CURRENCY_SYMBOL}
+        seed={amountSeed}
+        required
+        onAmountEvaluated={handleAmountEvaluated}
+        onUserEdit={handleAmountUserEdit}
+      />
 
-      {/* 3. Source Wallet & Destination/Category/Debt Selectors (Collapsed when auto-matched unless expanded) */}
-      {!isCollapsed && (
-        <div className="space-y-4 pt-1 animate-in fade-in duration-150">
-          <div className={`grid grid-cols-1 gap-4 ${presetDebtId ? '' : 'sm:grid-cols-2'}`}>
-            {/* Source Wallet */}
+      {/* 3. Wallet & Category. Always visible - there is no "Edit details"
+             collapse any more (ADR 0013), so an auto-matched category can be
+             overridden in one click instead of two. */}
+      <div className="space-y-4 pt-1">
+        <div className={`grid grid-cols-1 gap-4 ${presetDebtId ? '' : 'sm:grid-cols-2'}`}>
+          {/* Source Wallet */}
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor={walletSelectId} className={LABEL_TEXT_CLASS}>
+              Paying Wallet
+            </label>
+            <select
+              id={walletSelectId}
+              value={walletId}
+              onChange={(e) => setWalletId(e.target.value)}
+              className="w-full text-sm rounded-xl border border-stone-200 dark:border-stone-700 px-3 py-2.5 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-none focus:border-stone-800 dark:focus:border-stone-400 focus:ring-2 focus:ring-stone-200 dark:focus:ring-stone-700 transition-colors"
+            >
+              {wallets.map((w) => (
+                <option key={w.id} value={w.id} className={OPTION_CLASS}>
+                  {w.name} ({formatCurrencyAmount(w.balance)})
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Target Debt for repayments (only when the caller hasn't already
+              pinned one via presetDebtId), OR Category for regular transactions */}
+          {type === 'DEBT_REPAYMENT' && !presetDebtId ? (
             <div className="flex flex-col gap-1.5">
-              <label htmlFor={walletSelectId} className={LABEL_TEXT_CLASS}>
-                {type === 'TRANSFER' ? 'From Wallet' : 'Paying Wallet'}
+              <label htmlFor={`${formId}-debt`} className={LABEL_TEXT_CLASS}>
+                Debt Target
               </label>
               <select
-                id={walletSelectId}
-                value={walletId}
-                onChange={(e) => setWalletId(e.target.value)}
+                id={`${formId}-debt`}
+                value={debtId}
+                onChange={(e) => setDebtId(e.target.value)}
                 className="w-full text-sm rounded-xl border border-stone-200 dark:border-stone-700 px-3 py-2.5 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-none focus:border-stone-800 dark:focus:border-stone-400 focus:ring-2 focus:ring-stone-200 dark:focus:ring-stone-700 transition-colors"
               >
-                {wallets.map((w) => (
-                  <option key={w.id} value={w.id} className={OPTION_CLASS}>
-                    {w.name} ({formatCurrencyAmount(w.balance)})
+                {debts.map((d) => (
+                  <option key={d.id} value={d.id} className={OPTION_CLASS}>
+                    {d.name} ({formatCurrencyAmount(d.remainingAmount)} remaining)
                   </option>
                 ))}
               </select>
             </div>
-
-            {/* Destination Wallet for transfers, Target Debt for repayments (only when the
-                caller hasn't already pinned one via presetDebtId), OR Category for regular transactions */}
-            {type === 'TRANSFER' ? (
-              <div className="flex flex-col gap-1.5">
-                <label htmlFor={`${formId}-dest-wallet`} className={LABEL_TEXT_CLASS}>
-                  To Wallet
-                </label>
-                <select
-                  id={`${formId}-dest-wallet`}
-                  value={destinationWalletId}
-                  onChange={(e) => setDestinationWalletId(e.target.value)}
-                  className="w-full text-sm rounded-xl border border-stone-200 dark:border-stone-700 px-3 py-2.5 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-none focus:border-stone-800 dark:focus:border-stone-400 focus:ring-2 focus:ring-stone-200 dark:focus:ring-stone-700 transition-colors"
-                >
-                  {destinationWalletOptions.map((w) => (
-                    <option key={w.id} value={w.id} className={OPTION_CLASS}>
-                      {w.name} ({formatCurrencyAmount(w.balance)})
-                    </option>
-                  ))}
-                </select>
-              </div>
-            ) : type === 'DEBT_REPAYMENT' && !presetDebtId ? (
-              <div className="flex flex-col gap-1.5">
-                <label htmlFor={`${formId}-debt`} className={LABEL_TEXT_CLASS}>
-                  Debt Target
-                </label>
-                <select
-                  id={`${formId}-debt`}
-                  value={debtId}
-                  onChange={(e) => setDebtId(e.target.value)}
-                  className="w-full text-sm rounded-xl border border-stone-200 dark:border-stone-700 px-3 py-2.5 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-none focus:border-stone-800 dark:focus:border-stone-400 focus:ring-2 focus:ring-stone-200 dark:focus:ring-stone-700 transition-colors"
-                >
-                  {debts.map((d) => (
-                    <option key={d.id} value={d.id} className={OPTION_CLASS}>
-                      {d.name} ({formatCurrencyAmount(d.remainingAmount)} remaining)
-                    </option>
-                  ))}
-                </select>
-              </div>
-            ) : type === 'DEBT_REPAYMENT' ? null : (
-              <div className="flex flex-col gap-1.5">
+          ) : type === 'DEBT_REPAYMENT' ? null : (
+            <div className="flex flex-col gap-1.5">
+              <div className="flex items-center justify-between flex-wrap gap-1">
                 <label htmlFor={`${formId}-category`} className={LABEL_TEXT_CLASS}>
                   Category
                 </label>
-                <div className="relative">
-                  <select
-                    id={`${formId}-category`}
-                    value={categoryId}
-                    onChange={(e) => {
-                      setCategoryId(e.target.value);
-                      setAutoMatchedCategory(null);
-                      // An explicit pick outranks the model from here on.
-                      userTouchedRef.current.category = true;
-                      dismissSuggestion();
-                    }}
-                    className="w-full text-sm rounded-xl border border-stone-200 dark:border-stone-700 px-3 py-2.5 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-none focus:border-stone-800 dark:focus:border-stone-400 focus:ring-2 focus:ring-stone-200 dark:focus:ring-stone-700 transition-colors"
-                  >
-                    {categories.map((c) => (
-                      <option key={c.id} value={c.id} className={OPTION_CLASS}>
-                        {c.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                {/* The one place an automatic categorization reports itself.
+                    Sits on the label of the field it wrote, which is now always
+                    on screen, so overriding it is a single click. */}
+                {autoMatchedCategory && (
+                  <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-800 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded-md border border-emerald-200 dark:border-emerald-800">
+                    <Sparkles className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+                    Auto-categorized: <strong>{autoMatchedCategory}</strong>
+                  </span>
+                )}
               </div>
-            )}
-          </div>
-
-          {/* 4. Date Picker */}
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor={`${formId}-date`} className={LABEL_TEXT_CLASS}>
-              Transaction Date
-            </label>
-            <input
-              id={`${formId}-date`}
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              className="w-full text-sm rounded-xl border border-stone-200 dark:border-stone-700 px-3.5 py-2.5 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-none focus:border-stone-800 dark:focus:border-stone-400 focus:ring-2 focus:ring-stone-200 dark:focus:ring-stone-700 [color-scheme:light] dark:[color-scheme:dark] transition-colors"
-            />
-          </div>
+              <div className="relative">
+                <select
+                  id={`${formId}-category`}
+                  value={categoryId}
+                  onChange={(e) => {
+                    setCategoryId(e.target.value);
+                    setAutoMatchedCategory(null);
+                    // An explicit pick outranks the model from here on.
+                    userTouchedRef.current.category = true;
+                    dismissSuggestion();
+                  }}
+                  className="w-full text-sm rounded-xl border border-stone-200 dark:border-stone-700 px-3 py-2.5 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-none focus:border-stone-800 dark:focus:border-stone-400 focus:ring-2 focus:ring-stone-200 dark:focus:ring-stone-700 transition-colors"
+                >
+                  {categories.map((c) => (
+                    <option key={c.id} value={c.id} className={OPTION_CLASS}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          )}
         </div>
-      )}
+
+        {/* 4. Date Picker */}
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor={`${formId}-date`} className={LABEL_TEXT_CLASS}>
+            Transaction Date
+          </label>
+          <input
+            id={`${formId}-date`}
+            type="date"
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+            className="w-full text-sm rounded-xl border border-stone-200 dark:border-stone-700 px-3.5 py-2.5 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-none focus:border-stone-800 dark:focus:border-stone-400 focus:ring-2 focus:ring-stone-200 dark:focus:ring-stone-700 [color-scheme:light] dark:[color-scheme:dark] transition-colors"
+          />
+        </div>
+      </div>
 
       {/* Save-as-template: only offered for EXPENSE/INCOME (the two types `Preset`
           supports - see types.ts) on a form that isn't locked to one fixed type. */}
@@ -622,9 +625,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
           }`}
         >
           <span>
-            {isSubmitting
-              ? 'Saving...'
-              : `Record ${type === 'TRANSFER' ? 'Transfer' : type === 'DEBT_REPAYMENT' ? 'Debt Payment' : 'Transaction'}`}
+            {isSubmitting ? 'Saving...' : `Record ${type === 'DEBT_REPAYMENT' ? 'Debt Payment' : 'Transaction'}`}
           </span>
           {amount !== null && isAmountValid && (
             <span className="font-mono text-xs bg-stone-800 dark:bg-stone-200 px-2 py-0.5 rounded text-stone-200 dark:text-stone-800">
@@ -647,7 +648,37 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
           </p>
         )}
       </div>
+
+      {/* 6. Ways out. TRANSFER and DEBT_REPAYMENT left the type toggle above,
+             so this is what keeps them one tap away instead of a dead end.
+             Each link renders only if its caller wired a handler. */}
+      {showShortcuts && (
+        <p className="text-center text-xs text-stone-500 dark:text-stone-400 pt-1">
+          Need to{' '}
+          {onRequestTransfer && (
+            <button
+              type="button"
+              id={`${formId}-shortcut-transfer`}
+              onClick={onRequestTransfer}
+              className={shortcutLinkClass}
+            >
+              Transfer Funds
+            </button>
+          )}
+          {onRequestTransfer && onRequestRepayDebt && ' or '}
+          {onRequestRepayDebt && (
+            <button
+              type="button"
+              id={`${formId}-shortcut-repay-debt`}
+              onClick={onRequestRepayDebt}
+              className={shortcutLinkClass}
+            >
+              Repay Debt
+            </button>
+          )}
+          ?
+        </p>
+      )}
     </form>
   );
 };
-

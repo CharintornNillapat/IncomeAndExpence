@@ -71,16 +71,14 @@ async function openQuickAdd(page: Page) {
   return modal;
 }
 
-/**
- * Any auto-categorization - by keyword rule or by Jev - collapses the manual
- * wallet/category block behind the "Edit details" toggle, so the category
- * `<select>` genuinely leaves the DOM. Re-open it before asserting on its
- * value. Called only after the banner has been asserted visible, so there is
- * no non-retrying visibility guard here.
+/*
+ * Note for future edits: the category `<select>` is now always mounted. Before
+ * ADR 0013 an auto-categorization collapsed the manual wallet/category block
+ * behind an "Edit details" toggle, so every assertion on the select's value had
+ * to click that toggle open first via a `revealDetails` helper. Removing the
+ * collapse removed the click, not the assertions - they read the same value
+ * they always did, just without a step in between.
  */
-async function revealDetails(modal: ReturnType<Page['getByRole']>) {
-  await modal.getByRole('button', { name: /Edit details/i }).click();
-}
 
 test.describe('Jev classification', () => {
   test.beforeEach(async ({ page }) => {
@@ -106,7 +104,6 @@ test.describe('Jev classification', () => {
     await expect(modal.getByTestId('tx-category-suggestion')).toHaveCount(0);
 
     // The field really was written, not just announced.
-    await revealDetails(modal);
     await expect(modal.locator('select[id$="-category"]')).toHaveValue(TRANSPORT.id);
   });
 
@@ -134,11 +131,10 @@ test.describe('Jev classification', () => {
     await chip.locator('[id$="-suggestion-apply"]').click();
 
     // Applying is treated exactly like any other auto-categorization, so the
-    // chip is replaced by the badge and the manual block collapses.
+    // chip is replaced by the badge on the Category label.
     await expect(chip).toHaveCount(0);
     await expect(modal.getByText(/Auto-categorized:/i)).toBeVisible();
 
-    await revealDetails(modal);
     await expect(modal.locator('select[id$="-category"]')).toHaveValue(TRANSPORT.id);
   });
 

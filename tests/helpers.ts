@@ -56,7 +56,7 @@ export async function addQuickTransaction(
   await walletSelect.selectOption({ index: optionsCount > 1 ? 1 : 0 });
 
   await modal
-    .locator('input[placeholder*="groceries"], input[id$="-desc"]')
+    .locator('input[id$="-desc"]')
     .fill(description);
 
   await modal.locator('button[type="submit"]').click();

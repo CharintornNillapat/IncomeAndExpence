@@ -31,7 +31,7 @@ test.describe('Core Transaction Flow E2E Tests', () => {
     }
 
     // 5. Fill description
-    const descriptionInput = modal.locator('input[placeholder*="groceries"], input[id$="-desc"]');
+    const descriptionInput = modal.locator('input[id$="-desc"]');
     await descriptionInput.fill('E2E Playwright Coffee');
 
     // 6. Submit the form
@@ -64,7 +64,7 @@ test.describe('Core Transaction Flow E2E Tests', () => {
     await amountInput.fill('2500');
 
     // Enter Description
-    const descInput = modal.locator('input[placeholder*="groceries"], input[id$="-desc"]');
+    const descInput = modal.locator('input[id$="-desc"]');
     await descInput.fill('E2E Freelance Income');
 
     // Submit
