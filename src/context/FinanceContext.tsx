@@ -25,7 +25,7 @@ import {
 } from '../utils/zodSchemas';
 import { APP_CURRENCY } from '../utils/currency';
 import { todayIsoDate } from '../utils/date';
-import { dedupeCategoriesByName } from '../utils/categoryUtils';
+import { dedupeCategoriesByName, withDefaultDescriptions } from '../utils/categoryUtils';
 import { generateIdempotencyKey } from '../utils/ids';
 
 /**
@@ -106,8 +106,8 @@ export interface FinanceActionsContextType {
   deleteWallet: (id: string) => Promise<MutationResult>;
 
   // Categories & Configurable Keyword Rules
-  addCategory: (data: { name: string; type: TransactionType; color: string; icon?: string }) => Promise<MutationResult>;
-  updateCategory: (id: string, updates: { name?: string; color?: string; icon?: string }) => Promise<MutationResult>;
+  addCategory: (data: { name: string; type: TransactionType; color: string; icon?: string; description?: string }) => Promise<MutationResult>;
+  updateCategory: (id: string, updates: { name?: string; color?: string; icon?: string; description?: string }) => Promise<MutationResult>;
   deleteCategory: (id: string) => Promise<MutationResult>;
   addKeywordRule: (keyword: string, categoryId: string) => Promise<MutationResult>;
   deleteKeywordRule: (id: string) => Promise<MutationResult>;
@@ -338,16 +338,27 @@ const DEFAULT_USER: User = {
   createdAt: new Date().toISOString(),
 };
 
+/**
+ * Each `description` is the text Jev receives as that option's `criteria`
+ * (ADR 0012), not decoration. Phase 39 sent bare names and `Netflix
+ * subscription` came back as the `other` escape option at 0.93 confidence -
+ * a correct answer to a badly posed question, since no name here reads as a
+ * subscription bucket. `cat-housing`'s wording is the direct fix for that.
+ *
+ * Only the EXPENSE and INCOME rows are ever sent (`toClassifyCandidates`
+ * filters the rest), but the last two carry descriptions anyway because the
+ * Categories hub shows the field for every category.
+ */
 const DEFAULT_SYSTEM_CATEGORIES: Category[] = [
-  { id: 'cat-food', name: 'Food & Dining', type: 'EXPENSE', icon: 'utensils', color: '#f87171', isSystem: true, isDeleted: false },
-  { id: 'cat-groceries', name: 'Groceries', type: 'EXPENSE', icon: 'shopping-cart', color: '#fb923c', isSystem: true, isDeleted: false },
-  { id: 'cat-transport', name: 'Transport & Fuel', type: 'EXPENSE', icon: 'car', color: '#facc15', isSystem: true, isDeleted: false },
-  { id: 'cat-shopping', name: 'Shopping & Apparel', type: 'EXPENSE', icon: 'shopping-bag', color: '#a78bfa', isSystem: true, isDeleted: false },
-  { id: 'cat-housing', name: 'Housing & Utilities', type: 'EXPENSE', icon: 'home', color: '#38bdf8', isSystem: true, isDeleted: false },
-  { id: 'cat-salary', name: 'Primary Salary', type: 'INCOME', icon: 'briefcase', color: '#4ade80', isSystem: true, isDeleted: false },
-  { id: 'cat-freelance', name: 'Freelance & Side Gig', type: 'INCOME', icon: 'laptop', color: '#34d399', isSystem: true, isDeleted: false },
-  { id: 'cat-debt', name: 'Debt Repayment', type: 'DEBT_REPAYMENT', icon: 'credit-card', color: '#f43f5e', isSystem: true, isDeleted: false },
-  { id: 'cat-adjust', name: 'Balance Adjustment', type: 'ADJUSTMENT', icon: 'sliders', color: '#94a3b8', isSystem: true, isDeleted: false },
+  { id: 'cat-food', name: 'Food & Dining', type: 'EXPENSE', icon: 'utensils', color: '#f87171', description: 'Eating out, restaurants, street food, cafes, coffee, snacks, bars and food delivery.', isSystem: true, isDeleted: false },
+  { id: 'cat-groceries', name: 'Groceries', type: 'EXPENSE', icon: 'shopping-cart', color: '#fb923c', description: 'Supermarket, market and convenience-store runs for food and household supplies cooked or used at home.', isSystem: true, isDeleted: false },
+  { id: 'cat-transport', name: 'Transport & Fuel', type: 'EXPENSE', icon: 'car', color: '#facc15', description: 'Petrol, taxis, ride-hailing, trains, buses, parking, tolls and vehicle servicing.', isSystem: true, isDeleted: false },
+  { id: 'cat-shopping', name: 'Shopping & Apparel', type: 'EXPENSE', icon: 'shopping-bag', color: '#a78bfa', description: 'Clothes, shoes, electronics, gadgets, homeware, gifts and other one-off personal purchases.', isSystem: true, isDeleted: false },
+  { id: 'cat-housing', name: 'Housing & Utilities', type: 'EXPENSE', icon: 'home', color: '#38bdf8', description: 'Rent, electricity, water, internet and phone bills, insurance, and recurring subscriptions like Netflix or Spotify.', isSystem: true, isDeleted: false },
+  { id: 'cat-salary', name: 'Primary Salary', type: 'INCOME', icon: 'briefcase', color: '#4ade80', description: 'Regular wages, monthly salary, payroll and bonuses from a main employer.', isSystem: true, isDeleted: false },
+  { id: 'cat-freelance', name: 'Freelance & Side Gig', type: 'INCOME', icon: 'laptop', color: '#34d399', description: 'Client work, commissions, side-project earnings, tips, refunds and money received outside a regular salary.', isSystem: true, isDeleted: false },
+  { id: 'cat-debt', name: 'Debt Repayment', type: 'DEBT_REPAYMENT', icon: 'credit-card', color: '#f43f5e', description: 'Payments made against a tracked loan or credit-card balance.', isSystem: true, isDeleted: false },
+  { id: 'cat-adjust', name: 'Balance Adjustment', type: 'ADJUSTMENT', icon: 'sliders', color: '#94a3b8', description: 'Manual corrections that reconcile a wallet balance to its real-world value.', isSystem: true, isDeleted: false },
 ];
 
 const DEFAULT_STARTER_WALLETS: Wallet[] = [
@@ -426,7 +437,10 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
 
   const [wallets, setWallets] = useState<Wallet[]>(() => safeGetLocalStorage('pf_wallets', DEFAULT_STARTER_WALLETS));
   const [categories, setCategories] = useState<Category[]>(() =>
-    dedupeCategoriesByName(safeGetLocalStorage('pf_categories', DEFAULT_SYSTEM_CATEGORIES))
+    withDefaultDescriptions(
+      dedupeCategoriesByName(safeGetLocalStorage('pf_categories', DEFAULT_SYSTEM_CATEGORIES)),
+      DEFAULT_SYSTEM_CATEGORIES
+    )
   );
   const [keywordRules, setKeywordRules] = useState<KeywordRule[]>(() => safeGetLocalStorage('pf_keywords', DEFAULT_KEYWORD_RULES));
   // Local-only, like `sessions`: no `presets` table exists in the Supabase
@@ -675,7 +689,14 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
         ])
         .select();
 
-      // 2. Insert standard categories for user
+      // 2. Insert standard categories for user.
+      //
+      // `description` is deliberately NOT written here. Leaving the column NULL
+      // keeps the shipped default live: `withDefaultDescriptions` supplies the
+      // current wording on every load, so improving a default's criteria text
+      // reaches existing accounts on their next reload instead of being frozen
+      // at whatever shipped the day they signed up. The column only ever holds
+      // a description the user typed themselves. See ADR 0012.
       await supabase
         .from('categories')
         .insert(
@@ -734,10 +755,15 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
           type: row.type,
           icon: row.icon || 'tag',
           color: row.color || 'stone',
+          // NULL (column never written) must map to `undefined`, not `''` -
+          // that is what makes the row eligible for the shipped default.
+          description: row.description ?? undefined,
           isSystem: row.is_system || false,
           isDeleted: row.is_deleted || false,
         }));
-        setCategories(dedupeCategoriesByName(mappedCategories));
+        setCategories(
+          withDefaultDescriptions(dedupeCategoriesByName(mappedCategories), DEFAULT_SYSTEM_CATEGORIES)
+        );
       }
 
       // 3. Keyword Rules
@@ -1079,13 +1105,18 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
 
   // Categories CRUD (Phase 30)
   const addCategory = useCallback(async (
-    data: { name: string; type: TransactionType; color: string; icon?: string }
+    data: { name: string; type: TransactionType; color: string; icon?: string; description?: string }
   ): Promise<MutationResult> => {
     const validation = CategorySchema.safeParse(data);
     if (!validation.success) {
       return { success: false, error: formatZodIssues(validation.error) };
     }
     const cleanedName = validation.data.name;
+    // A blank description is stored as absent rather than as `''`. Both behave
+    // identically for a user-created category (it can never match a shipped
+    // default by name), but `undefined` is the honest representation of "not
+    // written" and keeps the column NULL rather than empty-string. See ADR 0012.
+    const cleanedDescription = validation.data.description || undefined;
     // Guards the taxonomy the way `seedInitialUserAccount`'s new re-entrancy
     // guard prevents duplicates at seed time - this closes the other half of
     // the same bug class, a user (or a retried form submit) creating a
@@ -1106,6 +1137,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
           type: validation.data.type,
           icon: validation.data.icon || 'tag',
           color: validation.data.color,
+          description: cleanedDescription,
           is_system: false,
         })
         .select()
@@ -1124,6 +1156,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
           type: inserted.type,
           icon: inserted.icon || 'tag',
           color: inserted.color || 'stone',
+          description: inserted.description ?? undefined,
           isSystem: inserted.is_system || false,
           isDeleted: inserted.is_deleted || false,
         },
@@ -1137,6 +1170,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
         type: validation.data.type,
         icon: validation.data.icon || 'tag',
         color: validation.data.color,
+        description: cleanedDescription,
         isSystem: false,
         isDeleted: false,
       };
@@ -1152,8 +1186,20 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
   // other mutators resolve by type); changing it after the fact would make
   // those historical records visually inconsistent with what they actually
   // were when recorded.
-  const updateCategory = useCallback(async (id: string, updates: { name?: string; color?: string; icon?: string }): Promise<MutationResult> => {
+  const updateCategory = useCallback(async (id: string, updates: { name?: string; color?: string; icon?: string; description?: string }): Promise<MutationResult> => {
     let cleanedUpdates = updates;
+    // This path does not run `CategorySchema` (it is a partial update, and the
+    // schema requires name/type/color), so the 120-char bound is enforced here
+    // by hand the same way the name is trimmed by hand below. `''` is kept, not
+    // normalized away: it is how a user clears a description, and
+    // `withDefaultDescriptions` refills only `undefined`. See ADR 0012.
+    if (updates.description !== undefined) {
+      const cleaned = updates.description.trim();
+      if (cleaned.length > 120) {
+        return { success: false, error: 'Description is too long' };
+      }
+      cleanedUpdates = { ...cleanedUpdates, description: cleaned };
+    }
     if (updates.name !== undefined) {
       const cleaned = updates.name.trim();
       if (!cleaned) {
@@ -1165,7 +1211,9 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       if (isDuplicate) {
         return { success: false, error: `A category named "${cleaned}" already exists` };
       }
-      cleanedUpdates = { ...updates, name: cleaned };
+      // Spreads `cleanedUpdates`, not `updates` - spreading the raw input here
+      // would discard the trimmed description computed just above.
+      cleanedUpdates = { ...cleanedUpdates, name: cleaned };
     }
 
     const previousCategories = categoriesRef.current;
@@ -1184,6 +1232,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
           ...(cleanedUpdates.name !== undefined ? { name: cleanedUpdates.name } : {}),
           ...(cleanedUpdates.color !== undefined ? { color: cleanedUpdates.color } : {}),
           ...(cleanedUpdates.icon !== undefined ? { icon: cleanedUpdates.icon } : {}),
+          ...(cleanedUpdates.description !== undefined ? { description: cleanedUpdates.description } : {}),
         })
         .eq('id', id);
       if (error) throw error;

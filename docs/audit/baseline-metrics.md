@@ -426,3 +426,26 @@ The pre-T34 figure (6) matches the original Phase-4 baseline's `Navbar` S2 row e
 - **The entry chunk references `vendor-math-*.js` in both builds.** This was checked specifically because it looks like an ADR `0010` regression and is not one — the identical reference exists in the stashed HEAD build. It is Vite's module-preload/dynamic-import map naming the chunk, not an eager import. ADR `0010`'s claim was always about requests at first paint, which this phase neither re-measured nor changed.
 
 **Test-suite size:** 129 → **144 runs** (43 → 48 tests, 14 → 15 spec files). Wall clock `npx playwright test --workers=4`: 3.4 m → 3.5 m.
+
+## Phase 40 (category descriptions) — bundle delta, measured against a rebuild of HEAD
+
+Same method as the Phase 39 section: `git stash push -u` the whole phase, `npm run clean && npm run build`, record, `git stash pop`, rebuild. Same machine, Node v24.19.0, same `node_modules`, clean tree both times, no dev server running. HEAD here is `2633af7`.
+
+| Chunk | HEAD (stashed) | Phase 40 | Delta |
+|---|---|---|---|
+| entry `index-*.js` | 161.53 kB / 45.37 kB gzip | **163.10 kB / 46.05 kB gzip** | **+1.57 kB / +0.68 kB** |
+| `CategoriesView-*.js` (lazy) | 14.20 kB / 3.76 kB gzip | 15.15 kB / 3.94 kB gzip | +0.95 kB / +0.18 kB |
+| `TransactionForm-*.js` (lazy) | 17.65 kB / 5.53 kB gzip | 17.77 kB / 5.57 kB gzip | +0.12 kB / +0.04 kB |
+| `vendor-math-*.js` | 375.73 kB / 110.72 kB gzip | 375.73 kB / 110.72 kB gzip | 0 / 0 |
+| vendor chunk count | 5 | 5 | 0 |
+| build time | 6.77 s | 6.39 s | — (both cold after `clean`) |
+
+**Findings**
+
+- **This is the first phase since 36 to move the entry chunk, and it does so on purpose.** `FinanceContext.tsx` is eager, so the nine `DEFAULT_SYSTEM_CATEGORIES` descriptions land on the critical path along with `withDefaultDescriptions` and the `description` mapping in three mutators. Confirmed by `grep -l 'Netflix or Spotify' dist/assets/*.js`, which resolves only to `index-*.js`.
+- **The cost was about double the pre-build estimate** (+~0.7 kB raw / +~0.3 kB gzip was predicted). Recorded as measured. The rejected alternative — a static hint map inside `api/classify.ts`, which would have cost the client zero bytes — was rejected on ownership grounds in ADR `0012`, not on size, so this is a known and accepted trade rather than an overrun.
+- **Everything else stayed lazy.** `grep -l '/api/classify' dist/assets/*.js` still resolves only to `TransactionForm-*.js`; the `CategoriesView` growth is the two textareas and their state, in a `React.lazy` view chunk.
+- **No new dependency and no new vendor chunk.** `grep -rl 'typesafe-ai' dist/` returns nothing and `manualChunks` is unmodified, so ADR `0010`'s `vendor-math` deferral is intact.
+- **`api/classify.ts` still contributes zero client bytes.** Its only link to `src/` remains an `import type`, which TypeScript erases; Vercel builds it as a serverless function outside the Vite graph.
+
+**Test-suite size:** 144 → **150 runs** (48 → 50 tests, 15 spec files unchanged). Wall clock `npx playwright test --workers=4`: 3.5 m → 4.1 m.

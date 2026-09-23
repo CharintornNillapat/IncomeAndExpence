@@ -838,9 +838,37 @@ Reopens the ledger after Phase 38 closed it. Approved explicitly by the user; sc
 - **Two spec assertions had to move off `select[id$="-category"]` for the auto-fill cases.** Any auto-categorization sets `autoMatchedCategory`, which collapses the manual block behind "Edit details", so the `<select>` genuinely leaves the DOM. The assertions survive unchanged in meaning — they now assert the badge names the category, then click through to the select. This is a locator move for a surviving assertion, which `implementation-roadmap.md:18` permits.
 - **The zero-network-call test needed a real synchronization point, not a fixed wait.** It types a rule-covered note first, then an uncovered one, and asserts the counter is exactly 1 once the second answer renders. A leaked call from the rule hit would make it 2. No `waitForTimeout` anywhere in the spec.
 
+## Phase 40 — Category descriptions as Jev classification criteria: T84–T88 (2026-09-23)
+
+Approved explicitly by the user. Triggered by ADR `0011`'s **first "Revisit if" condition firing within hours of Phase 39 going live**: `Netflix subscription` classified as the `other` escape option at 0.93 against the shipped default set, because `api/classify.ts` sends bare category names as each option's `criteria` and none of the seven default EXPENSE/INCOME categories is *named* anything a streaming subscription maps onto. Per `README.md:28`, ADR `0012` was written **before** T84 started.
+
+| # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
+|---|---|---|---|---|---|---|---|---|---|---|
+| T84 | Additive nullable `description` column on `public.categories`; must be applied **before** the client build ships (PostgREST `PGRST204` rejects an unknown column outright, which would break category create/edit for authenticated users) | `supabase/migrations/20260923_add_category_description.sql` (new) | High | Low | 20m | **blocked** | ADR 0012 | — | file written; `apply_migration` denied by the session's auto-mode classifier (`[Modify Shared Resources]`) — needs the user to apply or authorize | — |
+| T85 | `Category.description` + `ClassifyCandidate.description` wire type; `CategorySchema` bound (trim, ≤120); nine default descriptions; `addCategory`/`updateCategory` payloads; Supabase read map; `withDefaultDescriptions` in-memory backfill at both `dedupeCategoriesByName` seams | `src/types.ts`, `src/utils/zodSchemas.ts`, `src/context/FinanceContext.tsx`, `src/utils/categoryUtils.ts` | High | Med | 2h | done | ADR 0012 | uncommitted | `npm run lint` clean (both tsconfigs) | Entry chunk +1.57 kB raw / +0.68 kB gzip — `FinanceContext` is eager, so the default descriptions are on the critical path by design |
+| T86 | Optional description field in both the Add form and the Edit modal of the Categories hub, using the existing `inputClass('plain')` | `src/views/CategoriesView.tsx` | Med | Low | 1h | done | T85 | uncommitted | `npm run lint` clean | `CategoriesView` chunk 14.20 → 15.15 kB raw / 3.76 → 3.94 kB gzip, still lazy |
+| T87 | Send the description: `toClassifyCandidates` emits it when non-blank, `cacheKey` includes it, proxy validates ≤200 and formats criteria as `"<name>: <description>"` | `src/utils/jevClassifier.ts`, `api/classify.ts` | High | Med | 1h | done | T85 | uncommitted | 15/15 throwaway handler probes pass (bounds, the 3 criteria shapes, all 5 prompt-injection rejections still firing with a description present, missing-key 404) | `TransactionForm` chunk +0.12 kB raw |
+| T88 | +2 mocked/offline Playwright tests: a description round-trips create→edit, and the outgoing `/api/classify` body carries it | `tests/categories.spec.ts`, `tests/jev-classify.spec.ts` | Med | Low | 1h | done | T86, T87 | uncommitted | **150/150, 0 retries, 4.1m** — all 144 pre-existing runs untouched | Suite 144 → **150 runs**, 48 → 50 tests, 15 spec files unchanged |
+
+**Design constraints carried from ADR `0012` (do not re-litigate):**
+- Every ADR `0011` invariant is untouched: rules run first and short-circuit, `classifyDescription()` never throws, the confidence gates and coherence rule are unchanged, the proxy still rejects client-supplied `instructions`/`criteria`/`model`/`state`/`questions`.
+- `undefined` (never set, eligible for a shipped default) and `''` (user cleared it) are **different values**. The backfill fills only `undefined`, matched by name rather than id because authenticated rows carry uuids.
+- The backfill is in-memory only. It writes nothing to Supabase; the database stays the source of truth for descriptions the user actually set.
+- No new default category. A `Subscriptions & Entertainment` bucket would touch seeding, `20260920_dedupe_categories.sql` and the category-count assertions in `tests/categories.spec.ts` — a materially larger change, explicitly deferred in ADR `0012`'s "Revisit if".
+
+**Full gate:** `npm run lint` clean (both tsconfigs); `npx playwright test --workers=4` **150/150 passed, 0 retries, 4.1m**; `npm run clean && npm run build` succeeded in 6.39s, 0 chunk-size warnings. Entry chunk 161.53 → **163.10 kB raw / 45.37 → 46.05 kB gzip**, measured by stashing the phase and rebuilding HEAD rather than differencing a documented figure.
+
+**T84 is the one open row, and it blocks the push.** The SQL is written and reviewed; only its application is outstanding. Until `public.categories.description` exists, deploying this phase would make `addCategory`/`updateCategory` fail for every authenticated user with PostgREST `PGRST204` — local-storage mode is unaffected. Apply the migration first, then push.
+
+**Notes on execution:**
+- **`updateCategory`'s name branch was spreading `updates`, not `cleanedUpdates`.** Adding a second cleaned field exposed it: the name branch would have silently discarded the trimmed description computed immediately above. Both spreads type-check identically, so `tsc` could not have caught it.
+- **The estimate for the entry chunk was low by roughly 2×** (+0.7 kB raw predicted, +1.57 kB measured). Nine strings plus the backfill helper plus mapping code in three mutators. Recorded as measured; the alternative that would have cost zero client bytes (a static hint map in `api/classify.ts`) was rejected in ADR `0012` on ownership grounds, not size.
+- **The new `jev-classify` test asserts the request body, not the rendered UI.** Nothing else in the suite would fail if a link in the chain dropped the description: the mocked response never echoes it back, and every existing UI assertion passes just as happily with bare names on the wire.
+- **No live before/after numbers yet.** The `Netflix subscription` measurement that motivated the phase cannot be re-run until the deploy is unblocked, so the refactor-log entry claims improvement by construction rather than by measurement.
+
 ## Deferred — none remaining
 
-Both items formerly in this table are now resolved; see Phase 38 above. **Zero audit tasks remain in `todo` or `deferred` status.** Phase 39 above tracks an approved feature build with its own open rows.
+Both items formerly in this table are now resolved; see Phase 38 above. **Zero audit tasks remain in `todo` or `deferred` status.** Phases 39 and 40 above track approved feature builds with their own rows.
 
 ## Not a task — explicitly out of scope this pass
 

@@ -4,7 +4,66 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 39 — Jev classification layered behind the keyword matcher: T79–T83 (2026-09-23, uncommitted)
+## Phase 40 — Category descriptions as Jev classification criteria: T84–T88 (2026-09-23, uncommitted)
+
+**Changed**
+- `docs/audit/decisions/0012-category-descriptions-as-criteria.md` (new) — written **before** T84 began, per `README.md:28`. Records why the criteria text is a user-editable field rather than a static hint map in `api/classify.ts`.
+- `supabase/migrations/20260923_add_category_description.sql` (new) — one additive nullable column on `public.categories`. **Written but not yet applied** (see *Surprises*).
+- `src/types.ts` — `Category.description?: string` and `ClassifyCandidate.description?: string`, the latter keeping the wire contract in one shared declaration as before.
+- `src/utils/zodSchemas.ts` — `CategorySchema` gains `description: z.string().trim().max(120).optional()`. No `.min(1)`: blank is a legitimate value.
+- `src/context/FinanceContext.tsx` — descriptions on all nine `DEFAULT_SYSTEM_CATEGORIES`; `addCategory`/`updateCategory` accept and persist the field (including the interface declarations at `:108-109`); the Supabase read map converts NULL to `undefined`; both `dedupeCategoriesByName` seams are wrapped in `withDefaultDescriptions`.
+- `src/utils/categoryUtils.ts` — new `withDefaultDescriptions`, pure and idempotent, matching by trimmed lower-cased **name**.
+- `src/views/CategoriesView.tsx` — an optional 2-row `<textarea>` in both the Add form and the Edit modal, using the existing `inputClass('plain')`, with helper text naming the feature it feeds.
+- `src/utils/jevClassifier.ts` — `toClassifyCandidates` emits the description when non-blank; `cacheKey` includes it.
+- `api/classify.ts` — validates an optional description (string, ≤ 200, trimmed, omitted when blank) and formats each option as `"<name>: <description>"`.
+- `tests/categories.spec.ts`, `tests/jev-classify.spec.ts` — +2 tests (150 runs).
+
+**Why**
+ADR `0011`'s first "Revisit if" condition fired within hours of Phase 39 going live. The proxy sent `{ [category.id]: category.name }` as the `category` question's `criteria`, so the model's entire knowledge of an option was its label — and `Netflix subscription` came back as the `other` escape option at **0.93 confidence** against the shipped default set. That is a correct answer to a badly posed question: none of `Food & Dining`, `Groceries`, `Transport & Fuel`, `Shopping & Apparel`, `Housing & Utilities`, `Primary Salary`, `Freelance & Side Gig` is *named* anything a streaming subscription maps onto. The same shape broke every service, insurance and recurring charge. The ADR `0011` probes that scored 1.00 used *described* options; production did not, and that gap was the whole finding.
+
+**Verification**
+```
+npm run lint                     # tsc --noEmit && tsc -p api/tsconfig.json: clean, 0 errors
+npx playwright test --workers=4  # 150/150 passed, 0 retries, 4.1m
+npm run clean && npm run build   # built in 6.39s; 0 chunk-size warnings
+```
+Plus a 15-case throwaway Node probe against `api/classify.ts` (`node --experimental-strip-types`, not committed — it needs no fixture and duplicates no committed assertion): the over-200 and non-string rejections, the exactly-200 accept, the undescribed-candidate accept, the three criteria-construction shapes (described / bare / whitespace-only), the surviving `other` escape and type question, all five ADR `0011` prompt-injection rejections still firing with a description present, and the missing-key 404. 15/15.
+
+**Bundle verification** (`git stash -u` → `clean && build` → `stash pop` → rebuild; same machine, Node v24.19.0, clean tree both times)
+
+| Chunk | HEAD (stashed) | Phase 40 | Delta |
+|---|---|---|---|
+| entry `index-*.js` | 161.53 kB / 45.37 kB gzip | 163.10 kB / 46.05 kB gzip | **+1.57 kB / +0.68 kB** |
+| `CategoriesView-*.js` (lazy) | 14.20 kB / 3.76 kB gzip | 15.15 kB / 3.94 kB gzip | +0.95 kB / +0.18 kB |
+| `TransactionForm-*.js` (lazy) | 17.65 kB / 5.53 kB gzip | 17.77 kB / 5.57 kB gzip | +0.12 kB / +0.04 kB |
+| `vendor-math-*.js` | 375.73 kB / 110.72 kB gzip | 375.73 kB / 110.72 kB gzip | 0 / 0 |
+| vendor chunk count | 5 | 5 | 0 |
+
+`grep -l 'Netflix or Spotify' dist/assets/*.js` resolves only to the entry chunk and `grep -l '/api/classify' dist/assets/*.js` only to `TransactionForm-*.js`, confirming the split is where it was designed to be. `grep -rl 'typesafe-ai' dist/` returns nothing; `manualChunks` untouched, so ADR `0010` survives.
+
+**Correctness notes**
+- **`undefined` and `''` are load-bearing distinct values.** `withDefaultDescriptions` fills only `undefined`; `''` is how a user clears a description and is never refilled. Without the backfill the feature would have reached brand-new installs only — `safeGetLocalStorage('pf_categories', …)` returns the *stored* array whenever one exists, so every existing user (including the one whose Netflix miss prompted this) would have seen nothing.
+- **The backfill matches by name, not id.** Local categories are stable `cat-*`; an authenticated user's rows carry server uuids, so id matching would have silently skipped every cloud-synced account.
+- **Seeding deliberately does not write descriptions to Supabase.** Leaving the column NULL keeps `withDefaultDescriptions` authoritative for the shipped wording, so improving a default's criteria text reaches existing accounts on reload instead of being frozen at signup. The column only ever holds text the user typed.
+- **`updateCategory`'s name branch had to change from `{ ...updates }` to `{ ...cleanedUpdates }`.** Spreading the raw input would have discarded the trimmed description computed immediately above it — a silent data-loss bug that `tsc` cannot see, since both spreads type-check identically.
+- **The cache key had to grow.** Editing a description is precisely how a user says "classify this differently"; a cached answer keyed on the old criteria would have hidden the improvement they just made.
+- **The proxy's 200-char bound sits above the client's 120.** The headroom means a description a user legitimately typed can never be the reason a request is rejected and classification silently vanishes, while the bound still closes the credit-burning vector.
+
+**Surprises**
+- **The migration could not be applied from this session.** `mcp__supabase__apply_migration` was denied by the auto-mode classifier as `[Modify Shared Resources]`. The SQL file is written and correct, but `public.categories.description` does not yet exist on `rmpnzlcufeioxmgoocpt`. **This phase must not be pushed until it is applied**: PostgREST rejects an unknown column outright (`PGRST204`) rather than ignoring it, so between deploy and migration an authenticated user would be unable to create or edit *any* category. Local-storage mode is unaffected either way.
+- **The entry-chunk cost was roughly double the estimate.** The plan predicted +~0.7 kB raw / +~0.3 kB gzip; it measured **+1.57 kB / +0.68 kB**. Nine description strings plus `withDefaultDescriptions` plus the mapping code in three mutators add up to more than the strings alone. Recorded as measured rather than restated as predicted; it is still under half a percent of the entry chunk, and the alternative (a server-side hint map) was rejected on ownership grounds, not size.
+- **Nothing in the existing suite moved.** 144 pre-existing runs passed untouched, which is the mechanical evidence that adding an optional field to `Category` disturbed no consumer.
+
+**Deliberately not done**
+- **No `Subscriptions & Entertainment` default category.** It is the natural home for Netflix, but changing `DEFAULT_SYSTEM_CATEGORIES`' membership touches seeding, `20260920_dedupe_categories.sql` and the category-count assertions in `tests/categories.spec.ts` — materially larger than adding a column. `cat-housing`'s description routes the case instead. Logged as ADR `0012`'s first "Revisit if".
+- **No description shown on the category list rows.** A second line per row is visual noise this phase does not need; the field is visible wherever it is edited.
+- **No re-classification of already-recorded transactions.** Descriptions change future suggestions only; nothing rewrites history.
+- **No CSV bulk-import backfill.** Still deferred from ADR `0011`, and descriptions make it more attractive rather than less.
+- **No live production measurement yet**, because the deploy is blocked on the migration. The `Netflix subscription` / `Spotify` / `ค่าเน็ตบ้าน` before-and-after numbers that would prove the objective was met are pending, and this entry claims improvement by construction, not by measurement.
+
+---
+
+## Phase 39 — Jev classification layered behind the keyword matcher: T79–T83 (2026-09-23)
 
 **Changed**
 - `docs/audit/decisions/0011-jev-classification-layering.md` (new) — written **before** T79 began, per `README.md:28`. Records the delete-vs-layer argument, the measured probe results, and the CORS finding that makes a proxy mandatory.

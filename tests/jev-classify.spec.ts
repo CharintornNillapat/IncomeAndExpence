@@ -33,14 +33,28 @@ interface MockAnswer {
   typeConfidence: number;
 }
 
+interface SentCandidate {
+  id: string;
+  name: string;
+  description?: string;
+}
+
+interface SentBody {
+  text: string;
+  categories: SentCandidate[];
+}
+
 /**
- * Installs a mocked classifier and returns a live request counter. The counter
- * is what lets a test assert that a keyword-rule hit made no call at all.
+ * Installs a mocked classifier and returns live request state. `count` is what
+ * lets a test assert that a keyword-rule hit made no call at all; `bodies` is
+ * what lets one assert what the client actually put on the wire, which is the
+ * only way to check a field the mocked response never echoes back.
  */
 async function mockClassifier(page: Page, answer: MockAnswer) {
-  const state = { count: 0 };
+  const state = { count: 0, bodies: [] as SentBody[] };
   await page.route(CLASSIFY_ROUTE, async (route: Route) => {
     state.count += 1;
+    state.bodies.push(route.request().postDataJSON() as SentBody);
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
@@ -183,6 +197,41 @@ test.describe('Jev classification', () => {
 
     // Exactly one call: for step 2 only. Two would mean the rule hit leaked.
     expect(calls.count).toBe(1);
+  });
+
+  /**
+   * Phase 40 / ADR 0012. The chain this pins - default description ->
+   * `withDefaultDescriptions` -> context state -> `toClassifyCandidates` ->
+   * request body - has no other test that would fail if a link dropped the
+   * field, because the mocked response never echoes it and every UI assertion
+   * above passes just as happily with bare names on the wire. The proxy turns
+   * this into the option's `criteria`; sending it is the whole feature.
+   */
+  test('active categories are sent with their descriptions attached', async ({ page }) => {
+    const calls = await mockClassifier(page, {
+      categoryId: TRANSPORT.id,
+      categoryConfidence: 0.95,
+      detectedType: 'EXPENSE',
+      typeConfidence: 0.95,
+    });
+
+    const modal = await openQuickAdd(page);
+    await modal.locator('input[id$="-desc"]').fill(UNMATCHED_NOTE);
+    await expect.poll(() => calls.count).toBe(1);
+
+    const sent = calls.bodies[0];
+    const transport = sent.categories.find((c) => c.id === TRANSPORT.id);
+    expect(transport?.description).toMatch(/petrol/i);
+
+    // The housing description is the one that exists to make this very note
+    // classifiable - Phase 39 sent bare names and "Netflix subscription" came
+    // back as the `other` escape option.
+    const housing = sent.categories.find((c) => c.id === 'cat-housing');
+    expect(housing?.description).toMatch(/Netflix/i);
+
+    // Only active EXPENSE/INCOME categories travel, descriptions or not.
+    expect(sent.categories.some((c) => c.id === 'cat-debt')).toBe(false);
+    expect(sent.categories.some((c) => c.id === 'cat-adjust')).toBe(false);
   });
 
   test('a failed classification degrades silently and the form still submits', async ({ page }) => {

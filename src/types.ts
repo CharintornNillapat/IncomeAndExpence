@@ -56,6 +56,17 @@ export interface Category {
   type: TransactionType;
   icon: string;
   color: string;
+  /**
+   * Optional user-authored hint describing what belongs in this category. Its
+   * primary consumer is the Jev classifier, which receives it as part of the
+   * option's `criteria` (ADR 0012) - a bare name is the weakest signal the
+   * `choice` primitive accepts.
+   *
+   * `undefined` means never set, which makes a system category eligible for the
+   * shipped default (`withDefaultDescriptions`). `''` means the user
+   * deliberately cleared it and is never refilled.
+   */
+  description?: string;
   isSystem: boolean;
   isDeleted: boolean;
 }
@@ -177,8 +188,13 @@ export interface ImportPreviewSummary {
 export interface ClassifyCandidate {
   /** Real `Category.id`, used directly as the Jev option key so the answer round-trips. */
   id: string;
-  /** `Category.name`, which is the only semantic signal the model receives. */
+  /** `Category.name`. On its own this is the weakest signal the model can get. */
   name: string;
+  /**
+   * `Category.description`, omitted entirely when blank. The proxy renders a
+   * described option as `"<name>: <description>"` (ADR 0012).
+   */
+  description?: string;
 }
 
 export interface ClassifyRequest {

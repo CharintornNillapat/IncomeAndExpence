@@ -78,6 +78,42 @@ test.describe('Categories hub', () => {
     await expect(page.locator(`#category-row-${catId}`)).toContainText(renamedName);
   });
 
+  /**
+   * Phase 40 / ADR 0012. The description exists to be sent to Jev as that
+   * category's `criteria`, but this test deliberately asserts nothing about the
+   * classifier - it pins the storage half only: the field survives the Zod
+   * schema, `addCategory`, state, and `openEditCategory`'s re-seed. A default
+   * category's shipped description is asserted too, because
+   * `withDefaultDescriptions` backfilling it is what makes the feature reach a
+   * user who already has a `pf_categories` entry.
+   */
+  test('a category description is saved and reloaded into the edit modal', async ({ page }) => {
+    const uniqueName = `ZZZ Described ${Date.now().toString().slice(-6)}`;
+    const description = 'Streaming, music and app subscriptions';
+
+    await page.locator('#new-category-name').fill(uniqueName);
+    await page.locator('#new-category-description').fill(description);
+    await page.locator('#new-category-type').selectOption({ label: 'Expense' });
+    await page.locator('#save-category-btn').click();
+
+    const newRow = page.locator('[id^="category-row-"]').filter({ hasText: uniqueName });
+    await expect(newRow).toBeVisible();
+    const catId = (await newRow.getAttribute('id'))!.replace('category-row-', '');
+
+    // Submitting cleared the field, so a stale value cannot fake the round-trip.
+    await expect(page.locator('#new-category-description')).toHaveValue('');
+
+    await page.locator(`#edit-category-${catId}`).click();
+    await expect(page.locator('#edit-category-description')).toHaveValue(description);
+    await page.getByRole('button', { name: 'Close modal' }).click();
+    await expect(page.locator('#edit-category-description')).toHaveCount(0);
+
+    // A system default carries the description shipped in
+    // DEFAULT_SYSTEM_CATEGORIES - the wording that makes "Netflix" classifiable.
+    await page.locator('#edit-category-cat-housing').click();
+    await expect(page.locator('#edit-category-description')).toHaveValue(/Netflix/i);
+  });
+
   test('deleting an unused user-created category removes it from the management list', async ({ page }) => {
     const uniqueName = `ZZZ Delete Me ${Date.now().toString().slice(-6)}`;
 

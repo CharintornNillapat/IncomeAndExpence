@@ -77,6 +77,11 @@ export const CategorySchema = z.object({
   type: z.enum(['INCOME', 'EXPENSE', 'TRANSFER', 'ADJUSTMENT', 'DEBT_REPAYMENT']),
   color: z.string().min(1, 'A color is required'),
   icon: z.string().optional(),
+  // No `.min(1)`: an empty description is a legitimate value meaning "the user
+  // left it blank". The 120 cap sits well under `api/classify.ts`'s own 200
+  // bound, so a description written here can never be the reason a
+  // classification request is rejected. See ADR 0012.
+  description: z.string().trim().max(120, 'Description is too long').optional(),
 });
 
 export const KeywordMappingSchema = z.object({

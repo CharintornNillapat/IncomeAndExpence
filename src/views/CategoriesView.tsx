@@ -111,15 +111,24 @@ export const CategoriesView: React.FC = () => {
   const [newCategoryName, setNewCategoryName] = useState<string>('');
   const [newCategoryType, setNewCategoryType] = useState<CreatableCategoryType>('EXPENSE');
   const [newCategoryColor, setNewCategoryColor] = useState<string>(CATEGORY_COLOR_PALETTE[0]);
+  const [newCategoryDescription, setNewCategoryDescription] = useState<string>('');
 
   const { error: addCategoryError, handleSubmit: submitAddCategory } = useSubmitHandler({
     defaultErrorMessage: 'Failed to create category',
-    onSuccess: () => setNewCategoryName(''),
+    onSuccess: () => {
+      setNewCategoryName('');
+      setNewCategoryDescription('');
+    },
   });
 
   const handleAddCategory = (e: React.FormEvent) =>
     submitAddCategory(e, () =>
-      addCategory({ name: newCategoryName, type: newCategoryType, color: newCategoryColor })
+      addCategory({
+        name: newCategoryName,
+        type: newCategoryType,
+        color: newCategoryColor,
+        description: newCategoryDescription,
+      })
     );
 
   // --- Edit Category ---
@@ -127,6 +136,7 @@ export const CategoriesView: React.FC = () => {
   const [editName, setEditName] = useState<string>('');
   const [editColor, setEditColor] = useState<string>(CATEGORY_COLOR_PALETTE[0]);
   const [editIcon, setEditIcon] = useState<string>(CATEGORY_ICON_OPTIONS[0].value);
+  const [editDescription, setEditDescription] = useState<string>('');
 
   const {
     error: editCategoryError,
@@ -142,13 +152,19 @@ export const CategoriesView: React.FC = () => {
     setEditName(cat.name);
     setEditColor(cat.color);
     setEditIcon(cat.icon || CATEGORY_ICON_OPTIONS[0].value);
+    setEditDescription(cat.description ?? '');
     setEditCategoryError(null);
   };
 
   const handleEditCategory = (e: React.FormEvent) =>
     submitEditCategory(e, () =>
       editingCategory
-        ? updateCategory(editingCategory.id, { name: editName, color: editColor, icon: editIcon })
+        ? updateCategory(editingCategory.id, {
+            name: editName,
+            color: editColor,
+            icon: editIcon,
+            description: editDescription,
+          })
         : undefined
     );
 
@@ -227,6 +243,28 @@ export const CategoriesView: React.FC = () => {
                   placeholder="e.g., Subscriptions, Pet Care"
                   className={inputClass('plain')}
                 />
+              </div>
+
+              {/*
+                Optional, but its primary reader is the Jev classifier, which
+                receives it as this category's `criteria` (ADR 0012). The helper
+                text says so plainly - a field whose purpose is invisible gets
+                filled in badly or not at all.
+              */}
+              <div>
+                <label className={LABEL_CLASS}>Description</label>
+                <textarea
+                  id="new-category-description"
+                  rows={2}
+                  maxLength={120}
+                  value={newCategoryDescription}
+                  onChange={(e) => setNewCategoryDescription(e.target.value)}
+                  placeholder="e.g., Streaming, music and app subscriptions"
+                  className={inputClass('plain')}
+                />
+                <p className="mt-1 text-[11px] text-stone-400 dark:text-stone-500">
+                  Optional. Helps auto-categorization recognize what belongs here.
+                </p>
               </div>
 
               <div>
@@ -533,6 +571,22 @@ export const CategoriesView: React.FC = () => {
               onChange={(e) => setEditName(e.target.value)}
               className={inputClass('plain')}
             />
+          </div>
+
+          <div>
+            <label className={LABEL_CLASS}>Description</label>
+            <textarea
+              id="edit-category-description"
+              rows={2}
+              maxLength={120}
+              value={editDescription}
+              onChange={(e) => setEditDescription(e.target.value)}
+              placeholder="e.g., Streaming, music and app subscriptions"
+              className={inputClass('plain')}
+            />
+            <p className="mt-1 text-[11px] text-stone-400 dark:text-stone-500">
+              Optional. Helps auto-categorization recognize what belongs here.
+            </p>
           </div>
 
           <div>

@@ -113,7 +113,9 @@ Two layers, in a fixed order. Do not reverse them and do not collapse them into 
 - **Do not install `@typesafe-ai/sdk`.** The client is plain `fetch`; adding a dependency would mean touching `manualChunks` and risking ADR `0010`'s `vendor-math` deferral. All new client code lives in the lazy `TransactionForm` chunk — the entry chunk is unchanged.
 - **A Vercel function that returns a `Response` must use a named method export (`export async function POST`), never `export default`.** Vercel's Node runtime invokes a *default* export with the legacy `(req, res) => void` signature and **discards the return value**, so a default export returning a `Response` never writes to `res` and the request hangs until the gateway times out — 60s, zero bytes, no error surfaced anywhere but the deployment's runtime log. This shipped once and had to be hot-fixed; it is invisible to `tsc`, to the Playwright suite (which mocks `/api/classify`), and to any probe that calls the handler function directly.
 - `api/` is type-checked by its own `api/tsconfig.json`; `npm run lint` runs both configs. Do not add `"types": ["node"]` to the root config — it would let `process`/`Buffer` type-check inside `src/`, where they fail at runtime.
-- See `docs/audit/decisions/0011-jev-classification-layering.md`.
+- **A category's `description` is what Jev actually sees.** `api/classify.ts` renders each option as `"<name>: <description>"`, falling back to the bare name. Sending bare names is what made `Netflix subscription` classify as the `other` escape option at 0.93 — a correct answer to a badly posed question. Keep the shipped `DEFAULT_SYSTEM_CATEGORIES` descriptions concrete and situational (what belongs here), never instructional ("always pick this").
+- **`description: undefined` and `description: ''` are different values.** `undefined` means never set, and `withDefaultDescriptions` (`src/utils/categoryUtils.ts`) backfills the shipped default on every load, matched by **name** — not id, because authenticated rows carry uuids. `''` means the user cleared it and is never refilled. Seeding deliberately does not write descriptions to Supabase, so the column holds only what a user typed and an improved default still reaches existing accounts.
+- See `docs/audit/decisions/0011-jev-classification-layering.md` and `0012-category-descriptions-as-criteria.md`.
 
 ## Wallet modal ownership
 `WalletPopupModal` (opened only from a wallet card) has exactly 2 tabs — `OVERVIEW` and `TRANSACTIONS` (a 5-row preview with a "View all" handoff to `TransactionsView`, pre-filtered by wallet). It has no TRANSFER or ADD_WALLET tab, and never has had a separate ADJUST tab — the per-wallet balance editor lives inline inside OVERVIEW's wallet card.
@@ -142,7 +144,10 @@ Conventions:
 - Callers must keep the form open and populated on failure, and only reset or close on success.
 - **Every optimistic write followed by a Supabase call must check the returned `error`, roll back the local state, and compensate any already-committed remote write, before returning its `MutationResult`.** `addTransaction` established this pattern first; Phase 33 (T65–T67) brought `setTransactionDeleted`, `updateWallet`/`deleteWallet`, `settleDebt`/`deleteDebt`, `updateCategory`/`deleteCategory`, `deleteDiaryEntry`, and `deleteKeywordRule` up to the same standard — discarding the Supabase result (no error check, no rollback) leaves local state permanently ahead of cloud state on any rejected write, with nothing telling the user it happened.
 
-## Supabase: required migration for atomic transfers
+## Supabase: required migrations
+**`supabase/migrations/20260923_add_category_description.sql` must be applied before any build that writes `Category.description` is deployed.** It adds one nullable `description text` column to `public.categories`. PostgREST rejects an unknown column outright (`PGRST204`) rather than ignoring it, so deploying first makes `addCategory`/`updateCategory` fail for every authenticated user until the column exists. Local-storage mode is unaffected. Apply a schema migration *before* pushing the code that depends on it, never after.
+
+### Atomic transfers
 `supabase/migrations/20260909_transfer_funds.sql` must be applied to any project used for cloud sync. It creates:
 - a partial unique index `transactions_user_idempotency_key_uniq` on `(user_id, idempotency_key)` for live rows, and
 - `public.transfer_funds(...)`, a `security definer` RPC that locks both wallets, applies **relative** balance updates, and inserts the ledger row in one database transaction, returning `{ reused, transaction, source_balance, dest_balance }`.
@@ -151,7 +156,7 @@ Without it, `FinanceContext` falls back to the legacy non-atomic path (three sep
 
 ## Testing
 - **Framework**: Playwright with Chromium, Firefox, and WebKit projects.
-- **Suite size**: 48 tests across 15 spec files, run on all three browsers = **144 test runs**. All must pass.
+- **Suite size**: 50 tests across 15 spec files, run on all three browsers = **150 test runs**. All must pass.
 - **Location**: `tests/*.spec.ts` (`transaction`, `wallets`, `diary`, `theme`, `wallet-forms`, `debts`, `soft-delete`, `keywords`, `categories`, `csv`, `auth`, `date-boundary`, `storage-persistence`, `presets`, `jev-classify`), with shared helpers in `tests/helpers.ts`.
 - **Never edit files while a run is in flight.** `playwright.config.ts`'s `webServer` is `npm run dev` — a live Vite dev server — so writing to `src/` mid-run HMRs the app under test and produces failures that do not reproduce in isolation. This cost a wasted baseline in Phase 39.
 - **Network mocking**: `tests/jev-classify.spec.ts` is the only spec that intercepts requests (`page.route('**/api/classify')`). Every response is fulfilled locally, so the suite spends no TypeSafe credits and needs no API key, on CI or locally.

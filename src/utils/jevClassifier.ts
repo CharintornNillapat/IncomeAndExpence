@@ -100,10 +100,14 @@ function normalizeText(text: string): string {
 /**
  * The candidate set is part of the cache identity: the same note against a
  * different category list is a genuinely different question, and ids alone are
- * not enough because renaming a category changes the only signal Jev receives.
+ * not enough because renaming a category changes a signal Jev receives.
+ *
+ * The description is in the key for the same reason (ADR 0012) - editing one is
+ * precisely how a user says "classify this differently", so a cached answer
+ * keyed on the old text would hide the improvement they just made.
  */
 function cacheKey(text: string, candidates: ClassifyCandidate[]): string {
-  const shape = candidates.map((c) => `${c.id}:${c.name}`).join('|');
+  const shape = candidates.map((c) => `${c.id}:${c.name}:${c.description ?? ''}`).join('|');
   return `${normalizeText(text)}##${shape}`;
 }
 
@@ -115,11 +119,18 @@ function cacheKey(text: string, candidates: ClassifyCandidate[]): string {
  * note, and the form's own submit path resolves the debt category itself
  * (`TransactionForm.tsx:227`). Soft-deleted categories are excluded because
  * suggesting one would write a dead id into a new transaction.
+ *
+ * A blank description is omitted from the candidate entirely rather than sent
+ * as `''` - the proxy would otherwise have to distinguish "no description" from
+ * "empty description" to avoid emitting a trailing `": "` in the criteria.
  */
 export function toClassifyCandidates(categories: Category[]): ClassifyCandidate[] {
   return categories
     .filter((c) => !c.isDeleted && (c.type === 'EXPENSE' || c.type === 'INCOME'))
-    .map((c) => ({ id: c.id, name: c.name }));
+    .map((c) => {
+      const description = c.description?.trim();
+      return description ? { id: c.id, name: c.name, description } : { id: c.id, name: c.name };
+    });
 }
 
 export function isClassifierWorthTrying(text: string, candidates: ClassifyCandidate[]): boolean {

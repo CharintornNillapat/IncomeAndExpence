@@ -34,6 +34,14 @@ const MAX_CATEGORIES = 60;
 const MAX_CATEGORY_NAME_LENGTH = 60;
 const MAX_CATEGORY_ID_LENGTH = 64;
 
+/**
+ * Deliberately above the client's own 120-char cap (`CategorySchema`). The
+ * headroom means a description a user legitimately typed can never be the
+ * reason a request is rejected and classification silently disappears, while
+ * the bound still closes the "pad the criteria to burn credits" vector.
+ */
+const MAX_CATEGORY_DESCRIPTION_LENGTH = 200;
+
 /** Keys that would let a caller rewrite the question. Presence is a hard reject. */
 const FORBIDDEN_KEYS = ['instructions', 'criteria', 'model', 'state', 'questions'];
 
@@ -90,17 +98,34 @@ function validate(body: unknown): { text: string; categories: ClassifyCandidate[
   const seen = new Set<string>();
   for (const candidate of categories) {
     if (!isPlainObject(candidate)) return 'Each category must be an object.';
-    const { id, name } = candidate as Partial<ClassifyCandidate>;
+    const { id, name, description } = candidate as Partial<ClassifyCandidate>;
     if (typeof id !== 'string' || id.length === 0 || id.length > MAX_CATEGORY_ID_LENGTH) {
       return 'Each category needs a non-empty "id" string.';
     }
     if (typeof name !== 'string' || name.trim().length === 0 || name.length > MAX_CATEGORY_NAME_LENGTH) {
       return 'Each category needs a non-empty "name" string.';
     }
+    // Optional. This is the one piece of client-supplied text that reaches the
+    // model's question, so it is bounded and type-checked like everything else -
+    // but it only ever lands inside an *option's* criteria, never the
+    // instructions, and FORBIDDEN_KEYS still blocks the question wording itself.
+    if (description !== undefined) {
+      if (typeof description !== 'string') {
+        return 'Category "description" must be a string when present.';
+      }
+      if (description.length > MAX_CATEGORY_DESCRIPTION_LENGTH) {
+        return `A category "description" exceeds ${MAX_CATEGORY_DESCRIPTION_LENGTH} characters.`;
+      }
+    }
     // A duplicate id would silently collapse two options into one criteria key.
     if (seen.has(id)) return 'Category ids must be unique.';
     seen.add(id);
-    clean.push({ id, name: name.trim() });
+    const trimmedDescription = description?.trim();
+    clean.push(
+      trimmedDescription
+        ? { id, name: name.trim(), description: trimmedDescription }
+        : { id, name: name.trim() }
+    );
   }
 
   return { text: trimmed, categories: clean };
@@ -148,9 +173,17 @@ export async function POST(req: Request): Promise<Response> {
   // option, so pick a sentinel that cannot collide rather than assuming.
   const otherKey = categories.some((c) => c.id === 'other') ? '__other__' : 'other';
 
+  // A described option reads as "Housing & Utilities: Rent, electricity, water,
+  // internet ... subscriptions like Netflix or Spotify" rather than as a bare
+  // noun phrase. Phase 39 sent only the name, and `Netflix subscription` came
+  // back as the `other` escape at 0.93 - a correct answer to a badly posed
+  // question, since no default category is *named* like a subscription bucket.
+  // See ADR 0012.
   const categoryCriteria: Record<string, string> = {};
   for (const candidate of categories) {
-    categoryCriteria[candidate.id] = candidate.name;
+    categoryCriteria[candidate.id] = candidate.description
+      ? `${candidate.name}: ${candidate.description}`
+      : candidate.name;
   }
   categoryCriteria[otherKey] = 'None of the listed categories genuinely fit this note.';
 
