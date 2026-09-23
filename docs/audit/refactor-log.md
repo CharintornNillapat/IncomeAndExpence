@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 45 — One-click smart rule capture from the transaction form: T110–T115 (2026-09-24, commits `1d3d29f`…`PENDING_DOCS`)
+## Phase 45 — One-click smart rule capture from the transaction form: T110–T115 (2026-09-24, commits `1d3d29f`…`5901d2d`)
 
 **Changed**
 - `docs/audit/decisions/0017-rule-capture-from-entry.md` (new) — written **before** the code and, unlike Phases 43 and 44, committed **alone** (`1d3d29f`) rather than swept into the first code commit by `git add -A`.
