@@ -987,6 +987,37 @@ Approved explicitly by the user, planned and approved before any code was writte
 - **One webkit flake, disclosed.** The first full run reported 224/225, `wallets.spec.ts:9` failing on webkit — a spec untouched by this phase. It passed 3/3 in isolation and the full suite re-ran clean at 225/225. Contention at `--workers=4`; CI runs `workers: 1`. Worth watching rather than declaring solved.
 - **The CSS delta was exactly zero** — identical content hash across both builds, a first for this table.
 
+## Phase 45 — One-click smart rule capture from the transaction form: T110–T115 (2026-09-24)
+
+Approved explicitly by the user, planned and approved before any code was written. Three questions were settled up front: the affordance is an **inline chip, not a post-submit prompt** (all three consumers close their modal on success, so post-submit is unavailable); it fires **only on an explicit category choice**; and the keyword is **`cleanDescription` verbatim and read-only**. Per `README.md:28`, ADR `0017` was written before T111 started — and this phase committed it **alone**, correcting the Phase 43/44 pattern where `git add -A` swept the ADR in with the first code commit.
+
+| # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
+|---|---|---|---|---|---|---|---|---|---|---|
+| T110 | ADR `0017` — why inline rather than post-submit (the close-on-success table); the five trigger conditions; the missing dedupe that makes condition 4 an invariant; the confirmation-cannot-be-derived race; the `applySuggestion` latch; the type-mismatch suppression; the three non-goals | `docs/audit/decisions/0017-rule-capture-from-entry.md` (new) | Med | Low | 1h | done | — | 1d3d29f | docs only; committed alone | — |
+| T111 | `applySuggestion` latches `userTouchedRef.current.category` when `force` is set, aligning the code with a contract `CLAUDE.md` already stated | `src/components/TransactionForm.tsx`, `tests/jev-classify.spec.ts` | Med | Low | 1h | done | T110 | 0e83531 | `jev-classify.spec.ts` 7/7 chromium; **negative control: the select flips to `cat-housing` without the line** | — |
+| T112 | `SaveRuleChip` + five derived trigger conditions, `handleSaveRule`/`handleDismissRule`, in-flight guard, transient-flash confirmation | `src/components/transaction/SaveRuleChip.tsx` (new), `src/components/TransactionForm.tsx` | High | Med | 3h | done | T111 | f410e11 | `npm run lint` clean both tsconfigs | `TransactionForm` chunk +3.12 kB; **entry chunk unchanged** |
+| T113 | 7 new tests in a new spec file plus 1 in `jev-classify.spec.ts` for the tap-Apply trigger, which must live there because it needs a live suggestion | `tests/smart-rules.spec.ts` (new), `tests/jev-classify.spec.ts` | High | Low | 2h | done | T112 | 071060e | **252/252, 5.7 m**, first attempt, no flakes; both invariant tests negative-controlled | Suite 225 → **252 runs**, 75 → 84 tests, 18 → **19** spec files |
+| T114 | Phase 45 refactor-log entry, ledger rows, bundle column, selector-contract additions, and the `CLAUDE.md` smart-rules section | `docs/audit/refactor-log.md`, `docs/audit/task-ledger.md`, `docs/audit/baseline-metrics.md`, `docs/audit/test-selector-contract.md`, `CLAUDE.md` | Med | Low | 1h | done | T113 | PENDING_DOCS | docs only; `npm run lint` clean at HEAD | — |
+| T115 | Sha backfill, plus the CI and deploy result | `docs/audit/refactor-log.md`, `docs/audit/task-ledger.md` | Low | Low | 0.5h | done | T114 | PENDING_BACKFILL | PENDING_CI | — |
+
+**CI and deploy:** PENDING_CI_LINE
+
+**Full gate:** `npm run lint` clean (both tsconfigs); `npx playwright test --workers=4` **252/252 passed, 5.7 m**; `npm run clean && npm run build` succeeded in 5.27 s, 0 chunk-size warnings. Entry chunk **164.29 kB raw in both builds** (gzip 46.32 → 46.33), measured by building `b54941b` and `main` in turn.
+
+**Design constraints carried from ADR `0017` (do not re-litigate):**
+- **The chip offers; it never writes unasked.** Nothing reaches `addKeywordRule` without a tap on the button.
+- **Condition 4 is an invariant, not a politeness.** `addKeywordRule` has no dedupe, so relaxing "no existing rule matches" lets this surface write a duplicate keyword that silently shadows the older rule.
+- **The 3-character floor is load-bearing.** `matchSmartDescription` matches with `includes`, so a shorter rule would capture nearly every future note, with nothing on screen connecting the symptom to the cause.
+- **The confirmation cannot be derived.** A successful save makes the offer's own conditions false on the next render.
+- **The keyword is never truncated to fit the bounds.** Outside the band the chip does not render at all.
+
+**Notes on execution:**
+- **The brief's preferred option did not exist.** A post-submit prompt inside the form is unreachable: all three consumers close their modal on success. Establishing that also turned up `TransactionForm.tsx:858-860`'s success line as long-dead code, which is recorded but deliberately not removed.
+- **A documented contract was found to be aspirational.** `CLAUDE.md` claimed `userTouchedRef` recorded manual category picks; `applySuggestion` never set it. Fixed in its own commit, with a negative control proving the new test fails without the line.
+- **Both invariant tests were negative-controlled**, as in Phase 44. Removing the existing-rule condition makes the duplicate-suppression test fail; skipping the `addKeywordRule` write makes both end-to-end save tests fail. Neither is vacuous.
+- **Suite arithmetic landed one over the projection** (8 planned, 9 written) because the latch fix earned its own guard. Recorded as measured, not as planned.
+- **No flakes.** Unlike Phase 44's `wallets.spec.ts` webkit flake at `--workers=4`, this phase's first full run was clean at 252/252. That flake remains watched rather than declared solved.
+
 ## Deferred — none remaining
 
 Both items formerly in this table are now resolved; see Phase 38 above. **Zero audit tasks remain in `todo` or `deferred` status.** Phases 39 and 40 above track approved feature builds with their own rows.

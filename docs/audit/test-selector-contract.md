@@ -80,6 +80,17 @@ Nothing was removed in this phase. `#repay-amount-math`, `#repay-wallet-select`,
 
 `#repay-payoff-full`, `#repay-payoff-half`, `#repay-payoff-minimum`, `repay-payoff-preview`, `repay-remaining-after` and `repay-settle-note` are all unchanged in both name and meaning.
 
+## Added in Phase 45 (ADR `0017`, smart rule capture)
+
+| Selector | Notes | File |
+|---|---|---|
+| `[data-testid="tx-save-rule"]` | The rule-offer chip, and also its saved-confirmation and rejection states — one testid across all three, because they occupy the same slot and a spec asserting "no offer" wants `toHaveCount(0)` to cover every one of them. **Bare, not form-prefixed**, matching `tx-category-suggestion`: two `TransactionForm`s can be mounted at once, so specs scope by the modal locator rather than by the id. | `src/components/transaction/SaveRuleChip.tsx` |
+| `[id$="-save-rule-btn"]`, `[id$="-save-rule-dismiss"]` | Derived from the owning form's `useId()`, same pattern as `-suggestion-apply` / `-suggestion-dismiss`. | same |
+
+**Nothing was renamed or removed.** `tx-category-suggestion`, `[id$="-suggestion-apply"]`, `[id$="-suggestion-dismiss"]`, `select[id$="-category"]` and `input[id$="-desc"]` all keep both their names and their meanings; the chip is a sibling element added beneath the category select, not a change to anything a spec already targeted.
+
+**One meaning did shift, invisibly to any selector.** `select[id$="-category"]`'s `onChange` and `applySuggestion` now both latch `userTouchedRef.current.category`, so a spec that applies a mid-confidence suggestion and then expects a later high-confidence answer to overwrite the category would fail. None did — `jev-classify.spec.ts` gained a test asserting the opposite, which is the new contract.
+
 ## Known remaining fragile selectors (not yet hardened; addressed in later phases per the roadmap)
 
 - `transaction.spec.ts:55` — `^Income$` button text (Phase 27, SegmentedControl must preserve option labels exactly).

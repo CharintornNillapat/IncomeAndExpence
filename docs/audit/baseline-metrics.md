@@ -551,3 +551,30 @@ Same method as Phase 43: the phase was already committed, so this built `b83ad93
 **Test-suite size:** 210 → **225 runs** (70 → 75 tests, 18 spec files — one test inverted, five added, no new file). Wall clock `npx playwright test --workers=4`: 4.8 m → 5.2 m.
 
 **Stability note:** the first full run of this phase reported 224/225, with `wallets.spec.ts:9` failing on webkit — a spec this phase does not touch. It passed 3/3 in isolation and the suite re-ran clean at 225/225. Recorded as `--workers=4` contention flake rather than resolved; CI runs `workers: 1`.
+
+## Phase 45 (one-click smart rule capture) — bundle delta, measured against a rebuild of HEAD
+
+Same method as Phases 43 and 44: the phase was already committed, so this built `b54941b` (the pre-phase HEAD) and `main` in turn — `checkout` → `npm run clean && npm run build` → record → `checkout` → rebuild. Same machine, same `node_modules`, clean tree both times, no dev server running. The HEAD column reproduced Phase 44's recorded figures to the byte (1330.01 kB / 390.71 kB gzip summed), which is the check that the method has not drifted.
+
+| Chunk | HEAD (`b54941b`) | Phase 45 | Delta |
+|---|---|---|---|
+| entry `index-*.js` | 164.29 kB / 46.32 kB gzip | **164.29 kB / 46.33 kB gzip** | **0 / +0.01 kB** |
+| `TransactionForm-*.js` (lazy) | 21.39 kB / 6.64 kB gzip | 24.51 kB / 7.31 kB gzip | +3.12 kB / +0.67 kB |
+| `index-*.css` | 77.92 kB / 12.00 kB gzip | 77.92 kB / 12.00 kB gzip | **0 / 0** (identical hash `index-Dwrjbfi7.css`) |
+| `vendor-math-*.js` | 375.73 kB / 110.72 kB gzip | 375.73 kB / 110.72 kB gzip | 0 / 0 |
+| **all JS, summed** | 1330.01 kB / 390.71 kB gzip | 1333.13 kB / 391.39 kB gzip | +3.12 kB / +0.68 kB |
+| chunk count | 33 | 33 | 0 |
+| vendor chunk count | 5 | 5 | 0 |
+| build time | — | 5.27 s | not compared; the HEAD build's 16.84 s is a cold-cache artefact of being the first build after a checkout, as in Phase 44 |
+
+**Findings**
+
+- **The entry chunk did not move by a single raw byte.** This is the cleanest result in the table and it was predicted rather than discovered: `addKeywordRule` was already in the entry chunk via `FinanceContext`, and no eager module gained an import. Contrast Phase 44, whose guards lived in `FinanceContext` itself and cost +0.94 kB on the critical path. The +0.01 kB gzip delta is compression noise from a changed chunk filename in the preload map, not content.
+- **The whole feature rides the lazy chunk.** `grep -l 'Always file' dist/assets/*.js` resolves **only** to `TransactionForm-*.js`, which is behind `React.lazy` at all three of its call sites.
+- **`SaveRuleChip` did not get a chunk of its own,** so unlike Phase 43 nothing re-partitioned. It has exactly one importer, and Rollup folded it into that importer's chunk — 33 chunks before and after. The **all JS, summed** row (+3.12 kB) matching the single-chunk row (+3.12 kB) exactly is the arithmetic proof of that.
+- **The CSS content hash was identical again** — `index-Dwrjbfi7.css` in both builds, the second consecutive zero-byte CSS phase and the first time one has held while a *new component file* was added. The chip reuses `CategorySuggestionChip`'s container, text and button classes verbatim, and its emerald confirmation palette already existed on the ADR `0015` settle note. The only genuinely new utilities are `disabled:opacity-50` and `disabled:cursor-not-allowed`, both of which the scan already carried from elsewhere.
+- **No new dependency, no new vendor chunk.** `manualChunks` unmodified; ADR `0010`'s `vendor-math` deferral (110.72 kB gzip, still the largest chunk) intact. Two new `lucide-react` icons (`Tag`, `Check`) are part of the +3.12 kB.
+
+**Test-suite size:** 225 → **252 runs** (75 → 84 tests, 18 → **19** spec files — 9 added, none inverted or removed). Wall clock `npx playwright test --workers=4`: 5.2 m → 5.7 m.
+
+**Stability note:** the first full run passed 252/252 with no retries. Phase 44's `wallets.spec.ts` webkit flake at `--workers=4` did not reproduce here; it stays on the watch list rather than being declared resolved on one clean run.

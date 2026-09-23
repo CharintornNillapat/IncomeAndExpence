@@ -4,6 +4,43 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
+## Phase 45 — One-click smart rule capture from the transaction form: T110–T115 (2026-09-24, commits `1d3d29f`…`PENDING_DOCS`)
+
+**Changed**
+- `docs/audit/decisions/0017-rule-capture-from-entry.md` (new) — written **before** the code and, unlike Phases 43 and 44, committed **alone** (`1d3d29f`) rather than swept into the first code commit by `git add -A`.
+- `src/components/TransactionForm.tsx` — `applySuggestion` now latches `userTouchedRef.current.category` when `force` is set; five derived conditions produce a `ruleCandidate`; `handleSaveRule`/`handleDismissRule`; three new pieces of state.
+- `src/components/transaction/SaveRuleChip.tsx` (new) — the offer, the saving state, the confirmation and the rejection banner, in the shell `CategorySuggestionChip` established one field above.
+- `tests/smart-rules.spec.ts` (new, 7) and `tests/jev-classify.spec.ts` (+2).
+- `CLAUDE.md` — a new "Smart rules" section under the categorization rules, two Do-NOT lines, and the suite counts.
+
+**Why**
+ADR `0011` made `smartMatcher` the first and authoritative categorization layer — free, offline, synchronous, and the user's only channel for overruling Jev on their own ledger. But its only writer was `CategoriesView`'s Smart Rules sub-tab, four navigations away from the moment the user actually knows what the rule should say: staring at a wrong category in the entry form and fixing it by hand.
+
+So the layer that is architecturally first was practically last. Four seeded rules, and for most ledgers nothing after that, with every correction the user made thrown away — the next identical note misclassified identically, or costing another Jev call for an answer the user had already given.
+
+**Metric delta**
+Entry chunk **unchanged at 164.29 kB raw** (gzip +0.01 kB). `TransactionForm-*.js` 21.39 → 24.51 kB (+3.12 kB raw / +0.67 kB gzip). CSS **byte-identical** — same content hash as the pre-phase build. 33 chunks before and after. Suite 225 → **252 runs**. Full table in `baseline-metrics.md`.
+
+**Verification**
+`npm run lint` clean on both tsconfigs. `npx playwright test --workers=4` — **252/252 passed, 5.7 m**, first attempt, no flakes. `npm run clean && npm run build` — 5.27 s, 0 chunk-size warnings. `grep -l 'Always file' dist/assets/*.js` resolves **only** to `TransactionForm-*.js`.
+
+**Surprises**
+
+- **The post-submit prompt the brief asked for does not exist as an option.** All three consumers close their modal on a successful write (`QuickAddModal.tsx:48-50`, `TransactionsView.tsx:431-433`, `DebtsView.tsx:116-118`), and `useSubmitHandler` fires `onSuccess` *after* that. Which means **`TransactionForm.tsx:858-860`'s `✓ Transaction successfully logged!` has been effectively dead this whole time** — it only ever paints during `Modal`'s exit animation. Nobody had noticed because the modal closing *is* the success signal, to the point that `helpers.ts:64-65` uses it as one. Found by reading the consumers rather than the form.
+- **`applySuggestion` never set the manual-pick latch**, even on a user tap, while `CLAUDE.md` asserted it did. Observing the gap takes a second classification landing behind an applied one, which nothing had ever done. Fixed in its own commit with a two-answer mock (0.62 Transport, then 0.95 Housing) that proves the applied category survives.
+- **The feature's own success would have erased its confirmation.** A saved rule lands in `keywordRules`, which makes the "no existing rule matches" condition false on the very next render. Derived-state confirmation would have flickered and vanished. It is transient-flash state instead, rendered *instead of* the offer rather than gated by it.
+- **The CSS content hash was byte-identical again** (`index-Dwrjbfi7.css`), the second phase running. The chip reuses `CategorySuggestionChip`'s shell verbatim and the emerald confirmation palette already existed on the settle note, so the Tailwind scan emitted nothing new — despite this phase adding a whole new component.
+- **The suite grew by one more test than planned.** The plan projected 8 new (7 + 1); 9 landed, because giving the `applySuggestion` fix its own narrow regression guard in its own commit was not itemized separately at planning time. Recorded as measured.
+
+**Deliberately not done**
+
+- **`addKeywordRule` gains no dedupe.** The "no existing rule matches" condition makes *this* surface structurally incapable of writing a duplicate; `CategoriesView`'s own form still can, exactly as before. A real fix is a `FinanceContext` change plus a decision about duplicates already in live ledgers, which does not belong in a UX phase. Recorded in ADR `0017` so a later audit finds a decision rather than a gap.
+- **No editing or replacing a wrong existing rule from the form.** The same condition suppresses the offer precisely when a rule already matched, so correcting one still means visiting Categories. Adding it costs the no-duplicates guarantee and needs the dedupe work first.
+- **The dead success line stays.** It is live in principle for any future consumer that keeps its modal open, and removing it is a change nobody asked for in a commit about something else.
+- **No unit test for the length bounds.** The 3-character floor and 32-character ceiling are exercised only through the UI, and this project still has no unit-test runner. Stated rather than papered over, as in Phase 44.
+
+---
+
 ## Phase 44 — Debt repayment integrity: the ledger stops losing money: T104–T109 (2026-09-23, commits `d9ca5e8`…`4c2ba98`)
 
 **Changed**

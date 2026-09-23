@@ -155,6 +155,18 @@ Two layers, in a fixed order. Do not reverse them and do not collapse them into 
 - **The block stays mounted with no amount typed**, deliberately unlike the transfer preview. `presetDebtId` suppresses the Debt Target select, so this is the only place the debt's remaining balance appears in the repay modal at all.
 - **Do not use `AnimatedCounter` for the projection** — same reasons as the transfer preview.
 
+## Smart rules: the form offers one, it never writes one unasked
+`TransactionForm` renders a `SaveRuleChip` under the Category select offering to remember a categorization the user just made by hand (ADR `0017`). It is the second writer of `keyword_rules`, after `CategoriesView`'s own form.
+- **Five conditions gate the offer, all derived on render** — the same no-effect, no-debounce shape as the debt payoff block. In order, cheapest first: `!lockType`; the selected category resolves *and its `type` matches the form's*; `userTouchedRef.current.category` is set; no existing rule matches the text; the keyword is 3–32 characters.
+- **The category `<select>` is unfiltered**, so an EXPENSE can be filed under an INCOME category. A rule built from that would flip the type on every future match, which is why a type mismatch suppresses the offer rather than being ignored.
+- **"No existing rule matches" is an invariant, not a politeness.** `addKeywordRule` does **not** dedupe. Relax that condition and this surface writes a second rule with the same keyword, which wins by prepend while the older one lingers in the Categories list with nothing marking it dead. The same reasoning is why the Save button is disabled in flight — a double-tap on an authenticated round-trip writes two identical rules.
+- **The 3-character floor is load-bearing.** `matchSmartDescription` matches with `lower.includes(kw)`, so a one- or two-character rule captures nearly every future note and nothing on screen connects the symptom to the cause. Outside the 3–32 band the chip does not render; it **never truncates to fit**.
+- **The keyword is `parseExpressInput(...).cleanDescription`, verbatim.** `7-eleven snacks 45` saves `7-eleven snacks`. This mirrors ADR `0013`'s existing split — the ledger stores the note as typed, only the classifier layers see the stripped text, and a rule is a classifier artifact.
+- **The saved confirmation is transient-flash state, not derived.** A successful save lands in `keywordRules`, which makes condition 4 false on the very next render, so a derived confirmation would be erased by its own success. It renders *instead of* the offer, never gated by it.
+- **`applySuggestion` latches `userTouchedRef.current.category` when `force` is set.** Tapping Apply on the mid-confidence chip is a manual pick and outranks a later classification, which is what this file already claimed and the code did not do until ADR `0017`.
+- **Nothing in the submit path reads or waits on any of it.** The chip is a sibling of the category field, not a step in the write — saving, dismissing or ignoring it cannot affect whether or when a transaction is recorded. Do not make the rule write a precondition of the transaction write.
+- **A post-submit prompt is not available here.** All three consumers close their modal on a successful write, which is also why `TransactionForm`'s `✓ Transaction successfully logged!` line is effectively dead. Do not add post-submit UI to this form without changing that first.
+
 ## Validation & the MutationResult pattern
 All write paths validate with Zod (`src/utils/zodSchemas.ts`) **before** mutating state or hitting the network:
 
@@ -187,8 +199,8 @@ Without it, `FinanceContext` falls back to the legacy non-atomic path (three sep
 
 ## Testing
 - **Framework**: Playwright with Chromium, Firefox, and WebKit projects.
-- **Suite size**: 75 tests across 18 spec files, run on all three browsers = **225 test runs**. All must pass.
-- **Location**: `tests/*.spec.ts` (`transaction`, `wallets`, `diary`, `theme`, `wallet-forms`, `debts`, `soft-delete`, `keywords`, `categories`, `csv`, `auth`, `date-boundary`, `storage-persistence`, `presets`, `jev-classify`, `express-input`, `transfer-preview`, `debt-repayment`), with shared helpers in `tests/helpers.ts`.
+- **Suite size**: 84 tests across 19 spec files, run on all three browsers = **252 test runs**. All must pass.
+- **Location**: `tests/*.spec.ts` (`transaction`, `wallets`, `diary`, `theme`, `wallet-forms`, `debts`, `soft-delete`, `keywords`, `categories`, `csv`, `auth`, `date-boundary`, `storage-persistence`, `presets`, `jev-classify`, `express-input`, `transfer-preview`, `debt-repayment`, `smart-rules`), with shared helpers in `tests/helpers.ts`.
 - **Never edit files while a run is in flight.** `playwright.config.ts`'s `webServer` is `npm run dev` — a live Vite dev server — so writing to `src/` mid-run HMRs the app under test and produces failures that do not reproduce in isolation. This cost a wasted baseline in Phase 39.
 - **Network mocking**: `tests/jev-classify.spec.ts` is the only spec that intercepts requests (`page.route('**/api/classify')`). Every response is fulfilled locally, so the suite spends no TypeSafe credits and needs no API key, on CI or locally.
 - **Use the helpers**: `gotoTab(page, tabId)` waits for the tab to become active *and* for the `React.lazy` view chunk to resolve (`#view-loading-fallback` detaching). `addQuickTransaction(page, description)` seeds a transaction — a fresh context has wallets and debts but **no transactions**, so any assertion about filtering is vacuous without it.
@@ -231,6 +243,8 @@ Refer to `.env.example`:
 - Do NOT re-add a TRANSFER option to `TransactionForm`'s type toggle, or reintroduce an "Edit details" collapse that unmounts the category/wallet selects — see ADR `0013`.
 - Do NOT let the note parser overwrite an amount the user typed by hand; `userTouchedRef.current.amount` is what three spec files depend on.
 - Do NOT give the debt payoff preview its own rounding, and do NOT let a debt repayment exceed the remaining balance at any layer — see ADR `0016`.
+- Do NOT let the smart-rule chip write a rule without an explicit tap, and do NOT relax its "no existing rule matches" condition while `addKeywordRule` has no dedupe — see ADR `0017`.
+- Do NOT make a rule write a precondition of a transaction write; the chip is a sibling of the submit path, not a step in it.
 - Do NOT delete or bypass `smartMatcher.ts` / `keyword_rules` in favour of Jev — it is the offline layer and the user's override channel. See ADR `0011`.
 - Do NOT let `classifyDescription()` throw, and do NOT give the classifier a code path that can reject.
 - Do NOT accept Jev question wording (`instructions`/`criteria`/`model`/`state`/`questions`) from the client in `api/classify.ts`.
