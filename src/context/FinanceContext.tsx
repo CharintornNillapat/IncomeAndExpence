@@ -23,7 +23,7 @@ import {
   PresetSchema,
   formatZodIssues,
 } from '../utils/zodSchemas';
-import { APP_CURRENCY } from '../utils/currency';
+import { APP_CURRENCY, formatCurrencyAmount } from '../utils/currency';
 import { roundToCents } from '../utils/money';
 import { todayIsoDate } from '../utils/date';
 import { dedupeCategoriesByName, withDefaultDescriptions } from '../utils/categoryUtils';
@@ -1515,6 +1515,34 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       return { success: true, txId: existingTx.id };
     }
 
+    // ADR 0016: a repayment may not exceed what is actually owed. Zod proves
+    // `debtId` is present for a DEBT_REPAYMENT; it cannot prove the debt still
+    // resolves, nor that the payment fits inside the remaining balance - the
+    // same gap the wallet resolution above exists to close.
+    //
+    // The position of this block is load-bearing in both directions. It must
+    // sit AFTER the `existingTx` replay check, or retrying a payment that
+    // already settled its debt would be rejected for exceeding a remainder its
+    // own earlier success drove to zero. It must sit BEFORE the
+    // `inFlightIdempotencyKeys.add` below, because the `finally` that releases
+    // the key belongs to a `try` that only begins after the optimistic writes:
+    // an early return past this line leaks the key forever, and
+    // `useIdempotencyKey` reuses it on retry, so the user would correct the
+    // amount and be told "Duplicate transaction submission in progress" for the
+    // rest of the form's life.
+    if (data.type === 'DEBT_REPAYMENT' && data.debtId) {
+      const targetDebt = debtsRef.current.find((d) => d.id === data.debtId && !d.isDeleted);
+      if (!targetDebt) {
+        return { success: false, error: 'Debt goal not found or has been deleted' };
+      }
+      if (data.amount > targetDebt.remainingAmount) {
+        return {
+          success: false,
+          error: `Payment exceeds the ${formatCurrencyAmount(targetDebt.remainingAmount)} remaining on ${targetDebt.name}`,
+        };
+      }
+    }
+
     inFlightIdempotencyKeys.current.add(clientKey);
 
     // Snapshot state for rollback if network/database fails. `transactions` is
@@ -1557,7 +1585,12 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       })
     );
 
-    // Optimistic debt calculation
+    // Optimistic debt calculation. The `Math.max(0, ...)` floor is unreachable
+    // for new writes now that the guard above rejects an overpayment outright,
+    // and is kept deliberately rather than removed as dead code (ADR 0016):
+    // `debtsRef.current` can be stale against a concurrent repayment from
+    // another device, and without the floor that race writes a *negative*
+    // remaining balance instead of clamping. Guard first, floor second.
     if (data.type === 'DEBT_REPAYMENT' && data.debtId) {
       setDebts((prev) =>
         prev.map((d) => {
