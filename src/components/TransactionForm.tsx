@@ -18,6 +18,7 @@ import { APP_CURRENCY_SYMBOL, formatCurrencyAmount } from '../utils/currency';
 import { todayIsoDate } from '../utils/date';
 import { LABEL_TEXT_CLASS, OPTION_CLASS, ERROR_BANNER_CLASS } from '../utils/formStyles';
 import { SegmentedControl } from './ui/SegmentedControl';
+import { ProgressMeter } from './ui/ProgressMeter';
 
 interface TransactionFormProps {
   wallets: Wallet[];
@@ -388,6 +389,34 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
   // label, and it would trip the overpayment warning as well.
   const showMinimumChip = minimumDue > 0 && minimumDue < remainingDebt;
 
+  /*
+   * The projection. `Math.max(0, roundToCents(remaining - amount))` is
+   * `FinanceContext.tsx`'s own DEBT_REPAYMENT arithmetic verbatim, sharing
+   * `roundToCents` rather than reimplementing it, so what the user is shown
+   * before consenting is computed by the function that commits.
+   *
+   * The debt floors at zero but the wallet is debited the *full* amount, so
+   * an overpayment is real money against nothing. That asymmetry is
+   * pre-existing; the note below is the first place the app says so.
+   */
+  const plannedPayment = isAmountValid && amount !== null && amount > 0 ? amount : 0;
+  const projectedRemaining = Math.max(0, roundToCents(remainingDebt - plannedPayment));
+  const overpayment = plannedPayment > remainingDebt ? roundToCents(plannedPayment - remainingDebt) : 0;
+  const settlesExactly = plannedPayment > 0 && projectedRemaining === 0 && overpayment === 0;
+
+  // Mirrors `DebtCardItem`'s formula with its `isSettled ? 0 : remaining`
+  // branch collapsed - `projectedRemaining` is already the post-payment
+  // figure, and a settled debt is zero by construction.
+  const projectedPercent =
+    repayTargetDebt && repayTargetDebt.totalAmount > 0
+      ? ((repayTargetDebt.totalAmount - projectedRemaining) / repayTargetDebt.totalAmount) * 100
+      : 100;
+  // `ProgressMeter` clamps its own bar; the printed number does not get that
+  // for free, and a debt created with remaining > total (the add-debt form
+  // permits it) would otherwise print a negative percentage beside a
+  // correctly-pinned bar.
+  const displayPercent = Math.min(100, Math.max(0, projectedPercent));
+
   /**
    * Pushes a value into the amount field without remounting it, and latches
    * the field as user-owned.
@@ -522,41 +551,123 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
         onUserEdit={handleAmountUserEdit}
       />
 
-      {/* 2b. Debt payoff shortcuts (ADR 0015). Each chip seeds the amount
-             field above rather than replacing it, so `#repay-amount-math`
-             remains the single control `tests/debts.spec.ts` fills. Hidden
-             once there is nothing left to pay off. */}
-      {repayTargetDebt && remainingDebt > 0 && (
-        <div className="flex flex-wrap items-center gap-1.5 -mt-1">
-          <span className="text-[11px] font-semibold text-stone-400 dark:text-stone-500 uppercase tracking-wide mr-0.5">
-            Quick payoff
-          </span>
-          <button
-            type="button"
-            id={`${idBase}-payoff-full`}
-            onClick={() => seedPayoffAmount(remainingDebt)}
-            className={QUICK_CHIP_CLASS}
-          >
-            Pay in full <strong className="font-mono">{formatCurrencyAmount(remainingDebt)}</strong>
-          </button>
-          <button
-            type="button"
-            id={`${idBase}-payoff-half`}
-            onClick={() => seedPayoffAmount(roundToCents(remainingDebt / 2))}
-            className={QUICK_CHIP_CLASS}
-          >
-            50% <strong className="font-mono">{formatCurrencyAmount(roundToCents(remainingDebt / 2))}</strong>
-          </button>
-          {showMinimumChip && (
+      {/* 2b. The payoff block (ADR 0015). Stays mounted with no amount typed,
+             unlike the transfer preview it otherwise follows: `presetDebtId`
+             suppresses the Debt Target select, so this is the only place the
+             debt's remaining balance appears in the repay modal at all. */}
+      {repayTargetDebt && (
+        <div
+          data-testid={`${idBase}-payoff-preview`}
+          className="flex flex-col gap-3 rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800/60 p-3 -mt-1"
+        >
+          {/* Each chip seeds the amount field above rather than replacing it,
+              so `#repay-amount-math` remains the single control
+              `tests/debts.spec.ts` fills. */}
+          {remainingDebt > 0 && (
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="text-[11px] font-semibold text-stone-400 dark:text-stone-500 uppercase tracking-wide mr-0.5">
+              Quick payoff
+            </span>
             <button
               type="button"
-              id={`${idBase}-payoff-minimum`}
-              onClick={() => seedPayoffAmount(minimumDue)}
+              id={`${idBase}-payoff-full`}
+              onClick={() => seedPayoffAmount(remainingDebt)}
               className={QUICK_CHIP_CLASS}
             >
-              Minimum due <strong className="font-mono">{formatCurrencyAmount(minimumDue)}</strong>
+              Pay in full <strong className="font-mono">{formatCurrencyAmount(remainingDebt)}</strong>
             </button>
+            <button
+              type="button"
+              id={`${idBase}-payoff-half`}
+              onClick={() => seedPayoffAmount(roundToCents(remainingDebt / 2))}
+              className={QUICK_CHIP_CLASS}
+            >
+              50% <strong className="font-mono">{formatCurrencyAmount(roundToCents(remainingDebt / 2))}</strong>
+            </button>
+            {showMinimumChip && (
+              <button
+                type="button"
+                id={`${idBase}-payoff-minimum`}
+                onClick={() => seedPayoffAmount(minimumDue)}
+                className={QUICK_CHIP_CLASS}
+              >
+                Minimum due <strong className="font-mono">{formatCurrencyAmount(minimumDue)}</strong>
+              </button>
+            )}
+          </div>
           )}
+
+          {/* Remaining balance, struck through once a payment is pending, with
+              the projection beside it. `formatCurrencyAmount`, never
+              `AnimatedCounter`: that animates from 0 on mount and re-tweens on
+              every keystroke, and ADR 0009 forbids children in its span. */}
+          <div className="flex flex-col gap-1.5">
+            <div className="flex items-baseline justify-between gap-2 flex-wrap">
+              <span className="text-[11px] font-semibold uppercase tracking-wide text-stone-500 dark:text-stone-400">
+                Remaining after payment
+              </span>
+              <span className="flex items-baseline gap-1.5 font-mono text-sm">
+                <span
+                  className={
+                    plannedPayment > 0
+                      ? 'text-stone-400 dark:text-stone-500 line-through'
+                      : 'font-bold text-stone-900 dark:text-stone-100'
+                  }
+                >
+                  {formatCurrencyAmount(remainingDebt)}
+                </span>
+                {plannedPayment > 0 && (
+                  <>
+                    <ArrowRight className="w-3 h-3 self-center shrink-0 text-stone-400 dark:text-stone-500" />
+                    <span
+                      data-testid={`${idBase}-remaining-after`}
+                      className={`font-bold ${
+                        projectedRemaining === 0
+                          ? 'text-emerald-600 dark:text-emerald-400'
+                          : 'text-rose-600 dark:text-rose-400'
+                      }`}
+                    >
+                      {formatCurrencyAmount(projectedRemaining)}
+                    </span>
+                  </>
+                )}
+              </span>
+            </div>
+
+            <ProgressMeter percent={projectedPercent} heightClassName="h-2.5" />
+
+            <div className="flex items-center justify-between text-[11px] text-stone-500 dark:text-stone-400">
+              <span>Payoff progress</span>
+              <span className="font-mono font-bold text-stone-700 dark:text-stone-300">
+                {displayPercent.toFixed(1)}%
+              </span>
+            </div>
+          </div>
+
+          {/* Mutually exclusive: the overpayment note already says the debt
+              settles, so the settle note would only repeat it. Neither gates
+              submit - a CREDIT_CARD-style deliberate overpayment (interest or
+              fees the debt model does not carry) stays possible. */}
+          {overpayment > 0 ? (
+            <p
+              data-testid={`${idBase}-overpayment-note`}
+              className="flex items-start gap-1.5 text-[11px] font-medium rounded-lg border border-amber-200 dark:border-amber-800/60 bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 px-2.5 py-2"
+            >
+              <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-px" />
+              <span>
+                {formatCurrencyAmount(overpayment)} more than this debt needs. It settles either way, and
+                the full {formatCurrencyAmount(plannedPayment)} still leaves your wallet.
+              </span>
+            </p>
+          ) : settlesExactly ? (
+            <p
+              data-testid={`${idBase}-settle-note`}
+              className="flex items-center gap-1.5 text-[11px] font-medium rounded-lg border border-emerald-200 dark:border-emerald-800/60 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 px-2.5 py-2"
+            >
+              <Sparkles className="w-3.5 h-3.5 shrink-0" />
+              <span>This payment settles the debt in full.</span>
+            </p>
+          ) : null}
         </div>
       )}
 
