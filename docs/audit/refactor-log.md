@@ -27,6 +27,7 @@ npm run lint                     # tsc --noEmit && tsc -p api/tsconfig.json: cle
 npx playwright test --workers=4  # 150/150 passed, 0 retries, 4.1m
 npm run clean && npm run build   # built in 6.39s; 0 chunk-size warnings
 ```
+CI run `35813605929` on `e1f7d77`: Type-check and Run Playwright E2E tests both **success** (verified via `gh api`, not just `gh run view`). Vercel `dpl_GkPdZZuHmG9TqhFnvYQjxetbDGR9` READY on production.
 Plus a 15-case throwaway Node probe against `api/classify.ts` (`node --experimental-strip-types`, not committed — it needs no fixture and duplicates no committed assertion): the over-200 and non-string rejections, the exactly-200 accept, the undescribed-candidate accept, the three criteria-construction shapes (described / bare / whitespace-only), the surviving `other` escape and type question, all five ADR `0011` prompt-injection rejections still firing with a description present, and the missing-key 404. 15/15.
 
 **Bundle verification** (`git stash -u` → `clean && build` → `stash pop` → rebuild; same machine, Node v24.19.0, clean tree both times)
@@ -49,8 +50,25 @@ Plus a 15-case throwaway Node probe against `api/classify.ts` (`node --experimen
 - **The cache key had to grow.** Editing a description is precisely how a user says "classify this differently"; a cached answer keyed on the old criteria would have hidden the improvement they just made.
 - **The proxy's 200-char bound sits above the client's 120.** The headroom means a description a user legitimately typed can never be the reason a request is rejected and classification silently vanishes, while the bound still closes the credit-burning vector.
 
+**Live measurement** (production `income-and-expence-neon.vercel.app`, deployment `dpl_GkPdZZuHmG9TqhFnvYQjxetbDGR9`, commit `e1f7d77`)
+
+Each note was classified **twice against the same deployment in the same minute** — once with bare names, reproducing exactly what Phase 39 sent, and once with descriptions. That makes this a controlled before/after rather than a comparison against a figure measured a day earlier under unknown conditions.
+
+| Note | Before (bare names) | After (described) | |
+|---|---|---|---|
+| `Netflix subscription` | **`other` @ 0.92** | **Housing & Utilities @ 1.00** | **fixed** |
+| `Spotify` | **`other` @ 0.98** | **Housing & Utilities @ 1.00** | **fixed** |
+| `ค่าเน็ตบ้าน` (home internet) | Housing & Utilities @ 1.00 | Housing & Utilities @ 1.00 | held |
+| `ข้าวมันไก่` | Food & Dining @ 0.91 | Food & Dining @ 1.00 | held, +0.09 |
+| `เงินเดือน` | Primary Salary @ 1.00 INCOME | Primary Salary @ 1.00 INCOME | held |
+| `Shell gas station` | Transport & Fuel @ 1.00 | Transport & Fuel @ 1.00 | held |
+
+**2 fixed, 0 regressed.** Both fixes cross the 0.85 gate outright, so they auto-fill rather than merely offering a chip. Type detection was already perfect on all six and stayed so. The live prompt-injection guard still returns 400 with a description present, as does a 201-char description.
+
 **Surprises**
-- **The migration could not be applied from this session.** `mcp__supabase__apply_migration` was denied by the auto-mode classifier as `[Modify Shared Resources]`. The SQL file is written and correct, but `public.categories.description` does not yet exist on `rmpnzlcufeioxmgoocpt`. **This phase must not be pushed until it is applied**: PostgREST rejects an unknown column outright (`PGRST204`) rather than ignoring it, so between deploy and migration an authenticated user would be unable to create or edit *any* category. Local-storage mode is unaffected either way.
+- **`ค่าเน็ตบ้าน` was never actually broken.** It was listed as a target case on the assumption that it shared the Netflix failure mode; the controlled run shows it resolved to Housing & Utilities at 1.00 on bare names alone. Thai for "home internet bill" apparently maps onto the *name* "Housing & Utilities" well enough without help. The real failure mode is narrower than assumed: it is specifically **brand and merchant names** (`Netflix`, `Spotify`) that carry no categorical signal in the label itself. Recorded because the phase's scope was justified partly on this case, and it did not hold up.
+- **The confidence gain on the controls was not predicted.** `ข้าวมันไก่` went 0.91 → 1.00. Descriptions sharpen options that were already winning, not just ones that were losing — which is the mechanism working as the TypeSafe guidance describes, but it was not an argued benefit in ADR `0012`.
+- **The migration needed explicit user authorization.** `mcp__supabase__apply_migration` was first denied by the session's auto-mode classifier as `[Modify Shared Resources]`. The phase was committed but deliberately **not pushed** until the user authorized it and the column was verified present via `information_schema`, because PostgREST rejects an unknown column outright (`PGRST204`) rather than ignoring it — between deploy and migration an authenticated user would have been unable to create or edit *any* category. Applying the schema change before pushing the code that depends on it is now a rule in `CLAUDE.md`.
 - **The entry-chunk cost was roughly double the estimate.** The plan predicted +~0.7 kB raw / +~0.3 kB gzip; it measured **+1.57 kB / +0.68 kB**. Nine description strings plus `withDefaultDescriptions` plus the mapping code in three mutators add up to more than the strings alone. Recorded as measured rather than restated as predicted; it is still under half a percent of the entry chunk, and the alternative (a server-side hint map) was rejected on ownership grounds, not size.
 - **Nothing in the existing suite moved.** 144 pre-existing runs passed untouched, which is the mechanical evidence that adding an optional field to `Category` disturbed no consumer.
 
@@ -59,7 +77,7 @@ Plus a 15-case throwaway Node probe against `api/classify.ts` (`node --experimen
 - **No description shown on the category list rows.** A second line per row is visual noise this phase does not need; the field is visible wherever it is edited.
 - **No re-classification of already-recorded transactions.** Descriptions change future suggestions only; nothing rewrites history.
 - **No CSV bulk-import backfill.** Still deferred from ADR `0011`, and descriptions make it more attractive rather than less.
-- **No live production measurement yet**, because the deploy is blocked on the migration. The `Netflix subscription` / `Spotify` / `ค่าเน็ตบ้าน` before-and-after numbers that would prove the objective was met are pending, and this entry claims improvement by construction, not by measurement.
+- **No broader accuracy sweep.** Six notes is a smoke test, not an evaluation. It proves the mechanism works and the controls did not move; it does not establish a rate over the user's real ledger. `jev batch classify` against an exported CSV is the tool for that, and it belongs to whichever phase tunes the thresholds.
 
 ---
 
