@@ -61,7 +61,7 @@ The entry delta is `App.tsx`'s three new callbacks and nothing else — `App.tsx
 
 ---
 
-## Phase 40 — Category descriptions as Jev classification criteria: T84–T88 (2026-09-23, uncommitted)
+## Phase 40 — Category descriptions as Jev classification criteria: T84–T88 (2026-09-23, commits `e1f7d77`…`5a67726`)
 
 **Changed**
 - `docs/audit/decisions/0012-category-descriptions-as-criteria.md` (new) — written **before** T84 began, per `README.md:28`. Records why the criteria text is a user-editable field rather than a static hint map in `api/classify.ts`.
@@ -138,7 +138,7 @@ Each note was classified **twice against the same deployment in the same minute*
 
 ---
 
-## Phase 39 — Jev classification layered behind the keyword matcher: T79–T83 (2026-09-23)
+## Phase 39 — Jev classification layered behind the keyword matcher: T79–T83 (2026-09-23, commits `18779b3`…`2633af7`)
 
 **Changed**
 - `docs/audit/decisions/0011-jev-classification-layering.md` (new) — written **before** T79 began, per `README.md:28`. Records the delete-vs-layer argument, the measured probe results, and the CORS finding that makes a proxy mandatory.
