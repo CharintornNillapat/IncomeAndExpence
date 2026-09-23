@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 46 — Voice input for the omni note: T116–T121 (2026-09-24, commits `4dec34b`…`PENDING_DOCS`)
+## Phase 46 — Voice input for the omni note: T116–T121 (2026-09-24, commits `4dec34b`…`37b60f7`)
 
 **Changed**
 - `docs/audit/decisions/0018-voice-note-entry.md` (new) — written before the code and committed alone, as Phase 45 established.
