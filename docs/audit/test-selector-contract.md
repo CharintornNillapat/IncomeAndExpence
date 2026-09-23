@@ -39,6 +39,19 @@ Removing `-dest-wallet` also resolved a latent hazard rather than creating one: 
 
 > Note: `tx-form-dashboard` in the Phase 19 table no longer exists in `src/`. The Dashboard's inline form was retired in Phase 22 (T37); only `tx-form-quickadd` and `tx-form-page` remain.
 
+## Added in Phase 42 (ADR `0014`, visual transfer layout)
+
+| Selector | Notes | File |
+|---|---|---|
+| `#transfer-source-wallet`, `#transfer-dest-wallet` | **Still real, visible `<select>` elements**, now restyled borderless inside their wallet panels. `wallet-forms.spec.ts` asserts both are visible and reads them with `.inputValue()`, which is why the redesign kept them as form controls rather than replacing them with cards. Both now list *every* wallet; picking the other side's wallet swaps the two instead of filtering an option away. | `src/components/wallet/WalletTransferForm.tsx` |
+| `#transfer-swap-btn` | Exchanges source and destination. | same |
+| `#transfer-all-chip` | Seeds the amount with the full source balance. Rendered only when that balance is `> 0`. | same |
+| `[data-testid="transfer-panel-source"]`, `-dest` | The two wallet panels. | same |
+| `[data-testid="transfer-balance-after-source"]`, `-dest` | The projected balances. **Absent from the DOM entirely when there is no valid amount** — assert with `toHaveCount(0)`, not on empty text. | same |
+| `[data-testid="transfer-overdraft-warning"]` | The amber note shown when the source would go negative. Its presence must never imply the submit button is disabled — the non-blocking behaviour is deliberate (ADR `0014`) and pinned by `transfer-preview.spec.ts`. | same |
+
+Nothing was removed in this phase. `#transfer-amount-math`, `#transfer-note`, `#execute-transfer-btn`, `#hero-transfer-funds-btn` and `#wallet-transfer-modal-btn` are unchanged, and `tests/wallet-forms.spec.ts` passed **unedited** — it is the regression guard for the transfer flow and should stay that way.
+
 ## Known remaining fragile selectors (not yet hardened; addressed in later phases per the roadmap)
 
 - `transaction.spec.ts:55` — `^Income$` button text (Phase 27, SegmentedControl must preserve option labels exactly).

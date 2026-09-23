@@ -473,3 +473,26 @@ Same method as the Phase 39 and 40 sections: `git stash push -u` the whole phase
 - **No new dependency and no new vendor chunk.** `manualChunks` is unmodified, so ADR `0010`'s `vendor-math` deferral (110.72 kB gzip, still the largest chunk in the build) is intact.
 
 **Test-suite size:** 150 → **165 runs** (50 → 55 tests, 15 → **16** spec files — the first new spec file since Phase 39). Wall clock `npx playwright test --workers=4`: 4.1 m → 4.5 m.
+
+## Phase 42 (visual transfer layout) — bundle delta, measured against a rebuild of HEAD
+
+Same method as the Phase 39–41 sections: `git stash push -u` the whole phase, `npm run clean && npm run build`, record, `git stash pop`, rebuild. Same machine, Node v24.19.0, same `node_modules`, clean tree both times, no dev server running. HEAD here is `84c4400`.
+
+| Chunk | HEAD (stashed) | Phase 42 | Delta |
+|---|---|---|---|
+| entry `index-*.js` | 163.30 kB / 46.11 kB gzip | **163.31 kB / 46.12 kB gzip** | **+0.01 kB / +0.01 kB** |
+| `TransferFundsModal-*.js` (lazy) | 4.10 kB / 1.76 kB gzip | 7.76 kB / 2.96 kB gzip | +3.66 kB / +1.20 kB |
+| `index-*.css` | 77.02 kB / 11.85 kB gzip | 77.82 kB / 11.98 kB gzip | +0.80 kB / +0.13 kB |
+| `vendor-math-*.js` | 375.73 kB / 110.72 kB gzip | 375.73 kB / 110.72 kB gzip | 0 / 0 |
+| vendor chunk count | 5 | 5 | 0 |
+| build time | 5.68 s | 5.26 s | — (both cold after `clean`) |
+
+**Findings**
+
+- **The whole redesign rides the lazy chunk.** `grep -l 'overdraws' dist/assets/*.js` resolves **only** to `TransferFundsModal-*.js` — the panels, the preview, the swap button and the warning all land behind ADR `0010`'s `hasOpened` latch, so none of it is on the critical path.
+- **The entry chunk moved 10 bytes, and that is the `roundToCents` extraction.** Moving a two-line function from a module-private definition into its own module was expected to be byte-neutral after minification; it is not quite, because it adds a module boundary inside the eager `FinanceContext` graph. Recorded as measured rather than rounded to "unchanged" — the honest figure is more useful than a tidy one.
+- **The CSS grew more in raw bytes than the JS chunk grew in gzip.** The two-panel grid, the amber overdraft banner and the circular swap button introduced utility classes the Tailwind scan had not previously emitted. This is the inverse of Phase 41, where deleting the collapse banner and the "To Wallet" block *shrank* the CSS by 0.66 kB.
+- **No new dependency and no new vendor chunk.** `manualChunks` is unmodified, so ADR `0010`'s `vendor-math` deferral (110.72 kB gzip, still the largest chunk) is intact.
+- **`TransferFundsModal-*.js` nearly doubled** (4.10 → 7.76 kB raw) and that is the expected shape of this phase: a plain stacked form became a two-panel layout with a preview, a warning, a swap control and an empty state. It remains the fourth-smallest chunk in the build.
+
+**Test-suite size:** 165 → **186 runs** (55 → 62 tests, 16 → **17** spec files). Wall clock `npx playwright test --workers=4`: 4.5 m → 4.3 m.

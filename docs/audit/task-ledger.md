@@ -899,6 +899,32 @@ Approved explicitly by the user as Part 1 of a UX redesign roadmap, planned and 
 - **`presetWalletId` is still dead.** `CLAUDE.md` and ADR `0007` both claimed `DebtsView` passes it; no call site in `src/` ever has. Both docs corrected; the prop kept as supported-but-unused.
 - **The `lunch for 4` false positive shipped deliberately.** It pre-fills ฿4, visible and one keystroke to correct. Tightening the trailing anchor would trade that for silently refusing real input like `bts 45`. Recorded in ADR `0013`'s "Revisit if" instead.
 
+## Phase 42 — Visual transfer layout and live balance preview: T94–T98 (2026-09-23)
+
+Approved explicitly by the user as Part 2 of the UX redesign roadmap, planned and approved before any code was written. Three design questions were settled up front: keep the native `<select>`s as the real controls (forced by `wallet-forms.spec.ts`'s visibility + `.inputValue()` assertions), warn on overdraft rather than block it, and take the swap button and "Transfer all" chip while declining the percent meter and the animated arrow. Per `README.md:28`, ADR `0014` was written **before** T94 started.
+
+| # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
+|---|---|---|---|---|---|---|---|---|---|---|
+| T94 | Move `roundToCents` out of `FinanceContext.tsx` (module-private since it was written) into a shared `src/utils/money.ts`, so the transfer preview computes with the same function the ledger commits with | `src/utils/money.ts` (new), `src/context/FinanceContext.tsx` | Med | Low | 20m | done | ADR 0014 | — | `npm run lint` clean; all 11 call sites unchanged | Entry chunk +0.01 kB — one module boundary in the eager graph |
+| T95 | `TransferWalletPanel` + source → swap → destination grid; colour-tinted icon badge, borderless `<select>`, struck-through current balance, projected balance; live preview mirroring `addTransaction`'s TRANSFER arithmetic; amber overdraft warning that does **not** gate `canSubmit`; modal widened to `max-w-lg` | `src/components/wallet/WalletTransferForm.tsx`, `src/components/wallet/TransferFundsModal.tsx` | High | Med | 3h | done | T94 | — | `npm run lint` clean; **`wallet-forms.spec.ts` 4/4 unedited** | `TransferFundsModal` chunk 4.10 → 7.76 kB raw, still lazy |
+| T96 | Swap button; collision-swap reconciliation on both selects (replacing the option filtering that left `destWalletId` stale); "Transfer all" chip via `InlineMathInput`'s `seed` prop; `EmptyState` for fewer than two wallets | `src/components/wallet/WalletTransferForm.tsx` | Med | Low | 1h | done | T95 | — | `npm run lint` clean | 2 new ids, 5 new `data-testid`s; none removed |
+| T97 | +7 Playwright tests: preview arithmetic, preview clearing, inline-math amounts, swap, collision-swap, overdraft-warns-but-allows, "Transfer all" | `tests/transfer-preview.spec.ts` (new) | High | Low | 1.5h | done | T95, T96 | — | **186/186, 0 retries, 4.3m** — all 165 pre-existing runs green | Suite 165 → **186 runs**, 55 → 62 tests, 16 → **17** spec files |
+| T98 | ADR `0014`; Phase 42 refactor-log entry, ledger rows, and bundle column; Phase 42 selector table; `CLAUDE.md` suite count + transfer-preview constraint | `docs/audit/decisions/0014-*.md` (new), `docs/audit/refactor-log.md`, `docs/audit/task-ledger.md`, `docs/audit/baseline-metrics.md`, `docs/audit/test-selector-contract.md`, `CLAUDE.md` | Med | Low | 1h | done | T97 | — | docs only; `npm run lint` clean at HEAD | — |
+
+**Full gate:** `npm run lint` clean (both tsconfigs); `npx playwright test --workers=4` **186/186 passed, 0 retries, 4.3m**; `npm run clean && npm run build` succeeded in 5.26s, 0 chunk-size warnings. Entry chunk 163.30 → **163.31 kB raw / 46.11 → 46.12 kB gzip**, measured by stashing the phase and rebuilding HEAD (`84c4400`) rather than differencing a documented figure.
+
+**Design constraints carried from ADR `0014` (do not re-litigate):**
+- **The `<select>`s stay real, visible form controls.** `wallet-forms.spec.ts:22-23,25,50,52` asserts visibility and reads `.inputValue()`. Replacing them with cards is not a locator move, so the spec-edit policy forbids it. This spec is the phase's regression guard and passed unedited.
+- **The preview shares `roundToCents` with the ledger.** It must not grow its own rounding; that is what `CLAUDE.md`'s no-inlined-`Math.round` rule prevents. `roundToTwoDecimals` stays separate.
+- **Overdraft warns, never blocks.** `CREDIT_CARD` wallets legitimately run negative. Pinned by a test so it cannot quietly become a gate.
+- **`AnimatedCounter` is wrong for this.** It animates from 0 on mount, re-tweens per keystroke, and ADR `0009` forbids children in its span.
+
+**Notes on execution:**
+- **The entry chunk moved 10 bytes, not zero.** Extracting a two-line function into its own module was expected to be byte-neutral after minification; it costs one module boundary in the eager `FinanceContext` graph. Recorded as measured.
+- **The CSS grew more than the JS gzip did** (+0.80 kB raw vs +1.20 kB). The panel layout, amber warning and swap button introduced utility classes the Tailwind scan had not seen — the inverse of Phase 41, where deletions shrank it.
+- **The desync fix fell out of the feature.** Collision-swap was adopted because the swap button made it the natural gesture; that it also fixes `destWalletId` going stale was a second-order benefit, not the motivation.
+- **All 7 new tests passed on the first run.** Noted as worth scrutiny rather than reassurance: the expectations were derived from the seeded fixtures and the real arithmetic, so a wrong one would have failed loudly rather than passed vacuously.
+
 ## Deferred — none remaining
 
 Both items formerly in this table are now resolved; see Phase 38 above. **Zero audit tasks remain in `todo` or `deferred` status.** Phases 39 and 40 above track approved feature builds with their own rows.

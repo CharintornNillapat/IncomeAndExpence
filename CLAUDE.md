@@ -134,6 +134,14 @@ Two layers, in a fixed order. Do not reverse them and do not collapse them into 
 - **`WalletPopupModal` itself is deliberately *not* promoted to shell level** — unlike Transfer/Add-Wallet, it has no reachability problem to fix: it's only ever triggered by a wallet card, which already lives inside whichever view is mounted. Do not hoist it to `App.tsx` for consistency with `QuickAddModal`/`TransferFundsModal`/`AddWalletModal` without a concrete new reachability requirement.
 - See `docs/audit/decisions/0008-wallet-surface-ownership.md`.
 
+## Transfers: the preview must mirror the ledger
+`WalletTransferForm` renders a live source → destination balance preview (ADR `0014`).
+- **It shares `roundToCents` with the ledger.** That helper lives in `src/utils/money.ts` and is imported by both `FinanceContext.tsx` and the transfer form, so what the user is shown before consenting is computed by the same function that commits. Do not give the UI its own rounding, and do not merge it with `mathEvaluator`'s `roundToTwoDecimals`.
+- **The preview mirrors `addTransaction`'s TRANSFER arithmetic.** If the transfer path ever stops going through `addTransaction`, the preview drifts silently — there is no test that would catch a divergence in the formula itself.
+- **The two wallet `<select>`s must stay real, visible form controls.** `tests/wallet-forms.spec.ts` asserts visibility and reads `.inputValue()`; replacing them with cards is not a locator move and the spec-edit policy forbids it. That spec is the transfer flow's regression guard — it passed unedited through the Phase 42 redesign.
+- **Overdraft warns, never blocks.** A `CREDIT_CARD` wallet legitimately carries a negative balance, so `canSubmit` deliberately ignores the projection. Pinned by `tests/transfer-preview.spec.ts`.
+- **Do not use `AnimatedCounter` for the projected balance.** It animates from 0 on mount and re-tweens on every keystroke, and ADR `0009` forbids giving its span React children.
+
 ## Validation & the MutationResult pattern
 All write paths validate with Zod (`src/utils/zodSchemas.ts`) **before** mutating state or hitting the network:
 
@@ -166,8 +174,8 @@ Without it, `FinanceContext` falls back to the legacy non-atomic path (three sep
 
 ## Testing
 - **Framework**: Playwright with Chromium, Firefox, and WebKit projects.
-- **Suite size**: 55 tests across 16 spec files, run on all three browsers = **165 test runs**. All must pass.
-- **Location**: `tests/*.spec.ts` (`transaction`, `wallets`, `diary`, `theme`, `wallet-forms`, `debts`, `soft-delete`, `keywords`, `categories`, `csv`, `auth`, `date-boundary`, `storage-persistence`, `presets`, `jev-classify`, `express-input`), with shared helpers in `tests/helpers.ts`.
+- **Suite size**: 62 tests across 17 spec files, run on all three browsers = **186 test runs**. All must pass.
+- **Location**: `tests/*.spec.ts` (`transaction`, `wallets`, `diary`, `theme`, `wallet-forms`, `debts`, `soft-delete`, `keywords`, `categories`, `csv`, `auth`, `date-boundary`, `storage-persistence`, `presets`, `jev-classify`, `express-input`, `transfer-preview`), with shared helpers in `tests/helpers.ts`.
 - **Never edit files while a run is in flight.** `playwright.config.ts`'s `webServer` is `npm run dev` — a live Vite dev server — so writing to `src/` mid-run HMRs the app under test and produces failures that do not reproduce in isolation. This cost a wasted baseline in Phase 39.
 - **Network mocking**: `tests/jev-classify.spec.ts` is the only spec that intercepts requests (`page.route('**/api/classify')`). Every response is fulfilled locally, so the suite spends no TypeSafe credits and needs no API key, on CI or locally.
 - **Use the helpers**: `gotoTab(page, tabId)` waits for the tab to become active *and* for the `React.lazy` view chunk to resolve (`#view-loading-fallback` detaching). `addQuickTransaction(page, description)` seeds a transaction — a fresh context has wallets and debts but **no transactions**, so any assertion about filtering is vacuous without it.

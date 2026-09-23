@@ -4,6 +4,59 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
+## Phase 42 — Visual transfer layout and live balance preview: T94–T98 (2026-09-23, uncommitted)
+
+**Changed**
+- `docs/audit/decisions/0014-visual-transfer-layout.md` (new) — written **before** the code, per `README.md:28`. Records why the `<select>`s stay, why the preview uses `formatCurrencyAmount` rather than `AnimatedCounter`, why overdraft warns instead of blocking, and why the wallet panel is local rather than a fifth shared primitive.
+- `src/utils/money.ts` (new) — `roundToCents`, moved out of `FinanceContext.tsx` where it had been module-private since it was written. `FinanceContext` now imports it; all 11 call sites unchanged.
+- `src/components/wallet/WalletTransferForm.tsx` — rewritten around a `TransferWalletPanel` sub-component. Source → swap → destination grid (`sm:grid-cols-[1fr_auto_1fr]`, stacking on mobile with the arrow rotated 90°); each panel carries the wallet's colour-tinted icon badge, the `<select>` restyled borderless, the current balance struck through, and the projected balance below it. Adds the overdraft warning, the swap button, collision-swap reconciliation on both selects, the "Transfer all" chip, and an `EmptyState` for fewer than two wallets.
+- `src/components/wallet/TransferFundsModal.tsx` — `maxWidthClassName="max-w-lg"`; two new ids (`transfer-swap-btn`, `transfer-all-chip`) added to the canonical `ids` object.
+- `tests/transfer-preview.spec.ts` (new, 7 tests) — preview arithmetic, preview clearing, inline-math amounts, the swap button, collision-swap, overdraft-warns-but-allows, and "Transfer all".
+- `CLAUDE.md`, `docs/audit/test-selector-contract.md` — Phase 42 selector table; suite count 55/165 → **62/186**.
+
+**Why**
+ADR `0013` made this the app's only transfer surface, and it was still a plain stacked form whose only rendering of a balance was inside `<option>` text. A transfer is the one operation that moves money without changing net worth, so "did that land where I meant it to?" is the whole question — and the form answered it only after the fact. It also carried a latent desync: the destination `<select>` filtered the source out of its options but never reconciled `destWalletId`, so changing the source to the destination's wallet left state pointing at a wallet no longer in the list.
+
+**Verification**
+```
+npm run lint                     # tsc --noEmit && tsc -p api/tsconfig.json: clean, 0 errors
+npx playwright test --workers=4  # 186/186 passed, 0 retries, 4.3m
+npm run clean && npm run build   # built in 5.26s; 0 chunk-size warnings
+```
+`tests/wallet-forms.spec.ts` passed **unedited**, before and after — it is the regression guard for this phase and the reason option (a) in ADR `0014` was rejected.
+
+**Bundle verification** (`git stash -u` → `clean && build` → `stash pop` → rebuild; same machine, Node v24.19.0, clean tree both times). HEAD here is `84c4400`.
+
+| Chunk | HEAD (stashed) | Phase 42 | Delta |
+|---|---|---|---|
+| entry `index-*.js` | 163.30 kB / 46.11 kB gzip | **163.31 kB / 46.12 kB gzip** | **+0.01 kB / +0.01 kB** |
+| `TransferFundsModal-*.js` (lazy) | 4.10 kB / 1.76 kB gzip | 7.76 kB / 2.96 kB gzip | +3.66 kB / +1.20 kB |
+| `index-*.css` | 77.02 kB / 11.85 kB gzip | 77.82 kB / 11.98 kB gzip | +0.80 kB / +0.13 kB |
+| `vendor-math-*.js` | 375.73 kB / 110.72 kB gzip | 375.73 kB / 110.72 kB gzip | 0 / 0 |
+| vendor chunk count | 5 | 5 | 0 |
+| build time | 5.68 s | 5.26 s | — (both cold after `clean`) |
+
+`grep -l 'overdraws' dist/assets/*.js` resolves **only** to `TransferFundsModal-*.js`, so the whole redesign rides the lazy chunk ADR `0010` already defers. The entry chunk's +0.01 kB is the `roundToCents` import and nothing else. `manualChunks` untouched.
+
+**Correctness notes**
+- **The preview is a deliberate mirror of `addTransaction`'s own balance math**, sharing `roundToCents` rather than reimplementing it. If the transfer path ever stops going through `addTransaction`, the preview drifts silently — recorded in ADR `0014`'s "Revisit if".
+- **Keeping the `<select>`s was a test-driven decision, not a stylistic one.** `wallet-forms.spec.ts:22-23,25,50,52` asserts both are visible and reads them with `.inputValue()`. A card is not a form control, and rewriting those assertions is not a locator move, so the spec-edit policy rules option (a) out.
+- **Collision-swap replaces option filtering.** Both selects now list every wallet; picking the other side's wallet swaps them. This preserves `src.inputValue() !== dst.inputValue()` by construction rather than by hiding an option, and it fixes the desync described above.
+- **`key={transferKey}` on `InlineMathInput` is preserved** — it is how the amount clears after a successful transfer — and coexists with the new `seed` prop, because `lastSeedKeyRef` re-initialises on each mount.
+
+**Surprises**
+- **The entry chunk moved by 10 bytes, not zero.** Extracting `roundToCents` into its own module was expected to be byte-neutral after minification; it costs one module boundary in the eager `FinanceContext` graph. Recorded as measured rather than rounded to "unchanged".
+- **The CSS grew more than the JS gzip did** (+0.80 kB raw vs +1.20 kB for the chunk): the panel layout, the amber warning, and the swap button introduced several utility classes the Tailwind scan had not seen. The inverse of Phase 41, where deletions shrank it.
+- **All 7 new tests passed on the first run**, which is worth noting as suspicious rather than reassuring — the assertions were derived from the seeded fixtures (`Main Checking` ฿2,500, `Cash Wallet` ฿150) and checked against the real arithmetic, so a wrong expectation would have failed loudly rather than passed vacuously.
+
+**Deliberately not done**
+- **No shared wallet-card primitive.** The icon + name + balance block exists in four other places that have already diverged on size and weight; ADR `0006` says the correct move is a fifth local variant, not forced convergence. It earns extraction at a third *transfer-shaped* consumer, not at the fourth lookalike.
+- **No hard overdraft block.** `CREDIT_CARD` wallets legitimately run negative. A real gate needs a per-wallet-type rule, not `balance >= amount`.
+- **No percent-of-balance meter and no animated arrow.** Both were offered and declined for this phase; `ProgressMeter` remains available if the meter is wanted later.
+- **`AnimatedCounter` not used for the projected balance** — it animates from 0 on mount and re-tweens per keystroke, and ADR `0009` forbids giving its span children. Static text was the correct instrument, not a compromise.
+
+---
+
 ## Phase 41 — Express note entry; TRANSFER leaves the transaction form: T89–T93 (2026-09-23, commits `cb999ab`…`ba1690a`)
 
 **Changed**
