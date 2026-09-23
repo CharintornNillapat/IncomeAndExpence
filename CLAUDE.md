@@ -15,17 +15,19 @@ FinLife Tracker is a full-stack personal finance and holistic lifestyle manageme
 ## Project Structure
 ```
 ├── .github/workflows/   # CI pipeline for Playwright E2E tests (playwright.yml)
+├── api/                 # Vercel serverless functions (classify.ts: Jev proxy; own tsconfig)
 ├── public/              # PWA icons (192px, 512px, SVG) and robots.txt
 ├── supabase/migrations/ # SQL migrations (transfer_funds RPC + idempotency index)
 ├── src/
 │   ├── components/      # Reusable UI components, modals, and navigation
 │   │   ├── dashboard/   # Dashboard-specific summary and metric cards
+│   │   ├── transaction/ # Transaction tokens/cells + CategorySuggestionChip
 │   │   └── wallet/      # Shared wallet forms (AddWalletForm, WalletTransferForm)
 │   ├── context/         # FinanceContext.tsx (monolithic app state, local fallback, Supabase sync)
 │   ├── hooks/           # Domain hooks (useTransactions, useWallets, useDebts, useTheme)
 │   ├── lib/             # Supabase client setup (supabase.ts)
 │   ├── utils/           # Pure helpers: currency, date, mathEvaluator, smartMatcher,
-│   │                    # zodSchemas, csvExchange, walletIcons
+│   │                    # jevClassifier, zodSchemas, csvExchange, walletIcons
 │   ├── views/           # Route views lazy-loaded via React.lazy in App.tsx
 │   ├── App.tsx          # Root shell with gesture handlers and tab navigation
 │   ├── main.tsx         # Application entry point
@@ -44,7 +46,7 @@ From `package.json` (requires `npm install` prior to execution):
 - `npm run build` : `vite build`
 - `npm run preview` : `vite preview`
 - `npm run clean` : `rm -rf dist server.js`
-- `npm run lint` : `tsc --noEmit`
+- `npm run lint` : `tsc --noEmit && tsc -p api/tsconfig.json` (app+tests, then the Vercel functions)
 - `npm test` : `playwright test`
 
 ## Coding Conventions
@@ -99,6 +101,19 @@ Transaction dates, diary dates, and "today"/"yesterday" labels are **local** cal
 - `useDebts().repayDebt`/`FinanceContext.tsx`'s `repayDebtAtomic` were removed entirely (Phase 33, T64) after confirming zero call sites outside their own definitions — `DebtsView`'s repay modal calls `addTransaction` directly through `TransactionForm`, since the debt decrement/auto-settle logic lives inside `addTransaction` itself, not in a separate repayment code path. Do not reintroduce a second repayment code path.
 - See `docs/audit/decisions/0007-transaction-entry-consolidation.md`.
 
+## Categorization: rules first, Jev second
+Two layers, in a fixed order. Do not reverse them and do not collapse them into one.
+- **`src/utils/smartMatcher.ts` is the first and authoritative layer.** It runs synchronously on every keystroke inside `TransactionForm.handleDescriptionChange`, is free, works offline, and is the user's only way to overrule the model on their own ledger via a `KeywordRule`. **A rule hit short-circuits completely — no debounce, no cache lookup, no network call.** `tests/jev-classify.spec.ts` asserts this with a request counter; if you change the ordering, that test fails, which is the point.
+- **Jev (`src/utils/jevClassifier.ts`) is consulted only on a rule miss**, behind a 450 ms debounce, an abort of any superseded request, and a monotonic sequence guard so a slow answer for an older description cannot overwrite a newer one.
+- **`classifyDescription()` must never throw or reject.** Every failure — 404, 5xx, timeout, abort, malformed JSON, offline — resolves to `null`, which renders as "no suggestion". There is still no error boundary anywhere in `src/`, so a thrown fetch white-screens the app. This contract is load-bearing, not stylistic.
+- **Confidence gates the UI**, via the one exported `CONFIDENCE` object: `≥ 0.85` auto-fills exactly as the rule matcher does, `0.50–0.85` renders `CategorySuggestionChip` (which writes nothing until tapped), below `0.50` is silent. A disagreement between the chosen category's `.type` and Jev's own `detectedType` demotes to a chip regardless of confidence.
+- **A late answer never overwrites a manual edit** — `TransactionForm`'s `userTouchedRef` records manual category/type picks and applying a preset sets both.
+- **The browser cannot call TypeSafe directly.** The API returns `400 — Disallowed CORS origin` for browser origins, so `api/classify.ts` (a Vercel zero-config Node function) is mandatory, not optional hardening. It owns the Jev question wording and **rejects any client-supplied `instructions`/`criteria`/`model`/`state`/`questions`** — without that, the endpoint is an open relay billed to the project's TypeSafe key.
+- **`TYPESAFE_API_KEY` has no `VITE_` prefix** so Vite cannot inline it, and a missing key returns **404** so the client latches off identically to a missing endpoint. `npm run dev` does not serve `api/` at all, which is why the whole feature is inert under the Vite dev server and in Playwright.
+- **Do not install `@typesafe-ai/sdk`.** The client is plain `fetch`; adding a dependency would mean touching `manualChunks` and risking ADR `0010`'s `vendor-math` deferral. All new client code lives in the lazy `TransactionForm` chunk — the entry chunk is unchanged.
+- `api/` is type-checked by its own `api/tsconfig.json`; `npm run lint` runs both configs. Do not add `"types": ["node"]` to the root config — it would let `process`/`Buffer` type-check inside `src/`, where they fail at runtime.
+- See `docs/audit/decisions/0011-jev-classification-layering.md`.
+
 ## Wallet modal ownership
 `WalletPopupModal` (opened only from a wallet card) has exactly 2 tabs — `OVERVIEW` and `TRANSACTIONS` (a 5-row preview with a "View all" handoff to `TransactionsView`, pre-filtered by wallet). It has no TRANSFER or ADD_WALLET tab, and never has had a separate ADJUST tab — the per-wallet balance editor lives inline inside OVERVIEW's wallet card.
 - **Transfer and Add-Wallet are owned by 2 shell-level, self-subscribing modals** — `src/components/wallet/TransferFundsModal.tsx` and `AddWalletModal.tsx` — each mounted once in `App.tsx`, following the same pattern `QuickAddModal` established (the modal subscribes to finance state/actions itself; `App.tsx` owns only the `isOpen` boolean and, for transfer, an optional preselected wallet id). Reached identically from `DashboardView` (hero button, wallet-card shortcuts) and `WalletsView` (header button) — `WalletsView` mounts neither modal itself, only calls `onOpenTransfer`/`onOpenAddWallet` props.
@@ -135,8 +150,10 @@ Without it, `FinanceContext` falls back to the legacy non-atomic path (three sep
 
 ## Testing
 - **Framework**: Playwright with Chromium, Firefox, and WebKit projects.
-- **Suite size**: 34 tests across 13 spec files, run on all three browsers = **102 test runs**. All must pass.
-- **Location**: `tests/*.spec.ts` (`transaction`, `wallets`, `diary`, `theme`, `wallet-forms`, `debts`, `soft-delete`, `keywords`, `categories`, `csv`, `auth`, `date-boundary`, `storage-persistence`), with shared helpers in `tests/helpers.ts`.
+- **Suite size**: 48 tests across 15 spec files, run on all three browsers = **144 test runs**. All must pass.
+- **Location**: `tests/*.spec.ts` (`transaction`, `wallets`, `diary`, `theme`, `wallet-forms`, `debts`, `soft-delete`, `keywords`, `categories`, `csv`, `auth`, `date-boundary`, `storage-persistence`, `presets`, `jev-classify`), with shared helpers in `tests/helpers.ts`.
+- **Never edit files while a run is in flight.** `playwright.config.ts`'s `webServer` is `npm run dev` — a live Vite dev server — so writing to `src/` mid-run HMRs the app under test and produces failures that do not reproduce in isolation. This cost a wasted baseline in Phase 39.
+- **Network mocking**: `tests/jev-classify.spec.ts` is the only spec that intercepts requests (`page.route('**/api/classify')`). Every response is fulfilled locally, so the suite spends no TypeSafe credits and needs no API key, on CI or locally.
 - **Use the helpers**: `gotoTab(page, tabId)` waits for the tab to become active *and* for the `React.lazy` view chunk to resolve (`#view-loading-fallback` detaching). `addQuickTransaction(page, description)` seeds a transaction — a fresh context has wallets and debts but **no transactions**, so any assertion about filtering is vacuous without it.
 - **No fixed waits**: never use `page.waitForTimeout()` for debounces or async writes; assert on the resulting UI state so Playwright retries. Never guard a step with `if (await locator.isVisible())` — it does not retry and silently skips the assertion.
 - **Timeouts**: `playwright.config.ts` sets generous expect/action timeouts for Firefox, which is slowest to paint a lazy view chunk under the Vite dev server. These bound failures only and do not slow passing runs. `colorScheme` is pinned to `light` so the `system` theme resolves deterministically.
@@ -148,6 +165,7 @@ Refer to `.env.example`:
 - `VITE_SUPABASE_URL`: Supabase project URL (falls back to local storage if absent).
 - `VITE_SUPABASE_ANON_KEY`: Supabase public anon key.
 - `GEMINI_API_KEY`: Server-side Gemini API key (for AI Studio host environments).
+- `TYPESAFE_API_KEY`: TypeSafe/Jev key, read ONLY by `api/classify.ts`. No `VITE_` prefix, so it never reaches the bundle. Unset = /api/classify 404s and categorization falls back to keyword rules.
 - `APP_URL`: Base application URL for redirects and links.
 - `DISABLE_HMR`: If `'true'`, disables Vite HMR and file watching to conserve resources in sandboxes.
 
@@ -173,3 +191,7 @@ Refer to `.env.example`:
 - Do NOT add redundant state management libraries (Redux, Zustand); use `FinanceContext` and the domain hooks.
 - Do NOT introduce a second currency without adding real conversion to the ledger first.
 - Do NOT format money or dates inline; use `formatCurrencyAmount` and the `src/utils/date.ts` helpers.
+- Do NOT delete or bypass `smartMatcher.ts` / `keyword_rules` in favour of Jev — it is the offline layer and the user's override channel. See ADR `0011`.
+- Do NOT let `classifyDescription()` throw, and do NOT give the classifier a code path that can reject.
+- Do NOT accept Jev question wording (`instructions`/`criteria`/`model`/`state`/`questions`) from the client in `api/classify.ts`.
+- Do NOT add a `VITE_`-prefixed TypeSafe key, or call `api.typesafe.ai` from browser code — it is CORS-blocked regardless.

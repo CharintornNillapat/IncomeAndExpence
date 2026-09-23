@@ -159,3 +159,42 @@ export interface ImportPreviewSummary {
   totalAmount: number;
   rows: ImportRowValidation[];
 }
+
+/**
+ * Wire contract for the Jev classification proxy (`api/classify.ts`).
+ *
+ * These live here, beside the domain models, so the browser client
+ * (`src/utils/jevClassifier.ts`) and the serverless function import the *same*
+ * declarations and cannot drift. The function imports them `import type`, which
+ * TypeScript erases, so there is no runtime coupling between the Vercel bundle
+ * and the app bundle.
+ *
+ * The client deliberately sends only text plus candidate labels. The Jev
+ * question wording (`instructions`/`criteria`) is owned by the server - if the
+ * client could supply it, the endpoint would be an open relay for arbitrary
+ * prompts billed to this project's TypeSafe key. See ADR 0011.
+ */
+export interface ClassifyCandidate {
+  /** Real `Category.id`, used directly as the Jev option key so the answer round-trips. */
+  id: string;
+  /** `Category.name`, which is the only semantic signal the model receives. */
+  name: string;
+}
+
+export interface ClassifyRequest {
+  text: string;
+  categories: ClassifyCandidate[];
+}
+
+/**
+ * `categoryId` is `null` when Jev picked the `other` escape option, meaning
+ * "none of these categories fit" - which the client renders as no suggestion
+ * at all rather than as a low-confidence guess.
+ */
+export interface ClassifyResponse {
+  categoryId: string | null;
+  categoryConfidence: number;
+  /** Jev's independent read of the text, *not* derived from the chosen category. */
+  detectedType: 'INCOME' | 'EXPENSE';
+  typeConfidence: number;
+}

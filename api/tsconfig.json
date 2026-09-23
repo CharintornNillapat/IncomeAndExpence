@@ -1,0 +1,19 @@
+{
+  "//": "Node-typed island for the Vercel serverless functions. Kept separate from the root config so `types: [\"node\"]` does not leak Node globals (process, Buffer) into `src/`, where they would type-check but fail at runtime in the browser. `npm run lint` runs both configs.",
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "lib": ["ES2022"],
+    "types": ["node"],
+    "isolatedModules": true,
+    "moduleDetection": "force",
+    "skipLibCheck": true,
+    "strict": false,
+    "allowImportingTsExtensions": true,
+    "noEmit": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true
+  },
+  "include": ["**/*.ts"]
+}

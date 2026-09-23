@@ -402,3 +402,27 @@ Same S2 scenario as above (open Quick Add → fill amount/wallet/description →
 The pre-T34 figure (6) matches the original Phase-4 baseline's `Navbar` S2 row exactly (see the table above), which is a useful cross-check that this lighter probe measures the same thing the original harness did, not an artifact of a different methodology. Post-T34, `Navbar` is `React.memo`'d and receives no props that change during a write, so it never re-executes — the write's effect is now confined to `NavbarSyncBadge` and `NavbarBalanceAndAuth` (the two new subscribing sub-components), which are expected and intended to re-render, being a small fraction of what `Navbar` used to render as one unmemoized whole.
 
 **Reproduction:** `git stash push -- src/components/Navbar.tsx` to restore the pre-T34 file, add one line at the top of the function body incrementing a `window` counter, run a temporary Playwright spec that resets the counter after `page.goto('/')` and reads it after one `addQuickTransaction` call, then `git checkout -- src/components/Navbar.tsx && git stash pop` to restore and discard the probe.
+
+
+## Phase 39 (Jev classification) — bundle delta, measured against a rebuild of HEAD
+
+**Why this is a section and not a column.** The entry-chunk figure carried forward in `refactor-log.md` Phase 36 (158.93 kB raw / 44.81 kB gzip) no longer describes HEAD: Phases 37–38 and the presets feature added app code, and HEAD now builds at **161.53 kB / 45.37 kB**. Differencing this phase against the documented number would have invented a +2.60 kB regression that this phase did not cause. So the baseline was re-measured directly instead.
+
+**Method.** `git stash push -u` the entire phase → `npm run clean && npm run build` → record → `git stash pop` → rebuild. Same machine, same Node (v24.19.0), same `node_modules`, clean tree both times, no dev server running.
+
+| Chunk | HEAD (stashed) | Phase 39 | Delta |
+|---|---|---|---|
+| entry `index-*.js` | 161.53 kB / 45.37 kB gzip | **161.53 kB / 45.37 kB gzip** | **0 / 0** |
+| `TransactionForm-*.js` (lazy) | 13.07 kB / 3.90 kB gzip | 17.65 kB / 5.53 kB gzip | +4.58 kB / +1.63 kB |
+| `vendor-math-*.js` | 375.73 kB / 110.72 kB gzip | 375.73 kB / 110.72 kB gzip | 0 / 0 |
+| vendor chunk count | 5 | 5 | 0 |
+| build time | 5.23 s | 17.75 s | *(cold cache after `clean`; not comparable)* |
+
+**Findings**
+
+- **The entry chunk is byte-identical.** Every byte of new client code (`jevClassifier.ts`, `useDescriptionClassifier.ts`, `CategorySuggestionChip.tsx`, the `TransactionForm` wiring) landed in the lazy `TransactionForm` chunk, confirmed by `grep -l '/api/classify' dist/assets/*.js` returning only `TransactionForm-*.js`. This is ADR `0010`'s deferral doing its job: `TransactionForm` is reachable only through `QuickAddModal`/`TransactionsView`/`DebtsView`, all behind `React.lazy`.
+- **`api/classify.ts` contributes zero bytes to the client**, because it never enters the Vite module graph — it is built by Vercel as a serverless function. Its only link to `src/` is an `import type`, which TypeScript erases.
+- **No new vendor chunk and no new dependency.** `grep -rl 'typesafe-ai' dist/` returns nothing; `vite.config.ts`'s `manualChunks` was not touched.
+- **The entry chunk references `vendor-math-*.js` in both builds.** This was checked specifically because it looks like an ADR `0010` regression and is not one — the identical reference exists in the stashed HEAD build. It is Vite's module-preload/dynamic-import map naming the chunk, not an eager import. ADR `0010`'s claim was always about requests at first paint, which this phase neither re-measured nor changed.
+
+**Test-suite size:** 129 → **144 runs** (43 → 48 tests, 14 → 15 spec files). Wall clock `npx playwright test --workers=4`: 3.4 m → 3.5 m.

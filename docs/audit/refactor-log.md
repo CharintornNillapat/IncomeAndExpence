@@ -4,6 +4,67 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
+## Phase 39 — Jev classification layered behind the keyword matcher: T79–T83 (2026-09-23, uncommitted)
+
+**Changed**
+- `docs/audit/decisions/0011-jev-classification-layering.md` (new) — written **before** T79 began, per `README.md:28`. Records the delete-vs-layer argument, the measured probe results, and the CORS finding that makes a proxy mandatory.
+- `api/classify.ts` (new) — Vercel serverless proxy. Holds `TYPESAFE_API_KEY`, owns the Jev question wording, validates and rejects any client-supplied `instructions`/`criteria`/`model`/`state`/`questions`, caps `text` at 255 chars and `categories` at 60, 8s upstream timeout, returns **404** when unconfigured.
+- `api/tsconfig.json` (new) — Node-typed island. `package.json`'s `lint` is now `tsc --noEmit && tsc -p api/tsconfig.json`.
+- `src/types.ts` — `ClassifyCandidate`/`ClassifyRequest`/`ClassifyResponse`, imported `import type` by both the browser client and the function so the wire contract cannot drift.
+- `src/utils/jevClassifier.ts` (new) — never-throw `fetch` client, insertion-ordered LRU (cap 50) keyed by normalized text + candidate shape, session availability latch, confidence gate and the category/type coherence rule.
+- `src/hooks/useDescriptionClassifier.ts` (new) — 450ms debounce, abort of superseded requests, monotonic sequence guard, per-session dismissal set.
+- `src/components/transaction/CategorySuggestionChip.tsx` (new) — the mid-confidence accept affordance.
+- `src/components/TransactionForm.tsx` — `handleDescriptionChange` keeps its synchronous `matchSmartDescription` call verbatim and arms the classifier only on a miss; `userTouchedRef` stops a late answer overwriting a manual pick; preset apply and submit-success both reset it.
+- `tests/jev-classify.spec.ts` (new) — 5 tests, the suite's first `page.route()` usage.
+- `.env.example` — documents `TYPESAFE_API_KEY` and why it carries no `VITE_` prefix.
+
+**Why**
+`smartMatcher.ts` is a case-insensitive substring scan over four seeded English keywords with no score, no word boundaries and no semantic understanding, so any description the user had not written a rule for landed uncategorized, and transaction type was never inferred from the text at all. Jev classifies Thai and English short notes with calibrated confidence — measured 1.00 on `ข้าวมันไก่`, `Shell gas station`, `Netflix` and `เงินเดือนเดือนกันยา`, and a correctly-uncertain 0.33 on the genuinely ambiguous `โอนเงินคืนแม่`.
+
+The matcher was deliberately **not** replaced. It is the offline story for an offline-first PWA, a rule hit is a network call not made, and a `KeywordRule` is the user's only way to overrule the model on their own ledger. See ADR `0011` for the full rejection of the delete option.
+
+**Verification**
+```
+npm run lint                     # tsc --noEmit && tsc -p api/tsconfig.json: clean, 0 errors
+npx playwright test --workers=4  # 144/144 passed, 0 retries, 3.5m
+npm run clean && npm run build   # built in 17.75s; 0 chunk-size warnings
+```
+
+**Bundle verification, beyond the standard gate**
+
+Measured against a rebuild of HEAD with the phase stashed, not against the figure in Phase 36's entry:
+
+| Chunk | HEAD | Phase 39 | Delta |
+|---|---|---|---|
+| entry `index-*.js` | 161.53 kB / 45.37 kB gzip | **161.53 kB / 45.37 kB gzip** | **0** |
+| `TransactionForm-*.js` (lazy) | 13.07 kB / 3.90 kB gzip | 17.65 kB / 5.53 kB gzip | +4.58 kB / +1.63 kB |
+| `vendor-math-*.js` | 375.73 kB / 110.72 kB gzip | unchanged | 0 |
+
+No new vendor chunk; `vite.config.ts` untouched; `grep -rl 'typesafe-ai' dist/` returns nothing. All new weight is behind the `React.lazy` boundaries ADR `0010` established.
+
+**Correctness notes**
+- **The endpoint's absence is the default, and every existing test proves it.** Playwright's `webServer` is `npm run dev` — the Vite dev server does not serve `api/` — so `/api/classify` 404s, the client latches off after one request, and categorization falls back to keyword rules. This was verified as its own gate (T81) *before* any UI landed: 129/129 pre-existing runs green with the client wired and the endpoint missing. No existing spec needed an edit.
+- **`classifyDescription` never throws.** `src/` still has no error boundary, so this is load-bearing, not stylistic: 404, 5xx, timeout, abort, malformed JSON and offline all resolve to `null`, which renders as no suggestion.
+- **A rule hit short-circuits before the debounce, the cache and the network,** and `tests/jev-classify.spec.ts` asserts the request count is exactly 1 across a rule-covered note followed by an uncovered one.
+- **The write path is untouched.** No Zod schema, no `addTransaction`, no `MutationResult`, no rollback and no idempotency behavior changed — Jev only pre-fills fields the user can still edit.
+- **`lockType` forms never classify,** so `DebtsView`'s repay modal issues no network call at all; the existing early return already covered this.
+
+**Surprises**
+- **The TypeSafe API rejects browser origins outright.** An `OPTIONS` preflight with `Origin: http://localhost:3000` returns `400 — Disallowed CORS origin`. The proxy was planned for key secrecy; it turned out to be mandatory for transport. A direct-from-browser dev mode is not available at any price.
+- **The documented entry-chunk baseline was stale.** `refactor-log.md` Phase 36 records 158.93 kB / 44.81 kB; HEAD actually builds at 161.53 kB / 45.37 kB after Phases 37–38 and the presets feature. Comparing against the doc would have manufactured a phantom +2.6 kB regression. Stashing and rebuilding is the only honest way to attribute a bundle delta.
+- **The first baseline run's 3 `presets.spec.ts` failures were self-inflicted.** Files were written to `src/` while the run was in flight and Vite HMR perturbed the app under test; the spec passed 6/6 in isolation immediately after. This suite runs against a live dev server, so the filesystem must stay quiet for the duration of a run.
+- **An auto-categorization removes the category `<select>` from the DOM.** Setting `autoMatchedCategory` flips `isCollapsed`, collapsing the manual block behind "Edit details" — long-standing behavior inherited from the rule matcher, but it invalidated the obvious spec assertions and forced them through the badge and the toggle instead.
+
+**Deliberately not done**
+- **`smartMatcher.ts`, `KeywordRule`, `keyword_rules`, the Smart Rules tab and `tests/keywords.spec.ts` were not touched.** Zero migrations. The case for deleting them is argued and rejected in ADR `0011`.
+- **CSV bulk import was not wired to the classifier.** `commitBulkImport` still drops unmatched category names to uncategorized (`FinanceContext.tsx:1963-1965`) and never consults rules. It is the strongest fit for batched judgments and is explicitly a later phase, deferred by the user so thresholds can be tuned on real data first.
+- **`@typesafe-ai/sdk` was not installed.** A single documented JSON contract does not justify a 209 kB Node dependency, and adding any dependency would have meant touching `manualChunks`.
+- **No spec asserts on bundle composition or on real network traffic.** Same reasoning Phase 36 recorded: the Playwright config targets the dev server, which does not code-split like the production build, so a committed version of the bundle check would need its own `vite preview` infrastructure this phase did not build.
+- **The proxy's own probe was not committed.** It runs the handler directly under `node --experimental-strip-types` and covers 14 cases including all five prompt-injection rejections, but it needs no fixture, duplicates no committed assertion, and the repo has no unit-test runner to host it. If Vitest is ever adopted (already logged in `constraints-to-promote.md`), this is the first thing that should move into it.
+- **No live end-to-end call was made against a deployed function.** `TYPESAFE_API_KEY` is not set in Vercel yet and the Vercel CLI is not installed locally, so `vercel dev` was not run. The upstream request shape was instead verified byte-for-byte against `jev ask --dry-run`, and the live API behavior against the CLI probes recorded in ADR `0011`. **A real deployment smoke test is still outstanding.**
+
+---
+
 ## Phase 38 — clear the deferred backlog + CI housekeeping: T18, T25 (2026-09-20, commit `9aa6732`)
 
 **Changed**

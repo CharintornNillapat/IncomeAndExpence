@@ -1,5 +1,5 @@
 import React, { useState, useId } from 'react';
-import { motion } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import { Sparkles, ArrowRight, SlidersHorizontal, AlertCircle } from 'lucide-react';
 import { InlineMathInput } from './InlineMathInput';
 import { Wallet, Category, TransactionType, Preset } from '../types';
@@ -7,6 +7,9 @@ import { useFinanceState, useFinanceActions } from '../context/FinanceContext';
 import { useSubmitHandler } from '../hooks/useSubmitHandler';
 import { useIdempotencyKey } from '../hooks/useIdempotencyKey';
 import { useTransientFlash } from '../hooks/useTransientFlash';
+import { useDescriptionClassifier } from '../hooks/useDescriptionClassifier';
+import { CategorySuggestionChip } from './transaction/CategorySuggestionChip';
+import type { JevSuggestion } from '../utils/jevClassifier';
 import { matchSmartDescription } from '../utils/smartMatcher';
 import { safeEvaluateMath } from '../utils/mathEvaluator';
 import { APP_CURRENCY_SYMBOL, formatCurrencyAmount } from '../utils/currency';
@@ -136,6 +139,9 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
       setDescription('');
       setAutoMatchedCategory(null);
       setShowManualOverrides(false);
+      // Both are declared below this closure; it only ever runs at submit time.
+      clearSuggestion();
+      userTouchedRef.current = { category: false, type: false };
       rotateIdempotencyKey();
       flashSubmitted(true);
     },
@@ -147,13 +153,52 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
     setIsAmountValid(valid);
   }, []);
 
-  // Smart Description Keyword Matcher
+  // Once the user picks a category or type by hand, a late-arriving
+  // classification must not overwrite it. Refs rather than state: every path
+  // that flips one of these already triggers its own re-render.
+  const userTouchedRef = React.useRef({ category: false, type: false });
+
+  /**
+   * Async half of the two-layer categorization (ADR 0011). The keyword matcher
+   * below stays the first and authoritative layer; this is armed only on a miss.
+   */
+  const {
+    suggestion,
+    classify,
+    clear: clearSuggestion,
+    dismiss: dismissSuggestion,
+  } = useDescriptionClassifier(categories);
+
+  const applySuggestion = React.useCallback(
+    (s: JevSuggestion, { force }: { force: boolean }) => {
+      if (!force && userTouchedRef.current.category) return;
+      setCategoryId(s.categoryId);
+      if (force || !userTouchedRef.current.type) {
+        setType(s.type);
+      }
+      setAutoMatchedCategory(s.categoryName);
+      clearSuggestion();
+    },
+    [clearSuggestion]
+  );
+
+  // A high-confidence answer fills the fields outright, matching what the
+  // keyword matcher has always done. Anything weaker renders a chip instead
+  // and waits to be tapped.
+  React.useEffect(() => {
+    if (suggestion && suggestion.strength === 'AUTO_FILL') {
+      applySuggestion(suggestion, { force: false });
+    }
+  }, [suggestion, applySuggestion]);
+
+  // Smart Description Keyword Matcher, then Jev on a miss
   const handleDescriptionChange = (text: string) => {
     setDescription(text);
     // A locked-type form (e.g. debt repayment) has no business letting the
     // matcher silently switch `type` out from under it, and auto-tagging a
     // category is irrelevant when the type - and thus the category - is
-    // already fixed by the caller.
+    // already fixed by the caller. The classifier is skipped for the same
+    // reason, which also means a repay modal never issues a network call.
     if (lockType) return;
     const match = matchSmartDescription(text, keywordRules, categories);
 
@@ -163,8 +208,12 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
         setType(match.type);
       }
       setAutoMatchedCategory(match.categoryName || null);
+      // A rule hit is authoritative and free: drop any pending or displayed
+      // suggestion and make no network call at all.
+      clearSuggestion();
     } else {
       setAutoMatchedCategory(null);
+      classify(text);
     }
   };
 
@@ -177,6 +226,10 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
     setDescription(preset.description);
     setAutoMatchedCategory(null);
     setShowManualOverrides(true);
+    // A template is an explicit user choice of category and type, so it counts
+    // as touching both - a classification racing in behind it must not win.
+    clearSuggestion();
+    userTouchedRef.current = { category: true, type: true };
     if (preset.categoryId && categories.some((c) => c.id === preset.categoryId)) {
       setCategoryId(preset.categoryId);
     }
@@ -303,6 +356,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
           value={type}
           onChange={(t) => {
             setType(t);
+            userTouchedRef.current.type = true;
             if (isAutoParsed) setShowManualOverrides(true);
           }}
           options={(['EXPENSE', 'INCOME', 'TRANSFER', 'DEBT_REPAYMENT'] as TransactionType[]).map((t) => ({
@@ -372,6 +426,24 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
             className="w-full text-sm rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 px-3.5 py-2.5 text-stone-900 dark:text-stone-100 placeholder:text-stone-400 dark:placeholder:text-stone-500 focus:outline-none focus:border-stone-800 dark:focus:border-stone-400 focus:ring-2 focus:ring-stone-200 dark:focus:ring-stone-700 transition-colors"
           />
         </div>
+
+        {/*
+          Mid-confidence classifications only. A high-confidence one has already
+          filled the fields and reports itself through the badge above, and
+          anything below the floor is silent. Non-blocking by construction:
+          the form stays usable and submittable while this sits here.
+        */}
+        <AnimatePresence>
+          {suggestion && suggestion.strength === 'SUGGEST' && (
+            <CategorySuggestionChip
+              key={suggestion.categoryId}
+              suggestion={suggestion}
+              idPrefix={formId}
+              onApply={() => applySuggestion(suggestion, { force: true })}
+              onDismiss={dismissSuggestion}
+            />
+          )}
+        </AnimatePresence>
       </div>
 
       {/* Smart Auto-Fill Notification & Manual Toggle */}
@@ -467,6 +539,9 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
                     onChange={(e) => {
                       setCategoryId(e.target.value);
                       setAutoMatchedCategory(null);
+                      // An explicit pick outranks the model from here on.
+                      userTouchedRef.current.category = true;
+                      dismissSuggestion();
                     }}
                     className="w-full text-sm rounded-xl border border-stone-200 dark:border-stone-700 px-3 py-2.5 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-none focus:border-stone-800 dark:focus:border-stone-400 focus:ring-2 focus:ring-stone-200 dark:focus:ring-stone-700 transition-colors"
                   >
