@@ -1018,6 +1018,37 @@ Approved explicitly by the user, planned and approved before any code was writte
 - **Suite arithmetic landed one over the projection** (8 planned, 9 written) because the latch fix earned its own guard. Recorded as measured, not as planned.
 - **No flakes.** Unlike Phase 44's `wallets.spec.ts` webkit flake at `--workers=4`, this phase's first full run was clean at 252/252. That flake remains watched rather than declared solved.
 
+## Phase 46 — Voice input for the omni note: T116–T121 (2026-09-24)
+
+Approved explicitly by the user, planned and approved before any code was written. Three questions were settled up front: interim results go **live into the note field**; dictation **appends** to existing text rather than replacing it; and the language comes from **`navigator.language` with a `th-TH` fallback**. Per `README.md:28`, ADR `0018` was written before T117 started and committed alone.
+
+| # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
+|---|---|---|---|---|---|---|---|---|---|---|
+| T116 | ADR `0018` — why the transcript reuses `handleDescriptionChange` instead of getting a pipeline; the measured three-browser support split; why detection needs `isSecureContext`; the per-error-code table and why `network` does not latch; append-not-replace and the missing undo | `docs/audit/decisions/0018-voice-note-entry.md` (new) | Med | Low | 1h | done | — | 4dec34b | docs only; committed alone | — |
+| T117 | `useSpeechRecognition` — two-condition support detection, single-utterance config, error taxonomy, unmount abort, minimal local types and no dependency | `src/hooks/useSpeechRecognition.ts` (new) | High | Med | 2.5h | done | T116 | fa9c875 | `npm run lint` clean both tsconfigs | — |
+| T118 | Mic button inside the note field, listening/error states, `aria-live` announcement, base-text capture, and the un-memoized transcript handler | `src/components/TransactionForm.tsx` | High | Med | 2h | done | T117 | 80fd5a4 | `npm run lint` clean | `TransactionForm` +3.34 kB; `vendor-icons` +0.37 kB |
+| T119 | 8 new tests with an `addInitScript` Web Speech stub — a new kind of test seam for this suite | `tests/voice-input.spec.ts` (new) | High | Low | 2.5h | done | T118 | 85063b9 | **276/276, 6.3 m**, first attempt, no flakes; **three** negative controls confirmed | Suite 252 → **276 runs**, 84 → 92 tests, 19 → **20** spec files |
+| T120 | Phase 46 refactor-log entry, ledger rows, bundle column, selector-contract additions, and the `CLAUDE.md` voice section | `docs/audit/refactor-log.md`, `docs/audit/task-ledger.md`, `docs/audit/baseline-metrics.md`, `docs/audit/test-selector-contract.md`, `CLAUDE.md` | Med | Low | 1h | done | T119 | PENDING_DOCS | docs only; `npm run lint` clean at HEAD | — |
+| T121 | Sha backfill, plus the CI and deploy result | `docs/audit/refactor-log.md`, `docs/audit/task-ledger.md` | Low | Low | 0.5h | done | T120 | (this row's own commit — a backfill cannot cite its own sha) | PENDING_CI | — |
+
+**CI and deploy:** PENDING_CI_LINE
+
+**Full gate:** `npm run lint` clean (both tsconfigs); `npx playwright test --workers=4` **276/276 passed, 6.3 m**; `npm run clean && npm run build` succeeded in 6.00 s, 0 chunk-size warnings. Entry chunk **164.29 kB raw in both builds**, measured by building `446aafb` and `main` in turn.
+
+**Design constraints carried from ADR `0018` (do not re-litigate):**
+- **The transcript goes through `handleDescriptionChange`.** Voice gets no pipeline of its own; that is what makes every downstream layer, including ADR `0013`'s amount latch, treat it identically to typing.
+- **Support detection is two conditions.** `isSecureContext` is what stops the button rendering-then-failing on a phone at `http://192.168.x.x:3000`, and Playwright cannot catch its absence.
+- **Dictation appends, never replaces.** This form has no undo and the mic sits inside the field it would wipe.
+- **`network` errors do not latch; permission errors do.** A dropped request must not kill the feature for a session.
+- **The transcript handler is not memoized.** It closes over `keywordRules`, which Phase 45's chip mutates mid-session.
+
+**Notes on execution:**
+- **The support matrix was measured, not assumed.** A throwaway probe across all three projects (chromium: both constructors; firefox and webkit: neither) is what justifies stubbing in every test rather than relying on native support. The probe was deleted before the first commit.
+- **Three negative controls**, one of which was instructive by failing to fail: bypassing `handleDescriptionChange` left the amount-latch test green, because a bypass seeds no amount at all. That test was re-controlled by removing the latch itself.
+- **The summed-JS row earned its place again.** The entry chunk was byte-identical, but `vendor-icons` — which `index.html` modulepreloads — grew by the `Mic` icon. Accounting for the full +3.71 kB is what surfaced it.
+- **The projection landed exactly** for the first time in three phases: 8 tests planned, 8 written, 92 tests / 276 runs as projected.
+- **No flakes.** Phase 44's `wallets.spec.ts` webkit flake at `--workers=4` has now not reproduced across two consecutive phases; still watched rather than closed.
+
 ## Deferred — none remaining
 
 Both items formerly in this table are now resolved; see Phase 38 above. **Zero audit tasks remain in `todo` or `deferred` status.** Phases 39 and 40 above track approved feature builds with their own rows.

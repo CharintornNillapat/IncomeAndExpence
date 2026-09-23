@@ -4,6 +4,40 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
+## Phase 46 — Voice input for the omni note: T116–T121 (2026-09-24, commits `4dec34b`…`PENDING_DOCS`)
+
+**Changed**
+- `docs/audit/decisions/0018-voice-note-entry.md` (new) — written before the code and committed alone, as Phase 45 established.
+- `src/hooks/useSpeechRecognition.ts` (new) — detection, configuration, the listening flag and an error taxonomy. Minimal local Web Speech interfaces; no dependency, not even a types package.
+- `src/components/TransactionForm.tsx` — a mic button inside the note field, listening and error states, base-text capture, and the transcript handler that routes through `handleDescriptionChange`.
+- `tests/voice-input.spec.ts` (new, 8) — every case installs or removes the API itself via `addInitScript`.
+- `CLAUDE.md` — a new "Voice input" section, two Do-NOT lines, and the suite counts.
+
+**Why**
+ADR `0013` made one string drive four layers — amount extraction, the keyword matcher, Jev, and ADR `0017`'s rule capture. That string has only ever been reachable by typing, on a Thai-Baht phone-first tracker whose expenses are recorded standing at the counter that produced them, one-handed, in Thai. The fastest entry path in the app was the most awkward one to physically reach.
+
+**Metric delta**
+Entry chunk **unchanged at 164.29 kB raw** for the second phase running. `TransactionForm-*.js` 24.51 → 27.85 kB (+3.34 kB). `vendor-icons` +0.37 kB — **and that one is on the critical path**, see the surprise below. CSS +0.56 kB raw. 33 chunks before and after. Suite 252 → **276 runs**. Full table in `baseline-metrics.md`.
+
+**Verification**
+`npm run lint` clean on both tsconfigs. `npx playwright test --workers=4` — **276/276 passed, 6.3 m**, first attempt, no flakes. `npm run clean && npm run build` — 6.00 s, 0 chunk-size warnings. `grep -l 'Microphone access is blocked' dist/assets/*.js` resolves **only** to `TransactionForm-*.js`.
+
+**Surprises**
+
+- **"Entry chunk unchanged" was true and still not the whole story.** The entry chunk did not move a byte, but the `Mic` icon landed in `vendor-icons`, which `dist/index.html` **modulepreloads**. So +0.37 kB really is on the initial load. This is the second time the single-chunk reading would have misled — Phase 43 was the first, and the reason the **all JS, summed** row exists. It was caught by diffing every chunk to account for the summed delta rather than accepting the two rows that were expected to move.
+- **The three test browsers genuinely disagree about the API.** Measured on localhost before writing the spec: chromium ships both constructors, firefox and webkit ship neither. So the mic button renders in chromium and is absent in the other two across every untouched spec — a real three-way DOM split in the suite. Nothing asserts on it, and it is itself the evidence the feature is inert where it is not wanted.
+- **The first negative control proved the wrong thing, and that was worth noticing.** Bypassing `handleDescriptionChange` correctly broke the "drives the form like typing" test — but the amount-latch test still *passed* under it, because a bypass seeds no amount at all and the typed value survives trivially. That test was then controlled separately by removing the latch itself, where it fails properly. A negative control that passes is not always a good sign.
+- **A `useCallback([])` on the transcript handler would have been a real bug.** `handleDescriptionChange` closes over `keywordRules`, which ADR `0017`'s rule chip mutates mid-session, so memoizing the caller would have matched transcripts against a stale rule set. Caught while writing it, not by a test — no test would have shown it, since a spec rarely saves a rule and then dictates.
+
+**Deliberately not done**
+
+- **No language toggle.** `navigator.language` with a `th-TH` fallback adapts without UI or persisted state. The unserved case is a bilingual user on a fixed-locale device, which needs its own decision about where the preference lives.
+- **No continuous dictation.** One tap, one utterance. Continuous mode needs an explicit stop affordance and a story for a session still live when the modal closes.
+- **No microphone on any field but the note.** The note already yields amount, category and type, so a mic on the amount input is a second path to a value the first already produces.
+- **No test of the `isSecureContext` guard.** Playwright always runs on localhost, which is a secure context, so the branch that matters most on a real phone is unreachable from the suite. Stated rather than papered over, as in Phases 44 and 45.
+
+---
+
 ## Phase 45 — One-click smart rule capture from the transaction form: T110–T115 (2026-09-24, commits `1d3d29f`…`5901d2d`)
 
 **Changed**

@@ -167,6 +167,16 @@ Two layers, in a fixed order. Do not reverse them and do not collapse them into 
 - **Nothing in the submit path reads or waits on any of it.** The chip is a sibling of the category field, not a step in the write — saving, dismissing or ignoring it cannot affect whether or when a transaction is recorded. Do not make the rule write a precondition of the transaction write.
 - **A post-submit prompt is not available here.** All three consumers close their modal on a successful write, which is also why `TransactionForm`'s `✓ Transaction successfully logged!` line is effectively dead. Do not add post-submit UI to this form without changing that first.
 
+## Voice input: the transcript is typing
+`TransactionForm` renders a mic button inside the note field; its transcript goes through `handleDescriptionChange` — the same function `onChange` calls (ADR `0018`).
+- **Voice has no pipeline of its own, and must not get one.** Amount extraction, the keyword matcher, Jev's arming, the auto-categorized badge and ADR `0017`'s rule chip all work because none of them can tell a spoken note from a typed one. A voice-specific path would re-implement ADR `0011`'s ordering and ADR `0013`'s latch in a second place, where they would drift.
+- **That includes the manual-amount latch.** A transcript ending in digits cannot overwrite an amount the user typed by hand, because `userTouchedRef.current.amount` is checked inside that same function. Pinned by its own test with its own negative control.
+- **Support detection is two conditions**: a constructor **and** `window.isSecureContext`. `npm run dev --host=0.0.0.0` invites the app onto a phone at `http://192.168.x.x:3000`, where the constructor exists but recognition cannot run — a constructor-only check renders a button that fails on tap, on exactly the device this is for. Playwright cannot catch it; it always runs on localhost.
+- **Dictation appends to whatever was in the note, never replaces it.** This form has no undo and the mic sits inside the field it would wipe.
+- **The transcript handler is deliberately not memoized.** `handleDescriptionChange` closes over `keywordRules`, which the rule chip mutates mid-session, so a `useCallback([])` would match transcripts against a stale rule set. The hook mirrors the callback into a ref, so a fresh identity each render is free.
+- **A blocked microphone disables the button with a reason; it does not hide it.** A button that vanishes the instant it is tapped is worse than one that explains itself. `network` errors deliberately do **not** latch — same reasoning as `jevClassifier`'s.
+- **The three test browsers disagree**: chromium ships the API, firefox and webkit do not. Every voice test installs or removes it via `addInitScript` before `goto` and relies on native support for nothing. That is an init script, not `page.route`, so `jev-classify.spec.ts` remains the only spec intercepting requests.
+
 ## Validation & the MutationResult pattern
 All write paths validate with Zod (`src/utils/zodSchemas.ts`) **before** mutating state or hitting the network:
 
@@ -199,8 +209,8 @@ Without it, `FinanceContext` falls back to the legacy non-atomic path (three sep
 
 ## Testing
 - **Framework**: Playwright with Chromium, Firefox, and WebKit projects.
-- **Suite size**: 84 tests across 19 spec files, run on all three browsers = **252 test runs**. All must pass.
-- **Location**: `tests/*.spec.ts` (`transaction`, `wallets`, `diary`, `theme`, `wallet-forms`, `debts`, `soft-delete`, `keywords`, `categories`, `csv`, `auth`, `date-boundary`, `storage-persistence`, `presets`, `jev-classify`, `express-input`, `transfer-preview`, `debt-repayment`, `smart-rules`), with shared helpers in `tests/helpers.ts`.
+- **Suite size**: 92 tests across 20 spec files, run on all three browsers = **276 test runs**. All must pass.
+- **Location**: `tests/*.spec.ts` (`transaction`, `wallets`, `diary`, `theme`, `wallet-forms`, `debts`, `soft-delete`, `keywords`, `categories`, `csv`, `auth`, `date-boundary`, `storage-persistence`, `presets`, `jev-classify`, `express-input`, `transfer-preview`, `debt-repayment`, `smart-rules`, `voice-input`), with shared helpers in `tests/helpers.ts`.
 - **Never edit files while a run is in flight.** `playwright.config.ts`'s `webServer` is `npm run dev` — a live Vite dev server — so writing to `src/` mid-run HMRs the app under test and produces failures that do not reproduce in isolation. This cost a wasted baseline in Phase 39.
 - **Network mocking**: `tests/jev-classify.spec.ts` is the only spec that intercepts requests (`page.route('**/api/classify')`). Every response is fulfilled locally, so the suite spends no TypeSafe credits and needs no API key, on CI or locally.
 - **Use the helpers**: `gotoTab(page, tabId)` waits for the tab to become active *and* for the `React.lazy` view chunk to resolve (`#view-loading-fallback` detaching). `addQuickTransaction(page, description)` seeds a transaction — a fresh context has wallets and debts but **no transactions**, so any assertion about filtering is vacuous without it.
@@ -245,6 +255,8 @@ Refer to `.env.example`:
 - Do NOT give the debt payoff preview its own rounding, and do NOT let a debt repayment exceed the remaining balance at any layer — see ADR `0016`.
 - Do NOT let the smart-rule chip write a rule without an explicit tap, and do NOT relax its "no existing rule matches" condition while `addKeywordRule` has no dedupe — see ADR `0017`.
 - Do NOT make a rule write a precondition of a transaction write; the chip is a sibling of the submit path, not a step in it.
+- Do NOT give voice input a pipeline of its own; a transcript goes through `handleDescriptionChange` so every layer treats it as typing — see ADR `0018`.
+- Do NOT feature-detect `SpeechRecognition` without also checking `window.isSecureContext`, and do NOT let dictation replace text already in the note.
 - Do NOT delete or bypass `smartMatcher.ts` / `keyword_rules` in favour of Jev — it is the offline layer and the user's override channel. See ADR `0011`.
 - Do NOT let `classifyDescription()` throw, and do NOT give the classifier a code path that can reject.
 - Do NOT accept Jev question wording (`instructions`/`criteria`/`model`/`state`/`questions`) from the client in `api/classify.ts`.

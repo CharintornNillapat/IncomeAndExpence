@@ -578,3 +578,30 @@ Same method as Phases 43 and 44: the phase was already committed, so this built 
 **Test-suite size:** 225 → **252 runs** (75 → 84 tests, 18 → **19** spec files — 9 added, none inverted or removed). Wall clock `npx playwright test --workers=4`: 5.2 m → 5.7 m.
 
 **Stability note:** the first full run passed 252/252 with no retries. Phase 44's `wallets.spec.ts` webkit flake at `--workers=4` did not reproduce here; it stays on the watch list rather than being declared resolved on one clean run.
+
+## Phase 46 (voice input for the omni note) — bundle delta, measured against a rebuild of HEAD
+
+Same method as Phases 43–45: built `446aafb` (the pre-phase HEAD) and `main` in turn — `checkout` → `npm run clean && npm run build` → record → `checkout` → rebuild. Same machine, same `node_modules`, clean tree both times, no dev server running. The HEAD column reproduced Phase 45's recorded figures exactly, which is the check that the method has not drifted.
+
+| Chunk | HEAD (`446aafb`) | Phase 46 | Delta |
+|---|---|---|---|
+| entry `index-*.js` | 164.29 kB / 46.33 kB gzip | **164.29 kB / 46.32 kB gzip** | **0 / -0.01 kB** |
+| `TransactionForm-*.js` (lazy) | 24.51 kB / 7.31 kB gzip | 27.85 kB / 8.44 kB gzip | +3.34 kB / +1.13 kB |
+| `vendor-icons-*.js` (**modulepreloaded**) | 29.79 kB | 30.16 kB | **+0.37 kB** |
+| `index-*.css` | 77.92 kB / 12.00 kB gzip | 78.48 kB / 12.09 kB gzip | +0.56 kB / +0.09 kB |
+| `vendor-math-*.js` | 375.73 kB / 110.72 kB gzip | 375.73 kB / 110.72 kB gzip | 0 / 0 |
+| **all JS, summed** | 1333.13 kB / 391.39 kB gzip | 1336.84 kB / 392.57 kB gzip | +3.71 kB / +1.18 kB |
+| chunk count | 33 | 33 | 0 |
+| vendor chunk count | 5 | 5 | 0 |
+| build time | 6.51 s | 6.00 s | both cold after `clean` |
+
+**Findings**
+
+- **The entry chunk did not move, and that is still not the same as "no critical-path cost."** The `Mic` icon went into `vendor-icons`, and `dist/index.html` carries `<link rel="modulepreload" href="/assets/vendor-icons-*.js">` — so its +0.37 kB is on the initial load. This is the second time reading only the rows expected to move would have produced a wrong claim (Phase 43 was the first, and the reason the summed row exists). It was caught by diffing **every** chunk until the +3.71 kB summed delta was fully accounted for: +3.34 in `TransactionForm`, +0.37 in `vendor-icons`, nothing anywhere else.
+- **The feature itself is entirely lazy.** `grep -l 'Microphone access is blocked' dist/assets/*.js` resolves **only** to `TransactionForm-*.js`. The hook has one importer and Rollup folded it into that importer's chunk — 33 chunks before and after, so unlike Phase 43 nothing re-partitioned.
+- **CSS moved for the first time in three phases** (+0.56 kB raw, +0.09 gzip). Phases 44 and 45 were byte-identical because they reused existing shells; this one introduces genuinely new shapes — an absolutely-positioned in-field button, the rose listening palette, `animate-pulse`, and the disabled-button states. The increase is the honest cost of a control that did not previously exist anywhere in the form.
+- **No new dependency.** `@types/dom-speech-recognition` was deliberately not installed; the hook declares the six members it touches. `manualChunks` unmodified and ADR `0010`'s `vendor-math` deferral (110.72 kB gzip) intact.
+
+**Test-suite size:** 252 → **276 runs** (84 → 92 tests, 19 → **20** spec files — 8 added, none removed or inverted). Wall clock `npx playwright test --workers=4`: 5.7 m → 6.3 m.
+
+**Stability note:** first full run clean at 276/276 with no retries. Phase 44's `wallets.spec.ts` webkit flake has now not reproduced across two consecutive phases; it stays on the watch list rather than being closed on that basis.

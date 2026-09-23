@@ -91,6 +91,18 @@ Nothing was removed in this phase. `#repay-amount-math`, `#repay-wallet-select`,
 
 **One meaning did shift, invisibly to any selector.** `select[id$="-category"]`'s `onChange` and `applySuggestion` now both latch `userTouchedRef.current.category`, so a spec that applies a mid-confidence suggestion and then expects a later high-confidence answer to overwrite the category would fail. None did — `jev-classify.spec.ts` gained a test asserting the opposite, which is the new contract.
 
+## Added in Phase 46 (ADR `0018`, voice input)
+
+| Selector | Notes | File |
+|---|---|---|
+| `[id$="-voice-btn"]` | The mic button. **Renders only where the Speech API is usable**, which includes `window.isSecureContext` — so a spec that does not install the stub sees it in chromium and not in firefox or webkit. Any assertion on it must install or remove the API first. | `src/components/TransactionForm.tsx` |
+| `[data-testid="tx-voice-listening"]` | The listening state, inside an `aria-live="polite"` region. | same |
+| `[data-testid="tx-voice-error"]` | The error message, including the disabling permission cases. | same |
+
+**A new kind of test seam.** `voice-input.spec.ts` installs a fake `SpeechRecognition` via `page.addInitScript` and drives it through a `window.__speech` handle. This is **not** a `page.route` interception, so the rule that `jev-classify.spec.ts` is the only spec intercepting requests is intact. Real recognition is untestable — microphone, vendor network round-trip, audio a test cannot produce — so stubbing is the only option rather than a convenience.
+
+**Nothing was renamed or removed.** `input[id$="-desc"]` keeps its name and meaning; the mic is a sibling added inside the field's existing `relative` wrapper. The input's right padding is now conditional on the button rendering, which is visual only and nothing asserts on it.
+
 ## Known remaining fragile selectors (not yet hardened; addressed in later phases per the roadmap)
 
 - `transaction.spec.ts:55` — `^Income$` button text (Phase 27, SegmentedControl must preserve option labels exactly).
