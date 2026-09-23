@@ -10,9 +10,24 @@ export interface InlineMathInputProps {
   placeholder?: string;
   currencyPrefix?: string;
   defaultValue?: string;
+  /**
+   * Imperative re-seed. Bumping `key` pushes `value` into the field without
+   * remounting the component, which is what lets a caller drive this field
+   * from another one (the express note parser) on every keystroke. `key` is
+   * compared, not `value`, so re-seeding the same text twice is a no-op.
+   */
+  seed?: { key: number; value: string };
   disabled?: boolean;
   required?: boolean;
   onAmountEvaluated: (amount: number | null, rawExpression: string, isValid: boolean) => void;
+  /**
+   * Fired on any *human* interaction with this field - typing, a quick-amount
+   * chip, an operator button, applying a computed result - and never by a
+   * `seed` push. Lets a caller latch "the user has taken the amount over" and
+   * stop overwriting it. Kept separate from `onAmountEvaluated` so the
+   * existing callback's signature stays stable for `WalletTransferForm`.
+   */
+  onUserEdit?: () => void;
 }
 
 export const InlineMathInput: React.FC<InlineMathInputProps> = ({
@@ -21,9 +36,11 @@ export const InlineMathInput: React.FC<InlineMathInputProps> = ({
   placeholder = 'e.g. 500+500 or 1200*0.8',
   currencyPrefix = APP_CURRENCY_SYMBOL,
   defaultValue = '',
+  seed,
   disabled = false,
   required = false,
   onAmountEvaluated,
+  onUserEdit,
 }) => {
   const generatedId = useId();
   const inputId = id || generatedId;
@@ -36,9 +53,17 @@ export const InlineMathInput: React.FC<InlineMathInputProps> = ({
   const [isFocused, setIsFocused] = useState<boolean>(false);
 
   const onAmountEvaluatedRef = React.useRef(onAmountEvaluated);
+  const onUserEditRef = React.useRef(onUserEdit);
   useEffect(() => {
     onAmountEvaluatedRef.current = onAmountEvaluated;
+    onUserEditRef.current = onUserEdit;
   });
+
+  // Marks the field as user-owned. Every human entry point funnels through
+  // here; the `seed` effect below deliberately does not.
+  const notifyUserEdit = () => {
+    onUserEditRef.current?.();
+  };
 
   // Shared evaluation body so both direct typing and the quick-amount chips
   // go through identical math evaluation rules.
@@ -72,7 +97,12 @@ export const InlineMathInput: React.FC<InlineMathInputProps> = ({
     } else {
       setEvaluatedAmount(null);
       setFormattedResult('');
-      if (val.trim().length > 1 || !/^[0-9.]+$/.test(val)) {
+      // A trailing operator or open paren is an expected intermediate state -
+      // mid-way through typing "120 + 30", or the instant an operator chip is
+      // tapped. Report it to the parent as not-yet-valid so the submit button
+      // stays disabled, but do not shout an error about it.
+      const isIncomplete = /[+\-*/%^(]\s*$/.test(val);
+      if (!isIncomplete && (val.trim().length > 1 || !/^[0-9.]+$/.test(val))) {
         setErrorMessage(evalResult.error || 'Invalid expression');
       } else {
         setErrorMessage(null);
@@ -84,6 +114,7 @@ export const InlineMathInput: React.FC<InlineMathInputProps> = ({
   // Synchronous change handler to prevent race conditions during testing / rapid form submission
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
+    notifyUserEdit();
     setRawInput(val);
     evaluateAndNotify(val);
   };
@@ -101,22 +132,41 @@ export const InlineMathInput: React.FC<InlineMathInputProps> = ({
     }
   }, [defaultValue]);
 
+  // Caller-driven re-seed. Keyed on `seed.key` rather than `seed.value` so a
+  // caller can deliberately re-push the same text, and initialized to the
+  // mount-time key so the first render is never treated as a seed (that would
+  // clobber `defaultValue`).
+  const lastSeedKeyRef = React.useRef<number | undefined>(seed?.key);
+  useEffect(() => {
+    if (!seed || seed.key === lastSeedKeyRef.current) return;
+    lastSeedKeyRef.current = seed.key;
+    setRawInput(seed.value);
+    evaluateAndNotify(seed.value);
+    // `evaluateAndNotify` reads no state - it only calls setters and a ref'd
+    // callback - so re-running this on its identity would be pure churn.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [seed?.key]);
+
+  // Each of the three below replaces the field's contents, so each must
+  // re-evaluate: leaving the parent's `amount`/`isAmountValid` stale here is
+  // what used to leave the submit button disabled after tapping an operator.
   const handleApplyResult = () => {
     if (evaluatedAmount !== null && hasCalculation) {
-      setRawInput(evaluatedAmount.toString());
+      const next = evaluatedAmount.toString();
+      notifyUserEdit();
+      setRawInput(next);
+      evaluateAndNotify(next);
     }
   };
 
   const handleQuickAdd = (operator: string) => {
-    setRawInput((prev) => {
-      const trimmed = prev.trim();
-      if (!trimmed) return '';
-      // Avoid duplicate consecutive operator characters
-      if (/[+\-*/]$/.test(trimmed)) {
-        return trimmed.slice(0, -1) + operator;
-      }
-      return trimmed + operator;
-    });
+    const trimmed = rawInput.trim();
+    if (!trimmed) return;
+    // Avoid duplicate consecutive operator characters
+    const next = /[+\-*/]$/.test(trimmed) ? trimmed.slice(0, -1) + operator : trimmed + operator;
+    notifyUserEdit();
+    setRawInput(next);
+    evaluateAndNotify(next);
   };
 
   // Rapid expense recording: chip appends the amount, chaining with "+" onto
@@ -128,6 +178,7 @@ export const InlineMathInput: React.FC<InlineMathInputProps> = ({
       : /[+\-*/]$/.test(trimmed)
       ? trimmed + amount.toString()
       : `${trimmed}+${amount.toString()}`;
+    notifyUserEdit();
     setRawInput(next);
     evaluateAndNotify(next);
   };
@@ -241,9 +292,11 @@ export const InlineMathInput: React.FC<InlineMathInputProps> = ({
           )}
         </div>
 
-        {/* Quick-amount chips: accelerate rapid expense recording on mobile/compact contexts */}
+        {/* Quick-amount chips: accelerate rapid expense recording. Visible at every
+            breakpoint since the express note flow made this field the place you
+            land after the amount is pre-filled, not just a mobile shortcut. */}
         {!disabled && (
-          <div className="flex sm:hidden items-center gap-1.5 px-1">
+          <div className="flex flex-wrap items-center gap-1.5 px-1">
             <span className="text-[11px] text-stone-400 dark:text-stone-500 font-medium mr-1">Quick amount:</span>
             {[100, 500, 1000].map((amount) => (
               <button
