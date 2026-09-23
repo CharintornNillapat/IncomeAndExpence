@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 44 — Debt repayment integrity: the ledger stops losing money: T104–T109 (2026-09-23, uncommitted)
+## Phase 44 — Debt repayment integrity: the ledger stops losing money: T104–T109 (2026-09-23, commits `d9ca5e8`…`4c2ba98`)
 
 **Changed**
 - `docs/audit/decisions/0016-debt-repayment-integrity.md` (new) — written **before** the code, per `README.md:28`. **Amends ADR `0015`**, which recorded the overpayment asymmetry and deliberately left it unfixed.
