@@ -36,6 +36,9 @@ export const TransferFundsModal: React.FC<TransferFundsModalProps> = ({
       onClose={onClose}
       title="Transfer Funds"
       bodyClassName="space-y-4 sm:space-y-5"
+      // Wider than Modal's `max-w-md` default: the source -> destination layout
+      // (ADR `0014`) needs room for two wallet panels side by side on desktop.
+      maxWidthClassName="max-w-lg"
     >
       <WalletTransferForm
         wallets={wallets}
@@ -49,6 +52,8 @@ export const TransferFundsModal: React.FC<TransferFundsModalProps> = ({
           amount: 'transfer-amount-math',
           note: 'transfer-note',
           submit: 'execute-transfer-btn',
+          swap: 'transfer-swap-btn',
+          transferAll: 'transfer-all-chip',
         }}
         onTransferred={() => {
           flashTransferStatus('Transfer completed successfully!', 1000, onClose);
