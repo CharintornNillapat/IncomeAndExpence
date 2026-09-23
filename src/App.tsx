@@ -177,6 +177,21 @@ const MainApp: React.FC = () => {
   );
   const handleConsumeTransactionsWalletFilter = useCallback(() => setTransactionsWalletFilter(undefined), []);
 
+  // TRANSFER and DEBT_REPAYMENT left TransactionForm's type toggle in ADR 0013,
+  // so the form links out to their dedicated flows instead. These are the only
+  // callbacks in the app that let a modal hand off to another surface; they
+  // follow handleOpenWalletTransactions above - close what you came from first,
+  // then open the destination.
+  const handleQuickAddTransfer = useCallback(() => {
+    setIsQuickAddOpen(false);
+    handleOpenTransfer();
+  }, [handleOpenTransfer]);
+  const handleQuickAddRepayDebt = useCallback(() => {
+    setIsQuickAddOpen(false);
+    handleTabChange('debts');
+  }, [handleTabChange]);
+  const handleNavigateToDebts = useCallback(() => handleTabChange('debts'), [handleTabChange]);
+
   // Touch swipe gesture hook for iOS/Android native app feel
   const swipeHandlers = useSwipeable({
     onSwipedLeft: handleNextTab,
@@ -203,6 +218,8 @@ const MainApp: React.FC = () => {
           <TransactionsView
             initialWalletFilter={transactionsWalletFilter}
             onConsumeInitialWalletFilter={handleConsumeTransactionsWalletFilter}
+            onOpenTransfer={handleOpenTransfer}
+            onNavigateToDebts={handleNavigateToDebts}
           />
         );
       case 'wallets':
@@ -288,7 +305,12 @@ const MainApp: React.FC = () => {
           latch, and never unmounted after - only `isOpen` toggles thereafter. */}
       {hasOpenedQuickAdd && (
         <Suspense fallback={null}>
-          <QuickAddModal isOpen={isQuickAddOpen} onClose={handleCloseQuickAdd} />
+          <QuickAddModal
+            isOpen={isQuickAddOpen}
+            onClose={handleCloseQuickAdd}
+            onRequestTransfer={handleQuickAddTransfer}
+            onRequestRepayDebt={handleQuickAddRepayDebt}
+          />
         </Suspense>
       )}
 

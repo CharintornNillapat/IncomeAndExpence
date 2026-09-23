@@ -37,11 +37,17 @@ interface TransactionsViewProps {
   initialWalletFilter?: string;
   /** Called once, right after mount, when `initialWalletFilter` was set - lets the caller clear its own state so a later, unrelated navigation to this tab does not inherit a stale filter. */
   onConsumeInitialWalletFilter?: () => void;
+  /** Opens the shell-level `TransferFundsModal` (ADR 0013: TRANSFER is no longer a type in the entry form). */
+  onOpenTransfer?: () => void;
+  /** Switches to the Debts tab, where repayments live. */
+  onNavigateToDebts?: () => void;
 }
 
 export const TransactionsView: React.FC<TransactionsViewProps> = ({
   initialWalletFilter,
   onConsumeInitialWalletFilter,
+  onOpenTransfer,
+  onNavigateToDebts,
 }) => {
   const {
     wallets,
@@ -394,7 +400,7 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
         isOpen={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}
         title="Record New Transaction"
-        subtitle="Add an expense, income, transfer, or debt payment"
+        subtitle="Add an expense or income"
         titleId="add-transaction-modal-title"
         closeButtonId="close-add-transaction-modal-btn"
         maxWidthClassName="max-w-xl"
@@ -403,6 +409,20 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
           wallets={activeWalletsForForm}
           categories={activeCategoriesForForm}
           formTestId="tx-form-page"
+          onRequestTransfer={
+            onOpenTransfer &&
+            (() => {
+              setIsAddModalOpen(false);
+              onOpenTransfer();
+            })
+          }
+          onRequestRepayDebt={
+            onNavigateToDebts &&
+            (() => {
+              setIsAddModalOpen(false);
+              onNavigateToDebts();
+            })
+          }
           onSubmitTransaction={async (data) => {
             const res = await addTransaction({
               ...data,

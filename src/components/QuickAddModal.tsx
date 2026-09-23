@@ -8,6 +8,10 @@ import { formatCurrencyAmount } from '../utils/currency';
 interface QuickAddModalProps {
   isOpen: boolean;
   onClose: () => void;
+  /** Forwarded to `TransactionForm`'s shortcut row - closes this modal and opens `TransferFundsModal`. */
+  onRequestTransfer?: () => void;
+  /** Forwarded to `TransactionForm`'s shortcut row - closes this modal and switches to the Debts tab. */
+  onRequestRepayDebt?: () => void;
 }
 
 /**
@@ -19,7 +23,12 @@ interface QuickAddModalProps {
  * view, MobileBottomNav, AuthModal, ReloadPrompt, footer) regardless of
  * whether the modal was even open.
  */
-export const QuickAddModal: React.FC<QuickAddModalProps> = ({ isOpen, onClose }) => {
+export const QuickAddModal: React.FC<QuickAddModalProps> = ({
+  isOpen,
+  onClose,
+  onRequestTransfer,
+  onRequestRepayDebt,
+}) => {
   const { wallets, categories, presets } = useFinanceState();
   const { addTransaction, applyPreset, deletePreset } = useFinanceActions();
   const [presetError, setPresetError] = useState<string | null>(null);
@@ -77,7 +86,7 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({ isOpen, onClose })
       isOpen={isOpen}
       onClose={onClose}
       title="Quick Record Transaction"
-      subtitle="Add an expense, income, or wallet transfer instantly"
+      subtitle="Add an expense or income instantly"
       titleId="quick-record-modal-title"
       closeButtonId="close-quick-record-modal-btn"
       maxWidthClassName="max-w-xl"
@@ -124,6 +133,8 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({ isOpen, onClose })
         wallets={activeWallets}
         categories={activeCategories}
         formTestId="tx-form-quickadd"
+        onRequestTransfer={onRequestTransfer}
+        onRequestRepayDebt={onRequestRepayDebt}
         onSubmitTransaction={handleSubmitTransaction}
       />
     </Modal>
