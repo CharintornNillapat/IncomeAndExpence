@@ -4,6 +4,63 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
+## Phase 43 — Debt payoff chips and live repayment preview: T99–T103 (2026-09-23, uncommitted)
+
+**Changed**
+- `docs/audit/decisions/0015-debt-repayment-preview.md` (new) — written **before** the code, per `README.md:28`. Records why the block lives inside the shared engine rather than in `DebtsView`'s shell, why overpayment warns instead of blocking, why a chip sets the manual-amount latch itself, why the block stays mounted where Phase 42's preview vanishes, and the full-debit/floored-debt asymmetry the warning exists to describe.
+- `src/components/TransactionForm.tsx` — the only source file touched. Adds a `DEBT_REPAYMENT` payoff block under the amount input: three quick-payoff chips (`Pay in full`, `50%`, conditional `Minimum due`), the remaining balance struck through with its projection beside it, a `ProgressMeter` for the projected payoff percentage, and two mutually-exclusive notes (amber overpayment, emerald exact-settle). The long template-chip Tailwind string is promoted to a shared `QUICK_CHIP_CLASS` used by both chip rows.
+- `tests/debt-repayment.spec.ts` (new, 8 tests) — chip seeding, typed-amount projection, projection absent until valid, minimum-chip suppression, overpayment-warns-but-allows, and the chip latch.
+- `CLAUDE.md`, `docs/audit/test-selector-contract.md` — Phase 43 selector table; suite count 62/186 → **70/210**.
+
+**Why**
+The repay modal was the one money-moving surface Phases 41–42 had not reached, and it had become the least informative of the three. Because `DebtsView` passes `presetDebtId`, the `Debt Target` select is suppressed — and that select was the **only** control rendering `{d.name} ({formatCurrencyAmount(d.remainingAmount)} remaining)`. The debt's remaining balance therefore appeared nowhere in the modal at all. The user was asked to type a repayment against a number last seen on the card *behind* the modal, and the progress bar the whole view is built around only moved after the write committed. Settling meant reading the remainder off that card and re-typing it exactly; `minimumPayment` was stored on every debt and rendered on the card but was not actionable anywhere.
+
+**Verification**
+```
+npm run lint                     # tsc --noEmit && tsc -p api/tsconfig.json: clean, 0 errors
+npx playwright test --workers=4  # 210/210 passed, 4.8m
+npm run clean && npm run build   # built in 5.21s; 0 chunk-size warnings
+```
+`tests/debts.spec.ts` passed **unedited**, before and after — it is the regression guard for this phase and the reason the chips seed *through* `#repay-amount-math` rather than replacing it.
+
+**Bundle verification** (build at `fb56cf8`, `clean && build`, record; return to `main`, `clean && build`; same machine, Node v24.19.0, same `node_modules`, clean tree both times).
+
+| Chunk | HEAD (`fb56cf8`) | Phase 43 | Delta |
+|---|---|---|---|
+| entry `index-*.js` | 163.31 kB / 46.12 kB gzip | **163.35 kB / 46.14 kB gzip** | **+0.04 kB / +0.02 kB** |
+| `TransactionForm-*.js` (lazy) | 17.90 kB / 5.84 kB gzip | 21.30 kB / 6.63 kB gzip | +3.40 kB / +0.79 kB |
+| `ProgressMeter-*.js` (shared) | 1.16 kB / 0.64 kB gzip | 0.48 kB / 0.33 kB gzip | **−0.68 kB / −0.31 kB** |
+| `useDebts-*.js` (shared, **new**) | — | 0.73 kB / 0.42 kB gzip | +0.73 kB / +0.42 kB |
+| `DebtsView-*.js` (lazy) | 9.63 kB / 3.07 kB gzip | 9.66 kB / 3.08 kB gzip | +0.03 kB / +0.01 kB |
+| `index-*.css` | 77.82 kB / 11.98 kB gzip | 77.92 kB / 12.00 kB gzip | +0.10 kB / +0.02 kB |
+| `vendor-math-*.js` | 375.73 kB / 110.72 kB gzip | 375.73 kB / 110.72 kB gzip | 0 / 0 |
+| **all JS, summed** | 1325.35 kB / 389.52 kB gzip | 1328.98 kB / 390.52 kB gzip | +3.63 kB / +1.00 kB |
+| chunk count | 32 | 33 | **+1** |
+| vendor chunk count | 5 | 5 | 0 |
+| build time | 5.13 s | 5.21 s | — (both cold after `clean`) |
+
+`grep -l 'more than this debt needs' dist/assets/*.js` resolves **only** to `TransactionForm-*.js`. `manualChunks` untouched; ADR `0010`'s `vendor-math` deferral intact.
+
+**Correctness notes**
+- **The projection is `FinanceContext.tsx:1565` verbatim** — `Math.max(0, roundToCents(remaining - amount))` — sharing `roundToCents` from `src/utils/money.ts` rather than reimplementing it. That helper now has three consumers; a change to it is a change to the ledger *and* to two previews shown before consent.
+- **The percentage mirrors `DebtCardItem.tsx:21-22` with its `isSettled ? 0 : remaining` branch collapsed**, because `projectedRemaining` is already the post-payment figure and a settled debt is zero by construction.
+- **`ProgressMeter` clamps its own bar, but the printed number does not get that for free.** `displayPercent` carries its own `Math.min(100, Math.max(0, …))`: the Add Debt form permits `remaining > total`, which would otherwise print a negative percentage beside a correctly-pinned bar.
+- **A chip sets `userTouchedRef.current.amount` itself.** `InlineMathInput`'s `seed` effect deliberately never fires `onUserEdit`, so seeding alone would leave the field unlatched and let a note ending in digits overwrite it. Same treatment `handleApplyPreset` already gives an applied template, and pinned by its own test.
+- **Overpayment warns and never blocks.** The ledger floors the debt at zero (`:1565`) but debits the wallet the full amount (`:1537`), so the excess is real money against nothing. Blocking would remove a case the ledger permits and change the submit gating `debts.spec.ts` exercises.
+
+**Surprises**
+- **The entry chunk moved +0.04 kB, and none of it is this phase's code.** Importing `ProgressMeter` into `TransactionForm` gave that module a second lazy importer, and Rollup re-partitioned: `ProgressMeter-*.js` **shrank** 1.16 → 0.48 kB and `useDebts` split out into a new 0.73 kB chunk of its own. One more chunk means one more entry in the preload map the entry chunk carries. The plan predicted "entry chunk unchanged"; recorded as measured, with the cause identified rather than rounded away.
+- **A shared chunk got smaller as a result of adding an import to it.** Counterintuitive and worth remembering: chunk sizes here are a partitioning outcome, not a per-module cost, so reading one chunk's delta in isolation can mislead. The summed-JS row was added to this table for exactly that reason (+3.63 kB raw across everything, against +3.40 kB in `TransactionForm` alone).
+- **All 8 new tests passed on the first run.** Noted as worth scrutiny rather than reassurance: the expectations were derived from the Add Debt form's own defaults (5,000 total, 200 minimum) and the real arithmetic, so a wrong one would have failed loudly rather than passed vacuously.
+
+**Deliberately not done**
+- **No hard overpayment block.** It needs a decision about legitimate over-payment — interest and fees the `Debt` model does not carry — not a blanket `amount <= remainingAmount` gate. Option (a) in ADR `0015`.
+- **No fix for the full-debit/floored-debt asymmetry itself.** That is a ledger change with its own risk surface, and this phase's job was to make existing behaviour visible, not to alter it. The amber note is now the only place in the app that describes it; if the ledger is ever fixed, that note must be revised with it.
+- **No extraction of the payoff block into `src/components/transaction/`.** This is the fourth `DEBT_REPAYMENT` branch in `TransactionForm`; at a fifth, or at a second locked-type caller, it earns its own file.
+- **The block is not hidden when empty-handed**, unlike Phase 42's transfer preview. Hiding it without an amount would restore the exact problem this phase fixed.
+
+---
+
 ## Phase 42 — Visual transfer layout and live balance preview: T94–T98 (2026-09-23, commits `67a8bc7`…`ad5490e`)
 
 **Changed**

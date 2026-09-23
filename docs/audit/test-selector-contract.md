@@ -52,6 +52,21 @@ Removing `-dest-wallet` also resolved a latent hazard rather than creating one: 
 
 Nothing was removed in this phase. `#transfer-amount-math`, `#transfer-note`, `#execute-transfer-btn`, `#hero-transfer-funds-btn` and `#wallet-transfer-modal-btn` are unchanged, and `tests/wallet-forms.spec.ts` passed **unedited** — it is the regression guard for the transfer flow and should stay that way.
 
+## Added in Phase 43 (ADR `0015`, debt payoff preview)
+
+All ids below are derived from `idPrefix || formId`, so they render as `repay-*` only on `DebtsView`'s repay modal — the one caller that passes `idPrefix="repay"`. A `TransactionForm` mounted without an `idPrefix` gets `useId()`-derived equivalents.
+
+| Selector | Notes | File |
+|---|---|---|
+| `#repay-payoff-full`, `#repay-payoff-half` | Seed the amount field with the whole remainder / half of it. Rendered only while `remainingAmount > 0`. They push through `InlineMathInput`'s `seed` prop, so **the value lands in `#repay-amount-math` itself** — assert on that input's value, not on a separate display. | `src/components/TransactionForm.tsx` |
+| `#repay-payoff-minimum` | Seeds the debt's stored `minimumPayment`. **Absent from the DOM unless `0 < minimumPayment < remainingAmount`** — assert with `toHaveCount(0)`, not on visibility. | same |
+| `[data-testid="repay-payoff-preview"]` | The payoff block. **Present whenever a target debt resolves, with or without an amount** — deliberately unlike `transfer-panel-*`, because `presetDebtId` suppresses the Debt Target select and this is the only place the remaining balance appears in the modal. | same |
+| `[data-testid="repay-remaining-after"]` | The projected remaining balance. **Absent from the DOM entirely when there is no valid amount** — assert with `toHaveCount(0)`, not on empty text. | same |
+| `[data-testid="repay-overpayment-note"]` | The amber note shown when the payment exceeds the remainder. Its presence must never imply the submit button is disabled — the non-blocking behaviour is deliberate (ADR `0015`) and pinned by `debt-repayment.spec.ts`. | same |
+| `[data-testid="repay-settle-note"]` | The emerald note for an *exact* payoff. Mutually exclusive with the overpayment note, which already says the debt settles — assert `toHaveCount(0)` on this one when testing overpayment. | same |
+
+Nothing was removed in this phase. `#repay-amount-math`, `#repay-wallet-select`, `#confirm-repay-btn`, `#open-repay-modal-*` and the Add Debt form's ids are unchanged, and `tests/debts.spec.ts` passed **unedited** — it is the regression guard for the repayment lifecycle and should stay that way. The chips are additive: they seed the existing amount input rather than replacing it, which is what kept that spec's surface intact.
+
 ## Known remaining fragile selectors (not yet hardened; addressed in later phases per the roadmap)
 
 - `transaction.spec.ts:55` — `^Income$` button text (Phase 27, SegmentedControl must preserve option labels exactly).

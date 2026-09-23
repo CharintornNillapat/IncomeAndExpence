@@ -142,6 +142,16 @@ Two layers, in a fixed order. Do not reverse them and do not collapse them into 
 - **Overdraft warns, never blocks.** A `CREDIT_CARD` wallet legitimately carries a negative balance, so `canSubmit` deliberately ignores the projection. Pinned by `tests/transfer-preview.spec.ts`.
 - **Do not use `AnimatedCounter` for the projected balance.** It animates from 0 on mount and re-tweens on every keystroke, and ADR `0009` forbids giving its span React children.
 
+## Debt repayment: the payoff block mirrors the ledger
+`TransactionForm` renders a payoff block under the amount input whenever the type is `DEBT_REPAYMENT` and a target debt resolves (ADR `0015`). It holds the quick-payoff chips, the projected remaining balance, and a `ProgressMeter`.
+- **It shares `roundToCents` with the ledger**, exactly as the transfer preview does. `Math.max(0, roundToCents(remaining - amount))` is `addTransaction`'s own DEBT_REPAYMENT arithmetic; the percentage mirrors `DebtCardItem`'s with its `isSettled ? 0 : remaining` branch collapsed. Do not give the UI its own rounding.
+- **`ProgressMeter` clamps its own bar; the printed percentage does not get that for free.** The Add Debt form permits `remaining > total`, so the displayed number carries its own `Math.min(100, Math.max(0, …))`.
+- **Overpayment warns, never blocks.** The ledger floors the debt at zero but debits the wallet the **full** amount, so the excess is real money against nothing — the amber note is the only place in the app that says so. Blocking would remove a case the ledger permits (interest and fees the `Debt` model does not carry). Pinned by `tests/debt-repayment.spec.ts`; if that behaviour is ever fixed in the ledger, revise the note with it.
+- **The chips seed through `#repay-amount-math`, never replace it.** That id, `#repay-wallet-select` and `#confirm-repay-btn` are the entire surface of `tests/debts.spec.ts`, the repayment flow's regression guard — it passed unedited through this phase and should stay that way.
+- **A chip latches the amount field.** `InlineMathInput`'s `seed` effect deliberately never fires `onUserEdit`, so `seedPayoffAmount` sets `userTouchedRef.current.amount` itself. A chip is an explicit choice of amount and outranks the note parser from that point on — the same rule as typing in the field by hand (ADR `0013`).
+- **The block stays mounted with no amount typed**, deliberately unlike the transfer preview. `presetDebtId` suppresses the Debt Target select, so this is the only place the debt's remaining balance appears in the repay modal at all.
+- **Do not use `AnimatedCounter` for the projection** — same reasons as the transfer preview.
+
 ## Validation & the MutationResult pattern
 All write paths validate with Zod (`src/utils/zodSchemas.ts`) **before** mutating state or hitting the network:
 
@@ -174,8 +184,8 @@ Without it, `FinanceContext` falls back to the legacy non-atomic path (three sep
 
 ## Testing
 - **Framework**: Playwright with Chromium, Firefox, and WebKit projects.
-- **Suite size**: 62 tests across 17 spec files, run on all three browsers = **186 test runs**. All must pass.
-- **Location**: `tests/*.spec.ts` (`transaction`, `wallets`, `diary`, `theme`, `wallet-forms`, `debts`, `soft-delete`, `keywords`, `categories`, `csv`, `auth`, `date-boundary`, `storage-persistence`, `presets`, `jev-classify`, `express-input`, `transfer-preview`), with shared helpers in `tests/helpers.ts`.
+- **Suite size**: 70 tests across 18 spec files, run on all three browsers = **210 test runs**. All must pass.
+- **Location**: `tests/*.spec.ts` (`transaction`, `wallets`, `diary`, `theme`, `wallet-forms`, `debts`, `soft-delete`, `keywords`, `categories`, `csv`, `auth`, `date-boundary`, `storage-persistence`, `presets`, `jev-classify`, `express-input`, `transfer-preview`, `debt-repayment`), with shared helpers in `tests/helpers.ts`.
 - **Never edit files while a run is in flight.** `playwright.config.ts`'s `webServer` is `npm run dev` — a live Vite dev server — so writing to `src/` mid-run HMRs the app under test and produces failures that do not reproduce in isolation. This cost a wasted baseline in Phase 39.
 - **Network mocking**: `tests/jev-classify.spec.ts` is the only spec that intercepts requests (`page.route('**/api/classify')`). Every response is fulfilled locally, so the suite spends no TypeSafe credits and needs no API key, on CI or locally.
 - **Use the helpers**: `gotoTab(page, tabId)` waits for the tab to become active *and* for the `React.lazy` view chunk to resolve (`#view-loading-fallback` detaching). `addQuickTransaction(page, description)` seeds a transaction — a fresh context has wallets and debts but **no transactions**, so any assertion about filtering is vacuous without it.
@@ -217,6 +227,7 @@ Refer to `.env.example`:
 - Do NOT format money or dates inline; use `formatCurrencyAmount` and the `src/utils/date.ts` helpers.
 - Do NOT re-add a TRANSFER option to `TransactionForm`'s type toggle, or reintroduce an "Edit details" collapse that unmounts the category/wallet selects — see ADR `0013`.
 - Do NOT let the note parser overwrite an amount the user typed by hand; `userTouchedRef.current.amount` is what three spec files depend on.
+- Do NOT turn the debt overpayment warning into a submit gate, or give the payoff preview its own rounding — see ADR `0015`.
 - Do NOT delete or bypass `smartMatcher.ts` / `keyword_rules` in favour of Jev — it is the offline layer and the user's override channel. See ADR `0011`.
 - Do NOT let `classifyDescription()` throw, and do NOT give the classifier a code path that can reject.
 - Do NOT accept Jev question wording (`instructions`/`criteria`/`model`/`state`/`questions`) from the client in `api/classify.ts`.

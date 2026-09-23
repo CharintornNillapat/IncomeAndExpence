@@ -925,6 +925,33 @@ Approved explicitly by the user as Part 2 of the UX redesign roadmap, planned an
 - **The desync fix fell out of the feature.** Collision-swap was adopted because the swap button made it the natural gesture; that it also fixes `destWalletId` going stale was a second-order benefit, not the motivation.
 - **All 7 new tests passed on the first run.** Noted as worth scrutiny rather than reassurance: the expectations were derived from the seeded fixtures and the real arithmetic, so a wrong one would have failed loudly rather than passed vacuously.
 
+## Phase 43 — Debt payoff chips and live repayment preview: T99–T103 (2026-09-23)
+
+Approved explicitly by the user as Part 3 of the UX redesign roadmap, planned and approved before any code was written. Three design questions were settled up front: overpayment **warns rather than blocks**, the chips and preview live **inside `TransactionForm`** rather than in `DebtsView`'s modal shell, and the `Minimum due` chip is **hidden** when the minimum meets or exceeds the remainder. Per `README.md:28`, ADR `0015` was written **before** T99 started.
+
+| # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
+|---|---|---|---|---|---|---|---|---|---|---|
+| T99 | ADR `0015` — the decision record, written ahead of the code: placement inside the shared engine, warn-not-block on overpayment, the chip latch, the deliberate divergence from Phase 42's vanishing preview, and the full-debit/floored-debt asymmetry | `docs/audit/decisions/0015-debt-repayment-preview.md` (new) | Med | Low | 45m | done | — | — | docs only | — |
+| T100 | Three quick-payoff chips seeding through `InlineMathInput`'s `seed` prop; `seedPayoffAmount` sets `userTouchedRef.current.amount` itself since the seed effect never fires `onUserEdit`; `Minimum due` gated on `0 < minimumPayment < remainingAmount`; template-chip Tailwind string promoted to a shared `QUICK_CHIP_CLASS` | `src/components/TransactionForm.tsx` | Med | Low | 1.5h | done | T99 | b6e5ba8 | `npm run lint` clean | 3 new ids; `#repay-amount-math` unchanged |
+| T101 | Live payoff block: remaining balance struck through with its projection beside it, `ProgressMeter` at the projected percentage, amber overpayment note and emerald exact-settle note (mutually exclusive), all derived on render with no effect or debounce | `src/components/TransactionForm.tsx` | High | Med | 2h | done | T100 | 253748a | `npm run lint` clean; **`debts.spec.ts` 1/1 unedited** | `TransactionForm` chunk 17.90 → 21.30 kB, still lazy |
+| T102 | +8 Playwright tests: each chip's seeding, typed-amount projection, projection absent until valid and gone again when cleared, minimum-chip suppression, overpayment-warns-but-allows, and the chip latch against the note parser | `tests/debt-repayment.spec.ts` (new) | High | Low | 1.5h | done | T100, T101 | fd12f5b | **210/210, 4.8m** — all 186 pre-existing runs green | Suite 186 → **210 runs**, 62 → 70 tests, 17 → **18** spec files |
+| T103 | Phase 43 refactor-log entry, ledger rows, and bundle column; Phase 43 selector table; `CLAUDE.md` suite count + debt-preview constraints section | `docs/audit/refactor-log.md`, `docs/audit/task-ledger.md`, `docs/audit/baseline-metrics.md`, `docs/audit/test-selector-contract.md`, `CLAUDE.md` | Med | Low | 1h | done | T102 | — | docs only; `npm run lint` clean at HEAD | — |
+
+**Full gate:** `npm run lint` clean (both tsconfigs); `npx playwright test --workers=4` **210/210 passed, 4.8m**; `npm run clean && npm run build` succeeded in 5.21s, 0 chunk-size warnings. Entry chunk 163.31 → **163.35 kB raw / 46.12 → 46.14 kB gzip**, measured by building `fb56cf8` and `main` in turn rather than differencing a documented figure.
+
+**Design constraints carried from ADR `0015` (do not re-litigate):**
+- **Overpayment warns, never blocks.** The ledger floors the debt at zero but debits the wallet the full amount. Blocking removes a case the ledger permits and changes submit gating `debts.spec.ts` exercises. Pinned by a test.
+- **The chips seed through `#repay-amount-math`, never replace it.** That id, `#repay-wallet-select` and `#confirm-repay-btn` are `debts.spec.ts`'s entire surface, and it passed unedited.
+- **A chip latches the amount field.** `InlineMathInput`'s `seed` effect deliberately never fires `onUserEdit`, so the handler sets `userTouchedRef.current.amount` directly — ADR `0013`'s rule reached through a new entry point.
+- **The block stays mounted with no amount**, unlike Phase 42's transfer preview. `presetDebtId` suppresses the Debt Target select, so this is the only place the remaining balance appears in the modal.
+- **`AnimatedCounter` is wrong for this**, for the same reasons as ADR `0014`: animates from 0 on mount, re-tweens per keystroke, and ADR `0009` forbids children in its span.
+
+**Notes on execution:**
+- **The entry chunk moved +0.04 kB and none of it is this phase's code.** Giving `ProgressMeter` a second lazy importer made Rollup re-partition: that chunk *shrank* 1.16 → 0.48 kB and `useDebts` split into a new 0.73 kB chunk, so the entry carries one more preload entry. The plan predicted "unchanged"; recorded as measured with the cause identified.
+- **A shared chunk got smaller because an import was added to it.** Chunk sizes here are a partitioning outcome, not a per-module cost — which is why a summed-JS row was added to the bundle table (+3.63 kB across everything, against +3.40 kB in `TransactionForm` alone).
+- **The overpayment note is now the only place in the app describing the full-debit/floored-debt asymmetry.** If that behaviour is ever fixed in the ledger, the note must be revised or removed with it.
+- **All 8 new tests passed on the first run.** Worth scrutiny rather than reassurance: the expectations came from the Add Debt form's own defaults (5,000 total, 200 minimum) and the real arithmetic, so a wrong one would have failed loudly rather than passed vacuously.
+
 ## Deferred — none remaining
 
 Both items formerly in this table are now resolved; see Phase 38 above. **Zero audit tasks remain in `todo` or `deferred` status.** Phases 39 and 40 above track approved feature builds with their own rows.

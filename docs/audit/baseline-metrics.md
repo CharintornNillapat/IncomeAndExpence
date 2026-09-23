@@ -496,3 +496,31 @@ Same method as the Phase 39–41 sections: `git stash push -u` the whole phase, 
 - **`TransferFundsModal-*.js` nearly doubled** (4.10 → 7.76 kB raw) and that is the expected shape of this phase: a plain stacked form became a two-panel layout with a preview, a warning, a swap control and an empty state. It remains the fourth-smallest chunk in the build.
 
 **Test-suite size:** 165 → **186 runs** (55 → 62 tests, 16 → **17** spec files). Wall clock `npx playwright test --workers=4`: 4.5 m → 4.3 m.
+
+## Phase 43 (debt payoff preview) — bundle delta, measured against a rebuild of HEAD
+
+Same method as the Phase 39–42 sections, with one change: the phase was already committed when the measurement ran, so instead of `git stash push -u` this built `fb56cf8` (the pre-phase HEAD) and `main` in turn — `checkout` → `npm run clean && npm run build` → record → `checkout` → rebuild. Same machine, Node v24.19.0, same `node_modules`, clean tree both times, no dev server running.
+
+| Chunk | HEAD (`fb56cf8`) | Phase 43 | Delta |
+|---|---|---|---|
+| entry `index-*.js` | 163.31 kB / 46.12 kB gzip | **163.35 kB / 46.14 kB gzip** | **+0.04 kB / +0.02 kB** |
+| `TransactionForm-*.js` (lazy) | 17.90 kB / 5.84 kB gzip | 21.30 kB / 6.63 kB gzip | +3.40 kB / +0.79 kB |
+| `ProgressMeter-*.js` (shared) | 1.16 kB / 0.64 kB gzip | 0.48 kB / 0.33 kB gzip | **−0.68 kB / −0.31 kB** |
+| `useDebts-*.js` (shared, **new**) | — | 0.73 kB / 0.42 kB gzip | +0.73 kB / +0.42 kB |
+| `DebtsView-*.js` (lazy) | 9.63 kB / 3.07 kB gzip | 9.66 kB / 3.08 kB gzip | +0.03 kB / +0.01 kB |
+| `index-*.css` | 77.82 kB / 11.98 kB gzip | 77.92 kB / 12.00 kB gzip | +0.10 kB / +0.02 kB |
+| `vendor-math-*.js` | 375.73 kB / 110.72 kB gzip | 375.73 kB / 110.72 kB gzip | 0 / 0 |
+| **all JS, summed** | 1325.35 kB / 389.52 kB gzip | 1328.98 kB / 390.52 kB gzip | +3.63 kB / +1.00 kB |
+| chunk count | 32 | 33 | **+1** |
+| vendor chunk count | 5 | 5 | 0 |
+| build time | 5.13 s | 5.21 s | — (both cold after `clean`) |
+
+**Findings**
+
+- **The feature rides the lazy chunk.** `grep -l 'more than this debt needs' dist/assets/*.js` resolves **only** to `TransactionForm-*.js`, which is already behind `React.lazy` at all three of its call sites. None of the payoff block is on the critical path.
+- **The entry chunk's +0.04 kB is not this phase's code.** Importing `ProgressMeter` into `TransactionForm` gave that module a second lazy importer, and Rollup re-partitioned the shared graph: `ProgressMeter-*.js` **shrank** by 0.68 kB and `useDebts` split out into a new chunk of its own. One extra chunk means one extra entry in the preload map the entry chunk carries. The plan predicted "entry chunk unchanged" — recorded as measured, with the cause identified rather than rounded away.
+- **A shared chunk got *smaller* because an import was added to it.** This is the first phase in this table where that happened, and it is the reason the **all JS, summed** row now exists: reading a single chunk's delta in isolation would have suggested +3.40 kB when the real cost across the build is +3.63 kB. Chunk sizes are a partitioning outcome, not a per-module cost.
+- **CSS barely moved** (+0.10 kB raw). The payoff block reuses the save-as-template block's container shell and the template chips' class verbatim, so almost every utility it needs was already in the scan. Compare Phase 42's +0.80 kB, where a new panel layout, an amber banner and a circular button all introduced fresh classes; the amber note here is the only genuinely new shape and it shares its palette with the transfer overdraft warning.
+- **No new dependency, no new vendor chunk.** `manualChunks` is unmodified, so ADR `0010`'s `vendor-math` deferral (110.72 kB gzip, still the largest chunk) is intact.
+
+**Test-suite size:** 186 → **210 runs** (62 → 70 tests, 17 → **18** spec files). Wall clock `npx playwright test --workers=4`: 4.3 m → 4.8 m.
