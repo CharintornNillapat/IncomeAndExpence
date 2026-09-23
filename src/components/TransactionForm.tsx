@@ -13,6 +13,7 @@ import type { JevSuggestion } from '../utils/jevClassifier';
 import { matchSmartDescription } from '../utils/smartMatcher';
 import { parseExpressInput } from '../utils/expressInput';
 import { safeEvaluateMath } from '../utils/mathEvaluator';
+import { roundToCents } from '../utils/money';
 import { APP_CURRENCY_SYMBOL, formatCurrencyAmount } from '../utils/currency';
 import { todayIsoDate } from '../utils/date';
 import { LABEL_TEXT_CLASS, OPTION_CLASS, ERROR_BANNER_CLASS } from '../utils/formStyles';
@@ -63,6 +64,15 @@ interface TransactionFormProps {
   }) => Promise<{ success: boolean; error?: string } | void> | { success: boolean; error?: string } | void;
 }
 
+/**
+ * This form's "apply a stored value" chip - used by the saved-template chips
+ * and the debt payoff chips (ADR 0015). Deliberately stone, not the emerald
+ * of `InlineMathInput`'s quick-amount chips: those *add to* what is already
+ * typed, these *replace* it with a target figure.
+ */
+const QUICK_CHIP_CLASS =
+  'inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-full bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-300 border border-stone-200 dark:border-stone-700 transition-colors cursor-pointer';
+
 export const TransactionForm: React.FC<TransactionFormProps> = ({
   wallets,
   categories,
@@ -111,6 +121,10 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
   const mathInputId = idPrefix ? `${idPrefix}-amount-math` : `${formId}-math-input`;
   const walletSelectId = idPrefix ? `${idPrefix}-wallet-select` : `${formId}-wallet`;
   const submitBtnId = idPrefix ? `confirm-${idPrefix}-btn` : `${formId}-submit-btn`;
+  // Prefix for everything added after those three legacy names (ADR 0015's
+  // payoff block). Falls back to the generated id so a form mounted without
+  // an `idPrefix` still gets unique ids.
+  const idBase = idPrefix || formId;
 
   // Keep walletId in sync when wallets are loaded
   React.useEffect(() => {
@@ -356,6 +370,38 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
     });
   };
 
+  /*
+   * Debt payoff shortcuts (ADR 0015). Everything below is derived on render -
+   * `InlineMathInput.onAmountEvaluated` already fires on every keystroke, so
+   * no effect, no debounce and no context change is involved.
+   *
+   * Looks the target up in `debts` rather than `activeDebts`, matching
+   * `handleSubmit`: a caller can pin an already-settled debt through
+   * `presetDebtId`, and it resolving to a zero remainder is the correct
+   * outcome - there is nothing left to pay off, so no chips render.
+   */
+  const repayTargetDebt =
+    type === 'DEBT_REPAYMENT' ? debts.find((d) => d.id === debtId) ?? null : null;
+  const remainingDebt = repayTargetDebt?.remainingAmount ?? 0;
+  const minimumDue = repayTargetDebt?.minimumPayment ?? 0;
+  // At or above the remainder the minimum is "Pay in full" wearing a different
+  // label, and it would trip the overpayment warning as well.
+  const showMinimumChip = minimumDue > 0 && minimumDue < remainingDebt;
+
+  /**
+   * Pushes a value into the amount field without remounting it, and latches
+   * the field as user-owned.
+   *
+   * The latch has to be set here because `InlineMathInput`'s `seed` effect
+   * deliberately never fires `onUserEdit` - same reasoning as
+   * `handleApplyPreset` above. A chip is an explicit choice of amount and
+   * outranks the note parser from this point on (ADR 0013).
+   */
+  const seedPayoffAmount = (value: number) => {
+    userTouchedRef.current.amount = true;
+    setAmountSeed((prev) => ({ key: prev.key + 1, value: String(value) }));
+  };
+
   const showShortcuts = !lockType && Boolean(onRequestTransfer || onRequestRepayDebt);
   const shortcutLinkClass =
     'font-semibold text-stone-700 dark:text-stone-300 underline underline-offset-2 hover:text-stone-900 dark:hover:text-white cursor-pointer transition-colors';
@@ -409,7 +455,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
               type="button"
               id={`${formId}-preset-chip-${preset.id}`}
               onClick={() => handleApplyPreset(preset)}
-              className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-full bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-300 border border-stone-200 dark:border-stone-700 transition-colors cursor-pointer"
+              className={QUICK_CHIP_CLASS}
             >
               {preset.name}
             </button>
@@ -475,6 +521,44 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
         onAmountEvaluated={handleAmountEvaluated}
         onUserEdit={handleAmountUserEdit}
       />
+
+      {/* 2b. Debt payoff shortcuts (ADR 0015). Each chip seeds the amount
+             field above rather than replacing it, so `#repay-amount-math`
+             remains the single control `tests/debts.spec.ts` fills. Hidden
+             once there is nothing left to pay off. */}
+      {repayTargetDebt && remainingDebt > 0 && (
+        <div className="flex flex-wrap items-center gap-1.5 -mt-1">
+          <span className="text-[11px] font-semibold text-stone-400 dark:text-stone-500 uppercase tracking-wide mr-0.5">
+            Quick payoff
+          </span>
+          <button
+            type="button"
+            id={`${idBase}-payoff-full`}
+            onClick={() => seedPayoffAmount(remainingDebt)}
+            className={QUICK_CHIP_CLASS}
+          >
+            Pay in full <strong className="font-mono">{formatCurrencyAmount(remainingDebt)}</strong>
+          </button>
+          <button
+            type="button"
+            id={`${idBase}-payoff-half`}
+            onClick={() => seedPayoffAmount(roundToCents(remainingDebt / 2))}
+            className={QUICK_CHIP_CLASS}
+          >
+            50% <strong className="font-mono">{formatCurrencyAmount(roundToCents(remainingDebt / 2))}</strong>
+          </button>
+          {showMinimumChip && (
+            <button
+              type="button"
+              id={`${idBase}-payoff-minimum`}
+              onClick={() => seedPayoffAmount(minimumDue)}
+              className={QUICK_CHIP_CLASS}
+            >
+              Minimum due <strong className="font-mono">{formatCurrencyAmount(minimumDue)}</strong>
+            </button>
+          )}
+        </div>
+      )}
 
       {/* 3. Wallet & Category. Always visible - there is no "Edit details"
              collapse any more (ADR 0013), so an auto-matched category can be
