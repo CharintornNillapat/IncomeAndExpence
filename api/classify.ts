@@ -12,7 +12,9 @@ import type { ClassifyCandidate, ClassifyRequest, ClassifyResponse } from '../sr
  * Vercel zero-config: the project is `framework: "vite"` on Node 24.x, so a root
  * `api/` directory is served as functions with no `vercel.json`. The
  * web-standard `(Request) => Response` handler signature is used so that no
- * `@vercel/node` dependency is needed.
+ * `@vercel/node` dependency is needed - but it MUST be reached through a named
+ * method export (`export function POST`), never `export default`. See the note
+ * on `POST` below; getting this wrong hangs the endpoint silently.
  *
  * SECURITY: the client sends only free text plus candidate labels. The question
  * wording lives here and is never client-supplied. If a caller could pass
@@ -104,11 +106,22 @@ function validate(body: unknown): { text: string; categories: ClassifyCandidate[
   return { text: trimmed, categories: clean };
 }
 
-export default async function handler(req: Request): Promise<Response> {
-  if (req.method !== 'POST') {
-    return json({ error: 'Method not allowed.' }, 405);
-  }
-
+/**
+ * Exported as a named HTTP method, NOT as `export default`.
+ *
+ * This is load-bearing and was found the hard way: Vercel's Node runtime
+ * invokes a *default* export with the legacy `(req, res) => void` signature and
+ * **ignores any returned value**. A default export returning a `Response` never
+ * writes to `res`, so the request hangs until the gateway times out - the
+ * endpoint returns nothing at all, for 60s, with no error. The deployment's own
+ * runtime log says so outright: "default export returned a `Response` ... returns
+ * are ignored."
+ *
+ * A named-method export opts into the Web fetch-style API, where returning a
+ * `Response` is the contract. Non-POST methods are rejected by the platform
+ * before this runs, so there is no method check here.
+ */
+export async function POST(req: Request): Promise<Response> {
   const apiKey = process.env.TYPESAFE_API_KEY;
   if (!apiKey) {
     // 404, not 500: an unconfigured deployment should look exactly like a
