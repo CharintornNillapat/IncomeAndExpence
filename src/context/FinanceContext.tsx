@@ -24,6 +24,7 @@ import {
   formatZodIssues,
 } from '../utils/zodSchemas';
 import { APP_CURRENCY } from '../utils/currency';
+import { roundToCents } from '../utils/money';
 import { todayIsoDate } from '../utils/date';
 import { dedupeCategoriesByName, withDefaultDescriptions } from '../utils/categoryUtils';
 import { generateIdempotencyKey } from '../utils/ids';
@@ -174,12 +175,6 @@ function safeGetLocalStorage<T>(key: string, fallback: T): T {
     console.warn(`[SafeStorage] Fallback for ${key}`, err);
     return fallback;
   }
-}
-
-// Money helper: all balances are Decimal(15,2), so every arithmetic result is
-// normalised back to whole cents to avoid float drift accumulating in the ledger.
-function roundToCents(value: number): number {
-  return Math.round(value * 100) / 100;
 }
 
 // Tables mirrored into local state. Every one of them re-runs the full loader on
