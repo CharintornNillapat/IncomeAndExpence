@@ -23,6 +23,9 @@ const CLASSIFY_ROUTE = '**/api/classify';
 /** `cat-transport` / "Transport & Fuel" is an EXPENSE category with no seeded keyword rule. */
 const TRANSPORT = { id: 'cat-transport', name: 'Transport & Fuel' };
 
+/** A second rule-free EXPENSE category, so a test can serve two answers that genuinely disagree. */
+const HOUSING = { id: 'cat-housing', name: 'Housing & Utilities' };
+
 /** Misses all four seeded rules (coffee, groceries, fuel, salary), so it reaches the classifier. */
 const UNMATCHED_NOTE = 'Netflix subscription';
 
@@ -136,6 +139,40 @@ test.describe('Jev classification', () => {
     await expect(modal.getByText(/Auto-categorized:/i)).toBeVisible();
 
     await expect(modal.locator('select[id$="-category"]')).toHaveValue(TRANSPORT.id);
+  });
+
+  test('applying a suggestion latches the category against a later classification', async ({ page }) => {
+    // Two answers, in order: a mid-confidence one the user applies by hand,
+    // then a high-confidence one for a *different* category arriving behind
+    // it. `applySuggestion` only latches `userTouchedRef.current.category`
+    // when `force` is set, so without that line the second answer auto-fills
+    // straight over a category the user explicitly chose.
+    const answers: MockAnswer[] = [
+      { categoryId: TRANSPORT.id, categoryConfidence: 0.62, detectedType: 'EXPENSE', typeConfidence: 0.9 },
+      { categoryId: HOUSING.id, categoryConfidence: 0.95, detectedType: 'EXPENSE', typeConfidence: 0.95 },
+    ];
+    let call = 0;
+    await page.route(CLASSIFY_ROUTE, async (route: Route) => {
+      const answer = answers[Math.min(call, answers.length - 1)];
+      call += 1;
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(answer) });
+    });
+
+    const modal = await openQuickAdd(page);
+    const note = modal.locator('input[id$="-desc"]');
+    const categorySelect = modal.locator('select[id$="-category"]');
+
+    await note.fill(UNMATCHED_NOTE);
+    await modal.getByTestId('tx-category-suggestion').locator('[id$="-suggestion-apply"]').click();
+    await expect(categorySelect).toHaveValue(TRANSPORT.id);
+
+    // Keep typing, which re-arms the classifier and lands the 0.95 answer.
+    await note.fill(`${UNMATCHED_NOTE} renewal`);
+
+    // The high-confidence answer must arrive and be discarded, so wait for
+    // evidence it was actually served rather than for a fixed delay.
+    await expect.poll(() => call).toBeGreaterThanOrEqual(2);
+    await expect(categorySelect).toHaveValue(TRANSPORT.id);
   });
 
   test('a low-confidence classification changes nothing and shows nothing', async ({ page }) => {

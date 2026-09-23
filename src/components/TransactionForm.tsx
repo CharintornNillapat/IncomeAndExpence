@@ -194,6 +194,12 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
     (s: JevSuggestion, { force }: { force: boolean }) => {
       if (!force && userTouchedRef.current.category) return;
       setCategoryId(s.categoryId);
+      // `force` means the user tapped Apply on the mid-confidence chip, which
+      // is a manual category pick and has to latch like any other. Without
+      // this, a second classification landing afterwards would overwrite a
+      // category the user explicitly chose - the exact thing `userTouchedRef`
+      // exists to prevent, and which CLAUDE.md already claimed it did.
+      if (force) userTouchedRef.current.category = true;
       if (force || !userTouchedRef.current.type) {
         setType(s.type);
       }
