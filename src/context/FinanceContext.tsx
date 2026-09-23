@@ -1868,6 +1868,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     // `addTransaction`'s pattern above.
     const previousTransactions = transactionsRef.current;
     const previousWallets = walletsRef.current;
+    const previousDebts = debtsRef.current;
 
     // Resolve every participating wallet and compute both new balances BEFORE
     // any setState call. This function used to assign `sourceNewBal`/
@@ -1899,6 +1900,35 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
         ? roundToCents(destWallet.balance - sign * tx.amount)
         : null;
 
+    // ADR 0016: the debt moves with the wallet. Before this, soft-deleting a
+    // DEBT_REPAYMENT refunded the wallet and left `remainingAmount` decremented
+    // - free money, repeatable - while restoring debited the wallet again with
+    // no debt movement at all, charging twice for one reduction. No spec
+    // covered it: `soft-delete.spec.ts`'s balance-invariant test uses an
+    // EXPENSE, so nothing had ever driven a repayment through delete/restore.
+    //
+    // Resolved and computed here, beside the wallet balances, for the reason
+    // spelled out above: reading a value assigned inside a `setState` updater
+    // is the exact race that silently broke this function's wallet writes in
+    // T63. Any of the defensive cases - not a repayment, no `debtId`, the debt
+    // since deleted - leaves this null and lets the wallet reversal proceed
+    // alone, mirroring how a missing `sourceWallet` is already handled.
+    const targetDebt =
+      tx.type === 'DEBT_REPAYMENT' && tx.debtId
+        ? debtsRef.current.find((d) => d.id === tx.debtId && !d.isDeleted)
+        : undefined;
+
+    // `sign` is +1 when deleting (give the debt back) and -1 when restoring
+    // (take it again). No upper cap on the reversal: restoring a repayment
+    // written before the ADR 0016 guard can push `remainingAmount` above
+    // `totalAmount`, and capping would silently discard the difference - the
+    // same sin as clamping an overpayment. `ProgressMeter` and the payoff
+    // block's `displayPercent` both clamp, so it renders as 100% rather than
+    // breaking.
+    const debtNewRemaining: number | null = targetDebt
+      ? Math.max(0, roundToCents(targetDebt.remainingAmount + sign * tx.amount))
+      : null;
+
     // Optimistic local writes
     setTransactions((prev) =>
       prev.map((t) => (t.id === id ? { ...t, isDeleted: deleted, updatedAt: new Date().toISOString() } : t))
@@ -1916,6 +1946,23 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       })
     );
 
+    // `isSettled` is recomputed in both directions, so reversing the payment
+    // that settled a debt un-settles it and makes its card actionable again.
+    if (targetDebt && debtNewRemaining !== null) {
+      setDebts((prev) =>
+        prev.map((d) =>
+          d.id === targetDebt.id
+            ? {
+                ...d,
+                remainingAmount: debtNewRemaining,
+                isSettled: debtNewRemaining === 0,
+                updatedAt: new Date().toISOString(),
+              }
+            : d
+        )
+      );
+    }
+
     if (!isAuthenticated) {
       return { success: true };
     }
@@ -1929,6 +1976,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     // flipped flag pointing at balances that were never actually written.
     let sourceWalletUpdated = false;
     let destWalletUpdated = false;
+    let debtUpdated = false;
 
     try {
       if (sourceNewBal !== null && sourceWallet) {
@@ -1942,6 +1990,24 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
         const { error } = await supabase.from('wallets').update({ balance: destNewBal }).eq('id', destWallet.id);
         if (error) throw error;
         destWalletUpdated = true;
+      }
+
+      // Written with the wallet balances and before the `is_deleted` flag, for
+      // the reason the flag is written last: the flag is what makes the row
+      // count as active, so a balance or debt write failing must leave the
+      // cloud row in its pre-change state.
+      if (targetDebt && debtNewRemaining !== null) {
+        markLocalWrite(targetDebt.id);
+        const { error: debtError } = await supabase
+          .from('debts')
+          .update({
+            remaining_amount: debtNewRemaining,
+            is_settled: debtNewRemaining === 0,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', targetDebt.id);
+        if (debtError) throw debtError;
+        debtUpdated = true;
       }
 
       markLocalWrite(id);
@@ -1959,10 +2025,11 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       // are restored together so the ledger and the balances can never disagree.
       setTransactions(previousTransactions);
       setWallets(previousWallets);
+      setDebts(previousDebts);
 
-      // Compensate any remote wallet writes that already committed - the two
-      // wallet writes and the flag write are not a single database
-      // transaction, so a failure part-way through leaves a wallet balance
+      // Compensate any remote wallet or debt writes that already committed -
+      // the wallet writes, the debt write and the flag write are not a single
+      // database transaction, so a failure part-way through leaves a balance
       // changed with nothing to reflect it unless explicitly undone.
       try {
         if (sourceWalletUpdated && sourceWallet) {
@@ -1972,6 +2039,17 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
         if (destWalletUpdated && destWallet) {
           markLocalWrite(destWallet.id);
           await supabase.from('wallets').update({ balance: destWallet.balance }).eq('id', destWallet.id);
+        }
+        if (debtUpdated && targetDebt) {
+          markLocalWrite(targetDebt.id);
+          await supabase
+            .from('debts')
+            .update({
+              remaining_amount: targetDebt.remainingAmount,
+              is_settled: targetDebt.isSettled,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', targetDebt.id);
         }
       } catch (compErr) {
         console.error('[Set Transaction Deleted Compensation Failed]', compErr);
