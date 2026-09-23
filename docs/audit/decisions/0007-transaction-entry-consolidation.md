@@ -1,6 +1,6 @@
 # 0007 — Transaction entry consolidation: one configurable `TransactionForm`, two deliberate exceptions
 
-**Status:** Accepted
+**Status:** Accepted — **amended by ADR `0013`** (Phase 41): TRANSFER was removed from this engine entirely, leaving `TransferFundsModal`/`WalletTransferForm` as the app's single transfer surface, so the "two deliberate exceptions" in the title are now one. Everything else below stands as written.
 **Date:** 2026-09-19
 
 ## Context
@@ -24,7 +24,7 @@ Reading `FinanceContext.tsx` in full before touching `DebtsView.tsx` (T38) surfa
 Three consumers remain, each a legitimate distinct entry point into the same engine, not a duplicate:
 - **`QuickAddModal`** (`src/components/QuickAddModal.tsx`) — the default, no-preset case. Reached from `Navbar`'s quick-add button and `DashboardView`'s "Record a Transaction" CTA, both opening the one instance `App.tsx` owns.
 - **`TransactionsView`**'s Add Transaction modal — same, no-preset case, for the transactions log's own "add" action.
-- **`DebtsView`**'s repay modal — `TransactionForm` with `lockType`/`presetDebtId`/`presetWalletId` set, submitting through the view's own `addTransaction` call (T38's discovery above means this needed no special debt-repayment code path — the generic engine already produces the correct ledger row and triggers the correct decrement/auto-settle).
+- **`DebtsView`**'s repay modal — `TransactionForm` with `lockType`/`presetDebtId` set (**not** `presetWalletId`; this line claimed it for 19 phases, but no call site in `src/` has ever passed that prop — it remains supported but unused), submitting through the view's own `addTransaction` call (T38's discovery above means this needed no special debt-repayment code path — the generic engine already produces the correct ledger row and triggers the correct decrement/auto-settle).
 
 **`WalletPopupModal`'s Adjust Balance editor stays a separate, bespoke one-field form** — option (b) above, rejected. It is the one transaction-creating surface deliberately *not* on this engine.
 

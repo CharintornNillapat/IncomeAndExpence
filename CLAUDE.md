@@ -27,7 +27,7 @@ FinLife Tracker is a full-stack personal finance and holistic lifestyle manageme
 │   ├── hooks/           # Domain hooks (useTransactions, useWallets, useDebts, useTheme)
 │   ├── lib/             # Supabase client setup (supabase.ts)
 │   ├── utils/           # Pure helpers: currency, date, mathEvaluator, smartMatcher,
-│   │                    # jevClassifier, zodSchemas, csvExchange, walletIcons
+│   │                    # expressInput, jevClassifier, zodSchemas, csvExchange, walletIcons
 │   ├── views/           # Route views lazy-loaded via React.lazy in App.tsx
 │   ├── App.tsx          # Root shell with gesture handlers and tab navigation
 │   ├── main.tsx         # Application entry point
@@ -92,14 +92,24 @@ Transaction dates, diary dates, and "today"/"yesterday" labels are **local** cal
 - **Never read a value assigned inside a `setState` updater after the call that scheduled it.** A prior `setState` call in the same function can already have dirtied the fiber, so a later `setWallets(prev => { x = ...; return ...})` updater is not guaranteed to run before the next line reads `x` — React only takes the synchronous eager-eval path for the *first* state update in a batch. Compute the value first, from the ref mirror (`walletsRef.current`, etc.), and pass it into the updater as a precomputed value instead. This bit `setTransactionDeleted` (Phase 32, T63) — the wallet-balance write silently stopped firing on every soft-delete/restore for authenticated users, and `tsc` cannot catch it because the race is a runtime scheduling issue, not a type error.
 
 ## Transaction entry: one configurable engine
-`src/components/TransactionForm.tsx` is the single entry engine for every flow that needs its full shape (EXPENSE/INCOME/TRANSFER/DEBT_REPAYMENT type toggle, category, wallet, description, math-expression amount). It takes optional `idPrefix`/`presetType`/`lockType`/`presetDebtId`/`presetWalletId` props; passing none reproduces plain default behavior.
-- **3 consumers, each a distinct entry point, not a duplicate**: `QuickAddModal` (default, no preset — reached from `Navbar`'s quick-add button and `DashboardView`'s CTA, one shared instance owned by `App.tsx`), `TransactionsView`'s Add Transaction modal (default), `DebtsView`'s repay modal (`lockType`/`presetDebtId`/`presetWalletId` set).
+`src/components/TransactionForm.tsx` is the single entry engine for every flow that needs its full shape (EXPENSE/INCOME type toggle, category, wallet, note, math-expression amount). It takes optional `idPrefix`/`presetType`/`lockType`/`presetDebtId`/`presetWalletId`/`onRequestTransfer`/`onRequestRepayDebt` props; passing none reproduces plain default behavior.
+- **3 consumers, each a distinct entry point, not a duplicate**: `QuickAddModal` (default, no preset — reached from `Navbar`'s quick-add button and `DashboardView`'s CTA, one shared instance owned by `App.tsx`), `TransactionsView`'s Add Transaction modal (default), `DebtsView`'s repay modal (`lockType`/`presetDebtId` set).
 - **New transaction-creating UI should default to reusing `TransactionForm`** via its existing props before writing a new form.
-- **Two deliberate, permanent exceptions** — do not "fix" these by routing them through `TransactionForm`:
-  - `WalletPopupModal`'s inline Adjust Balance editor creates an `ADJUSTMENT` transaction via a bespoke one-field form. Forcing it through `TransactionForm` would surface a type toggle/category/destination-wallet field the user has no reason to touch for a balance reconciliation.
-  - The wallet-to-wallet **Transfer** action (hero button, wallet-card shortcuts, `WalletsView`'s header button) goes through a separate, purpose-built `WalletTransferForm` via the shell-level `src/components/wallet/TransferFundsModal.tsx` — not `TransactionForm`'s own TRANSFER type option. Both transfer paths coexist on purpose: `TransactionForm`'s TRANSFER option is for a generic "log a transaction" flow that happens to be a transfer; the dedicated form is for the wallet-first "Transfer" action and has no type toggle to skip past.
+- **The type toggle is EXPENSE/INCOME only (ADR `0013`).** TRANSFER was removed from the form *entirely* — the toggle option, `destinationWalletId`, the "To Wallet" select, and the submit-payload field. `TransferFundsModal`/`WalletTransferForm` is now the app's single transfer surface. Do not re-add a TRANSFER type here.
+  - **`DEBT_REPAYMENT` is different and stays.** Only its toggle option went. `presetType="DEBT_REPAYMENT"` is a live configuration with a live caller (`DebtsView`'s repay modal) and full coverage in `debts.spec.ts`; TRANSFER had neither.
+  - The `onRequestTransfer`/`onRequestRepayDebt` shortcut row below the submit button is what keeps both flows one tap away. Each link renders **only** when its handler prop is supplied, so a form that cannot reach a destination never shows a dead link.
+- **One deliberate, permanent exception** — do not "fix" it by routing it through `TransactionForm`: `WalletPopupModal`'s inline Adjust Balance editor creates an `ADJUSTMENT` transaction via a bespoke one-field form. Forcing it through `TransactionForm` would surface a type toggle and category field the user has no reason to touch for a balance reconciliation.
 - `useDebts().repayDebt`/`FinanceContext.tsx`'s `repayDebtAtomic` were removed entirely (Phase 33, T64) after confirming zero call sites outside their own definitions — `DebtsView`'s repay modal calls `addTransaction` directly through `TransactionForm`, since the debt decrement/auto-settle logic lives inside `addTransaction` itself, not in a separate repayment code path. Do not reintroduce a second repayment code path.
-- See `docs/audit/decisions/0007-transaction-entry-consolidation.md`.
+- See `docs/audit/decisions/0007-transaction-entry-consolidation.md` and `0013-express-transaction-entry.md`.
+
+## Express note entry: the note drives the form
+The note field is the **first** field and seeds the amount below it (ADR `0013`). `parseExpressInput` (`src/utils/expressInput.ts`) pulls a trailing (`ข้าวมันไก่ 60`), leading (`1200 ค่าไฟ`) or whole-text (`120/4`) amount out of the note.
+- **A manual edit to the amount field permanently disables extraction for that entry.** `InlineMathInput`'s `onUserEdit` fires on typing, the quick-amount chips, the operator buttons and apply-result — never on a programmatic `seed` push — and sets `userTouchedRef.current.amount`. **This is load-bearing, not a preference**: `csv.spec.ts`, `soft-delete.spec.ts` and `presets.spec.ts` all fill the amount by hand and *then* type a note ending in six digits (`E2E CSV RoundTrip 123456`), asserting on amounts and wallet balances. Weaken this rule and three spec files fail on values at once.
+- **The ledger stores the note exactly as typed; only the classifier sees the stripped text.** `ข้าวมันไก่ 60` is saved whole and classified as `ข้าวมันไก่`. Stripping at the write path is lossy and would let a mis-parse corrupt the note too.
+- **Re-seed the amount via `InlineMathInput`'s `seed: {key, value}` prop, never a remounting `key`.** `defaultValue` is only honoured while the field is empty, and remounting on every keystroke discards focus and error state.
+- **Requiring a whitespace boundary before a trailing number is what makes extraction safe** — it is what stops `7-11`, `Tx-123` and `iphone15` from being harvested. The known false positive is `lunch for 4` → ฿4, visible and one keystroke to fix.
+- **`matchSmartDescription` is deliberately untouched by this.** The new parser is a separate util: `KeywordRulesView` surfaces the matcher's own `extractedAmount`/`cleanDescription` through the `metric-*` testids and `tests/keywords.spec.ts` asserts on exactly that leading-only behavior.
+- **There is no "Edit details" collapse.** The wallet and category selects are always mounted, and the `Auto-categorized: <name>` badge sits on the **Category** label — the field it wrote — so overriding a guess is one click. Do not reintroduce a collapse that unmounts either select.
 
 ## Categorization: rules first, Jev second
 Two layers, in a fixed order. Do not reverse them and do not collapse them into one.
@@ -156,8 +166,8 @@ Without it, `FinanceContext` falls back to the legacy non-atomic path (three sep
 
 ## Testing
 - **Framework**: Playwright with Chromium, Firefox, and WebKit projects.
-- **Suite size**: 50 tests across 15 spec files, run on all three browsers = **150 test runs**. All must pass.
-- **Location**: `tests/*.spec.ts` (`transaction`, `wallets`, `diary`, `theme`, `wallet-forms`, `debts`, `soft-delete`, `keywords`, `categories`, `csv`, `auth`, `date-boundary`, `storage-persistence`, `presets`, `jev-classify`), with shared helpers in `tests/helpers.ts`.
+- **Suite size**: 55 tests across 16 spec files, run on all three browsers = **165 test runs**. All must pass.
+- **Location**: `tests/*.spec.ts` (`transaction`, `wallets`, `diary`, `theme`, `wallet-forms`, `debts`, `soft-delete`, `keywords`, `categories`, `csv`, `auth`, `date-boundary`, `storage-persistence`, `presets`, `jev-classify`, `express-input`), with shared helpers in `tests/helpers.ts`.
 - **Never edit files while a run is in flight.** `playwright.config.ts`'s `webServer` is `npm run dev` — a live Vite dev server — so writing to `src/` mid-run HMRs the app under test and produces failures that do not reproduce in isolation. This cost a wasted baseline in Phase 39.
 - **Network mocking**: `tests/jev-classify.spec.ts` is the only spec that intercepts requests (`page.route('**/api/classify')`). Every response is fulfilled locally, so the suite spends no TypeSafe credits and needs no API key, on CI or locally.
 - **Use the helpers**: `gotoTab(page, tabId)` waits for the tab to become active *and* for the `React.lazy` view chunk to resolve (`#view-loading-fallback` detaching). `addQuickTransaction(page, description)` seeds a transaction — a fresh context has wallets and debts but **no transactions**, so any assertion about filtering is vacuous without it.
@@ -197,6 +207,8 @@ Refer to `.env.example`:
 - Do NOT add redundant state management libraries (Redux, Zustand); use `FinanceContext` and the domain hooks.
 - Do NOT introduce a second currency without adding real conversion to the ledger first.
 - Do NOT format money or dates inline; use `formatCurrencyAmount` and the `src/utils/date.ts` helpers.
+- Do NOT re-add a TRANSFER option to `TransactionForm`'s type toggle, or reintroduce an "Edit details" collapse that unmounts the category/wallet selects — see ADR `0013`.
+- Do NOT let the note parser overwrite an amount the user typed by hand; `userTouchedRef.current.amount` is what three spec files depend on.
 - Do NOT delete or bypass `smartMatcher.ts` / `keyword_rules` in favour of Jev — it is the offline layer and the user's override channel. See ADR `0011`.
 - Do NOT let `classifyDescription()` throw, and do NOT give the classifier a code path that can reject.
 - Do NOT accept Jev question wording (`instructions`/`criteria`/`model`/`state`/`questions`) from the client in `api/classify.ts`.

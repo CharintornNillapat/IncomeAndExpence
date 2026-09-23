@@ -4,6 +4,62 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
+## Phase 41 — Express note entry; TRANSFER leaves the transaction form: T89–T93 (2026-09-23, uncommitted)
+
+**Changed**
+- `docs/audit/decisions/0013-express-transaction-entry.md` (new) — written **before** the code, per `README.md:28`. Records the note-first inversion, the manual-amount latch, why TRANSFER goes and `DEBT_REPAYMENT` stays, and the collapse removal. Amends ADR `0007`.
+- `src/utils/expressInput.ts` (new, ~120 lines) — `parseExpressInput`, pure, never throws. Whole-text → trailing → leading anchors, optional `฿`/`บาท`/`thb`/`baht` marker, comma stripping, validated through `safeEvaluateMath` into `(0, 1e9)`.
+- `src/components/InlineMathInput.tsx` — new `seed: {key, value}` prop (re-seed without remounting) and `onUserEdit` callback (human interaction only); `handleQuickAdd`/`handleApplyResult` now re-evaluate; quick-amount chips `flex sm:hidden` → `flex flex-wrap`; `evaluateAndNotify` treats a trailing operator or open paren as a silent intermediate.
+- `src/components/TransactionForm.tsx` — note moved to the top and made the driver; amount seeded from it; `userTouchedRef` gains `amount`; toggle reduced to `['EXPENSE','INCOME']` (`grid-cols-4` → `grid-cols-2`); `destinationWalletId`, its validity effect, `destinationWalletOptions`, the "To Wallet" select and the TRANSFER submit/label/description branches **deleted**; `showManualOverrides`/`isCollapsed` and the "Edit details" block **deleted**; the `Auto-categorized:` badge moved to the Category label; new `onRequestTransfer`/`onRequestRepayDebt` shortcut row; `onSuccess` now also clears the amount.
+- `src/App.tsx` — `handleQuickAddTransfer` / `handleQuickAddRepayDebt` / `handleNavigateToDebts`; wired into `QuickAddModal` and `TransactionsView`.
+- `src/components/QuickAddModal.tsx`, `src/views/TransactionsView.tsx` — forward the two shortcut handlers (`TransactionsView` closing its own modal first); both modal subtitles no longer advertise transfers.
+- `tests/express-input.spec.ts` (new, 5 tests) — trailing/leading/math extraction, the manual-amount latch, and the always-mounted category selector.
+- `tests/jev-classify.spec.ts` — `revealDetails` helper and its 2 calls removed; both `toHaveValue(TRANSPORT.id)` assertions unchanged. `tests/transaction.spec.ts:34,67` + `tests/helpers.ts:59` — dropped the dead `input[placeholder*="groceries"]` alternative.
+- `CLAUDE.md`, `docs/audit/test-selector-contract.md` — new "Express note entry" section, rewritten transaction-engine section, Phase 41 selector table, suite count 50/150 → **55/165**.
+
+**Why**
+`TransactionForm` predated both categorization layers. It asked for the amount first and threw away the number the user had already typed in the note — `smartMatcher.ts:32-40` computed an `extractedAmount` that `TransactionForm.tsx:203-218` never read, so `ข้าวมันไก่ 60` meant typing `60` twice. Meanwhile TRANSFER sat in the toggle as a second, **entirely untested** transfer implementation (`ui-ux-audit-report.md:24`), and an auto-categorization *unmounted* the category `<select>`, so correcting a wrong guess cost two clicks and was invisible until the first — friction `jev-classify.spec.ts` had to encode as a `revealDetails` helper.
+
+**Verification**
+```
+npm run lint                     # tsc --noEmit && tsc -p api/tsconfig.json: clean, 0 errors
+npx playwright test --workers=4  # 165/165 passed, 0 retries, 4.5m
+npm run clean && npm run build   # built in 6.90s; 0 chunk-size warnings
+```
+Plus a 27-case throwaway esbuild+Node probe of `parseExpressInput` against the real `safeEvaluateMath` (not committed — it duplicates no committed assertion and needs no fixture): all three anchors, Thai and Latin notes, the currency marker, thousands commas, decimals, `iphone 15 pro 32000` (trailing wins over the mid-string `15`), `7-11 lunch` and `ค่าไฟ1200` (correctly refused — no whitespace boundary), `buy 2 - 3 items`, `a 0`, `x 99999999999`, empty/whitespace, and the three E2E marker shapes. 27/27 matched the ADR's table.
+
+**Bundle verification** (`git stash -u` → `clean && build` → `stash pop` → rebuild; same machine, Node v24.19.0, clean tree both times)
+
+| Chunk | HEAD (stashed) | Phase 41 | Delta |
+|---|---|---|---|
+| entry `index-*.js` | 163.10 kB / 46.05 kB gzip | 163.30 kB / 46.11 kB gzip | **+0.20 kB / +0.06 kB** |
+| `TransactionForm-*.js` (lazy) | 17.77 kB / 5.57 kB gzip | 17.90 kB / 5.84 kB gzip | +0.13 kB / +0.27 kB |
+| `QuickAddModal-*.js` (lazy) | 2.53 kB / 1.19 kB gzip | 2.60 kB / 1.22 kB gzip | +0.07 kB / +0.03 kB |
+| `index-*.css` | 77.68 kB / 11.93 kB gzip | 77.02 kB / 11.85 kB gzip | −0.66 kB / −0.08 kB |
+| `vendor-math-*.js` | 375.73 kB / 110.72 kB gzip | 375.73 kB / 110.72 kB gzip | 0 / 0 |
+| vendor chunk count | 5 | 5 | 0 |
+
+The entry delta is `App.tsx`'s three new callbacks and nothing else — `App.tsx` is eager. `grep -l 'baht' dist/assets/*.js` resolves **only** to `TransactionForm-*.js`, so the whole parser landed in the lazy chunk as designed; `manualChunks` untouched, ADR `0010` intact. The CSS shrank because the deleted collapse banner and "To Wallet" block took their utility classes with them.
+
+**Correctness notes**
+- **The manual-amount latch is a test invariant, not just UX.** `csv.spec.ts:19`, `soft-delete.spec.ts:21,96` and all six `presets.spec.ts` cases fill the amount by hand and *then* type a note ending in six digits (`E2E CSV RoundTrip 123456`), asserting on amounts and wallet balances. Without `userTouchedRef.current.amount`, each of those fails on a **value** — which the spec-edit policy forbids fixing by editing the assertion. `tests/express-input.spec.ts` now pins the rule directly so the coupling is explicit rather than incidental.
+- **Removing the collapse is a pure locator move, not a weakened assertion.** `jev-classify.spec.ts:110,142` still assert `select[id$="-category"]` holds `cat-transport`; only the click that used to be needed first is gone.
+- Deleting `-dest-wallet` resolved a latent strict-mode hazard rather than creating one: `helpers.ts:53`'s `select[id$="-wallet"]` matched **both** wallet selects and was unambiguous only because the form happened to default to `EXPENSE`.
+- The note is stored as typed; only the classifier sees the stripped text. Stripping at the write path would be lossy *and* would let a mis-parse corrupt the note (`lunch for 4` → `lunch for`).
+
+**Surprises**
+- **A quoted heredoc (`<<'EOF'`) collapses `\\` to `\` in this shell**, so the first cut of `expressInput.ts` shipped `new RegExp` patterns built from template literals whose escapes had been eaten — `[0-9.,+\-*/%^() ]` became an out-of-order range. `tsc` passed cleanly, because the breakage only exists at `new RegExp` evaluation time. With no error boundary anywhere in `src/`, that would have white-screened the app the moment the module loaded. Rewritten as plain regex **literals**, which removes the escaping level entirely. Two lessons: write source files containing escapes with a real file-write tool, and a regex built by string composition is worth a runtime probe even when the type-checker is happy.
+- **`handleQuickAdd` had to gain error suppression to gain correctness.** Making it notify the parent (fixing a genuine stale-state bug where the submit button stayed disabled after tapping an operator) meant `60+` now reaches `safeEvaluateMath`, which rejects it — so tapping `+` would have thrown an error message on screen. `evaluateAndNotify` now treats a trailing operator or open paren as an expected intermediate: not-yet-valid to the parent, silent to the user. This also quietly improved hand-typing a long expression, which flashed the same error mid-way before.
+- **`presetWalletId` remains dead.** `CLAUDE.md` and ADR `0007` both claimed `DebtsView` passes it; no call site in `src/` ever has. Left in place — it is a documented, working prop with an obvious future use — but the two docs' claims were corrected to stop asserting a call site that does not exist.
+
+**Deliberately not done**
+- **`matchSmartDescription` untouched.** Folding the new anchors into it would change `KeywordRulesView`'s parser-tester metrics, which `tests/keywords.spec.ts` asserts on directly. Two parsers with different contracts is correct here; the duplication is ~15 lines of regex.
+- **The `DEBT_REPAYMENT` branch at `TransactionForm.tsx:512-530` kept**, unlike TRANSFER's. `presetType="DEBT_REPAYMENT"` has a live caller and full spec coverage; TRANSFER had neither. Symmetry would have been the wrong instinct.
+- **No deep-link into a specific debt's repay modal.** The shortcut lands on the Debts tab. `DebtsView` would need `initialRepayDebtId`/`onConsume*` props plus App-level state, and the form has no debt picker to carry a choice from now that DEBT_REPAYMENT is off the toggle.
+- **The `lunch for 4` false positive left in.** Tightening the trailing anchor (requiring a currency marker, or a minimum note length) trades a visible, one-keystroke correction for silently refusing real input like `bts 45`. Recorded in ADR `0013`'s "Revisit if" instead.
+
+---
+
 ## Phase 40 — Category descriptions as Jev classification criteria: T84–T88 (2026-09-23, uncommitted)
 
 **Changed**

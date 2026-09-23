@@ -24,6 +24,21 @@ Ids and `data-testid`s that `tests/*.spec.ts` depend on are **API surface**: add
 
 Every id-prefix pattern: `tr[id^="tx-row-"]`, `button[id^="tx-delete-btn-"]`, `button[id^="tx-restore-btn-"]`, `div[id^="wallet-entity-"]`, `button[id^="delete-wallet-"]`, `div[id^="debt-card-"]`, `button[id^="open-repay-modal-"]`, `button[id^="settle-debt-"]`, `button[id^="delete-debt-"]`, `tr[id^="rule-row-"]`. Standalone ids across auth, csv, debts, diary, keywords, soft-delete, storage-persistence, theme, transaction, wallet-forms, wallets specs — see `ui-ux-audit-report.md` finding L and the individual spec files for the full list. None of these change in Phase 19.
 
+## Added in Phase 41 (ADR `0013`, express transaction entry)
+
+| Selector | Notes | File |
+|---|---|---|
+| `input[id$="-desc"]` | The omni note field, now the form's first input. Previously reachable as `input[placeholder*="groceries"], input[id$="-desc"]`; the placeholder alternative is **retired** — the copy is now `e.g. ข้าวมันไก่ 60, bts 45, or ค่าไฟ 1200` and must not be selected on. | `src/components/TransactionForm.tsx` |
+| `select[id$="-category"]`, `select[id$="-wallet"]` | Both are now **always mounted**. The "Edit details" collapse that used to unmount them is gone, so no spec needs to click anything open before asserting on their value. | same |
+| `${formId}-shortcut-transfer`, `${formId}-shortcut-repay-debt` | The shortcut-row links out to `TransferFundsModal` and the Debts tab. Each renders only when its handler prop is supplied. | same |
+| `${inputId}-chip-100\|500\|1000` | Quick-amount chips, unchanged ids, but no longer `sm:hidden` — visible at every breakpoint. | `src/components/InlineMathInput.tsx` |
+
+**Removed in the same phase** (ADR `0013`): `${formId}-type-transfer`, `${formId}-type-debt_repayment` and `${formId}-dest-wallet`. No spec referenced any of them — verified by grep across all 15 spec files before deletion. `${formId}-type-expense` / `-income` and the whole `repay` id set (`#repay-amount-math`, `#repay-wallet-select`, `#confirm-repay-btn`) are unchanged.
+
+Removing `-dest-wallet` also resolved a latent hazard rather than creating one: `helpers.ts:53`'s `select[id$="-wallet"]` matched **both** the source and destination selects, and was unambiguous only because the form happened to default to `EXPENSE`. It is now unambiguous by construction.
+
+> Note: `tx-form-dashboard` in the Phase 19 table no longer exists in `src/`. The Dashboard's inline form was retired in Phase 22 (T37); only `tx-form-quickadd` and `tx-form-page` remain.
+
 ## Known remaining fragile selectors (not yet hardened; addressed in later phases per the roadmap)
 
 - `transaction.spec.ts:55` — `^Income$` button text (Phase 27, SegmentedControl must preserve option labels exactly).
