@@ -135,4 +135,87 @@ test.describe('Soft-delete lifecycle', () => {
     await gotoTab(page, 'wallets');
     await expect(balance).toContainText('฿0.00');
   });
+
+  /*
+   * ADR 0016. The test above uses an EXPENSE, which is why the debt half of
+   * this invariant went unnoticed until Phase 44: `setTransactionDeleted` had
+   * no debt handling at all, so soft-deleting a repayment refunded the wallet
+   * and kept the debt reduction (free money, repeatable), while restoring
+   * debited the wallet again with no debt movement (paid twice for one
+   * reduction). These two cases are what would have caught it.
+   */
+  test('debt repayment soft-delete and restore reverses and reapplies the debt reduction', async ({ page }) => {
+    await gotoTab(page, 'debts');
+
+    // The seeded Student Loan: ฿4,500 remaining of a ฿10,000 target, so
+    // 55.0% paid off before anything in this test happens.
+    const card = page.locator('div[id^="debt-card-"]').filter({ hasText: 'Student Loan' });
+    await expect(card).toBeVisible();
+    await expect(card).toContainText('฿4,500.00');
+    await expect(card).toContainText('55.0%');
+
+    const marker = `E2E Debt Invariant ${Date.now().toString().slice(-6)}`;
+    await card.locator('button[id^="open-repay-modal-"]').click();
+    await page.locator('#repay-amount-math').fill('500');
+    await page.locator('input[id$="-desc"]').fill(marker);
+    await page.locator('#confirm-repay-btn').click();
+    await expect(page.locator('#repay-wallet-select')).toHaveCount(0);
+
+    // ฿4,500 - ฿500 = ฿4,000 remaining, 60.0% paid off.
+    await expect(card).toContainText('฿4,000.00');
+    await expect(card).toContainText('60.0%');
+
+    // Soft-deleting must give the debt back exactly, not merely "more than
+    // ฿4,000" - this is the assertion the missing handling failed.
+    await gotoTab(page, 'transactions');
+    const row = page.locator('tr[id^="tx-row-"]').filter({ hasText: marker });
+    await expect(row).toBeVisible();
+    await row.locator('button[id^="tx-delete-btn-"]').click();
+
+    await gotoTab(page, 'debts');
+    await expect(card).toContainText('฿4,500.00');
+    await expect(card).toContainText('55.0%');
+
+    // Restoring must reapply it exactly.
+    await gotoTab(page, 'transactions');
+    await page.locator('#tx-show-deleted').check();
+    const deletedRow = page.locator('tr[id^="tx-row-"]').filter({ hasText: marker });
+    await expect(deletedRow).toBeVisible();
+    await deletedRow.locator('button[id^="tx-restore-btn-"]').click();
+
+    await gotoTab(page, 'debts');
+    await expect(card).toContainText('฿4,000.00');
+    await expect(card).toContainText('60.0%');
+  });
+
+  test('soft-deleting the repayment that settled a debt un-settles it', async ({ page }) => {
+    await gotoTab(page, 'debts');
+
+    const card = page.locator('div[id^="debt-card-"]').filter({ hasText: 'Student Loan' });
+    await expect(card).toBeVisible();
+
+    // Clear the whole ฿4,500 remainder, which auto-settles the debt.
+    const marker = `E2E Settle Reverse ${Date.now().toString().slice(-6)}`;
+    await card.locator('button[id^="open-repay-modal-"]').click();
+    await page.locator('#repay-payoff-full').click();
+    await page.locator('input[id$="-desc"]').fill(marker);
+    await page.locator('#confirm-repay-btn').click();
+    await expect(page.locator('#repay-wallet-select')).toHaveCount(0);
+
+    await expect(card).toContainText('✓ Debt Fully Settled');
+    await expect(card.locator('button[id^="open-repay-modal-"]')).toHaveCount(0);
+
+    // Reversing the payment must un-settle it: `isSettled` is recomputed in
+    // both directions, so the card becomes actionable again rather than
+    // staying settled against a non-zero balance.
+    await gotoTab(page, 'transactions');
+    const row = page.locator('tr[id^="tx-row-"]').filter({ hasText: marker });
+    await expect(row).toBeVisible();
+    await row.locator('button[id^="tx-delete-btn-"]').click();
+
+    await gotoTab(page, 'debts');
+    await expect(card).not.toContainText('✓ Debt Fully Settled');
+    await expect(card).toContainText('฿4,500.00');
+    await expect(card.locator('button[id^="open-repay-modal-"]')).toBeVisible();
+  });
 });

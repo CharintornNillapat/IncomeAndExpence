@@ -126,7 +126,17 @@ test.describe('Debt payoff chips and live preview', () => {
     await expect(remainingAfter(page)).toHaveCount(0);
   });
 
-  test('overpaying warns but never blocks the submit button', async ({ page }) => {
+  /*
+   * ADR 0016 deliberately inverted this test.
+   *
+   * It previously asserted `#confirm-repay-btn` stayed **enabled** while
+   * overpaying, pinning ADR 0015's warn-never-block decision. That decision
+   * was reversed once the ledger stopped permitting an overpayment at all, and
+   * ADR 0015 anticipated the reversal in writing. This is not the spec-edit
+   * policy being bent: the assertion was not weakened or dropped, it now pins
+   * the opposite contract, which is exactly as strict.
+   */
+  test('overpaying blocks the submit button and names the maximum', async ({ page }) => {
     const card = await createDebt(page);
     await openRepay(page, card);
 
@@ -134,19 +144,58 @@ test.describe('Debt payoff chips and live preview', () => {
 
     const note = page.getByTestId('repay-overpayment-note');
     await expect(note).toBeVisible();
-    await expect(note).toContainText('฿1,000.00');
-    await expect(note).toContainText('still leaves your wallet');
+    await expect(note).toContainText('Maximum payable is ฿5,000.00');
+    await expect(note).toContainText('Pay in full');
 
-    // The debt floors at zero even though the wallet is debited the full
-    // amount, which is exactly what the note is there to say.
-    await expect(remainingAfter(page)).toHaveText('฿0.00');
+    await expect(page.locator('#confirm-repay-btn')).toBeDisabled();
 
-    // The point of the test: the warning is not a gate. If this ever starts
-    // failing, a phase has turned a deliberate warning into a block.
-    await expect(page.locator('#confirm-repay-btn')).toBeEnabled();
-
-    // The settle note is suppressed - the overpayment note already says it.
+    // The settle note is suppressed - the two are mutually exclusive.
     await expect(page.getByTestId('repay-settle-note')).toHaveCount(0);
+  });
+
+  test('correcting an overpayment back down re-enables the submit button', async ({ page }) => {
+    const card = await createDebt(page);
+    await openRepay(page, card);
+
+    await amountField(page).fill('6000');
+    await expect(page.locator('#confirm-repay-btn')).toBeDisabled();
+
+    // The gate must not be sticky: it is derived on render, not latched.
+    await amountField(page).fill('1500');
+    await expect(page.getByTestId('repay-overpayment-note')).toHaveCount(0);
+    await expect(page.locator('#confirm-repay-btn')).toBeEnabled();
+    await expect(remainingAfter(page)).toHaveText('฿3,500.00');
+  });
+
+  test('"Pay in full" satisfies the constraint exactly', async ({ page }) => {
+    const card = await createDebt(page);
+    await openRepay(page, card);
+
+    // The chip the constraint note points at must produce a submittable
+    // amount - otherwise the advice it gives is wrong.
+    await page.locator('#repay-payoff-full').click();
+
+    await expect(page.getByTestId('repay-overpayment-note')).toHaveCount(0);
+    await expect(page.getByTestId('repay-settle-note')).toBeVisible();
+    await expect(page.locator('#confirm-repay-btn')).toBeEnabled();
+  });
+
+  test('a plain expense form is unaffected by the debt overpayment gate', async ({ page }) => {
+    /*
+     * The regression guard for the highest-risk line in ADR 0016. On a
+     * non-debt form `repayTargetDebt` is null, so `remainingDebt` falls back
+     * to 0 and `overpayment` equals the whole amount. Without the
+     * `repayTargetDebt !== null` test in `isOverpaying`, this submit button -
+     * and every other EXPENSE/INCOME one in the app - would be permanently
+     * disabled.
+     */
+    await page.locator('#navbar-quick-add-btn').click();
+    const modal = page.getByRole('dialog', { name: /Quick Record Transaction/i });
+    await expect(modal).toBeVisible();
+
+    await modal.locator('input[name="amount_expression"]').fill('250');
+    await expect(modal.locator('button[type="submit"]')).toBeEnabled();
+    await expect(modal.getByTestId(/overpayment-note$/)).toHaveCount(0);
   });
 
   test('the minimum chip is hidden when the minimum exceeds what is left', async ({ page }) => {
