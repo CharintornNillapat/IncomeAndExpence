@@ -1,6 +1,6 @@
 # 0015 — The repay form shows the payoff goal it is moving
 
-**Status:** Accepted
+**Status:** Accepted, **amended by ADR `0016`** (2026-09-23). The "Overpayment warns; it never blocks" decision below was **reversed** once the ledger stopped permitting an overpayment at all — see `0016-debt-repayment-integrity.md`. That section is left as written rather than edited: an ADR records what was decided when, and the escape hatch it left ("if that behaviour is ever fixed in the ledger, revise the note with it") is the mechanism that produced `0016`.
 **Date:** 2026-09-23
 
 ## Context

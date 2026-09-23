@@ -524,3 +524,30 @@ Same method as the Phase 39–42 sections, with one change: the phase was alread
 - **No new dependency, no new vendor chunk.** `manualChunks` is unmodified, so ADR `0010`'s `vendor-math` deferral (110.72 kB gzip, still the largest chunk) is intact.
 
 **Test-suite size:** 186 → **210 runs** (62 → 70 tests, 17 → **18** spec files). Wall clock `npx playwright test --workers=4`: 4.3 m → 4.8 m.
+
+## Phase 44 (debt repayment integrity) — bundle delta, measured against a rebuild of HEAD
+
+Same method as Phase 43: the phase was already committed, so this built `b83ad93` (the pre-phase HEAD) and `main` in turn — `checkout` → `npm run clean && npm run build` → record → `checkout` → rebuild. Same machine, Node v24.19.0, same `node_modules`, clean tree both times, no dev server running.
+
+| Chunk | HEAD (`b83ad93`) | Phase 44 | Delta |
+|---|---|---|---|
+| entry `index-*.js` | 163.35 kB / 46.14 kB gzip | **164.29 kB / 46.32 kB gzip** | **+0.94 kB / +0.18 kB** |
+| `TransactionForm-*.js` (lazy) | 21.30 kB / 6.63 kB gzip | 21.39 kB / 6.64 kB gzip | +0.09 kB / +0.01 kB |
+| `index-*.css` | 77.92 kB / 12.00 kB gzip | 77.92 kB / 12.00 kB gzip | **0 / 0** |
+| `vendor-math-*.js` | 375.73 kB / 110.72 kB gzip | 375.73 kB / 110.72 kB gzip | 0 / 0 |
+| **all JS, summed** | 1328.98 kB / 390.52 kB gzip | 1330.01 kB / 390.71 kB gzip | +1.03 kB / +0.19 kB |
+| chunk count | 33 | 33 | 0 |
+| vendor chunk count | 5 | 5 | 0 |
+| build time | — | 5.75 s | not compared; the baseline build was the first after a checkout and its 19.11 s is a cold-cache artefact, not a signal |
+
+**Findings**
+
+- **This phase puts real weight on the critical path, and that is correct rather than a regression.** `grep -l 'remaining on' dist/assets/*.js` resolves **only** to the entry chunk. Phases 41–43 all rode lazy chunks because their code lived in `TransactionForm`; both of this phase's guards live in `FinanceContext`, which is eager by construction — it is the provider wrapping the app. +0.94 kB raw / +0.18 kB gzip is the price of enforcing an invariant at the layer that actually commits, and paying it in a lazy chunk instead would mean enforcing it somewhere a caller could bypass.
+- **The CSS did not move by a single byte** — the two builds produced an identical content hash (`index-Dwrjbfi7.css`). The constraint note reuses the amber palette and layout classes the warning it replaced already carried, so the Tailwind scan emitted nothing new. The first zero-delta CSS row in this table; compare Phase 42's +0.80 kB and Phase 43's +0.10 kB.
+- **The chunk set is unchanged**, unlike Phase 43 where adding a lazy importer re-partitioned a shared chunk and added one. Nothing here changes an import graph — both guards are additions inside modules that were already in the entry chunk.
+- **The summed-JS row (+1.03 kB) barely exceeds the entry row (+0.94 kB)**, which is the expected shape when a change is confined to already-eager modules plus a few lines in one lazy one. It is kept because Phase 43 proved a single chunk's delta can mislead.
+- **No new dependency, no new vendor chunk.** `manualChunks` unmodified; ADR `0010`'s `vendor-math` deferral (110.72 kB gzip) intact.
+
+**Test-suite size:** 210 → **225 runs** (70 → 75 tests, 18 spec files — one test inverted, five added, no new file). Wall clock `npx playwright test --workers=4`: 4.8 m → 5.2 m.
+
+**Stability note:** the first full run of this phase reported 224/225, with `wallets.spec.ts:9` failing on webkit — a spec this phase does not touch. It passed 3/3 in isolation and the suite re-ran clean at 225/225. Recorded as `--workers=4` contention flake rather than resolved; CI runs `workers: 1`.

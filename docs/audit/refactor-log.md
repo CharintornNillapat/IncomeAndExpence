@@ -4,6 +4,70 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
+## Phase 44 — Debt repayment integrity: the ledger stops losing money: T104–T109 (2026-09-23, uncommitted)
+
+**Changed**
+- `docs/audit/decisions/0016-debt-repayment-integrity.md` (new) — written **before** the code, per `README.md:28`. **Amends ADR `0015`**, which recorded the overpayment asymmetry and deliberately left it unfixed.
+- `src/context/FinanceContext.tsx` — two guards. `addTransaction` rejects a `DEBT_REPAYMENT` that exceeds the target's `remainingAmount` before any mutation; `setTransactionDeleted` reverses the debt decrement on soft-delete and reapplies it on restore, recomputing `isSettled` both ways, with the remote write, rollback snapshot and compensating write all extended to match.
+- `src/components/TransactionForm.tsx` — `isOverpaying` gates a new single `canSubmit` (previously the same expression written out three times), and the amber note changes from a warning to a constraint naming the maximum.
+- `tests/debt-repayment.spec.ts` — one test **inverted** on purpose, three added.
+- `tests/soft-delete.spec.ts` — two cases for the accounting invariant.
+- `CLAUDE.md` — the Do-NOT rule this phase reverses is deleted, and the Debt-repayment section rewritten, in the same commit as the code.
+
+**Why**
+ADR `0015` documented an asymmetry it chose not to fix: `addTransaction` debits the wallet the full amount (`:1537`) while the debt floors at zero (`:1565`), so paying ฿500 against a ฿100 remaining debt sends ฿400 nowhere. It warned in amber and left an explicit escape hatch for a later phase. This is that phase.
+
+**Auditing for it found a bigger hole than the one reported.** Searching every write path that touches `Debt.remainingAmount` found four, not one — and **`setTransactionDeleted` had no debt handling whatsoever**:
+
+```
+record ฿1,000 repayment    wallet −1,000   debt −1,000   balanced
+soft-delete it             wallet +1,000   debt    —     ฿1,000 cleared for free
+restore it                 wallet −1,000   debt    —     paid twice for one reduction
+```
+
+Repeatable in both directions, and uncovered: `soft-delete.spec.ts:95`'s balance-invariant test uses an EXPENSE, so no spec had ever driven a repayment through delete and restore. The overpayment bug needs a user to type too large a number; this one fires on an ordinary undo.
+
+**Verification**
+```
+npm run lint                     # tsc --noEmit && tsc -p api/tsconfig.json: clean, 0 errors
+npx playwright test --workers=4  # 225/225 passed, 5.2m
+npm run clean && npm run build   # built in 5.75s; 0 chunk-size warnings
+```
+`tests/debts.spec.ts` passed **unedited** — it pays 1,000 then 4,000 against a 5,000 debt, both exact, so the new guard never fires on it.
+
+**Bundle verification** (build at `b83ad93`, `clean && build`, record; return to `main`, `clean && build`; same machine, Node v24.19.0, clean tree both times).
+
+| Chunk | HEAD (`b83ad93`) | Phase 44 | Delta |
+|---|---|---|---|
+| entry `index-*.js` | 163.35 kB / 46.14 kB gzip | **164.29 kB / 46.32 kB gzip** | **+0.94 kB / +0.18 kB** |
+| `TransactionForm-*.js` (lazy) | 21.30 kB / 6.63 kB gzip | 21.39 kB / 6.64 kB gzip | +0.09 kB / +0.01 kB |
+| `index-*.css` | 77.92 kB / 12.00 kB gzip | 77.92 kB / 12.00 kB gzip | **0 / 0** (identical content hash) |
+| **all JS, summed** | 1328.98 kB / 390.52 kB gzip | 1330.01 kB / 390.71 kB gzip | +1.03 kB / +0.19 kB |
+| chunk count | 33 | 33 | 0 |
+| vendor chunk count | 5 | 5 | 0 |
+
+`grep -l 'remaining on' dist/assets/*.js` resolves **only** to the entry chunk — which is correct and expected here, unlike every recent phase. `manualChunks` untouched; ADR `0010` intact.
+
+**Correctness notes**
+- **The guard's position is load-bearing in both directions**, and the three-line window it sits in is the only correct one. **After** the `existingTx` replay check, or retrying a payment that already settled its debt gets rejected for exceeding a remainder its own earlier success drove to zero. **Before** `inFlightIdempotencyKeys.add`, because the `finally` that releases the key (`:1786`) belongs to a `try` that only begins after the optimistic writes — an early return past that line leaks the key forever, and `useIdempotencyKey` reuses it on retry, so the user would correct the amount and be told "Duplicate transaction submission in progress" for the rest of the form's life.
+- **Reject, never clamp.** A clamped write records a ledger row for an amount the user never entered while the submit button still names what they typed. A ledger that quietly disagrees with the instruction that produced it is not an improvement on one that loses money visibly.
+- **The `Math.max(0, …)` floors stay and are now annotated**, not removed as newly-dead code: `debtsRef.current` can be stale against a concurrent repayment from another device, and without the floor that race writes a *negative* remaining balance.
+- **`isOverpaying` must test `repayTargetDebt !== null`.** On a non-debt form `remainingDebt` falls back to 0, so `overpayment` equals the whole amount — harmless while it was only read inside `{repayTargetDebt && …}`, but feeding that into the submit gate without the null check would have permanently disabled **every EXPENSE and INCOME submission in the app**. It has its own regression test.
+- **`settleDebt` is deliberately exempt** and documented as such in ADR `0016`, so a later audit finds a decision rather than assuming nobody looked.
+
+**Surprises**
+- **The CSS did not move by a single byte** — identical content hash across the two builds. The constraint note reuses the amber palette and the layout classes the warning already had, so the Tailwind scan emitted nothing new. The first phase in this table with a genuinely zero CSS delta.
+- **This is the first recent phase to put real weight on the critical path.** Phases 41–43 all rode lazy chunks; `FinanceContext` is eager, so both guards land in the entry chunk for +0.94 kB. Expected and reported as measured rather than buried in the summed row.
+- **One webkit flake, disclosed rather than swept.** The first full run reported 224/225 with `wallets.spec.ts:9` failing on webkit — a spec that touches nothing this phase changed. It passed 3/3 in isolation and the full suite re-ran clean at **225/225**. Recorded as contention flake at `--workers=4`; CI runs `workers: 1` and is less exposed. Worth watching rather than declaring solved.
+
+**Deliberately not done**
+- **Existing overpaid ledgers are not repaired.** The guard is a write-time constraint, not a migration. Nothing scans history for rows written before it.
+- **The reversal is uncapped.** Restoring a pre-Phase-44 overpayment computes `remaining + amount` with no upper bound, so `remainingAmount` can exceed `totalAmount` for legacy rows. Capping would silently discard the difference — the same sin as clamping. Both progress clamps absorb it, so it renders as 100%.
+- **The ledger guard is left untested.** Once the client gate exists it is unreachable from the UI, and this project has no unit-test runner. A Playwright test that cannot reach it would prove nothing, so none was written; its correctness rests on review and on mirroring the wallet-resolution guard directly above it.
+- **`commitBulkImport` untouched.** `ImportRowValidation` carries no `debtId`, so a CSV row cannot target a debt — there is nothing to guard.
+
+---
+
 ## Phase 43 — Debt payoff chips and live repayment preview: T99–T103 (2026-09-23, commits `b6e5ba8`…`44a9747`)
 
 **Changed**

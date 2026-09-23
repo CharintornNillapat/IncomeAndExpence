@@ -187,7 +187,7 @@ Without it, `FinanceContext` falls back to the legacy non-atomic path (three sep
 
 ## Testing
 - **Framework**: Playwright with Chromium, Firefox, and WebKit projects.
-- **Suite size**: 70 tests across 18 spec files, run on all three browsers = **210 test runs**. All must pass.
+- **Suite size**: 75 tests across 18 spec files, run on all three browsers = **225 test runs**. All must pass.
 - **Location**: `tests/*.spec.ts` (`transaction`, `wallets`, `diary`, `theme`, `wallet-forms`, `debts`, `soft-delete`, `keywords`, `categories`, `csv`, `auth`, `date-boundary`, `storage-persistence`, `presets`, `jev-classify`, `express-input`, `transfer-preview`, `debt-repayment`), with shared helpers in `tests/helpers.ts`.
 - **Never edit files while a run is in flight.** `playwright.config.ts`'s `webServer` is `npm run dev` — a live Vite dev server — so writing to `src/` mid-run HMRs the app under test and produces failures that do not reproduce in isolation. This cost a wasted baseline in Phase 39.
 - **Network mocking**: `tests/jev-classify.spec.ts` is the only spec that intercepts requests (`page.route('**/api/classify')`). Every response is fulfilled locally, so the suite spends no TypeSafe credits and needs no API key, on CI or locally.

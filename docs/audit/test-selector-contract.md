@@ -67,6 +67,19 @@ All ids below are derived from `idPrefix || formId`, so they render as `repay-*`
 
 Nothing was removed in this phase. `#repay-amount-math`, `#repay-wallet-select`, `#confirm-repay-btn`, `#open-repay-modal-*` and the Add Debt form's ids are unchanged, and `tests/debts.spec.ts` passed **unedited** — it is the regression guard for the repayment lifecycle and should stay that way. The chips are additive: they seed the existing amount input rather than replacing it, which is what kept that spec's surface intact.
 
+## Changed in Phase 44 (ADR `0016`, debt repayment integrity)
+
+**Nothing was added or removed. One selector kept its name and inverted its meaning**, which is precisely the case this document exists to catch — a spec that located it by name and asserted on the old behaviour would have kept passing its locator and failing its intent, or worse, kept passing both while testing a contract that no longer exists.
+
+| Selector | What changed | File |
+|---|---|---|
+| `[data-testid="repay-overpayment-note"]` | **Same id, same render condition, opposite meaning.** It was a *warning* that the excess would still leave the wallet, rendered while `#confirm-repay-btn` stayed **enabled** (ADR `0015`). It is now a *constraint* naming the maximum payable, rendered while that button is **disabled** (ADR `0016`). Any assertion on its presence must now also expect a blocked submit. | `src/components/TransactionForm.tsx` |
+| `#confirm-repay-btn` | Unchanged id; its gating condition gained `!isOverpaying`. `tests/debts.spec.ts` is unaffected — it pays 1,000 then 4,000 against a 5,000 debt, both exact — and passed **unedited**. | same |
+
+**The Phase 43 test that pinned the old meaning was inverted, not deleted.** `debt-repayment.spec.ts`'s *"overpaying warns but never blocks the submit button"* became *"overpaying blocks the submit button and names the maximum"*. The spec-edit policy forbids weakening an assertion; this one was not weakened, it was pointed at the opposite contract at equal strictness, under a decision ADR `0015` anticipated in writing. The test carries a comment saying so, so a later reader does not mistake it for erosion.
+
+`#repay-payoff-full`, `#repay-payoff-half`, `#repay-payoff-minimum`, `repay-payoff-preview`, `repay-remaining-after` and `repay-settle-note` are all unchanged in both name and meaning.
+
 ## Known remaining fragile selectors (not yet hardened; addressed in later phases per the roadmap)
 
 - `transaction.spec.ts:55` — `^Income$` button text (Phase 27, SegmentedControl must preserve option labels exactly).

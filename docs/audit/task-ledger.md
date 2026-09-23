@@ -944,7 +944,7 @@ Approved explicitly by the user as Part 3 of the UX redesign roadmap, planned an
 **Full gate:** `npm run lint` clean (both tsconfigs); `npx playwright test --workers=4` **210/210 passed, 4.8m**; `npm run clean && npm run build` succeeded in 5.21s, 0 chunk-size warnings. Entry chunk 163.31 → **163.35 kB raw / 46.12 → 46.14 kB gzip**, measured by building `fb56cf8` and `main` in turn rather than differencing a documented figure.
 
 **Design constraints carried from ADR `0015` (do not re-litigate):**
-- **Overpayment warns, never blocks.** The ledger floors the debt at zero but debits the wallet the full amount. Blocking removes a case the ledger permits and changes submit gating `debts.spec.ts` exercises. Pinned by a test.
+- ~~**Overpayment warns, never blocks.**~~ **Superseded by Phase 44 / ADR `0016`** — the ledger now rejects an overpayment outright and the form blocks it. Left as written, since this row records what Phase 43 decided at the time; the reasoning below is why it was *not* fixed then, not a standing rule. Original text: *"The ledger floors the debt at zero but debits the wallet the full amount. Blocking removes a case the ledger permits and changes submit gating `debts.spec.ts` exercises. Pinned by a test."*
 - **The chips seed through `#repay-amount-math`, never replace it.** That id, `#repay-wallet-select` and `#confirm-repay-btn` are `debts.spec.ts`'s entire surface, and it passed unedited.
 - **A chip latches the amount field.** `InlineMathInput`'s `seed` effect deliberately never fires `onUserEdit`, so the handler sets `userTouchedRef.current.amount` directly — ADR `0013`'s rule reached through a new entry point.
 - **The block stays mounted with no amount**, unlike Phase 42's transfer preview. `presetDebtId` suppresses the Debt Target select, so this is the only place the remaining balance appears in the modal.
@@ -955,6 +955,35 @@ Approved explicitly by the user as Part 3 of the UX redesign roadmap, planned an
 - **A shared chunk got smaller because an import was added to it.** Chunk sizes here are a partitioning outcome, not a per-module cost — which is why a summed-JS row was added to the bundle table (+3.63 kB across everything, against +3.40 kB in `TransactionForm` alone).
 - **The overpayment note is now the only place in the app describing the full-debit/floored-debt asymmetry.** If that behaviour is ever fixed in the ledger, the note must be revised or removed with it.
 - **All 8 new tests passed on the first run.** Worth scrutiny rather than reassurance: the expectations came from the Add Debt form's own defaults (5,000 total, 200 minimum) and the real arithmetic, so a wrong one would have failed loudly rather than passed vacuously.
+
+## Phase 44 — Debt repayment integrity: the ledger stops losing money: T104–T109 (2026-09-23)
+
+Approved explicitly by the user, planned and approved before any code was written. Three questions were settled up front: **reject rather than clamp** an overpayment; the **`setTransactionDeleted` hole is in scope** (surfaced during planning, larger than the reported bug); and **`settleDebt` stays exempt**, documented rather than changed. Per `README.md:28`, ADR `0016` was written **before** T105 started.
+
+| # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
+|---|---|---|---|---|---|---|---|---|---|---|
+| T104 | ADR `0016`, amending `0015` — reject-not-clamp; the guard's load-bearing position; the soft-delete hole and why it exceeded the reported bug; `settleDebt`'s exemption; the uncapped reversal; the deliberate test inversion | `docs/audit/decisions/0016-debt-repayment-integrity.md` (new) | Med | Low | 1h | done | — | d9ca5e8 | docs only | — |
+| T105 | `addTransaction` rejects a `DEBT_REPAYMENT` exceeding `remainingAmount`, placed after the `existingTx` replay check and before `inFlightIdempotencyKeys.add`; `Math.max(0, …)` floors kept and annotated as stale-ref defence | `src/context/FinanceContext.tsx` | High | Med | 1h | done | T104 | d9ca5e8 | `npm run lint` clean; **`debts.spec.ts` 1/1 unedited** | Entry chunk +0.94 kB — `FinanceContext` is eager |
+| T106 | `setTransactionDeleted` reverses/reapplies the debt decrement with `isSettled` recomputed both ways; optimistic `setDebts`, `previousDebts` snapshot, remote write ordered before the `is_deleted` flag, compensating write in the `catch` | `src/context/FinanceContext.tsx` | High | Med | 2h | done | T105 | 07e9e1c | `npm run lint` clean; `soft-delete.spec.ts` 4/4 unedited at this point | — |
+| T107 | `isOverpaying` (with the load-bearing `repayTargetDebt !== null` test) gates a single new `canSubmit`, replacing three copies of the same expression; the amber note becomes a constraint naming the maximum; `CLAUDE.md`'s contradicted Do-NOT deleted in the same commit | `src/components/TransactionForm.tsx`, `CLAUDE.md` | High | **High** | 1.5h | done | T105 | f244727 | `transaction.spec.ts` + `presets.spec.ts` **10/10** — the null-check regression check | `TransactionForm` chunk +0.09 kB |
+| T108 | 1 test inverted, 5 added: the overpayment gate, its non-stickiness, "Pay in full" satisfying the constraint, a plain EXPENSE form unaffected, and two debt soft-delete/restore invariants | `tests/debt-repayment.spec.ts`, `tests/soft-delete.spec.ts` | High | Low | 2h | done | T106, T107 | 8d14dfe | **225/225, 5.2m**; negative control confirmed both new invariant cases fail against `b83ad93` | Suite 210 → **225 runs**, 70 → 75 tests, 18 spec files (no new file) |
+| T109 | Phase 44 refactor-log entry, ledger rows, and bundle column; `test-selector-contract.md`'s inverted-selector note | `docs/audit/refactor-log.md`, `docs/audit/task-ledger.md`, `docs/audit/baseline-metrics.md`, `docs/audit/test-selector-contract.md` | Med | Low | 1h | done | T108 | — | docs only; `npm run lint` clean at HEAD | — |
+
+**Full gate:** `npm run lint` clean (both tsconfigs); `npx playwright test --workers=4` **225/225 passed, 5.2m**; `npm run clean && npm run build` succeeded in 5.75s, 0 chunk-size warnings. Entry chunk 163.35 → **164.29 kB raw / 46.14 → 46.32 kB gzip**, measured by building `b83ad93` and `main` in turn.
+
+**Design constraints carried from ADR `0016` (do not re-litigate):**
+- **Reject, never clamp.** A clamped write records an amount the user never entered while the button still names what they typed.
+- **The guard sits between the replay check and the idempotency `add`.** Either side of that window is a real, specific failure — a rejected retry, or a permanently bricked form. Both are spelled out in the code comment.
+- **The floors stay.** They defend a stale-`debtsRef` race, not a reachable UI path.
+- **`isOverpaying` tests `repayTargetDebt !== null`.** Without it, every EXPENSE and INCOME submit in the app is disabled.
+- **`settleDebt` is exempt** by decision, not oversight.
+
+**Notes on execution:**
+- **The audit found more than the bug report.** `setTransactionDeleted` had no debt handling at all, making an ordinary undo leak money in both directions, where the reported overpayment needed the user to type too large a number. Found by enumerating every writer of `Debt.remainingAmount` rather than reading only the path named in the request.
+- **The new invariant tests were negative-controlled.** Both were re-run against `b83ad93`'s `FinanceContext.tsx` and **failed**, with the debt card stuck at "฿0.00 / 100% Fully Settled" after its repayment was deleted. They are not vacuous.
+- **Suite arithmetic landed under the projection.** The plan said 6 new tests / 228 runs; 5 were actually written (one plan item was the inversion, not an addition), so 75 tests / **225 runs**. Recorded as measured.
+- **One webkit flake, disclosed.** The first full run reported 224/225, `wallets.spec.ts:9` failing on webkit — a spec untouched by this phase. It passed 3/3 in isolation and the full suite re-ran clean at 225/225. Contention at `--workers=4`; CI runs `workers: 1`. Worth watching rather than declaring solved.
+- **The CSS delta was exactly zero** — identical content hash across both builds, a first for this table.
 
 ## Deferred — none remaining
 
