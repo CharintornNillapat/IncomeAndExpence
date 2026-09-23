@@ -175,6 +175,37 @@ test.describe('Jev classification', () => {
     await expect(categorySelect).toHaveValue(TRANSPORT.id);
   });
 
+  test('applying a suggestion counts as an explicit pick and offers a rule', async ({ page }) => {
+    // The other half of ADR 0017's trigger. The rule chip requires the human
+    // to have chosen the category, and tapping Apply on a mid-confidence
+    // suggestion is exactly that - a low-confidence match the user resolved.
+    //
+    // This case lives here rather than in `smart-rules.spec.ts` because it
+    // needs a live suggestion, and `jev-classify.spec.ts` is the only spec in
+    // this suite permitted to intercept requests.
+    await mockClassifier(page, {
+      categoryId: TRANSPORT.id,
+      categoryConfidence: 0.62,
+      detectedType: 'EXPENSE',
+      typeConfidence: 0.9,
+    });
+
+    const modal = await openQuickAdd(page);
+    await modal.locator('input[id$="-desc"]').fill(UNMATCHED_NOTE);
+
+    // Nothing is offered while the suggestion is merely on screen - the
+    // category has not been chosen yet, only proposed.
+    await expect(modal.getByTestId('tx-category-suggestion')).toBeVisible();
+    await expect(modal.getByTestId('tx-save-rule')).toHaveCount(0);
+
+    await modal.getByTestId('tx-category-suggestion').locator('[id$="-suggestion-apply"]').click();
+
+    const ruleChip = modal.getByTestId('tx-save-rule');
+    await expect(ruleChip).toBeVisible();
+    await expect(ruleChip).toContainText(UNMATCHED_NOTE);
+    await expect(ruleChip).toContainText(TRANSPORT.name);
+  });
+
   test('a low-confidence classification changes nothing and shows nothing', async ({ page }) => {
     // 0.3 is below the 0.5 floor - the measured value for a genuinely
     // ambiguous note, where Jev spread probability across three options.
