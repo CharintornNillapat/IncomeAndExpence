@@ -1081,6 +1081,32 @@ Approved explicitly by the user, planned and approved before any code was writte
 - **One negative control was redone** because the first attempt produced malformed TypeScript that the dev server still served — the tests failed, but possibly for the wrong reason.
 - **No flakes.** Phase 44's `wallets.spec.ts` webkit flake has now not reproduced across three consecutive phases; still watched rather than closed.
 
+## Phase 49 - Unit testing foundation (Vitest) and the historical coverage gaps: T136-T144 (2026-09-24)
+
+Approved explicitly by the user, planned and approved before any code was written. Four questions were settled up front: the Phase 44 gap is closed by **rendering the real `FinanceProvider`** rather than extracting arithmetic; the runner is **Vitest 5** with the Vite floor tightened to `^6.4.0`; the DOM harness is **`@testing-library/react`**; and the wiring is a **CI step only**, no husky. Per `README.md:28`, ADR `0021` was written before T137 started and committed alone.
+
+**This phase reverses a standing decision.** The "Not a task" section below has listed Vitest as explicitly out of scope since the original audit. Phases 44-48 changed the facts; the exclusion is amended below rather than silently contradicted.
+
+| # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
+|---|---|---|---|---|---|---|---|---|---|---|
+| T136 | ADR `0021` - the four-phase pattern that forced this; the reversal of the Vitest exclusion; both default-glob collection traps; why the Phase 44 gap is rendered rather than extracted; the linear-not-exponential backoff correction | `docs/audit/decisions/0021-unit-testing-foundation.md` (new) | Med | Low | 1.5h | done | - | e9cd727 | docs only; committed alone | - |
+| T137 | Vitest installed and bounded: `unit/` directory, explicit `include`, the `testMatch` pin on Playwright, `test:unit` script, Vite floor `^6.2.3` -> `^6.4.0` | `package.json`, `package-lock.json`, `vitest.config.ts` (new), `tsconfig.json`, `playwright.config.ts` | High | Med | 1.5h | done | T136 | 0b21c4e | `npm run lint` clean; `playwright test --list` still **321 tests in 22 files** | 4 devDeps; zero production files touched |
+| T138 | 38 tests pinning Phase 48's thresholds at both edges, the branch precedence, sliced-not-parsed months, and that no rendered figure is absent from the summary | `unit/spending-summary.test.ts` (new) | High | Low | 2h | done | T137 | 1ceee28 | 38/38; `vitest list` shows only `unit/` | Unit suite 0 -> 38 |
+| T139 | 20 tests pinning Phase 47's concurrency ceiling, pre-dispatch de-duplication, the 400 ms retry, and both early-stop paths | `unit/batch-classifier.test.ts` (new) | High | Med | 2.5h | done | T137 | 1f9e14e | 20/20; two controls, one reproducing the stampede at 4 requests | Unit suite 38 -> 58 |
+| T140 | 23 tests pinning Phase 46's `isSecureContext` branch and the full error taxonomy, driven through the hook's public surface | `unit/speech-support.test.tsx` (new) | High | Med | 2.5h | done | T137 | 8b7f9e7 | 23/23; two controls; **found** that `start()` never re-checks `isSupported` | Unit suite 58 -> 81 |
+| T141 | 18 tests against the real `FinanceProvider`: the overpayment guard, its position relative to the key and the replay check, and the delete/restore debt reversal | `unit/ledger-guards.test.tsx` (new) | High | High | 3.5h | done | T137 | 47e1dee | 18/18; three controls, each isolating its own assertions | Unit suite 81 -> **99** |
+| T142 | CI step before the browser install, `CLAUDE.md` section and four Do-NOT lines; **plus the Tailwind source restriction a bundle measurement forced** | `.github/workflows/playwright.yml`, `CLAUDE.md`, `src/index.css` | Med | Med | 1.5h | done | T141 | a0fb4e0, f9eff52 | **321/321, 7.5 m**, first attempt, no flakes | JS byte-identical; **CSS -935 B** |
+| T143 | Phase 49 refactor-log entry, ledger rows, bundle column | `docs/audit/refactor-log.md`, `docs/audit/task-ledger.md`, `docs/audit/baseline-metrics.md` | Med | Low | 1h | done | T142 | PENDING_T143 | docs only; `npm run lint` clean at HEAD | - |
+| T144 | Sha backfill plus the CI result | `docs/audit/refactor-log.md`, `docs/audit/task-ledger.md` | Low | Low | 0.5h | done | T143 | (this row's own commit - a backfill cannot cite its own sha) | docs only; CI PENDING_CI_RUN | - |
+
+**Notes on execution:**
+- **The bundle measurement caught a leak that predates the phase.** The delta was supposed to be byte-identical and was not: Tailwind v4's automatic content detection scans the *whole repository*, so `isolate: true` in `vitest.config.ts` emitted `.isolate` and the word "invert" in a sentence in ADR `0021` emitted `.invert` - 246 bytes of dead CSS shipped to users from two files that render nothing. `tests/helpers.ts` had been doing the same since Phase 19. Fixed at the class level with `source(none)` plus two explicit sources; all 15 removed selectors verified dead before the commit.
+- **A test asserted something false and was corrected rather than the code.** `start()` in `useSpeechRecognition` checks only for a constructor, never `isSupported`, so on an insecure origin it arms a session that cannot run. Unreachable in the app because `TransactionForm.tsx:701` gates the mic on `isVoiceSupported`. Pinned as-is; hardening it is a behaviour change for a later phase.
+- **The brief's "exponential backoff" is linear.** `BASE_BACKOFF_MS * attempt` with `MAX_ATTEMPTS` at 2 is exactly one 400 ms wait. Pinned as it ships.
+- **A control revealed why both single-direction and round-trip assertions are needed.** With the debt reversal removed, the delete/restore round-trip tests stayed **green** - both halves were broken symmetrically and cancelled out. Only the single-direction assertions caught it.
+- **Seven negative controls, every one failing on its intended assertion.** First phase in four where none needed redoing.
+- **No flakes.** Phase 44's `wallets.spec.ts` webkit flake has now not reproduced across five consecutive phases.
+
 ## Phase 48 — Smart spending insights (AI monthly wrap-up): T129–T135 (2026-09-24)
 
 Approved explicitly by the user, planned and approved before any code was written. Three questions were settled up front: the card goes in **`DashboardView`** (there is no Analytics view and none is created); **the model picks a pattern and the app renders the sentences** (Jev answers choice questions, not free text); and the cache lives in **`localStorage`** keyed by user and month. Per `README.md:28`, ADR `0020` was written before T130 started and committed alone.
@@ -1130,4 +1156,4 @@ Both items formerly in this table are now resolved; see Phase 38 above. **Zero a
 
 ## Not a task — explicitly out of scope this pass
 
-`tsconfig.json` `strict` mode, ESLint/Prettier, Vitest, React Compiler, `rollup-plugin-visualizer`, a second state library, merging `roundToCents`/`roundToTwoDecimals`, mass-rewriting imports to adopt `@/*`, unifying/removing `AnimatedCounter`'s currency exemption without ADR `0004`. See the plan's "Non-goals and traps" section for the full list and reasoning.
+`tsconfig.json` `strict` mode, ESLint/Prettier, ~~Vitest~~ (**adopted in Phase 49 - see ADR `0021`**; the rest of this list stands), React Compiler, `rollup-plugin-visualizer`, a second state library, merging `roundToCents`/`roundToTwoDecimals`, mass-rewriting imports to adopt `@/*`, unifying/removing `AnimatedCounter`'s currency exemption without ADR `0004`. See the plan's "Non-goals and traps" section for the full list and reasoning.

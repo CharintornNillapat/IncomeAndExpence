@@ -661,3 +661,42 @@ Same method as Phases 43–47: built `9ab4d5d` (the pre-phase HEAD) and `main` i
 **Test-suite size:** 300 → **321 runs** (100 → 107 tests, 21 → **22** spec files — 7 added, none removed or edited). Wall clock `npx playwright test --workers=4`: 6.6 m → 8.2 m.
 
 **Stability note:** first full run clean at 321/321 with no retries. Phase 44's `wallets.spec.ts` webkit flake has not reproduced across four consecutive phases; it stays on the watch list rather than being closed.
+
+## Phase 49 (unit testing foundation) — bundle delta, measured against a rebuild of HEAD
+
+Same method as Phases 43–48: built `cd4772e` (the pre-phase HEAD) and `main` in turn. Same machine, same `node_modules`, clean tree both times, no dev server running. The HEAD column reproduced Phase 48's recorded figures exactly.
+
+This phase changes **no file under `src/` or `api/`** except `src/index.css`, and adds only devDependencies, so the JS expectation was byte-identical on every row rather than "small". It held.
+
+| Chunk | HEAD (`cd4772e`) | Phase 49 | Delta |
+|---|---|---|---|
+| entry `index-*.js` | 164.37 kB / 46.35 kB gzip | **164.37 kB / 46.35 kB gzip** | **0 / 0** |
+| `DashboardView-*.js` (lazy) | 47.83 kB / 11.26 kB gzip | 47.83 kB / 11.26 kB gzip | 0 / 0 |
+| `vendor-icons-*.js` (**modulepreloaded**) | 30.75 kB / 6.70 kB gzip | 30.75 kB / 6.70 kB gzip | **0 / 0** |
+| `TransactionForm-*.js` | 28.14 kB | 28.14 kB | 0 |
+| `TransactionsView-*.js` | 49.93 kB | 49.93 kB | 0 |
+| `vendor-math-*.js` | 375.73 kB / 110.72 kB gzip | 375.73 kB / 110.72 kB gzip | 0 / 0 |
+| **all JS, summed** | 1,351,704 B | 1,351,704 B | **0** |
+| `index-*.css` | 78.56 kB / 12.10 kB gzip | **77.63 kB / 11.98 kB gzip** | **−0.94 kB / −0.12 kB** |
+| chunk count | 33 | 33 | 0 |
+| vendor chunk count | 5 | 5 | 0 |
+| build time | 6.55 s | 6.55 s | both cold after `clean` |
+
+**Findings**
+
+- **Every JS row is identical to the byte, including `vendor-icons`.** Phases 46 and 48 both discovered that a byte-identical entry chunk is not the same as a free change, because new `lucide-react` icons land in the modulepreloaded vendor chunk. This phase adds no icons and no production module, so the summed-JS delta is a true zero — the strongest form this table can take, and the reason the CSS row stood out immediately.
+- **The CSS moved, and that is the phase's one production change.** The first measurement showed CSS **+246 B**, not zero. Tailwind v4's automatic content detection scans the whole repository: `isolate: true` in `vitest.config.ts` emitted `.isolate`, and the word "invert" in a sentence in ADR `0021` emitted `.invert`. Neither file renders anything.
+- **The leak was older than the phase.** `tests/helpers.ts`'s `bg-stone-900` string has been contributing since Phase 19, and `refactor-log.md` line 857 — prose quoting a **rejected** design suggestion — was the only reason the bare `.bg-stone-900\/90` utility existed in the bundle. Restricting Tailwind to `src/` and `index.html` removed 15 selectors totalling 935 B.
+- **All 15 removals were verified dead before the commit**, not assumed: none has an exact-token match anywhere in `src/` (`grow`, `p-8`, `shrink`, `static`, `transform` matched only as substrings of other utilities), the four `max-h-[…]` variants appear nowhere in the repo, and the `dark:bg-stone-900/90` variant that `TotalWealthHero.tsx:23` actually uses is still emitted. The full 321-run suite passed afterwards.
+- **Docs are an input to the production bundle.** That is the generalisable finding. Any ADR, log entry or config file naming a Tailwind-shaped token was shipping CSS to users. It is fixed at the class level rather than per-file, so writing `invert` in a future ADR costs nothing.
+
+**Test-suite size:** Playwright unchanged at **321 runs** (107 tests, 22 spec files — none added, edited or removed). Wall clock `npx playwright test --workers=4`: 8.2 m → **7.5 m**. New second suite: **99 unit tests across 4 files, 1.67 s** (`npm run test:unit`).
+
+**New metric — the unit suite.** Tracked separately because it is a different shape of measurement: it runs on one engine rather than three, in ~1.7 s rather than ~8 m, and it exists to cover what the browser suite structurally cannot rather than to duplicate it.
+
+| Suite | Files | Tests | Runs | Wall clock |
+|---|---|---|---|---|
+| Playwright (chromium/firefox/webkit) | 22 | 107 | 321 | 7.5 m |
+| Vitest (`unit/`) | 4 | 99 | 99 | 1.67 s |
+
+**Stability note:** first full run clean at 321/321 with no retries, and 99/99 on the unit suite. Phase 44's `wallets.spec.ts` webkit flake has now not reproduced across five consecutive phases; it stays on the watch list rather than being closed.

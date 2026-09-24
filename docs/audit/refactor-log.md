@@ -4,6 +4,45 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
+## Phase 49 - Unit testing foundation (Vitest) and the historical coverage gaps: T136-T144 (2026-09-24, commits `e9cd727`...`PENDING_T143`)
+
+**Changed**
+- `docs/audit/decisions/0021-unit-testing-foundation.md` (new) - written before the code and committed alone.
+- `vitest.config.ts` (new), `package.json`, `package-lock.json`, `tsconfig.json`, `playwright.config.ts` - the runner and the boundary between the two suites, pinned from three directions.
+- `unit/spending-summary.test.ts`, `unit/batch-classifier.test.ts`, `unit/speech-support.test.tsx`, `unit/ledger-guards.test.tsx` (all new) - **99 tests**.
+- `.github/workflows/playwright.yml` - one step, before the browser install.
+- `src/index.css` - Tailwind source restriction, forced by the bundle measurement.
+- `CLAUDE.md` - a "Unit tests" section and four Do-NOT lines.
+
+**Why**
+Four phases in a row closed with a stated coverage hole, each for the same structural reason: the logic was unreachable from a browser driving the UI. Phase 44's repayment guard (the form disables submit before an overpayment is sent), Phase 46's `isSecureContext` branch (Playwright always runs on localhost), Phase 47's retry clock, Phase 48's threshold boundaries. Three of them recorded it as a one-off. It was the same gap four times.
+
+**Metric delta**
+**JS byte-identical on every row** - 1,351,704 bytes across 33 chunks, entry `index-*.js` at 164.37 kB, `DashboardView` 47.83 kB, `vendor-icons` 30.75 kB, all unchanged against a rebuild of `cd4772e`. **CSS 78,562 -> 77,627 B (-935)**, which was not the plan and is explained below. Playwright suite unchanged at **321 runs**; unit suite **0 -> 99 tests** in 4 files, 1.67 s. Full table in `baseline-metrics.md`.
+
+**Verification**
+`npm run lint` clean on both tsconfigs, now including `unit/`. `npm run test:unit` **99/99 in 1.67 s**. `npx playwright test --workers=4` **321/321 passed, 7.5 m**, first attempt, no flakes. `npx vitest list` shows only `unit/` files; `npx playwright test --list` still reports 321 tests in 22 files - both collection traps confirmed closed. `npm run build` 6.55 s, 0 chunk-size warnings.
+
+**Surprises**
+
+- **The bundle measurement found a leak older than the phase.** The delta was supposed to be byte-identical and the CSS was +246 B. Tailwind v4's automatic content detection scans the **whole repository**, not just files that render markup: `isolate: true` in `vitest.config.ts` emitted `.isolate`, and the word "invert" in a *sentence* in ADR `0021` emitted `.invert`. `tests/helpers.ts`'s `bg-stone-900` string had been doing this since Phase 19, and `refactor-log.md` line 857 - prose quoting a **rejected** suggestion - was the sole reason the bare `.bg-stone-900\/90` utility was in the bundle at all. Fixed at the class level with `source(none)` plus two explicit sources. All 15 removed selectors were verified dead first: none has an exact-token match in `src/`, and the `dark:bg-stone-900/90` variant `TotalWealthHero` actually uses is still emitted. **The phase that set out to add tests shipped its only production change as a bundle fix.**
+- **A test asserted something false, and the test was wrong rather than the code.** `useSpeechRecognition`'s `start()` checks only for a constructor, never `isSupported` - so on an insecure origin it arms a session against a recognizer that cannot run. It is unreachable only because `TransactionForm.tsx:701` renders the mic behind `{isVoiceSupported && ...}`. The contract is real but held one layer up. Pinned as-is and recorded as a residual.
+- **A negative control showed why round-trip assertions are not enough.** With the debt reversal removed from `setTransactionDeleted`, the delete-then-restore round-trip tests stayed **green**: both halves were broken symmetrically and cancelled out. Only the single-direction assertions ("gives the debt back when soft-deleted") caught it. A suite built entirely from round trips would have passed against the exact bug ADR `0016` exists to prevent.
+- **The brief's premise was wrong about the backoff.** It described exponential backoff; the code is `BASE_BACKOFF_MS * attempt` with `MAX_ATTEMPTS` at 2, which is exactly one 400 ms wait and makes linear-vs-exponential unobservable. Pinned as it ships rather than "fixed" into matching the description.
+- **Seven negative controls, every one failing on its intended assertion.** The first phase in four where none had to be redone - and two of them were more informative than expected: removing the overpayment guard drove a wallet to **-4,999**, and disabling de-duplication reproduced the stampede at exactly **4 requests**, the number ADR `0019` recorded.
+- **Zero `src/` changes were needed to reach any of the four gaps.** Every symbol was already exported, including `__resetClassifierState`, which Phase 47 had annotated "exported for tests only" a phase before a unit test existed to use it.
+
+**Deliberately not done**
+
+- **No coverage thresholds or `@vitest/coverage-v8`.** A percentage target invites tests written for the number.
+- **No husky pre-commit hook.** The repo has never had one; CI placement before the browser install already fails fast.
+- **No extraction of `FinanceContext`'s arithmetic.** It would refactor the riskiest file in the repo and prove nothing about ordering, which is the part that broke.
+- **No migration of existing Playwright specs.** All 321 runs stay exactly as they are; none was deleted, weakened or moved.
+- **`tests/` is still scanned by nothing and excluded from Tailwind by the same fix**, but the pre-existing dead classes it contributed were removed as a side effect rather than as a separate audited change. Recorded here so the -935 B is not mistaken for this phase's own code shrinking.
+- **`test-selector-contract.md` untouched.** This phase adds no selectors; padding it would be noise.
+
+---
+
 ## Phase 48 — Smart spending insights (AI monthly wrap-up): T129–T135 (2026-09-24, commits `feb8f71`…`384c140`)
 
 **Changed**
