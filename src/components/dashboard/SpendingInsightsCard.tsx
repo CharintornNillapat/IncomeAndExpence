@@ -65,12 +65,18 @@ export const SpendingInsightsCard: React.FC<SpendingInsightsCardProps> = ({
 
   const enoughData = hasEnoughData(summary);
 
-  const generate = async (forceRefresh: boolean) => {
+  /*
+   * The cache is read once, synchronously, in the `lines` initializer above -
+   * that seed is what makes a warm month cost no request at all, since the
+   * Generate button only renders while `lines` is null. So everything that
+   * reaches here wants the network: a first generation, or a Refresh.
+   */
+  const generate = async () => {
     if (isGenerating) return;
     setIsGenerating(true);
     // `fetchInsight` never throws and never rejects, so there is no catch
     // here and no error branch below - by design (ADR 0020).
-    const result = await fetchInsight(summary, userId, { forceRefresh });
+    const result = await fetchInsight(summary, userId);
     setLines(renderInsight(summary, result.verdict));
     setFromModel(result.fromModel);
     setIsGenerating(false);
@@ -98,7 +104,7 @@ export const SpendingInsightsCard: React.FC<SpendingInsightsCardProps> = ({
             <button
               type="button"
               id="insights-refresh-btn"
-              onClick={() => generate(true)}
+              onClick={generate}
               disabled={isGenerating}
               aria-label="Refresh insights"
               title="Refresh insights"
@@ -162,7 +168,7 @@ export const SpendingInsightsCard: React.FC<SpendingInsightsCardProps> = ({
               <button
                 type="button"
                 id="insights-generate-btn"
-                onClick={() => generate(false)}
+                onClick={generate}
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 hover:bg-stone-800 dark:hover:bg-white transition-colors cursor-pointer"
               >
                 <Sparkles className="w-3.5 h-3.5" />

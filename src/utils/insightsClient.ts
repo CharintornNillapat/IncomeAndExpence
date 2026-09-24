@@ -66,22 +66,24 @@ function writeCachedVerdict(userId: string, month: string, value: InsightVerdict
 }
 
 /**
- * Resolves a verdict for the month, preferring the cache.
+ * Fetches a verdict for the month and caches it on success.
  *
- * `forceRefresh` bypasses and overwrites it, which is what the card's Refresh
- * action does. One billing cycle otherwise costs one call per device - the
- * per-device trade-off ADR 0020 accepted in exchange for needing no migration.
+ * DELIBERATELY DOES NOT READ THE CACHE. The card seeds itself synchronously
+ * from `readCachedVerdict` in its `useState` initializer - it has to, or a
+ * return visit would flash an empty card before the cached answer appeared -
+ * and that seed is the only reason `fetchInsight` is not called at all on a
+ * warm month. A second cache read in here would be unreachable duplication:
+ * every call that gets this far is either a first generation or an explicit
+ * Refresh, and both want the network.
+ *
+ * A negative control proved this. Disabling a cache read here did not fail
+ * the caching test, because the card's seed was what kept the request count
+ * at one. Two cache readers, one of them untestable, is worse than one.
  */
 export async function fetchInsight(
   summary: SpendingSummary,
-  userId: string,
-  { forceRefresh = false }: { forceRefresh?: boolean } = {}
+  userId: string
 ): Promise<InsightVerdict> {
-  if (!forceRefresh) {
-    const cached = readCachedVerdict(userId, summary.month);
-    if (cached) return cached;
-  }
-
   const local: InsightVerdict = { verdict: selectLocalPattern(summary), fromModel: false };
 
   // Latched off, or a summary with nothing in it the server would accept.
