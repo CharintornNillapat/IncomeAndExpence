@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 49 - Unit testing foundation (Vitest) and the historical coverage gaps: T136-T144 (2026-09-24, commits `e9cd727`...`PENDING_T143`)
+## Phase 49 - Unit testing foundation (Vitest) and the historical coverage gaps: T136-T144 (2026-09-24, commits `e9cd727`...`90f1be4`)
 
 **Changed**
 - `docs/audit/decisions/0021-unit-testing-foundation.md` (new) - written before the code and committed alone.
