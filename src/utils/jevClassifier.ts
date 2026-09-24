@@ -93,7 +93,12 @@ function cacheSet(key: string, value: ClassifyResponse | null): void {
   }
 }
 
-function normalizeText(text: string): string {
+/**
+ * Shared by the cache key and by `batchClassifier`'s de-duplication. Those two
+ * MUST agree: if the batch grouped by anything coarser or finer than what the
+ * cache keys on, identical rows would dispatch separate requests (ADR 0019).
+ */
+export function normalizeText(text: string): string {
   return text.trim().toLowerCase().replace(/\s+/g, ' ');
 }
 

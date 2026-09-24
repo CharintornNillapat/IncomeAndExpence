@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { 
   Plus, 
   Download, 
@@ -8,10 +8,11 @@ import {
   CheckCircle2, 
   AlertCircle, 
   X,
+  Sparkles,
 } from 'lucide-react';
 import { useFinanceState } from '../context/FinanceContext';
 import { useTransactions } from '../hooks/useTransactions';
-import { ImportPreviewSummary, TransactionType } from '../types';
+import { ImportPreviewSummary, ImportRowValidation, TransactionType } from '../types';
 import { todayIsoDate } from '../utils/date';
 import { formatCurrencyAmount } from '../utils/currency';
 import { exportTransactionsToCsv, parseAndValidateTransactionCsv } from '../utils/csvExchange';
@@ -25,6 +26,11 @@ import { EmptyState } from '../components/ui/EmptyState';
 import { buildLookupMap } from '../utils/mapUtils';
 import { useTransientFlash } from '../hooks/useTransientFlash';
 import { OPTION_CLASS } from '../utils/formStyles';
+import { matchSmartDescription } from '../utils/smartMatcher';
+import { toClassifyCandidates } from '../utils/jevClassifier';
+import type { JevSuggestion } from '../utils/jevClassifier';
+import { classifyBatch } from '../utils/batchClassifier';
+import type { BatchClassifyProgress } from '../utils/batchClassifier';
 
 // Caps the CSV dry-run preview's rendered rows so a large import doesn't put
 // thousands of `<tr>`s in the DOM at once - the summary counts above the
@@ -52,6 +58,7 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
   const {
     wallets,
     categories,
+    keywordRules,
     diaryEntries,
   } = useFinanceState();
 
@@ -116,6 +123,17 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
   const [isParsingCsv, setIsParsingCsv] = useState<boolean>(false);
   const { value: importSuccessMsg, flash: flashImportSuccess, clear: clearImportSuccess } = useTransientFlash<string | null>(null);
 
+  /*
+   * Layer 2 state (ADR 0019). All preview-only: none of it reaches
+   * `commitBulkImport`, which reads `categoryId` off the row and nothing else.
+   * `ImportRowValidation` is the commit payload and deliberately does not
+   * carry confidence or applied/suggested state.
+   */
+  const [rowSuggestions, setRowSuggestions] = useState<Map<number, JevSuggestion>>(new Map());
+  const [classifyProgress, setClassifyProgress] = useState<BatchClassifyProgress | null>(null);
+  const [classifyNote, setClassifyNote] = useState<string | null>(null);
+  const classifyAbortRef = useRef<AbortController | null>(null);
+
   // Maps for O(1) row lookups
   const walletMap = useMemo(() => buildLookupMap(wallets), [wallets]);
 
@@ -149,15 +167,145 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
     clearImportSuccess();
     setIsParsingCsv(true);
 
+    resetClassification();
+
     try {
       const text = await file.text();
       const preview = await parseAndValidateTransactionCsv(text, wallets);
-      setImportPreview(preview);
+      // Layer 1 runs here, synchronously and for free, before the preview is
+      // ever shown (ADR 0011's ordering, applied to the bulk path).
+      setImportPreview(applyRuleLayer(preview));
     } catch (err: any) {
       setImportFileError(err.message || 'Failed to parse CSV file');
     } finally {
       setIsParsingCsv(false);
     }
+  };
+
+  /*
+   * ------------------------------------------------------------------
+   * The importer's two categorization layers (ADR 0019)
+   * ------------------------------------------------------------------
+   */
+
+  /**
+   * A row is eligible when it is valid and its `categoryName` does not resolve
+   * to a live category. That covers both "no Category column" and "names a
+   * category you do not have" - in either case the row was going to commit
+   * uncategorized, so filling it can only improve on the status quo.
+   */
+  const isEligibleForCategorization = useCallback(
+    (row: ImportRowValidation): boolean => {
+      if (!row.isValid) return false;
+      if (row.categoryId) return false;
+      if (!row.categoryName) return true;
+      const named = row.categoryName.trim().toLowerCase();
+      return !categories.some((c) => !c.isDeleted && c.name.trim().toLowerCase() === named);
+    },
+    [categories]
+  );
+
+  const resetClassification = () => {
+    classifyAbortRef.current?.abort();
+    classifyAbortRef.current = null;
+    setRowSuggestions(new Map());
+    setClassifyProgress(null);
+    setClassifyNote(null);
+  };
+
+  /** Layer 1: the synchronous keyword matcher, authoritative and free. */
+  const applyRuleLayer = (preview: ImportPreviewSummary): ImportPreviewSummary => ({
+    ...preview,
+    rows: preview.rows.map((row) => {
+      if (!isEligibleForCategorization(row)) return row;
+      const match = matchSmartDescription(row.description, keywordRules, categories);
+      // A rule may only supply a category whose type agrees with the row's.
+      // `type` drives the wallet debit direction in `commitBulkImport` and is
+      // never changed here, so a disagreement means the rule does not apply.
+      if (!match.categoryId || match.type !== row.type) return row;
+      return { ...row, categoryId: match.categoryId };
+    }),
+  });
+
+  const uncategorizedRows = useMemo(
+    () => (importPreview ? importPreview.rows.filter(isEligibleForCategorization) : []),
+    [importPreview, isEligibleForCategorization]
+  );
+
+  const ruleMatchedCount = useMemo(
+    () => (importPreview ? importPreview.rows.filter((r) => r.isValid && r.categoryId).length : 0),
+    [importPreview]
+  );
+
+  /** Layer 2: Jev, on the rows Layer 1 did not resolve, behind an explicit tap. */
+  const handleClassifyRemaining = async () => {
+    if (!importPreview || uncategorizedRows.length === 0) return;
+
+    const controller = new AbortController();
+    classifyAbortRef.current = controller;
+    setClassifyNote(null);
+    setClassifyProgress({ done: 0, total: uncategorizedRows.length });
+
+    const candidates = toClassifyCandidates(categories);
+    const result = await classifyBatch(
+      uncategorizedRows.map((r) => ({ id: r.rowIndex, text: r.description })),
+      categories,
+      candidates,
+      { onProgress: setClassifyProgress, signal: controller.signal }
+    );
+
+    classifyAbortRef.current = null;
+    setClassifyProgress(null);
+
+    if (controller.signal.aborted) return;
+
+    if (result.unavailable) {
+      // A very different message from "nothing matched": the endpoint is not
+      // there (an unconfigured deployment, or the dev server, which does not
+      // serve `api/`). The import still commits perfectly well without it.
+      setClassifyNote('Jev is unavailable right now — import still works, categories stay blank.');
+      return;
+    }
+
+    // Only AUTO_FILL is written. SUGGEST is held in `rowSuggestions` for the
+    // user to accept with one click, mirroring the live form's gate exactly.
+    setImportPreview((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        rows: prev.rows.map((row) => {
+          const suggestion = result.suggestions.get(row.rowIndex);
+          if (!suggestion || !isEligibleForCategorization(row)) return row;
+          // A category whose type disagrees with the row's is demoted to a
+          // suggestion, never applied - the row's own `type` is authoritative
+          // because it drives the wallet debit direction.
+          if (suggestion.strength !== 'AUTO_FILL' || suggestion.type !== row.type) return row;
+          return { ...row, categoryId: suggestion.categoryId };
+        }),
+      };
+    });
+
+    setRowSuggestions(result.suggestions);
+
+    const autoFilled = Array.from(result.suggestions.values()).filter((s) => s.strength === 'AUTO_FILL').length;
+    setClassifyNote(
+      `Classified ${result.suggestions.size} of ${uncategorizedRows.length} — ${autoFilled} applied, ` +
+        `${result.suggestions.size - autoFilled} to confirm. ${result.attempted} request${result.attempted === 1 ? '' : 's'} sent.`
+    );
+  };
+
+  /** A manual pick, or accepting a mid-confidence suggestion. Always wins. */
+  const setRowCategory = (rowIndex: number, categoryId: string) => {
+    setImportPreview((prev) =>
+      prev
+        ? {
+            ...prev,
+            rows: prev.rows.map((row) =>
+              row.rowIndex === rowIndex ? { ...row, categoryId: categoryId || undefined } : row
+            ),
+          }
+        : prev
+    );
   };
 
   // Handle Commit Import (Step 2: Single Atomic Batch)
@@ -171,6 +319,7 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
       ? ` ${result.skippedCount} row${result.skippedCount === 1 ? '' : 's'} skipped (unknown or deleted wallet).`
       : '';
     setImportPreview(null);
+    resetClassification();
     flashImportSuccess(
       `Successfully imported ${result.insertedCount} transactions (${formatCurrencyAmount(result.totalAmount)})!${skippedNote}`,
       2000,
@@ -442,6 +591,9 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
         onClose={() => {
           setIsImportModalOpen(false);
           setImportPreview(null);
+          // Aborts a run still in flight - closing the modal must not leave
+          // requests walking a list nobody is looking at any more.
+          resetClassification();
         }}
         title="Two-Step CSV Transaction Import"
         subtitle="Step 1: Dry-run parse & validate rows → Step 2: Atomic commit into your ledger"
@@ -512,6 +664,69 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
               </div>
             </div>
 
+            {/*
+              The importer's two categorization layers (ADR 0019). Layer 1 has
+              already run by the time this renders - it is synchronous and
+              free. Layer 2 is behind this button on purpose: nothing touches
+              the network or spends TypeSafe credits until it is pressed,
+              which is also how you skip it when offline or in a hurry.
+            */}
+            <div className="flex flex-col gap-2 rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800/60 p-3">
+              <div className="flex items-center justify-between gap-3 flex-wrap">
+                <span className="text-xs text-stone-600 dark:text-stone-300">
+                  <strong className="font-mono font-bold text-stone-900 dark:text-stone-100">{ruleMatchedCount}</strong>{' '}
+                  matched by rules &middot;{' '}
+                  <strong className="font-mono font-bold text-stone-900 dark:text-stone-100">{uncategorizedRows.length}</strong>{' '}
+                  uncategorized
+                </span>
+
+                {uncategorizedRows.length > 0 && !classifyProgress && (
+                  <button
+                    type="button"
+                    id="csv-classify-btn"
+                    onClick={handleClassifyRemaining}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 hover:bg-stone-800 dark:hover:bg-white transition-colors cursor-pointer"
+                  >
+                    <Sparkles className="w-3.5 h-3.5" />
+                    Classify remaining with Jev
+                  </button>
+                )}
+
+                {classifyProgress && (
+                  <button
+                    type="button"
+                    id="csv-classify-cancel-btn"
+                    onClick={() => classifyAbortRef.current?.abort()}
+                    className="px-3 py-1.5 text-xs font-semibold rounded-xl border border-stone-300 dark:border-stone-600 text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-700 transition-colors cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                )}
+              </div>
+
+              {classifyProgress && (
+                <div data-testid="csv-classify-progress" className="flex flex-col gap-1.5">
+                  <span className="text-[11px] font-medium text-stone-600 dark:text-stone-300">
+                    Classifying {classifyProgress.done} of {classifyProgress.total} with Jev&hellip;
+                  </span>
+                  <div className="h-1.5 w-full rounded-full bg-stone-200 dark:bg-stone-700 overflow-hidden">
+                    <div
+                      className="h-full bg-stone-900 dark:bg-stone-100 transition-all"
+                      style={{
+                        width: `${classifyProgress.total > 0 ? (classifyProgress.done / classifyProgress.total) * 100 : 0}%`,
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {classifyNote && !classifyProgress && (
+                <p data-testid="csv-classify-note" className="text-[11px] font-medium text-stone-600 dark:text-stone-400">
+                  {classifyNote}
+                </p>
+              )}
+            </div>
+
             {/* Dry Run Row Table */}
             <div className="max-h-60 overflow-y-auto rounded-xl border border-stone-200 dark:border-stone-700 text-xs">
               <table className="w-full text-left">
@@ -523,6 +738,7 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
                     <th className="p-2">Wallet</th>
                     <th className="p-2">Amount</th>
                     <th className="p-2">Description / Error</th>
+                    <th className="p-2">Category</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-stone-100 dark:divide-stone-800">
@@ -550,13 +766,69 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
                           <span className="text-rose-600 dark:text-rose-400 font-medium">{row.errorMessage}</span>
                         )}
                       </td>
+                      {/*
+                        The override channel. A manual pick writes `categoryId`
+                        directly and always wins - neither layer ever revisits a
+                        row, and `commitBulkImport` prefers the id it finds here.
+                      */}
+                      <td className="p-2">
+                        {row.isValid ? (
+                          <div className="flex flex-col gap-1">
+                            <select
+                              data-testid={`csv-row-category-${row.rowIndex}`}
+                              value={row.categoryId || ''}
+                              onChange={(e) => setRowCategory(row.rowIndex, e.target.value)}
+                              className="w-full max-w-[10rem] text-[11px] rounded-lg border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 px-1.5 py-1 text-stone-900 dark:text-stone-100 cursor-pointer"
+                            >
+                              <option value="" className={OPTION_CLASS}>
+                                Uncategorized
+                              </option>
+                              {activeCategoriesForForm.map((c) => (
+                                <option key={c.id} value={c.id} className={OPTION_CLASS}>
+                                  {c.name}
+                                </option>
+                              ))}
+                            </select>
+                            {(() => {
+                              const suggestion = rowSuggestions.get(row.rowIndex);
+                              if (!suggestion) return null;
+                              // Applied: report it. Not applied (mid-confidence,
+                              // or a type disagreement): offer it as one click.
+                              if (row.categoryId === suggestion.categoryId) {
+                                return (
+                                  <span
+                                    data-testid={`csv-row-confidence-${row.rowIndex}`}
+                                    className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700 dark:text-emerald-400"
+                                  >
+                                    <Sparkles className="w-2.5 h-2.5" />
+                                    {Math.round(suggestion.confidence * 100)}%
+                                  </span>
+                                );
+                              }
+                              return (
+                                <button
+                                  type="button"
+                                  data-testid={`csv-row-confidence-${row.rowIndex}`}
+                                  onClick={() => setRowCategory(row.rowIndex, suggestion.categoryId)}
+                                  className="inline-flex items-center gap-1 text-[10px] font-semibold text-stone-600 dark:text-stone-300 underline underline-offset-2 hover:text-stone-900 dark:hover:text-white cursor-pointer text-left"
+                                >
+                                  <Sparkles className="w-2.5 h-2.5 shrink-0" />
+                                  {suggestion.categoryName} ({Math.round(suggestion.confidence * 100)}%)
+                                </button>
+                              );
+                            })()}
+                          </div>
+                        ) : (
+                          <span className="text-stone-400 dark:text-stone-600">&mdash;</span>
+                        )}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
                 {importPreview.rows.length > CSV_PREVIEW_ROW_CAP && (
                   <tfoot>
                     <tr>
-                      <td colSpan={6} className="p-2 text-center text-stone-500 dark:text-stone-400 italic">
+                      <td colSpan={7} className="p-2 text-center text-stone-500 dark:text-stone-400 italic">
                         +{importPreview.rows.length - CSV_PREVIEW_ROW_CAP} more rows omitted from preview
                       </td>
                     </tr>
