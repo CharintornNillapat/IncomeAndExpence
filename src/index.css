@@ -1,4 +1,20 @@
-@import "tailwindcss";
+/*
+ * `source(none)` disables Tailwind v4's automatic content detection, which
+ * scans the WHOLE repository - every doc, config and spec file, not just
+ * files that produce markup. Any word that happens to look like a utility
+ * then becomes real CSS in the production bundle.
+ *
+ * Found in Phase 49 while measuring the bundle: `isolate: true` in
+ * `vitest.config.ts` emitted `.isolate`, and the word "invert" in a sentence
+ * in ADR 0021 emitted `.invert` - +246 bytes of dead CSS shipped to users
+ * from two files that render nothing. `tests/helpers.ts`'s `bg-stone-900`
+ * string had been doing the same thing since Phase 19.
+ *
+ * Only these two sources render markup, so only these two are scanned.
+ */
+@import "tailwindcss" source(none);
+@source "./";
+@source "../index.html";
 
 @custom-variant dark (&:where(.dark, .dark *));
 
