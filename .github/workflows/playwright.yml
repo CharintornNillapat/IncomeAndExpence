@@ -28,6 +28,14 @@ jobs:
       - name: Type-check (tsc --noEmit)
         run: npm run lint
 
+      # Placed BEFORE the browser install on purpose (ADR 0021): the unit
+      # suite runs in seconds, so a failure here aborts the job without ever
+      # downloading three browsers. It reaches the logic Playwright
+      # structurally cannot - the isSecureContext branch, the retry clock,
+      # the threshold boundaries and the ledger guards' ordering.
+      - name: Unit tests (Vitest)
+        run: npm run test:unit
+
       - name: Install Playwright browsers with OS dependencies
         run: npx playwright install --with-deps
 

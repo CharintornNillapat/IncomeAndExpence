@@ -227,6 +227,7 @@ Conventions:
 Without it, `FinanceContext` falls back to the legacy non-atomic path (three separate round-trips), where a mid-sequence failure can debit the source without crediting the destination. `isMissingRpcError()` deliberately matches **only** a missing-function error (`42883` / `PGRST202`); any other database error must surface and roll back rather than silently taking the fallback.
 
 ## Testing
+Two suites, with a hard boundary between them — see "Unit tests" below for why the boundary is pinned from both sides.
 - **Framework**: Playwright with Chromium, Firefox, and WebKit projects.
 - **Suite size**: 107 tests across 22 spec files, run on all three browsers = **321 test runs**. All must pass.
 - **Location**: `tests/*.spec.ts` (`transaction`, `wallets`, `diary`, `theme`, `wallet-forms`, `debts`, `soft-delete`, `keywords`, `categories`, `csv`, `auth`, `date-boundary`, `storage-persistence`, `presets`, `jev-classify`, `express-input`, `transfer-preview`, `debt-repayment`, `smart-rules`, `voice-input`, `csv-classify`, `insights`), with shared helpers in `tests/helpers.ts`.
@@ -237,6 +238,17 @@ Without it, `FinanceContext` falls back to the legacy non-atomic path (three sep
 - **Timeouts**: `playwright.config.ts` sets generous expect/action timeouts for Firefox, which is slowest to paint a lazy view chunk under the Vite dev server. These bound failures only and do not slow passing runs. `colorScheme` is pinned to `light` so the `system` theme resolves deterministically.
 - **Execution**: `npm test`, or `npx playwright test tests/<file>.spec.ts --project=chromium`.
 - **CI Mode**: workers set to 1 when `CI=true`; retries enabled on CI.
+
+## Unit tests: what the browser cannot reach
+`npm run test:unit` runs Vitest over **`unit/`** — 99 tests in 4 files, ~1.6 s (ADR `0021`). It exists because four phases in a row closed with a coverage hole for the same structural reason, not because E2E coverage was thin.
+- **The directory is `unit/`, not `tests/unit/`, and that is load-bearing.** Two default globs collide. Vitest's default `include` is `**/*.{test,spec}.?(c|m)[jt]s?(x)`, which collects all 22 Playwright specs. Playwright's default `testMatch` is `**/*.@(spec|test).?(c|m)[jt]s?(x)` — note `@(spec|test)` — which collects `*.test.ts` as readily as `*.spec.ts`. So the boundary is pinned three times: a directory `testDir: './tests'` cannot see, an explicit `include` in `vitest.config.ts`, and an explicit `testMatch: '**/*.spec.ts'` in `playwright.config.ts`. The last is redundant today **on purpose** — it makes a future move of the unit tests under `tests/` read as the breaking change it is.
+- **`vitest.config.ts` is its own file, never a `test` key on `vite.config.ts`.** `vite build` does not read it, which makes zero production bundle impact structural rather than a matter of discipline.
+- **`environment: 'node'` is the default; the two DOM suites opt in per file** with a `// @vitest-environment jsdom` docblock. The pure-module suites never touch jsdom's `AbortSignal`, `fetch` or timer surfaces, which differ from Node's in ways that fail about the environment rather than the code.
+- **The four suites cover exactly what Playwright structurally cannot**: `ledger-guards` (the repayment guard's *ordering* — key leak, replay precedence — which has no UI symptom at all), `speech-support` (the `isSecureContext` branch; Playwright always runs on localhost), `batch-classifier` (a fabricated 429 and a controllable clock), `spending-summary` (threshold boundaries the transaction form cannot seed precisely).
+- **`ledger-guards.test.tsx` mounts the real `FinanceProvider`** and calls the real actions. The provider is inert under test: its auth effect returns early on `!isSupabaseConfigured` and its realtime channel on `!isAuthenticated`, so there is no network call and no WebSocket. Do NOT extract the ledger arithmetic into a pure module to make it "more testable" — extraction cannot test ordering, which is the part that broke.
+- **Nothing in `src/` was widened to be testable.** `detectSupport`/`toSpeechError` stay module-private and are driven through the hook's public `isSupported`/`error`. Keep it that way: an export added only for a test is a claim the module does not otherwise make.
+- **CI runs it before `npx playwright install`**, so a unit failure aborts in seconds without downloading three browsers.
+- **Two behaviours are pinned as-is with the discrepancy recorded, not "fixed"**: `batchClassifier`'s backoff is `BASE_BACKOFF_MS * attempt` — **linear**, and with `MAX_ATTEMPTS` at 2 there is exactly one 400 ms wait, so linear-vs-exponential is unobservable from outside. And `useSpeechRecognition`'s `start()` checks only for a constructor, never `isSupported`, so on an insecure origin it arms a session that cannot run — unreachable only because `TransactionForm` renders the mic behind `{isVoiceSupported && ...}`.
 
 ## Environment / Config
 Refer to `.env.example`:
@@ -285,3 +297,7 @@ Refer to `.env.example`:
 - Do NOT let `classifyDescription()` throw, and do NOT give the classifier a code path that can reject.
 - Do NOT accept Jev question wording (`instructions`/`criteria`/`model`/`state`/`questions`) from the client in `api/classify.ts`.
 - Do NOT add a `VITE_`-prefixed TypeSafe key, or call `api.typesafe.ai` from browser code — it is CORS-blocked regardless.
+- Do NOT put unit tests under `tests/`, and do NOT remove either collection pin (`include` in `vitest.config.ts`, `testMatch` in `playwright.config.ts`) — each runner's default glob collects the other's files. See ADR `0021`.
+- Do NOT move Vitest config onto `vite.config.ts`; a separate `vitest.config.ts` is what keeps the test toolchain structurally unable to reach the production build.
+- Do NOT export a symbol from `src/` solely to make it unit-testable — drive it through the public surface, as `speech-support.test.tsx` does with `detectSupport`.
+- Do NOT add a fifth request-intercepting Playwright spec for something a unit test can reach; `unit/` is where a fabricated network condition or a controlled clock belongs.
