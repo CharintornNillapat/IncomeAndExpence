@@ -1092,10 +1092,21 @@ Approved explicitly by the user, planned and approved before any code was writte
 | T131 | `api/insights.ts` — named `POST` export, forbidden-key rejection, 404-on-missing-key, bounded and unique-checked input | `api/insights.ts` (new) | High | Med | 2h | done | T129 | 6b4da87 | `npm run lint` clean; `grep` confirms no default export | — |
 | T132 | `insightsClient` (never-throws contract, 404 latch, `localStorage` cache write) plus the card and its Dashboard mount | `src/utils/insightsClient.ts` (new), `src/components/dashboard/SpendingInsightsCard.tsx` (new), `src/views/DashboardView.tsx` | High | Med | 3h | done | T130, T131 | 12933e0 | `npm run lint` clean | `DashboardView` +7.65 kB; `vendor-icons` +0.59 kB |
 | T133 | 7 new tests, the third spec permitted to mock, the `CLAUDE.md` rule generalisation, **and the client simplification a negative control forced** | `tests/insights.spec.ts` (new), `CLAUDE.md`, `src/utils/insightsClient.ts`, `src/components/dashboard/SpendingInsightsCard.tsx` | High | Low | 3h | done | T132 | b76f112 | **321/321, 8.2 m**, first attempt, no flakes; **four** negative controls, two of which changed the code | Suite 300 → **321 runs**, 100 → 107 tests, 21 → **22** spec files |
-| T134 | Phase 48 refactor-log entry, ledger rows, bundle column, selector-contract additions | `docs/audit/refactor-log.md`, `docs/audit/task-ledger.md`, `docs/audit/baseline-metrics.md`, `docs/audit/test-selector-contract.md` | Med | Low | 1h | done | T133 | PENDING_DOCS | docs only; `npm run lint` clean at HEAD | — |
-| T135 | Sha backfill, plus the CI and deploy result | `docs/audit/refactor-log.md`, `docs/audit/task-ledger.md` | Low | Low | 0.5h | done | T134 | (this row's own commit — a backfill cannot cite its own sha) | PENDING_CI | — |
+| T134 | Phase 48 refactor-log entry, ledger rows, bundle column, selector-contract additions | `docs/audit/refactor-log.md`, `docs/audit/task-ledger.md`, `docs/audit/baseline-metrics.md`, `docs/audit/test-selector-contract.md` | Med | Low | 1h | done | T133 | 384c140 | docs only; `npm run lint` clean at HEAD | — |
+| T135 | Sha backfill, plus the CI and deploy result | `docs/audit/refactor-log.md`, `docs/audit/task-ledger.md` | Low | Low | 0.5h | done | T134 | (this row's own commit — a backfill cannot cite its own sha) | docs only; CI `35956000836` success on the preceding commit | — |
 
-**CI and deploy:** PENDING_CI_LINE
+**CI and deploy:** run `35956000836` on `384c140` — success, zero failed jobs. Vercel deployment `6630243013` — Production, state `success`. CI runs `workers: 1`; the local gate ran `--workers=4`, and both were clean at 321/321.
+
+**Production endpoint probe — run, and it passed.** The refactor-log entry filed this as code review only; it was then actually executed against the production alias `income-and-expence-neon.vercel.app` (the deployment URL and two other aliases are behind Vercel SSO and return 401 before reaching the function):
+
+| Probe | Result |
+|---|---|
+| `POST /api/insights`, valid summary | **200 in 1.34 s**, `{"pattern":"CATEGORY_SPIKE","focus":"Food & Dining","confidence":1}` |
+| `POST /api/insights` with `instructions` | **400** — `Field "instructions" is not accepted; question wording is server-owned.` |
+| `POST /api/insights` with empty categories | **400** — `Field "summary.categories" must not be empty.` |
+| `POST /api/classify` (regression) | **200 in 1.23 s**, unchanged shape |
+
+**The default-export trap is confirmed absent**: a default export would have hung for 60 s and returned zero bytes. 1.34 s with a well-formed `InsightsResponse` is the only evidence that actually settles it, and it could not be produced locally — `tsc` cannot see the trap and the suite mocks the endpoint. It also confirms `TYPESAFE_API_KEY` is configured in production and that the upstream Jev call returns a usable verdict for a genuinely spiking category.
 
 **Full gate:** `npm run lint` clean (both tsconfigs); `npx playwright test --workers=4` **321/321 passed, 8.2 m**; `npm run clean && npm run build` succeeded in 7.05 s, 0 chunk-size warnings. Measured by building `9ab4d5d` and `main` in turn.
 

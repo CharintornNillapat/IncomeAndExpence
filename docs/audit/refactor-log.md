@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 48 — Smart spending insights (AI monthly wrap-up): T129–T135 (2026-09-24, commits `feb8f71`…`PENDING_DOCS`)
+## Phase 48 — Smart spending insights (AI monthly wrap-up): T129–T135 (2026-09-24, commits `feb8f71`…`384c140`)
 
 **Changed**
 - `docs/audit/decisions/0020-monthly-spending-insights.md` (new) — written before the code and committed alone.
@@ -37,7 +37,7 @@ Entry chunk **byte-identical at 164.37 kB**. `DashboardView-*.js` 40.18 → 47.8
 - **No free-text generation.** Jev answers choice questions; the model picks a pattern and the app writes the sentences, so every ฿ figure comes from `formatCurrencyAmount` rather than a model that could contradict the card beside it.
 - **No insight history.** Only the current month is cached.
 - **No isolated unit coverage for `spendingSummary`'s pattern thresholds.** Still no unit runner, so `SPIKE_THRESHOLD_PERCENT` and its siblings are exercised only through whatever the seeded ledger happens to produce. Stated rather than papered over, as in Phases 44–47.
-- **The production endpoint probe was not run from here.** The default-export trap is invisible to `tsc` and to the suite (which mocks), and only shows as a 60 s hang against the real deployment. `api/insights.ts` uses the named `POST` export and `grep` confirms no default export, but that is code review, not a live check.
+- **The production endpoint probe ~~was not run from here~~ WAS run, after this entry was first written.** It is recorded struck through rather than rewritten, because the entry was true when filed and the correction is the interesting part. `POST /api/insights` against the production alias returned **200 in 1.34 s** with `{"pattern":"CATEGORY_SPIKE","focus":"Food & Dining"}`, the forbidden-key and empty-category guards both returned 400, and `/api/classify` was unaffected. **The default-export trap is confirmed absent** — a default export hangs for 60 s and returns zero bytes, so only a live call settles it. Full table in `task-ledger.md`.
 
 ---
 
