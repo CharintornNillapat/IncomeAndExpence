@@ -12,6 +12,7 @@ import { CategoryExpenseDistribution } from '../components/dashboard/CategoryExp
 import { DebtPayoffOverview } from '../components/dashboard/DebtPayoffOverview';
 import { RecentTransactionsTable } from '../components/dashboard/RecentTransactionsTable';
 import { SectionHeader } from '../components/ui/SectionHeader';
+import { SpendingInsightsCard } from '../components/dashboard/SpendingInsightsCard';
 import { SegmentedControl } from '../components/ui/SegmentedControl';
 import { todayIsoDate, daysAgoIsoDate } from '../utils/date';
 import { buildLookupMap } from '../utils/mapUtils';
@@ -59,7 +60,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onOpenAddWallet,
   onOpenWalletTransactions,
 }) => {
-  const { transactions, categories } = useFinanceState();
+  const { transactions, categories, currentUser } = useFinanceState();
   // `wallets` here is already the active (non-deleted) set; `allWallets` still
   // includes soft-deleted ones so historic rows can resolve their wallet name.
   const { wallets: activeWallets, allWallets, totalNetWorth } = useWallets();
@@ -289,6 +290,17 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           paidDebtTarget={debtSummary.paidTarget}
         />
       </motion.div>
+
+      {/* 4b. The monthly wrap-up (ADR 0020). Sits under the distribution it
+             talks about, and owns its own fetching - this view stays unaware
+             that a network call exists. */}
+      <motion.section variants={itemVariants} aria-label="Monthly Spending Insights">
+        <SpendingInsightsCard
+          transactions={transactions}
+          categories={categories}
+          userId={currentUser.id}
+        />
+      </motion.section>
 
       {/* 5. Compact Recent 5 Transactions List with View All Button */}
       <motion.section variants={itemVariants} aria-label="Recent Transactions">
