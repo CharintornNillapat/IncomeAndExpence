@@ -103,6 +103,23 @@ Nothing was removed in this phase. `#repay-amount-math`, `#repay-wallet-select`,
 
 **Nothing was renamed or removed.** `input[id$="-desc"]` keeps its name and meaning; the mic is a sibling added inside the field's existing `relative` wrapper. The input's right padding is now conditional on the button rendering, which is visual only and nothing asserts on it.
 
+## Added in Phase 47 (ADR `0019`, batch CSV classification)
+
+| Selector | Notes | File |
+|---|---|---|
+| `#csv-classify-btn` | Runs Layer 2. Renders only while uncategorized rows remain and no run is in flight, so "no button" means "nothing left to classify", not "broken". | `src/views/TransactionsView.tsx` |
+| `#csv-classify-cancel-btn` | Replaces it during a run. | same |
+| `[data-testid="csv-classify-progress"]` | Present only while running; it clears itself on completion, which is what lets a spec assert both states. | same |
+| `[data-testid="csv-classify-note"]` | The completion summary, and the "Jev is unavailable" message. Its appearance is the signal that a run finished. | same |
+| `[data-testid="csv-row-category-<rowIndex>"]` | The per-row category `<select>` — the manual override channel. Keyed by `rowIndex`, which starts at **2** (row 1 is the CSV header). | same |
+| `[data-testid="csv-row-confidence-<rowIndex>"]` | Dual-purpose by design: a **span** showing the percentage when the answer was applied, a **button** offering it when it was not. A spec asserting "not applied" should click it. | same |
+
+**A second spec may now mock the classifier.** `CLAUDE.md`'s rule that `jev-classify.spec.ts` is the only spec intercepting requests is amended to name `csv-classify.spec.ts` too. The rule's purpose — no TypeSafe credits, no API key — is upheld by a second locally-fulfilling spec. Phase 46's `addInitScript` Speech stub is a different mechanism and intercepts nothing.
+
+**The preview table gained a column**, so its `tfoot` `colSpan` moved 6 → 7. Nothing asserts on it, but a future column must move it again.
+
+**`csv.spec.ts` passed unedited** and remains both the round-trip guard and the pin on the deliberate absence of import deduplication.
+
 ## Known remaining fragile selectors (not yet hardened; addressed in later phases per the roadmap)
 
 - `transaction.spec.ts:55` — `^Income$` button text (Phase 27, SegmentedControl must preserve option labels exactly).

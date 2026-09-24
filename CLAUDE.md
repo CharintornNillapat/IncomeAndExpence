@@ -177,6 +177,16 @@ Two layers, in a fixed order. Do not reverse them and do not collapse them into 
 - **A blocked microphone disables the button with a reason; it does not hide it.** A button that vanishes the instant it is tapped is worse than one that explains itself. `network` errors deliberately do **not** latch — same reasoning as `jevClassifier`'s.
 - **The three test browsers disagree**: chromium ships the API, firefox and webkit do not. Every voice test installs or removes it via `addInitScript` before `goto` and relies on native support for nothing. That is an init script, not `page.route`, so `jev-classify.spec.ts` remains the only spec intercepting requests.
 
+## CSV import: the same two layers, before anything commits
+The importer runs `smartMatcher` then Jev, in that order, and shows the result in the dry-run preview before a single row is written (ADR `0019`).
+- **Layer 1 runs as the preview is built** — synchronous, free, zero network. **Layer 2 runs only when the user presses `#csv-classify-btn`.** No CSV upload spends TypeSafe credits before the user asks for it, and that button not being pressed *is* the "skip when offline" affordance.
+- **De-duplicate before dispatch, never via the cache alone.** The classifier's LRU cache fills on response, so concurrent workers on identical descriptions all miss it and all dispatch — a stampede that turned 40 identical merchant rows into 40 requests. `batchClassifier` groups by `normalizeText` (exported from `jevClassifier` for exactly this, so grouping and the cache key cannot drift) and fans one answer out to the group.
+- **`classifyDescription`'s signature and behaviour are frozen.** It is a thin wrapper over `classifyOnce`, kept so the live-typing path's three call sites and `jev-classify.spec.ts` need no edit. A caller wanting to know *why* a call failed uses `classifyOnce`, which reports `ok` / `no-answer` / `rate-limited` / `unavailable` / `failed`.
+- **AI never writes a row's `type`**, because `type` drives the wallet debit direction in `commitBulkImport`. A category whose type disagrees with the row's is demoted to a suggestion, never applied.
+- **Only `categoryId` reaches the ledger.** `ImportRowValidation` is the commit payload; confidence and applied/suggested state are preview-only and live in a view-level map. `commitBulkImport` prefers `categoryId` and falls back to the name lookup for a plain CSV.
+- **Concurrency is capped at 4**, which is the real rate-limit protection; `rate-limited` backs off twice, `unavailable` aborts the whole run rather than walking the rest into a dead endpoint.
+- **There is no import deduplication, deliberately.** The idempotency key embeds `Date.now()` so it never collides, and `csv.spec.ts` asserts a re-imported row appears twice. Do NOT add dedupe without deciding first what "the same transaction" means across two files — and without updating that spec.
+
 ## Validation & the MutationResult pattern
 All write paths validate with Zod (`src/utils/zodSchemas.ts`) **before** mutating state or hitting the network:
 
@@ -209,8 +219,8 @@ Without it, `FinanceContext` falls back to the legacy non-atomic path (three sep
 
 ## Testing
 - **Framework**: Playwright with Chromium, Firefox, and WebKit projects.
-- **Suite size**: 92 tests across 20 spec files, run on all three browsers = **276 test runs**. All must pass.
-- **Location**: `tests/*.spec.ts` (`transaction`, `wallets`, `diary`, `theme`, `wallet-forms`, `debts`, `soft-delete`, `keywords`, `categories`, `csv`, `auth`, `date-boundary`, `storage-persistence`, `presets`, `jev-classify`, `express-input`, `transfer-preview`, `debt-repayment`, `smart-rules`, `voice-input`), with shared helpers in `tests/helpers.ts`.
+- **Suite size**: 100 tests across 21 spec files, run on all three browsers = **300 test runs**. All must pass.
+- **Location**: `tests/*.spec.ts` (`transaction`, `wallets`, `diary`, `theme`, `wallet-forms`, `debts`, `soft-delete`, `keywords`, `categories`, `csv`, `auth`, `date-boundary`, `storage-persistence`, `presets`, `jev-classify`, `express-input`, `transfer-preview`, `debt-repayment`, `smart-rules`, `voice-input`, `csv-classify`), with shared helpers in `tests/helpers.ts`.
 - **Never edit files while a run is in flight.** `playwright.config.ts`'s `webServer` is `npm run dev` — a live Vite dev server — so writing to `src/` mid-run HMRs the app under test and produces failures that do not reproduce in isolation. This cost a wasted baseline in Phase 39.
 - **Network mocking**: exactly **two** specs intercept requests — `tests/jev-classify.spec.ts` (the live-typing path) and `tests/csv-classify.spec.ts` (the bulk import path), both on `page.route('**/api/classify')`. Every response is fulfilled locally, so the suite spends no TypeSafe credits and needs no API key, on CI or locally — **that** is the rule, not the file count (ADR `0019` amended it from one spec to two). A third would need the same justification. `tests/voice-input.spec.ts`'s `addInitScript` Speech API stub is a different mechanism and intercepts nothing.
 - **Use the helpers**: `gotoTab(page, tabId)` waits for the tab to become active *and* for the `React.lazy` view chunk to resolve (`#view-loading-fallback` detaching). `addQuickTransaction(page, description)` seeds a transaction — a fresh context has wallets and debts but **no transactions**, so any assertion about filtering is vacuous without it.
@@ -257,6 +267,9 @@ Refer to `.env.example`:
 - Do NOT make a rule write a precondition of a transaction write; the chip is a sibling of the submit path, not a step in it.
 - Do NOT give voice input a pipeline of its own; a transcript goes through `handleDescriptionChange` so every layer treats it as typing — see ADR `0018`.
 - Do NOT feature-detect `SpeechRecognition` without also checking `window.isSecureContext`, and do NOT let dictation replace text already in the note.
+- Do NOT let the CSV importer classify automatically on upload, and do NOT rely on the classifier cache to collapse repeated rows — de-duplicate before dispatch. See ADR `0019`.
+- Do NOT widen `classifyDescription`'s contract; extend `classifyOnce` instead.
+- Do NOT add CSV import deduplication without a decision on what "the same transaction" means; `csv.spec.ts` currently asserts its absence.
 - Do NOT delete or bypass `smartMatcher.ts` / `keyword_rules` in favour of Jev — it is the offline layer and the user's override channel. See ADR `0011`.
 - Do NOT let `classifyDescription()` throw, and do NOT give the classifier a code path that can reject.
 - Do NOT accept Jev question wording (`instructions`/`criteria`/`model`/`state`/`questions`) from the client in `api/classify.ts`.

@@ -4,6 +4,42 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
+## Phase 47 — Batch AI CSV import with layered auto-categorization: T122–T128 (2026-09-24, commits `8a22222`…`PENDING_DOCS`)
+
+**Changed**
+- `docs/audit/decisions/0019-batch-csv-classification.md` (new) — written before the code and committed alone.
+- `src/utils/jevClassifier.ts` — body extracted into `classifyOnce` returning a discriminated `ClassifyOutcome`; `classifyDescription` kept as a thin wrapper with a **frozen** contract; `normalizeText` exported.
+- `src/utils/batchClassifier.ts` (new) — concurrency-capped pool with pre-dispatch de-duplication, bounded backoff and early abort.
+- `src/types.ts`, `src/context/FinanceContext.tsx` — `ImportRowValidation.categoryId`, preferred over the name lookup at commit. Two lines; the entire mutation surface.
+- `src/views/TransactionsView.tsx` — Layer 1 on parse, the explicit Layer 2 button, progress, and a Category column with per-row override.
+- `tests/csv-classify.spec.ts` (new, 8) and the `CLAUDE.md` mocking-rule amendment in the same commit.
+
+**Why**
+ADR `0011` gave transaction entry two categorization layers; Phase 45 made the first one grow from the user's own corrections. CSV import had neither — and it is the path that creates the most rows in one action. A bank export, the file people actually import, has no category column at all, so every row landed uncategorized and the user met them again one at a time in the ledger.
+
+**Metric delta**
+Entry chunk 164.29 → **164.37 kB** (+0.08 kB) — the `categoryId` lookup in the eager `FinanceContext`. `TransactionsView-*.js` 43.69 → 49.93 kB (+6.24). `TransactionForm-*.js` +0.29 kB from the `classifyOnce` split. 33 chunks before and after. Suite 276 → **300 runs**. Full table in `baseline-metrics.md`.
+
+**Verification**
+`npm run lint` clean on both tsconfigs. `npx playwright test --workers=4` — **300/300 passed, 6.6 m**, first attempt, no flakes. `npm run clean && npm run build` — 7.08 s, 0 chunk-size warnings. Both `Classify remaining with Jev` and `Jev is unavailable right now` resolve **only** to `TransactionsView-*.js`.
+
+**Surprises**
+
+- **A cost assertion turned out to be a bug detector.** The "repeated descriptions cost one request" test failed on its first run with **4 requests instead of 1**. The classifier's LRU cache only fills when a response *returns*, so four concurrent workers on four identical descriptions all miss it and all dispatch — a cache stampede. On the exact shape this feature exists for, a statement with one merchant forty times, that was forty requests for one answer. Fixed by de-duplicating **before** dispatch. The ADR had claimed the cache alone made this free; it did not, and the test is what proved it.
+- **Two premises in the request were wrong.** `CsvImportModal.tsx` and `csvParser.ts` do not exist — the modal is inline in `TransactionsView` and parse/validate/export share `csvExchange.ts`. And there are no duplicate-detection rules to preserve: the idempotency key embeds `Date.now()` so it never collides, and `csv.spec.ts:50-52` asserts the re-imported marker appears **twice**, on purpose. The invariant was the *absence* of dedupe.
+- **The predicted chunk re-partition did not happen.** `jevClassifier` gained a second lazy importer, which is exactly the shape that re-partitioned a shared chunk in Phase 43 — flagged in the plan as a thing to watch. 33 chunks before and after, and the three real deltas sum to the summed-JS delta exactly. Worth recording that the risk was checked and came back clean, not just that nothing happened.
+- **One negative control had to be redone.** The first attempt at the `categoryId` control produced malformed TypeScript, which the Vite dev server happily served — so the tests failed, but possibly for the wrong reason. Re-run with a well-formed control, they failed correctly. A control that fails is only evidence if it fails for the reason you think.
+
+**Deliberately not done**
+
+- **No CSV deduplication.** Out of scope, and actively pinned against by `csv.spec.ts`. Changing it needs its own decision about what "the same transaction" means across two files.
+- **No extraction of the import modal** into its own component — a large unrelated diff, and `TransactionsView` is already lazy, which is what the bundle requirement actually needs.
+- **No `/api/classify-batch` endpoint.** Recorded as a follow-up gated on a *measured* problem: a real file where round-trips rather than model latency are the bottleneck.
+- **No AI-driven `type` correction.** It would flip the wallet debit direction in bulk from a probabilistic answer.
+- **No unit test for `batchClassifier` in isolation.** Still no unit runner; the pool is exercised only through the UI, so its backoff path in particular has no direct coverage. Stated rather than papered over, as in Phases 44–46.
+
+---
+
 ## Phase 46 — Voice input for the omni note: T116–T121 (2026-09-24, commits `4dec34b`…`37b60f7`)
 
 **Changed**

@@ -1049,6 +1049,38 @@ Approved explicitly by the user, planned and approved before any code was writte
 - **The projection landed exactly** for the first time in three phases: 8 tests planned, 8 written, 92 tests / 276 runs as projected.
 - **No flakes.** Phase 44's `wallets.spec.ts` webkit flake at `--workers=4` has now not reproduced across two consecutive phases; still watched rather than closed.
 
+## Phase 47 — Batch AI CSV import with layered auto-categorization: T122–T128 (2026-09-24)
+
+Approved explicitly by the user, planned and approved before any code was written. Three questions were settled up front: a **concurrency pool over the existing endpoint** rather than a new one; an **explicit button** rather than automatic classification; and **confidence mirroring the form's `CONFIDENCE` gate**. Per `README.md:28`, ADR `0019` was written before T123 started and committed alone.
+
+| # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
+|---|---|---|---|---|---|---|---|---|---|---|
+| T122 | ADR `0019` — pool over endpoint and the cache/latch reuse behind it; the `classifyOnce` split with a frozen wrapper; explicit trigger; the confidence mirror; the two safety rules on what may be written; the mocking-rule amendment; and the finding that CSV import has no dedupe and that this is pinned by a spec | `docs/audit/decisions/0019-batch-csv-classification.md` (new) | Med | Low | 1.5h | done | — | 8a22222 | docs only; committed alone | — |
+| T123 | `classifyOnce` + `ClassifyOutcome`; `classifyDescription` reduced to a wrapper with an explicitly frozen contract; 429 separated from other non-ok statuses | `src/utils/jevClassifier.ts` | Med | Med | 1.5h | done | T122 | c938266 | `jev-classify.spec.ts` + `csv.spec.ts` **9/9 unedited** | — |
+| T124 | `ImportRowValidation.categoryId`; `commitBulkImport` prefers it over the name lookup | `src/types.ts`, `src/context/FinanceContext.tsx` | High | Low | 0.5h | done | T122 | 383f311 | `npm run lint` clean both tsconfigs | entry chunk +0.08 kB (eager `FinanceContext`) |
+| T125 | `batchClassifier` (concurrency cap, pre-dispatch de-duplication, bounded backoff, early abort) plus Layer 1 on parse, the explicit Layer 2 button, progress, and the preview Category column | `src/utils/batchClassifier.ts` (new), `src/views/TransactionsView.tsx`, `src/utils/jevClassifier.ts` | High | **High** | 4h | done | T123, T124 | 571c314 | `npm run lint` clean | `TransactionsView` +6.24 kB; 33 chunks, no re-partition |
+| T126 | 8 new tests, the second spec permitted to mock the classifier, plus the `CLAUDE.md` rule amendment in the same commit | `tests/csv-classify.spec.ts` (new), `CLAUDE.md` | High | Low | 2.5h | done | T125 | aaa1186 | **300/300, 6.6 m**, first attempt, no flakes; **three** negative controls confirmed | Suite 276 → **300 runs**, 92 → 100 tests, 20 → **21** spec files |
+| T127 | Phase 47 refactor-log entry, ledger rows, bundle column, selector-contract additions | `docs/audit/refactor-log.md`, `docs/audit/task-ledger.md`, `docs/audit/baseline-metrics.md`, `docs/audit/test-selector-contract.md` | Med | Low | 1h | done | T126 | PENDING_DOCS | docs only; `npm run lint` clean at HEAD | — |
+| T128 | Sha backfill, plus the CI and deploy result | `docs/audit/refactor-log.md`, `docs/audit/task-ledger.md` | Low | Low | 0.5h | done | T127 | (this row's own commit — a backfill cannot cite its own sha) | PENDING_CI | — |
+
+**CI and deploy:** PENDING_CI_LINE
+
+**Full gate:** `npm run lint` clean (both tsconfigs); `npx playwright test --workers=4` **300/300 passed, 6.6 m**; `npm run clean && npm run build` succeeded in 7.08 s, 0 chunk-size warnings. Measured by building `0bfe7bf` and `main` in turn.
+
+**Design constraints carried from ADR `0019` (do not re-litigate):**
+- **De-duplicate before dispatch, not via the cache.** The cache fills on response, so concurrent identical rows all miss it. This was a real bug, found by a test.
+- **`classifyDescription`'s contract is frozen.** New callers extend `classifyOnce`; the wrapper exists to keep three call sites and one spec unchanged.
+- **AI never writes a row's `type`**, and a category whose type disagrees with the row's is demoted to a suggestion.
+- **Only `categoryId` reaches the ledger.** Confidence and applied/suggested state are preview-only by design.
+- **There is no CSV dedupe, deliberately**, and `csv.spec.ts` asserts it.
+
+**Notes on execution:**
+- **The cost test found a correctness bug.** "Repeated descriptions cost one request" failed at 4-of-4 on first run and is what surfaced the cache stampede. The ADR had asserted the cache made repeats free; it did not, and the ADR's claim was true only after the fix.
+- **Two premises in the request were wrong** and are corrected in ADR `0019` rather than silently worked around: the named files do not exist, and there were no dedupe rules to preserve.
+- **A flagged bundle risk was checked and came back clean.** `jevClassifier` gaining a second lazy importer is the Phase 43 re-partition shape; 33 chunks before and after, with all three real deltas summing exactly to the summed-JS delta.
+- **One negative control was redone** because the first attempt produced malformed TypeScript that the dev server still served — the tests failed, but possibly for the wrong reason.
+- **No flakes.** Phase 44's `wallets.spec.ts` webkit flake has now not reproduced across three consecutive phases; still watched rather than closed.
+
 ## Deferred — none remaining
 
 Both items formerly in this table are now resolved; see Phase 38 above. **Zero audit tasks remain in `todo` or `deferred` status.** Phases 39 and 40 above track approved feature builds with their own rows.

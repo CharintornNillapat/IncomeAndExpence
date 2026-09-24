@@ -605,3 +605,31 @@ Same method as Phases 43–45: built `446aafb` (the pre-phase HEAD) and `main` i
 **Test-suite size:** 252 → **276 runs** (84 → 92 tests, 19 → **20** spec files — 8 added, none removed or inverted). Wall clock `npx playwright test --workers=4`: 5.7 m → 6.3 m.
 
 **Stability note:** first full run clean at 276/276 with no retries. Phase 44's `wallets.spec.ts` webkit flake has now not reproduced across two consecutive phases; it stays on the watch list rather than being closed on that basis.
+
+## Phase 47 (batch CSV classification) — bundle delta, measured against a rebuild of HEAD
+
+Same method as Phases 43–46: built `0bfe7bf` (the pre-phase HEAD) and `main` in turn. Same machine, same `node_modules`, clean tree both times, no dev server running. The HEAD column reproduced Phase 46's recorded figures exactly.
+
+| Chunk | HEAD (`0bfe7bf`) | Phase 47 | Delta |
+|---|---|---|---|
+| entry `index-*.js` | 164.29 kB / 46.32 kB gzip | **164.37 kB / 46.35 kB gzip** | **+0.08 kB / +0.03 kB** |
+| `TransactionsView-*.js` (lazy) | 43.69 kB / 14.00 kB gzip | 49.93 kB / 15.81 kB gzip | +6.24 kB / +1.81 kB |
+| `TransactionForm-*.js` (lazy) | 27.85 kB / 8.44 kB gzip | 28.14 kB / 8.55 kB gzip | +0.29 kB / +0.11 kB |
+| `vendor-icons-*.js` (modulepreloaded) | 30.16 kB | 30.16 kB | **0** |
+| `index-*.css` | 78.48 kB / 12.09 kB gzip | 78.51 kB / 12.10 kB gzip | +0.03 kB / +0.01 kB |
+| **all JS, summed** | 1336.84 kB / 392.57 kB gzip | 1343.45 kB / 394.53 kB gzip | +6.61 kB / +1.96 kB |
+| chunk count | 33 | 33 | 0 |
+| vendor chunk count | 5 | 5 | 0 |
+| build time | 7.83 s | 7.08 s | both cold after `clean` |
+
+**Findings**
+
+- **The summed delta is fully accounted for by three rows**: `TransactionsView` +6.24, `TransactionForm` +0.29, entry +0.08 = **+6.61**, which is the summed-JS figure to the byte. That arithmetic is the check, not a coincidence — it is what proves nothing leaked into a chunk nobody looked at, the failure Phase 46 caught the hard way.
+- **The entry chunk moved, and correctly so.** +0.08 kB is the `categoryId` lookup in `commitBulkImport`, which lives in the eager `FinanceContext`. Enforcing it anywhere lazier would mean a caller could bypass it — the same reasoning Phase 44 recorded when its ledger guards cost +0.94 kB.
+- **The predicted re-partition did not occur.** `jevClassifier` gained a second lazy importer (`TransactionsView` alongside `TransactionForm`), which is precisely the shape that made Rollup re-partition a shared chunk in Phase 43. The plan flagged it as a thing to check; 33 chunks before and after, and `TransactionForm`'s +0.29 kB is the `classifyOnce` split being duplicated into its chunk rather than a new chunk appearing.
+- **`vendor-icons` did not move at all.** `Sparkles` was already in the bundle via `TransactionForm`, so the new usage was free — in contrast with Phase 46, where one new icon put +0.37 kB on the preloaded critical path.
+- **CSS moved by 0.03 kB.** The import UI reuses existing shells almost entirely; the progress bar's inline width is a style attribute, not a class.
+
+**Test-suite size:** 276 → **300 runs** (92 → 100 tests, 20 → **21** spec files — 8 added, none removed or edited). Wall clock `npx playwright test --workers=4`: 6.3 m → 6.6 m.
+
+**Stability note:** first full run clean at 300/300 with no retries. Phase 44's `wallets.spec.ts` webkit flake has not reproduced across three consecutive phases; it stays on the watch list rather than being closed.
