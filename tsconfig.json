@@ -21,6 +21,6 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true
   },
-  "include": ["src", "tests"],
-  "exclude": ["node_modules", "dist", "playwright.config.ts"]
+  "include": ["src", "tests", "unit"],
+  "exclude": ["node_modules", "dist", "playwright.config.ts", "vitest.config.ts"]
 }
