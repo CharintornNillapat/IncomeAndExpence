@@ -154,6 +154,17 @@ export interface ImportRowValidation {
   date: string;
   walletName: string;
   categoryName?: string;
+  /**
+   * A resolved category id, set when something already knows which category
+   * this row belongs to - a keyword-rule hit, a Jev answer, or a manual
+   * override in the import preview (ADR 0019). `commitBulkImport` prefers it
+   * over the name lookup, which stays as the fallback for a plain CSV.
+   *
+   * Deliberately the *only* field this phase added. Confidence and
+   * applied/suggested state are preview-only and live in a view-level map:
+   * this type is the commit payload and should not accrete UI state.
+   */
+  categoryId?: string;
   amount: number;
   type: TransactionType;
   description: string;

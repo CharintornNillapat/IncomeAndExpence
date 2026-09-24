@@ -2115,9 +2115,16 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
         continue;
       }
 
-      const cat = row.categoryName
-        ? categoryMapByName.get(row.categoryName.trim().toLowerCase())
+      // A resolved id wins over the name (ADR 0019): it is what the import
+      // preview's two categorization layers and its manual override write, and
+      // unlike a name it cannot collide or fail to resolve. The name lookup
+      // stays as the fallback for a plain CSV that names its categories.
+      const categoryById = row.categoryId
+        ? categoriesRef.current.find((c) => c.id === row.categoryId && !c.isDeleted)
         : undefined;
+      const cat =
+        categoryById ??
+        (row.categoryName ? categoryMapByName.get(row.categoryName.trim().toLowerCase()) : undefined);
 
       totalAmt += row.amount;
 
