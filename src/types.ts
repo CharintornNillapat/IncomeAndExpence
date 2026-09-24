@@ -225,3 +225,62 @@ export interface ClassifyResponse {
   detectedType: 'INCOME' | 'EXPENSE';
   typeConfidence: number;
 }
+
+/**
+ * Wire contract for the monthly-insights proxy (`api/insights.ts`), ADR 0020.
+ *
+ * Lives here for the same reason the classify contract does: the browser
+ * client and the serverless function import the *same* declarations and
+ * cannot drift.
+ *
+ * WHAT IS DELIBERATELY ABSENT IS THE POINT. There is no transaction
+ * description, no `rawInput`, no id of any kind, no wallet name, no
+ * individual amount and no individual date. Only aggregates leave the
+ * device. Category *names* are sent because an id means nothing to a model
+ * and the name carries the entire semantic signal - the residual that a
+ * user-authored category name therefore leaves the device is recorded in
+ * ADR 0020 rather than glossed over.
+ */
+export interface SpendingCategorySummary {
+  /** Category name only. Never an id. */
+  name: string;
+  /** This month's total for the category. */
+  current: number;
+  /** Last month's total, `0` when the category is new. */
+  previous: number;
+  /** Signed percentage change; `null` when there is no prior month to compare. */
+  changePercent: number | null;
+  /** How many transactions made up `current` - the signal for "recurring". */
+  txCount: number;
+}
+
+export interface SpendingSummary {
+  /** `YYYY-MM`. A calendar month, never a timestamp. */
+  month: string;
+  categories: SpendingCategorySummary[];
+  totals: {
+    income: number;
+    expense: number;
+    net: number;
+    previousExpense: number;
+  };
+}
+
+/**
+ * The fixed vocabulary the model chooses from. Adding a member means changing
+ * the server's criteria, this type and the renderer together - deliberate
+ * coupling, and what stops the model returning a verdict the renderer cannot
+ * express.
+ */
+export type InsightPattern = 'CATEGORY_SPIKE' | 'IMPROVED_SAVING' | 'NEW_RECURRING' | 'STEADY';
+
+export interface InsightsRequest {
+  summary: SpendingSummary;
+}
+
+export interface InsightsResponse {
+  pattern: InsightPattern;
+  /** Category name the verdict is about, or `null` for a whole-month pattern. */
+  focus: string | null;
+  confidence: number;
+}
