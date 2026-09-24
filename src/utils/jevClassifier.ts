@@ -144,19 +144,43 @@ export function isClassifierWorthTrying(text: string, candidates: ClassifyCandid
 }
 
 /**
- * Resolves to a raw `ClassifyResponse`, or `null` for "no answer" - which
- * covers both a genuine `other` verdict and every failure mode.
+ * Why a failure is a failure (ADR 0019).
  *
- * `signal` lets the caller abort a request superseded by a newer keystroke.
+ * `classifyDescription` below collapses all of this to `null`, which is the
+ * right answer for the live-typing path: there is nothing a form can usefully
+ * do with the difference. A *batch* can - it should back off on
+ * `rate-limited`, stop walking rows entirely on `unavailable`, and simply
+ * accept `no-answer`. So the distinction is made here and discarded there.
  */
-export async function classifyDescription(
+export type ClassifyOutcome =
+  | { kind: 'ok'; data: ClassifyResponse }
+  /** The model answered "other", or answered unusably. A real answer, not a failure. */
+  | { kind: 'no-answer' }
+  /** HTTP 429. Retryable after a wait. */
+  | { kind: 'rate-limited' }
+  /** The endpoint is absent or has latched off. Every subsequent call is pointless. */
+  | { kind: 'unavailable' }
+  /** Aborted, timed out, 5xx, malformed JSON, offline. Not worth retrying in a batch. */
+  | { kind: 'failed' };
+
+/**
+ * The full-fidelity classify call. Identical network behaviour to
+ * `classifyDescription` - same cache, same latch, same timeout - and it is the
+ * single implementation both callers share.
+ *
+ * Still never throws and never rejects. That contract is load-bearing for
+ * `classifyDescription` (see the module header) and is not relaxed here just
+ * because this variant reports more detail.
+ */
+export async function classifyOnce(
   text: string,
   candidates: ClassifyCandidate[],
   signal?: AbortSignal
-): Promise<ClassifyResponse | null> {
+): Promise<ClassifyOutcome> {
   const key = cacheKey(text, candidates);
   const cached = cacheGet(key);
-  if (cached !== undefined) return cached;
+  // A cached negative is a settled "other" verdict, not a failure to retry.
+  if (cached !== undefined) return cached === null ? { kind: 'no-answer' } : { kind: 'ok', data: cached };
 
   // Abort on whichever fires first: the caller's supersede signal, or our own
   // timeout. A hung request must not pin a suggestion slot open forever.
@@ -175,13 +199,16 @@ export async function classifyDescription(
       // Endpoint absent: unconfigured deployment, or the Vite dev server, which
       // does not serve `api/` at all. Stop asking for the rest of the session.
       classifierUnavailable = true;
-      return null;
+      return { kind: 'unavailable' };
     }
 
-    if (!res.ok) return null;
+    // Retryable, and the only status a batch should wait and re-attempt on.
+    if (res.status === 429) return { kind: 'rate-limited' };
+
+    if (!res.ok) return { kind: 'failed' };
 
     const data = (await res.json()) as ClassifyResponse;
-    if (typeof data !== 'object' || data === null) return null;
+    if (typeof data !== 'object' || data === null) return { kind: 'failed' };
 
     // `categoryId: null` is a real answer ("other" - nothing fits), so it is
     // cached as a negative result rather than retried on every keystroke.
@@ -192,16 +219,36 @@ export async function classifyDescription(
       typeConfidence: typeof data.typeConfidence === 'number' ? data.typeConfidence : 0,
     };
     cacheSet(key, normalized);
-    return normalized;
+    return { kind: 'ok', data: normalized };
   } catch (err) {
     // An abort is an expected, routine outcome (the user kept typing) and must
     // not trip the availability latch the way a real network failure does.
-    if (err instanceof DOMException && err.name === 'AbortError') return null;
+    if (err instanceof DOMException && err.name === 'AbortError') return { kind: 'failed' };
     // A genuine network failure. Do NOT latch: the user may simply be offline
     // for a moment, and latching would disable the feature for the whole
     // session over one dropped request.
-    return null;
+    return { kind: 'failed' };
   }
+}
+
+/**
+ * Resolves to a raw `ClassifyResponse`, or `null` for "no answer" - which
+ * covers both a genuine `other` verdict and every failure mode.
+ *
+ * `signal` lets the caller abort a request superseded by a newer keystroke.
+ *
+ * **This signature and behaviour are frozen** (ADR 0019). It is the live-typing
+ * path's entire interface to the classifier, and `jev-classify.spec.ts` is its
+ * regression guard. New callers wanting to know *why* a call failed should use
+ * `classifyOnce` above rather than widening this.
+ */
+export async function classifyDescription(
+  text: string,
+  candidates: ClassifyCandidate[],
+  signal?: AbortSignal
+): Promise<ClassifyResponse | null> {
+  const outcome = await classifyOnce(text, candidates, signal);
+  return outcome.kind === 'ok' ? outcome.data : null;
 }
 
 /**
