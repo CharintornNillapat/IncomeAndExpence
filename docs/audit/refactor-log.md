@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 47 — Batch AI CSV import with layered auto-categorization: T122–T128 (2026-09-24, commits `8a22222`…`PENDING_DOCS`)
+## Phase 47 — Batch AI CSV import with layered auto-categorization: T122–T128 (2026-09-24, commits `8a22222`…`ca867c0`)
 
 **Changed**
 - `docs/audit/decisions/0019-batch-csv-classification.md` (new) — written before the code and committed alone.
