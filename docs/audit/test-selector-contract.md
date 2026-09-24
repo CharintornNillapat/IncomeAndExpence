@@ -120,6 +120,22 @@ Nothing was removed in this phase. `#repay-amount-math`, `#repay-wallet-select`,
 
 **`csv.spec.ts` passed unedited** and remains both the round-trip guard and the pin on the deliberate absence of import deduplication.
 
+## Added in Phase 48 (ADR `0020`, monthly spending insights)
+
+| Selector | Notes | File |
+|---|---|---|
+| `[data-testid="insights-card"]` | The card shell. Always present on the Dashboard, including when there is nothing to summarize. | `src/components/dashboard/SpendingInsightsCard.tsx` |
+| `#insights-generate-btn` | Renders **only** while no verdict is held. It is absent after a cached verdict seeds the card, which is how a spec asserts the cache worked. | same |
+| `#insights-refresh-btn` | Renders only once a verdict exists and the card is expanded. Always hits the network. | same |
+| `#insights-collapse-btn` | Carries `aria-expanded`, which is what a spec should assert on rather than the chevron glyph. | same |
+| `[data-testid="insights-body"]` | The rendered sentences. Its appearance is the signal that generation finished. | same |
+| `[data-testid="insights-skeleton"]` | Present only while generating. | same |
+| `[data-testid="insights-offline-note"]` | Marks a locally-chosen verdict. **A provenance note, not an error** — the card has no error state, so a spec asserting "no error" should check the card's text rather than look for this. | same |
+
+**A third spec may mock the classifier family.** `CLAUDE.md`'s rule is now stated as a principle — every intercepting spec fulfils locally — rather than as a list, with `jev-classify`, `csv-classify` and `insights` named as the three that currently rely on it.
+
+**The Dashboard now makes network requests.** It was previously pure presentation over context state. Specs that assert on the Dashboard and do not mock `/api/insights` will see a 404 and the local fallback, which is harmless and is what `transaction.spec.ts` and `date-boundary.spec.ts` already do — both passed unedited.
+
 ## Known remaining fragile selectors (not yet hardened; addressed in later phases per the roadmap)
 
 - `transaction.spec.ts:55` — `^Income$` button text (Phase 27, SegmentedControl must preserve option labels exactly).

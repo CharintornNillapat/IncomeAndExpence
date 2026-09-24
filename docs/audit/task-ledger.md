@@ -1081,6 +1081,38 @@ Approved explicitly by the user, planned and approved before any code was writte
 - **One negative control was redone** because the first attempt produced malformed TypeScript that the dev server still served — the tests failed, but possibly for the wrong reason.
 - **No flakes.** Phase 44's `wallets.spec.ts` webkit flake has now not reproduced across three consecutive phases; still watched rather than closed.
 
+## Phase 48 — Smart spending insights (AI monthly wrap-up): T129–T135 (2026-09-24)
+
+Approved explicitly by the user, planned and approved before any code was written. Three questions were settled up front: the card goes in **`DashboardView`** (there is no Analytics view and none is created); **the model picks a pattern and the app renders the sentences** (Jev answers choice questions, not free text); and the cache lives in **`localStorage`** keyed by user and month. Per `README.md:28`, ADR `0020` was written before T130 started and committed alone.
+
+| # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
+|---|---|---|---|---|---|---|---|---|---|---|
+| T129 | ADR `0020` — the missing Analytics view; choice-plus-renderer over free text and the three properties it buys; the exact payload and the category-name residual; `/api/insights` as a sibling rather than an action; the `localStorage` trade-off; and the generalisation of the mocking rule | `docs/audit/decisions/0020-monthly-spending-insights.md` (new) | Med | Low | 1.5h | done | — | feb8f71 | docs only; committed alone | — |
+| T130 | `SpendingSummary`/`InsightsResponse` contracts plus `spendingSummary.ts` — aggregation, the deterministic selector, and the renderer that keeps every ฿ figure out of the model's hands | `src/types.ts`, `src/utils/spendingSummary.ts` (new) | High | Med | 2.5h | done | T129 | b015c63 | `npm run lint` clean both tsconfigs | — |
+| T131 | `api/insights.ts` — named `POST` export, forbidden-key rejection, 404-on-missing-key, bounded and unique-checked input | `api/insights.ts` (new) | High | Med | 2h | done | T129 | 6b4da87 | `npm run lint` clean; `grep` confirms no default export | — |
+| T132 | `insightsClient` (never-throws contract, 404 latch, `localStorage` cache write) plus the card and its Dashboard mount | `src/utils/insightsClient.ts` (new), `src/components/dashboard/SpendingInsightsCard.tsx` (new), `src/views/DashboardView.tsx` | High | Med | 3h | done | T130, T131 | 12933e0 | `npm run lint` clean | `DashboardView` +7.65 kB; `vendor-icons` +0.59 kB |
+| T133 | 7 new tests, the third spec permitted to mock, the `CLAUDE.md` rule generalisation, **and the client simplification a negative control forced** | `tests/insights.spec.ts` (new), `CLAUDE.md`, `src/utils/insightsClient.ts`, `src/components/dashboard/SpendingInsightsCard.tsx` | High | Low | 3h | done | T132 | b76f112 | **321/321, 8.2 m**, first attempt, no flakes; **four** negative controls, two of which changed the code | Suite 300 → **321 runs**, 100 → 107 tests, 21 → **22** spec files |
+| T134 | Phase 48 refactor-log entry, ledger rows, bundle column, selector-contract additions | `docs/audit/refactor-log.md`, `docs/audit/task-ledger.md`, `docs/audit/baseline-metrics.md`, `docs/audit/test-selector-contract.md` | Med | Low | 1h | done | T133 | PENDING_DOCS | docs only; `npm run lint` clean at HEAD | — |
+| T135 | Sha backfill, plus the CI and deploy result | `docs/audit/refactor-log.md`, `docs/audit/task-ledger.md` | Low | Low | 0.5h | done | T134 | (this row's own commit — a backfill cannot cite its own sha) | PENDING_CI | — |
+
+**CI and deploy:** PENDING_CI_LINE
+
+**Full gate:** `npm run lint` clean (both tsconfigs); `npx playwright test --workers=4` **321/321 passed, 8.2 m**; `npm run clean && npm run build` succeeded in 7.05 s, 0 chunk-size warnings. Measured by building `9ab4d5d` and `main` in turn.
+
+**Design constraints carried from ADR `0020` (do not re-litigate):**
+- **The model picks the pattern; the app states the numbers.** Every ฿ figure comes from `formatCurrencyAmount` over ledger data, so the card cannot contradict `CategoryExpenseDistribution` beside it.
+- **Only aggregates leave the device.** No descriptions, no ids, no wallet names, no individual amounts or dates. Category names do, and that residual is named rather than glossed.
+- **The card has no error state by construction**, because the offline path is the same renderer with a locally-chosen verdict.
+- **`api/insights.ts` uses a named `POST` export.** A default export hangs for 60 s and is invisible to `tsc` and to the suite.
+- **One cache reader.** The card's synchronous seed is it; `fetchInsight` deliberately does not read the cache.
+
+**Notes on execution:**
+- **A negative control deleted code.** Disabling `fetchInsight`'s cache read did not fail the caching test, because the card's `useState` seed was the real mechanism. The client's read was unreachable duplication and was removed along with `forceRefresh`.
+- **A second control was itself wrong.** The offline-fallback control passed because the throw landed inside the `try`. With both fallback returns removed it failed correctly. Second consecutive phase where a control needed redoing.
+- **The privacy test was checked for specificity before being trusted**: an unrelated extra field in the body correctly does *not* trip it, while a leaked transaction description does.
+- **The icon cost on the critical path recurred and was caught proactively.** The entry chunk is byte-identical, but four new icons added +0.59 kB to the modulepreloaded `vendor-icons`.
+- **No flakes.** Phase 44's `wallets.spec.ts` webkit flake has now not reproduced across four consecutive phases; still watched rather than closed.
+
 ## Deferred — none remaining
 
 Both items formerly in this table are now resolved; see Phase 38 above. **Zero audit tasks remain in `todo` or `deferred` status.** Phases 39 and 40 above track approved feature builds with their own rows.

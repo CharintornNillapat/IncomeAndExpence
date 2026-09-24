@@ -4,6 +4,43 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
+## Phase 48 — Smart spending insights (AI monthly wrap-up): T129–T135 (2026-09-24, commits `feb8f71`…`PENDING_DOCS`)
+
+**Changed**
+- `docs/audit/decisions/0020-monthly-spending-insights.md` (new) — written before the code and committed alone.
+- `src/types.ts` — `SpendingSummary`, `InsightPattern`, `InsightsRequest`/`InsightsResponse`, shared by the client and the function so they cannot drift.
+- `src/utils/spendingSummary.ts` (new) — pure aggregation, the deterministic pattern selector, and the sentence renderer.
+- `api/insights.ts` (new) — the second serverless function, mirroring `classify`'s security posture.
+- `src/utils/insightsClient.ts` (new), `src/components/dashboard/SpendingInsightsCard.tsx` (new), `src/views/DashboardView.tsx`.
+- `tests/insights.spec.ts` (new, 7) and the `CLAUDE.md` mocking-rule generalisation in the same commit.
+
+**Why**
+Jev had only ever answered *which category is this one note?* (ADR `0011`, extended to bulk in `0019`). The question a user actually has — *how was this month?* — had never been put to it, even though the Dashboard already computed every number needed to ask.
+
+**Metric delta**
+Entry chunk **byte-identical at 164.37 kB**. `DashboardView-*.js` 40.18 → 47.83 kB (+7.65). `vendor-icons` +0.59 kB — **and that is on the modulepreloaded critical path**. 33 chunks before and after. Suite 300 → **321 runs**. Full table in `baseline-metrics.md`.
+
+**Verification**
+`npm run lint` clean on both tsconfigs, including `api/insights.ts` under the second one. `npx playwright test --workers=4` — **321/321 passed, 8.2 m**, first attempt, no flakes. `npm run clean && npm run build` — 7.05 s, 0 chunk-size warnings. Both `Monthly Spending Insights` and `Offline summary` resolve **only** to `DashboardView-*.js`.
+
+**Surprises**
+
+- **A negative control deleted code.** Disabling `fetchInsight`'s cache read did **not** fail the caching test — the card's synchronous `useState` seed was what kept the request count at one. The client's cache read was unreachable duplication: the Generate button only renders while `lines` is null, so every call that reached `fetchInsight` was either a first generation or an explicit Refresh, and both want the network. The read was removed and `forceRefresh` went with it. **Two cache readers, one of them untestable, is worse than one.**
+- **A second control was wrong rather than the test being vacuous.** Removing the offline fallback by making the 404 branch throw did not fail its test, because the throw landed inside the `try` and the catch-all still returned the local verdict. With *both* fallback returns removed it failed correctly. This is the second phase running where a control needed redoing — Phase 47 had one that failed for the wrong reason, this one passed for the wrong reason.
+- **The brief named a view that does not exist.** No `AnalyticsView.tsx`, no Analytics tab. `DashboardView` already holds every reporting component, so the card went there rather than justifying an eighth nav tab for a single card.
+- **The Phase 46 icon lesson recurred, and was caught proactively this time.** The entry chunk is byte-identical, but four new `lucide-react` icons put **+0.59 kB on `vendor-icons`, which `index.html` modulepreloads**. Reading only the entry row would have reported zero critical-path cost for the second phase in three. The plan flagged it as a thing to check, and the check found it.
+
+**Deliberately not done**
+
+- **No Analytics view or nav tab.** One card does not justify a view, two nav entries, a lazy route and navigation tests. Revisit if a second analytical surface appears.
+- **No cross-device insight cache.** A Supabase table needs a migration applied *before* the code deploys, and `CLAUDE.md` is explicit that PostgREST rejects an unknown column outright. Not worth the operational risk to save one regeneration per device.
+- **No free-text generation.** Jev answers choice questions; the model picks a pattern and the app writes the sentences, so every ฿ figure comes from `formatCurrencyAmount` rather than a model that could contradict the card beside it.
+- **No insight history.** Only the current month is cached.
+- **No isolated unit coverage for `spendingSummary`'s pattern thresholds.** Still no unit runner, so `SPIKE_THRESHOLD_PERCENT` and its siblings are exercised only through whatever the seeded ledger happens to produce. Stated rather than papered over, as in Phases 44–47.
+- **The production endpoint probe was not run from here.** The default-export trap is invisible to `tsc` and to the suite (which mocks), and only shows as a 60 s hang against the real deployment. `api/insights.ts` uses the named `POST` export and `grep` confirms no default export, but that is code review, not a live check.
+
+---
+
 ## Phase 47 — Batch AI CSV import with layered auto-categorization: T122–T128 (2026-09-24, commits `8a22222`…`ca867c0`)
 
 **Changed**

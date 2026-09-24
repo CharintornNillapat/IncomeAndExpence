@@ -633,3 +633,31 @@ Same method as Phases 43–46: built `0bfe7bf` (the pre-phase HEAD) and `main` i
 **Test-suite size:** 276 → **300 runs** (92 → 100 tests, 20 → **21** spec files — 8 added, none removed or edited). Wall clock `npx playwright test --workers=4`: 6.3 m → 6.6 m.
 
 **Stability note:** first full run clean at 300/300 with no retries. Phase 44's `wallets.spec.ts` webkit flake has not reproduced across three consecutive phases; it stays on the watch list rather than being closed.
+
+## Phase 48 (monthly spending insights) — bundle delta, measured against a rebuild of HEAD
+
+Same method as Phases 43–47: built `9ab4d5d` (the pre-phase HEAD) and `main` in turn. Same machine, same `node_modules`, clean tree both times, no dev server running. The HEAD column reproduced Phase 47's recorded figures exactly.
+
+| Chunk | HEAD (`9ab4d5d`) | Phase 48 | Delta |
+|---|---|---|---|
+| entry `index-*.js` | 164.37 kB / 46.35 kB gzip | **164.37 kB / 46.35 kB gzip** | **0 / 0** |
+| `DashboardView-*.js` (lazy) | 40.18 kB / 8.75 kB gzip | 47.83 kB / 11.26 kB gzip | +7.65 kB / +2.51 kB |
+| `vendor-icons-*.js` (**modulepreloaded**) | 30.16 kB / 6.56 kB gzip | 30.75 kB / 6.70 kB gzip | **+0.59 kB / +0.14 kB** |
+| `index-*.css` | 78.51 kB / 12.10 kB gzip | 78.56 kB / 12.12 kB gzip | +0.05 kB / +0.02 kB |
+| `vendor-math-*.js` | 375.73 kB / 110.72 kB gzip | 375.73 kB / 110.72 kB gzip | 0 / 0 |
+| **all JS, summed** | 1343.45 kB / 394.53 kB gzip | 1351.69 kB / 397.16 kB gzip | +8.24 kB / +2.63 kB |
+| chunk count | 33 | 33 | 0 |
+| vendor chunk count | 5 | 5 | 0 |
+| build time | 6.96 s | 7.05 s | both cold after `clean` |
+
+**Findings**
+
+- **"Entry chunk byte-identical" is again not the same as free.** Four new `lucide-react` icons (`RefreshCw`, `ChevronDown`, `ChevronUp`, `WifiOff`) landed in `vendor-icons`, which `dist/index.html` **modulepreloads** — so +0.59 kB is on the initial load. This is the second time in three phases; Phase 46 discovered it, and this phase's plan flagged it as a thing to check *before* building, which is why it was found rather than stumbled into. Reducible if it ever matters: the two chevrons could be one icon rotated.
+- **The summed delta is fully accounted for by two rows**: `DashboardView` +7.65 and `vendor-icons` +0.59 = **+8.24**, the summed-JS figure to the byte. Nothing leaked anywhere unexamined.
+- **The whole feature rides the lazy chunk.** `Monthly Spending Insights` and `Offline summary` both resolve **only** to `DashboardView-*.js`. `api/insights.ts` is a serverless function and is not in the client bundle at all.
+- **No re-partition.** Three new client modules with one importer each folded into `DashboardView`'s chunk; 33 chunks before and after.
+- **CSS moved 0.05 kB.** The card reuses `CategoryExpenseDistribution`'s shell verbatim; the skeleton's `animate-pulse` and widths are the only new utilities, and most were already in the scan.
+
+**Test-suite size:** 300 → **321 runs** (100 → 107 tests, 21 → **22** spec files — 7 added, none removed or edited). Wall clock `npx playwright test --workers=4`: 6.6 m → 8.2 m.
+
+**Stability note:** first full run clean at 321/321 with no retries. Phase 44's `wallets.spec.ts` webkit flake has not reproduced across four consecutive phases; it stays on the watch list rather than being closed.

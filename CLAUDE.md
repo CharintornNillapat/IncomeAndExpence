@@ -187,6 +187,15 @@ The importer runs `smartMatcher` then Jev, in that order, and shows the result i
 - **Concurrency is capped at 4**, which is the real rate-limit protection; `rate-limited` backs off twice, `unavailable` aborts the whole run rather than walking the rest into a dead endpoint.
 - **There is no import deduplication, deliberately.** The idempotency key embeds `Date.now()` so it never collides, and `csv.spec.ts` asserts a re-imported row appears twice. Do NOT add dedupe without deciding first what "the same transaction" means across two files — and without updating that spec.
 
+## Monthly insights: the model judges, the app states the numbers
+`SpendingInsightsCard` on the Dashboard turns a month of spending into two or three sentences (ADR `0020`). There is no Analytics view and none was created.
+- **Jev answers `choice` questions, so the wrap-up is not generated text.** The model picks a `pattern` (`CATEGORY_SPIKE`/`IMPROVED_SAVING`/`NEW_RECURRING`/`STEADY`) and a `focus` category; `renderInsight` writes the sentences from that verdict plus the app's own figures. **Every ฿ amount comes from `formatCurrencyAmount` over ledger data** — a model-emitted number could contradict `CategoryExpenseDistribution` sitting beside it.
+- **Only aggregates leave the device.** No transaction description, no `rawInput`, no id of any kind, no wallet name, no individual amount or date. Category *names* and per-category totals do go, because an id means nothing to a model — the residual is recorded in ADR `0020`, and `tests/insights.spec.ts` asserts the request body carries no ledger text.
+- **The card has no error state, by construction.** `fetchInsight` never throws and never rejects; every failure resolves to `selectLocalPattern`'s verdict through the *same* renderer, marked quietly as an offline summary. Do not add an error branch — there is no failure path to render.
+- **One cache reader.** The card seeds itself synchronously from `readCachedVerdict` in its `useState` initializer; `fetchInsight` deliberately does **not** read the cache. A second reader there was unreachable duplication, which a negative control exposed.
+- **`api/insights.ts` uses a named `POST` export**, rejects `instructions`/`criteria`/`model`/`state`/`questions`, and returns **404 on a missing key** so an unconfigured deployment trips the same availability latch as a missing endpoint. A default export would hang for 60 s, invisibly to `tsc` and to the suite.
+- **The pattern vocabulary is fixed and coupled.** Adding a fifth means changing the server's criteria, `InsightPattern` and the renderer together — that coupling is what stops the model returning a verdict the renderer cannot express.
+
 ## Validation & the MutationResult pattern
 All write paths validate with Zod (`src/utils/zodSchemas.ts`) **before** mutating state or hitting the network:
 
@@ -219,8 +228,8 @@ Without it, `FinanceContext` falls back to the legacy non-atomic path (three sep
 
 ## Testing
 - **Framework**: Playwright with Chromium, Firefox, and WebKit projects.
-- **Suite size**: 100 tests across 21 spec files, run on all three browsers = **300 test runs**. All must pass.
-- **Location**: `tests/*.spec.ts` (`transaction`, `wallets`, `diary`, `theme`, `wallet-forms`, `debts`, `soft-delete`, `keywords`, `categories`, `csv`, `auth`, `date-boundary`, `storage-persistence`, `presets`, `jev-classify`, `express-input`, `transfer-preview`, `debt-repayment`, `smart-rules`, `voice-input`, `csv-classify`), with shared helpers in `tests/helpers.ts`.
+- **Suite size**: 107 tests across 22 spec files, run on all three browsers = **321 test runs**. All must pass.
+- **Location**: `tests/*.spec.ts` (`transaction`, `wallets`, `diary`, `theme`, `wallet-forms`, `debts`, `soft-delete`, `keywords`, `categories`, `csv`, `auth`, `date-boundary`, `storage-persistence`, `presets`, `jev-classify`, `express-input`, `transfer-preview`, `debt-repayment`, `smart-rules`, `voice-input`, `csv-classify`, `insights`), with shared helpers in `tests/helpers.ts`.
 - **Never edit files while a run is in flight.** `playwright.config.ts`'s `webServer` is `npm run dev` — a live Vite dev server — so writing to `src/` mid-run HMRs the app under test and produces failures that do not reproduce in isolation. This cost a wasted baseline in Phase 39.
 - **Network mocking**: the rule is a **principle, not a file count** — every spec that intercepts a request must fulfil every response locally, so the suite spends no TypeSafe credits and needs no API key, on CI or on a laptop that happens to have one exported. Three specs currently rely on it: `tests/jev-classify.spec.ts` (live typing), `tests/csv-classify.spec.ts` (bulk import) and `tests/insights.spec.ts` (the monthly wrap-up). Adding a fourth is fine if it meets the principle; ADR `0020` generalised this after `0019` had amended it from one spec to two. `tests/voice-input.spec.ts`'s `addInitScript` Speech API stub is a different mechanism and intercepts nothing.
 - **Use the helpers**: `gotoTab(page, tabId)` waits for the tab to become active *and* for the `React.lazy` view chunk to resolve (`#view-loading-fallback` detaching). `addQuickTransaction(page, description)` seeds a transaction — a fresh context has wallets and debts but **no transactions**, so any assertion about filtering is vacuous without it.
@@ -270,6 +279,8 @@ Refer to `.env.example`:
 - Do NOT let the CSV importer classify automatically on upload, and do NOT rely on the classifier cache to collapse repeated rows — de-duplicate before dispatch. See ADR `0019`.
 - Do NOT widen `classifyDescription`'s contract; extend `classifyOnce` instead.
 - Do NOT add CSV import deduplication without a decision on what "the same transaction" means; `csv.spec.ts` currently asserts its absence.
+- Do NOT let a model emit a currency figure; it picks the pattern, `renderInsight` states the numbers — see ADR `0020`.
+- Do NOT send raw ledger content to `/api/insights`, and do NOT give the insights card an error branch; the offline path is the same renderer.
 - Do NOT delete or bypass `smartMatcher.ts` / `keyword_rules` in favour of Jev — it is the offline layer and the user's override channel. See ADR `0011`.
 - Do NOT let `classifyDescription()` throw, and do NOT give the classifier a code path that can reject.
 - Do NOT accept Jev question wording (`instructions`/`criteria`/`model`/`state`/`questions`) from the client in `api/classify.ts`.
