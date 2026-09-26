@@ -249,6 +249,29 @@ interface TransferFundsResult {
   dest_balance: number | string;
 }
 
+// Shape returned by the ADR 0023 ledger RPCs (`record_transaction`,
+// `set_transaction_deleted`): the row, plus the balances the database committed
+// for every wallet and debt the write touched. A leg the write did not touch is
+// null. `reused` / `changed` mark a replay or a no-op.
+interface LedgerWriteResult {
+  reused?: boolean;
+  changed?: boolean;
+  transaction: any;
+  source_balance: number | string | null;
+  dest_balance: number | string | null;
+  debt_remaining: number | string | null;
+  debt_settled: boolean | null;
+}
+
+// Supabase-js reports a request that never got an answer (offline, a dropped
+// connection, a timeout) as an error with no SQLSTATE; every error PostgREST or
+// Postgres itself returns carries one. After a write RPC, the first kind means
+// the outcome is UNKNOWN - the database may well have committed - so the
+// caller must re-read rather than trust its rollback snapshot (ADR 0023).
+function isUnknownOutcomeError(err: { code?: string } | null): boolean {
+  return !!err && !err.code;
+}
+
 // True only when the RPC itself is absent, i.e. the migration has not been
 // applied yet. Deliberately narrow: any other database error must surface and
 // trigger a rollback rather than silently falling back to the legacy path.
@@ -473,6 +496,42 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     setTimeout(() => {
       recentLocalWriteIds.current.delete(id);
     }, LOCAL_ECHO_SUPPRESS_MS);
+  }, []);
+
+  // ADR 0023: after a ledger RPC succeeds, its balances are what the database
+  // committed - relative to whatever the row held, which may include another
+  // device's write this client has not seen. They replace the optimistic
+  // values, which were computed from this client's own (possibly stale) copy.
+  // A null leg was not touched and is left alone.
+  const adoptLedgerState = useCallback((
+    result: LedgerWriteResult,
+    ids: { walletId?: string | null; destWalletId?: string | null; debtId?: string | null }
+  ) => {
+    const sourceBalance = result.source_balance === null ? NaN : Number(result.source_balance);
+    const destBalance = result.dest_balance === null ? NaN : Number(result.dest_balance);
+    setWallets((prev) =>
+      prev.map((w) => {
+        if (ids.walletId && w.id === ids.walletId && Number.isFinite(sourceBalance)) {
+          return { ...w, balance: sourceBalance };
+        }
+        if (ids.destWalletId && w.id === ids.destWalletId && Number.isFinite(destBalance)) {
+          return { ...w, balance: destBalance };
+        }
+        return w;
+      })
+    );
+
+    const debtRemaining = result.debt_remaining === null ? NaN : Number(result.debt_remaining);
+    if (ids.debtId && Number.isFinite(debtRemaining)) {
+      const updatedAt = new Date().toISOString();
+      setDebts((prev) =>
+        prev.map((d) =>
+          d.id === ids.debtId
+            ? { ...d, remainingAmount: debtRemaining, isSettled: result.debt_settled === true, updatedAt }
+            : d
+        )
+      );
+    }
   }, []);
 
   // T15: latest-value mirrors of the hot state the volatile mutators read by
@@ -1640,6 +1699,8 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     let insertedTxId: string | null = null;
     let sourceDebited = false;
     let destCredited = false;
+    // ADR 0023: set when a ledger RPC may have committed without telling us.
+    let rpcOutcomeUnknown = false;
 
     try {
       if (isAuthenticated) {
@@ -1706,6 +1767,52 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
         const validCategoryId = data.categoryId && categoriesRef.current.some((c) => c.id === data.categoryId)
           ? data.categoryId
           : null;
+
+        // Every other type is one atomic RPC (ADR 0023): the database locks the
+        // wallet and debt, applies RELATIVE updates, re-checks the ADR 0016
+        // overpayment guard under that lock, and replays on `clientKey`, so a
+        // retry after a lost response cannot write twice. Nothing below this
+        // block runs unless the function is missing.
+        if (data.type !== 'TRANSFER') {
+          markLocalWrite(sourceWallet.id);
+          if (targetDebt) markLocalWrite(targetDebt.id);
+          const { data: rpcData, error: rpcError } = await supabase.rpc('record_transaction', {
+            p_wallet_id: sourceWallet.id,
+            p_amount: data.amount,
+            p_type: data.type,
+            p_description: data.description,
+            p_transaction_date: data.transactionDate,
+            p_idempotency_key: clientKey,
+            p_category_id: validCategoryId,
+            p_debt_id: data.debtId || null,
+            p_raw_input: data.rawInput || null,
+          });
+
+          if (rpcError) {
+            if (!isMissingRpcError(rpcError)) {
+              if (isUnknownOutcomeError(rpcError)) rpcOutcomeUnknown = true;
+              throw rpcError;
+            }
+            console.warn('[record_transaction RPC unavailable, using non-atomic fallback]', rpcError.message);
+          } else {
+            const payload = rpcData as LedgerWriteResult | null;
+            // The RPC may already have committed; falling through to the legacy
+            // path would write a second time, and restoring the snapshot would
+            // hide a write that happened. Re-read instead.
+            if (!payload?.transaction) {
+              rpcOutcomeUnknown = true;
+              throw new Error('record_transaction returned an unexpected response');
+            }
+
+            const mapped = mapTransactionRow(payload.transaction);
+            markLocalWrite(mapped.id);
+            // Replace rather than prepend: a replay returns a row that may
+            // already be present locally.
+            setTransactions((prev) => [mapped, ...prev.filter((t) => t.id !== mapped.id)]);
+            adoptLedgerState(payload, { walletId: sourceWallet.id, debtId: targetDebt?.id ?? null });
+            return { success: true, txId: mapped.id };
+          }
+        }
 
         const { data: insertedTx, error: txErr } = await supabase
           .from('transactions')
@@ -1792,6 +1899,11 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     } catch (err: unknown) {
       console.error('[Add Transaction Failed]', err);
 
+      // The server's ADR 0016 guard, re-checked under the debt's row lock:
+      // this client's copy of the debt was stale (another device paid).
+      const rpcFailure = err as { message?: string; details?: string };
+      const serverOverpayment = rpcFailure?.message === 'DEBT_OVERPAYMENT';
+
       if (cloudRevisionRef.current !== cloudRevisionAtStart) {
         // T69: a realtime reload landed while this write was in flight, so
         // `previousWallets`/`previousDebts`/`previousTransactions` are a stale
@@ -1805,6 +1917,24 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
         setWallets(previousWallets);
         setDebts(previousDebts);
         setTransactions(previousTransactions);
+
+        // ADR 0023: the rollback is only a guess when the RPC may have
+        // committed, or when the server just proved this client's debt stale.
+        // Re-read. If that read fails too (offline), the rollback stands until
+        // the reconnect reload corrects it.
+        if (rpcOutcomeUnknown || serverOverpayment) {
+          await refreshFromCloud();
+        }
+      }
+
+      if (serverOverpayment && targetDebt) {
+        const serverRemaining = Number(rpcFailure.details);
+        return {
+          success: false,
+          error: `Payment exceeds the ${formatCurrencyAmount(
+            Number.isFinite(serverRemaining) ? serverRemaining : targetDebt.remainingAmount
+          )} remaining on ${targetDebt.name}`,
+        };
       }
 
       // Compensate any remote writes that already committed. The three writes are
@@ -1843,7 +1973,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     } finally {
       inFlightIdempotencyKeys.current.delete(clientKey);
     }
-  }, [currentUser.id, isAuthenticated, markLocalWrite, refreshFromCloud]);
+  }, [currentUser.id, isAuthenticated, markLocalWrite, adoptLedgerState, refreshFromCloud]);
 
   // Fires a saved template as a brand-new transaction. Deliberately reuses
   // `addTransaction` instead of its own insert/balance-update path - CLAUDE.md's

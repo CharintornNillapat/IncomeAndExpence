@@ -9,6 +9,7 @@ import {
   type FinanceStateContextType,
 } from '../src/context/FinanceContext';
 import type { ImportRowValidation } from '../src/types';
+import { formatCurrencyAmount } from '../src/utils/currency';
 
 /**
  * The signed-in write path (ADR 0022).
@@ -312,7 +313,7 @@ const debt = () => state().debts.find((d) => d.id === DEBT);
 /** Every recorded write to one table, in order. */
 const writes = (table: string, op: Op) => fake.state.calls.filter((c) => c.table === table && c.op === op);
 
-function repay(amount: number) {
+function repay(amount: number, idempotencyKey?: string) {
   return actions().addTransaction({
     amount,
     type: 'DEBT_REPAYMENT',
@@ -320,6 +321,182 @@ function repay(amount: number) {
     walletId: WALLET,
     description: 'Student Loan payment',
     transactionDate: TODAY,
+    idempotencyKey,
+  });
+}
+
+function expense(amount: number, idempotencyKey?: string) {
+  return actions().addTransaction({
+    amount,
+    type: 'EXPENSE',
+    walletId: WALLET,
+    description: 'Groceries',
+    transactionDate: TODAY,
+    idempotencyKey,
+  });
+}
+
+/*
+ * A JS stand-in for ADR 0023's three RPCs, over the fake's in-memory tables.
+ * It mirrors the SQL's contract - relative updates, replay on the key (live or
+ * deleted), replay before the overpayment guard, state-based delete - so the
+ * tests below can assert what the CLIENT does with it. It proves nothing about
+ * the SQL itself; `supabase/tests/20260927_ledger_rpcs.probe.sql` does that.
+ */
+type Row = Record<string, unknown>;
+
+const round2 = (n: number) => Math.round(n * 100) / 100;
+const SOURCE_SIGN: Record<string, number> = { EXPENSE: -1, DEBT_REPAYMENT: -1, TRANSFER: -1, INCOME: 1, ADJUSTMENT: 1 };
+const rows = (table: string) => (fake.state.tables[table] ??= []);
+const rpcError = (code: string, message: string, details?: string) => ({ data: null, error: { code, message, details } });
+
+function applyEffect(tx: Row, sign: 1 | -1) {
+  const now = new Date().toISOString();
+  const amount = Number(tx.amount);
+  let source_balance: number | null = null;
+  let dest_balance: number | null = null;
+  let debt_remaining: number | null = null;
+  let debt_settled: boolean | null = null;
+
+  const source = rows('wallets').find((w) => w.id === tx.wallet_id);
+  if (source) {
+    source.balance = round2(Number(source.balance) + sign * SOURCE_SIGN[tx.type as string] * amount);
+    source.updated_at = now;
+    source_balance = source.balance as number;
+  }
+  const dest = tx.type === 'TRANSFER' ? rows('wallets').find((w) => w.id === tx.destination_wallet_id) : undefined;
+  if (dest) {
+    dest.balance = round2(Number(dest.balance) + sign * amount);
+    dest.updated_at = now;
+    dest_balance = dest.balance as number;
+  }
+  const debtRow =
+    tx.type === 'DEBT_REPAYMENT' && tx.debt_id
+      ? rows('debts').find((d) => d.id === tx.debt_id && !d.is_deleted)
+      : undefined;
+  if (debtRow) {
+    debtRow.remaining_amount = Math.max(0, round2(Number(debtRow.remaining_amount) - sign * amount));
+    debtRow.is_settled = debtRow.remaining_amount === 0;
+    debtRow.updated_at = now;
+    debt_remaining = debtRow.remaining_amount as number;
+    debt_settled = debtRow.is_settled as boolean;
+  }
+  return { source_balance, dest_balance, debt_remaining, debt_settled };
+}
+
+function rowState(tx: Row) {
+  const debtRow = tx.debt_id ? rows('debts').find((d) => d.id === tx.debt_id) : undefined;
+  return {
+    transaction: { ...tx },
+    source_balance: (rows('wallets').find((w) => w.id === tx.wallet_id)?.balance as number) ?? null,
+    dest_balance: (rows('wallets').find((w) => w.id === tx.destination_wallet_id)?.balance as number) ?? null,
+    debt_remaining: (debtRow?.remaining_amount as number) ?? null,
+    debt_settled: (debtRow?.is_settled as boolean) ?? null,
+  };
+}
+
+function insertTransaction(fields: Row): Row {
+  const now = new Date().toISOString();
+  fake.state.seq += 1;
+  const row = {
+    id: `transactions-srv-${fake.state.seq}`,
+    user_id: fake.USER_ID,
+    destination_wallet_id: null,
+    category_id: null,
+    debt_id: null,
+    raw_input: null,
+    is_deleted: false,
+    created_by: fake.USER_ID,
+    created_at: now,
+    updated_at: now,
+    ...fields,
+  };
+  rows('transactions').push(row);
+  return row;
+}
+
+function installLedgerRpcs() {
+  fake.state.rpcs.set('record_transaction', (a) => {
+    const existing = rows('transactions')
+      .filter((t) => t.idempotency_key === a.p_idempotency_key)
+      .sort((x, y) => Number(x.is_deleted) - Number(y.is_deleted))[0];
+    if (existing) return { data: { reused: true, ...rowState(existing) }, error: null };
+
+    const walletRow = rows('wallets').find((w) => w.id === a.p_wallet_id && !w.is_deleted);
+    if (!walletRow) return rpcError('P0002', 'Source wallet not found or has been deleted');
+
+    const amount = round2(Number(a.p_amount));
+    if (a.p_debt_id) {
+      const debtRow = rows('debts').find((d) => d.id === a.p_debt_id && !d.is_deleted);
+      if (!debtRow) return rpcError('P0002', 'Debt goal not found or has been deleted');
+      if (a.p_type === 'DEBT_REPAYMENT' && amount > Number(debtRow.remaining_amount)) {
+        return rpcError('P0001', 'DEBT_OVERPAYMENT', String(debtRow.remaining_amount));
+      }
+    }
+
+    const effect = applyEffect(
+      { wallet_id: walletRow.id, type: a.p_type, amount, debt_id: a.p_type === 'DEBT_REPAYMENT' ? a.p_debt_id : null },
+      1
+    );
+    const tx = insertTransaction({
+      wallet_id: walletRow.id,
+      category_id: a.p_category_id ?? null,
+      debt_id: a.p_debt_id ?? null,
+      amount,
+      type: a.p_type,
+      description: a.p_description,
+      raw_input: a.p_raw_input ?? null,
+      transaction_date: a.p_transaction_date,
+      idempotency_key: a.p_idempotency_key,
+    });
+    return { data: { reused: false, transaction: { ...tx }, ...effect }, error: null };
+  });
+
+  fake.state.rpcs.set('set_transaction_deleted', (a) => {
+    const tx = rows('transactions').find((t) => t.id === a.p_transaction_id);
+    if (!tx) return rpcError('P0002', 'Transaction not found');
+    if (tx.is_deleted === a.p_deleted) return { data: { changed: false, ...rowState(tx) }, error: null };
+    const effect = applyEffect(tx, a.p_deleted ? -1 : 1);
+    tx.is_deleted = a.p_deleted;
+    tx.updated_at = new Date().toISOString();
+    return { data: { changed: true, transaction: { ...tx }, ...effect }, error: null };
+  });
+
+  fake.state.rpcs.set('import_transactions', (a) => {
+    const key = a.p_import_key as string;
+    const input = a.p_rows as Row[];
+    const state = () => {
+      const produced = rows('transactions').filter((t) => String(t.idempotency_key).startsWith(`${key}:`));
+      const walletIds = new Set(produced.flatMap((t) => [t.wallet_id, t.destination_wallet_id]).filter(Boolean));
+      return {
+        inserted_ids: produced.map((t) => t.id),
+        balances: rows('wallets').filter((w) => walletIds.has(w.id)).map((w) => ({ id: w.id, balance: w.balance })),
+      };
+    };
+    if (rows('transactions').some((t) => t.idempotency_key === `${key}:${input[0].row_index}`)) {
+      return { data: { reused: true, ...state() }, error: null };
+    }
+    for (const r of input) {
+      const ids = [r.wallet_id, r.destination_wallet_id].filter(Boolean);
+      if (!ids.every((id) => rows('wallets').some((w) => w.id === id && !w.is_deleted))) {
+        return rpcError('P0002', `Row ${r.row_index}: wallet not found or has been deleted`);
+      }
+    }
+    for (const r of input) {
+      const amount = round2(Number(r.amount));
+      insertTransaction({
+        wallet_id: r.wallet_id,
+        destination_wallet_id: r.destination_wallet_id ?? null,
+        category_id: r.category_id ?? null,
+        amount,
+        type: r.type,
+        description: r.description,
+        transaction_date: r.transaction_date,
+        idempotency_key: `${key}:${r.row_index}`,
+      });
+      applyEffect({ ...r, amount, debt_id: null }, 1);
+    }
+    return { data: { reused: false, ...state() }, error: null };
   });
 }
 
@@ -540,5 +717,142 @@ describe('a cloud reload that fails (F6)', () => {
 
     // Re-fetched server truth, not the pre-write snapshot of 5,000.
     await waitFor(() => expect(wallet()?.balance).toBe(7777));
+  });
+});
+
+describe('a signed-in write through record_transaction (ADR 0023: F3, F4)', () => {
+  /*
+   * With the migration applied, a non-transfer write is one RPC that locks the
+   * wallet (and debt), applies a RELATIVE update and replays on the key. The
+   * client keeps its guards and its optimistic update, then adopts the numbers
+   * the server committed.
+   */
+  beforeEach(() => installLedgerRpcs());
+
+  it('sends one RPC with the amount and key, and writes no table directly', async () => {
+    const result = await expense(200, 'key-expense-1');
+    expect(result.success).toBe(true);
+
+    const calls = writes('rpc:record_transaction', 'rpc');
+    expect(calls).toHaveLength(1);
+    expect(calls[0].payload).toMatchObject({
+      p_wallet_id: WALLET,
+      p_amount: 200,
+      p_type: 'EXPENSE',
+      p_idempotency_key: 'key-expense-1',
+      p_transaction_date: TODAY,
+    });
+    // No absolute balance, no separate insert: nothing for a second device to clobber.
+    expect(writes('transactions', 'insert')).toHaveLength(0);
+    expect(writes('wallets', 'update')).toHaveLength(0);
+    expect(writes('debts', 'update')).toHaveLength(0);
+
+    expect(result.txId).toBe(fake.state.tables.transactions[0].id);
+    await waitFor(() => expect(state().transactions.map((t) => t.id)).toEqual([result.txId]));
+  });
+
+  it('F3: applies the delta to the balance the server holds, not the client copy', async () => {
+    // Another device spent ฿2,777 less than nothing - it moved the wallet to
+    // 7,777 - and no realtime reload has reached this one yet.
+    fake.state.tables.wallets[0].balance = 7777;
+
+    const result = await expense(200);
+    expect(result.success).toBe(true);
+
+    // The legacy path wrote its own absolute 5,000 - 200 = 4,800 over it.
+    expect(serverWallet(WALLET).balance).toBe(7577);
+    await waitFor(() => expect(wallet()?.balance).toBe(7577));
+  });
+
+  it('repays a debt partially in one RPC and adopts the remainder the server committed', async () => {
+    const result = await repay(1000);
+    expect(result.success).toBe(true);
+
+    expect(writes('rpc:record_transaction', 'rpc')[0].payload).toMatchObject({
+      p_type: 'DEBT_REPAYMENT',
+      p_debt_id: DEBT,
+      p_amount: 1000,
+    });
+    expect(writes('debts', 'update')).toHaveLength(0);
+    expect(fake.state.tables.debts[0].remaining_amount).toBe(3500);
+    await waitFor(() => {
+      expect(debt()?.remainingAmount).toBe(3500);
+      expect(debt()?.isSettled).toBe(false);
+      expect(wallet()?.balance).toBe(WALLET_OPENING - 1000);
+    });
+  });
+
+  it('rejects an overpayment the server sees and the stale client does not (ADR 0016)', async () => {
+    // Another device paid ฿4,000; this client still believes ฿4,500 is owed,
+    // so its own guard lets a ฿1,000 payment through.
+    fake.state.tables.debts[0].remaining_amount = 500;
+
+    const result = await repay(1000);
+
+    expect(result.success).toBe(false);
+    expect(result.error).toBe(`Payment exceeds the ${formatCurrencyAmount(500)} remaining on Student Loan`);
+    expect(serverWallet(WALLET).balance).toBe(WALLET_OPENING);
+    // Rolled back, then re-read: the debt the server holds is now on screen.
+    await waitFor(() => {
+      expect(debt()?.remainingAmount).toBe(500);
+      expect(wallet()?.balance).toBe(WALLET_OPENING);
+    });
+  });
+
+  it('F4: a retry after a lost response replays instead of writing twice', async () => {
+    fake.state.lostResponses.add('record_transaction');
+
+    const first = await expense(200, 'key-lost-response');
+    expect(first.success).toBe(false);
+    // The request landed; only the answer was lost.
+    expect(serverWallet(WALLET).balance).toBe(WALLET_OPENING - 200);
+
+    const retry = await expense(200, 'key-lost-response');
+    expect(retry.success).toBe(true);
+
+    expect(fake.state.tables.transactions).toHaveLength(1);
+    expect(serverWallet(WALLET).balance).toBe(WALLET_OPENING - 200);
+    await waitFor(() => {
+      expect(wallet()?.balance).toBe(WALLET_OPENING - 200);
+      expect(state().transactions).toHaveLength(1);
+    });
+  });
+
+  it('re-reads after an unknown outcome instead of showing a rollback the server never made', async () => {
+    fake.state.lostResponses.add('record_transaction');
+
+    const result = await expense(200);
+    expect(result.success).toBe(false);
+
+    // The write committed. A bare rollback would show 5,000 until some later
+    // event; the client re-reads and shows what the server holds.
+    await waitFor(() => {
+      expect(wallet()?.balance).toBe(WALLET_OPENING - 200);
+      expect(state().transactions).toHaveLength(1);
+    });
+  });
+
+  it('rolls back, and writes nothing through the legacy path, when the RPC rejects', async () => {
+    fake.state.failures.set('rpc:record_transaction', { message: 'permission denied for function', code: '42501' });
+
+    const result = await expense(200);
+
+    expect(result.success).toBe(false);
+    expect(result.error).toContain('permission denied');
+    expect(writes('transactions', 'insert')).toHaveLength(0);
+    expect(writes('wallets', 'update')).toHaveLength(0);
+    await waitFor(() => expect(wallet()?.balance).toBe(WALLET_OPENING));
+  });
+});
+
+describe('a project without the Phase 51 migration', () => {
+  it('asks for record_transaction, then falls back to the legacy writes', async () => {
+    // No handler installed: the RPC answers PGRST202, as an unmigrated project does.
+    const result = await expense(200);
+    expect(result.success).toBe(true);
+
+    expect(writes('rpc:record_transaction', 'rpc')).toHaveLength(1);
+    expect(writes('transactions', 'insert')).toHaveLength(1);
+    expect(writes('wallets', 'update')[0].payload).toEqual({ balance: WALLET_OPENING - 200 });
   });
 });
