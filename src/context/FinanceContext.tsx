@@ -2132,8 +2132,47 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     let sourceWalletUpdated = false;
     let destWalletUpdated = false;
     let debtUpdated = false;
+    // ADR 0023: set when the RPC may have committed without telling us.
+    let rpcOutcomeUnknown = false;
 
     try {
+      // One atomic RPC (ADR 0023): the database locks the row, its wallets and
+      // its debt, reverses or reapplies the effect as RELATIVE updates, and
+      // flips the flag - or does nothing if the row is already in the asked-for
+      // state, which is what makes a retried delete safe. The balances it
+      // returns replace the optimistic ones. The legacy sequence below runs
+      // only when the function is missing.
+      markLocalWrite(id);
+      if (sourceWallet) markLocalWrite(sourceWallet.id);
+      if (destWallet) markLocalWrite(destWallet.id);
+      if (targetDebt) markLocalWrite(targetDebt.id);
+      const { data: rpcData, error: rpcError } = await supabase.rpc('set_transaction_deleted', {
+        p_transaction_id: id,
+        p_deleted: deleted,
+      });
+
+      if (rpcError) {
+        if (!isMissingRpcError(rpcError)) {
+          if (isUnknownOutcomeError(rpcError)) rpcOutcomeUnknown = true;
+          throw rpcError;
+        }
+        console.warn('[set_transaction_deleted RPC unavailable, using non-atomic fallback]', rpcError.message);
+      } else {
+        const payload = rpcData as LedgerWriteResult | null;
+        if (!payload?.transaction) {
+          rpcOutcomeUnknown = true;
+          throw new Error('set_transaction_deleted returned an unexpected response');
+        }
+        const mapped = mapTransactionRow(payload.transaction);
+        setTransactions((prev) => prev.map((t) => (t.id === mapped.id ? mapped : t)));
+        adoptLedgerState(payload, {
+          walletId: tx.walletId,
+          destWalletId: tx.destinationWalletId ?? null,
+          debtId: targetDebt?.id ?? null,
+        });
+        return { success: true };
+      }
+
       if (sourceNewBal !== null && sourceWallet) {
         markLocalWrite(sourceWallet.id);
         const { error } = await supabase.from('wallets').update({ balance: sourceNewBal }).eq('id', sourceWallet.id);
@@ -2210,6 +2249,13 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
         console.error('[Set Transaction Deleted Compensation Failed]', compErr);
       }
 
+      // ADR 0023: the rollback above is a guess when the RPC may have
+      // committed. Re-read; if that fails too (offline), the rollback stands
+      // until the reconnect reload corrects it.
+      if (rpcOutcomeUnknown) {
+        await refreshFromCloud();
+      }
+
       const postgrestErr = err as { message?: string; details?: string; hint?: string };
       const detailedError =
         postgrestErr?.message ||
@@ -2218,7 +2264,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
         (err instanceof Error ? err.message : 'Database error');
       return { success: false, error: detailedError };
     }
-  }, [isAuthenticated, markLocalWrite]);
+  }, [isAuthenticated, markLocalWrite, adoptLedgerState, refreshFromCloud]);
 
   const softDeleteTransaction = useCallback(
     (id: string) => setTransactionDeleted(id, true),

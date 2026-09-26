@@ -856,3 +856,101 @@ describe('a project without the Phase 51 migration', () => {
     expect(writes('wallets', 'update')[0].payload).toEqual({ balance: WALLET_OPENING - 200 });
   });
 });
+
+/**
+ * Resolves once a write's row is on screen AND the ref-mirror effects have run
+ * - the point a user's next tap happens at. Without it, a delete fired in the
+ * same tick as the add that created its row finds nothing in `transactionsRef`.
+ */
+async function landed(txId: string | undefined) {
+  await waitFor(() => expect(state().transactions.some((t) => t.id === txId)).toBe(true));
+  await new Promise<void>((resolve) => setTimeout(resolve, 0));
+}
+
+describe('a signed-in delete and restore through set_transaction_deleted (ADR 0023)', () => {
+  beforeEach(() => installLedgerRpcs());
+
+  it('reverses a repayment on wallet and debt in one RPC, and reapplies it on restore', async () => {
+    const paid = await repay(1000);
+    expect(paid.success).toBe(true);
+    await landed(paid.txId);
+    fake.state.calls = [];
+
+    const removed = await actions().softDeleteTransaction(paid.txId!);
+    expect(removed.success).toBe(true);
+    const calls = writes('rpc:set_transaction_deleted', 'rpc');
+    expect(calls).toHaveLength(1);
+    expect(calls[0].payload).toEqual({ p_transaction_id: paid.txId, p_deleted: true });
+    expect(writes('wallets', 'update')).toHaveLength(0);
+    expect(writes('debts', 'update')).toHaveLength(0);
+    expect(writes('transactions', 'update')).toHaveLength(0);
+
+    expect(serverWallet(WALLET).balance).toBe(WALLET_OPENING);
+    expect(fake.state.tables.debts[0].remaining_amount).toBe(DEBT_REMAINING);
+    await waitFor(() => {
+      expect(wallet()?.balance).toBe(WALLET_OPENING);
+      expect(debt()?.remainingAmount).toBe(DEBT_REMAINING);
+      expect(state().transactions.find((t) => t.id === paid.txId)?.isDeleted).toBe(true);
+    });
+
+    await new Promise<void>((resolve) => setTimeout(resolve, 0));
+    const restored = await actions().restoreTransaction(paid.txId!);
+    expect(restored.success).toBe(true);
+    expect(serverWallet(WALLET).balance).toBe(WALLET_OPENING - 1000);
+    await waitFor(() => {
+      expect(wallet()?.balance).toBe(WALLET_OPENING - 1000);
+      expect(debt()?.remainingAmount).toBe(DEBT_REMAINING - 1000);
+      expect(state().transactions.find((t) => t.id === paid.txId)?.isDeleted).toBe(false);
+    });
+  });
+
+  it('F3: reverses relative to the balance the server holds', async () => {
+    const spent = await expense(200);
+    expect(spent.success).toBe(true);
+    await landed(spent.txId);
+    // Another device moved the wallet after this one's expense landed.
+    fake.state.tables.wallets[0].balance = 9000;
+
+    const removed = await actions().softDeleteTransaction(spent.txId!);
+    expect(removed.success).toBe(true);
+
+    // The legacy path wrote its own absolute 4,800 + 200 = 5,000 over 9,000.
+    expect(serverWallet(WALLET).balance).toBe(9200);
+    await waitFor(() => expect(wallet()?.balance).toBe(9200));
+  });
+
+  it('rolls back, and writes nothing through the legacy path, when the RPC rejects', async () => {
+    const spent = await expense(200);
+    await landed(spent.txId);
+    fake.state.failures.set('rpc:set_transaction_deleted', { message: 'permission denied for function', code: '42501' });
+    fake.state.calls = [];
+
+    const removed = await actions().softDeleteTransaction(spent.txId!);
+
+    expect(removed.success).toBe(false);
+    // Asked, and was refused - not a failure to find the row.
+    expect(writes('rpc:set_transaction_deleted', 'rpc')).toHaveLength(1);
+    expect(writes('wallets', 'update')).toHaveLength(0);
+    expect(writes('transactions', 'update')).toHaveLength(0);
+    await waitFor(() => {
+      expect(wallet()?.balance).toBe(WALLET_OPENING - 200);
+      expect(state().transactions.find((t) => t.id === spent.txId)?.isDeleted).toBe(false);
+    });
+  });
+
+  it('re-reads after an unknown outcome', async () => {
+    const spent = await expense(200);
+    await landed(spent.txId);
+    fake.state.lostResponses.add('set_transaction_deleted');
+
+    const removed = await actions().softDeleteTransaction(spent.txId!);
+    expect(removed.success).toBe(false);
+
+    // It committed; the client shows that rather than its rollback.
+    expect(serverWallet(WALLET).balance).toBe(WALLET_OPENING);
+    await waitFor(() => {
+      expect(wallet()?.balance).toBe(WALLET_OPENING);
+      expect(state().transactions.find((t) => t.id === spent.txId)?.isDeleted).toBe(true);
+    });
+  });
+});
