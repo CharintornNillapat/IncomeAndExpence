@@ -136,6 +136,14 @@ Nothing was removed in this phase. `#repay-amount-math`, `#repay-wallet-select`,
 
 **The Dashboard now makes network requests.** It was previously pure presentation over context state. Specs that assert on the Dashboard and do not mock `/api/insights` will see a 404 and the local fallback, which is harmless and is what `transaction.spec.ts` and `date-boundary.spec.ts` already do — both passed unedited.
 
+## Added in Phase 50 (ADR `0022`, signed-in import integrity)
+
+| Selector | Notes | File |
+|---|---|---|
+| `#import-commit-error` (`role="alert"`) | Present only after `commitBulkImport` returns `success: false`. The preview stays open and populated beneath it, so a retry is one click. No spec references it yet: the failure is only reachable on the signed-in path, which `unit/authenticated-ledger.test.tsx` covers at the context layer. | `src/views/TransactionsView.tsx` |
+
+**`#commit-import-btn` is unchanged as a selector.** It is now also `disabled` while a commit is in flight and its label reads "Importing…" for that window. `csv.spec.ts` and `csv-classify.spec.ts` assert on it only before the click (`toBeEnabled`) and on the success message after it, so both run unedited.
+
 ## Known remaining fragile selectors (not yet hardened; addressed in later phases per the roadmap)
 
 - `transaction.spec.ts:55` — `^Income$` button text (Phase 27, SegmentedControl must preserve option labels exactly).

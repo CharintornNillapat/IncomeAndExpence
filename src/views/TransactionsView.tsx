@@ -120,6 +120,14 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
   // CSV Import State
   const [importPreview, setImportPreview] = useState<ImportPreviewSummary | null>(null);
   const [importFileError, setImportFileError] = useState<string | null>(null);
+  const [importCommitError, setImportCommitError] = useState<string | null>(null);
+  const [isCommittingImport, setIsCommittingImport] = useState<boolean>(false);
+  // A ref as well as the state: a fast double-tap lands both clicks before the
+  // disabled state commits, and the second click would insert every row again
+  // (the idempotency keys are per-row and `Date.now()`-based). This is an
+  // in-flight guard, not import dedupe - ADR 0019 and `csv.spec.ts` still
+  // expect two separate imports of the same row to produce two rows.
+  const commitInFlightRef = useRef<boolean>(false);
   const [isParsingCsv, setIsParsingCsv] = useState<boolean>(false);
   const { value: importSuccessMsg, flash: flashImportSuccess, clear: clearImportSuccess } = useTransientFlash<string | null>(null);
 
@@ -164,6 +172,7 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
     if (!file) return;
 
     setImportFileError(null);
+    setImportCommitError(null);
     clearImportSuccess();
     setIsParsingCsv(true);
 
@@ -308,23 +317,40 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
     );
   };
 
-  // Handle Commit Import (Step 2: Single Atomic Batch)
+  // Handle Commit Import (Step 2). Not a database transaction: the rows are
+  // inserted, then balances are written, and a failure part-way is
+  // compensated by `commitBulkImport` (ADR 0022).
   const handleCommitImport = async () => {
     if (!importPreview || importPreview.validRowsCount === 0) return;
+    if (commitInFlightRef.current) return;
+    commitInFlightRef.current = true;
+    setIsCommittingImport(true);
+    setImportCommitError(null);
 
-    const validRows = importPreview.rows.filter((r) => r.isValid);
-    const result = await commitBulkImport(validRows);
+    try {
+      const validRows = importPreview.rows.filter((r) => r.isValid);
+      const result = await commitBulkImport(validRows);
 
-    const skippedNote = result.skippedCount > 0
-      ? ` ${result.skippedCount} row${result.skippedCount === 1 ? '' : 's'} skipped (unknown or deleted wallet).`
-      : '';
-    setImportPreview(null);
-    resetClassification();
-    flashImportSuccess(
-      `Successfully imported ${result.insertedCount} transactions (${formatCurrencyAmount(result.totalAmount)})!${skippedNote}`,
-      2000,
-      () => setIsImportModalOpen(false)
-    );
+      if (!result.success) {
+        // Keep the preview open and populated so the user can retry.
+        setImportCommitError(result.error || 'The import could not be saved.');
+        return;
+      }
+
+      const skippedNote = result.skippedCount > 0
+        ? ` ${result.skippedCount} row${result.skippedCount === 1 ? '' : 's'} skipped (unknown or deleted wallet).`
+        : '';
+      setImportPreview(null);
+      resetClassification();
+      flashImportSuccess(
+        `Successfully imported ${result.insertedCount} transactions (${formatCurrencyAmount(result.totalAmount)})!${skippedNote}`,
+        2000,
+        () => setIsImportModalOpen(false)
+      );
+    } finally {
+      commitInFlightRef.current = false;
+      setIsCommittingImport(false);
+    }
   };
 
   // Download Sample CSV
@@ -591,12 +617,13 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
         onClose={() => {
           setIsImportModalOpen(false);
           setImportPreview(null);
+          setImportCommitError(null);
           // Aborts a run still in flight - closing the modal must not leave
           // requests walking a list nobody is looking at any more.
           resetClassification();
         }}
         title="Two-Step CSV Transaction Import"
-        subtitle="Step 1: Dry-run parse & validate rows → Step 2: Atomic commit into your ledger"
+        subtitle="Step 1: Dry-run parse & validate rows → Step 2: Commit valid rows into your ledger"
         maxWidthClassName="max-w-3xl"
         bodyClassName="space-y-6"
       >
@@ -837,24 +864,38 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
               </table>
             </div>
 
+            {/* Same banner as the Step 1 file error, so the modal reads as one surface. */}
+            {importCommitError && (
+              <div
+                id="import-commit-error"
+                role="alert"
+                className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 text-xs flex items-center gap-2"
+              >
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <span>Import failed: {importCommitError}</span>
+              </div>
+            )}
+
             {/* Step 2 Confirmation Actions */}
             <div className="flex items-center justify-between pt-3 border-t border-stone-100 dark:border-stone-800">
               <p className="text-xs text-stone-500 dark:text-stone-400">
-                Executing commit will insert valid entries & update wallet balances inside a single transaction.
+                Commit inserts every valid row, then updates wallet balances. If the insert fails, nothing changes.
               </p>
               <button
                 id="commit-import-btn"
                 type="button"
-                disabled={importPreview.validRowsCount === 0}
+                disabled={importPreview.validRowsCount === 0 || isCommittingImport}
                 onClick={handleCommitImport}
                 className={`px-4 py-2.5 rounded-xl font-semibold text-xs transition-all flex items-center gap-2 cursor-pointer ${
-                  importPreview.validRowsCount > 0
+                  importPreview.validRowsCount > 0 && !isCommittingImport
                     ? 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-xs'
                     : 'bg-stone-200 dark:bg-stone-800 text-stone-400 dark:text-stone-600 cursor-not-allowed'
                 }`}
               >
                 <CheckCircle2 className="w-4 h-4" />
-                <span>Confirm & Commit ({importPreview.validRowsCount} Rows)</span>
+                <span>
+                  {isCommittingImport ? 'Importing…' : `Confirm & Commit (${importPreview.validRowsCount} Rows)`}
+                </span>
               </button>
             </div>
           </div>
