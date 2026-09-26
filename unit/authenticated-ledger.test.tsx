@@ -36,7 +36,7 @@ import type { ImportRowValidation } from '../src/types';
 // Actions are awaited directly and state is read through `waitFor`.
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = false;
 
-type Op = 'select' | 'insert' | 'update' | 'delete';
+type Op = 'select' | 'insert' | 'update' | 'delete' | 'rpc';
 
 const fake = vi.hoisted(() => {
   const USER_ID = 'user-test-1';
@@ -44,19 +44,35 @@ const fake = vi.hoisted(() => {
     tables: {} as Record<string, Record<string, unknown>[]>,
     calls: [] as {
       table: string;
-      op: 'select' | 'insert' | 'update' | 'delete';
+      op: 'select' | 'insert' | 'update' | 'delete' | 'rpc';
       payload?: unknown;
       filters: ['eq' | 'in', string, unknown][];
     }[],
     /**
      * `${table}:${op}` → the error that call returns, until cleared. `onlyId`
      * narrows it to a call filtered by `eq('id', onlyId)`, so one of several
-     * wallet writes can fail while the others land.
+     * wallet writes can fail while the others land. An RPC's key is
+     * `rpc:<name>`.
      */
-    failures: new Map<string, { message: string; onlyId?: string }>(),
-    /** `${table}:${op}` → a promise the call waits on before settling. */
+    failures: new Map<string, { message: string; onlyId?: string; code?: string }>(),
+    /** `${table}:${op}` (or `rpc:<name>`) → a promise the call waits on before settling. */
     gates: new Map<string, Promise<void>>(),
+    /**
+     * RPC name → the server-side handler. An RPC with no handler answers as a
+     * missing function (`PGRST202`), which is what a project without the
+     * Phase 51 migration returns - so every test that installs nothing runs
+     * the legacy fallback, exactly as it did before the RPCs existed.
+     */
+    rpcs: new Map<string, (args: Record<string, unknown>) => { data: unknown; error: { message: string; code?: string; details?: string } | null }>(),
+    /**
+     * RPC names whose next call COMMITS and then loses its response: the
+     * handler runs, and the client sees a transport error. The request-sent,
+     * response-lost case an idempotency key exists for (F4).
+     */
+    lostResponses: new Set<string>(),
     authCallback: null as null | ((event: string, session: unknown) => Promise<void> | void),
+    /** The status callback the provider passed to `channel.subscribe`. */
+    channelStatus: null as null | ((status: string) => void),
     seq: 0,
   };
 
@@ -165,11 +181,37 @@ const fake = vi.hoisted(() => {
     return b;
   }
 
+  async function rpc(name: string, args: Record<string, unknown> = {}) {
+    const key = `rpc:${name}`;
+    state.calls.push({ table: key, op: 'rpc', payload: args, filters: [] });
+    const gate = state.gates.get(key);
+    if (gate) await gate;
+    await macrotask();
+
+    const failure = state.failures.get(key);
+    if (failure) return { data: null, error: { message: failure.message, code: failure.code ?? 'P0001' } };
+
+    const handler = state.rpcs.get(name);
+    if (!handler) {
+      return {
+        data: null,
+        error: { code: 'PGRST202', message: `Could not find the function public.${name} in the schema cache` },
+      };
+    }
+    const result = handler(args);
+    if (state.lostResponses.delete(name)) {
+      // What supabase-js reports for a fetch that never came back.
+      return { data: null, error: { message: 'TypeError: Failed to fetch', code: '' } };
+    }
+    return result;
+  }
+
   const channel = {
     on() {
       return channel;
     },
-    subscribe() {
+    subscribe(cb?: (status: string) => void) {
+      state.channelStatus = cb ?? null;
       return channel;
     },
   };
@@ -184,7 +226,7 @@ const fake = vi.hoisted(() => {
       signOut: async () => ({ error: null }),
     },
     from: (table: string) => builder(table),
-    rpc: async () => ({ data: null, error: { code: 'PGRST202', message: 'not under test' } }),
+    rpc,
     channel: () => channel,
     removeChannel: () => {},
   };
@@ -288,7 +330,10 @@ beforeEach(async () => {
   fake.state.calls = [];
   fake.state.failures.clear();
   fake.state.gates.clear();
+  fake.state.rpcs.clear();
+  fake.state.lostResponses.clear();
   fake.state.authCallback = null;
+  fake.state.channelStatus = null;
 
   render(
     <FinanceProvider>
