@@ -15,6 +15,7 @@ import { useTransactions } from '../hooks/useTransactions';
 import { ImportPreviewSummary, ImportRowValidation, TransactionType } from '../types';
 import { todayIsoDate } from '../utils/date';
 import { formatCurrencyAmount } from '../utils/currency';
+import { generateIdempotencyKey } from '../utils/ids';
 import { exportTransactionsToCsv, parseAndValidateTransactionCsv } from '../utils/csvExchange';
 import { exportDiaryToJson } from '../utils/diaryExport';
 import { TransactionForm } from '../components/TransactionForm';
@@ -123,11 +124,14 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
   const [importCommitError, setImportCommitError] = useState<string | null>(null);
   const [isCommittingImport, setIsCommittingImport] = useState<boolean>(false);
   // A ref as well as the state: a fast double-tap lands both clicks before the
-  // disabled state commits, and the second click would insert every row again
-  // (the idempotency keys are per-row and `Date.now()`-based). This is an
-  // in-flight guard, not import dedupe - ADR 0019 and `csv.spec.ts` still
-  // expect two separate imports of the same row to produce two rows.
+  // disabled state commits, and the second click would start a second commit
+  // (the guest path's keys are per-row and `Date.now()`-based, and the legacy
+  // signed-in fallback has no replay). This is an in-flight guard, not import
+  // dedupe - ADR 0019 and `csv.spec.ts` still expect two separate imports of
+  // the same row to produce two rows.
   const commitInFlightRef = useRef<boolean>(false);
+  // The current preview's import key (ADR 0023), armed when a file is parsed.
+  const importKeyRef = useRef<string | null>(null);
   const [isParsingCsv, setIsParsingCsv] = useState<boolean>(false);
   const { value: importSuccessMsg, flash: flashImportSuccess, clear: clearImportSuccess } = useTransientFlash<string | null>(null);
 
@@ -184,6 +188,10 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
       // Layer 1 runs here, synchronously and for free, before the preview is
       // ever shown (ADR 0011's ordering, applied to the bulk path).
       setImportPreview(applyRuleLayer(preview));
+      // One key per preview (ADR 0023): a retry of THIS preview after a lost
+      // response replays; the next file gets a new key and imports again,
+      // which is what ADR 0019's "no dedupe" requires.
+      importKeyRef.current = generateIdempotencyKey();
     } catch (err: any) {
       setImportFileError(err.message || 'Failed to parse CSV file');
     } finally {
@@ -317,9 +325,9 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
     );
   };
 
-  // Handle Commit Import (Step 2). Not a database transaction: the rows are
-  // inserted, then balances are written, and a failure part-way is
-  // compensated by `commitBulkImport` (ADR 0022).
+  // Handle Commit Import (Step 2). Signed in, `commitBulkImport` commits the
+  // whole preview in one database transaction (ADR 0023); only its fallback
+  // for an unmigrated project inserts first and compensates (ADR 0022).
   const handleCommitImport = async () => {
     if (!importPreview || importPreview.validRowsCount === 0) return;
     if (commitInFlightRef.current) return;
@@ -329,7 +337,7 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
 
     try {
       const validRows = importPreview.rows.filter((r) => r.isValid);
-      const result = await commitBulkImport(validRows);
+      const result = await commitBulkImport(validRows, importKeyRef.current ?? undefined);
 
       if (!result.success) {
         // Keep the preview open and populated so the user can retry.

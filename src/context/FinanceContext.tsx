@@ -145,8 +145,15 @@ export interface FinanceActionsContextType {
   }) => Promise<{ success: boolean; error?: string; txId?: string }>;
   softDeleteTransaction: (id: string) => Promise<MutationResult>;
   restoreTransaction: (id: string) => Promise<MutationResult>;
+  /**
+   * `importKey` names one import PREVIEW (ADR 0023): a retry of the same
+   * preview after a lost response replays instead of importing twice. A new
+   * preview must get a new key - reusing one across files would silently turn
+   * a second import into a replay of the first. Omitted, a fresh key is used.
+   */
   commitBulkImport: (
-    validRows: ImportRowValidation[]
+    validRows: ImportRowValidation[],
+    importKey?: string
   ) => Promise<MutationResult & { insertedCount: number; totalAmount: number; skippedCount: number }>;
 
   // Debts
@@ -268,6 +275,13 @@ interface LedgerWriteResult {
 // Postgres itself returns carries one. After a write RPC, the first kind means
 // the outcome is UNKNOWN - the database may well have committed - so the
 // caller must re-read rather than trust its rollback snapshot (ADR 0023).
+// Shape returned by `import_transactions`.
+interface ImportTransactionsResult {
+  reused: boolean;
+  inserted_ids: string[];
+  balances: { id: string; balance: number | string }[];
+}
+
 function isUnknownOutcomeError(err: { code?: string } | null): boolean {
   return !!err && !err.code;
 }
@@ -2277,7 +2291,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
   );
 
   // Bulk CSV Import
-  const commitBulkImport = useCallback(async (validRows: ImportRowValidation[]) => {
+  const commitBulkImport = useCallback(async (validRows: ImportRowValidation[], importKey?: string) => {
     // Only active records may be referenced. Importing into a soft-deleted wallet
     // would mutate the balance of a wallet the user has already removed.
     const walletMapByName = new Map<string, Wallet>(
@@ -2289,6 +2303,9 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
 
     const newTxs: Transaction[] = [];
     const dbPayloads: any[] = [];
+    // The same rows in `import_transactions`' shape (ADR 0023): ids already
+    // resolved, keyed by row index so the server can derive each row's key.
+    const rpcRows: Record<string, unknown>[] = [];
     const walletDeltas: Record<string, number> = {};
     let totalAmt = 0;
     let skippedCount = 0;
@@ -2343,6 +2360,16 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
           is_deleted: false,
           created_by: currentUser.id,
         });
+        rpcRows.push({
+          row_index: row.rowIndex,
+          wallet_id: sourceWallet.id,
+          destination_wallet_id: destWallet?.id ?? null,
+          category_id: cat?.id ?? null,
+          amount: row.amount,
+          type: row.type,
+          description: row.description,
+          transaction_date: row.date,
+        });
       } else {
         const tx: Transaction = {
           id: `tx-import-${Date.now()}-${row.rowIndex}`,
@@ -2375,6 +2402,48 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     }
 
     if (isAuthenticated && dbPayloads.length > 0) {
+      // One atomic RPC (ADR 0023): every row inserted and one RELATIVE update
+      // per wallet, in a single database transaction, or nothing at all. It
+      // replays on `importKey`, so retrying the same preview after a lost
+      // response cannot import twice. A failure therefore has nothing to
+      // compensate. The legacy sequence below runs only when the function is
+      // missing.
+      const { data: rpcData, error: rpcError } = await supabase.rpc('import_transactions', {
+        p_import_key: importKey || generateIdempotencyKey(),
+        p_rows: rpcRows,
+      });
+
+      if (!rpcError || !isMissingRpcError(rpcError)) {
+        const payload = rpcData as ImportTransactionsResult | null;
+        if (rpcError || !Array.isArray(payload?.inserted_ids)) {
+          console.error('[Bulk Import Failed]', rpcError ?? payload);
+          // It may have committed. Re-read so the screen shows what the
+          // server holds; a retry of this preview replays rather than
+          // importing twice.
+          if (!rpcError || isUnknownOutcomeError(rpcError)) {
+            await refreshFromCloud();
+          }
+          return {
+            success: false,
+            error: rpcError?.message || 'import_transactions returned an unexpected response',
+            insertedCount: 0,
+            totalAmount: 0,
+            skippedCount,
+          };
+        }
+
+        // The inserted rows arrive by reload, as they did before; their
+        // realtime echoes coalesce into at most one more.
+        await refreshFromCloud();
+        return {
+          success: true,
+          insertedCount: payload!.inserted_ids.length,
+          totalAmount: roundToCents(totalAmt),
+          skippedCount,
+        };
+      }
+      console.warn('[import_transactions RPC unavailable, using non-atomic fallback]', rpcError.message);
+
       // The inserted rows' realtime echoes are not suppressed: the explicit
       // `refreshFromCloud()` below reloads this client's state regardless, and
       // the debounced realtime handler coalesces the resulting burst of
@@ -2384,8 +2453,9 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       // ADR 0022: a rejected insert returns before any balance write - it
       // used to be discarded, so a failed import still moved money - and a
       // balance write that fails after the insert is undone the way
-      // `addTransaction` undoes one. Balance writes stay absolute
-      // (`walletsRef` + delta); relative server-side updates are Phase 51.
+      // `addTransaction` undoes one. Balance writes here are absolute
+      // (`walletsRef` + delta) - which is why this is only the fallback for a
+      // project without ADR 0023's `import_transactions`.
       let insertedIds: string[] = [];
       let insertCommitted = false;
       const writtenWallets: { id: string; previousBalance: number }[] = [];

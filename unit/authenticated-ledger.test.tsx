@@ -954,3 +954,91 @@ describe('a signed-in delete and restore through set_transaction_deleted (ADR 00
     });
   });
 });
+
+describe('a signed-in CSV import through import_transactions (ADR 0023)', () => {
+  beforeEach(() => installLedgerRpcs());
+
+  it('sends one RPC with every resolved row and the import key, and writes no table directly', async () => {
+    const result = await actions().commitBulkImport(
+      [
+        importRow({ rowIndex: 1, amount: 35.5 }),
+        importRow({ rowIndex: 2, amount: 64.5 }),
+        importRow({ rowIndex: 3, type: 'INCOME', amount: 1000 }),
+        importRow({ rowIndex: 4, type: 'TRANSFER', amount: 250, destinationWalletName: 'Cash' }),
+      ],
+      'import-key-1'
+    );
+
+    expect(result).toMatchObject({ success: true, insertedCount: 4, totalAmount: 1350, skippedCount: 0 });
+    const calls = writes('rpc:import_transactions', 'rpc');
+    expect(calls).toHaveLength(1);
+    const payload = calls[0].payload as { p_import_key: string; p_rows: Record<string, unknown>[] };
+    expect(payload.p_import_key).toBe('import-key-1');
+    expect(payload.p_rows).toHaveLength(4);
+    expect(payload.p_rows[3]).toMatchObject({
+      row_index: 4,
+      wallet_id: WALLET,
+      destination_wallet_id: CASH,
+      amount: 250,
+      type: 'TRANSFER',
+      transaction_date: TODAY,
+    });
+    expect(writes('transactions', 'insert')).toHaveLength(0);
+    expect(writes('wallets', 'update')).toHaveLength(0);
+
+    expect(serverWallet(WALLET).balance).toBe(WALLET_OPENING - 35.5 - 64.5 + 1000 - 250);
+    expect(serverWallet(CASH).balance).toBe(CASH_OPENING + 250);
+    await waitFor(() => {
+      expect(wallet()?.balance).toBe(WALLET_OPENING - 35.5 - 64.5 + 1000 - 250);
+      expect(state().transactions).toHaveLength(4);
+    });
+  });
+
+  it('F3: applies the import to the balance the server holds', async () => {
+    fake.state.tables.wallets[0].balance = 7777;
+
+    const result = await actions().commitBulkImport([importRow({ amount: 100 })], 'import-key-f3');
+    expect(result.success).toBe(true);
+
+    // The legacy path wrote walletsRef + delta = 4,900 over it.
+    expect(serverWallet(WALLET).balance).toBe(7677);
+  });
+
+  it('moves nothing when the RPC rejects the batch', async () => {
+    fake.state.failures.set('rpc:import_transactions', {
+      message: 'Row 2: wallet not found or has been deleted',
+      code: 'P0002',
+    });
+
+    const result = await actions().commitBulkImport([importRow({ rowIndex: 1 }), importRow({ rowIndex: 2 })], 'k');
+
+    expect(result).toMatchObject({ success: false, insertedCount: 0, totalAmount: 0 });
+    expect(result.error).toContain('Row 2');
+    expect(writes('rpc:import_transactions', 'rpc')).toHaveLength(1);
+    expect(writes('transactions', 'insert')).toHaveLength(0);
+    expect(writes('wallets', 'update')).toHaveLength(0);
+    expect(serverWallet(WALLET).balance).toBe(WALLET_OPENING);
+  });
+
+  it('F4: a retry of the same preview replays instead of importing twice', async () => {
+    fake.state.lostResponses.add('import_transactions');
+
+    const first = await actions().commitBulkImport([importRow({ amount: 100 })], 'import-key-lost');
+    expect(first.success).toBe(false);
+    expect(serverWallet(WALLET).balance).toBe(WALLET_OPENING - 100); // it landed
+
+    const retry = await actions().commitBulkImport([importRow({ amount: 100 })], 'import-key-lost');
+    expect(retry).toMatchObject({ success: true, insertedCount: 1 });
+    expect(fake.state.tables.transactions).toHaveLength(1);
+    expect(serverWallet(WALLET).balance).toBe(WALLET_OPENING - 100);
+    await waitFor(() => expect(wallet()?.balance).toBe(WALLET_OPENING - 100));
+  });
+
+  it('is not deduplication: a new preview with a new key imports the same rows again (ADR 0019)', async () => {
+    await actions().commitBulkImport([importRow({ amount: 100 })], 'preview-a');
+    await actions().commitBulkImport([importRow({ amount: 100 })], 'preview-b');
+
+    expect(fake.state.tables.transactions).toHaveLength(2);
+    expect(serverWallet(WALLET).balance).toBe(WALLET_OPENING - 200);
+  });
+});
