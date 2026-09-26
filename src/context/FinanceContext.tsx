@@ -145,7 +145,9 @@ export interface FinanceActionsContextType {
   }) => Promise<{ success: boolean; error?: string; txId?: string }>;
   softDeleteTransaction: (id: string) => Promise<MutationResult>;
   restoreTransaction: (id: string) => Promise<MutationResult>;
-  commitBulkImport: (validRows: ImportRowValidation[]) => Promise<{ insertedCount: number; totalAmount: number; skippedCount: number }>;
+  commitBulkImport: (
+    validRows: ImportRowValidation[]
+  ) => Promise<MutationResult & { insertedCount: number; totalAmount: number; skippedCount: number }>;
 
   // Debts
   addDebt: (debt: Omit<Debt, 'id' | 'userId' | 'createdAt' | 'updatedAt' | 'isSettled' | 'isDeleted'>) => Promise<MutationResult>;
@@ -2179,25 +2181,86 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     }
 
     if (isAuthenticated && dbPayloads.length > 0) {
-      // The batch insert has no `.select()`, so the inserted transactions'
-      // server-generated ids are never learned client-side - they cannot be
-      // added to `recentLocalWriteIds` and their own realtime echoes are not
-      // suppressed. The explicit `refreshFromCloud()` below already reloads
-      // this client's state regardless, and the debounced realtime handler
-      // coalesces the resulting burst of per-row events into at most one more
-      // reload rather than one per inserted row.
-      await supabase.from('transactions').insert(dbPayloads);
-      await Promise.all(
-        Object.entries(walletDeltas).map(async ([wId, delta]) => {
+      // The inserted rows' realtime echoes are not suppressed: the explicit
+      // `refreshFromCloud()` below reloads this client's state regardless, and
+      // the debounced realtime handler coalesces the resulting burst of
+      // per-row events into at most one more reload rather than one per row.
+      // `.select('id')` is for compensation, not echo suppression.
+      //
+      // ADR 0022: a rejected insert returns before any balance write - it
+      // used to be discarded, so a failed import still moved money - and a
+      // balance write that fails after the insert is undone the way
+      // `addTransaction` undoes one. Balance writes stay absolute
+      // (`walletsRef` + delta); relative server-side updates are Phase 51.
+      let insertedIds: string[] = [];
+      let insertCommitted = false;
+      const writtenWallets: { id: string; previousBalance: number }[] = [];
+      try {
+        const { data: insertedRows, error: insertErr } = await supabase
+          .from('transactions')
+          .insert(dbPayloads)
+          .select('id');
+        if (insertErr) throw insertErr;
+        insertCommitted = true;
+        insertedIds = (insertedRows ?? []).map((row: { id: string }) => row.id);
+
+        // Sequential, not `Promise.all`: compensation needs to know exactly
+        // which writes landed before the one that failed.
+        for (const [wId, delta] of Object.entries(walletDeltas)) {
           const targetW = walletsRef.current.find((w) => w.id === wId);
-          if (targetW) {
-            const updatedB = roundToCents(targetW.balance + delta);
-            markLocalWrite(wId);
-            await supabase.from('wallets').update({ balance: updatedB }).eq('id', wId);
+          if (!targetW) continue;
+          markLocalWrite(wId);
+          const { error: walletErr } = await supabase
+            .from('wallets')
+            .update({ balance: roundToCents(targetW.balance + delta) })
+            .eq('id', wId);
+          if (walletErr) throw walletErr;
+          writtenWallets.push({ id: wId, previousBalance: targetW.balance });
+        }
+      } catch (err: unknown) {
+        console.error('[Bulk Import Failed]', err);
+
+        // Nothing to undo when the insert itself was rejected.
+        if (insertCommitted) {
+          try {
+            for (const w of writtenWallets) {
+              markLocalWrite(w.id);
+              const { error: restoreErr } = await supabase
+                .from('wallets')
+                .update({ balance: w.previousBalance })
+                .eq('id', w.id);
+              if (restoreErr) console.error('[Bulk Import Compensation Failed]', restoreErr);
+            }
+            // Soft delete only - financial records are never hard deleted.
+            if (insertedIds.length > 0) {
+              const { error: undoErr } = await supabase
+                .from('transactions')
+                .update({ is_deleted: true, updated_at: new Date().toISOString() })
+                .in('id', insertedIds);
+              if (undoErr) console.error('[Bulk Import Compensation Failed]', undoErr);
+            }
+          } catch (compErr) {
+            console.error('[Bulk Import Compensation Failed]', compErr);
           }
-        })
-      );
+          await refreshFromCloud();
+        }
+
+        const postgrestErr = err as { message?: string; details?: string; hint?: string };
+        const detailedError =
+          postgrestErr?.message ||
+          postgrestErr?.details ||
+          postgrestErr?.hint ||
+          (err instanceof Error ? err.message : 'Database error');
+        return { success: false, error: detailedError, insertedCount: 0, totalAmount: 0, skippedCount };
+      }
+
       await refreshFromCloud();
+      return {
+        success: true,
+        insertedCount: insertedIds.length,
+        totalAmount: roundToCents(totalAmt),
+        skippedCount,
+      };
     } else {
       setWallets((prev) =>
         prev.map((w) => {
@@ -2209,7 +2272,8 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     }
 
     return {
-      insertedCount: dbPayloads.length || newTxs.length,
+      success: true,
+      insertedCount: newTxs.length,
       totalAmount: roundToCents(totalAmt),
       skippedCount,
     };

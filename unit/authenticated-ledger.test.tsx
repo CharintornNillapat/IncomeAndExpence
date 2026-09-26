@@ -8,6 +8,7 @@ import {
   type FinanceActionsContextType,
   type FinanceStateContextType,
 } from '../src/context/FinanceContext';
+import type { ImportRowValidation } from '../src/types';
 
 /**
  * The signed-in write path (ADR 0022).
@@ -47,8 +48,12 @@ const fake = vi.hoisted(() => {
       payload?: unknown;
       filters: ['eq' | 'in', string, unknown][];
     }[],
-    /** `${table}:${op}` → the error that call returns, until cleared. */
-    failures: new Map<string, { message: string }>(),
+    /**
+     * `${table}:${op}` → the error that call returns, until cleared. `onlyId`
+     * narrows it to a call filtered by `eq('id', onlyId)`, so one of several
+     * wallet writes can fail while the others land.
+     */
+    failures: new Map<string, { message: string; onlyId?: string }>(),
     /** `${table}:${op}` → a promise the call waits on before settling. */
     gates: new Map<string, Promise<void>>(),
     authCallback: null as null | ((event: string, session: unknown) => Promise<void> | void),
@@ -85,8 +90,10 @@ const fake = vi.hoisted(() => {
       if (gate) await gate;
       await macrotask();
 
-      const error = state.failures.get(key);
-      if (error) return { data: null, error };
+      const failure = state.failures.get(key);
+      const targetsThisCall =
+        failure && (failure.onlyId === undefined || call.filters.some(([k, c, v]) => k === 'eq' && c === 'id' && v === failure.onlyId));
+      if (failure && targetsThisCall) return { data: null, error: { message: failure.message } };
 
       const rows = (state.tables[table] ??= []);
       const now = new Date().toISOString();
@@ -192,6 +199,8 @@ vi.mock('../src/lib/supabase', () => ({
 
 const WALLET = 'wallet-srv-savings';
 const WALLET_OPENING = 5000;
+const CASH = 'wallet-srv-cash';
+const CASH_OPENING = 1000;
 const DEBT = 'debt-srv-student-loan';
 const DEBT_REMAINING = 4500;
 const TODAY = '2026-09-26';
@@ -206,6 +215,17 @@ function seed() {
         name: 'Savings',
         type: 'SAVINGS',
         balance: WALLET_OPENING,
+        is_archived: false,
+        is_deleted: false,
+        created_at: created,
+        updated_at: created,
+      },
+      {
+        id: CASH,
+        user_id: fake.USER_ID,
+        name: 'Cash',
+        type: 'CASH',
+        balance: CASH_OPENING,
         is_archived: false,
         is_deleted: false,
         created_at: created,
@@ -243,7 +263,8 @@ function Probe() {
 
 const state = () => latest!.state;
 const actions = () => latest!.actions;
-const wallet = () => state().wallets.find((w) => w.id === WALLET);
+const wallet = (id: string = WALLET) => state().wallets.find((w) => w.id === id);
+const serverWallet = (id: string) => fake.state.tables.wallets.find((w) => w.id === id)!;
 const debt = () => state().debts.find((d) => d.id === DEBT);
 
 /** Every recorded write to one table, in order. */
@@ -329,5 +350,78 @@ describe('a signed-in debt repayment (F1)', () => {
 
     expect(writes('debts', 'update')[0].payload).toMatchObject({ remaining_amount: 0, is_settled: true });
     expect(debt()?.isSettled).toBe(true);
+  });
+});
+
+function importRow(overrides: Partial<ImportRowValidation> = {}): ImportRowValidation {
+  return {
+    rowIndex: 1,
+    date: TODAY,
+    walletName: 'Savings',
+    amount: 100,
+    type: 'EXPENSE',
+    description: 'Imported row',
+    isValid: true,
+    ...overrides,
+  };
+}
+
+describe('a signed-in CSV import (F2)', () => {
+  /*
+   * The batch insert's `error` used to be discarded: the wallet deltas were
+   * written anyway and `insertedCount` reported every row. A rejected import
+   * still moved money, with no ledger rows to explain it.
+   */
+
+  it('moves no money when the batch insert is rejected', async () => {
+    fake.state.failures.set('transactions:insert', { message: 'insert rejected by RLS' });
+
+    const result = await actions().commitBulkImport([importRow({ amount: 300 })]);
+
+    expect(result.success).toBe(false);
+    expect(result.error).toContain('insert rejected by RLS');
+    expect(result.insertedCount).toBe(0);
+    // Not one balance write was attempted.
+    expect(writes('wallets', 'update')).toHaveLength(0);
+    expect(serverWallet(WALLET).balance).toBe(WALLET_OPENING);
+    expect(wallet()?.balance).toBe(WALLET_OPENING);
+  });
+
+  it('undoes a half-applied import when a balance write fails after the insert', async () => {
+    // A transfer touches two wallets. Savings is written first and lands;
+    // Cash is rejected. Savings must be put back and the rows soft-deleted.
+    fake.state.failures.set('wallets:update', { message: 'wallet write rejected', onlyId: CASH });
+
+    const result = await actions().commitBulkImport([
+      importRow({ type: 'TRANSFER', amount: 250, destinationWalletName: 'Cash' }),
+    ]);
+
+    expect(result.success).toBe(false);
+    expect(result.error).toContain('wallet write rejected');
+    expect(serverWallet(WALLET).balance).toBe(WALLET_OPENING);
+    expect(serverWallet(CASH).balance).toBe(CASH_OPENING);
+
+    // Soft-deleted, never hard-deleted: the row is still there.
+    const rows = fake.state.tables.transactions;
+    expect(rows).toHaveLength(1);
+    expect(rows[0].is_deleted).toBe(true);
+    expect(writes('transactions', 'delete')).toHaveLength(0);
+
+    // Local state is reloaded from the (restored) server.
+    await waitFor(() => expect(wallet()?.balance).toBe(WALLET_OPENING));
+  });
+
+  it('reports the rows it actually inserted and applies each delta once', async () => {
+    const result = await actions().commitBulkImport([
+      importRow({ rowIndex: 1, amount: 35.5 }),
+      importRow({ rowIndex: 2, amount: 64.5 }),
+      importRow({ rowIndex: 3, type: 'INCOME', amount: 1000 }),
+    ]);
+
+    expect(result).toMatchObject({ success: true, insertedCount: 3, totalAmount: 1100, skippedCount: 0 });
+    const walletWrites = writes('wallets', 'update');
+    expect(walletWrites).toHaveLength(1);
+    expect(walletWrites[0].payload).toEqual({ balance: WALLET_OPENING - 35.5 - 64.5 + 1000 });
+    await waitFor(() => expect(state().transactions).toHaveLength(3));
   });
 });
