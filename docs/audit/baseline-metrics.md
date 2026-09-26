@@ -700,3 +700,40 @@ This phase changes **no file under `src/` or `api/`** except `src/index.css`, an
 | Vitest (`unit/`) | 4 | 99 | 99 | 1.67 s |
 
 **Stability note:** first full run clean at 321/321 with no retries, and 99/99 on the unit suite. Phase 44's `wallets.spec.ts` webkit flake has now not reproduced across five consecutive phases; it stays on the watch list rather than being closed.
+
+## Phase 50 (signed-in write-path integrity) — bundle delta, measured against a rebuild of HEAD
+
+Same method as Phases 43–49: built `030a46a` (the pre-phase HEAD) in a scratch worktree and `main` in the repo, in turn. Same machine, same `node_modules` (junctioned), **same `.env`**. The HEAD column reproduced Phase 49's recorded figures exactly — entry 164,368 B, all JS 1,351,704 B.
+
+That last condition is new, and the first measurement is why. The first rebuild ran in a worktree with no `.env`; Vite inlines `VITE_SUPABASE_*` into the entry chunk, so the base came out at 164.18 kB and the entry delta at +1,270 B. With the untracked `.env` copied in, the base matched Phase 49 to the byte and the true delta is +1,081 B. **A worktree rebuild must carry the untracked env file**, or the entry row measures configuration rather than code.
+
+| Chunk | HEAD (`030a46a`) | Phase 50 | Delta |
+|---|---|---|---|
+| entry `index-*.js` | 164.37 kB / 46.35 kB gzip | **165.45 kB / 46.63 kB gzip** | **+1,081 B / +0.28 kB** |
+| `TransactionsView-*.js` (lazy) | 49.93 kB / 15.81 kB gzip | 50.56 kB / 15.98 kB gzip | +626 B / +0.17 kB |
+| `TransactionForm-*.js` (lazy) | 28.14 kB / 8.55 kB gzip | 28.15 kB / 8.56 kB gzip | +8 B |
+| `DashboardView-*.js` (lazy) | 47.83 kB / 11.27 kB gzip | 47.83 kB / 11.27 kB gzip | 0 |
+| `vendor-icons-*.js` (**modulepreloaded**) | 30.75 kB / 6.70 kB gzip | 30.75 kB / 6.70 kB gzip | **0** |
+| `vendor-supabase-*.js` (**modulepreloaded**) | 226.44 kB / 58.66 kB gzip | 226.44 kB / 58.66 kB gzip | 0 |
+| `vendor-math-*.js` | 375.73 kB / 110.72 kB gzip | 375.73 kB / 110.72 kB gzip | 0 |
+| **all JS, summed** | 1,351,704 B | 1,353,419 B | **+1,715 B** |
+| `index-*.css` | 77.63 kB / 11.98 kB gzip | 77.63 kB / 11.98 kB gzip | 0 |
+| chunk count | 33 | 33 | 0 |
+| PWA precache | 42 entries, 1,551.64 KiB | 42 entries, 1,553.32 KiB | +1.68 KiB |
+| build time | — | 5.45 s | after `clean` |
+
+**Findings**
+
+- **The entry cost is `FinanceContext` and nothing else.** `FinanceContext.tsx` is part of the entry chunk, not a lazy view, so F2's compensation path and F6's failed-read bookkeeping land on the critical path: +1,081 B raw, +0.28 kB gzip. No new dependency, no new icon — `vendor-icons` is byte-identical.
+- **`TransactionsView` +626 B** is the import in-flight guard, the commit-error banner and the rewritten copy. Lazy, behind the Transactions tab.
+- **`TransactionForm` +8 B is one export binding.** `batchClassifier` now imports `MIN_CLASSIFIABLE_LENGTH`, so the chunk that hosts `jevClassifier` re-exports it (`os as M`). Confirmed by diffing the chunk's `export{…}` list.
+- **30 of 33 JS chunks and the CSS are byte-identical.** `api/*.ts` changes do not reach the client bundle at all.
+
+**Test-suite size:** Playwright unchanged at **321 runs** (107 tests, 22 spec files — none added, edited or removed). Unit suite **99 -> 134 tests in 6 files** (`authenticated-ledger` 8 new, `proxy-contract` 26 new, `batch-classifier` 20 -> 21).
+
+| Suite | Files | Tests | Runs | Wall clock |
+|---|---|---|---|---|
+| Playwright (chromium/firefox/webkit) | 22 | 107 | 321 | 7.2 m |
+| Vitest (`unit/`) | 6 | 134 | 134 | ~3.1 s |
+
+**Stability note:** the Playwright gate was clean at 321/321 on the first attempt with no retries; Phase 44's `wallets.spec.ts` webkit flake has now not reproduced across six consecutive phases and stays on the watch list. **The unit suite had one flake, in this phase's own harness** - the fixture test failed 1 run in 12 when timed back to back, because `beforeEach` did not wait for the cloud load to finish. Fixed in `3d9399a` (0 failures in 30 runs). The unit wall clock rose 1.67 s -> ~3.1 s, mostly the second jsdom file's environment setup.

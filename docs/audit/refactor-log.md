@@ -4,6 +4,63 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
+## Phase 50 - Signed-in write-path integrity, and a harness that can see it: T145-T153 (2026-09-26, commits `51f71da`...(backfilled after push))
+
+**Changed**
+- `docs/audit/decisions/0022-authenticated-path-unit-harness.md` (new) - written before the code and committed alone; corrected in T150 when its tsconfig premise turned out false.
+- `src/context/FinanceContext.tsx` - `addTransaction` computes the debt remainder once, before any `setState` (F1); `commitBulkImport` checks its insert, writes balances sequentially, compensates a half-applied import and returns a `MutationResult` (F2); `loadSupabaseData` bumps `cloudRevisionRef` only on a clean read (F6).
+- `src/views/TransactionsView.tsx` - in-flight guard on `#commit-import-btn`, `#import-commit-error`, and two pieces of copy that claimed an atomicity the import never had.
+- `api/classify.ts`, `api/insights.ts` - an upstream 429 passes through; `insights` gains `Cache-Control: no-store`.
+- `src/utils/batchClassifier.ts` - a too-short note skips its row instead of abandoning the run (P3).
+- `unit/authenticated-ledger.test.tsx` (new, 8), `unit/proxy-contract.test.ts` (new, 26), `unit/batch-classifier.test.ts` (+1) - **99 -> 134 unit tests**. The harness's `beforeEach` was tightened in a follow-up commit after it raced (see Surprises).
+- `docs/audit/test-selector-contract.md` - `#import-commit-error`.
+- `CLAUDE.md` - the second harness, the `act()` rule, the import `MutationResult`, the 429 pass-through, and a correction to the Node-types guard.
+
+**Why**
+The post-Phase-49 review found that every test in the repo - all 321 Playwright runs and all 99 unit tests - ran the local-storage branch, and that the two worst defects lived only in the signed-in branch. **F1:** a signed-in debt repayment decremented the server-side debt twice (฿1,000 off ฿4,500 wrote ฿2,500 while the screen showed ฿3,500). **F2:** a signed-in CSV import discarded its insert error and moved balances anyway. Both are the "read a value after the `setState` that scheduled it" / "surface Supabase errors" rules CLAUDE.md already stated, in the one branch no test could reach.
+
+**Day 0 (not a commit):** the planned Vercel firewall rate limit on `/api/classify` and `/api/insights` was **not applied**. `put_firewall_config` returned `404 Seawall Config not found` for a project with no firewall config yet, the update tool's schema could not express a `rate_limit` rule, and a further attempt was refused by the session's permission classifier as a security-configuration change. Per the plan's fallback, it was handed to the user as dashboard steps. The proxies remain unauthenticated and unlimited until then.
+
+**Metric delta**
+Entry `index-*.js` **164,368 -> 165,449 B (+1,081)**, `TransactionsView-*.js` +626 B, `TransactionForm-*.js` +8 B; the other 30 chunks byte-identical; CSS unchanged. All JS 1,351,704 -> 1,353,419 B (+1,715). Unit suite **99 -> 134** in 6 files; Playwright unchanged at **321 runs**. Full table in `baseline-metrics.md`.
+
+**Verification**
+`npm run lint` clean on both tsconfigs. `npm run test:unit` **134/134**, 3.06-3.21 s across three timed runs. `npx playwright test --workers=4` **321/321 passed, 7.2 m**, first attempt, no retries, no flakes. `npm run clean && npm run build` 5.45 s, 0 chunk-size warnings. `csv.spec.ts` and `csv-classify.spec.ts` also ran 9/9 on chromium immediately after T149, before the full gate.
+
+**Negative controls (every fix went red first)**
+
+| Test | On unfixed code |
+|---|---|
+| F1 - Supabase receives the remainder the user sees | **failed with `remaining_amount: 2500`**, the exact figure the review predicted |
+| F2 - no money moves when the insert is rejected | failed (`success` undefined; wallet written anyway) |
+| F2 - a half-applied import is undone | failed |
+| F2 - honest count, one delta per wallet | failed (no `success` field) |
+| F2, targeted - only the `insertErr` check removed | failed **exactly** the rejected-insert test, nothing else |
+| 429 pass-through (both proxies) + insights `no-store` | failed **exactly** those three of 26 |
+| P3 - short row skipped | failed (`unavailable: true`) |
+| F6 - rollback survives a reload that read nothing | **failed with 4800**, expected 5000 |
+
+**Surprises**
+
+- **ADR 0016's floor hid F1 whenever a debt was settled.** The exact-payoff test passed on the unfixed code: `Math.max(0, 0 - 4500)` clamps a double subtraction to the correct 0. The bug was only ever visible on a *partial* repayment - the common case, but not the one anyone would test first.
+- **The planned tsconfig split rested on a false premise, and the premise's failure is a finding in itself.** The plan was to type-check `proxy-contract.test.ts` under `api/tsconfig.json` because the root program "has no Node types". It does: `@types/papaparse` carries `/// <reference types="node" />`, and `csvExchange.ts` imports papaparse, so `process` and `Buffer` are global across the root program regardless of its `types` array - a triple-slash reference is not filtered by it. Root `tsc` passed with the `api/` import in place, so the split was dropped and ADR `0022` was corrected in the same commit. **The consequence is broader than this test:** CLAUDE.md's rule not to add Node types to the root config "because `process` would type-check inside `src/`" describes a guard that has not been in force since papaparse arrived. Recorded in CLAUDE.md; closing it is out of scope.
+- **The first bundle measurement was wrong, and would have overstated the entry cost.** The pre-phase rebuild ran in a scratch worktree with no `.env`, and Vite inlines `VITE_SUPABASE_*` into the entry chunk, so the "base" came out 164.18 kB and the delta +1,270 B. With the same `.env` copied in, the base reproduced Phase 49's recorded 164,368 B and 1,351,704 B summed JS to the byte, and the true delta is +1,081 B. **A worktree build must carry the untracked env file**, or the entry row measures configuration, not code.
+- **The review's 24.7 s unit-suite timing was an outlier.** Measured here the suite runs in about 3 s with 134 tests (Phase 49: 1.67 s with 99); the extra second is mostly the new jsdom file's environment setup. The review's figure was a cold first run.
+- **The new harness had a race of its own, and the timing runs found it.** Timing the suite back to back after the full gate failed the fixture test once in twelve runs: `beforeEach` waited for wallets and debts to appear, but `loadSupabaseData` sets those part-way through, with the transactions and diary reads still in flight, so `isSyncing` could still be `true`. Waiting for `isSyncing === false` fixed it - 0 failures in 30 consecutive runs - and closed a second gap: a late read could otherwise land after `fake.state.calls` was reset. Fixed in its own commit (`3d9399a`), not folded silently into an earlier one.
+- **`cloudRevisionRef`'s own comment already said "bumped once per successful commit".** F6 was a place where the code had drifted from its documentation, not a missing design.
+- **The +8 B on `TransactionForm-*.js` is one export binding.** `batchClassifier` now imports `MIN_CLASSIFIABLE_LENGTH`, so the chunk that hosts `jevClassifier` re-exports it (`os as M`). Nothing moved onto the critical path.
+
+**Deliberately not done**
+
+- **F3 (absolute balance writes) and F4 (a retry-unsafe insert)** - Phase 51, as server-side RPCs with relative updates and idempotent replay. `commitBulkImport`'s balance writes are still `walletsRef` + delta.
+- **F5 (sign-out leaves the ledger in localStorage), the Security surface, mobile navigation, and lazy-loading `vendor-supabase`** - Phase 52.
+- **F7 (opening-balance ledger rows) and F8 (DEBT_REPAYMENT rows in CSV)** - both change what a ledger contains, and `tests/helpers.ts` relies on a fresh context having no transactions. With Phase 51's reconciliation work.
+- **No visible sync-error indicator.** CLAUDE.md forbids the shell from subscribing to finance state, so F6 logs by table; a UI belongs with Phase 52's account surface.
+- **No import dedupe.** The in-flight guard stops one click landing twice; two separate imports still produce two rows, as ADR `0019` and `csv.spec.ts` require.
+- **No Playwright spec for `#import-commit-error`.** The failure is only reachable signed-in, which the unit harness covers at the context layer; a browser spec would need a fifth request-intercepting spec for something a unit test already reaches, which CLAUDE.md forbids.
+
+---
+
 ## Phase 49 - Unit testing foundation (Vitest) and the historical coverage gaps: T136-T144 (2026-09-24, commits `e9cd727`...`90f1be4`)
 
 **Changed**
