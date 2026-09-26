@@ -720,6 +720,13 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
   // "no concurrent reload happened" from "one did."
   const cloudRevisionRef = useRef(0);
 
+  // ADR 0023: when the last CLEAN load finished (`Date.now()`), set beside the
+  // `cloudRevisionRef` bump. The wake trigger reloads only once this is older
+  // than `CLOUD_STALE_AFTER_MS`, so a phone unlocked twice a minute does not
+  // re-read the whole account each time. A failed load leaves it old, so the
+  // next wake retries.
+  const lastCloudLoadAtRef = useRef(0);
+
   // Seed initial starter account on Supabase if new user
   const seedInitialUserAccount = useCallback(async (userId: string) => {
     if (isSeedingRef.current) return;
@@ -914,6 +921,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       // debit would stay on screen for money that never moved.
       if (failedReads.length === 0) {
         cloudRevisionRef.current += 1;
+        lastCloudLoadAtRef.current = Date.now();
       } else {
         console.error('[Supabase Sync Error] could not read:', failedReads.join(', '));
       }
@@ -1009,10 +1017,22 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
   //     being closed over directly, dropping it from this effect's deps -
   //     the channel no longer tears down and resubscribes every time that
   //     callback's identity changes.
+  //
+  // ADR 0023 adds reconnection reconciliation to the same effect, so one
+  // debounced reload serves every trigger and none of them runs signed out:
+  //   - `online` -> reload. Anything written while this device was offline.
+  //   - `visibilitychange` to visible -> reload, but only if the last clean
+  //     load is older than `CLOUD_STALE_AFTER_MS`.
+  //   - the channel reporting SUBSCRIBED after CHANNEL_ERROR / TIMED_OUT /
+  //     CLOSED -> reload. Postgres changes emitted while the socket was down
+  //     are not replayed on reconnect; the only way to see them is to read.
+  // There is no offline write queue: a write attempted offline still fails and
+  // rolls back. These triggers only re-read.
   useEffect(() => {
     if (!isAuthenticated || !currentUser.id) return;
 
     const REALTIME_RELOAD_DEBOUNCE_MS = 400;
+    const CLOUD_STALE_AFTER_MS = 30_000;
     let reloadTimer: ReturnType<typeof setTimeout> | null = null;
     const scheduleReload = () => {
       if (reloadTimer) clearTimeout(reloadTimer);
@@ -1022,6 +1042,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       }, REALTIME_RELOAD_DEBOUNCE_MS);
     };
 
+    let channelDropped = false;
     const channel = SYNCED_TABLES.reduce(
       (ch, table) =>
         ch.on(
@@ -1037,10 +1058,31 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
           }
         ),
       supabase.channel('schema-db-changes')
-    ).subscribe();
+    ).subscribe((status: string) => {
+      if (status === 'SUBSCRIBED') {
+        // The first SUBSCRIBED follows the initial load; only a return from a
+        // drop means events may have been missed.
+        if (channelDropped) {
+          channelDropped = false;
+          scheduleReload();
+        }
+      } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+        channelDropped = true;
+      }
+    });
+
+    const handleOnline = () => scheduleReload();
+    const handleVisible = () => {
+      if (document.visibilityState !== 'visible') return;
+      if (Date.now() - lastCloudLoadAtRef.current >= CLOUD_STALE_AFTER_MS) scheduleReload();
+    };
+    window.addEventListener('online', handleOnline);
+    document.addEventListener('visibilitychange', handleVisible);
 
     return () => {
       if (reloadTimer) clearTimeout(reloadTimer);
+      window.removeEventListener('online', handleOnline);
+      document.removeEventListener('visibilitychange', handleVisible);
       supabase.removeChannel(channel);
     };
   }, [isAuthenticated, currentUser.id]);

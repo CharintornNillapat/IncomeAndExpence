@@ -1042,3 +1042,83 @@ describe('a signed-in CSV import through import_transactions (ADR 0023)', () => 
     expect(serverWallet(WALLET).balance).toBe(WALLET_OPENING - 200);
   });
 });
+
+describe('reconnection reconciliation (ADR 0023)', () => {
+  /*
+   * Relative server writes make the server right; a client that slept, went
+   * offline or lost its realtime socket still shows what it last read. These
+   * triggers make it go and look. Each one reloads through the same debounced
+   * path the realtime handler uses.
+   *
+   * The negative checks need a bounded wait: "no reload happened" can only be
+   * observed after the 400 ms debounce window has passed. `quietPeriod` is
+   * that window plus margin, and is used only to prove an absence.
+   */
+  const quietPeriod = () => new Promise<void>((resolve) => setTimeout(resolve, 600));
+  const walletReads = () => writes('wallets', 'select');
+  const reloadWith = (balance: number) =>
+    waitFor(() => expect(wallet()?.balance).toBe(balance), { timeout: 3000 });
+
+  let restoreVisibility: (() => void) | null = null;
+  function setVisibility(value: 'visible' | 'hidden') {
+    Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => value });
+    restoreVisibility = () => {
+      delete (document as unknown as Record<string, unknown>).visibilityState;
+    };
+  }
+  afterEach(() => {
+    restoreVisibility?.();
+    restoreVisibility = null;
+    vi.restoreAllMocks();
+  });
+
+  it('reloads when the browser comes back online', async () => {
+    fake.state.tables.wallets[0].balance = 7777; // written while this device was offline
+    window.dispatchEvent(new Event('online'));
+    await reloadWith(7777);
+  });
+
+  it('reloads on becoming visible once the last clean load is stale', async () => {
+    fake.state.tables.wallets[0].balance = 7777;
+    const realNow = Date.now.bind(Date);
+    vi.spyOn(Date, 'now').mockImplementation(() => realNow() + 31_000);
+
+    setVisibility('visible');
+    document.dispatchEvent(new Event('visibilitychange'));
+    await reloadWith(7777);
+  });
+
+  it('does not reload on becoming visible right after a load', async () => {
+    fake.state.tables.wallets[0].balance = 7777;
+    setVisibility('visible');
+    document.dispatchEvent(new Event('visibilitychange'));
+
+    await quietPeriod();
+    expect(walletReads()).toHaveLength(0);
+    expect(wallet()?.balance).toBe(WALLET_OPENING);
+  });
+
+  it('reloads when the realtime channel resubscribes after dropping', async () => {
+    // Postgres changes emitted while the socket was down are not replayed.
+    fake.state.tables.wallets[0].balance = 7777;
+    fake.state.channelStatus!('CHANNEL_ERROR');
+    fake.state.channelStatus!('SUBSCRIBED');
+    await reloadWith(7777);
+  });
+
+  it('does not reload on the first subscription, only on a re-subscription', async () => {
+    fake.state.channelStatus!('SUBSCRIBED');
+    await quietPeriod();
+    expect(walletReads()).toHaveLength(0);
+  });
+
+  it('does nothing once signed out', async () => {
+    await actions().signOut();
+    await waitFor(() => expect(state().isAuthenticated).toBe(false));
+    fake.state.calls = [];
+
+    window.dispatchEvent(new Event('online'));
+    await quietPeriod();
+    expect(walletReads()).toHaveLength(0);
+  });
+});
