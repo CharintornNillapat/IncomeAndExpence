@@ -310,6 +310,27 @@ describe('classifyBatch — stopping early', () => {
     expect(fetchMock).not.toHaveBeenCalled();
     expect(result.unavailable).toBe(true);
   });
+
+  it('skips a too-short note instead of abandoning the whole run (ADR 0022)', async () => {
+    /*
+     * `isClassifierWorthTrying` is false both for run-wide conditions (the
+     * latch, offline, no candidates) and for one row's note being under
+     * `MIN_CLASSIFIABLE_LENGTH`. Treating the second like the first let a
+     * single 1-character description stop every remaining row and report
+     * "Jev is unavailable" for an endpoint that was fine.
+     */
+    const items: BatchClassifyItem[] = [
+      { id: 0, text: 'x' },
+      ...rows(5, (i) => `merchant ${i}`).map((row) => ({ ...row, id: row.id + 1 })),
+    ];
+
+    const result = await classifyBatch(items, CATEGORIES, CANDIDATES);
+
+    expect(result.unavailable).toBe(false);
+    expect(fetchMock).toHaveBeenCalledTimes(5);
+    expect(result.suggestions.has(0)).toBe(false);
+    expect(result.suggestions.size).toBe(5);
+  });
 });
 
 describe('classifyBatch — what counts as a usable answer', () => {

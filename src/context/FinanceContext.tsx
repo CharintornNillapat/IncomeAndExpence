@@ -720,6 +720,9 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
   // Fetch all user data from Supabase
   const loadSupabaseData = useCallback(async (userId: string) => {
     setIsSyncing(true);
+    // Tables whose read failed. A slice that did load still applies; a failed
+    // one keeps its current local value rather than being blanked.
+    const failedReads: string[] = [];
     try {
       // 1. Wallets
       const { data: wData, error: wErr } = await supabase
@@ -727,6 +730,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
         .select('*')
         .order('created_at', { ascending: true });
       
+      if (wErr) failedReads.push('wallets');
       if (!wErr && wData) {
         const mappedWallets: Wallet[] = wData.map(mapWalletRow);
         setWallets(mappedWallets);
@@ -744,6 +748,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
         .select('*')
         .order('name', { ascending: true });
 
+      if (cErr) failedReads.push('categories');
       if (!cErr && cData && cData.length > 0) {
         const mappedCategories: Category[] = cData.map((row) => ({
           id: row.id,
@@ -768,6 +773,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
         .from('keyword_rules')
         .select('*');
 
+      if (krErr) failedReads.push('keyword_rules');
       if (!krErr && krData) {
         setKeywordRules(
           krData.map((row) => ({
@@ -786,6 +792,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
         .select('*')
         .order('created_at', { ascending: false });
 
+      if (dErr) failedReads.push('debts');
       if (!dErr && dData) {
         setDebts(dData.map(mapDebtRow));
       }
@@ -797,6 +804,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
         .order('transaction_date', { ascending: false })
         .order('created_at', { ascending: false });
 
+      if (txErr) failedReads.push('transactions');
       if (!txErr && txData) {
         setTransactions(txData.map(mapTransactionRow));
       }
@@ -807,6 +815,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
         .select('*')
         .order('date', { ascending: false });
 
+      if (diaryErr) failedReads.push('diary_entries');
       if (!diaryErr && diaryData) {
         setDiaryEntries(
           diaryData.map((row) => ({
@@ -825,7 +834,16 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
         );
       }
 
-      cloudRevisionRef.current += 1;
+      // Only a clean load counts as a reload (ADR 0022). A load that read
+      // nothing is not new server truth, and bumping for it disarmed T69's
+      // rollback in any write in flight: that write would re-fetch instead of
+      // restoring, the re-fetch would fail the same way, and its optimistic
+      // debit would stay on screen for money that never moved.
+      if (failedReads.length === 0) {
+        cloudRevisionRef.current += 1;
+      } else {
+        console.error('[Supabase Sync Error] could not read:', failedReads.join(', '));
+      }
     } catch (err) {
       console.error('[Supabase Sync Error]', err);
     } finally {

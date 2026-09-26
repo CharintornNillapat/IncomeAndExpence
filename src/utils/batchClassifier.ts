@@ -1,4 +1,10 @@
-import { classifyOnce, toSuggestion, isClassifierWorthTrying, normalizeText } from './jevClassifier';
+import {
+  classifyOnce,
+  toSuggestion,
+  isClassifierWorthTrying,
+  normalizeText,
+  MIN_CLASSIFIABLE_LENGTH,
+} from './jevClassifier';
 import type { JevSuggestion } from './jevClassifier';
 import type { Category, ClassifyCandidate } from '../types';
 
@@ -117,6 +123,13 @@ export async function classifyBatch(
   async function runOne(item: BatchClassifyItem): Promise<void> {
     for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt += 1) {
       if (signal?.aborted || unavailable) return;
+
+      // One row's note being too short is that row's problem, not the run's
+      // (ADR 0022). It must be checked before the run-wide test below, which
+      // is also false for a short note - treating the two alike let a single
+      // one-character description abandon every remaining row and report the
+      // endpoint unavailable.
+      if (normalizeText(item.text).length < MIN_CLASSIFIABLE_LENGTH) return;
 
       // Re-checked per item rather than once up front: the latch can trip
       // partway through the run, and every call after that is pointless.

@@ -425,3 +425,70 @@ describe('a signed-in CSV import (F2)', () => {
     await waitFor(() => expect(state().transactions).toHaveLength(3));
   });
 });
+
+describe('a cloud reload that fails (F6)', () => {
+  /*
+   * `cloudRevisionRef` is how an in-flight write learns that a reload landed
+   * underneath it (T69): if the revision moved, the write's rollback snapshot
+   * is stale, so it re-fetches instead of restoring. `loadSupabaseData` used
+   * to bump the revision even when its reads failed - so a reload that
+   * fetched nothing still disarmed the rollback, the re-fetch failed the same
+   * way, and the optimistic debit stayed on screen for money that never moved.
+   */
+
+  it('still rolls an in-flight write back when the reload under it read nothing', async () => {
+    let releaseInsert!: () => void;
+    fake.state.gates.set('transactions:insert', new Promise<void>((resolve) => (releaseInsert = resolve)));
+
+    const pending = actions().addTransaction({
+      amount: 200,
+      type: 'EXPENSE',
+      walletId: WALLET,
+      description: 'Groceries',
+      transactionDate: TODAY,
+    });
+    await waitFor(() => expect(wallet()?.balance).toBe(WALLET_OPENING - 200)); // optimistic
+
+    // A reload lands mid-flight and cannot read wallets (offline, say).
+    fake.state.failures.set('wallets:select', { message: 'network down' });
+    await fake.state.authCallback!('SIGNED_IN', fake.session);
+
+    // Then the insert itself fails.
+    fake.state.failures.set('transactions:insert', { message: 'network down' });
+    releaseInsert();
+    const result = await pending;
+
+    expect(result.success).toBe(false);
+    // Nothing reached the server, so nothing may stay debited locally.
+    await waitFor(() => expect(wallet()?.balance).toBe(WALLET_OPENING));
+    expect(serverWallet(WALLET).balance).toBe(WALLET_OPENING);
+  });
+
+  it('does not treat a clean reload as a failure', async () => {
+    // The other side of the boundary: a reload that read everything still
+    // counts, so a write under it re-fetches rather than restoring a stale
+    // snapshot (T69's original purpose).
+    let releaseInsert!: () => void;
+    fake.state.gates.set('transactions:insert', new Promise<void>((resolve) => (releaseInsert = resolve)));
+
+    const pending = actions().addTransaction({
+      amount: 200,
+      type: 'EXPENSE',
+      walletId: WALLET,
+      description: 'Groceries',
+      transactionDate: TODAY,
+    });
+    await waitFor(() => expect(wallet()?.balance).toBe(WALLET_OPENING - 200));
+
+    // Another device moved this wallet; the reload picks that up.
+    fake.state.tables.wallets[0].balance = 7777;
+    await fake.state.authCallback!('SIGNED_IN', fake.session);
+
+    fake.state.failures.set('transactions:insert', { message: 'rejected' });
+    releaseInsert();
+    expect((await pending).success).toBe(false);
+
+    // Re-fetched server truth, not the pre-write snapshot of 5,000.
+    await waitFor(() => expect(wallet()?.balance).toBe(7777));
+  });
+});
