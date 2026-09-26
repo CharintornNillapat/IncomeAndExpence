@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 50 - Signed-in write-path integrity, and a harness that can see it: T145-T153 (2026-09-26, commits `51f71da`...(backfilled after push))
+## Phase 50 - Signed-in write-path integrity, and a harness that can see it: T145-T153 (2026-09-26, commits `51f71da`...`af49581`)
 
 **Changed**
 - `docs/audit/decisions/0022-authenticated-path-unit-harness.md` (new) - written before the code and committed alone; corrected in T150 when its tsconfig premise turned out false.
