@@ -62,9 +62,15 @@ Balance writes stay absolute (`walletsRef` + delta). That is the review's F3, an
 
 Both proxies mapped every upstream failure except 401 to 503. The client's batch backoff keys on 429 (`jevClassifier.classifyOnce` → `rate-limited`), so the three unit tests pinning that backoff described a status production never emitted. The proxies now return 429 for an upstream 429; 401 still maps to 502 and everything else to 503. `classifyDescription`'s contract is untouched — the live-typing path still collapses every failure to `null`.
 
-### Why the proxy contract test is type-checked by `api/tsconfig.json`
+### The proxy contract test needed no tsconfig split — and why that is itself a finding
 
-`unit/proxy-contract.test.ts` imports the exported `POST` handlers directly — no new export is needed. But the root `tsconfig.json` includes `unit/` and deliberately has no Node types (CLAUDE.md), so importing an `api/` file there fails `npm run lint` on `process`. The file is therefore excluded from the root config and included by `api/tsconfig.json`, which already carries `types: ["node"]`. It cannot live under `api/` instead: Vercel would serve it as a function.
+`unit/proxy-contract.test.ts` imports the exported `POST` handlers directly — no new export is needed.
+
+*Planned:* exclude it from the root config and type-check it under `api/tsconfig.json`, on the premise that the root program has no Node types and would fail on `process`.
+
+*Found:* the root program already has Node types, and has had since papaparse arrived. `@types/papaparse/index.d.ts` carries `/// <reference types="node" />`, and `src/utils/csvExchange.ts` imports papaparse, so `process` and `Buffer` are global across the root program regardless of its `types: [...]` array — a triple-slash reference is not filtered by it. `tsc --explainFiles` names the chain. Root `tsc` passed with the test in place, so the split was dropped as unneeded rather than added on a false premise. Were that reference ever removed upstream, `npm run lint` would fail loudly on this file, not silently.
+
+The consequence reaches past this test: CLAUDE.md's rule not to add Node types to the root config, "because `process` would type-check inside `src/`", describes a guard that is not currently in force. That is recorded in CLAUDE.md and the refactor log as a pre-existing gap. Closing it — a lint rule, or a `src/`-only config — is out of this phase's scope.
 
 ## Consequences
 

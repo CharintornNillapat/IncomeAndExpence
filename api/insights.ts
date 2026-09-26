@@ -61,7 +61,9 @@ const NONE_KEY = 'none';
 function json(body: unknown, status: number): Response {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { 'Content-Type': 'application/json' },
+    // `no-store` matches `classify.ts`: a verdict is about one user's month
+    // and must never be served from a shared cache.
+    headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' },
   });
 }
 
@@ -203,8 +205,11 @@ export async function POST(req: Request): Promise<Response> {
 
   if (!upstream.ok) {
     // The upstream body may echo request content, so nothing is forwarded.
+    // 429 passes through as 429, for the same reason as in `classify.ts`
+    // (ADR 0022); the client falls back to the local verdict either way.
     console.error('[insights] upstream returned', upstream.status);
-    return json({ error: 'Insights upstream error.' }, upstream.status === 401 ? 502 : 503);
+    const status = upstream.status === 429 ? 429 : upstream.status === 401 ? 502 : 503;
+    return json({ error: 'Insights upstream error.' }, status);
   }
 
   let payload: unknown;

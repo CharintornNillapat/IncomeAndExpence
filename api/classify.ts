@@ -218,10 +218,16 @@ export async function POST(req: Request): Promise<Response> {
 
   if (!upstream.ok) {
     // 429 (rate limited) and 529 (overloaded) are transient; 401 means this
-    // deployment's key is wrong. None of that is actionable by the browser, and
-    // the upstream body may echo request content, so nothing is forwarded.
+    // deployment's key is wrong. The upstream body may echo request content,
+    // so nothing is forwarded - only the status class.
+    //
+    // A 429 is passed through as 429 (ADR 0022, amending 0011): it is the one
+    // status the client's batch importer backs off on. Mapping it to 503 made
+    // that backoff unreachable in production. 401 stays 502 - a wrong key is
+    // not something waiting will fix.
     console.error('[classify] upstream returned', upstream.status);
-    return json({ error: 'Classification upstream error.' }, upstream.status === 401 ? 502 : 503);
+    const status = upstream.status === 429 ? 429 : upstream.status === 401 ? 502 : 503;
+    return json({ error: 'Classification upstream error.' }, status);
   }
 
   let payload: unknown;
