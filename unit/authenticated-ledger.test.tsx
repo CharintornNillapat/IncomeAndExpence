@@ -296,11 +296,16 @@ beforeEach(async () => {
     </FinanceProvider>
   );
 
-  // Signed in, and the seeded cloud rows have replaced the local fixture.
+  // Signed in, the seeded cloud rows have replaced the local fixture, AND the
+  // load has finished. Wallets and debts are set part-way through
+  // `loadSupabaseData`; the transactions and diary reads are still in flight
+  // at that point, so without `isSyncing` this raced (1 run in ~12) and a late
+  // read could also land after `calls` is reset below.
   await waitFor(() => {
     expect(state().isAuthenticated).toBe(true);
     expect(wallet()?.balance).toBe(WALLET_OPENING);
     expect(debt()?.remainingAmount).toBe(DEBT_REMAINING);
+    expect(state().isSyncing).toBe(false);
   });
   fake.state.calls = [];
 });
