@@ -1530,8 +1530,11 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     // `useIdempotencyKey` reuses it on retry, so the user would correct the
     // amount and be told "Duplicate transaction submission in progress" for the
     // rest of the form's life.
+    const targetDebt =
+      data.type === 'DEBT_REPAYMENT' && data.debtId
+        ? debtsRef.current.find((d) => d.id === data.debtId && !d.isDeleted)
+        : undefined;
     if (data.type === 'DEBT_REPAYMENT' && data.debtId) {
-      const targetDebt = debtsRef.current.find((d) => d.id === data.debtId && !d.isDeleted);
       if (!targetDebt) {
         return { success: false, error: 'Debt goal not found or has been deleted' };
       }
@@ -1591,20 +1594,25 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     // `debtsRef.current` can be stale against a concurrent repayment from
     // another device, and without the floor that race writes a *negative*
     // remaining balance instead of clamping. Guard first, floor second.
-    if (data.type === 'DEBT_REPAYMENT' && data.debtId) {
+    //
+    // Computed ONCE, here, and reused by the remote write below (ADR 0022).
+    // That write used to re-read `debtsRef.current` after the insert's
+    // `await` - by which point the ref-mirror effect had already moved it to
+    // this optimistic value - and subtract the payment a second time, sending
+    // Supabase ฿2,500 for a ฿1,000 payment off ฿4,500. The floor hid it
+    // whenever the payment settled the debt.
+    const debtNewRemaining: number | null = targetDebt
+      ? Math.max(0, roundToCents(targetDebt.remainingAmount - data.amount))
+      : null;
+
+    if (targetDebt && debtNewRemaining !== null) {
+      const debtUpdatedAt = new Date().toISOString();
       setDebts((prev) =>
-        prev.map((d) => {
-          if (d.id === data.debtId) {
-            const newRem = Math.max(0, roundToCents(d.remainingAmount - data.amount));
-            return {
-              ...d,
-              remainingAmount: newRem,
-              isSettled: newRem === 0,
-              updatedAt: new Date().toISOString(),
-            };
-          }
-          return d;
-        })
+        prev.map((d) =>
+          d.id === targetDebt.id
+            ? { ...d, remainingAmount: debtNewRemaining, isSettled: debtNewRemaining === 0, updatedAt: debtUpdatedAt }
+            : d
+        )
       );
     }
 
@@ -1724,19 +1732,16 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
           destCredited = true;
         }
 
-        // Update debt in Supabase and check errors
-        if (data.type === 'DEBT_REPAYMENT' && data.debtId) {
-          const targetDebt = debtsRef.current.find((d) => d.id === data.debtId);
-          if (targetDebt) {
-            const updatedRem = Math.max(0, roundToCents(targetDebt.remainingAmount - data.amount));
-            markLocalWrite(data.debtId);
-            const { error: dErr } = await supabase.from('debts').update({
-              remaining_amount: updatedRem,
-              is_settled: updatedRem === 0,
-              updated_at: new Date().toISOString(),
-            }).eq('id', data.debtId);
-            if (dErr) throw dErr;
-          }
+        // Update debt in Supabase and check errors. Writes the value computed
+        // before any `setState` - never a post-`await` re-read of the ref.
+        if (targetDebt && debtNewRemaining !== null) {
+          markLocalWrite(targetDebt.id);
+          const { error: dErr } = await supabase.from('debts').update({
+            remaining_amount: debtNewRemaining,
+            is_settled: debtNewRemaining === 0,
+            updated_at: new Date().toISOString(),
+          }).eq('id', targetDebt.id);
+          if (dErr) throw dErr;
         }
 
         return { success: true, txId: createdTxId };
