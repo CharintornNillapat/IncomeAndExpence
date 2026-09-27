@@ -256,6 +256,7 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
                           <div className="flex items-center gap-1 shrink-0">
                             <button
                               type="button"
+                              id={`wallet-adjust-btn-${wallet.id}`}
                               title="Adjust Balance"
                               onClick={(e) => {
                                 e.stopPropagation();
@@ -288,6 +289,7 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
                             </label>
                             <div className="flex flex-wrap sm:flex-nowrap items-center gap-2">
                               <input
+                                id="wallet-adjust-input"
                                 type="number"
                                 step="0.01"
                                 value={adjustedBalance}
@@ -297,6 +299,7 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
                               <div className="flex items-center gap-1 shrink-0">
                                 <button
                                   type="button"
+                                  id="wallet-adjust-save-btn"
                                   onClick={() => handleSaveBalanceAdjustment(wallet.id)}
                                   className="px-3 py-1.5 bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 rounded-lg text-xs font-semibold hover:bg-stone-800 dark:hover:bg-white"
                                 >
@@ -318,7 +321,10 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
                               Balance
                             </span>
                             <div className="flex items-baseline gap-1.5 mt-0.5">
-                              <span className="text-lg sm:text-xl font-black font-mono text-stone-900 dark:text-white">
+                              <span
+                                id={`modal-wallet-balance-${wallet.id}`}
+                                className="text-lg sm:text-xl font-black font-mono text-stone-900 dark:text-white"
+                              >
                                 {formatCurrencyAmount(wallet.balance)}
                               </span>
                               <span className="text-[11px] font-semibold text-stone-500 dark:text-stone-400 font-mono">{APP_CURRENCY}</span>

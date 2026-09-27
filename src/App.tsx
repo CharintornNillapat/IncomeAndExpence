@@ -1,12 +1,13 @@
 import React, { useState, useCallback, useEffect, lazy, Suspense } from 'react';
 import { motion, AnimatePresence, Transition } from 'framer-motion';
-import { useSwipeable } from 'react-swipeable';
+import { useSwipeable, SwipeEventData } from 'react-swipeable';
 import { FinanceProvider } from './context/FinanceContext';
 import { Navbar, ActiveTab } from './components/Navbar';
 import { MobileBottomNav } from './components/MobileBottomNav';
 import { ViewLoadingFallback } from './components/ViewLoadingFallback';
 import { AuthModal } from './components/AuthModal';
 import { ReloadPrompt } from './components/ReloadPrompt';
+import { isInsideHorizontalScroller } from './utils/swipeGuard';
 
 // Ordered tab hierarchy for native-like swipe gestures
 const TABS_ORDER: ActiveTab[] = [
@@ -199,10 +200,20 @@ const MainApp: React.FC = () => {
   }, [handleTabChange]);
   const handleNavigateToDebts = useCallback(() => handleTabChange('debts'), [handleTabChange]);
 
-  // Touch swipe gesture hook for iOS/Android native app feel
+  // Touch swipe gesture hook for iOS/Android native app feel. ADR 0024: a
+  // swipe that starts inside a horizontal scroller (a wide table) scrolls that
+  // element and does not also change the tab.
+  const startsInScroller = (e: SwipeEventData) => {
+    const target = e.event.target;
+    return isInsideHorizontalScroller(target, target instanceof Element ? target.closest('main') : null);
+  };
   const swipeHandlers = useSwipeable({
-    onSwipedLeft: handleNextTab,
-    onSwipedRight: handlePrevTab,
+    onSwipedLeft: (e) => {
+      if (!startsInScroller(e)) handleNextTab();
+    },
+    onSwipedRight: (e) => {
+      if (!startsInScroller(e)) handlePrevTab();
+    },
     delta: 40,
     preventScrollOnSwipe: false,
     trackTouch: true,
