@@ -287,6 +287,8 @@ const MainApp: React.FC = () => {
       <MobileBottomNav
         activeTab={activeTab}
         setActiveTab={handleTabChange}
+        onOpenQuickAdd={handleOpenQuickAdd}
+        onOpenAccount={handleOpenAccount}
       />
 
       {/* Auth Modal for Supabase Login / Register */}
