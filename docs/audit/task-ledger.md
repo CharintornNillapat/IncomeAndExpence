@@ -1089,10 +1089,10 @@ First half of Phase 53 ("UI / Design System Retheme & Anti-slop Remediation"), p
 |---|---|---|---|---|---|---|---|---|---|---|
 | T182 | Baseline (lint, unit, 357 E2E, per-chunk sizes); commit the audit report and the antislop pointer | `docs/audit/baseline-metrics.md`, `anti-slop/audit-001-2026-09-27.md`, `CLAUDE.md` | Low | Low | 0.5h | done | - | a19b8ac | 357/357 (7.9 m), unit 243/243 | reproduces T181's figures exactly |
 | T183 | DESIGN.md adjusted and committed; token contrast checker | `DESIGN.md`, `scripts/wcag-tokens.mjs` (new) | Med | Low | 1h | done | - | b08b0ef | - | - |
-| T184 | Theme-flipping tokens, static fills/tints/lines, shadows, font stacks | `src/index.css` | High | Med | 1h | done | T183 | PENDING | all token pairs pass | - |
-| T185 | Form styles, UI primitives, transaction tokens, Modal | `src/utils/formStyles.ts`, `src/components/ui/*`, `transaction/txTypeMeta.ts`, `transaction/TxCells.tsx`, `Modal.tsx` | High | Med | 1h | done | T184 | PENDING | see phase gate | - |
-| T186 | Shell | `App.tsx`, `Navbar.tsx`, `MobileBottomNav.tsx`, `AuthModal.tsx`, `ReloadPrompt.tsx`, `QuickAddModal.tsx`, `navbar/NavbarLedgerStatus.tsx`, `ViewLoadingFallback.tsx`, `index.html`, `vite.config.ts` | High | Med | 1h | done | T184 | PENDING | see phase gate | - |
-| T187 | Views and components (24 files, three parallel agents on one mapping guide) | `src/views/*`, `src/components/**` | High | Med | 3h | done | T185 | PENDING | lint clean; unit 243/243; Playwright **357/357** (6.5 m); attribute/text diff clean; MCP visual pass clean | CSS 78,908 -> 45,533 B; all JS 1,365,069 -> 1,341,862 B |
+| T184 | Theme-flipping tokens, static fills/tints/lines, shadows, font stacks | `src/index.css` | High | Med | 1h | done | T183 | 438e126 | all token pairs pass | - |
+| T185 | Form styles, UI primitives, transaction tokens, Modal | `src/utils/formStyles.ts`, `src/components/ui/*`, `transaction/txTypeMeta.ts`, `transaction/TxCells.tsx`, `Modal.tsx` | High | Med | 1h | done | T184 | 438e126 | see phase gate | - |
+| T186 | Shell | `App.tsx`, `Navbar.tsx`, `MobileBottomNav.tsx`, `AuthModal.tsx`, `ReloadPrompt.tsx`, `QuickAddModal.tsx`, `navbar/NavbarLedgerStatus.tsx`, `ViewLoadingFallback.tsx`, `index.html`, `vite.config.ts` | High | Med | 1h | done | T184 | 438e126 | see phase gate | - |
+| T187 | Views and components (24 files, three parallel agents on one mapping guide) | `src/views/*`, `src/components/**` | High | Med | 3h | done | T185 | 438e126 | lint clean; unit 243/243; Playwright **357/357** (6.5 m); attribute/text diff clean; MCP visual pass clean | CSS 78,908 -> 45,533 B; all JS 1,365,069 -> 1,341,862 B |
 
 **Notes on execution:**
 - **Two DESIGN.md values changed during the phase, both recorded there:** light `pending` / `transfer` text one shade darker (they failed on their own tint), and a Surface 3 that reuses the Border default hex.

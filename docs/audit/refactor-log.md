@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 53a - Semantic design tokens: the stone palette is retired: T182-T187 (2026-09-27, commits `a19b8ac`...`PENDING`)
+## Phase 53a - Semantic design tokens: the stone palette is retired: T182-T187 (2026-09-27, commits `a19b8ac`...`6b02a75`)
 
 **Changed**
 - `DESIGN.md` (new at the repo root) and `anti-slop/audit-001-2026-09-27.md` committed; DESIGN.md adjusted before commit (T183): FinLife Tracker name, `Border input` as the dedicated WCAG 1.4.11 token with the rejected softer greys measured, Surface 2 for inputs and a Surface 3 for hover on it, the baht-sign fallback stack, a five-state sync table, static skeletons, continuous motion only during real work.
