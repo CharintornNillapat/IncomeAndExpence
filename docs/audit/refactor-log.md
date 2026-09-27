@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 53b - Antislop audit 001 remediation: static money, state-only motion, a sync status that can fail: T188-T198 (2026-09-28, commits pending)
+## Phase 53b - Antislop audit 001 remediation: static money, state-only motion, a sync status that can fail: T188-T198 (2026-09-28, commits `f422692`...`afd5de4`)
 
 **Changed**
 - **Font.** `@fontsource-variable/jetbrains-mono` (new dependency). `src/index.css` declares one latin `@font-face` rather than importing the package's six subsets. `vite.config.ts` precaches `woff2` (`DISABLE_HMR` untouched).
