@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 51 - Atomic server-side ledger writes (Supabase RPCs) and reconnection reconciliation: T154-T165 (2026-09-27, commits pending backfill)
+## Phase 51 - Atomic server-side ledger writes (Supabase RPCs) and reconnection reconciliation: T154-T165 (2026-09-27, commits `9527c0c`...`145ce0a`)
 
 **Changed**
 - `docs/audit/decisions/0023-atomic-server-ledger-writes.md` (new) - written before any code and committed alone. Carries the dropped function's full definition, md5-verified against the live database.
@@ -25,6 +25,8 @@ Entry `index-*.js` **165,449 -> 168,856 B (+3,407)**, `TransactionsView-*.js` +6
 
 **Verification**
 `npm run lint` clean on both tsconfigs. `npm run test:unit` **157/157**, 9.6-10.2 s across three timed runs, and 8 further consecutive runs green. `npx playwright test --workers=4` **321/321 passed, 7.2 m**, first attempt, no retries, no spec edited. `npm run clean && npm run build` 5.1 s, 0 chunk-size warnings. `csv.spec.ts` + `csv-classify.spec.ts` also ran 9/9 on chromium immediately after T159.
+
+**CI and deploy:** run `36283681997` on `145ce0a` - success in 15 m 17 s (Vitest 157/157 ahead of the browser install; Playwright 321/321 at `workers: 1`). Vercel `dpl_DEa7XiqZD7DgU3oxSwkE5xfkQtYX` Production `READY`, serving `index-J7uTPzwf.js` at 168,856 B - byte-for-byte the locally measured entry. Pushed only after the migration was live.
 
 **Database verification**
 - **Before apply:** the probe ran against the live schema with the migration inside its transaction - `PHASE 51 PROBE OK` on the first run. Two controls: a deliberately false `ASSERT` raises `P0004` on that server (`plpgsql.check_asserts` is on, so the probe's assertions are live), and afterwards the old function still existed, none of the new ones had leaked and no probe row or user remained.
