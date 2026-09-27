@@ -459,3 +459,32 @@ describe('opening balances are ledger rows (F7, ADR 0024)', () => {
     expect(walletNamed('Rainy Day').balance).toBe(0);
   });
 });
+
+describe('a guest CSV repayment names its debt (F8, ADR 0024)', () => {
+  const repayRow = (rowIndex: number, amount: number) => ({
+    rowIndex,
+    date: TODAY,
+    walletName: 'Savings Reserve',
+    amount,
+    type: 'DEBT_REPAYMENT' as const,
+    description: 'Loan payment',
+    debtName: 'Student Loan',
+    debtId: DEBT,
+    isValid: true,
+  });
+
+  it('decrements the debt it names, once per row', async () => {
+    const result = await call(() => actions().commitBulkImport([repayRow(1, 1000), repayRow(2, 500)]));
+    expect(result).toMatchObject({ success: true, insertedCount: 2 });
+    expect(debt().remainingAmount).toBe(DEBT_REMAINING - 1500);
+    expect(state().transactions.every((t) => t.debtId === DEBT)).toBe(true);
+  });
+
+  it('refuses a batch whose repayments together overpay the debt, moving nothing', async () => {
+    const result = await call(() => actions().commitBulkImport([repayRow(1, 3000), repayRow(2, 3000)]));
+    expect(result.success).toBe(false);
+    expect(debt().remainingAmount).toBe(DEBT_REMAINING);
+    expect(wallet(WALLET_SAVINGS).balance).toBe(SAVINGS_OPENING);
+    expect(state().transactions).toHaveLength(0);
+  });
+});

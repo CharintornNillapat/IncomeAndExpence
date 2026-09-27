@@ -169,6 +169,13 @@ export interface ImportRowValidation {
   type: TransactionType;
   description: string;
   destinationWalletName?: string;
+  /**
+   * F8 (ADR 0024): a DEBT_REPAYMENT row's `Debt` column, as written, and the
+   * live debt it resolved to. The preview marks a repayment invalid without
+   * one, so only a resolved repayment reaches `commitBulkImport`.
+   */
+  debtName?: string;
+  debtId?: string;
   isValid: boolean;
   errorMessage?: string;
 }

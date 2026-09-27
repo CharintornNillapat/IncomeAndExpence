@@ -300,6 +300,13 @@ interface ImportTransactionsResult {
   balances: { id: string; balance: number | string }[];
 }
 
+// F8 (ADR 0024): an import whose repayments to one debt add up to more than it
+// owes. Formatted here, from either this client's debt or the server's
+// `DEBT_OVERPAYMENT` detail - money is never formatted in SQL.
+function importOverpaymentMessage(debtName: string, remaining: number): string {
+  return `These repayments to ${debtName} add up to more than the ${formatCurrencyAmount(remaining)} remaining`;
+}
+
 function isUnknownOutcomeError(err: { code?: string } | null): boolean {
   return !!err && !err.code;
 }
@@ -2453,6 +2460,9 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     // resolved, keyed by row index so the server can derive each row's key.
     const rpcRows: Record<string, unknown>[] = [];
     const walletDeltas: Record<string, number> = {};
+    // F8 (ADR 0024): the sum of this batch's repayments per debt, for the
+    // aggregate guard and the guest decrement.
+    const debtTotals: Record<string, number> = {};
     let totalAmt = 0;
     let skippedCount = 0;
 
@@ -2490,6 +2500,22 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
         categoryById ??
         (row.categoryName ? categoryMapByName.get(row.categoryName.trim().toLowerCase()) : undefined);
 
+      // F8 (ADR 0024): a repayment pays off the debt the preview resolved. One
+      // whose debt has since been deleted is skipped, like a missing wallet. A
+      // repayment row with no debt at all (only reachable by a caller that
+      // bypasses the preview) moves the wallet alone, as the server allows.
+      const repaidDebt =
+        row.type === 'DEBT_REPAYMENT' && row.debtId
+          ? debtsRef.current.find((d) => d.id === row.debtId && !d.isDeleted)
+          : undefined;
+      if (row.type === 'DEBT_REPAYMENT' && row.debtId && !repaidDebt) {
+        skippedCount += 1;
+        continue;
+      }
+      if (repaidDebt) {
+        debtTotals[repaidDebt.id] = roundToCents((debtTotals[repaidDebt.id] || 0) + row.amount);
+      }
+
       totalAmt += row.amount;
 
       if (isAuthenticated) {
@@ -2498,6 +2524,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
           wallet_id: sourceWallet.id,
           destination_wallet_id: destWallet?.id || null,
           category_id: cat?.id || null,
+          debt_id: repaidDebt?.id ?? null,
           amount: row.amount,
           type: row.type,
           description: row.description,
@@ -2511,6 +2538,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
           wallet_id: sourceWallet.id,
           destination_wallet_id: destWallet?.id ?? null,
           category_id: cat?.id ?? null,
+          debt_id: repaidDebt?.id ?? null,
           amount: row.amount,
           type: row.type,
           description: row.description,
@@ -2523,6 +2551,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
           walletId: sourceWallet.id,
           destinationWalletId: destWallet?.id,
           categoryId: cat?.id,
+          debtId: repaidDebt?.id,
           amount: row.amount,
           type: row.type,
           description: row.description,
@@ -2544,6 +2573,23 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
 
       if (row.type === 'TRANSFER' && destWallet) {
         walletDeltas[destWallet.id] = (walletDeltas[destWallet.id] || 0) + row.amount;
+      }
+    }
+
+    // F8 (ADR 0024): ADR 0016's guard, in aggregate and before anything moves.
+    // Two rows that each fit a debt's remainder can still overpay it together.
+    // The server re-checks under its row lock; this is the same rule against
+    // this client's copy, and the only check the guest path has.
+    for (const [debtId, total] of Object.entries(debtTotals)) {
+      const target = debtsRef.current.find((d) => d.id === debtId);
+      if (target && total > target.remainingAmount) {
+        return {
+          success: false,
+          error: importOverpaymentMessage(target.name, target.remainingAmount),
+          insertedCount: 0,
+          totalAmount: 0,
+          skippedCount,
+        };
       }
     }
 
@@ -2569,9 +2615,16 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
           if (!rpcError || isUnknownOutcomeError(rpcError)) {
             await refreshFromCloud();
           }
+          // The server's aggregate guard, under its row lock: this client's
+          // debts were stale. The app formats the money, never SQL.
+          const overpaid = rpcError?.message === 'DEBT_OVERPAYMENT';
+          if (overpaid) await refreshFromCloud();
+          const serverRemaining = Number(rpcError?.details);
           return {
             success: false,
-            error: rpcError?.message || 'import_transactions returned an unexpected response',
+            error: overpaid
+              ? importOverpaymentMessage(rpcError?.hint || 'this debt', Number.isFinite(serverRemaining) ? serverRemaining : 0)
+              : rpcError?.message || 'import_transactions returned an unexpected response',
             insertedCount: 0,
             totalAmount: 0,
             skippedCount,
@@ -2679,6 +2732,19 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
         })
       );
       setTransactions((prev) => [...newTxs, ...prev]);
+      // F8: the debts move with the rows, with `addTransaction`'s floor and
+      // settle rule. The aggregate guard above means the floor never engages.
+      if (Object.keys(debtTotals).length > 0) {
+        const debtUpdatedAt = new Date().toISOString();
+        setDebts((prev) =>
+          prev.map((d) => {
+            const paid = debtTotals[d.id];
+            if (!paid) return d;
+            const remaining = Math.max(0, roundToCents(d.remainingAmount - paid));
+            return { ...d, remainingAmount: remaining, isSettled: remaining === 0, updatedAt: debtUpdatedAt };
+          })
+        );
+      }
     }
 
     return {

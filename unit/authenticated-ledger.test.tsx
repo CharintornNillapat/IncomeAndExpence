@@ -1313,3 +1313,52 @@ describe('a signed-in wallet through create_wallet (F7, ADR 0024)', () => {
     await waitFor(() => expect(state().wallets.some((w) => w.name === 'Visa' && !w.isDeleted)).toBe(false));
   });
 });
+
+describe('a signed-in CSV repayment names its debt (F8, ADR 0024)', () => {
+  beforeEach(() => installLedgerRpcs());
+
+  const repayRow = (rowIndex: number, amount: number) =>
+    importRow({ rowIndex, type: 'DEBT_REPAYMENT', amount, debtName: 'Student Loan', debtId: DEBT });
+
+  it('sends each repayment\'s debt_id, and the debt comes down', async () => {
+    const result = await actions().commitBulkImport([repayRow(1, 1000), repayRow(2, 500)], 'import-debt-1');
+    expect(result).toMatchObject({ success: true, insertedCount: 2 });
+
+    const payload = writes('rpc:import_transactions', 'rpc')[0].payload as { p_rows: Record<string, unknown>[] };
+    expect(payload.p_rows.map((r) => r.debt_id)).toEqual([DEBT, DEBT]);
+    expect(fake.state.tables.debts[0].remaining_amount).toBe(DEBT_REMAINING - 1500);
+    await waitFor(() => expect(debt()?.remainingAmount).toBe(DEBT_REMAINING - 1500));
+  });
+
+  it('reports an aggregate overpayment in the app\'s own words, and moves nothing', async () => {
+    const result = await actions().commitBulkImport([repayRow(1, 3000), repayRow(2, 3000)], 'import-debt-2');
+
+    expect(result.success).toBe(false);
+    expect(result.error).toBe(
+      `These repayments to Student Loan add up to more than the ${formatCurrencyAmount(DEBT_REMAINING)} remaining`
+    );
+    expect(fake.state.tables.transactions).toHaveLength(0);
+    expect(serverWallet(WALLET).balance).toBe(WALLET_OPENING);
+    expect(fake.state.tables.debts[0].remaining_amount).toBe(DEBT_REMAINING);
+  });
+});
+
+describe('the server\'s aggregate guard on a CSV import (F8, ADR 0024)', () => {
+  beforeEach(() => installLedgerRpcs());
+
+  it('surfaces the server\'s remainder when this client\'s debt is stale, and re-reads', async () => {
+    // Another device paid the loan down to 1,000; this client still sees 4,500,
+    // so its own guard lets 2 x 600 through and the server refuses.
+    fake.state.tables.debts[0].remaining_amount = 1000;
+    const rows = [1, 2].map((rowIndex) =>
+      importRow({ rowIndex, type: 'DEBT_REPAYMENT', amount: 600, debtName: 'Student Loan', debtId: DEBT })
+    );
+
+    const result = await actions().commitBulkImport(rows, 'import-debt-stale');
+
+    expect(result.success).toBe(false);
+    expect(result.error).toBe(`These repayments to Student Loan add up to more than the ${formatCurrencyAmount(1000)} remaining`);
+    expect(fake.state.tables.transactions).toHaveLength(0);
+    await waitFor(() => expect(debt()?.remainingAmount).toBe(1000));
+  });
+});

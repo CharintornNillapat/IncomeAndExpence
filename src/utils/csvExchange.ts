@@ -1,14 +1,21 @@
 import Papa from 'papaparse';
 import { todayIsoDate, toIsoDate } from './date';
-import { Transaction, Wallet, Category, ImportPreviewSummary, ImportRowValidation, TransactionType } from '../types';
+import { Transaction, Wallet, Category, Debt, ImportPreviewSummary, ImportRowValidation, TransactionType } from '../types';
 
-export function exportTransactionsToCsv(
+/**
+ * The export's CSV text. Pure, so the column set is testable without a DOM
+ * download. `Debt` (F8, ADR 0024) holds a repayment's debt name, which is what
+ * lets an exported repayment re-import against the same debt.
+ */
+export function transactionsToCsv(
   transactions: Transaction[],
   wallets: Wallet[],
-  categories: Category[]
-): void {
+  categories: Category[],
+  debts: Debt[] = []
+): string {
   const walletMap = new Map(wallets.map((w) => [w.id, w.name]));
   const categoryMap = new Map(categories.map((c) => [c.id, c.name]));
+  const debtMap = new Map(debts.map((d) => [d.id, d.name]));
 
   const rows = transactions
     .filter((tx) => !tx.isDeleted)
@@ -17,6 +24,7 @@ export function exportTransactionsToCsv(
       Wallet: walletMap.get(tx.walletId) || 'Unknown Wallet',
       'Destination Wallet': tx.destinationWalletId ? walletMap.get(tx.destinationWalletId) || '' : '',
       Category: tx.categoryId ? categoryMap.get(tx.categoryId) || 'Uncategorized' : '',
+      Debt: tx.type === 'DEBT_REPAYMENT' && tx.debtId ? debtMap.get(tx.debtId) || '' : '',
       Type: tx.type,
       Amount: tx.amount.toFixed(2),
       Description: tx.description,
@@ -24,7 +32,16 @@ export function exportTransactionsToCsv(
       'Idempotency Key': tx.idempotencyKey || '',
     }));
 
-  const csv = Papa.unparse(rows);
+  return Papa.unparse(rows);
+}
+
+export function exportTransactionsToCsv(
+  transactions: Transaction[],
+  wallets: Wallet[],
+  categories: Category[],
+  debts: Debt[] = []
+): void {
+  const csv = transactionsToCsv(transactions, wallets, categories, debts);
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
@@ -41,8 +58,18 @@ export function exportTransactionsToCsv(
  */
 export function parseAndValidateTransactionCsv(
   fileContent: string,
-  wallets: Wallet[]
+  wallets: Wallet[],
+  debts: Debt[] = []
 ): Promise<ImportPreviewSummary> {
+  // F8: only live debts can be paid. Grouped by lower-cased name so an
+  // ambiguous name is refused rather than guessed.
+  const liveDebtsByName = new Map<string, Debt[]>();
+  for (const d of debts) {
+    if (d.isDeleted) continue;
+    const key = d.name.trim().toLowerCase();
+    liveDebtsByName.set(key, [...(liveDebtsByName.get(key) ?? []), d]);
+  }
+
   return new Promise((resolve, reject) => {
     Papa.parse(fileContent, {
       header: true,
@@ -67,6 +94,7 @@ export function parseAndValidateTransactionCsv(
           const rawType = (row['type'] || row['transactiontype'] || 'EXPENSE').trim().toUpperCase();
           const rawAmount = (row['amount'] || '0').replace(/[^0-9.-]+/g, '');
           const description = (row['description'] || row['note'] || 'Imported Transaction').trim();
+          const rawDebt = (row['debt'] || row['debtname'] || '').trim();
 
           const errors: string[] = [];
 
@@ -109,6 +137,23 @@ export function parseAndValidateTransactionCsv(
             }
           }
 
+          // F8 (ADR 0024): a repayment must name exactly one live debt. Without
+          // one it would debit the wallet and pay nothing off. The column is
+          // ignored on every other type.
+          let resolvedDebtId: string | undefined;
+          if (parsedType === 'DEBT_REPAYMENT') {
+            const matches = rawDebt ? liveDebtsByName.get(rawDebt.toLowerCase()) ?? [] : [];
+            if (!rawDebt) {
+              errors.push('Debt repayment needs a Debt column naming a debt');
+            } else if (matches.length === 0) {
+              errors.push(`Debt '${rawDebt}' not found`);
+            } else if (matches.length > 1) {
+              errors.push(`Debt name '${rawDebt}' is ambiguous`);
+            } else {
+              resolvedDebtId = matches[0].id;
+            }
+          }
+
           // Validate Amount. An ADJUSTMENT is the signed correction (ADR 0024):
           // any non-zero amount; every other type must be positive.
           const numAmount = parseFloat(rawAmount);
@@ -134,6 +179,8 @@ export function parseAndValidateTransactionCsv(
             walletName: rawWallet,
             destinationWalletName: rawDestWallet || undefined,
             categoryName: rawCategory || undefined,
+            debtName: resolvedDebtId ? rawDebt : undefined,
+            debtId: resolvedDebtId,
             amount: isNaN(numAmount) ? 0 : Math.round(numAmount * 100) / 100,
             type: parsedType,
             description,
