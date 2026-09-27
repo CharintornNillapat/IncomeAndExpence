@@ -145,3 +145,36 @@ A provider-internal `resetToGuestState()` runs on an explicit sign-out **and** o
 - The CSV round-trips repayments with their debts.
 - New surfaces carry new tests: `unit/csv-exchange.test.ts`, `unit/user-agent.test.ts`, a swipe-guard test, additions to both ledger harnesses, and a new Playwright spec, `tests/account-and-mobile-nav.spec.ts`, which intercepts no requests. No existing spec is edited.
 - Deferred, by name: lazy-loading `@supabase/supabase-js` (Phase 53); merging guest data; per-device revoke; repairing the 3 production rows (the query is above); leaked-password protection, which is a dashboard setting.
+
+## Amendment (2026-09-27): a revoked device evicts itself within a minute
+
+**Found in manual testing.** "Sign out other devices" on a desktop left a phone signed in and working.
+
+**The server did its part.** The auth log shows `POST /logout` answering 204, and a refresh with a revoked token 25 s later refused with `400 Refresh Token Not Found`. But revocation reaches **refresh tokens only**. An access token is a JWT that PostgREST and Realtime check by signature and expiry alone, and this project's tokens live an hour (the same log shows refreshes ~59 minutes apart). supabase-js notices only at its next refresh. So a revoked device went on reading and writing the account for up to an hour. This ADR's line "those devices find out on their next token refresh" was accurate; the delay was the defect.
+
+**Decision: the provider asks the auth server.** `auth.getUser()` is the one client call that checks the session itself: GoTrue answers `session_not_found` for a revoked `session_id`. `verifySession` runs it:
+
+- **When.** On every ADR 0023 reconnection trigger (`online`, becoming visible, the channel resubscribing), on window `focus`, once when the signed-in effect mounts (a PWA reopened after revocation), every 60 s while the page is visible, and after any 401 from the Data API. One check runs at a time. Focus and visibility skip a check made in the last 10 s.
+- **A rejected session signs this device out.** That means `AuthSessionMissingError`, or an `AuthApiError` that is a 401 or 403 or carries `refresh_token_not_found`/`refresh_token_already_used`. The device signs out locally and `resetToGuestState` clears it. On `session_not_found` supabase-js has already dropped the session and emitted `SIGNED_OUT` (auth-js `_getUser` → `_removeSession`), so F5's handler has run and the provider's epoch check stops it signing out a second time.
+- **No answer keeps the session.** That covers offline and 5xx (`AuthRetryableFetchError`) and 429. Clearing a device's ledger because the network blinked would be worse than a late eviction.
+
+**A Data API 401 prompts a check; it does not sign out.** The request was for a 401 to sign the device out at once. Instead it runs `verifySession`, which signs out in one round trip if the session is really gone. A 401 also happens when a token expires in transit, and signing out then would wipe the device on a race, not a revocation. The signal comes from a fetch wrapper in `src/lib/supabase.ts` (`onDataApiUnauthorized`): every table call and RPC goes through the client's fetch, so no call site is touched. It reports `/rest/v1/` 401s only, because the auth endpoints handle their own.
+
+**Residual.**
+- A device on screen is evicted within 60 s. A backgrounded one is evicted as soon as it is looked at, but until then its realtime channel can still pull the account's changes into memory.
+- Instant eviction would need the revoking device to push a message, for example a Realtime broadcast on a per-user topic. That is not built.
+- Neither this amendment nor the fix has been exercised against a real second device. Everything above is from the library source, the auth log and the unit tests.
+
+**Tests.**
+- **`authenticated-ledger.test.tsx`, 14 tests, all red first:**
+  - each trigger;
+  - a cold start;
+  - `user_not_found`;
+  - a 401 both ways;
+  - three no-answer cases;
+  - the 10 s gap;
+  - no checks once signed out.
+- **`unit/supabase-client.test.ts` (new), 7 tests:** they drive the real client over a stubbed `fetch`, because the harness mocks that module out.
+- **Controls:** every piece has a negative control that fails its own test. There are 12 in all:
+  - 10 on the provider;
+  - 2 on the wrapper: the path filter, and 401-only.

@@ -23,6 +23,39 @@ if (!isSupabaseConfigured && import.meta.env.DEV) {
   );
 }
 
+const unauthorizedListeners = new Set<() => void>();
+
+/**
+ * Calls `listener` whenever the Data API (PostgREST tables and RPCs) answers
+ * 401 - the access token was refused. Returns the unsubscribe function.
+ *
+ * Every table read, write and RPC in the app goes through the client's fetch,
+ * so this is the one place a 401 can be seen without checking each call site.
+ * A 401 is a reason to ask the auth server, not proof of a sign-out: it also
+ * happens when a token expires in transit (ADR 0024, amended).
+ */
+export function onDataApiUnauthorized(listener: () => void): () => void {
+  unauthorizedListeners.add(listener);
+  return () => {
+    unauthorizedListeners.delete(listener);
+  };
+}
+
+function requestUrl(input: RequestInfo | URL): string {
+  if (typeof input === 'string') return input;
+  if (input instanceof URL) return input.href;
+  return input.url;
+}
+
+// Auth endpoints (`/auth/v1/`) are left out: supabase-js handles its own 401s.
+const fetchReportingUnauthorized: typeof fetch = async (input, init) => {
+  const response = await fetch(input, init);
+  if (response.status === 401 && requestUrl(input).includes('/rest/v1/')) {
+    for (const listener of unauthorizedListeners) listener();
+  }
+  return response;
+};
+
 /**
  * The placeholder values below only exist so `createClient` returns a
  * correctly-shaped object and importing this module never throws. Nothing is
@@ -38,5 +71,6 @@ export const supabase = createClient(
       autoRefreshToken: isSupabaseConfigured,
       detectSessionInUrl: isSupabaseConfigured,
     },
+    global: { fetch: fetchReportingUnauthorized },
   }
 );

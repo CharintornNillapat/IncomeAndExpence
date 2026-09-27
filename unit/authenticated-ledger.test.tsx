@@ -12,6 +12,7 @@ import {
 } from '../src/context/FinanceContext';
 import type { ImportRowValidation } from '../src/types';
 import { formatCurrencyAmount } from '../src/utils/currency';
+import { AuthApiError, AuthRetryableFetchError, AuthSessionMissingError } from '@supabase/supabase-js';
 
 /**
  * The signed-in write path (ADR 0022).
@@ -57,7 +58,7 @@ const fake = vi.hoisted(() => {
      * wallet writes can fail while the others land. An RPC's key is
      * `rpc:<name>`.
      */
-    failures: new Map<string, { message: string; onlyId?: string; code?: string }>(),
+    failures: new Map<string, { message: string; onlyId?: string; code?: string; status?: number }>(),
     /** `${table}:${op}` (or `rpc:<name>`) → a promise the call waits on before settling. */
     gates: new Map<string, Promise<void>>(),
     /**
@@ -78,6 +79,16 @@ const fake = vi.hoisted(() => {
     authCallback: null as null | ((event: string, session: unknown) => Promise<void> | void),
     /** The status callback the provider passed to `channel.subscribe`. */
     channelStatus: null as null | ((status: string) => void),
+    /** How many times `auth.getUser()` asked the auth server about this session. */
+    getUserCalls: 0,
+    /** What `auth.getUser()` answers with; `null` means the session is valid. */
+    userError: null as unknown,
+    /**
+     * The listeners `onDataApiUnauthorized` registered. A failure injected with
+     * `status: 401` notifies them before the call settles, as the fetch wrapper
+     * in `src/lib/supabase.ts` does for a real 401 from PostgREST.
+     */
+    unauthorized: new Set<() => void>(),
     seq: 0,
   };
 
@@ -114,7 +125,10 @@ const fake = vi.hoisted(() => {
       const failure = state.failures.get(key);
       const targetsThisCall =
         failure && (failure.onlyId === undefined || call.filters.some(([k, c, v]) => k === 'eq' && c === 'id' && v === failure.onlyId));
-      if (failure && targetsThisCall) return { data: null, error: { message: failure.message } };
+      if (failure && targetsThisCall) {
+        if (failure.status === 401) state.unauthorized.forEach((listener) => listener());
+        return { data: null, error: { message: failure.message, code: failure.code } };
+      }
 
       const rows = (state.tables[table] ??= []);
       const now = new Date().toISOString();
@@ -194,7 +208,10 @@ const fake = vi.hoisted(() => {
     await macrotask();
 
     const failure = state.failures.get(key);
-    if (failure) return { data: null, error: { message: failure.message, code: failure.code ?? 'P0001' } };
+    if (failure) {
+      if (failure.status === 401) state.unauthorized.forEach((listener) => listener());
+      return { data: null, error: { message: failure.message, code: failure.code ?? 'P0001' } };
+    }
 
     const handler = state.rpcs.get(name);
     if (!handler) {
@@ -228,6 +245,16 @@ const fake = vi.hoisted(() => {
         state.authCallback = cb;
         return { data: { subscription: { unsubscribe() {} } } };
       },
+      getUser: async () => {
+        state.getUserCalls += 1;
+        await macrotask();
+        const error = state.userError as { name?: string } | null;
+        if (!error) return { data: { user: session.user }, error: null };
+        // supabase-js drops a session the server says no longer exists, and
+        // emits SIGNED_OUT itself (auth-js `_getUser` -> `_removeSession`).
+        if (error.name === 'AuthSessionMissingError') await state.authCallback?.('SIGNED_OUT', null);
+        return { data: { user: null }, error };
+      },
       signOut: async (options?: { scope?: string }) => {
         state.signOuts.push(options?.scope ?? 'local');
         await macrotask();
@@ -246,6 +273,12 @@ const fake = vi.hoisted(() => {
 vi.mock('../src/lib/supabase', () => ({
   isSupabaseConfigured: true,
   supabase: fake.client,
+  onDataApiUnauthorized: (listener: () => void) => {
+    fake.state.unauthorized.add(listener);
+    return () => {
+      fake.state.unauthorized.delete(listener);
+    };
+  },
 }));
 
 const WALLET = 'wallet-srv-savings';
@@ -627,7 +660,14 @@ beforeEach(async () => {
   fake.state.signOuts = [];
   fake.state.authCallback = null;
   fake.state.channelStatus = null;
+  fake.state.getUserCalls = 0;
+  fake.state.userError = null;
+  fake.state.unauthorized.clear();
+  await mountSignedIn();
+});
 
+/** Mounts the provider and waits until the seeded account has fully loaded. */
+async function mountSignedIn() {
   render(
     <FinanceProvider>
       <Probe />
@@ -646,7 +686,7 @@ beforeEach(async () => {
     expect(state().isSyncing).toBe(false);
   });
   fake.state.calls = [];
-});
+}
 
 afterEach(() => {
   cleanup();
@@ -1546,5 +1586,181 @@ describe('the Account & Security modal (ADR 0024)', () => {
       expect(fake.state.signOuts).toEqual(['local']);
       expect(state().isAuthenticated).toBe(false);
     });
+  });
+});
+
+describe('a device signed out from another device (ADR 0024, amended)', () => {
+  /*
+   * "Sign out other devices" revokes the other sessions' refresh tokens on the
+   * server, but their access tokens are JWTs that PostgREST and Realtime keep
+   * accepting until they expire - up to an hour. supabase-js only notices when
+   * it next refreshes, so a revoked phone went on reading and writing the
+   * account. The provider now asks the auth server (`auth.getUser()`, which
+   * checks the session itself) whenever the app wakes, regains focus, comes
+   * back online or resubscribes, once a minute while visible, and after any
+   * 401 from the Data API.
+   */
+  const quietPeriod = () => new Promise<void>((resolve) => setTimeout(resolve, 600));
+  const signedOutHere = () =>
+    waitFor(() => {
+      expect(state().isAuthenticated).toBe(false);
+      expect(state().transactions).toHaveLength(0);
+      expect(state().wallets.map((w) => w.id)).not.toContain(WALLET);
+    });
+  const stillSignedIn = () => {
+    expect(state().isAuthenticated).toBe(true);
+    expect(wallet()?.balance).toBe(WALLET_OPENING);
+    expect(fake.state.signOuts).toEqual([]);
+  };
+
+  let restoreVisibility: (() => void) | null = null;
+  function setVisibility(value: 'visible' | 'hidden') {
+    Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => value });
+    restoreVisibility = () => {
+      delete (document as unknown as Record<string, unknown>).visibilityState;
+    };
+  }
+  /** Past the 10 s gap that stops focus and visibility from re-asking back to back. */
+  function laterThanTheLastCheck() {
+    const realNow = Date.now.bind(Date);
+    vi.spyOn(Date, 'now').mockImplementation(() => realNow() + 31_000);
+  }
+  afterEach(() => {
+    restoreVisibility?.();
+    restoreVisibility = null;
+    vi.restoreAllMocks();
+  });
+
+  it('clears the device when it becomes visible after its session was revoked', async () => {
+    fake.state.userError = new AuthSessionMissingError();
+    laterThanTheLastCheck();
+    setVisibility('visible');
+    document.dispatchEvent(new Event('visibilitychange'));
+    await signedOutHere();
+    // supabase-js signed the session out itself; the provider only cleared up.
+    await quietPeriod();
+    expect(fake.state.signOuts).toEqual([]);
+  });
+
+  it('clears the device when the window regains focus', async () => {
+    fake.state.userError = new AuthSessionMissingError();
+    laterThanTheLastCheck();
+    window.dispatchEvent(new Event('focus'));
+    await signedOutHere();
+  });
+
+  it('clears the device when it comes back online', async () => {
+    fake.state.userError = new AuthSessionMissingError();
+    window.dispatchEvent(new Event('online'));
+    await signedOutHere();
+  });
+
+  it('clears the device when the realtime channel resubscribes', async () => {
+    fake.state.userError = new AuthSessionMissingError();
+    fake.state.channelStatus!('CHANNEL_ERROR');
+    fake.state.channelStatus!('SUBSCRIBED');
+    await signedOutHere();
+  });
+
+  it('checks once a minute while the app stays open and visible', async () => {
+    // A phone left open on the desk fires no wake event at all.
+    cleanup();
+    const intervals = vi.spyOn(globalThis, 'setInterval');
+    await mountSignedIn();
+    const tick = intervals.mock.calls.find(([, ms]) => ms === 60_000)?.[0] as (() => void) | undefined;
+    expect(tick).toBeTypeOf('function');
+
+    setVisibility('hidden');
+    const before = fake.state.getUserCalls;
+    tick!();
+    await quietPeriod();
+    expect(fake.state.getUserCalls).toBe(before); // a hidden tab waits for its wake event
+
+    fake.state.userError = new AuthSessionMissingError();
+    setVisibility('visible');
+    tick!();
+    await signedOutHere();
+  });
+
+  it('clears a device reopened after its session was revoked', async () => {
+    // A PWA cold start: the stored session still looks valid to getSession().
+    cleanup();
+    fake.state.userError = new AuthSessionMissingError();
+    render(
+      <FinanceProvider>
+        <Probe />
+      </FinanceProvider>
+    );
+    await waitFor(() => expect(fake.state.getUserCalls).toBeGreaterThan(0));
+    await quietPeriod();
+    expect(state().isAuthenticated).toBe(false);
+    expect(state().wallets.map((w) => w.id)).not.toContain(WALLET);
+  });
+
+  it('signs out locally when the server no longer knows the user', async () => {
+    // Not a missing session, so supabase-js keeps it: the provider must act.
+    fake.state.userError = new AuthApiError('User from sub claim in JWT does not exist', 403, 'user_not_found');
+    window.dispatchEvent(new Event('online'));
+    await signedOutHere();
+    expect(fake.state.signOuts).toEqual(['local']);
+  });
+
+  it('checks the session after a 401 from the Data API, and signs out if it is gone', async () => {
+    fake.state.failures.set('wallets:select', { message: 'JWT expired', code: 'PGRST303', status: 401 });
+    fake.state.userError = new AuthSessionMissingError();
+    const before = fake.state.getUserCalls;
+    await actions().refreshFromCloud();
+    await signedOutHere();
+    expect(fake.state.getUserCalls).toBe(before + 1);
+  });
+
+  it('stays signed in after a 401 when the auth server still honours the session', async () => {
+    // A token that expired in transit: getUser() refreshes it and succeeds.
+    // Signing out here would wipe the device on a race, not a revocation.
+    fake.state.failures.set('rpc:list_my_sessions', { message: 'JWT expired', code: 'PGRST303', status: 401 });
+    const before = fake.state.getUserCalls;
+    await actions().listMySessions();
+    await quietPeriod();
+    expect(fake.state.getUserCalls).toBe(before + 1);
+    stillSignedIn();
+  });
+
+  it.each([
+    ['offline', () => new AuthRetryableFetchError('Failed to fetch', 0)],
+    ['a 5xx from the auth server', () => new AuthRetryableFetchError('Service Unavailable', 503)],
+    ['rate-limited', () => new AuthApiError('Request rate limit reached', 429, 'over_request_rate_limit')],
+  ])('keeps the session when the check cannot get an answer (%s)', async (_label, makeError) => {
+    fake.state.userError = makeError();
+    const before = fake.state.getUserCalls;
+    window.dispatchEvent(new Event('online'));
+    await waitFor(() => expect(fake.state.getUserCalls).toBe(before + 1));
+    await quietPeriod();
+    stillSignedIn();
+  });
+
+  it('asks once for wake events in quick succession', async () => {
+    laterThanTheLastCheck();
+    setVisibility('visible');
+    const before = fake.state.getUserCalls;
+    document.dispatchEvent(new Event('visibilitychange'));
+    window.dispatchEvent(new Event('focus')); // joins the check in flight
+    await waitFor(() => expect(fake.state.getUserCalls).toBe(before + 1));
+    await quietPeriod();
+
+    // That check has finished; one this recent answers for the next focus too.
+    window.dispatchEvent(new Event('focus'));
+    await quietPeriod();
+    expect(fake.state.getUserCalls).toBe(before + 1);
+    stillSignedIn();
+  });
+
+  it('stops checking once signed out', async () => {
+    await actions().signOut();
+    await waitFor(() => expect(state().isAuthenticated).toBe(false));
+    const before = fake.state.getUserCalls;
+    window.dispatchEvent(new Event('online'));
+    window.dispatchEvent(new Event('focus'));
+    await quietPeriod();
+    expect(fake.state.getUserCalls).toBe(before);
   });
 });

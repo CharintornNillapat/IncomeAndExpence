@@ -12,7 +12,8 @@ import {
   TransactionType,
   Preset,
 } from '../types';
-import { supabase, isSupabaseConfigured } from '../lib/supabase';
+import { isAuthApiError, isAuthSessionMissingError } from '@supabase/supabase-js';
+import { supabase, isSupabaseConfigured, onDataApiUnauthorized } from '../lib/supabase';
 import {
   TransactionSchema,
   WalletSchema,
@@ -326,6 +327,29 @@ function importOverpaymentMessage(debtName: string, remaining: number): string {
 function isUnknownOutcomeError(err: { code?: string } | null): boolean {
   return !!err && !err.code;
 }
+
+// ADR 0024 (amended): whether `auth.getUser()` failed because the auth server
+// no longer honours this session - revoked by "sign out other devices", the
+// user deleted, the refresh token gone - as opposed to not being able to ask:
+// offline and 5xx are `AuthRetryableFetchError`, and 429 is excluded, so none
+// of them ever signs anyone out.
+function isSessionRejectedError(error: unknown): boolean {
+  if (isAuthSessionMissingError(error)) return true;
+  if (!isAuthApiError(error)) return false;
+  return (
+    error.status === 401 ||
+    error.status === 403 ||
+    error.code === 'refresh_token_not_found' ||
+    error.code === 'refresh_token_already_used'
+  );
+}
+
+// Focus and visibility often fire together, and focus fires on every switch
+// back to the window; a check this recent answers for them.
+const SESSION_CHECK_MIN_GAP_MS = 10_000;
+// How often a visible, signed-in app re-asks with no wake event at all - a
+// phone left open on the desk.
+const SESSION_CHECK_INTERVAL_MS = 60_000;
 
 // True only when the RPC itself is absent, i.e. the migration has not been
 // applied yet. Deliberately narrow: any other database error must surface and
@@ -1044,6 +1068,64 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     };
   }, [loadSupabaseData, resetToGuestState]);
 
+  // Signs THIS device out, or every device with `everywhere`. supabase-js
+  // defaults to the global scope, so the local one is passed explicitly: a
+  // plain "Sign out" must not end the user's other sessions (ADR 0024).
+  // The device is cleared either way, even if the network call fails - the
+  // library drops its own session locally regardless, and a shared device is
+  // the case this exists for.
+  const signOut = useCallback(async (options?: { everywhere?: boolean }) => {
+    if (isSupabaseConfigured) {
+      const { error } = await supabase.auth.signOut({ scope: options?.everywhere ? 'global' : 'local' });
+      if (error) console.error('[Sign Out Failed]', error);
+    }
+    resetToGuestState();
+  }, [resetToGuestState]);
+
+  // ADR 0024 (amended): asks the auth server whether this session still
+  // exists. "Sign out other devices" revokes the other sessions' refresh
+  // tokens, but their access tokens are JWTs that PostgREST and Realtime keep
+  // accepting until they expire - up to an hour - and supabase-js notices only
+  // at its next refresh. `getUser()` is the call that checks the session
+  // itself (GoTrue answers `session_not_found`).
+  //   - A rejected session signs this device out and clears it. On
+  //     `session_not_found` supabase-js has already dropped the session and
+  //     emitted SIGNED_OUT, so the reset has run and the epoch says so; any
+  //     other rejection (`user_not_found`, a dead refresh token) is signed
+  //     out here.
+  //   - No answer (offline, 5xx, 429) keeps the session. Wiping a device's
+  //     ledger because the network blinked would be worse than a late eviction.
+  // One check at a time; `throttle` lets the chatty triggers skip a check
+  // made within the last `SESSION_CHECK_MIN_GAP_MS`.
+  const sessionCheckRef = useRef<Promise<void> | null>(null);
+  const lastSessionCheckAtRef = useRef(0);
+  const verifySession = useCallback((options?: { throttle?: boolean }): Promise<void> => {
+    if (sessionCheckRef.current) return sessionCheckRef.current;
+    if (options?.throttle && Date.now() - lastSessionCheckAtRef.current < SESSION_CHECK_MIN_GAP_MS) {
+      return Promise.resolve();
+    }
+    lastSessionCheckAtRef.current = Date.now();
+    const epoch = authEpochRef.current;
+    const check = (async () => {
+      try {
+        const { error } = await supabase.auth.getUser();
+        if (!error || authEpochRef.current !== epoch) return;
+        if (!isSessionRejectedError(error)) {
+          console.warn('[Session Check] no answer from the auth server; keeping the session', error);
+          return;
+        }
+        console.warn('[Session Check] this session was revoked; signing this device out', error);
+        await signOut();
+      } catch (err) {
+        console.warn('[Session Check] failed; keeping the session', err);
+      }
+    })().finally(() => {
+      sessionCheckRef.current = null;
+    });
+    sessionCheckRef.current = check;
+    return check;
+  }, [signOut]);
+
   // Real-time Subscriptions across all tables for Cross-Device Sync (PC <-> Phone)
   //
   // T17 (ADR 0003) hardening of what was previously an unfiltered,
@@ -1081,6 +1163,11 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
   //     are not replayed on reconnect; the only way to see them is to read.
   // There is no offline write queue: a write attempted offline still fails and
   // rolls back. These triggers only re-read.
+  //
+  // The same triggers - plus window `focus`, a once-a-minute tick while
+  // visible, the effect's own mount (a PWA reopened after being revoked) and
+  // any 401 from the Data API - also run `verifySession`, so a device signed
+  // out from another one clears itself within a minute instead of an hour.
   useEffect(() => {
     if (!isAuthenticated || !currentUser.id) return;
 
@@ -1118,47 +1205,48 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
         if (channelDropped) {
           channelDropped = false;
           scheduleReload();
+          void verifySession();
         }
       } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
         channelDropped = true;
       }
     });
 
-    const handleOnline = () => scheduleReload();
+    const handleOnline = () => {
+      scheduleReload();
+      void verifySession();
+    };
     const handleVisible = () => {
       if (document.visibilityState !== 'visible') return;
+      void verifySession({ throttle: true });
       if (Date.now() - lastCloudLoadAtRef.current >= CLOUD_STALE_AFTER_MS) scheduleReload();
     };
+    const handleFocus = () => void verifySession({ throttle: true });
     window.addEventListener('online', handleOnline);
     document.addEventListener('visibilitychange', handleVisible);
+    window.addEventListener('focus', handleFocus);
+    const sessionTimer = setInterval(() => {
+      if (document.visibilityState === 'visible') void verifySession();
+    }, SESSION_CHECK_INTERVAL_MS);
+    const stopUnauthorized = onDataApiUnauthorized(() => void verifySession());
+    void verifySession();
 
     return () => {
       if (reloadTimer) clearTimeout(reloadTimer);
       window.removeEventListener('online', handleOnline);
       document.removeEventListener('visibilitychange', handleVisible);
+      window.removeEventListener('focus', handleFocus);
+      clearInterval(sessionTimer);
+      stopUnauthorized();
       supabase.removeChannel(channel);
     };
-  }, [isAuthenticated, currentUser.id]);
+  }, [isAuthenticated, currentUser.id, verifySession]);
 
   const refreshFromCloud = useCallback(async () => {
     if (currentUser.id) {
       await loadSupabaseData(currentUser.id);
     }
   }, [currentUser.id, loadSupabaseData]);
-
-  // Signs THIS device out, or every device with `everywhere`. supabase-js
-  // defaults to the global scope, so the local one is passed explicitly: a
-  // plain "Sign out" must not end the user's other sessions (ADR 0024).
-  // The device is cleared either way, even if the network call fails - the
-  // library drops its own session locally regardless, and a shared device is
-  // the case this exists for.
-  const signOut = useCallback(async (options?: { everywhere?: boolean }) => {
-    if (isSupabaseConfigured) {
-      const { error } = await supabase.auth.signOut({ scope: options?.everywhere ? 'global' : 'local' });
-      if (error) console.error('[Sign Out Failed]', error);
-    }
-    resetToGuestState();
-  }, [resetToGuestState]);
 
   // ADR 0024: the signed-in user's real sessions, from `auth.sessions`.
   // `sessions: null` means the list is unavailable - signed out, or a project
@@ -1186,8 +1274,9 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
   }, [isAuthenticated]);
 
   // Revokes every session except this one - the supported GoTrue operation.
-  // Those devices find out on their next token refresh and clear themselves
-  // through the SIGNED_OUT handler. There is no per-device revoke: that would
+  // Those devices find out at their next `verifySession` (a wake, focus,
+  // reconnect or the one-minute tick) or token refresh, whichever is first,
+  // and clear themselves through the SIGNED_OUT handler. There is no per-device revoke: that would
   // mean writing to the `auth` schema, which Supabase does not support.
   const signOutOtherDevices = useCallback(async (): Promise<MutationResult> => {
     if (!isAuthenticated) return { success: false, error: 'Sign in to manage your devices' };

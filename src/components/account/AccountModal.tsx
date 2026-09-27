@@ -319,7 +319,7 @@ const SessionsSection: React.FC = () => {
         description={
           confirming === 'everywhere'
             ? 'Every device, including this one, will be signed out, and this browser will be cleared of your account\'s data and templates.'
-            : 'Every other device will be signed out the next time it refreshes its session. This device stays signed in.'
+            : 'Every other device will be signed out and cleared within a minute while the app is on its screen, or as soon as it is next opened. This device stays signed in.'
         }
         confirmText={confirming === 'everywhere' ? 'Sign out everywhere' : 'Sign out others'}
         isDestructive

@@ -808,3 +808,16 @@ Same method as Phases 43–51: built `044b862` (the pre-phase HEAD) in a scratch
 | Vitest (`unit/`) | 11 | 222 | 222 | ~19 s |
 
 **Stability note:** the Playwright gate was clean at 357/357 on the first attempt with no retries; Phase 44's `wallets.spec.ts` webkit flake has now not reproduced across eight consecutive phases. The unit wall clock rose ~10 s -> ~19 s, and it is the tests: the sign-out tests wait 400 ms for the batched writer so a leak has had time to land, and the account-modal tests render framer-motion dialogs in jsdom.
+
+## Phase 52 follow-up (T181, revoked-session eviction) — bundle delta against Phase 52's recorded figures
+
+Built on the working tree after `npm run build`; the "before" column is Phase 52's table above, not a fresh rebuild (the change is additive to two modules). Gzip is `zlib` level 9.
+
+| Chunk | Phase 52 | T181 | Delta |
+|---|---|---|---|
+| entry `index-*.js` | 176,314 B / 49,104 B gzip | 177,660 B / 49,572 B gzip | +1,346 B / +468 B |
+| `AccountModal-*.js` (lazy) | 12,893 / 3,780 | 12,946 / 3,812 | +53 B (confirmation copy) |
+| **all JS, summed** | 1,363,654 B | 1,365,069 B | +1,415 B |
+| chunk count | 35 | 35 | 0 |
+
+**Test-suite size:** unit **222 -> 243 tests in 12 files** (~27 s; the new harness tests' 600 ms quiet periods are most of the growth). Playwright unchanged at 357 runs.

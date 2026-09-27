@@ -4,6 +4,22 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
+## Phase 52 follow-up - a device signed out elsewhere evicts itself: T181 (2026-09-27, commit pending)
+
+**Changed**
+- `src/context/FinanceContext.tsx` - `verifySession` (`auth.getUser()`, one at a time, a 10 s gap for focus/visibility) and `isSessionRejectedError`; the realtime effect runs it on `online`, visible, resubscribe, `focus`, its own mount, a 60 s tick while visible and `onDataApiUnauthorized`; `signOut` moved above that effect (no change to it).
+- `src/lib/supabase.ts` - the client's `global.fetch` reports `/rest/v1/` 401s through `onDataApiUnauthorized`.
+- `src/components/account/AccountModal.tsx` - the "sign out others" confirmation no longer promises eviction "the next time it refreshes its session".
+- `unit/authenticated-ledger.test.tsx` - fake `auth.getUser` (mirrors auth-js removing a `session_not_found` session), 401-status failures, `mountSignedIn()` extracted; 14 tests. `unit/supabase-client.test.ts` (new) - 7 tests over the real client.
+- ADR `0024` amended; `CLAUDE.md` (accounts section, reconnection bullet, unit suite size, two Do-NOT lines).
+
+**Surprises**
+- **The server was never the problem.** Revocation works and was visible in the auth log within seconds; the hour-long window is the access token's lifetime, which nothing on the client was shortening.
+- **postgrest-js retries a 503 with backoff**, which timed out the first version of the wrapper's "ignores a 5xx" case; it uses a 500.
+- **Two tests passed without the code they named** (the epoch check, the throttle) until controls exposed them; both were tightened, not dropped.
+
+**Gate:** lint clean; unit 243/243; Playwright 357/357 (7.6 m, `--workers=4`); build: entry 176,314 -> 177,660 B.
+
 ## Phase 52 - Security hardening, real sessions, mobile ergonomics, and ledger completeness (F5, F7, F8): T166-T180 (2026-09-28, commits `72da04c`...`c8bab97`)
 
 **Changed**

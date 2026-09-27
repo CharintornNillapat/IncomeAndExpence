@@ -1081,6 +1081,21 @@ Approved explicitly by the user, planned and approved before any code was writte
 - **One negative control was redone** because the first attempt produced malformed TypeScript that the dev server still served — the tests failed, but possibly for the wrong reason.
 - **No flakes.** Phase 44's `wallets.spec.ts` webkit flake has now not reproduced across three consecutive phases; still watched rather than closed.
 
+## Phase 52 follow-up - a device signed out elsewhere evicts itself: T181 (2026-09-27)
+
+Reported by the user from a desktop + phone test: "Sign out other devices" left the phone signed in and working. Diagnosed before any edit - the auth log showed the server revoking correctly; the gap was an access token that stays valid for up to an hour with nothing on the client asking. ADR `0024` amended rather than a new ADR: it is that ADR's sessions decision, finished. No migration.
+
+| # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
+|---|---|---|---|---|---|---|---|---|---|---|
+| T181 | `verifySession` (`auth.getUser()`) on every reconnection trigger, `focus`, mount, a 60 s visible tick and any Data API 401; `onDataApiUnauthorized` fetch wrapper; rejection signs out locally, no answer keeps the session; confirmation copy; ADR `0024` amendment; `CLAUDE.md` | `src/context/FinanceContext.tsx`, `src/lib/supabase.ts`, `src/components/account/AccountModal.tsx`, `unit/authenticated-ledger.test.tsx`, `unit/supabase-client.test.ts` (new), ADR `0024`, `CLAUDE.md` | High | Med | 2h | done | - | pending | lint clean; unit **243/243** (harness 3 runs, stable); Playwright **357/357**, 7.6 m, no spec edited; 13 of 14 new harness tests red first | entry +1,346 B / +468 B gzip |
+
+**Notes on execution:**
+- **Diagnosis first.** auth-js 2.116 source: `getUser()` hits `/user`, GoTrue answers `session_not_found` for a revoked session, and the library then drops the session and emits `SIGNED_OUT` itself. `signOut({scope:'local'})` tolerates a 401/403/404 from `/logout`. The auth log: `/logout` 204, then a refresh with the revoked token refused (`Refresh Token Not Found`) 25 s later; refreshes ~59 minutes apart put the token lifetime at an hour.
+- **Deviation from the request, on purpose:** a Data API 401 triggers a session check, not an immediate sign-out - a token can expire in transit, and signing out then would wipe the device's ledger on a race. The check signs out in one round trip when the session really is gone. Pinned both ways.
+- **One addition beyond the named triggers:** a 60 s tick while visible, because a phone left open on the desk fires no wake event, which is the reported scenario. Plus a check on mount, for a PWA reopened after revocation.
+- **Controls:** 12, each failing only its own test(s). The first pass found the epoch check unpinned (removing it failed nothing); an assertion that supabase-js's own sign-out is not repeated now pins it. The first "burst" test passed without the throttle - three events in one tick are deduped by the in-flight check alone - so it was rewritten to space the events.
+- **Not exercised against a real second device.** The CI + deploy and a desktop/phone re-test remain.
+
 ## Phase 52 - Security hardening, real sessions, mobile ergonomics, and ledger completeness (F5, F7, F8): T166-T180 (2026-09-28)
 
 Planned in plan mode and approved by the user before any code was written; four decisions were the user's (signed ADJUSTMENT with the 3 bad production rows reported not repaired; warn-and-export at sign-in, never merge; templates cleared on sign-out; lazy `supabase-js` deferred to Phase 53). Per `README.md:28`, ADR `0024` was written before any code and committed alone.
