@@ -4,6 +4,69 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
+## Phase 51 - Atomic server-side ledger writes (Supabase RPCs) and reconnection reconciliation: T154-T165 (2026-09-27, commits pending backfill)
+
+**Changed**
+- `docs/audit/decisions/0023-atomic-server-ledger-writes.md` (new) - written before any code and committed alone. Carries the dropped function's full definition, md5-verified against the live database.
+- `supabase/migrations/20260927_ledger_rpcs.sql` (new) - `record_transaction`, `set_transaction_deleted`, `import_transactions`; private helpers `_ledger_apply_effect` (the one SQL implementation of the ledger arithmetic), `_ledger_source_sign`, `_ledger_row_state`, `_ledger_import_state`; drops `create_ledger_transaction`. **Applied to `Income-Expense-db`** (migration row `20260927003804 ledger_rpcs`).
+- `supabase/tests/20260927_ledger_rpcs.probe.sql` (new, new directory) - the migration plus 15 assertion groups inside `BEGIN … ROLLBACK`.
+- `src/context/FinanceContext.tsx` - `addTransaction` (non-TRANSFER), `setTransactionDeleted` and `commitBulkImport` call the RPCs and adopt the committed balances (`adoptLedgerState`); an error without a SQLSTATE is an unknown outcome that re-reads; a server `DEBT_OVERPAYMENT` rolls back, re-reads and returns the client's own message; the legacy paths remain as the missing-function fallback. Reconnection reconciliation (`online`, visible-after-30 s via `lastCloudLoadAtRef`, channel re-`SUBSCRIBED`) folded into the realtime effect.
+- `src/views/TransactionsView.tsx` - one import key per preview, passed to `commitBulkImport`; two comments that described the Phase 50 insert-then-compensate path as the only path.
+- `unit/authenticated-ledger.test.tsx` - RPC router, a JS stand-in for the three RPCs, a lost-response switch, `landed()`, `quietPeriod`; **8 -> 31 tests**.
+- `CLAUDE.md` - the ledger RPC rules, the probe workflow, the recorded drift, the import key, reconnection, the harness additions, four Do-NOT lines.
+
+**Why**
+ADR `0022` deferred two of the post-Phase-49 review's findings here. **F3:** every signed-in ledger write except a transfer sent the server an *absolute* balance computed from the client's own copy of the wallet, so two devices spending at once each wrote their own total and one expense vanished from the balance. **F4:** the insert never looked its idempotency key up, so a retry after a lost response either failed on the unique index or wrote twice. `transfer_funds` had solved both for transfers in Phase 21; this phase gives every other ledger write the same shape. Relative server writes make the server right; a device that slept or lost its socket still shows what it last read, so the phase also makes it go and look.
+
+**Day 0 (read-only inspection, not a commit):** the live schema did not match the repo. An RPC, `create_ledger_transaction`, existed in the database with no migration and no caller, granted to `authenticated`, enforcing an overdraft block (contradicting ADR `0014`) and flooring overpayments (contradicting ADR `0016`). A second, non-partial idempotency index sat beside the repo's partial one. `transfer_funds` matched the repo byte for byte. The user chose to drop the function and leave both indexes.
+
+**Metric delta**
+Entry `index-*.js` **165,449 -> 168,856 B (+3,407)**, `TransactionsView-*.js` +64 B; the other 31 chunks and the CSS byte-identical. All JS 1,353,419 -> 1,356,890 B (+3,471). Unit suite **134 -> 157** in 6 files, ~3.1 s -> ~9.8 s; Playwright unchanged at **321 runs**. Full table in `baseline-metrics.md`.
+
+**Verification**
+`npm run lint` clean on both tsconfigs. `npm run test:unit` **157/157**, 9.6-10.2 s across three timed runs, and 8 further consecutive runs green. `npx playwright test --workers=4` **321/321 passed, 7.2 m**, first attempt, no retries, no spec edited. `npm run clean && npm run build` 5.1 s, 0 chunk-size warnings. `csv.spec.ts` + `csv-classify.spec.ts` also ran 9/9 on chromium immediately after T159.
+
+**Database verification**
+- **Before apply:** the probe ran against the live schema with the migration inside its transaction - `PHASE 51 PROBE OK` on the first run. Two controls: a deliberately false `ASSERT` raises `P0004` on that server (`plpgsql.check_asserts` is on, so the probe's assertions are live), and afterwards the old function still existed, none of the new ones had leaked and no probe row or user remained.
+- **Apply:** paused for the user's explicit go-ahead, then `apply_migration`.
+- **After apply:** the md5 of each of the 7 deployed function bodies equals the md5 of the same body in the repo file, so the text sent to `apply_migration` cannot have drifted from what is committed. Grants as specified (helpers: owner only; RPCs: `authenticated` and `service_role`, not `anon`). The probe re-ran against the *deployed* functions - OK - and left nothing behind.
+- **Security advisors:** the three new RPCs appear only under lint 0029 (signed-in users can execute a `SECURITY DEFINER` function), which is their purpose; each checks ownership through `auth.uid()`. None is anon-executable and none has a mutable `search_path`.
+
+**Negative controls (every fix went red first)**
+
+| Test | On unfixed code |
+|---|---|
+| F3 - record: a ฿200 expense lands on the server's 7,777 | **failed at 4800**, the legacy absolute write |
+| F3 - delete: reversal lands on the server's 9,000 | **failed at 5000** |
+| F3 - import: a ฿100 row lands on the server's 7,777 | **failed at 4900** (`walletsRef` + delta) |
+| F4 - record / import: a retry after a lost response replays | failed (the legacy insert succeeded on the first attempt) |
+| Server-side overpayment against a stale local debt | failed (`success: true`) |
+| One RPC, no table writes (record, delete, import) | failed (no RPC call) |
+| Reconnect: `online`, stale-visible, channel re-subscribe | failed (5000 where the server held 7777; no status callback) |
+| Targeted: only the unknown-outcome re-read removed | failed **exactly** that one test |
+| Targeted: only the visibility staleness gate removed | failed **exactly** the fresh-load absence test |
+
+**Surprises**
+
+- **The database had a ledger writer the repo did not know about.** `create_ledger_transaction` was well written - row locks, id-ordered, relative updates, replay - and wrong on two accepted decisions. Nothing called it, but anything signed in could. It was found only because the plan inspected the live schema before designing, rather than trusting the migrations directory.
+- **Production's idempotency guarantee is stricter than the repo says.** The untracked non-partial index means a key on a soft-deleted row blocks reuse, so `transfer_funds`' own comment ("a compensated transfer does not block a genuine retry") has been false in production. The new RPCs replay on any row with the key, which behaves identically under either index set - that is why the choice was made, not only because it is the better semantics.
+- **Two of the first red results were red for the wrong reason.** The delete tests fired in the same tick as the add that created their row, before the ref-mirror effect had run, so the unfixed code failed with `Transaction not found` - and the rejected-RPC test *passed* on the unfixed code for the same reason. A failure is only evidence if it is the predicted failure; `landed()` and an "RPC was asked" assertion made them honest before any fix was written.
+- **The probe could not use `psql`.** The machine has neither `psql` nor a database password, so the probe ran through the Supabase MCP `execute_sql`, with the migration pasted in place of the `\ir` line. That is exactly why the after-apply check compares body hashes: it is what proves the pasted text and the committed file are the same.
+- **Removing the scratch worktree did not follow its `node_modules` junction**, but it left the junction behind; it was unlinked with `rmdir` (which removes the link, not the target) and the real `node_modules` checked intact. Worth knowing before the next bundle measurement.
+- **The unit suite tripled in wall clock**, and it is honest time: proving "no reload happened" needs a window longer than the 400 ms debounce, and six tests each wait for one.
+
+**Deliberately not done**
+
+- **F7 (opening-balance ledger rows) and F8 (DEBT_REPAYMENT rows in CSV)** - Phase 52, by the user's decision; both change what a ledger visibly contains.
+- **F5, the Security surface, mobile navigation, lazy `vendor-supabase`** - Phase 52, unchanged. The advisors also report two pre-existing items for that surface: `handle_new_user` is anon-executable with a mutable `search_path`, and leaked-password protection is off.
+- **The legacy absolute-write paths were not removed.** They are the fallback for an unmigrated project, by the user's decision; Phase 50's F1/F2/F6 tests guard them.
+- **`transfer_funds` was not changed,** and `record_transaction` refuses TRANSFER, so there is still exactly one transfer implementation.
+- **No offline write queue and no sync-status UI.** A write attempted offline still fails and rolls back; the reconnect triggers only re-read.
+- **The `unique_violation` handlers are untested.** One session cannot race itself; the probe says so in its header.
+- **Neither idempotency index was touched.** Adding the non-partial one to a repo-only project could fail on keys a compensated transfer left behind; dropping it from production would weaken a guarantee.
+
+---
+
 ## Phase 50 - Signed-in write-path integrity, and a harness that can see it: T145-T153 (2026-09-26, commits `51f71da`...`af49581`)
 
 **Changed**

@@ -737,3 +737,37 @@ That last condition is new, and the first measurement is why. The first rebuild 
 | Vitest (`unit/`) | 6 | 134 | 134 | ~3.1 s |
 
 **Stability note:** the Playwright gate was clean at 321/321 on the first attempt with no retries; Phase 44's `wallets.spec.ts` webkit flake has now not reproduced across six consecutive phases and stays on the watch list. **The unit suite had one flake, in this phase's own harness** - the fixture test failed 1 run in 12 when timed back to back, because `beforeEach` did not wait for the cloud load to finish. Fixed in `3d9399a` (0 failures in 30 runs). The unit wall clock rose 1.67 s -> ~3.1 s, mostly the second jsdom file's environment setup.
+
+## Phase 51 (atomic server-side ledger writes) — bundle delta, measured against a rebuild of HEAD
+
+Same method as Phases 43–50: built `2b60b51` (the pre-phase HEAD) in a scratch worktree and `main` in the repo, in turn. Same machine, same `node_modules` (junctioned), **same `.env`** (copied into the worktree, per Phase 50's finding). The HEAD column reproduced Phase 50's recorded figures exactly — entry 165,449 B, all JS 1,353,419 B, precache 1,553.32 KiB — so the method is still sound.
+
+| Chunk | HEAD (`2b60b51`) | Phase 51 | Delta |
+|---|---|---|---|
+| entry `index-*.js` | 165.45 kB / 46.54 kB gzip | **168.86 kB / 47.38 kB gzip** | **+3,407 B / +0.85 kB** |
+| `TransactionsView-*.js` (lazy) | 50.56 kB / 15.96 kB gzip | 50.62 kB / 15.99 kB gzip | +64 B |
+| `vendor-icons-*.js` (**modulepreloaded**) | 30.75 kB | 30.75 kB | **0** |
+| `vendor-supabase-*.js` (**modulepreloaded**) | 226.44 kB | 226.44 kB | 0 |
+| `vendor-math-*.js` | 375.73 kB | 375.73 kB | 0 |
+| **all JS, summed** | 1,353,419 B | 1,356,890 B | **+3,471 B** |
+| `index-*.css` | 77.63 kB | 77.63 kB | 0 |
+| chunk count | 33 | 33 | 0 |
+| PWA precache | 42 entries, 1,553.32 KiB | 42 entries, 1,556.71 KiB | +3.39 KiB |
+| build time | — | 5.1 s | after `clean`, warm (a first cold build took 47 s wall clock and is not representative) |
+
+Gzip figures in this table are `zlib` level 9 from a measurement script, not Vite's printed figures, so they differ from earlier tables by a few tens of bytes; the deltas are computed the same way on both sides.
+
+**Findings**
+
+- **The entry cost is `FinanceContext` and nothing else, again.** Three RPC branches, the unknown-outcome handling, `adoptLedgerState` and the reconnect listeners all live in the entry chunk: +3,407 B raw, +0.85 kB gzip. No new dependency; `vendor-supabase` is byte-identical because `.rpc()` was already in use for `transfer_funds`.
+- **`TransactionsView` +64 B** is the per-preview import key (`importKeyRef` and one `generateIdempotencyKey` call). The helper was already in the entry chunk, so nothing moved.
+- **31 of 33 JS chunks and the CSS are byte-identical.** The SQL migration and probe do not reach the bundle.
+
+**Test-suite size:** Playwright unchanged at **321 runs** (107 tests, 22 spec files — none added, edited or removed). Unit suite **134 -> 157 tests in 6 files** (`authenticated-ledger` 8 -> 31). Plus one SQL probe (15 assertion groups) that runs against the database, not in either suite.
+
+| Suite | Files | Tests | Runs | Wall clock |
+|---|---|---|---|---|
+| Playwright (chromium/firefox/webkit) | 22 | 107 | 321 | 7.2 m |
+| Vitest (`unit/`) | 6 | 157 | 157 | ~9.8 s |
+
+**Stability note:** the Playwright gate was clean at 321/321 on the first attempt with no retries; Phase 44's `wallets.spec.ts` webkit flake has now not reproduced across seven consecutive phases. The unit suite ran 11 times at its final shape without a failure. **The unit wall clock rose ~3.1 s -> ~9.8 s**, and that is the tests, not the environment: the six reconnect tests each spend a 400 ms debounce, and the three that prove an absence each add a 600 ms quiet period (~3.9 s together); the RPC tests' re-reads and `landed()` waits make up most of the rest.
