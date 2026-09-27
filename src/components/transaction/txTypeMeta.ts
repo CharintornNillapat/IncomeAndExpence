@@ -68,3 +68,24 @@ export const TX_TYPE_META: Record<TransactionType, TxTypeMeta> = {
     sign: MINUS,
   },
 };
+
+/** An upward ADJUSTMENT: the adjustment label with the credit treatment. */
+const ADJUSTMENT_UP: TxTypeMeta = {
+  ...TX_TYPE_META.INCOME,
+  label: TX_TYPE_META.ADJUSTMENT.label,
+};
+
+/**
+ * ADR 0024: the metadata for one transaction. An ADJUSTMENT's amount is
+ * signed, so its direction - and with it the glyph, icon and tint - comes from
+ * the amount, not the type: `TX_TYPE_META.ADJUSTMENT` alone rendered every
+ * upward correction as a debit. Every other type's amount is always positive,
+ * so for them this is exactly `TX_TYPE_META[type]`.
+ *
+ * Callers pair it with `Math.abs(amount)`: the sign is carried by `.sign`, and
+ * `formatCurrencyAmount` renders a negative as `฿-1,000.00`.
+ */
+export function txTypeMetaFor(type: TransactionType, amount: number): TxTypeMeta {
+  if (type === 'ADJUSTMENT' && amount > 0) return ADJUSTMENT_UP;
+  return TX_TYPE_META[type];
+}

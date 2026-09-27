@@ -10,8 +10,13 @@ export function formatZodIssues(error: z.ZodError): string {
   return error.issues.map((i) => i.message).join('; ');
 }
 
+// ADR 0024: an ADJUSTMENT's amount is the signed correction (negative lowers
+// the balance), so the sign rule lives in a refinement below, keyed on type;
+// here only the magnitude is bounded.
 export const TransactionSchema = z.object({
-  amount: z.number().positive('Amount must be greater than 0').max(999999999.99, 'Amount too large'),
+  amount: z
+    .number()
+    .refine((n) => Math.abs(n) <= 999999999.99, 'Amount too large'),
   rawInput: z.string().optional(),
   type: z.enum(['INCOME', 'EXPENSE', 'TRANSFER', 'ADJUSTMENT', 'DEBT_REPAYMENT']),
   description: z.string().min(1, 'Description is required').max(255),
@@ -21,6 +26,14 @@ export const TransactionSchema = z.object({
   debtId: z.string().optional(),
   transactionDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be in YYYY-MM-DD format'),
   idempotencyKey: z.string().optional(),
+}).superRefine((data, ctx) => {
+  if (data.type === 'ADJUSTMENT' ? data.amount === 0 : !(data.amount > 0)) {
+    ctx.addIssue({
+      code: 'custom',
+      message: data.type === 'ADJUSTMENT' ? 'An adjustment must not be zero' : 'Amount must be greater than 0',
+      path: ['amount'],
+    });
+  }
 }).refine(
   (data) => {
     if (data.type === 'TRANSFER') {

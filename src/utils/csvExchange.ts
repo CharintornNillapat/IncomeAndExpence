@@ -109,9 +109,14 @@ export function parseAndValidateTransactionCsv(
             }
           }
 
-          // Validate Amount
+          // Validate Amount. An ADJUSTMENT is the signed correction (ADR 0024):
+          // any non-zero amount; every other type must be positive.
           const numAmount = parseFloat(rawAmount);
-          if (isNaN(numAmount) || numAmount <= 0) {
+          if (isNaN(numAmount)) {
+            errors.push('Amount must be a positive number');
+          } else if (parsedType === 'ADJUSTMENT') {
+            if (numAmount === 0) errors.push('An adjustment must not be zero');
+          } else if (numAmount <= 0) {
             errors.push('Amount must be a positive number');
           }
 

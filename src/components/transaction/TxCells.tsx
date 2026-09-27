@@ -1,7 +1,7 @@
 import React from 'react';
 import { TransactionType, Category } from '../../types';
 import { formatCurrencyAmount } from '../../utils/currency';
-import { TX_TYPE_META } from './txTypeMeta';
+import { TX_TYPE_META, txTypeMetaFor } from './txTypeMeta';
 import { CategoryChip, CategoryChipSize, ChipRounding } from '../ui/Badge';
 
 export type TxTypeIconVariant = 'full' | 'compact';
@@ -9,6 +9,8 @@ export type TxTypeIconSize = 'sm' | 'md';
 
 interface TxTypeIconProps {
   type: TransactionType;
+  /** The row's amount. Only an ADJUSTMENT reads it: its direction, and so its icon, comes from the sign (ADR 0024). */
+  amount?: number;
   /** `full` (`TX_TYPE_META.icon`, the 4-way icon set) or `compact` (`.compactIcon`, the binary Trending{Up,Down} set). */
   variant?: TxTypeIconVariant;
   /** `sm` = fixed `w-7 h-7` box (matches `WalletPopupModal`'s activity list); `md` = `w-7 h-7 sm:w-8 sm:h-8` (matches `TransactionTableRow`'s single icon spanning both breakpoints). */
@@ -32,8 +34,8 @@ const ICON_BOX_SIZE_CLASS: Record<TxTypeIconSize, string> = {
  * `TX_TYPE_META`'s `RefreshCw`/`Landmark`) and stays local - adopting this
  * component there would render the wrong icon, not just a different one.
  */
-export const TxTypeIcon: React.FC<TxTypeIconProps> = ({ type, variant = 'full', size = 'md', tintOverride, className = '' }) => {
-  const meta = TX_TYPE_META[type];
+export const TxTypeIcon: React.FC<TxTypeIconProps> = ({ type, amount, variant = 'full', size = 'md', tintOverride, className = '' }) => {
+  const meta = amount === undefined ? TX_TYPE_META[type] : txTypeMetaFor(type, amount);
   const Icon = variant === 'compact' ? meta.compactIcon : meta.icon;
   const tint = tintOverride ?? meta.tint;
 
@@ -91,8 +93,8 @@ export const TxAmount: React.FC<TxAmountProps> = ({ amount, type, colorScheme = 
 
   return (
     <span className={`font-mono font-bold ${color} ${className}`.trim()}>
-      {TX_TYPE_META[type].sign}
-      {formatCurrencyAmount(amount)}
+      {txTypeMetaFor(type, amount).sign}
+      {formatCurrencyAmount(Math.abs(amount))}
     </span>
   );
 };

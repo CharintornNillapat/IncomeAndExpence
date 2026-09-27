@@ -40,7 +40,7 @@ export const TransactionTableRow: React.FC<TransactionTableRowProps> = React.mem
       {/* Description & Progressive Disclosure for Mobile */}
       <td className="py-3 px-3 sm:px-4 max-w-[160px] sm:max-w-[260px] md:max-w-none">
         <div className="flex items-center gap-2 sm:gap-2.5">
-          <TxTypeIcon type={tx.type} size="md" />
+          <TxTypeIcon type={tx.type} amount={tx.amount} size="md" />
           <div className="min-w-0 flex-1">
             <p className={`font-semibold truncate text-xs sm:text-sm ${tx.isDeleted ? 'line-through text-stone-500 dark:text-stone-500' : 'text-stone-900 dark:text-stone-100'}`}>
               {tx.description}

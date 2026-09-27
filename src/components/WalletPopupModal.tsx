@@ -126,8 +126,11 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
       return;
     }
 
+    // The signed difference (ADR 0024). This wrote `Math.abs(diff)`, and every
+    // ledger path treats ADJUSTMENT as `balance + amount` - so lowering a
+    // balance raised it by the same amount.
     await addTransaction({
-      amount: Math.abs(diff),
+      amount: diff,
       description: `Manual balance adjustment (${diff >= 0 ? '+' : '-'}${formatCurrencyAmount(Math.abs(diff))})`,
       walletId: target.id,
       type: 'ADJUSTMENT',
@@ -437,7 +440,7 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
                       className="p-3 rounded-xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900/80 flex items-center justify-between text-xs gap-3"
                     >
                       <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
-                        <TxTypeIcon type={tx.type} variant="compact" size="sm" tintOverride={tint} />
+                        <TxTypeIcon type={tx.type} amount={tx.amount} variant="compact" size="sm" tintOverride={tint} />
                         <div className="min-w-0">
                           <p className="font-semibold text-stone-900 dark:text-stone-100 truncate">{tx.description}</p>
                           <span className="text-[10px] text-stone-400 dark:text-stone-500 font-mono">{tx.transactionDate}</span>

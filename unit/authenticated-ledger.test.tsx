@@ -1231,3 +1231,21 @@ describe('reconnection reconciliation (ADR 0023)', () => {
     expect(walletReads()).toHaveLength(0);
   });
 });
+
+describe('a signed ADJUSTMENT, signed in (ADR 0024)', () => {
+  beforeEach(() => installLedgerRpcs());
+
+  it('sends the negative amount to record_transaction, and the balance goes down', async () => {
+    const result = await actions().addTransaction({
+      amount: -1000,
+      type: 'ADJUSTMENT',
+      walletId: WALLET,
+      description: 'Manual balance adjustment (-฿1,000.00)',
+      transactionDate: TODAY,
+    });
+    expect(result.success).toBe(true);
+    expect(writes('rpc:record_transaction', 'rpc')[0].payload).toMatchObject({ p_type: 'ADJUSTMENT', p_amount: -1000 });
+    expect(serverWallet(WALLET).balance).toBe(WALLET_OPENING - 1000);
+    await waitFor(() => expect(wallet()?.balance).toBe(WALLET_OPENING - 1000));
+  });
+});

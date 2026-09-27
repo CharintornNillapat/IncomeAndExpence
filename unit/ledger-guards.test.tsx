@@ -360,3 +360,54 @@ describe('ledger arithmetic stays cent-precise', () => {
     expect(wallet(WALLET_SAVINGS).balance).toBe(SAVINGS_OPENING);
   });
 });
+
+describe('a signed ADJUSTMENT (ADR 0024)', () => {
+  /*
+   * WalletPopupModal's balance editor used to write `Math.abs(diff)` as an
+   * ADJUSTMENT, and every ledger path treats ADJUSTMENT as a credit - so
+   * lowering a wallet raised it. An ADJUSTMENT's amount is now the signed
+   * correction; every other type stays strictly positive.
+   */
+  const adjust = (amount: number, overrides: RepayOverrides = {}) =>
+    actions().addTransaction({
+      amount,
+      type: 'ADJUSTMENT',
+      walletId: WALLET_SAVINGS,
+      description: 'Manual balance adjustment',
+      transactionDate: TODAY,
+      ...overrides,
+    });
+
+  it('lowers the balance for a negative amount', async () => {
+    const result = await call(() => adjust(-1000));
+    expect(result.success).toBe(true);
+    expect(wallet(WALLET_SAVINGS).balance).toBe(SAVINGS_OPENING - 1000);
+    expect(state().transactions[0]).toMatchObject({ type: 'ADJUSTMENT', amount: -1000 });
+  });
+
+  it('still raises it for a positive amount', async () => {
+    expect((await call(() => adjust(250))).success).toBe(true);
+    expect(wallet(WALLET_SAVINGS).balance).toBe(SAVINGS_OPENING + 250);
+  });
+
+  it('gives a downward adjustment back on delete, and takes it again on restore', async () => {
+    const result = await call(() => adjust(-1000));
+    await call(() => actions().softDeleteTransaction(result.txId!));
+    expect(wallet(WALLET_SAVINGS).balance).toBe(SAVINGS_OPENING);
+    await call(() => actions().restoreTransaction(result.txId!));
+    expect(wallet(WALLET_SAVINGS).balance).toBe(SAVINGS_OPENING - 1000);
+  });
+
+  it('rejects a zero adjustment, moving nothing', async () => {
+    const result = await call(() => adjust(0));
+    expect(result.success).toBe(false);
+    expect(wallet(WALLET_SAVINGS).balance).toBe(SAVINGS_OPENING);
+    expect(state().transactions).toHaveLength(0);
+  });
+
+  it('keeps every other type strictly positive', async () => {
+    const result = await call(() => adjust(-50, { type: 'EXPENSE' }));
+    expect(result.success).toBe(false);
+    expect(wallet(WALLET_SAVINGS).balance).toBe(SAVINGS_OPENING);
+  });
+});
