@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Cloud, CloudOff, UserCheck, LogIn, LogOut } from 'lucide-react';
-import { useFinanceState, useFinanceActions } from '../../context/FinanceContext';
+import { Cloud, CloudOff, UserCheck, LogIn, UserCog } from 'lucide-react';
+import { useFinanceState } from '../../context/FinanceContext';
 import { APP_CURRENCY, APP_CURRENCY_SYMBOL } from '../../utils/currency';
 import { AnimatedCounter } from '../AnimatedCounter';
 
@@ -51,11 +51,12 @@ export const NavbarSyncBadge: React.FC<NavbarSyncBadgeProps> = ({ onOpenAuth }) 
 
 interface NavbarBalanceAndAuthProps {
   onOpenAuth: () => void;
+  /** Opens Account & Security (ADR 0024), which now holds sign-out. */
+  onOpenAccount: () => void;
 }
 
-export const NavbarBalanceAndAuth: React.FC<NavbarBalanceAndAuthProps> = ({ onOpenAuth }) => {
+export const NavbarBalanceAndAuth: React.FC<NavbarBalanceAndAuthProps> = ({ onOpenAuth, onOpenAccount }) => {
   const { totalNetWorth, isAuthenticated, currentUser } = useFinanceState();
-  const { signOut } = useFinanceActions();
 
   return (
     <>
@@ -76,35 +77,48 @@ export const NavbarBalanceAndAuth: React.FC<NavbarBalanceAndAuthProps> = ({ onOp
         </span>
       </div>
 
-      {/* Auth status action with consistent 44px min touch target */}
+      {/* Auth status action with consistent 44px min touch target. Signed in,
+          the name pill opens Account & Security, which holds sign-out behind a
+          confirmation (ADR 0024: sign-out clears this device). */}
       {isAuthenticated ? (
-        <div className="min-h-[44px] flex items-center gap-1.5 bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 py-1.5 px-2.5 rounded-xl text-xs">
+        <motion.button
+          whileTap={{ scale: 0.95 }}
+          type="button"
+          id="navbar-account-btn"
+          onClick={onOpenAccount}
+          title="Account & Security"
+          aria-label="Account & Security"
+          className="min-h-[44px] inline-flex items-center gap-1.5 bg-stone-50 dark:bg-stone-800 hover:bg-stone-100 dark:hover:bg-stone-700 border border-stone-200 dark:border-stone-700 py-1.5 px-2.5 rounded-xl text-xs transition-colors cursor-pointer"
+        >
           <UserCheck className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
           <span className="max-w-[80px] sm:max-w-[120px] truncate font-semibold text-stone-700 dark:text-stone-200 hidden xs:inline">
             {currentUser.name || currentUser.email}
           </span>
-          <motion.button
-            whileTap={{ scale: 0.9 }}
-            type="button"
-            id="navbar-signout-btn"
-            onClick={() => signOut()}
-            title="Sign Out"
-            className="min-h-[32px] min-w-[32px] inline-flex items-center justify-center p-1 rounded-lg text-stone-400 hover:text-rose-600 hover:bg-stone-200 dark:hover:bg-stone-700 transition-colors cursor-pointer"
-          >
-            <LogOut className="w-3.5 h-3.5" />
-          </motion.button>
-        </div>
-      ) : (
-        <motion.button
-          whileTap={{ scale: 0.95 }}
-          type="button"
-          id="navbar-signin-btn"
-          onClick={onOpenAuth}
-          className="min-h-[44px] inline-flex items-center justify-center gap-1.5 bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-200 px-3 sm:px-3.5 py-2 rounded-xl text-xs font-semibold border border-stone-200 dark:border-stone-700 transition-all cursor-pointer"
-        >
-          <LogIn className="w-3.5 h-3.5 text-stone-600 dark:text-stone-400 shrink-0" />
-          <span>Sign In</span>
         </motion.button>
+      ) : (
+        <>
+          <motion.button
+            whileTap={{ scale: 0.95 }}
+            type="button"
+            id="navbar-signin-btn"
+            onClick={onOpenAuth}
+            className="min-h-[44px] inline-flex items-center justify-center gap-1.5 bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-200 px-3 sm:px-3.5 py-2 rounded-xl text-xs font-semibold border border-stone-200 dark:border-stone-700 transition-all cursor-pointer"
+          >
+            <LogIn className="w-3.5 h-3.5 text-stone-600 dark:text-stone-400 shrink-0" />
+            <span>Sign In</span>
+          </motion.button>
+          <motion.button
+            whileTap={{ scale: 0.95 }}
+            type="button"
+            id="navbar-account-btn"
+            onClick={onOpenAccount}
+            title="Account & Security"
+            aria-label="Account & Security"
+            className="hidden sm:inline-flex min-h-[44px] min-w-[44px] items-center justify-center p-2 rounded-xl bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 border border-stone-200 dark:border-stone-700 text-stone-700 dark:text-stone-300 transition-colors cursor-pointer"
+          >
+            <UserCog className="w-4 h-4" />
+          </motion.button>
+        </>
       )}
     </>
   );

@@ -35,6 +35,21 @@ export function daysAgoIsoDate(days: number): string {
   return toIsoDate(d);
 }
 
+/**
+ * An instant (a full ISO timestamp such as a session's last refresh) as local
+ * `YYYY-MM-DD HH:MM`. The timestamp is an instant, so parsing it is correct -
+ * unlike a bare calendar-day string - and the output uses local components,
+ * so it matches the day every other date in the app shows. `null` for an
+ * unparseable value.
+ */
+export function formatLocalDateTime(instant: string): string | null {
+  const d = new Date(instant);
+  if (isNaN(d.getTime())) return null;
+  const hours = String(d.getHours()).padStart(2, '0');
+  const minutes = String(d.getMinutes()).padStart(2, '0');
+  return `${toIsoDate(d)} ${hours}:${minutes}`;
+}
+
 export interface DayInfo {
   dayName: string;
   fullDate: string;

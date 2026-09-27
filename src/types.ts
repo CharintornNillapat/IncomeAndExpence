@@ -9,18 +9,22 @@ export interface User {
   createdAt: string;
 }
 
-export interface SessionDevice {
+/**
+ * One of the signed-in user's real sessions, from `auth.sessions` via the
+ * `list_my_sessions` RPC (ADR 0024). Replaces the old `SessionDevice`, which
+ * was built in the browser with a hardcoded IP and could not revoke anything.
+ */
+export interface AuthSession {
   id: string;
-  userId: string;
-  deviceFingerprint: string;
-  deviceName: string;
-  ipAddress: string;
-  userAgent: string;
-  isTrusted: boolean;
-  isCurrent: boolean;
-  lastActiveAt: string;
-  revokedAt?: string | null;
   createdAt: string;
+  /** Last token refresh, falling back to the session's own timestamps. */
+  lastActive: string;
+  /** When the session expires, if the project sets a limit. */
+  notAfter: string | null;
+  userAgent: string | null;
+  ip: string | null;
+  /** True for the session this device is using. */
+  isCurrent: boolean;
 }
 
 export type WalletType = 'CASH' | 'BANK_ACCOUNT' | 'CREDIT_CARD' | 'E_WALLET' | 'INVESTMENT' | 'SAVINGS';

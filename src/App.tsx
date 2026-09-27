@@ -16,7 +16,6 @@ const TABS_ORDER: ActiveTab[] = [
   'debts',
   'diary',
   'categories',
-  'security',
 ];
 
 // Lazy-loaded route views for optimized bundle size & code splitting
@@ -26,7 +25,6 @@ const WalletsView = lazy(() => import('./views/WalletsView').then(m => ({ defaul
 const DebtsView = lazy(() => import('./views/DebtsView').then(m => ({ default: m.DebtsView })));
 const DiaryView = lazy(() => import('./views/DiaryView').then(m => ({ default: m.DiaryView })));
 const CategoriesView = lazy(() => import('./views/CategoriesView').then(m => ({ default: m.CategoriesView })));
-const SecurityView = lazy(() => import('./views/SecurityView').then(m => ({ default: m.SecurityView })));
 
 // ADR 0010: deferred shell modals. Each is unreachable until its trigger is
 // clicked, and (Quick Add, Transfer) uniquely reaches `vendor-math` - lazy
@@ -37,6 +35,8 @@ const SecurityView = lazy(() => import('./views/SecurityView').then(m => ({ defa
 const QuickAddModal = lazy(() => import('./components/QuickAddModal').then(m => ({ default: m.QuickAddModal })));
 const TransferFundsModal = lazy(() => import('./components/wallet/TransferFundsModal').then(m => ({ default: m.TransferFundsModal })));
 const AddWalletModal = lazy(() => import('./components/wallet/AddWalletModal').then(m => ({ default: m.AddWalletModal })));
+// ADR 0024: what used to be the Security tab. Same deferred, latched mounting.
+const AccountModal = lazy(() => import('./components/account/AccountModal').then(m => ({ default: m.AccountModal })));
 
 // Page slide animation variants for smooth forward/backward transitions
 const pageVariants = {
@@ -84,6 +84,8 @@ const MainApp: React.FC = () => {
   const [hasOpenedQuickAdd, setHasOpenedQuickAdd] = useState<boolean>(false);
   const [hasOpenedTransfer, setHasOpenedTransfer] = useState<boolean>(false);
   const [hasOpenedAddWallet, setHasOpenedAddWallet] = useState<boolean>(false);
+  const [isAccountOpen, setIsAccountOpen] = useState<boolean>(false);
+  const [hasOpenedAccount, setHasOpenedAccount] = useState<boolean>(false);
   // T40: seeds TransactionsView's wallet filter when the wallet popup's
   // Activity preview hands off via "View all". Cleared by TransactionsView
   // itself right after it reads the value, so a later, unrelated navigation
@@ -167,6 +169,11 @@ const MainApp: React.FC = () => {
     setIsAddWalletModalOpen(true);
   }, []);
   const handleCloseAddWallet = useCallback(() => setIsAddWalletModalOpen(false), []);
+  const handleOpenAccount = useCallback(() => {
+    setHasOpenedAccount(true);
+    setIsAccountOpen(true);
+  }, []);
+  const handleCloseAccount = useCallback(() => setIsAccountOpen(false), []);
 
   const handleOpenWalletTransactions = useCallback(
     (walletId: string) => {
@@ -230,8 +237,6 @@ const MainApp: React.FC = () => {
         return <DiaryView />;
       case 'categories':
         return <CategoriesView />;
-      case 'security':
-        return <SecurityView />;
       default:
         return (
           <DashboardView
@@ -252,6 +257,7 @@ const MainApp: React.FC = () => {
         setActiveTab={handleTabChange}
         onOpenQuickAdd={handleOpenQuickAdd}
         onOpenAuth={handleOpenAuth}
+        onOpenAccount={handleOpenAccount}
       />
 
       {/* Main Content Area with Touch Swipe Gestures, Framer Slide Animations & Suspense */}
@@ -327,6 +333,11 @@ const MainApp: React.FC = () => {
       {hasOpenedAddWallet && (
         <Suspense fallback={null}>
           <AddWalletModal isOpen={isAddWalletModalOpen} onClose={handleCloseAddWallet} />
+        </Suspense>
+      )}
+      {hasOpenedAccount && (
+        <Suspense fallback={null}>
+          <AccountModal isOpen={isAccountOpen} onClose={handleCloseAccount} onRequestSignIn={handleOpenAuth} />
         </Suspense>
       )}
     </div>

@@ -6,8 +6,7 @@ import {
   Wallet as WalletIcon,
   TrendingDown,
   BookHeart,
-  Tags,
-  ShieldCheck
+  Tags
 } from 'lucide-react';
 import { ActiveTab } from './Navbar';
 
@@ -30,7 +29,6 @@ const NAV_ITEMS: NavItemConfig[] = [
   { id: 'debts', label: 'Debts', shortLabel: 'Debts', icon: TrendingDown },
   { id: 'diary', label: 'Diary', shortLabel: 'Diary', icon: BookHeart },
   { id: 'categories', label: 'Categories', shortLabel: 'Categories', icon: Tags },
-  { id: 'security', label: 'Security', shortLabel: 'Security', icon: ShieldCheck },
 ];
 
 export const MobileBottomNav: React.FC<MobileBottomNavProps> = React.memo(({
@@ -42,7 +40,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = React.memo(({
       aria-label="Mobile Navigation"
       className="sm:hidden fixed bottom-0 left-0 right-0 w-full z-40 bg-white/95 dark:bg-stone-950/95 backdrop-blur-md border-t border-stone-200 dark:border-stone-800 shadow-[0_-4px_20px_rgba(0,0,0,0.06)] pb-[env(safe-area-inset-bottom,0.5rem)]"
     >
-      <div className="grid grid-cols-7 items-center justify-between px-1 py-1.5 max-w-lg mx-auto">
+      <div className="grid grid-cols-6 items-center justify-between px-1 py-1.5 max-w-lg mx-auto">
         {NAV_ITEMS.map((item) => {
           const Icon = item.icon;
           const isActive = activeTab === item.id;

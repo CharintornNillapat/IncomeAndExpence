@@ -1,6 +1,8 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { render, cleanup, waitFor } from '@testing-library/react';
+import { useState } from 'react';
+import { render, cleanup, waitFor, screen, fireEvent } from '@testing-library/react';
+import { AccountModal } from '../src/components/account/AccountModal';
 import {
   FinanceProvider,
   useFinanceState,
@@ -305,9 +307,14 @@ function seed() {
 
 let latest: { state: FinanceStateContextType; actions: FinanceActionsContextType } | null = null;
 
+/** Renders extra UI inside the one provider, for component tests (ADR 0024). */
+let showUi: ((node: React.ReactNode) => void) | null = null;
+
 function Probe() {
   latest = { state: useFinanceState(), actions: useFinanceActions() };
-  return null;
+  const [ui, setUi] = useState<React.ReactNode>(null);
+  showUi = setUi;
+  return <>{ui}</>;
 }
 
 const state = () => latest!.state;
@@ -1471,5 +1478,73 @@ describe('a cloud load still in flight at sign-out (F5, ADR 0024)', () => {
     expect(state().isAuthenticated).toBe(false);
     expect(state().transactions).toHaveLength(0);
     expect(state().wallets.map((w) => w.id)).not.toContain(WALLET);
+  });
+});
+
+describe('real sessions (ADR 0024)', () => {
+  /*
+   * The Security tab's device list was built in the browser, with a hardcoded
+   * IP, and "Revoke" reached nothing. Sessions now come from auth.sessions via
+   * list_my_sessions, and revocation is the supported signOut scope.
+   */
+  beforeEach(() => installLedgerRpcs());
+
+  it('lists the account\'s sessions, the current one marked', async () => {
+    const result = await actions().listMySessions();
+    expect(result.sessions).toHaveLength(2);
+    expect(result.sessions!.find((s) => s.isCurrent)).toMatchObject({ id: 'session-this', ip: '198.51.100.4' });
+  });
+
+  it('reports the list as unavailable - not empty - without the migration', async () => {
+    fake.state.rpcs.delete('list_my_sessions');
+    expect(await actions().listMySessions()).toEqual({ sessions: null, error: undefined });
+  });
+
+  it('signs out the other devices with the "others" scope, and stays signed in here', async () => {
+    expect((await actions().signOutOtherDevices()).success).toBe(true);
+    expect(fake.state.signOuts).toEqual(['others']);
+    expect(state().isAuthenticated).toBe(true);
+    expect(wallet()?.balance).toBe(WALLET_OPENING);
+  });
+});
+
+describe('the Account & Security modal (ADR 0024)', () => {
+  beforeEach(() => installLedgerRpcs());
+
+  const open = () => showUi!(<AccountModal isOpen onClose={() => showUi!(null)} onRequestSignIn={() => {}} />);
+
+  it('shows each real session with a device label, and marks this one', async () => {
+    open();
+    expect(await screen.findByText('Chrome on Windows')).toBeTruthy();
+    expect(screen.getByText('Safari on iPhone')).toBeTruthy();
+    expect(screen.getByText('This device')).toBeTruthy();
+    expect(screen.getByText(/203\.0\.113\.7/)).toBeTruthy();
+    // The fabricated "127.0.0.1 (Current Client)" is gone for good.
+    expect(screen.queryByText(/127\.0\.0\.1/)).toBeNull();
+  });
+
+  it('signs out the other devices only after a confirmation', async () => {
+    open();
+    fireEvent.click(await screen.findByText('Sign out other devices'));
+    expect(fake.state.signOuts).toEqual([]);
+    fireEvent.click(await screen.findByText('Sign out others'));
+    await waitFor(() => expect(fake.state.signOuts).toEqual(['others']));
+    expect(await screen.findByText('Your other devices have been signed out.')).toBeTruthy();
+  });
+
+  it('signs this device out behind a confirmation that warns about templates', async () => {
+    open();
+    fireEvent.click(await screen.findByText('Sign out'));
+    expect(await screen.findByText(/templates saved on this device/)).toBeTruthy();
+    expect(fake.state.signOuts).toEqual([]);
+
+    const dialogs = screen.getAllByRole('dialog');
+    const confirm = dialogs[dialogs.length - 1].querySelectorAll('button');
+    fireEvent.click(Array.from(confirm).find((b) => b.textContent === 'Sign out')!);
+
+    await waitFor(() => {
+      expect(fake.state.signOuts).toEqual(['local']);
+      expect(state().isAuthenticated).toBe(false);
+    });
   });
 });

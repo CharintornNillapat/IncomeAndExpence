@@ -7,7 +7,6 @@ import {
   TrendingDown,
   BookHeart,
   Tags,
-  ShieldCheck,
   PlusCircle,
   Sun,
   Moon,
@@ -16,13 +15,16 @@ import {
 import { NavbarSyncBadge, NavbarBalanceAndAuth } from './navbar/NavbarLedgerStatus';
 import { useTheme } from '../hooks/useTheme';
 
-export type ActiveTab = 'dashboard' | 'transactions' | 'wallets' | 'debts' | 'diary' | 'categories' | 'security';
+// 'security' left the tab bar in ADR 0024: it is the Account & Security modal
+// now, opened from the navbar's account button and the mobile More sheet.
+export type ActiveTab = 'dashboard' | 'transactions' | 'wallets' | 'debts' | 'diary' | 'categories';
 
 interface NavbarProps {
   activeTab: ActiveTab;
   setActiveTab: (tab: ActiveTab) => void;
   onOpenQuickAdd: () => void;
   onOpenAuth: () => void;
+  onOpenAccount: () => void;
 }
 
 interface NavItemConfig {
@@ -38,7 +40,6 @@ const NAV_ITEMS: NavItemConfig[] = [
   { id: 'debts', label: 'Debt Payoff', icon: TrendingDown },
   { id: 'diary', label: 'Holistic Diary', icon: BookHeart },
   { id: 'categories', label: 'Categories', icon: Tags },
-  { id: 'security', label: 'Security & Sessions', icon: ShieldCheck },
 ];
 
 /**
@@ -48,10 +49,10 @@ const NAV_ITEMS: NavItemConfig[] = [
  * - only `NavbarSyncBadge`/`NavbarBalanceAndAuth` re-render. `React.memo` is
  * meaningful now that this component has no context subscription of its own
  * (see CLAUDE.md's re-render rule): its only remaining inputs are `activeTab`
- * and the three callback props, all of which App.tsx already keeps stable
+ * and the four callback props, all of which App.tsx already keeps stable
  * except when `activeTab` itself changes.
  */
-export const Navbar: React.FC<NavbarProps> = React.memo(({ activeTab, setActiveTab, onOpenQuickAdd, onOpenAuth }) => {
+export const Navbar: React.FC<NavbarProps> = React.memo(({ activeTab, setActiveTab, onOpenQuickAdd, onOpenAuth, onOpenAccount }) => {
   const { theme, cycleTheme } = useTheme();
 
   const renderThemeIcon = () => {
@@ -136,7 +137,7 @@ export const Navbar: React.FC<NavbarProps> = React.memo(({ activeTab, setActiveT
               <span className="sr-only">Toggle theme</span>
             </motion.button>
 
-            <NavbarBalanceAndAuth onOpenAuth={onOpenAuth} />
+            <NavbarBalanceAndAuth onOpenAuth={onOpenAuth} onOpenAccount={onOpenAccount} />
 
             {/* Quick Action Button with consistent height & styling */}
             <motion.button

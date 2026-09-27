@@ -151,3 +151,15 @@ Nothing was removed in this phase. `#repay-amount-math`, `#repay-wallet-select`,
 - `transaction.spec.ts:119` — `span` filtered by `Calculated:` text.
 - Heading text assertions (`/Wallets & Accounts/i`, `/Debts & Loans/i`, `/Holistic Mini Diary/i`, `/FinLife Tracker/i`) — Phase 25's `SectionHeader` must render identical `h2` text.
 - `date-boundary.spec.ts:31,34` — hardcoded seeded id `wallet-entity-wal-main-checking` and literal string `Created: 2026-09-18` (stable unless the seed data or date-formatting changes).
+
+## Added and retired in Phase 52 (ADR `0024`)
+
+**Retired:** `#nav-tab-security` / `[data-testid="nav-tab-security"]` and `#mobile-nav-tab-security` - Security left both tab bars and became the Account & Security modal. No spec ever referenced either. `#revoke-all-others-btn`, `#revoke-session-${id}` - the fabricated session list they acted on is gone. Every other `nav-tab-*` and `mobile-nav-tab-*` id is unchanged.
+
+| Selector | Notes | File |
+|---|---|---|
+| `#navbar-account-btn` | Opens Account & Security. Signed in: the name pill. Guest: an icon button beside Sign In (`sm` and up). | `src/components/navbar/NavbarLedgerStatus.tsx` |
+| `#navbar-signout-btn` | **Moved**, id kept: now inside the account modal, and opens a confirmation instead of signing out at once. | `src/components/account/AccountModal.tsx` |
+| `#account-modal`, `#account-modal-title`, `#account-modal-close-btn`, `#account-status-card`, `#account-signin-btn`, `#account-sync-btn` | The modal's panel and its fixed parts. `#account-signin-btn` is guest-only. | same |
+| `#account-sessions`, `#session-item-${id}`, `#account-sessions-unavailable`, `#account-signout-others-btn`, `#account-signout-everywhere-btn` | Signed-in only. Session ids are `auth.sessions` uuids. | same |
+| `#auth-guest-data-notice`, `#auth-guest-export-btn` | In `AuthModal` (sign-in and create-account modes) when the guest ledger has transactions. | `src/components/account/GuestDataNotice.tsx` |

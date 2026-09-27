@@ -1,7 +1,7 @@
 ﻿import React, { createContext, useContext, useState, useEffect, useMemo, useCallback, useRef, ReactNode } from 'react';
 import {
   User,
-  SessionDevice,
+  AuthSession,
   Wallet,
   Category,
   KeywordRule,
@@ -54,8 +54,6 @@ export interface FinanceStateContextType {
   currentUser: User;
   isAuthenticated: boolean;
   isSyncing: boolean;
-  sessions: SessionDevice[];
-  currentSession: SessionDevice | null;
 
   // Wallets
   wallets: Wallet[];
@@ -97,8 +95,10 @@ export interface FinanceStateContextType {
  */
 export interface FinanceActionsContextType {
   // Auth & Security
-  revokeSession: (sessionId: string) => void;
-  revokeAllOtherSessions: () => void;
+  /** The signed-in user's real sessions (ADR 0024); `sessions: null` when the list is unavailable. */
+  listMySessions: () => Promise<{ sessions: AuthSession[] | null; error?: string }>;
+  /** Revokes every session but this one (`signOut({ scope: 'others' })`). */
+  signOutOtherDevices: () => Promise<MutationResult>;
   /** Signs this device out (or every device with `everywhere`) and clears it of the account's data (F5, ADR 0024). */
   signOut: (options?: { everywhere?: boolean }) => Promise<void>;
 
@@ -336,71 +336,15 @@ function isMissingRpcError(err: { code?: string; message?: string } | null): boo
   return (err.message || '').toLowerCase().includes('could not find the function');
 }
 
-// Device detection helper for Active Authorized Sessions
-function detectCurrentDevice(): { deviceName: string; userAgent: string; deviceFingerprint: string; ipAddress: string } {
-  const ua = typeof navigator !== 'undefined' ? navigator.userAgent : 'Unknown Web Client';
-  let os = 'Unknown OS';
-  if (/Windows/i.test(ua)) os = 'Windows PC';
-  else if (/Macintosh|Mac OS X/i.test(ua)) os = 'macOS';
-  else if (/iPhone/i.test(ua)) os = 'iPhone (iOS)';
-  else if (/iPad/i.test(ua)) os = 'iPad (iPadOS)';
-  else if (/Android/i.test(ua)) os = 'Android Device';
-  else if (/Linux/i.test(ua)) os = 'Linux Workstation';
-
-  let browser = 'Web Browser';
-  if (/Chrome/i.test(ua) && !/Edg/i.test(ua)) browser = 'Chrome';
-  else if (/Safari/i.test(ua) && !/Chrome/i.test(ua)) browser = 'Safari';
-  else if (/Firefox/i.test(ua)) browser = 'Firefox';
-  else if (/Edg/i.test(ua)) browser = 'Microsoft Edge';
-
-  let deviceFingerprint = '';
-  try {
-    deviceFingerprint = localStorage.getItem('pf_device_fingerprint') || '';
-    if (!deviceFingerprint) {
-      deviceFingerprint = 'fp-' + Math.random().toString(36).substring(2, 10) + '-' + Date.now().toString(36);
-      localStorage.setItem('pf_device_fingerprint', deviceFingerprint);
-    }
-  } catch {
-    deviceFingerprint = 'fp-client-session';
-  }
-
-  return {
-    deviceName: `${browser} on ${os}`,
-    userAgent: ua,
-    deviceFingerprint,
-    ipAddress: '127.0.0.1 (Current Client)',
-  };
-}
-
-// Helper to initialize session list with current device guaranteed
-function initializeSessionList(userId: string): SessionDevice[] {
-  const saved = safeGetLocalStorage<SessionDevice[]>('pf_sessions', []);
-  const dev = detectCurrentDevice();
-  const currentId = `sess-${dev.deviceFingerprint}`;
-
-  const hasCurrent = saved.some((s) => s.id === currentId && !s.revokedAt);
-  if (hasCurrent) {
-    return saved.map((s) => ({
-      ...s,
-      isCurrent: s.id === currentId,
-      lastActiveAt: s.id === currentId ? new Date().toISOString() : s.lastActiveAt,
-    }));
-  }
-
-  const currentSess: SessionDevice = {
-    id: currentId,
-    userId: userId || 'usr-guest-01',
-    deviceFingerprint: dev.deviceFingerprint,
-    deviceName: dev.deviceName,
-    ipAddress: dev.ipAddress,
-    userAgent: dev.userAgent,
-    isTrusted: true,
-    isCurrent: true,
-    lastActiveAt: new Date().toISOString(),
-    createdAt: new Date().toISOString(),
-  };
-
-  return [currentSess, ...saved.filter((s) => s.id !== currentId)];
+// Row shape returned by `list_my_sessions` (ADR 0024).
+interface SessionRow {
+  id: string;
+  created_at: string;
+  last_active: string | null;
+  not_after: string | null;
+  user_agent: string | null;
+  ip: string | null;
+  is_current: boolean;
 }
 
 // Initial Default Seed Data
@@ -527,7 +471,6 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
   const [debts, setDebts] = useState<Debt[]>(() => safeGetLocalStorage('pf_debts', DEFAULT_STARTER_DEBTS));
   const [diaryEntries, setDiaryEntries] = useState<DiaryEntry[]>(() => safeGetLocalStorage('pf_diary', []));
 
-  const [sessions, setSessions] = useState<SessionDevice[]>(() => initializeSessionList(currentUser.id));
   const [showSoftDeleted, setShowSoftDeleted] = useState<boolean>(false);
 
   // Client-side Idempotency Guard (P0-5)
@@ -692,11 +635,17 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     if (didMountRef.current) scheduleStorageWrite('pf_user', currentUser);
   }, [currentUser, scheduleStorageWrite]);
   useEffect(() => {
-    if (didMountRef.current) scheduleStorageWrite('pf_sessions', sessions);
-  }, [sessions, scheduleStorageWrite]);
-
-  useEffect(() => {
     didMountRef.current = true;
+    // ADR 0024 retired the browser-built session list. Its two keys held a
+    // fabricated device record and a random fingerprint; nothing reads them
+    // any more, so an existing install sheds them once, here.
+    for (const retiredKey of ['pf_sessions', 'pf_device_fingerprint']) {
+      try {
+        localStorage.removeItem(retiredKey);
+      } catch {
+        // Storage unavailable: there is nothing to shed either.
+      }
+    }
   }, []);
 
   // Mandatory flush points: a PWA gets backgrounded aggressively on mobile, and
@@ -725,10 +674,6 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       .filter((w) => !w.isDeleted && !w.isArchived)
       .reduce((sum, w) => sum + Number(w.balance || 0), 0);
   }, [wallets]);
-
-  const currentSession = useMemo(() => {
-    return sessions.find((s) => s.isCurrent && !s.revokedAt) || null;
-  }, [sessions]);
 
   // `loadSupabaseData` and `seedInitialUserAccount` call each other. Routing the
   // back-edge through a ref breaks the dependency cycle so both can be memoised
@@ -813,7 +758,6 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     setTransactions([]);
     setDebts(DEFAULT_STARTER_DEBTS);
     setDiaryEntries([]);
-    setSessions(initializeSessionList(DEFAULT_USER.id));
 
     recentLocalWriteIds.current.clear();
     inFlightIdempotencyKeys.current.clear();
@@ -1216,18 +1160,44 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     resetToGuestState();
   }, [resetToGuestState]);
 
-  // Sessions handling
-  const revokeSession = useCallback((sessionId: string) => {
-    setSessions((prev) =>
-      prev.map((s) => (s.id === sessionId ? { ...s, revokedAt: new Date().toISOString() } : s))
-    );
-  }, []);
+  // ADR 0024: the signed-in user's real sessions, from `auth.sessions`.
+  // `sessions: null` means the list is unavailable - signed out, or a project
+  // without the Phase 52 migration - and the caller says so rather than
+  // showing an empty list that would read as "no other devices".
+  const listMySessions = useCallback(async (): Promise<{ sessions: AuthSession[] | null; error?: string }> => {
+    if (!isAuthenticated) return { sessions: null };
+    const { data, error } = await supabase.rpc('list_my_sessions');
+    if (error) {
+      if (!isMissingRpcError(error)) console.error('[List Sessions Failed]', error);
+      return { sessions: null, error: isMissingRpcError(error) ? undefined : error.message };
+    }
+    const rows = (data ?? []) as SessionRow[];
+    return {
+      sessions: rows.map((row) => ({
+        id: row.id,
+        createdAt: row.created_at,
+        lastActive: row.last_active ?? row.created_at,
+        notAfter: row.not_after,
+        userAgent: row.user_agent,
+        ip: row.ip,
+        isCurrent: row.is_current,
+      })),
+    };
+  }, [isAuthenticated]);
 
-  const revokeAllOtherSessions = useCallback(() => {
-    setSessions((prev) =>
-      prev.map((s) => (!s.isCurrent ? { ...s, revokedAt: new Date().toISOString() } : s))
-    );
-  }, []);
+  // Revokes every session except this one - the supported GoTrue operation.
+  // Those devices find out on their next token refresh and clear themselves
+  // through the SIGNED_OUT handler. There is no per-device revoke: that would
+  // mean writing to the `auth` schema, which Supabase does not support.
+  const signOutOtherDevices = useCallback(async (): Promise<MutationResult> => {
+    if (!isAuthenticated) return { success: false, error: 'Sign in to manage your devices' };
+    const { error } = await supabase.auth.signOut({ scope: 'others' });
+    if (error) {
+      console.error('[Sign Out Other Devices Failed]', error);
+      return { success: false, error: error.message || 'Could not sign out your other devices' };
+    }
+    return { success: true };
+  }, [isAuthenticated]);
 
   // Wallets CRUD
   const addWallet = useCallback(async (
@@ -3083,8 +3053,6 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       currentUser,
       isAuthenticated,
       isSyncing,
-      sessions,
-      currentSession,
       wallets,
       totalNetWorth,
       categories,
@@ -3099,8 +3067,6 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       currentUser,
       isAuthenticated,
       isSyncing,
-      sessions,
-      currentSession,
       wallets,
       totalNetWorth,
       categories,
@@ -3126,8 +3092,8 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
   // stays a provider-local helper instead of public API surface.
   const actionsValue = useMemo(
     () => ({
-      revokeSession,
-      revokeAllOtherSessions,
+      listMySessions,
+      signOutOtherDevices,
       signOut,
       addWallet,
       deleteWallet,
@@ -3153,8 +3119,8 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       refreshFromCloud,
     }),
     [
-      revokeSession,
-      revokeAllOtherSessions,
+      listMySessions,
+      signOutOtherDevices,
       signOut,
       addWallet,
       deleteWallet,
