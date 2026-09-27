@@ -94,6 +94,8 @@ The system monospace faces come before the Thai fonts, so digits stay monospaced
 
 ## Left open, deliberately
 
+**All three were closed in Phase 53b; see ADR `0026`.** Adjustments keep ADR `0024`'s direction (emerald `+` up, rose `−` down), DESIGN.md reserves cyan for transfers, and every amount now takes its colour from `txTypeMetaFor`. The rest of 53b's scope and both focus fixes shipped as planned. The original notes follow.
+
 - **ADJUSTMENT colour.** DESIGN.md says adjustments render in cyan with no sign. ADR `0024` gave them a direction, and `unit/tx-cells.test.tsx` pins that an upward ADJUSTMENT uses the income tint. `txTypeMeta` keeps ADR `0024`'s income/expense-by-direction treatment. `RecentTransactionsTable`'s own per-type scheme (it already diverged, see T49) maps ADJUSTMENT to `transfer`. This needs a decision, not a guess.
 - **Blur, motion, the hero's orbs and pulsing dot, `AnimatedCounter`, skeletons, the sync badge's states, touch targets and copy** were recoloured only. Phase 53b changes them.
 - **Two `<select>`s still have no focus indicator:** `WalletPopupModal`'s activity filter and `WalletTransferForm`'s source and destination. They are in 53b's contrast task (T195).

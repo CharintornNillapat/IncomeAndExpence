@@ -4,6 +4,51 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
+## Phase 53b - Antislop audit 001 remediation: static money, state-only motion, a sync status that can fail: T188-T198 (2026-09-28, commits pending)
+
+**Changed**
+- **Font.** `@fontsource-variable/jetbrains-mono` (new dependency). `src/index.css` declares one latin `@font-face` rather than importing the package's six subsets. `vite.config.ts` precaches `woff2` (`DISABLE_HMR` untouched).
+- **Amounts.**
+  - `src/components/ui/Money.tsx` (new). `src/components/AnimatedCounter.tsx` (deleted) at all six call sites.
+  - `transaction/txTypeMeta.ts` gains `text`. `TxCells.tsx`'s `TxAmount` drops its `colorScheme` presets.
+  - `RecentTransactionsTable` and `WalletPopupModal` drop their own colour maps.
+- **Sync status.** `src/context/FinanceContext.tsx` has `syncError`. `navbar/NavbarLedgerStatus.tsx` has the five-state badge and an online-status hook.
+- **Shell and views.**
+  - Shell: `Modal.tsx`, `App.tsx`, `ViewLoadingFallback.tsx` (rewritten), `Navbar.tsx`, `MobileBottomNav.tsx`, `AuthModal.tsx`.
+  - Dashboard: `TotalWealthHero`, `CashflowMetricsCards`, `WalletAccountsGrid`, `SpendingInsightsCard`.
+  - Views: `DashboardView`, `WalletsView`, `CategoriesView`, `DiaryView`, `TransactionsView`.
+  - Components: `WalletPopupModal`, `AddWalletForm`, `WalletTransferForm`, `SegmentedControl`, `TransactionForm`, `TransactionTableRow`, `SaveRuleChip`, `DiaryEntryCard`, `AccountModal`.
+  - Shared: `formStyles.ts`, `currency.ts`.
+- **Copy outside `src/`.** `index.html` and the manifest description drop "holistic". The Quick Add shortcut no longer promises transfers (ADR `0013`).
+- **Tests.**
+  - `unit/authenticated-ledger.test.tsx` gained 5 tests and `unit/tx-cells.test.tsx` gained 3: 243 -> 251.
+  - `tests/diary.spec.ts:15` and `tests/theme.spec.ts:55` changed their heading regex, the only spec edits in Phase 53.
+- **Docs.** `DESIGN.md` (cyan is for transfers; adjustments take their direction's colour), ADR `0026` (new), an ADR `0025` note, `test-selector-contract.md`, `CLAUDE.md`, and `anti-slop/audit-002-2026-09-28.md` (new).
+
+**Surprises**
+- **`Edit`'s `replace_all` trims a trailing space in the replacement.** `<motion.section variants={itemVariants} ` became `<sectionaria-label=`, and `tsc` caught it. Replace up to a token boundary instead.
+- **A negative control caught a vacuous test.** "reports a load that threw" asserted `not.toBeNull()` and passed against the old code, because the field was `undefined`. It now asserts a string. The other four failed as they should.
+- **Two `animate-fade-in` classes named a keyframe that does not exist.** Tailwind v4 emits nothing for them. Removed.
+- **The navbar tab row was 40 px below `sm`.** It only renders from `sm` up, so this was invisible, but it is now 44 px at every width.
+- **Re-measuring found 15 more small controls outside 001's table.**
+  - They were the debt, category and rule icon buttons, the Add Debt button, the show-deleted checkbox, and the shared inputs at 38-40 px.
+  - Five of the buttons had no accessible name beyond a `title`, or none at all.
+  - All were fixed in the same pass, and the re-measure found none left.
+- **The em dash sweep missed `.ts` string literals at first.** The two monthly-insight sentences in `spendingSummary.ts` were found by the audit-002 sweep, after the second E2E run.
+
+**Gate:**
+- Lint clean.
+- Unit **251/251**.
+- Playwright **357/357**, three full runs as `src/` changed (5.1 m, 4.9 m, 4.9 m). No retries. No spec edited beyond the two approved diary regexes.
+- `node scripts/wcag-tokens.mjs`: all pairs pass. The compiled CSS carries the same token values.
+- Playwright MCP, all six views as a guest at 390 px: no control under 44 px, no unnamed button, no overflow, no console errors.
+- The transfer modal at 1280 px in dark mode: solid scrim, `backdrop-filter: none`.
+- A cold Debts load shows the static skeleton (`role="status"`, no animation).
+- Keyboard focus on a transfer select shows the violet ring.
+- The hero balance renders ฿ with JetBrains Mono digits in Chromium, Firefox and WebKit.
+- Build: all JS -6,449 B, CSS -1,731 B, and one 40,404 B font added to the precache.
+- Audit 002: every approved finding PASS. Finding 6 remains the one FAIL, by your decision.
+
 ## Phase 53a - Semantic design tokens: the stone palette is retired: T182-T187 (2026-09-27, commits `a19b8ac`...`6b02a75`)
 
 **Changed**

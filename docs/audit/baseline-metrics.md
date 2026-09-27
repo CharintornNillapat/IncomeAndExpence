@@ -868,3 +868,29 @@ Built after `npm run clean`; gzip `zlib` level 9, same script.
 |---|---|---|---|---|
 | Playwright | 23 | 119 | 357 | 6.5 m |
 | Vitest (`unit/`) | 12 | 243 | 243 | ~49 s |
+
+## Phase 53b (antislop audit 001 remediation) — delta against Phase 53a
+
+Built with `npm run build`; gzip is `zlib` level 9, same script.
+
+| Chunk | Phase 53a | Phase 53b | Delta |
+|---|---|---|---|
+| entry `index-*.js` | 173,769 B / 49,057 B gzip | 174,297 B / 49,192 B gzip | +528 B / +135 B |
+| `vendor-motion-*.js` (modulepreloaded) | 136,712 / 45,216 | 129,389 / 42,453 | **-7,323 B** / -2,763 B |
+| `DashboardView-*.js` (lazy) | 42,504 / 10,605 | 41,385 / 10,149 | -1,119 B |
+| `TransactionsView-*.js` (lazy) | 26,411 / 7,857 | 26,770 / 7,914 | +359 B |
+| **all JS, summed** | 1,341,862 B | 1,335,413 B | **-6,449 B** |
+| `index-*.css` | 45,533 / 8,344 | 43,802 / 8,420 | -1,731 B |
+| `jetbrains-mono-latin-wght-normal-*.woff2` | - | 40,404 B | new, precached |
+| chunk count | 35 | 35 | 0 |
+| PWA precache | 44 entries, 1,510.64 KiB | 45 entries, 1,542.09 KiB | +31.45 KiB (the font, less the JS/CSS saved) |
+
+**Why:**
+- `vendor-motion` shrank because `whileHover`, `whileTap`, springs and the variant stagger left the app, so tree-shaking dropped the gesture and spring code they pulled in.
+- The entry grew by the sync badge's five states and the `syncError` plumbing, less `AnimatedCounter`.
+- The font is the phase's one real cost. It sits in the precache, not on any JS path, and `font-display: swap` means text never waits for it.
+
+| Suite | Files | Tests | Runs | Wall clock |
+|---|---|---|---|---|
+| Playwright | 23 | 119 | 357 | 4.9 m (final run of three, all green) |
+| Vitest (`unit/`) | 12 | 251 | 251 | ~50 s |

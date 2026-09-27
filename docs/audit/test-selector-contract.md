@@ -163,3 +163,18 @@ Nothing was removed in this phase. `#repay-amount-math`, `#repay-wallet-select`,
 | `#account-modal`, `#account-modal-title`, `#account-modal-close-btn`, `#account-status-card`, `#account-signin-btn`, `#account-sync-btn` | The modal's panel and its fixed parts. `#account-signin-btn` is guest-only. | same |
 | `#account-sessions`, `#session-item-${id}`, `#account-sessions-unavailable`, `#account-signout-others-btn`, `#account-signout-everywhere-btn` | Signed-in only. Session ids are `auth.sessions` uuids. | same |
 | `#auth-guest-data-notice`, `#auth-guest-export-btn` | In `AuthModal` (sign-in and create-account modes) when the guest ledger has transactions. | `src/components/account/GuestDataNotice.tsx` |
+
+## Added and changed in Phase 53b (ADR `0026`)
+
+| Selector | Notes | File |
+|---|---|---|
+| `#navbar-sync-status` (`role="status"`) | **New.** Wraps every signed-in sync state (Offline, Syncing, Sync failed, Synced). No spec references it: no spec signs in. In the Sync failed state it holds a retry button named "Sync failed. Try again". | `src/components/navbar/NavbarLedgerStatus.tsx` |
+| `#navbar-sync-badge-btn` | **Unchanged id**, guest only. Its text is now "Local" at every width (it was "Local Only (Click to Sync)" from `sm` up), and its `title` is "Sign in to sync across devices". Its hit box is 44 px. | same |
+| `#view-loading-fallback` | **Unchanged id.** Now `role="status"` with `aria-busy`, and a static per-view outline instead of a spinner. `gotoTab` still waits for it to detach. | `src/components/ViewLoadingFallback.tsx` |
+| `#diary-workout-checkbox` | **Unchanged id**, still a native checkbox. It is now a transparent 44×44 input over a drawn 16 px box. Playwright counts `opacity: 0` as visible, so `.check()` and `toBeChecked()` are unaffected. | `src/views/DiaryView.tsx` |
+| `#close-wallet-modal-btn` | **Unchanged id.** Gained the accessible name "Close wallet details". It deliberately does not reuse "Close modal", which `categories.spec.ts:108` queries by role. | `src/components/WalletPopupModal.tsx` |
+| `button[id^="tx-delete-btn-"]`, `button[id^="tx-restore-btn-"]` | **Unchanged ids.** Titles now read "Delete and reverse the wallet change" / "Restore transaction", and each is also the `aria-label`. No spec reads either title. | `src/components/TransactionTableRow.tsx` |
+
+**Heading text moved:** the diary's `h2` is "Daily Diary" (was "Holistic Mini Diary"). `diary.spec.ts:15` and `theme.spec.ts:55` changed their regex in the same commit, the only spec edits in Phase 53. The export filename `holistic_diary_export_*` is unchanged. The fragile-selector list above still names the old regex, as a record of what it was.
+
+**Money text is byte-identical.** `Money` renders `formatCurrencyAmount` output, so every `฿1,000.00` assertion is unaffected. A negative now reads `−฿1,000.00` (it read `฿-1,000.00` through `AnimatedCounter`); no spec asserts on a negative balance.

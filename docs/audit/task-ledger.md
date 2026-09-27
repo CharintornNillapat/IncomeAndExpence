@@ -1081,6 +1081,50 @@ Approved explicitly by the user, planned and approved before any code was writte
 - **One negative control was redone** because the first attempt produced malformed TypeScript that the dev server still served — the tests failed, but possibly for the wrong reason.
 - **No flakes.** Phase 44's `wallets.spec.ts` webkit flake has now not reproduced across three consecutive phases; still watched rather than closed.
 
+## Phase 53b - Antislop audit 001 remediation: static money, state-only motion, a sync status that can fail: T188-T198 (2026-09-28)
+
+Second half of Phase 53. The owner's decisions on 53a's open questions:
+- **Adjustments** keep ADR `0024`'s direction (emerald `+` up, rose `−` down), and cyan is for transfers only.
+- **The overdraft warning** stays amber.
+- **`WalletTransferForm`'s two selects** join T195.
+
+ADR `0026` (supersedes `0009`, amends `0025`).
+
+| # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
+|---|---|---|---|---|---|---|---|---|---|---|
+| T188 | JetBrains Mono, self-hosted, latin file only; `woff2` precached | `package.json`, `src/index.css`, `vite.config.ts` | Med | Low | 0.5h | done | - | pending | build emits one 40,404 B `woff2` | precache 44 -> 45 entries |
+| T189 | `ui/Money` replaces `AnimatedCounter` at 6 sites; `TX_TYPE_META.text` drives every amount colour; adjustments by direction | `ui/Money.tsx` (new), `AnimatedCounter.tsx` (deleted), dashboard cards, `WalletsView`, `NavbarLedgerStatus`, `txTypeMeta.ts`, `TxCells.tsx`, `RecentTransactionsTable`, `WalletPopupModal`, `currency.ts`, `DESIGN.md` | High | Med | 1.5h | done | - | pending | tx-cells +3 tests | - |
+| T190 | Hero: orbs, pulsing dot, blur, count-up gone; "{n} wallets"; one-line description | `TotalWealthHero.tsx` | Med | Low | 0.5h | done | T189 | pending | - | - |
+| T191 | Blur only on the mobile nav and a sticky `<thead>`; solid scrim; 39 hover/tap scales removed; 200 ms tweens; the dashboard's staggered entrance removed | `Modal.tsx`, `App.tsx`, `DashboardView.tsx`, `SegmentedControl.tsx`, `MobileBottomNav.tsx`, `WalletPopupModal.tsx`, 10 more | Med | Med | 1.5h | done | - | pending | - | - |
+| T192 | Per-view static skeleton; insights skeleton static | `ViewLoadingFallback.tsx`, `App.tsx`, `SpendingInsightsCard.tsx`, `TransactionsView.tsx` | Med | Low | 0.5h | done | - | pending | `#view-loading-fallback` kept | - |
+| T193 | `syncError` on the state context: set on a failed read or a throw (epoch-checked), cleared on a clean load and on reset | `FinanceContext.tsx`, `unit/authenticated-ledger.test.tsx` | High | Med | 1h | done | - | pending | 5 new tests, all 5 red against the old code first | - |
+| T194 | Five-state navbar badge; Sync failed retries via `refreshFromCloud`; 44 px hit boxes | `navbar/NavbarLedgerStatus.tsx` | High | Low | 1h | done | T193 | pending | - | - |
+| T195 | Focus rings on the three unindicated `<select>`s; WCAG re-run | `WalletPopupModal.tsx`, `wallet/WalletTransferForm.tsx` | High | Low | 0.5h | done | - | pending | all token pairs pass | - |
+| T196 | 44 px targets: every control in audit 001's table, plus the shared button classes, `SegmentedControl`, swatches, icon pickers, wallet-popup controls | `formStyles.ts` (buttons and `FIELD_BASE`), 15 components/views | High | Med | 2h | done | - | pending | MCP at 390 px, all six views: 0 controls under 44 px (15 before the last round, none in 001's table), 0 unnamed buttons, no overflow | - |
+| T197 | Copy: taglines, "Daily Diary", developer language, em dashes; sentence-case form labels | 13 files including `spendingSummary.ts`, `index.html`, `vite.config.ts`, `tests/diary.spec.ts:15`, `tests/theme.spec.ts:55` | Med | Low | 1h | done | - | pending | the two approved spec regexes only | - |
+| T198 | ADR `0026`, ADR `0025` note, selector contract, `CLAUDE.md`, refactor log, metrics, audit 002 | docs | Low | Low | 1h | done | all | pending | - | - |
+
+**Notes on execution:**
+- **Scope grew in two places, both inside DESIGN.md's own rules.**
+  - The dashboard's staggered spring entrance was not on the plan's list, but it is "motion on its own", which MOTION 1 forbids.
+  - Controls beside the audited ones (swatches, `WalletPopupModal`'s icon buttons, the shared button classes) got 44 px hit boxes in the same pass. A per-control plan would have left the same finding one row away.
+- **Accessible names added where the change exposed none:**
+  - `#close-wallet-modal-btn` ("Close wallet details", deliberately not "Close modal": `categories.spec.ts` queries that name by role);
+  - `WalletPopupModal`'s adjust and delete buttons;
+  - the colour swatches and the icon picker;
+  - the activity `<select>`.
+- **Phase gate:**
+  - lint clean;
+  - unit **251/251**;
+  - Playwright **357/357** (4.9 m, no retries), run three times as `src/` changed, each run green;
+  - `node scripts/wcag-tokens.mjs`: all pairs pass;
+  - ฿ and JetBrains Mono confirmed in Chromium, Firefox and WebKit;
+  - audit 002 records every finding and the Delivery Gate.
+- **Left, and recorded in ADR `0026`:**
+  - finding 6 (starter money);
+  - the 32 px microphone button inside the note field;
+  - the transfer panel's negative projection rendering `฿-1,000.00`.
+
 ## Phase 53a - Semantic design tokens: the stone palette is retired: T182-T187 (2026-09-27)
 
 First half of Phase 53 ("UI / Design System Retheme & Anti-slop Remediation"), planned after a grill session and approved by the user. 53a moves every colour onto DESIGN.md's tokens; 53b (T188-T198) does the antislop audit 001 remediation on top. ADR `0025`.
