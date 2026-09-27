@@ -1362,3 +1362,114 @@ describe('the server\'s aggregate guard on a CSV import (F8, ADR 0024)', () => {
     await waitFor(() => expect(debt()?.remainingAmount).toBe(1000));
   });
 });
+
+describe('sign-out leaves nothing behind (F5, ADR 0024)', () => {
+  /*
+   * `signOut` used to reset the user and the auth flag and nothing else: the
+   * account's wallets, transactions and templates stayed in memory and in
+   * every `pf_*` key, for whoever used the device next as a guest.
+   */
+  const SENSITIVE = [fake.USER_ID, 'harness@example.com', WALLET, CASH, DEBT, 'Payday template'];
+  const storageLeaks = () => {
+    const leaks: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i)!;
+      const value = localStorage.getItem(key) ?? '';
+      for (const needle of SENSITIVE) if (value.includes(needle)) leaks.push(`${key} holds ${needle}`);
+    }
+    return leaks;
+  };
+  /** Longer than the 250 ms batched writer, so anything still queued has landed. */
+  const writerSettled = () => new Promise<void>((resolve) => setTimeout(resolve, 400));
+
+  async function withAccountData() {
+    installLedgerRpcs();
+    expect((await expense(200)).success).toBe(true);
+    expect((await actions().addPreset({ name: 'Payday template', type: 'INCOME', amount: 30000, description: 'Salary' })).success).toBe(true);
+    await waitFor(() => expect(state().transactions).toHaveLength(1));
+    await writerSettled();
+    expect(storageLeaks().length).toBeGreaterThan(0); // the precondition: it really was stored
+  }
+
+  it('resets every slice to what a brand-new device shows', async () => {
+    await withAccountData();
+    await actions().signOut();
+
+    await waitFor(() => {
+      expect(state().isAuthenticated).toBe(false);
+      expect(state().transactions).toHaveLength(0);
+      expect(state().presets).toHaveLength(0);
+      expect(state().wallets.map((w) => w.id)).not.toContain(WALLET);
+      expect(state().debts.map((d) => d.id)).not.toContain(DEBT);
+      expect(state().currentUser.id).not.toBe(fake.USER_ID);
+    });
+    expect(fake.state.signOuts).toEqual(['local']);
+  });
+
+  it('leaves no trace of the account in localStorage, templates included', async () => {
+    await withAccountData();
+    await actions().signOut();
+    await writerSettled();
+    expect(storageLeaks()).toEqual([]);
+  });
+
+  it('does not let a write still queued at sign-out land afterwards', async () => {
+    installLedgerRpcs();
+    // Queued, not yet flushed: the batched writer holds it for 250 ms.
+    await actions().addPreset({ name: 'Payday template', type: 'INCOME', amount: 30000, description: 'Salary' });
+    await actions().signOut();
+    await writerSettled();
+    expect(storageLeaks()).toEqual([]);
+  });
+
+  it('does the same when another device signs this one out', async () => {
+    await withAccountData();
+    // What supabase-js emits once "sign out other devices" revokes this session.
+    await fake.state.authCallback!('SIGNED_OUT', null);
+    await writerSettled();
+
+    expect(state().isAuthenticated).toBe(false);
+    expect(state().transactions).toHaveLength(0);
+    expect(storageLeaks()).toEqual([]);
+  });
+
+  it('keeps the data through an auth event that is not a sign-out', async () => {
+    await withAccountData();
+    await fake.state.authCallback!('TOKEN_REFRESHED', fake.session);
+    await writerSettled();
+    expect(state().transactions).toHaveLength(1);
+    expect(state().presets).toHaveLength(1);
+  });
+
+  it('signs out everywhere with the global scope, and still clears this device', async () => {
+    await withAccountData();
+    await actions().signOut({ everywhere: true });
+    await writerSettled();
+    expect(fake.state.signOuts).toEqual(['global']);
+    expect(storageLeaks()).toEqual([]);
+  });
+});
+
+describe('a cloud load still in flight at sign-out (F5, ADR 0024)', () => {
+  it('stops instead of landing the account\'s rows in the guest\'s state', async () => {
+    // A reload starts and stalls on its transactions read...
+    let releaseRead!: () => void;
+    fake.state.gates.set('transactions:select', new Promise<void>((resolve) => (releaseRead = resolve)));
+    fake.state.tables.transactions.push({
+      id: 'tx-server-1', user_id: fake.USER_ID, wallet_id: WALLET, amount: 99, type: 'EXPENSE',
+      description: 'Server row', transaction_date: TODAY, is_deleted: false,
+    });
+    const reload = fake.state.authCallback!('TOKEN_REFRESHED', fake.session);
+
+    // ...the user signs out while it waits...
+    await actions().signOut();
+    releaseRead();
+    await reload;
+    await new Promise<void>((resolve) => setTimeout(resolve, 400));
+
+    // ...and the guest sees none of it.
+    expect(state().isAuthenticated).toBe(false);
+    expect(state().transactions).toHaveLength(0);
+    expect(state().wallets.map((w) => w.id)).not.toContain(WALLET);
+  });
+});

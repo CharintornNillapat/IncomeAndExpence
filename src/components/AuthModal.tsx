@@ -6,17 +6,20 @@ import { Lock, Mail, User as UserIcon, AlertCircle, CheckCircle2, ArrowRight, X,
 import { Modal } from './Modal';
 import { LABEL_TEXT_CLASS } from '../utils/formStyles';
 import { SegmentedControl } from './ui/SegmentedControl';
+import { GuestDataNotice } from './account/GuestDataNotice';
 
 interface AuthModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
-// T75: neither this component nor any child it renders subscribes to finance
-// context, so `React.memo` isn't defeated the way CLAUDE.md warns a context
-// subscriber would defeat it - `MainApp` (its only parent) re-renders on
-// every tab-cycle/UI-state change, and this stops that from re-rendering
-// `AuthModal` when neither of its two props actually changed.
+// T75: this component does not subscribe to finance context, so `React.memo`
+// isn't defeated the way CLAUDE.md warns a context subscriber would defeat it
+// - `MainApp` (its only parent) re-renders on every tab-cycle/UI-state change,
+// and this stops that from re-rendering `AuthModal` when neither of its two
+// props actually changed. The one child that does subscribe,
+// `GuestDataNotice` (ADR 0024), subscribes for itself and only while the
+// modal is open, so a ledger write re-renders the notice, never this.
 export const AuthModal: React.FC<AuthModalProps> = React.memo(({ isOpen, onClose }) => {
   const [mode, setMode] = useState<'signin' | 'signup' | 'forgot'>('signin');
   const [email, setEmail] = useState('');
@@ -145,6 +148,9 @@ export const AuthModal: React.FC<AuthModalProps> = React.memo(({ isOpen, onClose
           ]}
         />
       )}
+
+      {/* F5 policy: signing in replaces the guest ledger (ADR 0024). */}
+      {mode !== 'forgot' && <GuestDataNotice />}
 
       {/* Feedback alerts */}
       {errorMessage && (

@@ -99,7 +99,8 @@ export interface FinanceActionsContextType {
   // Auth & Security
   revokeSession: (sessionId: string) => void;
   revokeAllOtherSessions: () => void;
-  signOut: () => Promise<void>;
+  /** Signs this device out (or every device with `everywhere`) and clears it of the account's data (F5, ADR 0024). */
+  signOut: (options?: { everywhere?: boolean }) => Promise<void>;
 
   // Wallets
   // `balance` is omitted: the opening balance is supplied via `initialBalance`.
@@ -285,6 +286,21 @@ interface LedgerWriteResult {
 // Postgres itself returns carries one. After a write RPC, the first kind means
 // the outcome is UNKNOWN - the database may well have committed - so the
 // caller must re-read rather than trust its rollback snapshot (ADR 0023).
+// F5 (ADR 0024): every key that can hold an account's data on this device.
+// `resetToGuestState` removes all of them on sign-out.
+const LEDGER_STORAGE_KEYS = [
+  'pf_wallets',
+  'pf_categories',
+  'pf_keywords',
+  'pf_presets',
+  'pf_transactions',
+  'pf_debts',
+  'pf_diary',
+  'pf_user',
+  'pf_sessions',
+  'pf_device_fingerprint',
+] as const;
+
 // Shape returned by `create_wallet` (ADR 0024). `transaction` is the opening
 // row, null for a zero opening.
 interface CreateWalletResult {
@@ -752,6 +768,58 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
   // next wake retries.
   const lastCloudLoadAtRef = useRef(0);
 
+  // F5 (ADR 0024): bumped by every reset to guest state. A cloud load that was
+  // in flight when the user signed out checks it after each read and stops,
+  // instead of landing the account's rows in the guest's state afterwards.
+  const authEpochRef = useRef(0);
+
+  // F5 (ADR 0024): what signing out leaves on this device - nothing of the
+  // account. Runs on an explicit sign-out AND on a `SIGNED_OUT` auth event (a
+  // device signed out by another's "sign out other devices"):
+  //   1. drop the batched writer's queue, which holds the account's ledger.
+  //      Defence in depth, not the main guard: step 3's writes overwrite the
+  //      same keys before the 250 ms flush (a control that removed this step
+  //      failed no test). It closes the window before those effects run, e.g.
+  //      a `pagehide` flush landing in between;
+  //   2. remove every ledger key, templates included (they never sync, so this
+  //      deletes them for good - the sign-out confirmation says so);
+  //   3. reset every slice to what a brand-new device shows, which schedules
+  //      fresh writes of those guest defaults over the same keys.
+  // `authEpochRef` stops a cloud load that was in flight from landing after.
+  const resetToGuestState = useCallback(() => {
+    authEpochRef.current += 1;
+
+    if (writeTimerRef.current) {
+      clearTimeout(writeTimerRef.current);
+      writeTimerRef.current = null;
+    }
+    pendingWritesRef.current.clear();
+
+    for (const key of LEDGER_STORAGE_KEYS) {
+      try {
+        localStorage.removeItem(key);
+      } catch {
+        // Storage can be unavailable (private mode); the in-memory reset below
+        // still holds.
+      }
+    }
+
+    setIsAuthenticated(false);
+    setCurrentUser(DEFAULT_USER);
+    setWallets(DEFAULT_STARTER_WALLETS);
+    setCategories(withDefaultDescriptions(dedupeCategoriesByName(DEFAULT_SYSTEM_CATEGORIES), DEFAULT_SYSTEM_CATEGORIES));
+    setKeywordRules(DEFAULT_KEYWORD_RULES);
+    setPresets([]);
+    setTransactions([]);
+    setDebts(DEFAULT_STARTER_DEBTS);
+    setDiaryEntries([]);
+    setSessions(initializeSessionList(DEFAULT_USER.id));
+
+    recentLocalWriteIds.current.clear();
+    inFlightIdempotencyKeys.current.clear();
+    lastCloudLoadAtRef.current = 0;
+  }, []);
+
   // Seed initial starter account on Supabase if new user
   const seedInitialUserAccount = useCallback(async (userId: string) => {
     if (isSeedingRef.current) return;
@@ -828,13 +896,17 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     // Tables whose read failed. A slice that did load still applies; a failed
     // one keeps its current local value rather than being blanked.
     const failedReads: string[] = [];
+    // F5: a sign-out during this load makes every later slice stale.
+    const epoch = authEpochRef.current;
+    const signedOutMeanwhile = () => authEpochRef.current !== epoch;
     try {
       // 1. Wallets
       const { data: wData, error: wErr } = await supabase
         .from('wallets')
         .select('*')
         .order('created_at', { ascending: true });
-      
+      if (signedOutMeanwhile()) return;
+
       if (wErr) failedReads.push('wallets');
       if (!wErr && wData) {
         const mappedWallets: Wallet[] = wData.map(mapWalletRow);
@@ -852,6 +924,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
         .from('categories')
         .select('*')
         .order('name', { ascending: true });
+      if (signedOutMeanwhile()) return;
 
       if (cErr) failedReads.push('categories');
       if (!cErr && cData && cData.length > 0) {
@@ -877,6 +950,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       const { data: krData, error: krErr } = await supabase
         .from('keyword_rules')
         .select('*');
+      if (signedOutMeanwhile()) return;
 
       if (krErr) failedReads.push('keyword_rules');
       if (!krErr && krData) {
@@ -896,6 +970,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
         .from('debts')
         .select('*')
         .order('created_at', { ascending: false });
+      if (signedOutMeanwhile()) return;
 
       if (dErr) failedReads.push('debts');
       if (!dErr && dData) {
@@ -908,6 +983,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
         .select('*')
         .order('transaction_date', { ascending: false })
         .order('created_at', { ascending: false });
+      if (signedOutMeanwhile()) return;
 
       if (txErr) failedReads.push('transactions');
       if (!txErr && txData) {
@@ -919,6 +995,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
         .from('diary_entries')
         .select('*')
         .order('date', { ascending: false });
+      if (signedOutMeanwhile()) return;
 
       if (diaryErr) failedReads.push('diary_entries');
       if (!diaryErr && diaryData) {
@@ -990,7 +1067,14 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
         setIsAuthenticated(false);
       }
 
-      const { data } = supabase.auth.onAuthStateChange(async (_event, newSession) => {
+      const { data } = supabase.auth.onAuthStateChange(async (event, newSession) => {
+        // F5 (ADR 0024): signed out - here or remotely - clears this device.
+        // Only this event: a guest's INITIAL_SESSION also has no session, and
+        // resetting on it would wipe a guest ledger on every page load.
+        if (event === 'SIGNED_OUT') {
+          resetToGuestState();
+          return;
+        }
         if (newSession?.user) {
           setIsAuthenticated(true);
           setCurrentUser({
@@ -1014,7 +1098,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     return () => {
       if (authSubscription) authSubscription.unsubscribe();
     };
-  }, [loadSupabaseData]);
+  }, [loadSupabaseData, resetToGuestState]);
 
   // Real-time Subscriptions across all tables for Cross-Device Sync (PC <-> Phone)
   //
@@ -1118,13 +1202,19 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     }
   }, [currentUser.id, loadSupabaseData]);
 
-  const signOut = useCallback(async () => {
+  // Signs THIS device out, or every device with `everywhere`. supabase-js
+  // defaults to the global scope, so the local one is passed explicitly: a
+  // plain "Sign out" must not end the user's other sessions (ADR 0024).
+  // The device is cleared either way, even if the network call fails - the
+  // library drops its own session locally regardless, and a shared device is
+  // the case this exists for.
+  const signOut = useCallback(async (options?: { everywhere?: boolean }) => {
     if (isSupabaseConfigured) {
-      await supabase.auth.signOut();
+      const { error } = await supabase.auth.signOut({ scope: options?.everywhere ? 'global' : 'local' });
+      if (error) console.error('[Sign Out Failed]', error);
     }
-    setIsAuthenticated(false);
-    setCurrentUser(DEFAULT_USER);
-  }, []);
+    resetToGuestState();
+  }, [resetToGuestState]);
 
   // Sessions handling
   const revokeSession = useCallback((sessionId: string) => {
