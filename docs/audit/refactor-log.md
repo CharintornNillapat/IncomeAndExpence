@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 52 follow-up - a device signed out elsewhere evicts itself: T181 (2026-09-27, commit pending)
+## Phase 52 follow-up - a device signed out elsewhere evicts itself: T181 (2026-09-27, commit `ab7f706`)
 
 **Changed**
 - `src/context/FinanceContext.tsx` - `verifySession` (`auth.getUser()`, one at a time, a 10 s gap for focus/visibility) and `isSessionRejectedError`; the realtime effect runs it on `online`, visible, resubscribe, `focus`, its own mount, a 60 s tick while visible and `onDataApiUnauthorized`; `signOut` moved above that effect (no change to it).
@@ -19,6 +19,8 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 - **Two tests passed without the code they named** (the epoch check, the throttle) until controls exposed them; both were tightened, not dropped.
 
 **Gate:** lint clean; unit 243/243; Playwright 357/357 (7.6 m, `--workers=4`); build: entry 176,314 -> 177,660 B.
+
+**CI and deploy:** run `36320070129` on `ab7f706` - success in 20 m 14 s; the Vitest step ran **243 tests in 12 files** ahead of the browser install, Playwright **357 passed** (18.5 m at `workers: 1`). Vercel `dpl_4uKYB6F5AET1xEpB58Fcx8TdVwyU` Production `READY` before CI finished; `income-and-expence-neon.vercel.app` serves `index-CHvoGxc3.js` at **177,660 B** - byte-for-byte the local build - containing the `/rest/v1/` 401 filter, the refresh-token codes and the 60 s tick. Pushed with the user's explicit go-ahead. **Not yet verified:** the desktop + phone re-test on the deployed build, which the user is running.
 
 ## Phase 52 - Security hardening, real sessions, mobile ergonomics, and ledger completeness (F5, F7, F8): T166-T180 (2026-09-28, commits `72da04c`...`c8bab97`)
 
