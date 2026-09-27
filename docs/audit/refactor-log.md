@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 52 - Security hardening, real sessions, mobile ergonomics, and ledger completeness (F5, F7, F8): T166-T180 (2026-09-28, commits pending backfill)
+## Phase 52 - Security hardening, real sessions, mobile ergonomics, and ledger completeness (F5, F7, F8): T166-T180 (2026-09-28, commits `72da04c`...`c8bab97`)
 
 **Changed**
 - `docs/audit/decisions/0024-security-sessions-ledger-completeness.md` (new) - written before any code and committed alone; two sections corrected in T178 where controls disproved or could not confirm what it claimed (see Surprises).
@@ -27,6 +27,8 @@ Entry `index-*.js` **168,856 -> 176,314 B (+7,458; +1,721 B gzip)**. All JS 1,35
 
 **Verification**
 `npm run lint` clean on both tsconfigs. `npm run test:unit` **222/222**, 18.7-19.2 s across three timed runs. `npx playwright test --workers=4` **357/357 passed, 8.2 m**, first attempt, no retries, no flakes. `npm run clean && npm run build` 5.1 s, 0 chunk-size warnings. Targeted Playwright runs after each task: wallet specs 9/9, CSV/debt specs 10/10, `auth.spec` 5/5, the new spec 36/36 across three browsers.
+
+**CI and deploy:** run `36297307769` on `c8bab97` - success in 17 m 41 s (Vitest 222/222 ahead of the browser install; Playwright 357/357 at `workers: 1`). Vercel `dpl_3MoKfskbALU7PydTisWnpwQNKNZ5` Production `READY`, serving `index-CXUo31ON.js` at 176,314 B - byte-for-byte the locally measured entry, with the explicit local sign-out scope in it. Pushed only after the migration was live. Not probed in production: a real sign-up and a signed-in session list (no account session here).
 
 **Database verification**
 - **Before apply:** the Phase 52 probe (migration inside the transaction) - `PHASE 52 PROBE OK` on the first run; afterwards no function, column, user or session leaked and `handle_new_user` was unchanged. The re-created bodies were first diffed against Phase 51's: only the marked changes.
