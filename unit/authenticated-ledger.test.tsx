@@ -71,6 +71,8 @@ const fake = vi.hoisted(() => {
      * response-lost case an idempotency key exists for (F4).
      */
     lostResponses: new Set<string>(),
+    /** Every `auth.signOut` call's scope, in order (`'local'` when none given). */
+    signOuts: [] as string[],
     authCallback: null as null | ((event: string, session: unknown) => Promise<void> | void),
     /** The status callback the provider passed to `channel.subscribe`. */
     channelStatus: null as null | ((status: string) => void),
@@ -224,7 +226,11 @@ const fake = vi.hoisted(() => {
         state.authCallback = cb;
         return { data: { subscription: { unsubscribe() {} } } };
       },
-      signOut: async () => ({ error: null }),
+      signOut: async (options?: { scope?: string }) => {
+        state.signOuts.push(options?.scope ?? 'local');
+        await macrotask();
+        return { error: null };
+      },
     },
     from: (table: string) => builder(table),
     rpc,
@@ -342,13 +348,47 @@ function expense(amount: number, idempotencyKey?: string) {
  * deleted), replay before the overpayment guard, state-based delete - so the
  * tests below can assert what the CLIENT does with it. It proves nothing about
  * the SQL itself; `supabase/tests/20260927_ledger_rpcs.probe.sql` does that.
+ *
+ * ADR 0024 extends it the way the Phase 52 migration extends the SQL: a signed
+ * ADJUSTMENT (every other type > 0), `create_wallet`, a per-row `debt_id` on
+ * the import with the aggregate guard, and `list_my_sessions`
+ * (`supabase/tests/20260928_phase52.probe.sql` pins the SQL side).
  */
 type Row = Record<string, unknown>;
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
 const SOURCE_SIGN: Record<string, number> = { EXPENSE: -1, DEBT_REPAYMENT: -1, TRANSFER: -1, INCOME: 1, ADJUSTMENT: 1 };
 const rows = (table: string) => (fake.state.tables[table] ??= []);
-const rpcError = (code: string, message: string, details?: string) => ({ data: null, error: { code, message, details } });
+const rpcError = (code: string, message: string, details?: string, hint?: string) => ({
+  data: null,
+  error: { code, message, details, hint },
+});
+
+/** ADR 0024: an ADJUSTMENT is signed and non-zero; every other type is > 0. */
+const amountIsValid = (type: unknown, amount: number) =>
+  type === 'ADJUSTMENT' ? amount !== 0 : amount > 0;
+
+/** The sessions `list_my_sessions` serves; a test replaces them as needed. */
+const SESSIONS = [
+  {
+    id: 'session-this',
+    created_at: '2026-09-27T01:00:00.000Z',
+    last_active: '2026-09-28T01:00:00.000Z',
+    not_after: null,
+    user_agent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/140.0 Safari/537.36',
+    ip: '198.51.100.4',
+    is_current: true,
+  },
+  {
+    id: 'session-phone',
+    created_at: '2026-09-20T01:00:00.000Z',
+    last_active: '2026-09-26T01:00:00.000Z',
+    not_after: null,
+    user_agent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148 Safari/604.1',
+    ip: '203.0.113.7',
+    is_current: false,
+  },
+];
 
 function applyEffect(tx: Row, sign: 1 | -1) {
   const now = new Date().toISOString();
@@ -422,10 +462,14 @@ function installLedgerRpcs() {
       .sort((x, y) => Number(x.is_deleted) - Number(y.is_deleted))[0];
     if (existing) return { data: { reused: true, ...rowState(existing) }, error: null };
 
+    const amount = round2(Number(a.p_amount));
+    if (!amountIsValid(a.p_type, amount)) {
+      return rpcError('22023', a.p_type === 'ADJUSTMENT' ? 'An adjustment must not be zero' : 'Amount must be greater than zero');
+    }
+
     const walletRow = rows('wallets').find((w) => w.id === a.p_wallet_id && !w.is_deleted);
     if (!walletRow) return rpcError('P0002', 'Source wallet not found or has been deleted');
 
-    const amount = round2(Number(a.p_amount));
     if (a.p_debt_id) {
       const debtRow = rows('debts').find((d) => d.id === a.p_debt_id && !d.is_deleted);
       if (!debtRow) return rpcError('P0002', 'Debt goal not found or has been deleted');
@@ -477,9 +521,29 @@ function installLedgerRpcs() {
       return { data: { reused: true, ...state() }, error: null };
     }
     for (const r of input) {
+      if (!amountIsValid(r.type, round2(Number(r.amount)))) {
+        return rpcError('22023', `Row ${r.row_index}: amount must be greater than zero`);
+      }
+      if (r.debt_id && r.type !== 'DEBT_REPAYMENT') {
+        return rpcError('22023', `Row ${r.row_index}: only a debt repayment can name a debt`);
+      }
       const ids = [r.wallet_id, r.destination_wallet_id].filter(Boolean);
       if (!ids.every((id) => rows('wallets').some((w) => w.id === id && !w.is_deleted))) {
         return rpcError('P0002', `Row ${r.row_index}: wallet not found or has been deleted`);
+      }
+      if (r.debt_id && !rows('debts').some((d) => d.id === r.debt_id && !d.is_deleted)) {
+        return rpcError('P0002', `Row ${r.row_index}: debt not found or has been deleted`);
+      }
+    }
+    // ADR 0016's guard, in aggregate across the batch.
+    const perDebt = new Map<unknown, number>();
+    for (const r of input) {
+      if (r.debt_id) perDebt.set(r.debt_id, round2((perDebt.get(r.debt_id) ?? 0) + round2(Number(r.amount))));
+    }
+    for (const [debtId, total] of perDebt) {
+      const debtRow = rows('debts').find((d) => d.id === debtId)!;
+      if (total > Number(debtRow.remaining_amount)) {
+        return rpcError('P0001', 'DEBT_OVERPAYMENT', String(debtRow.remaining_amount), String(debtRow.name));
       }
     }
     for (const r of input) {
@@ -488,16 +552,60 @@ function installLedgerRpcs() {
         wallet_id: r.wallet_id,
         destination_wallet_id: r.destination_wallet_id ?? null,
         category_id: r.category_id ?? null,
+        debt_id: r.debt_id ?? null,
         amount,
         type: r.type,
         description: r.description,
         transaction_date: r.transaction_date,
         idempotency_key: `${key}:${r.row_index}`,
       });
-      applyEffect({ ...r, amount, debt_id: null }, 1);
+      applyEffect({ ...r, amount, debt_id: r.debt_id ?? null }, 1);
     }
     return { data: { reused: false, ...state() }, error: null };
   });
+
+  fake.state.rpcs.set('create_wallet', (a) => {
+    const key = a.p_idempotency_key as string;
+    const opening = round2(Number(a.p_opening_balance ?? 0));
+    const existing = rows('wallets').find((w) => w.idempotency_key === key);
+    const openingRow = () => rows('transactions').find((t) => t.idempotency_key === `opening:${key}`) ?? null;
+    if (existing) return { data: { reused: true, wallet: { ...existing }, transaction: openingRow() }, error: null };
+    if (opening !== 0 && !a.p_opening_date) return rpcError('22023', 'An opening balance needs a date');
+
+    const now = new Date().toISOString();
+    fake.state.seq += 1;
+    const walletRow: Row = {
+      id: `wallets-srv-${fake.state.seq}`,
+      user_id: fake.USER_ID,
+      name: a.p_name,
+      type: a.p_type,
+      currency: a.p_currency,
+      balance: 0,
+      color: a.p_color,
+      icon: a.p_icon,
+      is_archived: false,
+      is_deleted: false,
+      idempotency_key: key,
+      created_at: now,
+      updated_at: now,
+    };
+    rows('wallets').push(walletRow);
+    let tx: Row | null = null;
+    if (opening !== 0) {
+      tx = insertTransaction({
+        wallet_id: walletRow.id,
+        amount: opening,
+        type: 'ADJUSTMENT',
+        description: 'Opening balance',
+        transaction_date: a.p_opening_date,
+        idempotency_key: `opening:${key}`,
+      });
+      applyEffect(tx, 1);
+    }
+    return { data: { reused: false, wallet: { ...walletRow }, transaction: tx && { ...tx } }, error: null };
+  });
+
+  fake.state.rpcs.set('list_my_sessions', () => ({ data: SESSIONS.map((s) => ({ ...s })), error: null }));
 }
 
 beforeEach(async () => {
@@ -509,6 +617,7 @@ beforeEach(async () => {
   fake.state.gates.clear();
   fake.state.rpcs.clear();
   fake.state.lostResponses.clear();
+  fake.state.signOuts = [];
   fake.state.authCallback = null;
   fake.state.channelStatus = null;
 
