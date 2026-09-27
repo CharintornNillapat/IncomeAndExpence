@@ -846,3 +846,25 @@ Clean `src/` (only `CLAUDE.md`, `DESIGN.md` and `anti-slop/` differ from HEAD). 
 | Vitest (`unit/`) | 12 | 243 | 243 | ~49 s |
 
 `npm run lint` clean. Playwright 357/357 on the first attempt with no retries. The unit wall clock (~49 s against ~27 s at T181) is environment time on this machine (66% of the run), not new tests.
+
+## Phase 53a (semantic design tokens) — delta against the T182 baseline above
+
+Built after `npm run clean`; gzip `zlib` level 9, same script.
+
+| Chunk | T182 baseline | Phase 53a | Delta |
+|---|---|---|---|
+| entry `index-*.js` | 177,660 B / 49,572 B gzip | 173,769 B / 49,057 B gzip | -3,891 B / -515 B |
+| `DashboardView-*.js` (lazy) | 47,954 / 11,250 | 42,504 / 10,605 | -5,450 B |
+| `TransactionsView-*.js` (lazy) | 29,352 / 8,249 | 26,411 / 7,857 | -2,941 B |
+| `TransactionForm-*.js` (lazy) | 28,195 / 8,558 | 25,525 / 8,287 | -2,670 B |
+| **all JS, summed** | 1,365,069 B | 1,341,862 B | **-23,207 B** |
+| `index-*.css` | 78,908 / 11,861 | 45,533 / 8,344 | **-33,375 B** |
+| chunk count | 35 | 35 | 0 |
+| PWA precache | 44 entries, 1,565.94 KiB | 44 entries, 1,510.64 KiB | -55.30 KiB |
+
+**Why it shrank:** a token class flips with the theme on its own, so the `dark:` half of nearly every colour pair was deleted, and the stone/emerald/rose/amber/indigo utility rules left the stylesheet.
+
+| Suite | Files | Tests | Runs | Wall clock |
+|---|---|---|---|---|
+| Playwright | 23 | 119 | 357 | 6.5 m |
+| Vitest (`unit/`) | 12 | 243 | 243 | ~49 s |

@@ -4,6 +4,26 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
+## Phase 53a - Semantic design tokens: the stone palette is retired: T182-T187 (2026-09-27, commits `a19b8ac`...`PENDING`)
+
+**Changed**
+- `DESIGN.md` (new at the repo root) and `anti-slop/audit-001-2026-09-27.md` committed; DESIGN.md adjusted before commit (T183): FinLife Tracker name, `Border input` as the dedicated WCAG 1.4.11 token with the rejected softer greys measured, Surface 2 for inputs and a Surface 3 for hover on it, the baht-sign fallback stack, a five-state sync table, static skeletons, continuous motion only during real work.
+- `src/index.css` - theme-flipping tokens on `:root` / `.dark`, mapped by `@theme inline`; static fills, tints, lines, `shadow-modal`, `shadow-quick-add`, `font-mono`, `font-sans`; `html` takes the canvas colour.
+- `scripts/wcag-tokens.mjs` (new) - reads the token blocks and checks every text / input-border / focus pair, and each hue on its own tint.
+- `src/utils/formStyles.ts`, `src/components/ui/*`, `transaction/txTypeMeta.ts`, `transaction/TxCells.tsx`, `Modal.tsx`, the shell (`App.tsx`, `Navbar.tsx`, `MobileBottomNav.tsx`, `AuthModal.tsx`, `ReloadPrompt.tsx`, `QuickAddModal.tsx`, `navbar/NavbarLedgerStatus.tsx`, `ViewLoadingFallback.tsx`) and the remaining 24 views/components - every palette class onto a token, radius and shadow per DESIGN.md section 3. 44 files, 822+/707-.
+- `index.html` / `vite.config.ts` - `theme-color` and manifest colours onto the new surfaces (`DISABLE_HMR` untouched).
+- ADR `0025` (new).
+
+**Surprises**
+- **DESIGN.md's own amber and cyan text failed on their own badge tint.** `#B45309` / `#0E7490` pass on plain light surfaces but drop to 4.22-4.40:1 on a 12% tint; only the tint check in the new script caught it. Light `pending` / `transfer` text moved one shade darker; DESIGN.md records why.
+- **The proposed input borders could not be used.** `#334155` / `#3E4C6D` / `#94A3B8` measured 1.53-2.56:1 against the surfaces an input sits on; DESIGN.md's existing `#5E7092` / `#7C8BA1` pass.
+- **JetBrains Mono has no baht sign at all** - checked against the upstream TTF's `cmap`, not only Google's subsets - so `฿` comes from a Thai-capable system font by design.
+- **The bundle shrank.** CSS 78,908 -> 45,533 B and all JS -23,207 B: most of the `dark:` halves of class strings are gone.
+
+**Execution note:** the 24 view/component files were migrated by three parallel agents against one written mapping guide, after the tokens, the primitives and the shell had been migrated by hand as their worked examples. Each agent reported its non-mechanical colour choices (emerald as `brand` versus `income`, destructive outlines, buttons that gained a secondary-button border); those are recorded in ADR `0025`'s spirit rather than one by one here.
+
+**Gate:** lint clean; unit 243/243; Playwright 357/357 (6.5 m) with no retries and no spec edited; `node scripts/wcag-tokens.mjs` all pairs pass; an attribute and text-node diff of the 44 files against HEAD shows no change to any id, `data-testid`, `aria-*`, `title`, `placeholder` or visible text; Playwright MCP at 390 px and 1280 px in light and dark: no horizontal page overflow on any of the six views, no console errors.
+
 ## Phase 52 follow-up - a device signed out elsewhere evicts itself: T181 (2026-09-27, commit `ab7f706`)
 
 **Changed**

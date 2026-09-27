@@ -1081,6 +1081,25 @@ Approved explicitly by the user, planned and approved before any code was writte
 - **One negative control was redone** because the first attempt produced malformed TypeScript that the dev server still served — the tests failed, but possibly for the wrong reason.
 - **No flakes.** Phase 44's `wallets.spec.ts` webkit flake has now not reproduced across three consecutive phases; still watched rather than closed.
 
+## Phase 53a - Semantic design tokens: the stone palette is retired: T182-T187 (2026-09-27)
+
+First half of Phase 53 ("UI / Design System Retheme & Anti-slop Remediation"), planned after a grill session and approved by the user. 53a moves every colour onto DESIGN.md's tokens; 53b (T188-T198) does the antislop audit 001 remediation on top. ADR `0025`.
+
+| # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
+|---|---|---|---|---|---|---|---|---|---|---|
+| T182 | Baseline (lint, unit, 357 E2E, per-chunk sizes); commit the audit report and the antislop pointer | `docs/audit/baseline-metrics.md`, `anti-slop/audit-001-2026-09-27.md`, `CLAUDE.md` | Low | Low | 0.5h | done | - | a19b8ac | 357/357 (7.9 m), unit 243/243 | reproduces T181's figures exactly |
+| T183 | DESIGN.md adjusted and committed; token contrast checker | `DESIGN.md`, `scripts/wcag-tokens.mjs` (new) | Med | Low | 1h | done | - | b08b0ef | - | - |
+| T184 | Theme-flipping tokens, static fills/tints/lines, shadows, font stacks | `src/index.css` | High | Med | 1h | done | T183 | PENDING | all token pairs pass | - |
+| T185 | Form styles, UI primitives, transaction tokens, Modal | `src/utils/formStyles.ts`, `src/components/ui/*`, `transaction/txTypeMeta.ts`, `transaction/TxCells.tsx`, `Modal.tsx` | High | Med | 1h | done | T184 | PENDING | see phase gate | - |
+| T186 | Shell | `App.tsx`, `Navbar.tsx`, `MobileBottomNav.tsx`, `AuthModal.tsx`, `ReloadPrompt.tsx`, `QuickAddModal.tsx`, `navbar/NavbarLedgerStatus.tsx`, `ViewLoadingFallback.tsx`, `index.html`, `vite.config.ts` | High | Med | 1h | done | T184 | PENDING | see phase gate | - |
+| T187 | Views and components (24 files, three parallel agents on one mapping guide) | `src/views/*`, `src/components/**` | High | Med | 3h | done | T185 | PENDING | lint clean; unit 243/243; Playwright **357/357** (6.5 m); attribute/text diff clean; MCP visual pass clean | CSS 78,908 -> 45,533 B; all JS 1,365,069 -> 1,341,862 B |
+
+**Notes on execution:**
+- **Two DESIGN.md values changed during the phase, both recorded there:** light `pending` / `transfer` text one shade darker (they failed on their own tint), and a Surface 3 that reuses the Border default hex.
+- **Deliberately left for 53b:** blur, motion, the hero's orbs and pulsing dot, `AnimatedCounter`, skeletons, the sync badge's states, touch targets, copy. They were recoloured only.
+- **Found for 53b:** `WalletTransferForm`'s two wallet `<select>`s have `focus:ring-0` and no indicator, like `WalletPopupModal`'s; added to T195.
+- **Open question for the user:** DESIGN.md renders adjustments in cyan with no sign; ADR `0024` and `unit/tx-cells.test.tsx` give them a direction (income tint when upward). `txTypeMeta` keeps ADR `0024`.
+
 ## Phase 52 follow-up - a device signed out elsewhere evicts itself: T181 (2026-09-27)
 
 Reported by the user from a desktop + phone test: "Sign out other devices" left the phone signed in and working. Diagnosed before any edit - the auth log showed the server revoking correctly; the gap was an access token that stays valid for up to an hour with nothing on the client asking. ADR `0024` amended rather than a new ADR: it is that ADR's sessions decision, finished. No migration.
