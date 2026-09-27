@@ -37,6 +37,11 @@ export async function gotoTab(page: Page, tabId: string): Promise<void> {
  *
  * A fresh browser context seeds wallets and debts but no transactions, so any
  * test that needs a populated ledger has to create one first.
+ *
+ * That stays true after F7 (ADR 0024) on purpose: a wallet the USER creates
+ * opens with an ADJUSTMENT "Opening balance" row, but the seeded starter
+ * wallets are fixtures and carry none. A spec that creates a wallet with a
+ * non-zero starting balance therefore also creates one transaction.
  */
 export async function addQuickTransaction(
   page: Page,

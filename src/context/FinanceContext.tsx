@@ -103,7 +103,17 @@ export interface FinanceActionsContextType {
 
   // Wallets
   // `balance` is omitted: the opening balance is supplied via `initialBalance`.
-  addWallet: (wallet: Omit<Wallet, 'id' | 'userId' | 'createdAt' | 'updatedAt' | 'isArchived' | 'isDeleted' | 'balance'>, initialBalance: number) => Promise<MutationResult>;
+  /**
+   * `initialBalance` becomes an ADJUSTMENT "Opening balance" row when non-zero
+   * (F7, ADR 0024). `idempotencyKey` names one Add Wallet form: signed in, a
+   * retry after a lost response returns the same wallet. Omitted, a fresh key
+   * is used.
+   */
+  addWallet: (
+    wallet: Omit<Wallet, 'id' | 'userId' | 'createdAt' | 'updatedAt' | 'isArchived' | 'isDeleted' | 'balance'>,
+    initialBalance: number,
+    idempotencyKey?: string
+  ) => Promise<MutationResult>;
   deleteWallet: (id: string) => Promise<MutationResult>;
 
   // Categories & Configurable Keyword Rules
@@ -275,6 +285,14 @@ interface LedgerWriteResult {
 // Postgres itself returns carries one. After a write RPC, the first kind means
 // the outcome is UNKNOWN - the database may well have committed - so the
 // caller must re-read rather than trust its rollback snapshot (ADR 0023).
+// Shape returned by `create_wallet` (ADR 0024). `transaction` is the opening
+// row, null for a zero opening.
+interface CreateWalletResult {
+  reused: boolean;
+  wallet: any;
+  transaction: any | null;
+}
+
 // Shape returned by `import_transactions`.
 interface ImportTransactionsResult {
   reused: boolean;
@@ -1117,14 +1135,63 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
   // Wallets CRUD
   const addWallet = useCallback(async (
     data: Omit<Wallet, 'id' | 'userId' | 'createdAt' | 'updatedAt' | 'isArchived' | 'isDeleted' | 'balance'>,
-    initialBalance: number
+    initialBalance: number,
+    idempotencyKey?: string
   ): Promise<MutationResult> => {
     const validation = WalletSchema.safeParse({ ...data, initialBalance });
     if (!validation.success) {
       return { success: false, error: formatZodIssues(validation.error) };
     }
 
+    // F7 (ADR 0024): a user-created wallet's opening balance is a ledger row -
+    // an ADJUSTMENT of the signed amount, so a credit card opening in debt
+    // gets a negative one. Zero writes no row. The starter wallets are exempt
+    // by decision: they are fixtures, not money the user entered.
+    const opening = roundToCents(initialBalance);
+    const openingDate = todayIsoDate();
+
     if (isAuthenticated) {
+      // One atomic RPC: the wallet at 0, then the opening row applied through
+      // the same helper as every other ledger write, replayable on the key.
+      const { data: rpcData, error: rpcError } = await supabase.rpc('create_wallet', {
+        p_name: data.name,
+        p_type: data.type,
+        p_currency: data.currency,
+        p_color: data.color,
+        p_icon: data.icon,
+        p_opening_balance: opening,
+        p_opening_date: openingDate,
+        p_idempotency_key: idempotencyKey || generateIdempotencyKey(),
+      });
+
+      if (!rpcError) {
+        const payload = rpcData as CreateWalletResult | null;
+        if (!payload?.wallet) {
+          // It may have committed; re-read rather than guess.
+          await refreshFromCloud();
+          return { success: false, error: 'create_wallet returned an unexpected response' };
+        }
+        const createdWallet = mapWalletRow(payload.wallet);
+        markLocalWrite(createdWallet.id);
+        setWallets((prev) => [...prev.filter((w) => w.id !== createdWallet.id), createdWallet]);
+        if (payload.transaction) {
+          const openingRow = mapTransactionRow(payload.transaction);
+          markLocalWrite(openingRow.id);
+          setTransactions((prev) => [openingRow, ...prev.filter((t) => t.id !== openingRow.id)]);
+        }
+        return { success: true };
+      }
+
+      if (!isMissingRpcError(rpcError)) {
+        console.error('[Create Wallet Failed]', rpcError);
+        if (isUnknownOutcomeError(rpcError)) await refreshFromCloud();
+        return { success: false, error: rpcError.message || 'Failed to create wallet' };
+      }
+      console.warn('[create_wallet RPC unavailable, using non-atomic fallback]', rpcError.message);
+
+      // Fallback for a project without the Phase 52 migration: the wallet,
+      // then its opening row - checked now, where it used to be discarded, and
+      // undone (soft-deleted, never hard-deleted) if the row is rejected.
       const { data: inserted, error } = await supabase
         .from('wallets')
         .insert({
@@ -1132,7 +1199,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
           name: data.name,
           type: data.type,
           currency: data.currency,
-          balance: initialBalance,
+          balance: opening,
           color: data.color,
           icon: data.icon,
           is_archived: false,
@@ -1144,41 +1211,78 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       if (error || !inserted) {
         return { success: false, error: error?.message || 'Failed to create wallet' };
       }
-
-      setWallets((prev) => [...prev, mapWalletRow(inserted)]);
       markLocalWrite(inserted.id);
 
-      if (initialBalance > 0) {
-        await supabase.from('transactions').insert({
-          user_id: currentUser.id,
-          wallet_id: inserted.id,
-          amount: initialBalance,
-          raw_input: initialBalance.toString(),
-          type: 'ADJUSTMENT',
-          description: `Initial balance setup for ${data.name}`,
-          transaction_date: todayIsoDate(),
-          idempotency_key: `init-${inserted.id}`,
-          is_deleted: false,
-          created_by: currentUser.id,
-        });
+      if (opening !== 0) {
+        const { data: openingRow, error: rowError } = await supabase
+          .from('transactions')
+          .insert({
+            user_id: currentUser.id,
+            wallet_id: inserted.id,
+            amount: opening,
+            type: 'ADJUSTMENT',
+            description: 'Opening balance',
+            transaction_date: openingDate,
+            idempotency_key: `opening:${inserted.id}`,
+            is_deleted: false,
+            created_by: currentUser.id,
+          })
+          .select()
+          .single();
+
+        if (rowError) {
+          console.error('[Create Wallet Opening Row Failed]', rowError);
+          markLocalWrite(inserted.id);
+          const { error: undoError } = await supabase
+            .from('wallets')
+            .update({ is_deleted: true, updated_at: new Date().toISOString() })
+            .eq('id', inserted.id);
+          if (undoError) console.error('[Create Wallet Compensation Failed]', undoError);
+          return { success: false, error: rowError.message || 'Failed to record the opening balance' };
+        }
+        if (openingRow) {
+          const mappedRow = mapTransactionRow(openingRow);
+          markLocalWrite(mappedRow.id);
+          setTransactions((prev) => [mappedRow, ...prev]);
+        }
       }
+
+      setWallets((prev) => [...prev, mapWalletRow(inserted)]);
     } else {
+      const now = new Date().toISOString();
       const newWalletId = `w-${Date.now()}`;
       const newWallet: Wallet = {
         ...data,
         id: newWalletId,
         userId: currentUser.id,
-        balance: initialBalance,
+        balance: opening,
         isArchived: false,
         isDeleted: false,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
+        createdAt: now,
+        updatedAt: now,
       };
       setWallets((prev) => [...prev, newWallet]);
+      if (opening !== 0) {
+        const openingRow: Transaction = {
+          id: `tx-opening-${newWalletId}`,
+          userId: currentUser.id,
+          walletId: newWalletId,
+          amount: opening,
+          type: 'ADJUSTMENT',
+          description: 'Opening balance',
+          transactionDate: openingDate,
+          idempotencyKey: `opening:${newWalletId}`,
+          isDeleted: false,
+          createdBy: currentUser.id,
+          createdAt: now,
+          updatedAt: now,
+        };
+        setTransactions((prev) => [openingRow, ...prev]);
+      }
     }
 
     return { success: true };
-  }, [isAuthenticated, currentUser.id, markLocalWrite]);
+  }, [isAuthenticated, currentUser.id, markLocalWrite, refreshFromCloud]);
 
   // Provider-internal helper (T64: not on the public actions context - its
   // only caller is `deleteWallet` below). Snapshots for rollback and checks

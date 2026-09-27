@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useFinanceActions } from '../../context/FinanceContext';
 import { useSubmitHandler } from '../../hooks/useSubmitHandler';
+import { useIdempotencyKey } from '../../hooks/useIdempotencyKey';
 import { WalletType } from '../../types';
 import { APP_CURRENCY, APP_CURRENCY_SYMBOL } from '../../utils/currency';
 import {
@@ -51,6 +52,9 @@ export const AddWalletForm: React.FC<AddWalletFormProps> = ({
   onCreated,
 }) => {
   const { addWallet } = useFinanceActions();
+  // One key per form (ADR 0024): signed in, a retry after a lost response
+  // returns the same wallet instead of creating a second one.
+  const { idempotencyKey: createKey, rotateIdempotencyKey } = useIdempotencyKey();
 
   const [walletName, setWalletName] = useState<string>('');
   const [walletType, setWalletType] = useState<WalletType>('BANK_ACCOUNT');
@@ -64,6 +68,7 @@ export const AddWalletForm: React.FC<AddWalletFormProps> = ({
     onSuccess: () => {
       setWalletName('');
       setInitialBalance(0);
+      rotateIdempotencyKey();
       onCreated();
     },
   });
@@ -78,7 +83,8 @@ export const AddWalletForm: React.FC<AddWalletFormProps> = ({
           color: walletColor,
           icon: walletType.toLowerCase(),
         },
-        initialBalance
+        initialBalance,
+        createKey
       )
     );
 
@@ -131,7 +137,9 @@ export const AddWalletForm: React.FC<AddWalletFormProps> = ({
           id={ids.balance}
           type="number"
           step="0.01"
-          min="0"
+          // A credit card can open owing money; nothing else opens negative
+          // (WalletSchema enforces the same rule).
+          min={walletType === 'CREDIT_CARD' ? undefined : '0'}
           value={initialBalance}
           onChange={(e) => setInitialBalance(parseFloat(e.target.value) || 0)}
           className={`${inputClass(tone)} font-mono`}

@@ -62,10 +62,14 @@ export const WalletSchema = z.object({
   name: z.string().min(1, 'Wallet name is required').max(100),
   type: z.enum(['CASH', 'BANK_ACCOUNT', 'CREDIT_CARD', 'E_WALLET', 'INVESTMENT', 'SAVINGS']),
   currency: z.literal('THB'),
-  initialBalance: z.number().min(0, 'Initial balance cannot be negative'),
+  initialBalance: z.number().refine((n) => Math.abs(n) <= 999999999.99, 'Initial balance too large'),
   color: z.string().optional(),
   icon: z.string().optional(),
-});
+}).refine(
+  // A credit card can open owing money (ADR 0024); nothing else opens negative.
+  (data) => data.type === 'CREDIT_CARD' || data.initialBalance >= 0,
+  { message: 'Initial balance cannot be negative', path: ['initialBalance'] }
+);
 
 export const DebtSchema = z.object({
   name: z.string().min(1, 'Debt title is required').max(100),

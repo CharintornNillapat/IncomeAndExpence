@@ -411,3 +411,51 @@ describe('a signed ADJUSTMENT (ADR 0024)', () => {
     expect(wallet(WALLET_SAVINGS).balance).toBe(SAVINGS_OPENING);
   });
 });
+
+describe('opening balances are ledger rows (F7, ADR 0024)', () => {
+  /*
+   * A guest wallet used to appear with its balance and no row, so the ledger
+   * could not explain the money. Every user-created wallet now opens with an
+   * ADJUSTMENT "Opening balance" of the signed opening amount. The starter
+   * wallets are exempt by decision - see the fixture test above.
+   */
+  const create = (name: string, type: 'SAVINGS' | 'CREDIT_CARD' | 'CASH', opening: number) =>
+    actions().addWallet({ name, type, currency: 'THB', color: '#0284c7', icon: type.toLowerCase() }, opening);
+  const walletNamed = (name: string) => state().wallets.find((w) => w.name === name)!;
+  const rowsFor = (walletId: string) => state().transactions.filter((t) => t.walletId === walletId && !t.isDeleted);
+
+  it('records the opening balance as one ADJUSTMENT that explains the balance', async () => {
+    expect((await call(() => create('Rainy Day', 'SAVINGS', 1234.5))).success).toBe(true);
+    const created = walletNamed('Rainy Day');
+    expect(created.balance).toBe(1234.5);
+    const rows = rowsFor(created.id);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ type: 'ADJUSTMENT', amount: 1234.5, description: 'Opening balance' });
+    expect(rows.reduce((sum, t) => sum + t.amount, 0)).toBe(created.balance);
+  });
+
+  it('lets a credit card open owing money, with a negative row', async () => {
+    expect((await call(() => create('Visa', 'CREDIT_CARD', -5000))).success).toBe(true);
+    const card = walletNamed('Visa');
+    expect(card.balance).toBe(-5000);
+    expect(rowsFor(card.id)).toEqual([expect.objectContaining({ type: 'ADJUSTMENT', amount: -5000 })]);
+  });
+
+  it('writes no row for a zero opening', async () => {
+    await call(() => create('Empty Jar', 'CASH', 0));
+    expect(rowsFor(walletNamed('Empty Jar').id)).toHaveLength(0);
+  });
+
+  it('still refuses a negative opening on anything but a credit card', async () => {
+    const result = await call(() => create('Overdrawn', 'SAVINGS', -10));
+    expect(result.success).toBe(false);
+    expect(state().wallets.some((w) => w.name === 'Overdrawn')).toBe(false);
+  });
+
+  it('keeps the opening row reversible like any other adjustment', async () => {
+    await call(() => create('Rainy Day', 'SAVINGS', 1000));
+    const created = walletNamed('Rainy Day');
+    await call(() => actions().softDeleteTransaction(rowsFor(created.id)[0].id));
+    expect(walletNamed('Rainy Day').balance).toBe(0);
+  });
+});

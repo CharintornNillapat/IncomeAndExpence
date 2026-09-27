@@ -1249,3 +1249,67 @@ describe('a signed ADJUSTMENT, signed in (ADR 0024)', () => {
     await waitFor(() => expect(wallet()?.balance).toBe(WALLET_OPENING - 1000));
   });
 });
+
+describe('a signed-in wallet through create_wallet (F7, ADR 0024)', () => {
+  beforeEach(() => installLedgerRpcs());
+
+  const create = (opening: number, idempotencyKey?: string) =>
+    actions().addWallet(
+      { name: 'Visa', type: 'CREDIT_CARD', currency: 'THB', color: '#e11d48', icon: 'credit_card' },
+      opening,
+      idempotencyKey
+    );
+
+  it('creates the wallet and its opening row in one RPC, and adopts both', async () => {
+    const result = await create(-5000, 'wallet-key-1');
+    expect(result.success).toBe(true);
+
+    const calls = writes('rpc:create_wallet', 'rpc');
+    expect(calls).toHaveLength(1);
+    expect(calls[0].payload).toMatchObject({
+      p_name: 'Visa',
+      p_type: 'CREDIT_CARD',
+      p_opening_balance: -5000,
+      p_idempotency_key: 'wallet-key-1',
+    });
+    expect((calls[0].payload as { p_opening_date: string }).p_opening_date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(writes('wallets', 'insert')).toHaveLength(0);
+    expect(writes('transactions', 'insert')).toHaveLength(0);
+
+    await waitFor(() => {
+      const card = state().wallets.find((w) => w.name === 'Visa');
+      expect(card?.balance).toBe(-5000);
+      expect(state().transactions).toEqual([expect.objectContaining({ walletId: card!.id, type: 'ADJUSTMENT', amount: -5000 })]);
+    });
+  });
+
+  it('replays on the key instead of creating a second wallet', async () => {
+    fake.state.lostResponses.add('create_wallet');
+    expect((await create(300, 'wallet-key-lost')).success).toBe(false);
+    expect((await create(300, 'wallet-key-lost')).success).toBe(true);
+
+    expect(fake.state.tables.wallets.filter((w) => w.name === 'Visa')).toHaveLength(1);
+    expect(fake.state.tables.transactions).toHaveLength(1);
+    await waitFor(() => expect(state().wallets.filter((w) => w.name === 'Visa')).toHaveLength(1));
+  });
+
+  it('falls back to a checked insert when the function is missing', async () => {
+    fake.state.rpcs.delete('create_wallet');
+    expect((await create(-5000)).success).toBe(true);
+
+    expect(writes('wallets', 'insert')).toHaveLength(1);
+    const openingRow = writes('transactions', 'insert')[0];
+    expect(openingRow.payload).toMatchObject({ type: 'ADJUSTMENT', amount: -5000, description: 'Opening balance' });
+  });
+
+  it('undoes the fallback wallet when its opening row is rejected', async () => {
+    fake.state.rpcs.delete('create_wallet');
+    fake.state.failures.set('transactions:insert', { message: 'row rejected' });
+
+    const result = await create(250);
+    expect(result.success).toBe(false);
+    // Soft-deleted, never hard-deleted, and gone from the screen.
+    expect(fake.state.tables.wallets.find((w) => w.name === 'Visa')?.is_deleted).toBe(true);
+    await waitFor(() => expect(state().wallets.some((w) => w.name === 'Visa' && !w.isDeleted)).toBe(false));
+  });
+});
