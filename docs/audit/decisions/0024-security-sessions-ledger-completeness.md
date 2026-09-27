@@ -96,9 +96,11 @@ Row ids are deliberately not recorded here; the predicate in step 1 finds them.
 
 A provider-internal `resetToGuestState()` runs on an explicit sign-out **and** on an `onAuthStateChange` `SIGNED_OUT` event. In order:
 
-1. **Drop the batched writer's pending writes.** They hold the signed-in ledger; the 250 ms flush would otherwise write it straight back after the clear. This ordering is the reason the function exists as one unit.
+1. **Drop the batched writer's pending writes.** They hold the signed-in ledger.
 2. Remove `pf_wallets`, `pf_categories`, `pf_keywords`, `pf_presets`, `pf_transactions`, `pf_debts`, `pf_diary`, `pf_user`, `pf_sessions`, `pf_device_fingerprint`.
 3. Reset every slice to the guest defaults a brand-new device sees.
+
+*Corrected during implementation (Phase 52, T172).* This section first called step 1 the load-bearing one - "the 250 ms flush would otherwise write it straight back". A negative control disproved that: with step 1 removed, **no test failed**, because step 3's state changes schedule writes of the guest defaults over the same keys before the flush runs, and a later write to a key replaces the queued one. What keeps the account out of storage is steps 2 and 3 together. Step 1 stays as defence in depth for the window before step 3's effects run (a `pagehide` flush landing in between). A separate guard does carry real weight and was added: an `authEpochRef`, checked after every read in `loadSupabaseData`, stops a cloud load that was in flight at sign-out from landing the account's rows in guest state - its control failed exactly its own test.
 
 **Templates are cleared too.** They never sync — no `presets` table exists — so this deletes them for good; the sign-out confirmation says so. Their amounts and descriptions are financial data, and a shared device is exactly the case F5 is about.
 
@@ -123,6 +125,8 @@ A provider-internal `resetToGuestState()` runs on an explicit sign-out **and** o
 - **`AccountModal`** (shared `Modal`, shell-level, `React.lazy` + a `hasOpened` latch per ADR `0010`, self-subscribing) holds sync status, sessions, profile, password and sign-out. The navbar's signed-in pill opens it (`#navbar-account-btn`); `#navbar-signout-btn` lives inside it. `'security'` leaves `ActiveTab`, the swipe order and both tab bars; no spec referenced `#nav-tab-security`.
 - **Mobile bottom nav** — Home · Transactions · centre Quick Add · Wallets · More. More opens a bottom sheet with Debts, Diary, Categories and Account & Security. The moved tabs keep their `mobile-nav-tab-*` ids and `aria-current`; every desktop `#nav-tab-*` except security is unchanged.
 - **Swipe guard** — a swipe that starts inside a horizontal scroller (computed `overflow-x: auto|scroll` with overflowing content, found by walking up to `<main>`) does not change tabs. A computed-style check rather than a per-table flag, so a future scroller is covered without remembering to mark it.
+
+*Recorded during implementation (Phase 52, T175).* The planned end-to-end test of the guard was written and dropped. A Chromium touch swipe synthesised through the DevTools protocol that starts inside an overflowing scroller is consumed by the browser's own scrolling and never completes as a swipe - two controls with the guard removed both passed - so the reported conflict does not reproduce there and any such test passes vacuously. The guard is covered by `unit/swipe-guard.test.ts` only; whether it changes anything on real iOS or Android touch hardware is **unverified**.
 
 ## Migration strategy
 

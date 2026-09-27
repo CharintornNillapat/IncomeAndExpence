@@ -4,6 +4,73 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
+## Phase 52 - Security hardening, real sessions, mobile ergonomics, and ledger completeness (F5, F7, F8): T166-T180 (2026-09-28, commits pending backfill)
+
+**Changed**
+- `docs/audit/decisions/0024-security-sessions-ledger-completeness.md` (new) - written before any code and committed alone; two sections corrected in T178 where controls disproved or could not confirm what it claimed (see Surprises).
+- `supabase/migrations/20260928_phase52_security_ledger.sql` (new) - `handle_new_user` hardened; `wallets.idempotency_key` + partial unique index; `create_wallet`; `list_my_sessions`; `record_transaction` and `import_transactions` re-created from the deployed Phase 51 bodies (signed ADJUSTMENT; per-row `debt_id` with an aggregate guard). **Applied** (migration row `20260927031656 phase52_security_ledger`). Probe: `supabase/tests/20260928_phase52.probe.sql` (new).
+- `src/context/FinanceContext.tsx` - `addWallet` via `create_wallet` with opening-balance rows (F7); `commitBulkImport` carries debts with an aggregate guard (F8); `resetToGuestState` on sign-out and on `SIGNED_OUT`, `authEpochRef` in `loadSupabaseData`, `signOut` with an explicit scope (F5); `listMySessions` and `signOutOtherDevices`; the browser-built session list and its two storage keys retired.
+- `src/utils/zodSchemas.ts`, `src/utils/csvExchange.ts`, `src/components/WalletPopupModal.tsx`, `src/components/transaction/txTypeMeta.ts`, `TxCells.tsx`, `TransactionTableRow.tsx` - the signed ADJUSTMENT at every validating and rendering layer; the CSV `Debt` column; a pure `transactionsToCsv`.
+- `src/components/account/AccountModal.tsx`, `GuestDataNotice.tsx` (new); `src/views/SecurityView.tsx` (deleted); `src/App.tsx`, `Navbar.tsx`, `navbar/NavbarLedgerStatus.tsx`, `MobileBottomNav.tsx`, `AuthModal.tsx`, `wallet/AddWalletForm.tsx`, `views/TransactionsView.tsx`, `types.ts`.
+- `src/utils/userAgent.ts`, `swipeGuard.ts` (new); `src/utils/date.ts` (`formatLocalDateTime`).
+- `unit/` - `csv-exchange`, `tx-cells`, `user-agent`, `date-format`, `swipe-guard` (new) and additions to both ledger harnesses: **157 -> 222 unit tests** in 11 files.
+- `tests/account-and-mobile-nav.spec.ts` (new, 12 tests, intercepts nothing) - **321 -> 357 Playwright runs**. `tests/helpers.ts` - a doc comment only (why starter wallets carry no rows). **No existing spec edited.**
+- `docs/audit/test-selector-contract.md`, `CLAUDE.md`.
+
+**Why**
+The post-Phase-49 review's last open items - F5, F7, F8, the Security surface, mobile navigation - plus what read-only inspection found while scoping them: a Security tab whose sessions were fabricated in the browser and whose "Revoke" reached nothing; a `handle_new_user` trigger function callable by anonymous clients; and **a live ledger bug**: the wallet balance editor wrote `Math.abs(diff)` as an ADJUSTMENT, so lowering a balance raised it by the same amount (3 such rows in production).
+
+**Day 0 (read-only, not a commit):** `auth.sessions` exposes `user_agent`, `ip`, `created_at`, `refreshed_at`, `not_after`; `supabase_auth_admin` held EXECUTE on `handle_new_user` only through `PUBLIC`, and this session cannot assume that role; the live database held 14 ADJUSTMENT rows (3 in the wrong direction, all undeleted), 9 "Initial balance setup" rows, and 1 DEBT_REPAYMENT with no debt. The user chose: signed ADJUSTMENT with the 3 rows reported, not repaired; warn-and-export at sign-in, never merge; templates cleared on sign-out; lazy `supabase-js` deferred to Phase 53.
+
+**Metric delta**
+Entry `index-*.js` **168,856 -> 176,314 B (+7,458; +1,721 B gzip)**. All JS 1,356,890 -> 1,363,654 B (+6,764) across **35 chunks (was 33)**. CSS +1,281 B. `SecurityView` (15,298 B) gone, `AccountModal` (12,893 B) new; `csvExchange` and `InlineMathInput` split into their own lazy chunks, taking `TransactionsView` 50,621 -> 29,352 B and `useIdempotencyKey` 7,302 -> 226 B. Papaparse stays out of the entry chunk; the modulepreload list is unchanged. Unit suite **157 -> 222** (~10 s -> ~19 s); Playwright **321 -> 357 runs**. Full table in `baseline-metrics.md`.
+
+**Verification**
+`npm run lint` clean on both tsconfigs. `npm run test:unit` **222/222**, 18.7-19.2 s across three timed runs. `npx playwright test --workers=4` **357/357 passed, 8.2 m**, first attempt, no retries, no flakes. `npm run clean && npm run build` 5.1 s, 0 chunk-size warnings. Targeted Playwright runs after each task: wallet specs 9/9, CSV/debt specs 10/10, `auth.spec` 5/5, the new spec 36/36 across three browsers.
+
+**Database verification**
+- **Before apply:** the Phase 52 probe (migration inside the transaction) - `PHASE 52 PROBE OK` on the first run; afterwards no function, column, user or session leaked and `handle_new_user` was unchanged. The re-created bodies were first diffed against Phase 51's: only the marked changes.
+- **Apply:** paused for the user's explicit go-ahead, then `apply_migration` with the file verbatim.
+- **After apply:** the 4 new or re-created bodies match the file by md5; the Phase 51 helpers keep their hashes; grants as specified (`handle_new_user`: `postgres`, `service_role`, `supabase_auth_admin` only). **Both** probes re-ran against the deployed functions - Phase 52 OK, and Phase 51 OK unchanged - leaving no probe data.
+- **Advisors:** both `handle_new_user` findings (0011 mutable `search_path`, 0028 anon-executable) are **gone**. Remaining: 0029 on the six ledger/session RPCs (their purpose; each checks ownership through `auth.uid()`) and leaked-password protection (a dashboard setting).
+
+**Negative controls (every fix went red first)**
+
+| Test | On unfixed code |
+|---|---|
+| Downward ADJUSTMENT lowers the balance (local) | **failed at 5000**, expected 4000 |
+| `TxAmount` for -1,000 / +250 | **`−฿-1,000.00`** and **`−฿250.00`** |
+| Signed-in ADJUSTMENT reaches `record_transaction` negative | failed with only the Zod change stashed |
+| E2E: set a ฿2,500 wallet to ฿2,000 (old `Math.abs(diff)` restored) | **received ฿3,000.00** - the bug's own figure |
+| Guest opening row / negative card opening / one `create_wallet` RPC / replay / checked fallback / compensation | all failed (7 of 9; the other 2 are guards) |
+| CSV debt resolution, export column, guest and signed-in decrement, aggregate guard | 11 of 12 failed; the stale-debt server-guard test failed exactly under a control that disabled only its error mapping |
+| Sign-out clears storage | **9 leaked values**; a write queued at sign-out, **7**; wrong scope (`local` vs `global`) |
+| A load in flight at sign-out (`authEpochRef` disabled) | failed exactly that test |
+| `signOutOtherDevices` switched to the global scope | failed exactly the two scope-dependent tests |
+| Sign-out with the write-queue drop removed | **did not fail** - see Surprises |
+| E2E swipe with the guard disabled (two designs) | **did not fail** - test deleted, see Surprises |
+
+**Surprises**
+
+- **A control disproved a claim in the ADR, and the ADR was corrected rather than the test bent.** ADR 0024 called dropping the batched writer's queue the load-bearing step of sign-out. Removing it failed no test: the reset's own state changes schedule guest-default writes over the same keys before the flush, and a later write to a key replaces the queued one. The step stays as defence in depth; the code comment and the ADR now say so.
+- **The swipe guard's end-to-end test could not be made honest, so it was deleted.** A Chromium CDP-synthesised swipe that starts in an overflowing table is consumed by native scrolling and never completes - with the guard removed as much as with it. Two controls passed; the first test design was also flawed (both swipes in one direction gave "one tab change" either way), and the redesign was just as blind. The guard is unit-tested; its effect on real touch hardware is unverified, and the ADR records that.
+- **A precondition caught a vacuous test before it could pass.** At 390 px the transactions table fits unless a row has a long description; the spec's `scrollWidth > clientWidth` assertion failed first, which is what exposed that the table was not a scroller at all in the original fixture.
+- **supabase-js signs out globally by default.** The old `signOut()` ended every other session on a plain sign-out. The new code passes `scope: 'local'` explicitly, and a Do-NOT line says why.
+- **A modal inside a `backdrop-filter` element is clipped.** The More sheet had to be a sibling of `<nav>`: the nav's backdrop filter makes it the containing block for fixed descendants.
+- **A dynamic import re-partitioned the bundle.** `GuestDataNotice` loads the CSV exporter on click; that made `csvExchange` (with papaparse) its own chunk, shared by `TransactionsView`, which shrank by 21 KB. `AddWalletForm` importing `useIdempotencyKey` did the same to `InlineMathInput`. Net +6,764 B across all JS, the entry being the real cost.
+- **One harness test raced before it was run.** The delete/restore tests fired in the same tick as the add that created their row and found nothing in `transactionsRef`; Phase 51's `landed()` helper was the fix, as it was there.
+
+**Deliberately not done**
+
+- **Lazy `@supabase/supabase-js`** - Phase 53, by the user's decision.
+- **Repairing the 3 wrong-direction adjustments** - the query is in ADR 0024; the database cannot know whether their owners already re-corrected those wallets by hand.
+- **Merging guest data into an account** and **per-device session revoke** (the latter would mean writing to the `auth` schema).
+- **Opening-balance rows for the starter wallets** - fixtures, and every fresh-context spec relies on their absence.
+- **Leaked-password protection** - a dashboard setting, handed to the user.
+- **A proof that the trigger fires as `supabase_auth_admin`** - this session cannot assume the role; the probe proves the trigger fires and that the role holds EXECUTE explicitly, and PostgreSQL checks EXECUTE on a trigger function at `CREATE TRIGGER`, not when it fires. A real sign-up after deploy is the remaining check.
+
+---
+
 ## Phase 51 - Atomic server-side ledger writes (Supabase RPCs) and reconnection reconciliation: T154-T165 (2026-09-27, commits `9527c0c`...`145ce0a`)
 
 **Changed**

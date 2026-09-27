@@ -771,3 +771,40 @@ Gzip figures in this table are `zlib` level 9 from a measurement script, not Vit
 | Vitest (`unit/`) | 6 | 157 | 157 | ~9.8 s |
 
 **Stability note:** the Playwright gate was clean at 321/321 on the first attempt with no retries; Phase 44's `wallets.spec.ts` webkit flake has now not reproduced across seven consecutive phases. The unit suite ran 11 times at its final shape without a failure. **The unit wall clock rose ~3.1 s -> ~9.8 s**, and that is the tests, not the environment: the six reconnect tests each spend a 400 ms debounce, and the three that prove an absence each add a 600 ms quiet period (~3.9 s together); the RPC tests' re-reads and `landed()` waits make up most of the rest.
+
+## Phase 52 (security, real sessions, mobile nav, F5/F7/F8) — bundle delta, measured against a rebuild of HEAD
+
+Same method as Phases 43–51: built `044b862` (the pre-phase HEAD) in a scratch worktree with the same `.env` and a junctioned `node_modules` (unlinked with `rmdir` afterwards), and `main` in the repo, in turn. The HEAD column reproduced Phase 51's recorded figures exactly — entry 168,856 B, all JS 1,356,890 B, precache 1,556.71 KiB. Gzip is `zlib` level 9 from the same measurement script as Phase 51.
+
+| Chunk | HEAD (`044b862`) | Phase 52 | Delta |
+|---|---|---|---|
+| entry `index-*.js` | 168,856 B / 47,383 B gzip | **176,314 B / 49,104 B gzip** | **+7,458 B / +1,721 B** |
+| `TransactionsView-*.js` (lazy) | 50,621 / 15,987 | 29,352 / 8,247 | −21,269 (papaparse moved out) |
+| `csvExchange-*.js` (lazy, **new**) | — | 22,257 / 8,413 | new: papaparse + the CSV module, shared by `TransactionsView` and `GuestDataNotice` |
+| `AccountModal-*.js` (lazy, **new**) | — | 12,893 / 3,780 | replaces `SecurityView` |
+| `SecurityView-*.js` | 15,298 / 3,553 | — | deleted |
+| `InlineMathInput-*.js` (lazy, **new**) | — | 7,162 / 2,486 | split out of `useIdempotencyKey-*.js` (7,302 → 226 B) |
+| `vendor-icons-*.js` (**modulepreloaded**) | 30,747 / 6,628 | 30,835 / 6,695 | +88 B (new icons, one removed) |
+| `vendor-supabase-*.js` (**modulepreloaded**) | 226,442 / 58,503 | 226,442 / 58,503 | 0 |
+| `vendor-math-*.js` | 375,725 / 110,526 | 375,725 / 110,526 | 0 |
+| **all JS, summed** | 1,356,890 B | 1,363,654 B | **+6,764 B** |
+| `index-*.css` | 77,627 / 11,769 | 78,908 / 11,861 | +1,281 B |
+| chunk count | 33 | 35 | +2 |
+| PWA precache | 42 entries, 1,556.71 KiB | 44 entries, 1,564.56 KiB | +7.85 KiB |
+| build time | — | 5.1 s | after `clean`, warm |
+
+**Findings**
+
+- **The entry cost is the provider and the shell.** `FinanceContext` gained `create_wallet`, CSV debts, `resetToGuestState`, `authEpochRef` and the session actions; the eager shell gained `GuestDataNotice` (inside `AuthModal`), the five-slot nav with its More sheet, the account button and the swipe guard. +7,458 B raw, +1.72 kB gzip — the largest entry increase since Phase 43, and all of it behaviour, not a dependency.
+- **Papaparse stayed off the critical path.** `GuestDataNotice` imports the CSV exporter on click, which pulled `csvExchange` (with papaparse) into its own lazy chunk; `grep` finds no papaparse in the entry chunk, and the modulepreload list is unchanged (react, motion, supabase, icons).
+- **Two re-partitions, both lazy.** The CSV split shrank `TransactionsView` by 21 KB; `AddWalletForm` importing `useIdempotencyKey` split `InlineMathInput` out of that hook's former shared chunk. Net JS +6,764 B.
+- **`vendor-supabase` is untouched** — lazy-loading it for guests is Phase 53.
+
+**Test-suite size:** Playwright **321 -> 357 runs** (119 tests, 23 spec files; `account-and-mobile-nav` new with 12 tests; no existing spec edited). Unit suite **157 -> 222 tests in 11 files** (5 new files; both ledger harnesses extended).
+
+| Suite | Files | Tests | Runs | Wall clock |
+|---|---|---|---|---|
+| Playwright (chromium/firefox/webkit) | 23 | 119 | 357 | 8.2 m |
+| Vitest (`unit/`) | 11 | 222 | 222 | ~19 s |
+
+**Stability note:** the Playwright gate was clean at 357/357 on the first attempt with no retries; Phase 44's `wallets.spec.ts` webkit flake has now not reproduced across eight consecutive phases. The unit wall clock rose ~10 s -> ~19 s, and it is the tests: the sign-out tests wait 400 ms for the batched writer so a leak has had time to land, and the account-modal tests render framer-motion dialogs in jsdom.
