@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { motion } from 'framer-motion';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { AuthLoginSchema, formatZodIssues } from '../utils/zodSchemas';
 import { Lock, Mail, User as UserIcon, AlertCircle, CheckCircle2, ArrowRight, X, KeyRound } from 'lucide-react';
@@ -117,15 +116,14 @@ export const AuthModal: React.FC<AuthModalProps> = React.memo(({ isOpen, onClose
           <p className="text-xs text-fg-secondary">Sync your finances across devices</p>
         </div>
       </div>
-      <motion.button
-        whileTap={{ scale: 0.9 }}
+      <button
         type="button"
         id="auth-close-btn"
         onClick={onClose}
-        className="p-2 rounded-lg text-fg-muted hover:text-fg hover:bg-surface-2 cursor-pointer"
+        className="min-w-[44px] min-h-[44px] inline-flex items-center justify-center rounded-lg text-fg-muted hover:text-fg hover:bg-surface-2 transition-colors duration-150 cursor-pointer"
       >
         <X className="w-5 h-5" />
-      </motion.button>
+      </button>
     </div>
   );
 
@@ -238,12 +236,11 @@ export const AuthModal: React.FC<AuthModalProps> = React.memo(({ isOpen, onClose
           </div>
         )}
 
-        <motion.button
-          whileTap={{ scale: 0.96 }}
+        <button
           type="submit"
           id="auth-submit-btn"
           disabled={loading}
-          className="w-full py-2.5 sm:py-3 px-4 rounded-lg font-semibold text-xs sm:text-sm bg-brand-fill hover:bg-brand-fill-hover text-white transition-colors duration-150 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+          className="w-full min-h-[44px] py-2.5 sm:py-3 px-4 rounded-lg font-semibold text-xs sm:text-sm bg-brand-fill hover:bg-brand-fill-hover text-white transition-colors duration-150 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
         >
           {loading ? (
             <span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -259,7 +256,7 @@ export const AuthModal: React.FC<AuthModalProps> = React.memo(({ isOpen, onClose
               <ArrowRight className="w-4 h-4" />
             </>
           )}
-        </motion.button>
+        </button>
 
         {mode === 'forgot' && (
           <button

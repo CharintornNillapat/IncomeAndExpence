@@ -36,6 +36,9 @@ export interface ModalProps {
  * the header/footer as non-shrinking siblings and the body as `flex-1
  * overflow-y-auto`, so a sticky header with a scrollable body falls out of
  * flexbox rather than the calc(vh - fixed px) each hand-rolled copy used.
+ *
+ * Phase 53b (DESIGN.md §5): the scrim is a solid dim with no blur, the panel
+ * is opaque, and it moves on a 200 ms tween with no scale or spring overshoot.
  */
 export const Modal: React.FC<ModalProps> = ({
   isOpen,
@@ -81,7 +84,7 @@ export const Modal: React.FC<ModalProps> = ({
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.2 }}
-          className="fixed inset-0 z-50 bg-scrim backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-4"
+          className="fixed inset-0 z-50 bg-scrim flex items-end sm:items-center justify-center p-0 sm:p-4"
           onClick={(e) => {
             if (closeOnBackdropClick && e.target === e.currentTarget) onClose();
           }}
@@ -92,11 +95,11 @@ export const Modal: React.FC<ModalProps> = ({
             aria-modal="true"
             aria-labelledby={resolvedTitleId}
             aria-label={!resolvedTitleId ? ariaLabel : undefined}
-            initial={{ y: 40, scale: 0.96, opacity: 0 }}
-            animate={{ y: 0, scale: 1, opacity: 1 }}
-            exit={{ y: 40, scale: 0.96, opacity: 0 }}
-            transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-            className={`bg-surface-1/95 backdrop-blur-xl rounded-t-xl sm:rounded-lg w-full ${maxWidthClassName} max-h-[92vh] sm:max-h-[90vh] flex flex-col shadow-modal border border-line overflow-hidden ${panelClassName}`}
+            initial={{ y: 24, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 24, opacity: 0 }}
+            transition={{ duration: 0.2, ease: 'easeOut' }}
+            className={`bg-surface-1 rounded-t-xl sm:rounded-lg w-full ${maxWidthClassName} max-h-[92vh] sm:max-h-[90vh] flex flex-col shadow-modal border border-line overflow-hidden ${panelClassName}`}
           >
             {showMobileHandle && (
               <div className="sm:hidden pt-3 pb-1 flex justify-center cursor-pointer shrink-0" onClick={onClose}>
@@ -117,16 +120,15 @@ export const Modal: React.FC<ModalProps> = ({
                   )}
                 </div>
                 {showCloseButton && (
-                  <motion.button
-                    whileTap={{ scale: 0.9 }}
+                  <button
                     type="button"
                     id={closeButtonId}
                     onClick={onClose}
                     aria-label="Close modal"
-                    className="p-2 rounded-lg text-fg-muted hover:text-fg hover:bg-surface-2 active:bg-surface-3 transition-colors cursor-pointer"
+                    className="min-w-[44px] min-h-[44px] -mr-2 inline-flex items-center justify-center rounded-lg text-fg-muted hover:text-fg hover:bg-surface-2 active:bg-surface-3 transition-colors duration-150 cursor-pointer"
                   >
                     <X className="w-5 h-5" />
-                  </motion.button>
+                  </button>
                 )}
               </div>
             )}

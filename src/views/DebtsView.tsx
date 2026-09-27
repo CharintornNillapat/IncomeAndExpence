@@ -131,7 +131,7 @@ export const DebtsView: React.FC = () => {
             id="open-add-debt-btn"
             type="button"
             onClick={() => setIsAddDebtOpen(true)}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-brand-fill hover:bg-brand-fill-hover rounded-lg transition-all cursor-pointer"
+            className="min-h-[44px] inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-brand-fill hover:bg-brand-fill-hover rounded-lg transition-colors duration-150 cursor-pointer"
           >
             <Plus className="w-4 h-4 text-white" />
             <span>Add Debt</span>

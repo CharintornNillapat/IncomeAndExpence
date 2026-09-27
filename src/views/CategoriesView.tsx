@@ -1,5 +1,4 @@
 import React, { useState, useMemo } from 'react';
-import { motion } from 'framer-motion';
 import {
   Plus,
   Trash2,
@@ -285,20 +284,24 @@ export const CategoriesView: React.FC = () => {
 
               <div>
                 <label className={`${LABEL_CLASS} mb-1.5`}>Color</label>
-                <div className="flex flex-wrap items-center gap-2.5">
+                {/* A 28px swatch inside a 44px hit box; the selected one takes the focus ring, not a scale. */}
+                <div className="flex flex-wrap items-center gap-1">
                   {CATEGORY_COLOR_PALETTE.map((c) => (
-                    <motion.button
-                      whileTap={{ scale: 0.9 }}
+                    <button
                       key={c}
                       type="button"
                       onClick={() => setNewCategoryColor(c)}
-                      className={`w-7 h-7 rounded-full transition-transform cursor-pointer ${
-                        newCategoryColor === c
-                          ? 'scale-125 ring-2 ring-focus ring-offset-2 ring-offset-surface-1'
-                          : ''
-                      }`}
-                      style={{ backgroundColor: c }}
-                    />
+                      aria-label={`Colour ${c}`}
+                      aria-pressed={newCategoryColor === c}
+                      className="w-11 h-11 inline-flex items-center justify-center rounded-full cursor-pointer"
+                    >
+                      <span
+                        className={`w-7 h-7 rounded-full ${
+                          newCategoryColor === c ? 'ring-2 ring-focus ring-offset-2 ring-offset-surface-1' : ''
+                        }`}
+                        style={{ backgroundColor: c }}
+                      />
+                    </button>
                   ))}
                 </div>
               </div>
@@ -355,7 +358,8 @@ export const CategoriesView: React.FC = () => {
                           id={`edit-category-${cat.id}`}
                           onClick={() => openEditCategory(cat)}
                           title="Edit category"
-                          className="p-1.5 text-fg-muted hover:text-fg rounded-sm transition-colors cursor-pointer"
+                          aria-label="Edit category"
+                          className="min-w-[44px] min-h-[44px] -my-2 inline-flex items-center justify-center text-fg-muted hover:text-fg rounded-sm transition-colors duration-150 cursor-pointer"
                         >
                           <Pencil className="w-3.5 h-3.5" />
                         </button>
@@ -368,7 +372,8 @@ export const CategoriesView: React.FC = () => {
                               setDeleteCategoryError(null);
                             }}
                             title="Delete category"
-                            className="p-1.5 text-fg-muted hover:text-expense rounded-sm transition-colors cursor-pointer"
+                            aria-label="Delete category"
+                            className="min-w-[44px] min-h-[44px] -my-2 inline-flex items-center justify-center text-fg-muted hover:text-expense rounded-sm transition-colors duration-150 cursor-pointer"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
@@ -450,7 +455,7 @@ export const CategoriesView: React.FC = () => {
               </div>
 
               <div>
-                <label className="text-xs font-semibold uppercase tracking-wider text-fg-secondary block mb-1">
+                <label className="text-xs font-semibold text-fg-secondary block mb-1">
                   Type sample text:
                 </label>
                 <input
@@ -537,7 +542,9 @@ export const CategoriesView: React.FC = () => {
                           <button
                             type="button"
                             onClick={() => deleteKeywordRule(rule.id)}
-                            className="p-1 text-fg-muted hover:text-expense rounded-sm transition-colors cursor-pointer"
+                            aria-label="Delete rule"
+                            title="Delete rule"
+                            className="min-w-[44px] min-h-[44px] -my-2 inline-flex items-center justify-center text-fg-muted hover:text-expense rounded-sm transition-colors duration-150 cursor-pointer"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
@@ -591,20 +598,23 @@ export const CategoriesView: React.FC = () => {
 
           <div>
             <label className={`${LABEL_CLASS} mb-1.5`}>Color</label>
-            <div className="flex flex-wrap items-center gap-2.5">
+            <div className="flex flex-wrap items-center gap-1">
               {CATEGORY_COLOR_PALETTE.map((c) => (
-                <motion.button
-                  whileTap={{ scale: 0.9 }}
+                <button
                   key={c}
                   type="button"
                   onClick={() => setEditColor(c)}
-                  className={`w-7 h-7 rounded-full transition-transform cursor-pointer ${
-                    editColor === c
-                      ? 'scale-125 ring-2 ring-focus ring-offset-2 ring-offset-surface-1'
-                      : ''
-                  }`}
-                  style={{ backgroundColor: c }}
-                />
+                  aria-label={`Colour ${c}`}
+                  aria-pressed={editColor === c}
+                  className="w-11 h-11 inline-flex items-center justify-center rounded-full cursor-pointer"
+                >
+                  <span
+                    className={`w-7 h-7 rounded-full ${
+                      editColor === c ? 'ring-2 ring-focus ring-offset-2 ring-offset-surface-1' : ''
+                    }`}
+                    style={{ backgroundColor: c }}
+                  />
+                </button>
               ))}
             </div>
           </div>
@@ -613,20 +623,21 @@ export const CategoriesView: React.FC = () => {
             <label className={`${LABEL_CLASS} mb-1.5`}>Icon</label>
             <div className="flex flex-wrap items-center gap-2">
               {CATEGORY_ICON_OPTIONS.map(({ value, Icon }) => (
-                <motion.button
-                  whileTap={{ scale: 0.9 }}
+                <button
                   key={value}
                   type="button"
                   onClick={() => setEditIcon(value)}
                   title={value}
-                  className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors cursor-pointer ${
+                  aria-label={`Icon ${value}`}
+                  aria-pressed={editIcon === value}
+                  className={`w-11 h-11 rounded-lg flex items-center justify-center transition-colors duration-150 cursor-pointer ${
                     editIcon === value
                       ? 'bg-brand-fill text-white'
                       : 'bg-surface-2 text-fg-secondary hover:bg-surface-3'
                   }`}
                 >
                   <Icon className="w-4 h-4" />
-                </motion.button>
+                </button>
               ))}
             </div>
           </div>

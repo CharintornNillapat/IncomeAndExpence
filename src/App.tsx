@@ -55,11 +55,10 @@ const pageVariants = {
   }),
 };
 
+// DESIGN.md MOTION 1: a 200 ms tween, no spring overshoot (Phase 53b).
 const pageTransition: Transition = {
-  type: 'spring',
-  stiffness: 380,
-  damping: 32,
-  mass: 0.8,
+  duration: 0.2,
+  ease: 'easeOut',
 };
 
 const MainApp: React.FC = () => {
@@ -276,7 +275,7 @@ const MainApp: React.FC = () => {
         {...swipeHandlers}
         className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 py-4 sm:py-8 pb-24 sm:pb-8 overflow-x-hidden touch-pan-y"
       >
-        <Suspense fallback={<ViewLoadingFallback />}>
+        <Suspense fallback={<ViewLoadingFallback view={activeTab} />}>
           <AnimatePresence mode="wait" custom={direction}>
             <motion.div
               key={activeTab}
@@ -314,8 +313,7 @@ const MainApp: React.FC = () => {
       {/* Footer (with safe bottom margin on mobile) */}
       <footer className="border-t border-line bg-surface-1 py-6 mt-6 sm:mt-12 mb-16 sm:mb-0 text-center text-xs text-fg-secondary transition-colors duration-200">
         <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
-          <p>FinLife Tracker — Full-Stack Personal Finance & Holistic Lifestyle Management</p>
-          <p className="text-fg-muted font-mono text-[11px]">Supabase Realtime Cloud Sync • Safe Math.js • Single-Tx Repayments</p>
+          <p>FinLife Tracker · Track money and daily habits</p>
         </div>
       </footer>
 

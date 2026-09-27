@@ -24,7 +24,7 @@ Five hues, one job each. Neutrals (canvas, surfaces, borders, text greys) do not
 | Emerald | Income, profit, synced | Money in |
 | Rose | Expense, loss, destructive | Money out or something you cannot undo |
 | Amber | Pending, warning, syncing | Not settled yet |
-| Cyan | Transfer, adjustment | Money moving between your own wallets, neither in nor out |
+| Cyan | Transfer | Money moving between your own wallets, neither in nor out |
 
 Blue is not part of the palette. It previously competed with violet for the focus ring.
 
@@ -142,7 +142,8 @@ Light pending and transfer text are one shade darker than the 700s (`#B45309`, `
 ### Cards & Ledger Tables
 - 1px Border default, Surface 1 background.
 - Numbers in mono with `tabular-nums`, so decimal points and digits align vertically.
-- Signed values: `+` in emerald text, `-` in rose text. Transfers and adjustments in cyan text with no sign.
+- Signed values: `+` in emerald text, `−` in rose text. Transfers in cyan text.
+- A balance adjustment takes the colour of its direction: an upward correction is emerald with `+`, a downward one rose with `−` (ADR 0024). It is not cyan, because it changes the total you own; a transfer does not.
 - Numbers render their final value immediately. No count-up animation on balances.
   - Why: a figure that is still moving can be read as the wrong amount.
 

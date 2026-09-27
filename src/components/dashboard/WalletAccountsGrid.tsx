@@ -1,12 +1,10 @@
 import React from 'react';
-import { motion, Variants } from 'framer-motion';
 import { Wallet as WalletIcon, ChevronRight, ArrowLeftRight } from 'lucide-react';
 import { Wallet } from '../../types';
-import { AnimatedCounter } from '../AnimatedCounter';
+import { Money } from '../ui/Money';
 import { Card } from '../ui/Card';
 import { ProgressMeter } from '../ui/ProgressMeter';
 import { EmptyState } from '../ui/EmptyState';
-import { APP_CURRENCY_SYMBOL } from '../../utils/currency';
 import { getWalletIcon } from '../../utils/walletIcons';
 
 interface WalletAccountsGridProps {
@@ -17,19 +15,6 @@ interface WalletAccountsGridProps {
   /** Opens the shared TransferFundsModal seeded to this wallet (T41 - the modal's own TRANSFER tab was retired in T39). */
   onOpenTransfer: (walletId: string) => void;
 }
-
-const itemVariants: Variants = {
-  hidden: { opacity: 0, y: 16 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: {
-      type: 'spring',
-      damping: 24,
-      stiffness: 300,
-    },
-  },
-};
 
 export const WalletAccountsGrid: React.FC<WalletAccountsGridProps> = React.memo(({
   wallets,
@@ -58,7 +43,7 @@ export const WalletAccountsGrid: React.FC<WalletAccountsGridProps> = React.memo(
         </div>
       </div>
 
-      {/* Wallets Cards Grid with Stagger & Tap scale */}
+      {/* Wallet cards grid */}
       {wallets.length === 0 ? (
         <Card>
           <EmptyState
@@ -74,14 +59,11 @@ export const WalletAccountsGrid: React.FC<WalletAccountsGridProps> = React.memo(
           const percentOfNetWorth = totalNetWorth > 0 ? (wallet.balance / totalNetWorth) * 100 : 0;
 
           return (
-            <motion.div
-              variants={itemVariants}
-              whileHover={{ y: -3, transition: { duration: 0.15 } }}
-              whileTap={{ scale: 0.97 }}
+            <div
               key={wallet.id}
               id={`dashboard-wallet-card-${wallet.id}`}
               onClick={() => onOpenWallet(wallet.id)}
-              className="group bg-surface-1 rounded-xl border border-line hover:border-brand p-4 sm:p-5 transition-all cursor-pointer flex flex-col justify-between relative overflow-hidden"
+              className="group bg-surface-1 rounded-xl border border-line hover:border-brand p-4 sm:p-5 transition-colors duration-150 cursor-pointer flex flex-col justify-between relative overflow-hidden"
             >
               {/* Top Accent bar based on wallet color */}
               <div 
@@ -121,11 +103,7 @@ export const WalletAccountsGrid: React.FC<WalletAccountsGridProps> = React.memo(
                     <span className={`text-xl sm:text-2xl font-black font-mono tracking-tight ${
                       wallet.balance < 0 ? 'text-expense' : 'text-fg'
                     }`}>
-                      <AnimatedCounter
-                        value={wallet.balance}
-                        currencyPrefix={APP_CURRENCY_SYMBOL}
-                        duration={1.2}
-                      />
+                      <Money value={wallet.balance} />
                     </span>
                     <span className="text-[11px] font-semibold font-mono text-fg-muted">{wallet.currency}</span>
                   </div>
@@ -157,7 +135,7 @@ export const WalletAccountsGrid: React.FC<WalletAccountsGridProps> = React.memo(
                   </button>
                 </div>
               </div>
-            </motion.div>
+            </div>
           );
         })}
       </div>

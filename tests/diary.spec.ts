@@ -12,7 +12,7 @@ test.describe('Holistic Mini Diary E2E Tests', () => {
     await gotoTab(page, 'diary');
 
     // 2. Verify Diary header
-    await expect(page.getByRole('heading', { name: /Holistic Mini Diary/i })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /Daily Diary/i })).toBeVisible();
 
     // 3. Select 5-star Peak Flow mood
     const mood5Btn = page.locator('#mood-btn-5');

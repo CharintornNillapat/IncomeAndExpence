@@ -65,7 +65,7 @@ export function SaveRuleChip({
 
         {saved ? (
           <span className="min-w-0 flex-1 truncate text-xs text-income">
-            Rule saved &mdash; <strong className="font-semibold">{keyword}</strong> now files under{' '}
+            Rule saved: <strong className="font-semibold">{keyword}</strong> now files under{' '}
             <strong className="font-semibold">{categoryName}</strong>
           </span>
         ) : (

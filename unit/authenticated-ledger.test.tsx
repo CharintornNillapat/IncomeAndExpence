@@ -876,6 +876,60 @@ describe('a cloud reload that fails (F6)', () => {
   });
 });
 
+describe('a failed cloud load is never silent (Phase 53b, T193)', () => {
+  /*
+   * `loadSupabaseData` used to log a failed read to the console and nothing
+   * else, so the navbar kept saying "Synced" over data it could not refresh.
+   * `syncError` is what the badge's "Sync failed" state reads.
+   */
+
+  it('reports the tables it could not read, and still applies the ones it did', async () => {
+    fake.state.tables.wallets[0].balance = 7777;
+    fake.state.failures.set('debts:select', { message: 'network down' });
+    await actions().refreshFromCloud();
+
+    await waitFor(() => expect(state().syncError).toContain('debts'));
+    expect(wallet()?.balance).toBe(7777);
+    expect(state().isSyncing).toBe(false);
+  });
+
+  it('reports a load that threw', async () => {
+    const boom = Promise.reject(new Error('socket closed'));
+    boom.catch(() => {});
+    fake.state.gates.set('wallets:select', boom);
+    await actions().refreshFromCloud();
+
+    // A string, not merely "not null": `undefined` would pass that too.
+    await waitFor(() => expect(state().syncError).toEqual(expect.any(String)));
+  });
+
+  it('clears once a retry reads everything', async () => {
+    fake.state.failures.set('transactions:select', { message: 'network down' });
+    await actions().refreshFromCloud();
+    await waitFor(() => expect(state().syncError).toContain('transactions'));
+
+    fake.state.failures.clear();
+    await actions().refreshFromCloud();
+    await waitFor(() => expect(state().syncError).toBeNull());
+  });
+
+  it('starts clear after a clean sign-in', () => {
+    expect(state().syncError).toBeNull();
+  });
+
+  it('clears on sign-out, so a guest never sees the account\'s failure', async () => {
+    fake.state.failures.set('debts:select', { message: 'network down' });
+    await actions().refreshFromCloud();
+    await waitFor(() => expect(state().syncError).toContain('debts'));
+
+    await fake.state.authCallback!('SIGNED_OUT', null);
+    await waitFor(() => {
+      expect(state().isAuthenticated).toBe(false);
+      expect(state().syncError).toBeNull();
+    });
+  });
+});
+
 describe('a signed-in write through record_transaction (ADR 0023: F3, F4)', () => {
   /*
    * With the migration applied, a non-transfer write is one RPC that locks the

@@ -1,5 +1,4 @@
 ﻿import React, { useState, useMemo, useCallback } from 'react';
-import { motion, Variants } from 'framer-motion';
 import { useFinanceState } from '../context/FinanceContext';
 import { Transaction } from '../types';
 import { useWallets } from '../hooks/useWallets';
@@ -18,31 +17,6 @@ import { todayIsoDate, daysAgoIsoDate } from '../utils/date';
 import { buildLookupMap } from '../utils/mapUtils';
 
 export type TimeFilter = 'DAY' | 'WEEK' | 'MONTH' | 'ALL';
-
-// Stagger animation container & item variants
-const containerVariants: Variants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: {
-      staggerChildren: 0.08,
-      delayChildren: 0.05,
-    },
-  },
-};
-
-const itemVariants: Variants = {
-  hidden: { opacity: 0, y: 16 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: {
-      type: 'spring',
-      damping: 24,
-      stiffness: 300,
-    },
-  },
-};
 
 interface DashboardViewProps {
   onNavigate?: (tab: string) => void;
@@ -220,14 +194,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   }, [transactions]);
 
   return (
-    <motion.div 
-      className="space-y-8"
-      variants={containerVariants}
-      initial="hidden"
-      animate="visible"
-    >
+    <div className="space-y-8">
       {/* 1. Total Wealth & Complete Net Worth Hero Section */}
-      <motion.section variants={itemVariants} aria-label="Total Wealth & Net Worth">
+      <section aria-label="Total Wealth & Net Worth">
         <TotalWealthHero
           totalNetWorth={totalNetWorth}
           activeWalletCount={activeWallets.length}
@@ -235,23 +204,23 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           onOpenAddWallet={handleHeroOpenAddWallet}
           onOpenManageWallets={handleOpenManageWallets}
         />
-      </motion.section>
+      </section>
 
       {/* 2. All User Wallets & Accounts Grid */}
-      <motion.section variants={itemVariants} aria-label="User Wallets & Accounts">
+      <section aria-label="User Wallets & Accounts">
         <WalletAccountsGrid
           wallets={activeWallets}
           totalNetWorth={totalNetWorth}
           onOpenWallet={handleWalletCardOpen}
           onOpenTransfer={handleGridOpenTransfer}
         />
-      </motion.section>
+      </section>
 
       {/* 3. Financial Performance & Timeframe Breakdown */}
-      <motion.section variants={itemVariants} aria-label="Performance Breakdown" className="space-y-4">
+      <section aria-label="Performance Breakdown" className="space-y-4">
         <SectionHeader
           className="transition-colors"
-          title="Periodic Cashflow & Outflow Analysis"
+          title="Income and spending by period"
           subtitle="Filter cashflow by day, week, month, or all-time records"
           action={
             <SegmentedControl<TimeFilter>
@@ -274,10 +243,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           expenseTotal={expenseTotal}
           netBalance={netBalance}
         />
-      </motion.section>
+      </section>
 
       {/* 4. Category & Debt Progress Breakdown */}
-      <motion.div variants={itemVariants} className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-stretch">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-stretch">
         <CategoryExpenseDistribution
           categoryBreakdown={categoryBreakdown}
           totalExpenseAmount={expenseTotal + debtRepaymentTotal}
@@ -289,28 +258,28 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           remainingDebtTarget={debtSummary.remainingTarget}
           paidDebtTarget={debtSummary.paidTarget}
         />
-      </motion.div>
+      </div>
 
       {/* 4b. The monthly wrap-up (ADR 0020). Sits under the distribution it
              talks about, and owns its own fetching - this view stays unaware
              that a network call exists. */}
-      <motion.section variants={itemVariants} aria-label="Monthly Spending Insights">
+      <section aria-label="Monthly Spending Insights">
         <SpendingInsightsCard
           transactions={transactions}
           categories={categories}
           userId={currentUser.id}
         />
-      </motion.section>
+      </section>
 
       {/* 5. Compact Recent 5 Transactions List with View All Button */}
-      <motion.section variants={itemVariants} aria-label="Recent Transactions">
+      <section aria-label="Recent Transactions">
         <RecentTransactionsTable
           transactions={recentTransactions}
           walletMap={walletMap}
           categoryMap={categoryMap}
           onNavigate={onNavigate}
         />
-      </motion.section>
+      </section>
 
       {/* Wallet Management & Transfer Pop-up Modal */}
       <WalletPopupModal
@@ -321,6 +290,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         onOpenTransfer={handlePopupOpenTransfer}
         onViewAllTransactions={handlePopupViewAllTransactions}
       />
-    </motion.div>
+    </div>
   );
 };

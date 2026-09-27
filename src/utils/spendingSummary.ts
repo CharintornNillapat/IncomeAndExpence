@@ -219,7 +219,7 @@ export function renderInsight(summary: SpendingSummary, verdict: InsightsRespons
         spendLine,
         `${focus.name} is new this month and already appears ${focus.txCount} times, totalling ${formatCurrencyAmount(
           focus.current
-        )} — worth checking whether it is becoming a regular cost.`,
+        )}. Worth checking whether it is becoming a regular cost.`,
         netLine,
       ];
     }
@@ -231,7 +231,7 @@ export function renderInsight(summary: SpendingSummary, verdict: InsightsRespons
         spendLine,
         `That is ${formatCurrencyAmount(saved)} less than last month's ${formatCurrencyAmount(
           totals.previousExpense
-        )} — a real improvement.`,
+        )}, a real improvement.`,
         netLine,
       ];
     }

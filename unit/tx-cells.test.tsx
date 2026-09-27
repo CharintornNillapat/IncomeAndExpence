@@ -31,6 +31,29 @@ describe('TxAmount', () => {
   });
 });
 
+describe('TxAmount colour (Phase 53b, DESIGN.md §4)', () => {
+  const colour = (el: React.ReactElement) => render(el).container.firstElementChild!.className;
+
+  it('colours an adjustment by its direction, never the transfer cyan', () => {
+    expect(colour(<TxAmount amount={250} type="ADJUSTMENT" />)).toContain('text-income');
+    expect(colour(<TxAmount amount={-250} type="ADJUSTMENT" />)).toContain('text-expense');
+    expect(colour(<TxAmount amount={-250} type="ADJUSTMENT" />)).not.toContain('text-transfer');
+  });
+
+  it('gives each other type its own hue', () => {
+    expect(colour(<TxAmount amount={50} type="INCOME" />)).toContain('text-income');
+    expect(colour(<TxAmount amount={50} type="EXPENSE" />)).toContain('text-expense');
+    expect(colour(<TxAmount amount={50} type="TRANSFER" />)).toContain('text-transfer');
+    expect(colour(<TxAmount amount={50} type="DEBT_REPAYMENT" />)).toContain('text-pending');
+  });
+
+  it('lets a site override the colour and nothing else', () => {
+    const el = <TxAmount amount={50} type="INCOME" colorClassName="text-expense" />;
+    expect(colour(el)).toContain('text-expense');
+    expect(colour(el)).not.toContain('text-income');
+  });
+});
+
 describe('txTypeMetaFor', () => {
   it('gives an upward adjustment the credit treatment and a downward one the debit treatment', () => {
     expect(txTypeMetaFor('ADJUSTMENT', 250).sign).toBe('+');

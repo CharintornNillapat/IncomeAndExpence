@@ -13,6 +13,8 @@ export interface TxTypeMeta {
   tint: string;
   /** Canonical amount-prefix glyph: '+' for INCOME, the shared `MINUS` (U+2212) for everything else. */
   sign: string;
+  /** Amount text colour (DESIGN.md §4): `+` emerald, `−` rose, transfer cyan, repayment amber. */
+  text: string;
 }
 
 /**
@@ -38,6 +40,7 @@ export const TX_TYPE_META: Record<TransactionType, TxTypeMeta> = {
     compactIcon: TrendingUp,
     tint: 'bg-income-tint text-income',
     sign: '+',
+    text: 'text-income',
   },
   EXPENSE: {
     label: 'Expense',
@@ -45,6 +48,7 @@ export const TX_TYPE_META: Record<TransactionType, TxTypeMeta> = {
     compactIcon: TrendingDown,
     tint: 'bg-expense-tint text-expense',
     sign: MINUS,
+    text: 'text-expense',
   },
   TRANSFER: {
     label: 'Transfer',
@@ -52,6 +56,7 @@ export const TX_TYPE_META: Record<TransactionType, TxTypeMeta> = {
     compactIcon: TrendingDown,
     tint: 'bg-transfer-tint text-transfer',
     sign: MINUS,
+    text: 'text-transfer',
   },
   DEBT_REPAYMENT: {
     label: 'Debt Repayment',
@@ -59,6 +64,7 @@ export const TX_TYPE_META: Record<TransactionType, TxTypeMeta> = {
     compactIcon: TrendingDown,
     tint: 'bg-pending-tint text-pending',
     sign: MINUS,
+    text: 'text-pending',
   },
   ADJUSTMENT: {
     label: 'Adjustment',
@@ -66,6 +72,7 @@ export const TX_TYPE_META: Record<TransactionType, TxTypeMeta> = {
     compactIcon: TrendingDown,
     tint: 'bg-expense-tint text-expense',
     sign: MINUS,
+    text: 'text-expense',
   },
 };
 

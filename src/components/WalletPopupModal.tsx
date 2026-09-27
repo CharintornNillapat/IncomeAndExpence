@@ -1,5 +1,4 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { motion } from 'framer-motion';
 import {
   X,
   ArrowLeftRight,
@@ -16,6 +15,7 @@ import { ConfirmDialog } from './ui/ConfirmDialog';
 import { Wallet } from '../types';
 import { APP_CURRENCY, APP_CURRENCY_SYMBOL, formatCurrencyAmount } from '../utils/currency';
 import { todayIsoDate } from '../utils/date';
+import { OPTION_CLASS } from '../utils/formStyles';
 import { getWalletIcon } from '../utils/walletIcons';
 import { TxTypeIcon, TxAmount } from './transaction/TxCells';
 
@@ -151,7 +151,7 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
   const header = (
     <>
       {/* Modal Header */}
-      <div className="px-4 sm:px-6 py-3.5 sm:py-4 border-b border-line flex items-center justify-between bg-surface-1/70 backdrop-blur-xs shrink-0">
+      <div className="px-4 sm:px-6 py-3.5 sm:py-4 border-b border-line flex items-center justify-between bg-surface-1 shrink-0">
         <div className="flex items-center gap-3">
           <div className="w-9 sm:w-10 h-9 sm:h-10 rounded-lg bg-brand-tint flex items-center justify-center shrink-0 border border-brand-line">
             <WalletIcon className="w-4 sm:w-5 h-4 sm:h-5 text-brand" />
@@ -169,15 +169,15 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
           </div>
         </div>
 
-        <motion.button
-          whileTap={{ scale: 0.9 }}
+        <button
           id="close-wallet-modal-btn"
           type="button"
           onClick={onClose}
-          className="p-2 rounded-lg text-fg-muted hover:text-fg hover:bg-surface-2 transition-colors cursor-pointer"
+          aria-label="Close wallet details"
+          className="min-w-[44px] min-h-[44px] -mr-2 inline-flex items-center justify-center rounded-lg text-fg-muted hover:text-fg hover:bg-surface-2 transition-colors duration-150 cursor-pointer"
         >
           <X className="w-5 h-5" />
-        </motion.button>
+        </button>
       </div>
 
       {/* Tab Navigation Controls (T39: mapped array over the 2 surviving tabs) */}
@@ -190,7 +190,7 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
               type="button"
               id={tab.buttonId}
               onClick={() => setActiveTab(tab.id)}
-              className={`py-3 px-2 sm:px-3 border-b-2 transition-colors flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
+              className={`min-h-[44px] py-3 px-2 sm:px-3 border-b-2 transition-colors flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
                 activeTab === tab.id
                   ? 'border-brand text-fg'
                   : 'border-transparent text-fg-secondary hover:text-fg'
@@ -263,7 +263,8 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
                                 setIsAdjustingBalance(wallet.id);
                                 setAdjustedBalance(wallet.balance);
                               }}
-                              className="p-1.5 rounded-lg text-fg-muted hover:text-fg hover:bg-surface-3 transition-colors"
+                              aria-label="Adjust Balance"
+                              className="min-w-[44px] min-h-[44px] -my-2 inline-flex items-center justify-center rounded-lg text-fg-muted hover:text-fg hover:bg-surface-3 transition-colors duration-150 cursor-pointer"
                             >
                               <Sliders className="w-3.5 h-3.5" />
                             </button>
@@ -274,7 +275,8 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
                                 e.stopPropagation();
                                 setWalletToDelete(wallet);
                               }}
-                              className="p-1.5 rounded-lg text-fg-muted hover:text-expense hover:bg-expense-tint transition-colors"
+                              aria-label="Delete Wallet"
+                              className="min-w-[44px] min-h-[44px] -my-2 inline-flex items-center justify-center rounded-lg text-fg-muted hover:text-expense hover:bg-expense-tint transition-colors duration-150 cursor-pointer"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
                             </button>
@@ -284,7 +286,7 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
                         {/* Balance display or adjustment editor */}
                         {isAdjustingBalance === wallet.id ? (
                           <div className="mt-3 p-2.5 bg-surface-1 rounded-lg border border-line space-y-2" onClick={(e) => e.stopPropagation()}>
-                            <label className="text-[10px] font-bold uppercase tracking-wider text-fg-secondary block">
+                            <label className="text-xs font-semibold text-fg-secondary block">
                               Set Balance ({APP_CURRENCY_SYMBOL})
                             </label>
                             <div className="flex flex-wrap sm:flex-nowrap items-center gap-2">
@@ -294,21 +296,21 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
                                 step="0.01"
                                 value={adjustedBalance}
                                 onChange={(e) => setAdjustedBalance(parseFloat(e.target.value) || 0)}
-                                className="w-full text-xs font-mono px-2.5 py-1.5 rounded-lg border border-line-input bg-surface-2 text-fg placeholder:text-fg-muted focus:outline-none focus:ring-2 focus:ring-focus"
+                                className="w-full min-h-[44px] text-xs font-mono px-2.5 py-1.5 rounded-lg border border-line-input bg-surface-2 text-fg placeholder:text-fg-muted focus:outline-none focus:ring-2 focus:ring-focus"
                               />
                               <div className="flex items-center gap-1 shrink-0">
                                 <button
                                   type="button"
                                   id="wallet-adjust-save-btn"
                                   onClick={() => handleSaveBalanceAdjustment(wallet.id)}
-                                  className="px-3 py-1.5 bg-brand-fill hover:bg-brand-fill-hover text-white rounded-lg text-xs font-semibold"
+                                  className="min-h-[44px] px-3 py-1.5 bg-brand-fill hover:bg-brand-fill-hover text-white rounded-lg text-xs font-semibold transition-colors duration-150 cursor-pointer"
                                 >
                                   Save
                                 </button>
                                 <button
                                   type="button"
                                   onClick={() => setIsAdjustingBalance(null)}
-                                  className="px-2 py-1.5 text-fg-secondary text-xs hover:text-fg"
+                                  className="min-h-[44px] px-2 py-1.5 text-fg-secondary text-xs hover:text-fg cursor-pointer"
                                 >
                                   Cancel
                                 </button>
@@ -343,7 +345,7 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
                             e.stopPropagation();
                             onOpenTransfer(wallet.id);
                           }}
-                          className="text-transfer font-semibold hover:underline flex items-center gap-1 cursor-pointer"
+                          className="min-h-[44px] -my-2.5 text-transfer font-semibold hover:underline flex items-center gap-1 cursor-pointer"
                         >
                           <ArrowLeftRight className="w-3 h-3" />
                           <span>Transfer</span>
@@ -376,7 +378,7 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
                     <button
                       type="button"
                       onClick={() => onOpenTransfer(currentWallet.id)}
-                      className="flex-1 sm:flex-none px-3 py-1.5 rounded-lg bg-surface-1 hover:bg-surface-3 border border-line hover:border-brand text-fg text-xs font-semibold transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                      className="flex-1 sm:flex-none min-h-[44px] px-3 py-1.5 rounded-lg bg-surface-1 hover:bg-surface-3 border border-line hover:border-brand text-fg text-xs font-semibold transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
                     >
                       <ArrowLeftRight className="w-3.5 h-3.5 text-transfer" />
                       <span>Transfer</span>
@@ -384,7 +386,7 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
                     <button
                       type="button"
                       onClick={() => setActiveTab('TRANSACTIONS')}
-                      className="flex-1 sm:flex-none px-3 py-1.5 rounded-lg bg-brand-fill hover:bg-brand-fill-hover text-white text-xs font-semibold transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                      className="flex-1 sm:flex-none min-h-[44px] px-3 py-1.5 rounded-lg bg-brand-fill hover:bg-brand-fill-hover text-white text-xs font-semibold transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
                     >
                       <Receipt className="w-3.5 h-3.5" />
                       <span>Activity</span>
@@ -406,10 +408,11 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
                   <select
                     value={selectedWalletId}
                     onChange={(e) => setSelectedWalletId(e.target.value)}
-                    className="text-xs font-semibold bg-surface-1 border border-line-input rounded-lg px-2.5 py-1.5 text-fg focus:outline-none"
+                    aria-label="Account activity wallet"
+                    className="min-h-[44px] text-xs font-semibold bg-surface-1 border border-line-input rounded-lg px-2.5 py-1.5 text-fg focus:outline-none focus-visible:ring-2 focus-visible:ring-focus"
                   >
                     {activeWallets.map((w) => (
-                      <option key={w.id} value={w.id}>
+                      <option key={w.id} value={w.id} className={OPTION_CLASS}>
                         {w.name} ({formatCurrencyAmount(w.balance)})
                       </option>
                     ))}
@@ -420,7 +423,7 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
                   type="button"
                   id="wallet-modal-view-all-tx-btn"
                   onClick={() => onViewAllTransactions?.(selectedWalletId)}
-                  className="inline-flex items-center gap-1 text-xs font-semibold text-brand hover:underline cursor-pointer shrink-0"
+                  className="min-h-[44px] inline-flex items-center gap-1 text-xs font-semibold text-brand hover:underline cursor-pointer shrink-0"
                 >
                   <span>View all</span>
                   <ChevronRight className="w-3.5 h-3.5" />
@@ -433,20 +436,18 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
                 </div>
               ) : (
                 <div className="space-y-2">
+                  {/* Icon tint and amount colour both come from `txTypeMetaFor`, so an
+                      adjustment takes its direction's colour and a repayment amber
+                      (DESIGN.md §4). This list used to paint every non-income,
+                      non-expense row in the transfer cyan. */}
                   {walletTransactions.map((tx) => {
-                    const tint =
-                      tx.type === 'INCOME'
-                        ? 'bg-income-tint text-income'
-                        : tx.type === 'EXPENSE'
-                        ? 'bg-expense-tint text-expense'
-                        : 'bg-transfer-tint text-transfer';
                     return (
                     <div
                       key={tx.id}
                       className="p-3 rounded-lg border border-line bg-surface-1 flex items-center justify-between text-xs gap-3"
                     >
                       <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
-                        <TxTypeIcon type={tx.type} amount={tx.amount} variant="compact" size="sm" tintOverride={tint} />
+                        <TxTypeIcon type={tx.type} amount={tx.amount} variant="compact" size="sm" />
                         <div className="min-w-0">
                           <p className="font-semibold text-fg truncate">{tx.description}</p>
                           <span className="text-[10px] text-fg-muted font-mono">{tx.transactionDate}</span>
@@ -454,7 +455,7 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
                       </div>
 
                       <div className="text-right shrink-0">
-                        <TxAmount amount={tx.amount} type={tx.type} colorScheme="incomeOnly" />
+                        <TxAmount amount={tx.amount} type={tx.type} />
                         <span className="text-[10px] text-fg-muted block uppercase font-medium">{tx.type}</span>
                       </div>
                     </div>

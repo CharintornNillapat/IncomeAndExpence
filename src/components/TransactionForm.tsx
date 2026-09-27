@@ -1,5 +1,5 @@
 import React, { useState, useId } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence } from 'framer-motion';
 import { Sparkles, ArrowRight, AlertCircle, Mic } from 'lucide-react';
 import { InlineMathInput } from './InlineMathInput';
 import { Wallet, Category, TransactionType, Preset } from '../types';
@@ -539,8 +539,8 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
     setAmountSeed((prev) => ({ key: prev.key + 1, value: String(value) }));
   };
 
-  // One definition for what used to be the same expression written out three
-  // times (the `whileTap`, the `disabled` and the className ternary below).
+  // One definition for what used to be the same expression written out more
+  // than once (the `disabled` and the className ternary below).
   const canSubmit = !isSubmitting && isAmountValid && amount !== null && !isOverpaying;
 
   /*
@@ -819,9 +819,9 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
           )}
 
           {/* Remaining balance, struck through once a payment is pending, with
-              the projection beside it. `formatCurrencyAmount`, never
-              `AnimatedCounter`: that animates from 0 on mount and re-tweens on
-              every keystroke, and ADR 0009 forbids children in its span. */}
+              the projection beside it, both static `formatCurrencyAmount`
+              text: a projection that animated would re-tween on every
+              keystroke (ADR 0026). */}
           <div className="flex flex-col gap-1.5">
             <div className="flex items-baseline justify-between gap-2 flex-wrap">
               <span className="text-[11px] font-semibold uppercase tracking-wide text-fg-secondary">
@@ -877,8 +877,8 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
             >
               <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-px" />
               <span>
-                Maximum payable is <strong className="font-mono">{formatCurrencyAmount(remainingDebt)}</strong> &mdash;
-                that is all that remains on {repayTargetDebt.name}. Use <strong>Pay in full</strong> to clear it exactly.
+                Maximum payable is <strong className="font-mono">{formatCurrencyAmount(remainingDebt)}</strong>.
+                That is all that remains on {repayTargetDebt.name}. Use <strong>Pay in full</strong> to clear it exactly.
               </span>
             </p>
           ) : settlesExactly ? (
@@ -1062,12 +1062,11 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
 
       {/* 5. Submit Button */}
       <div className="pt-2">
-        <motion.button
-          whileTap={canSubmit ? { scale: 0.96 } : {}}
+        <button
           id={submitBtnId}
           type="submit"
           disabled={!canSubmit}
-          className={`w-full min-h-[48px] py-3 px-4 rounded-lg font-semibold text-sm transition-all flex items-center justify-center gap-2 cursor-pointer ${
+          className={`w-full min-h-[48px] py-3 px-4 rounded-lg font-semibold text-sm transition-colors duration-150 flex items-center justify-center gap-2 cursor-pointer ${
             canSubmit
               ? 'bg-brand-fill hover:bg-brand-fill-hover text-white'
               : 'bg-surface-3 text-fg-muted cursor-not-allowed'
@@ -1082,7 +1081,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
             </span>
           )}
           <ArrowRight className="w-4 h-4" />
-        </motion.button>
+        </button>
 
         {submitError && (
           <div className={`${ERROR_BANNER_CLASS} flex items-center gap-2 mt-2`}>

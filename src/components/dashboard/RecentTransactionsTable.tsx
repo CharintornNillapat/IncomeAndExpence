@@ -1,25 +1,9 @@
 import React from 'react';
-import { motion } from 'framer-motion';
 import { Calendar, ChevronRight, Receipt, ArrowDownLeft, ArrowUpRight, ArrowLeftRight, TrendingDown } from 'lucide-react';
-import { Transaction, TransactionType, Wallet, Category } from '../../types';
+import { Transaction, Wallet, Category } from '../../types';
 import { APP_CURRENCY } from '../../utils/currency';
 import { TxAmount, TxCategoryChip } from '../transaction/TxCells';
 import { EmptyState } from '../ui/EmptyState';
-
-/**
- * T49: this table's own 4-way amount color scheme (income/expense/pending/
- * transfer tokens) predates - and diverges from - `TX_TYPE_META.tint`/
- * `TxAmount`'s 3-way standard preset (see `txTypeMeta.ts`'s note). Passed into
- * `TxAmount` via `colorClassName` rather than added as a 3rd shared preset,
- * since no other renderer uses it.
- */
-const AMOUNT_COLOR_BY_TYPE: Record<TransactionType, string> = {
-  INCOME: 'text-income',
-  EXPENSE: 'text-expense',
-  DEBT_REPAYMENT: 'text-pending',
-  TRANSFER: 'text-transfer',
-  ADJUSTMENT: 'text-transfer',
-};
 
 interface RecentTransactionsTableProps {
   transactions: Transaction[];
@@ -45,16 +29,15 @@ export const RecentTransactionsTable: React.FC<RecentTransactionsTableProps> = R
           </div>
         </div>
 
-        <motion.button
-          whileTap={{ scale: 0.95 }}
+        <button
           id="dashboard-view-all-transactions-btn"
           type="button"
           onClick={() => onNavigate?.('transactions')}
-          className="min-h-[44px] inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold text-fg-secondary hover:text-fg bg-surface-2 hover:bg-surface-3 border border-line hover:border-brand rounded-lg transition-all cursor-pointer"
+          className="min-h-[44px] inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold text-fg-secondary hover:text-fg bg-surface-2 hover:bg-surface-3 border border-line hover:border-brand rounded-lg transition-colors duration-150 cursor-pointer"
         >
           <span>View All</span>
           <ChevronRight className="w-3.5 h-3.5 text-fg-muted" />
-        </motion.button>
+        </button>
       </div>
 
       {/* Compact Transactions Table with Progressive Disclosure */}
@@ -154,7 +137,7 @@ export const RecentTransactionsTable: React.FC<RecentTransactionsTableProps> = R
 
                     {/* Amount */}
                     <td className="py-3 px-3 sm:px-4 text-right font-mono font-bold whitespace-nowrap text-xs sm:text-sm">
-                      <TxAmount amount={tx.amount} type={tx.type} colorClassName={AMOUNT_COLOR_BY_TYPE[tx.type]} />
+                      <TxAmount amount={tx.amount} type={tx.type} />
                       <span className="text-[10px] text-fg-muted ml-1 hidden sm:inline">{currency}</span>
                     </td>
                   </tr>

@@ -89,7 +89,7 @@ export const TransactionTableRow: React.FC<TransactionTableRowProps> = React.mem
         ) : category ? (
           <TxCategoryChip category={category} size="md" rounded="md" className="max-w-[130px]" />
         ) : (
-          <span className="text-fg-muted">—</span>
+          <span className="text-fg-muted">No category</span>
         )}
       </td>
 
@@ -105,7 +105,8 @@ export const TransactionTableRow: React.FC<TransactionTableRowProps> = React.mem
             id={`tx-restore-btn-${tx.id}`}
             type="button"
             onClick={() => onRestore(tx.id)}
-            title="Restore soft-deleted transaction"
+            title="Restore transaction"
+            aria-label="Restore transaction"
             className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center text-income hover:bg-income-tint rounded-lg transition-colors cursor-pointer"
           >
             <RotateCcw className="w-4 h-4" />
@@ -115,7 +116,8 @@ export const TransactionTableRow: React.FC<TransactionTableRowProps> = React.mem
             id={`tx-delete-btn-${tx.id}`}
             type="button"
             onClick={() => onDelete(tx.id)}
-            title="Soft delete (reverts wallet balance)"
+            title="Delete and reverse the wallet change"
+            aria-label="Delete and reverse the wallet change"
             className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center text-fg-muted hover:text-expense hover:bg-expense-tint rounded-lg transition-colors cursor-pointer"
           >
             <Trash2 className="w-4 h-4" />

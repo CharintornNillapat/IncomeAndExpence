@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { motion } from 'framer-motion';
 import { ArrowLeftRight, ArrowRight, AlertCircle, AlertTriangle, CheckCircle2, Wallet as WalletIcon } from 'lucide-react';
 import { useFinanceActions } from '../../context/FinanceContext';
 import { useSubmitHandler } from '../../hooks/useSubmitHandler';
@@ -111,7 +110,7 @@ const TransferWalletPanel: React.FC<TransferWalletPanelProps> = ({
           value={value}
           onChange={(e) => onChange(e.target.value)}
           aria-label={label}
-          className="min-w-0 flex-1 bg-transparent text-xs font-bold text-fg border-0 p-0 focus:outline-none focus:ring-0 cursor-pointer"
+          className="min-w-0 flex-1 min-h-[44px] -my-1.5 px-1 rounded-md bg-transparent text-xs font-bold text-fg border-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-focus cursor-pointer"
         >
           {wallets.map((w) => (
             <option key={w.id} value={w.id} className={OPTION_CLASS}>
@@ -316,17 +315,16 @@ export const WalletTransferForm: React.FC<WalletTransferFormProps> = ({
         />
 
         <div className="flex items-center justify-center">
-          <motion.button
-            whileTap={{ scale: 0.9 }}
+          <button
             id={ids.swap}
             type="button"
             onClick={handleSwap}
             aria-label="Swap source and destination wallets"
             title="Swap source and destination"
-            className="w-9 h-9 rounded-full flex items-center justify-center border border-line bg-surface-2 text-fg-secondary hover:text-fg hover:border-brand transition-colors cursor-pointer"
+            className="w-11 h-11 rounded-full flex items-center justify-center border border-line bg-surface-2 text-fg-secondary hover:text-fg hover:border-brand transition-colors duration-150 cursor-pointer"
           >
             <ArrowLeftRight className="w-4 h-4 rotate-90 sm:rotate-0" />
-          </motion.button>
+          </button>
         </div>
 
         <TransferWalletPanel
@@ -403,12 +401,11 @@ export const WalletTransferForm: React.FC<WalletTransferFormProps> = ({
       {errorPlacement === 'bottom' && errorBanner}
 
       <div className="pt-2">
-        <motion.button
-          whileTap={{ scale: 0.96 }}
+        <button
           id={ids.submit}
           type="submit"
           disabled={!canSubmit}
-          className={`w-full py-2.5 sm:py-3 rounded-lg font-semibold text-xs transition-all flex items-center justify-center gap-2 cursor-pointer ${
+          className={`w-full min-h-[44px] py-2.5 sm:py-3 rounded-lg font-semibold text-xs transition-colors duration-150 flex items-center justify-center gap-2 cursor-pointer ${
             canSubmit
               ? 'bg-brand-fill hover:bg-brand-fill-hover text-white'
               : 'bg-surface-3 text-fg-muted cursor-not-allowed'
@@ -420,7 +417,7 @@ export const WalletTransferForm: React.FC<WalletTransferFormProps> = ({
               ? 'Transferring...'
               : `Transfer ${formatCurrencyAmount(transferAmount ?? 0)}`}
           </span>
-        </motion.button>
+        </button>
       </div>
     </form>
   );

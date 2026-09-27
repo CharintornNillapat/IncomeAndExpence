@@ -1,5 +1,4 @@
 import React, { useMemo, useState, useCallback } from 'react';
-import { motion } from 'framer-motion';
 import {
   Plus,
   ArrowLeftRight,
@@ -7,13 +6,13 @@ import {
   Wallet as WalletIcon,
 } from 'lucide-react';
 import { useFinanceState, useFinanceActions } from '../context/FinanceContext';
-import { AnimatedCounter } from '../components/AnimatedCounter';
+import { Money } from '../components/ui/Money';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { SectionHeader } from '../components/ui/SectionHeader';
 import { Card } from '../components/ui/Card';
 import { EmptyState } from '../components/ui/EmptyState';
 import { Wallet } from '../types';
-import { APP_CURRENCY, APP_CURRENCY_SYMBOL } from '../utils/currency';
+import { APP_CURRENCY } from '../utils/currency';
 import { getWalletIcon } from '../utils/walletIcons';
 import { toIsoDate } from '../utils/date';
 
@@ -73,7 +72,7 @@ export const WalletsView: React.FC<WalletsViewProps> = ({ onOpenTransfer, onOpen
               id="wallet-transfer-modal-btn"
               type="button"
               onClick={() => onOpenTransfer?.()}
-              className="inline-flex items-center gap-1.5 px-3 sm:px-3.5 py-2 text-xs font-semibold text-fg-secondary bg-surface-2 hover:bg-surface-3 border border-line hover:border-brand rounded-lg transition-all cursor-pointer"
+              className="min-h-[44px] inline-flex items-center gap-1.5 px-3 sm:px-3.5 py-2 text-xs font-semibold text-fg-secondary bg-surface-2 hover:bg-surface-3 border border-line hover:border-brand rounded-lg transition-colors duration-150 cursor-pointer"
             >
               <ArrowLeftRight className="w-3.5 h-3.5 text-transfer" />
               <span>Transfer</span>
@@ -83,7 +82,7 @@ export const WalletsView: React.FC<WalletsViewProps> = ({ onOpenTransfer, onOpen
               id="wallet-add-modal-btn"
               type="button"
               onClick={() => onOpenAddWallet?.()}
-              className="inline-flex items-center gap-1.5 px-3 sm:px-3.5 py-2 text-xs font-semibold text-white bg-brand-fill hover:bg-brand-fill-hover rounded-lg transition-all cursor-pointer"
+              className="min-h-[44px] inline-flex items-center gap-1.5 px-3 sm:px-3.5 py-2 text-xs font-semibold text-white bg-brand-fill hover:bg-brand-fill-hover rounded-lg transition-colors duration-150 cursor-pointer"
             >
               <Plus className="w-4 h-4 text-white" />
               <span>Add Wallet</span>
@@ -106,12 +105,10 @@ export const WalletsView: React.FC<WalletsViewProps> = ({ onOpenTransfer, onOpen
         {activeWallets.map((wallet) => {
           const Icon = getWalletIcon(wallet.type);
           return (
-            <motion.div
-              whileHover={{ y: -3 }}
-              whileTap={{ scale: 0.98 }}
+            <div
               key={wallet.id}
               id={`wallet-entity-${wallet.id}`}
-              className="bg-surface-1 rounded-xl border border-line p-5 hover:border-brand transition-all flex flex-col justify-between"
+              className="bg-surface-1 rounded-xl border border-line p-5 hover:border-brand transition-colors duration-150 flex flex-col justify-between"
             >
               <div>
                 <div className="flex items-center justify-between">
@@ -130,16 +127,16 @@ export const WalletsView: React.FC<WalletsViewProps> = ({ onOpenTransfer, onOpen
                     </div>
                   </div>
 
-                  <motion.button
-                    whileTap={{ scale: 0.9 }}
+                  <button
                     id={`delete-wallet-${wallet.id}`}
                     type="button"
                     onClick={() => handleOpenDeleteWallet(wallet)}
                     title="Delete wallet"
-                    className="p-1.5 text-fg-muted hover:text-expense hover:bg-expense-tint rounded-lg transition-colors cursor-pointer"
+                    aria-label="Delete wallet"
+                    className="min-w-[44px] min-h-[44px] -mr-2 inline-flex items-center justify-center text-fg-muted hover:text-expense hover:bg-expense-tint rounded-lg transition-colors duration-150 cursor-pointer"
                   >
                     <Trash2 className="w-4 h-4" />
-                  </motion.button>
+                  </button>
                 </div>
 
                 <div className="mt-6">
@@ -148,11 +145,7 @@ export const WalletsView: React.FC<WalletsViewProps> = ({ onOpenTransfer, onOpen
                   </span>
                   <div className="flex items-baseline gap-2 mt-1">
                     <div className="text-2xl font-bold font-mono text-fg">
-                      <AnimatedCounter
-                        value={wallet.balance}
-                        currencyPrefix={APP_CURRENCY_SYMBOL}
-                        duration={0.8}
-                      />
+                      <Money value={wallet.balance} />
                     </div>
                     <span className="text-xs font-semibold text-fg-secondary font-mono">{APP_CURRENCY}</span>
                   </div>
@@ -169,7 +162,7 @@ export const WalletsView: React.FC<WalletsViewProps> = ({ onOpenTransfer, onOpen
                   <span className="w-1.5 h-1.5 rounded-full bg-income-fill" /> Active Source
                 </span>
               </div>
-            </motion.div>
+            </div>
           );
         })}
       </div>

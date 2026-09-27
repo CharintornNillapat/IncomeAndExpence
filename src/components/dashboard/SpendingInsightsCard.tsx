@@ -108,7 +108,7 @@ export const SpendingInsightsCard: React.FC<SpendingInsightsCardProps> = ({
               disabled={isGenerating}
               aria-label="Refresh insights"
               title="Refresh insights"
-              className="p-1.5 rounded-lg text-fg-muted hover:text-fg hover:bg-surface-2 transition-colors cursor-pointer disabled:cursor-not-allowed disabled:opacity-40"
+              className="min-w-[44px] min-h-[44px] -my-2 inline-flex items-center justify-center rounded-lg text-fg-muted hover:text-fg hover:bg-surface-2 transition-colors cursor-pointer disabled:cursor-not-allowed disabled:opacity-40"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${isGenerating ? 'animate-spin' : ''}`} />
             </button>
@@ -119,7 +119,7 @@ export const SpendingInsightsCard: React.FC<SpendingInsightsCardProps> = ({
             onClick={toggleCollapsed}
             aria-expanded={!isCollapsed}
             aria-label={isCollapsed ? 'Expand insights' : 'Collapse insights'}
-            className="p-1.5 rounded-lg text-fg-muted hover:text-fg hover:bg-surface-2 transition-colors cursor-pointer"
+            className="min-w-[44px] min-h-[44px] -my-2 -mr-2 inline-flex items-center justify-center rounded-lg text-fg-muted hover:text-fg hover:bg-surface-2 transition-colors cursor-pointer"
           >
             {isCollapsed ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronUp className="w-3.5 h-3.5" />}
           </button>
@@ -135,7 +135,8 @@ export const SpendingInsightsCard: React.FC<SpendingInsightsCardProps> = ({
           ) : isGenerating ? (
             // Skeleton rather than a spinner: it occupies the height the
             // sentences will, so the card below does not jump when they land.
-            <div data-testid="insights-skeleton" className="space-y-2.5 animate-pulse py-1">
+            // Static since Phase 53b (DESIGN.md §4: skeletons do not pulse).
+            <div data-testid="insights-skeleton" role="status" aria-label="Writing your summary" className="space-y-2.5 py-1">
               <div className="h-3 rounded-sm bg-surface-3 w-11/12" />
               <div className="h-3 rounded-sm bg-surface-3 w-full" />
               <div className="h-3 rounded-sm bg-surface-3 w-8/12" />
@@ -156,7 +157,7 @@ export const SpendingInsightsCard: React.FC<SpendingInsightsCardProps> = ({
                   className="flex items-center gap-1.5 text-[11px] font-medium text-fg-muted"
                 >
                   <WifiOff className="w-3 h-3 shrink-0" />
-                  Offline summary &mdash; generated on this device.
+                  Offline summary, generated on this device.
                 </p>
               )}
             </div>

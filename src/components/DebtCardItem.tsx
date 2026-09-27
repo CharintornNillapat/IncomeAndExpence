@@ -61,7 +61,8 @@ export const DebtCardItem: React.FC<DebtCardItemProps> = React.memo(({
                 type="button"
                 onClick={() => onSettle(debt.id)}
                 title="Mark fully settled"
-                className="p-1.5 text-fg-muted hover:text-income hover:bg-income-tint rounded-lg transition-colors cursor-pointer"
+                aria-label="Mark fully settled"
+                className="min-w-[44px] min-h-[44px] -my-2 inline-flex items-center justify-center text-fg-muted hover:text-income hover:bg-income-tint rounded-lg transition-colors cursor-pointer"
               >
                 <Check className="w-4 h-4" />
               </button>
@@ -71,7 +72,8 @@ export const DebtCardItem: React.FC<DebtCardItemProps> = React.memo(({
               type="button"
               onClick={() => onDelete(debt.id)}
               title="Delete debt"
-              className="p-1.5 text-fg-muted hover:text-expense hover:bg-expense-tint rounded-lg transition-colors cursor-pointer"
+              aria-label="Delete debt"
+              className="min-w-[44px] min-h-[44px] -my-2 -mr-2 inline-flex items-center justify-center text-fg-muted hover:text-expense hover:bg-expense-tint rounded-lg transition-colors cursor-pointer"
             >
               <Trash2 className="w-4 h-4" />
             </button>

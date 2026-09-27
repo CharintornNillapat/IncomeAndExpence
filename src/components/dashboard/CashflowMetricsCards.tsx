@@ -1,8 +1,6 @@
 import React from 'react';
-import { motion } from 'framer-motion';
 import { ArrowDownLeft, ArrowUpRight, TrendingUp, TrendingDown } from 'lucide-react';
-import { AnimatedCounter } from '../AnimatedCounter';
-import { APP_CURRENCY_SYMBOL } from '../../utils/currency';
+import { Money } from '../ui/Money';
 
 interface CashflowMetricsCardsProps {
   incomeTotal: number;
@@ -18,10 +16,9 @@ export const CashflowMetricsCards: React.FC<CashflowMetricsCardsProps> = React.m
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-5">
       {/* 1. Total Income Card */}
-      <motion.div
-        whileHover={{ y: -2 }}
+      <div
         data-testid="metric-card-income"
-        className="bg-surface-1 rounded-xl border-2 border-income-line p-4 sm:p-6 transition-all relative overflow-hidden flex flex-col justify-between"
+        className="bg-surface-1 rounded-xl border-2 border-income-line p-4 sm:p-6 relative overflow-hidden flex flex-col justify-between"
       >
         <div className="flex items-center justify-between">
           <span className="text-xs font-bold uppercase tracking-wider text-income flex items-center gap-2">
@@ -33,12 +30,8 @@ export const CashflowMetricsCards: React.FC<CashflowMetricsCardsProps> = React.m
           </div>
         </div>
         <div className="mt-3.5 sm:mt-5">
-          <p className="text-2xl sm:text-3xl lg:text-4xl xl:text-5xl font-black font-mono tabular-nums tracking-tight text-income">
-            <AnimatedCounter
-              value={incomeTotal}
-              currencyPrefix={APP_CURRENCY_SYMBOL}
-              duration={1.2}
-            />
+          <p className="text-2xl sm:text-3xl lg:text-4xl xl:text-5xl font-bold tracking-tight text-income">
+            <Money value={incomeTotal} />
           </p>
           <div className="flex items-center justify-between mt-2 sm:mt-3 text-xs">
             <span className="hidden sm:inline text-fg-secondary font-medium">Inflows across active accounts</span>
@@ -47,13 +40,12 @@ export const CashflowMetricsCards: React.FC<CashflowMetricsCardsProps> = React.m
             </span>
           </div>
         </div>
-      </motion.div>
+      </div>
 
       {/* 2. Total Expense Card */}
-      <motion.div
-        whileHover={{ y: -2 }}
+      <div
         data-testid="metric-card-expense"
-        className="bg-surface-1 rounded-xl border-2 border-expense-line p-4 sm:p-6 transition-all relative overflow-hidden flex flex-col justify-between"
+        className="bg-surface-1 rounded-xl border-2 border-expense-line p-4 sm:p-6 relative overflow-hidden flex flex-col justify-between"
       >
         <div className="flex items-center justify-between">
           <span className="text-xs font-bold uppercase tracking-wider text-expense flex items-center gap-2">
@@ -65,12 +57,8 @@ export const CashflowMetricsCards: React.FC<CashflowMetricsCardsProps> = React.m
           </div>
         </div>
         <div className="mt-3.5 sm:mt-5">
-          <p className="text-2xl sm:text-3xl lg:text-4xl xl:text-5xl font-black font-mono tabular-nums tracking-tight text-expense">
-            <AnimatedCounter
-              value={expenseTotal}
-              currencyPrefix={APP_CURRENCY_SYMBOL}
-              duration={1.2}
-            />
+          <p className="text-2xl sm:text-3xl lg:text-4xl xl:text-5xl font-bold tracking-tight text-expense">
+            <Money value={expenseTotal} />
           </p>
           <div className="flex items-center justify-between mt-2 sm:mt-3 text-xs">
             <span className="hidden sm:inline text-fg-secondary font-medium">Outflows & regular expenses</span>
@@ -79,13 +67,12 @@ export const CashflowMetricsCards: React.FC<CashflowMetricsCardsProps> = React.m
             </span>
           </div>
         </div>
-      </motion.div>
+      </div>
 
       {/* 3. Net Balance Card (Income - Expense) */}
-      <motion.div
-        whileHover={{ y: -2 }}
+      <div
         data-testid="metric-card-net"
-        className={`bg-surface-1 rounded-xl border-2 p-4 sm:p-6 transition-all relative overflow-hidden flex flex-col justify-between ${
+        className={`bg-surface-1 rounded-xl border-2 p-4 sm:p-6 relative overflow-hidden flex flex-col justify-between ${
           netBalance >= 0 ? 'border-income-line' : 'border-expense-line'
         }`}
       >
@@ -109,15 +96,10 @@ export const CashflowMetricsCards: React.FC<CashflowMetricsCardsProps> = React.m
           </div>
         </div>
         <div className="mt-3.5 sm:mt-5">
-          <p className={`text-2xl sm:text-3xl lg:text-4xl xl:text-5xl font-black font-mono tabular-nums tracking-tight ${
+          <p className={`text-2xl sm:text-3xl lg:text-4xl xl:text-5xl font-bold tracking-tight ${
             netBalance >= 0 ? 'text-income' : 'text-expense'
           }`}>
-            {netBalance < 0 ? '-' : ''}
-            <AnimatedCounter
-              value={Math.abs(netBalance)}
-              currencyPrefix={APP_CURRENCY_SYMBOL}
-              duration={1.2}
-            />
+            <Money value={netBalance} />
           </p>
           <div className="flex items-center justify-between mt-2 sm:mt-3 text-xs">
             <span className="hidden sm:inline text-fg-secondary font-medium">
@@ -132,7 +114,7 @@ export const CashflowMetricsCards: React.FC<CashflowMetricsCardsProps> = React.m
             </span>
           </div>
         </div>
-      </motion.div>
+      </div>
     </div>
   );
 });

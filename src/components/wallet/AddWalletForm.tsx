@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { motion } from 'framer-motion';
 import { useFinanceActions } from '../../context/FinanceContext';
 import { useSubmitHandler } from '../../hooks/useSubmitHandler';
 import { useIdempotencyKey } from '../../hooks/useIdempotencyKey';
@@ -148,20 +147,24 @@ export const AddWalletForm: React.FC<AddWalletFormProps> = ({
 
       <div>
         <label className={`${LABEL_CLASS} mb-1.5`}>Theme Color</label>
-        <div className="flex flex-wrap items-center gap-2.5">
+        {/* A 28px swatch inside a 44px hit box; the selected one takes the focus ring, not a scale. */}
+        <div className="flex flex-wrap items-center gap-1">
           {WALLET_COLOR_PALETTE.map((c) => (
-            <motion.button
-              whileTap={{ scale: 0.9 }}
+            <button
               key={c}
               type="button"
               onClick={() => setWalletColor(c)}
-              className={`w-7 h-7 rounded-full transition-transform cursor-pointer ${
-                walletColor === c
-                  ? 'scale-125 ring-2 ring-focus ring-offset-2 ring-offset-surface-1'
-                  : ''
-              }`}
-              style={{ backgroundColor: c }}
-            />
+              aria-label={`Colour ${c}`}
+              aria-pressed={walletColor === c}
+              className="w-11 h-11 inline-flex items-center justify-center rounded-full cursor-pointer"
+            >
+              <span
+                className={`w-7 h-7 rounded-full ${
+                  walletColor === c ? 'ring-2 ring-focus ring-offset-2 ring-offset-surface-1' : ''
+                }`}
+                style={{ backgroundColor: c }}
+              />
+            </button>
           ))}
         </div>
       </div>
@@ -171,14 +174,13 @@ export const AddWalletForm: React.FC<AddWalletFormProps> = ({
           <div className={`${ERROR_BANNER_CLASS} mb-3`}>{createWalletError}</div>
         )}
 
-        <motion.button
-          whileTap={{ scale: 0.96 }}
+        <button
           id={ids.submit}
           type="submit"
           className={PRIMARY_BUTTON_CLASS}
         >
           Add Wallet
-        </motion.button>
+        </button>
       </div>
     </form>
   );

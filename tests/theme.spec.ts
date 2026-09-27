@@ -52,7 +52,7 @@ test.describe('Navigation & Theme E2E Tests', () => {
     await expect(page.getByRole('heading', { name: /Debts & Loans/i })).toBeVisible();
 
     await gotoTab(page, 'diary');
-    await expect(page.getByRole('heading', { name: /Holistic Mini Diary/i })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /Daily Diary/i })).toBeVisible();
 
     await gotoTab(page, 'dashboard');
     await expect(page.getByText(/Total Money Across All Wallets/i)).toBeVisible();

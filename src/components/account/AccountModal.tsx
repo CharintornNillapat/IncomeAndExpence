@@ -169,7 +169,7 @@ const AccountModalBody: React.FC<Omit<AccountModalProps, 'isOpen'>> = ({ onClose
       <ConfirmDialog
         isOpen={isConfirmingSignOut}
         title="Sign out of this device?"
-        description="This removes your account's data from this browser, including templates saved on this device - they are not synced and cannot be recovered. Your cloud data is untouched."
+        description="This removes your account's data from this browser, including templates saved on this device. They are not synced and cannot be recovered. Your cloud data is untouched."
         confirmText="Sign out"
         isDestructive
         isLoading={isSigningOut}

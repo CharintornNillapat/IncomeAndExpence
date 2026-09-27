@@ -9,6 +9,7 @@ import {
   AlertCircle, 
   X,
   Sparkles,
+  Check,
 } from 'lucide-react';
 import { useFinanceState } from '../context/FinanceContext';
 import { useTransactions } from '../hooks/useTransactions';
@@ -281,7 +282,7 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
       // A very different message from "nothing matched": the endpoint is not
       // there (an unconfigured deployment, or the dev server, which does not
       // serve `api/`). The import still commits perfectly well without it.
-      setClassifyNote('Jev is unavailable right now — import still works, categories stay blank.');
+      setClassifyNote('Jev is unavailable right now. Import still works, and categories stay blank.');
       return;
     }
 
@@ -307,7 +308,7 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
 
     const autoFilled = Array.from(result.suggestions.values()).filter((s) => s.strength === 'AUTO_FILL').length;
     setClassifyNote(
-      `Classified ${result.suggestions.size} of ${uncategorizedRows.length} — ${autoFilled} applied, ` +
+      `Classified ${result.suggestions.size} of ${uncategorizedRows.length}: ${autoFilled} applied, ` +
         `${result.suggestions.size - autoFilled} to confirm. ${result.attempted} request${result.attempted === 1 ? '' : 's'} sent.`
     );
   };
@@ -378,7 +379,7 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
     <div className="space-y-4 sm:space-y-6">
       <SectionHeader
         title="Transaction Management"
-        subtitle="CRUD operations with soft-delete safety, math parser, and 2-step CSV synchronization"
+        subtitle="Record, delete and restore transactions, or import a CSV file."
         action={
           <div className="flex flex-wrap items-center gap-2">
             {/* CSV Export */}
@@ -497,13 +498,23 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
             <label htmlFor="tx-show-deleted" className="text-xs font-semibold text-fg-secondary cursor-pointer">
               Show Soft Deleted
             </label>
-            <input
-              id="tx-show-deleted"
-              type="checkbox"
-              checked={showSoftDeleted}
-              onChange={(e) => setShowSoftDeleted(e.target.checked)}
-              className="w-4 h-4 rounded-sm bg-surface-2 border border-line-input text-fg focus:outline-none focus:ring-2 focus:ring-focus cursor-pointer accent-brand-fill"
-            />
+            {/* Same shape as the diary's workout checkbox: a drawn 16px box under a
+                transparent 44px native input, which stays the element specs check. */}
+            <span className="relative w-11 h-11 inline-flex items-center justify-center shrink-0">
+              <input
+                id="tx-show-deleted"
+                type="checkbox"
+                checked={showSoftDeleted}
+                onChange={(e) => setShowSoftDeleted(e.target.checked)}
+                className="peer absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+              />
+              <span
+                aria-hidden="true"
+                className="w-4 h-4 rounded-sm border border-line-input bg-surface-2 flex items-center justify-center peer-checked:bg-brand-fill peer-checked:border-brand-fill peer-focus-visible:ring-2 peer-focus-visible:ring-focus pointer-events-none"
+              >
+                {showSoftDeleted && <Check className="w-3 h-3 text-white" />}
+              </span>
+            </span>
           </div>
         </div>
       </div>
@@ -632,14 +643,14 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
           resetClassification();
         }}
         title="Two-Step CSV Transaction Import"
-        subtitle="Step 1: Dry-run parse & validate rows → Step 2: Commit valid rows into your ledger"
+        subtitle="Step 1: check the rows. Step 2: import them."
         maxWidthClassName="max-w-3xl"
         bodyClassName="space-y-6"
       >
         {/* Step 1: Upload File */}
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <label className="text-xs font-semibold uppercase tracking-wider text-fg-secondary">
+            <label className="text-xs font-semibold text-fg-secondary">
               Select CSV File
             </label>
             <button
@@ -660,7 +671,7 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
           />
 
           {isParsingCsv && (
-            <p className="text-xs text-fg-secondary animate-pulse">Running dry-run validation checks...</p>
+            <p role="status" className="text-xs text-fg-secondary">Checking rows...</p>
           )}
 
           {importFileError && (
@@ -766,7 +777,8 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
             {/* Dry Run Row Table */}
             <div className="max-h-60 overflow-y-auto rounded-lg border border-line text-xs">
               <table className="w-full text-left">
-                <thead className="bg-surface-2 text-fg-secondary sticky top-0 font-semibold">
+                {/* One of DESIGN.md's two blurs: rows scroll under this sticky header. */}
+                <thead className="bg-surface-2/90 backdrop-blur-sm text-fg-secondary sticky top-0 font-semibold">
                   <tr>
                     <th className="p-2">Row</th>
                     <th className="p-2">Status</th>
@@ -855,7 +867,7 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
                             })()}
                           </div>
                         ) : (
-                          <span className="text-fg-muted">&mdash;</span>
+                          <span className="text-fg-muted">No category</span>
                         )}
                       </td>
                     </tr>

@@ -1,5 +1,4 @@
 import React from 'react';
-import { motion } from 'framer-motion';
 import {
   LayoutDashboard,
   ArrowLeftRight,
@@ -38,7 +37,7 @@ const NAV_ITEMS: NavItemConfig[] = [
   { id: 'transactions', label: 'Transactions', icon: ArrowLeftRight },
   { id: 'wallets', label: 'Wallets', icon: WalletIcon },
   { id: 'debts', label: 'Debt Payoff', icon: TrendingDown },
-  { id: 'diary', label: 'Holistic Diary', icon: BookHeart },
+  { id: 'diary', label: 'Daily Diary', icon: BookHeart },
   { id: 'categories', label: 'Categories', icon: Tags },
 ];
 
@@ -115,7 +114,7 @@ export const Navbar: React.FC<NavbarProps> = React.memo(({ activeTab, setActiveT
                 <NavbarSyncBadge onOpenAuth={onOpenAuth} />
               </div>
               <p className="text-xs text-fg-secondary hidden md:block truncate">
-                Full-Stack Personal Finance & Holistic Lifestyle Management
+                Track money and daily habits
               </p>
             </div>
           </div>
@@ -123,9 +122,7 @@ export const Navbar: React.FC<NavbarProps> = React.memo(({ activeTab, setActiveT
           {/* Right Action Row: Theme Toggle + Live Balance + Sign In + Quick Add with uniform heights */}
           <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
             {/* Theme Toggle Button (Light / Dark / System) */}
-            <motion.button
-              whileTap={{ scale: 0.92 }}
-              whileHover={{ scale: 1.04 }}
+            <button
               type="button"
               id="navbar-theme-toggle-btn"
               onClick={cycleTheme}
@@ -135,14 +132,12 @@ export const Navbar: React.FC<NavbarProps> = React.memo(({ activeTab, setActiveT
             >
               {renderThemeIcon()}
               <span className="sr-only">Toggle theme</span>
-            </motion.button>
+            </button>
 
             <NavbarBalanceAndAuth onOpenAuth={onOpenAuth} onOpenAccount={onOpenAccount} />
 
             {/* Quick Action Button with consistent height & styling */}
-            <motion.button
-              whileTap={{ scale: 0.95 }}
-              whileHover={{ scale: 1.02 }}
+            <button
               id="navbar-quick-add-btn"
               type="button"
               onClick={onOpenQuickAdd}
@@ -151,7 +146,7 @@ export const Navbar: React.FC<NavbarProps> = React.memo(({ activeTab, setActiveT
               <PlusCircle className="w-4 h-4 text-white shrink-0" />
               <span className="hidden sm:inline">Add Entry</span>
               <span className="sm:hidden">Add</span>
-            </motion.button>
+            </button>
           </div>
         </div>
 
@@ -164,15 +159,14 @@ export const Navbar: React.FC<NavbarProps> = React.memo(({ activeTab, setActiveT
             const Icon = item.icon;
             const isActive = activeTab === item.id;
             return (
-              <motion.button
-                whileTap={{ scale: 0.95 }}
+              <button
                 key={item.id}
                 id={`nav-tab-${item.id}`}
                 data-testid={`nav-tab-${item.id}`}
                 aria-current={isActive ? 'page' : undefined}
                 type="button"
                 onClick={() => setActiveTab(item.id)}
-                className={`min-h-[40px] sm:min-h-[44px] inline-flex items-center justify-center gap-2 px-3 sm:px-3.5 py-2 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors duration-150 cursor-pointer shrink-0 md:shrink ${
+                className={`min-h-[44px] inline-flex items-center justify-center gap-2 px-3 sm:px-3.5 py-2 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors duration-150 cursor-pointer shrink-0 md:shrink ${
                   isActive
                     ? 'bg-brand-tint text-brand'
                     : 'text-fg-secondary hover:text-fg hover:bg-surface-2'
@@ -180,7 +174,7 @@ export const Navbar: React.FC<NavbarProps> = React.memo(({ activeTab, setActiveT
               >
                 <Icon className={`w-4 h-4 ${isActive ? 'text-brand' : 'text-fg-muted'} shrink-0`} />
                 <span>{item.label}</span>
-              </motion.button>
+              </button>
             );
           })}
         </nav>

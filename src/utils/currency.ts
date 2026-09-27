@@ -18,13 +18,8 @@ export const APP_CURRENCY_SYMBOL = '฿';
  */
 export const MINUS = '−';
 
-/**
- * Shared `toLocaleString` options for two-decimal currency display, so
- * `formatCurrencyAmount` and `AnimatedCounter` (which animates the same
- * shape of number and must match its formatting exactly mid-animation)
- * can't drift apart by editing one and not the other.
- */
-export const CURRENCY_DISPLAY_OPTIONS: Intl.NumberFormatOptions = {
+/** Two-decimal currency display. Exported until `AnimatedCounter` was removed (ADR 0026). */
+const CURRENCY_DISPLAY_OPTIONS: Intl.NumberFormatOptions = {
   minimumFractionDigits: 2,
   maximumFractionDigits: 2,
 };

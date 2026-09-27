@@ -44,7 +44,7 @@ const PRIMARY_RIGHT: NavItemConfig[] = [
 ];
 const MORE_ITEMS: NavItemConfig[] = [
   { id: 'debts', label: 'Debt Payoff', shortLabel: 'Debts', icon: TrendingDown },
-  { id: 'diary', label: 'Holistic Diary', shortLabel: 'Diary', icon: BookHeart },
+  { id: 'diary', label: 'Daily Diary', shortLabel: 'Diary', icon: BookHeart },
   { id: 'categories', label: 'Categories', shortLabel: 'Categories', icon: Tags },
 ];
 const MORE_TAB_IDS = new Set<ActiveTab>(MORE_ITEMS.map((i) => i.id));
@@ -66,12 +66,12 @@ const SlotBody: React.FC<{ icon: React.FC<{ className?: string }>; label: string
       <motion.div
         layoutId="mobileActiveTabPill"
         className="absolute inset-x-1 inset-y-1 bg-brand-tint rounded-lg -z-10"
-        transition={{ type: 'spring', stiffness: 500, damping: 35 }}
+        transition={{ duration: 0.2, ease: 'easeOut' }}
       />
     )}
     <Icon
-      className={`w-5 h-5 transition-transform duration-200 ${
-        isActive ? 'scale-110 text-brand' : 'text-fg-muted'
+      className={`w-5 h-5 transition-colors duration-150 ${
+        isActive ? 'text-brand' : 'text-fg-muted'
       }`}
     />
     <span
@@ -96,8 +96,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = React.memo(({
   const renderTab = (item: NavItemConfig) => {
     const isActive = activeTab === item.id;
     return (
-      <motion.button
-        whileTap={{ scale: 0.88 }}
+      <button
         key={item.id}
         id={`mobile-nav-tab-${item.id}`}
         data-testid={`mobile-nav-tab-${item.id}`}
@@ -108,7 +107,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = React.memo(({
         className={slotClass(isActive)}
       >
         <SlotBody icon={item.icon} label={item.shortLabel} isActive={isActive} />
-      </motion.button>
+      </button>
     );
   };
 
@@ -123,23 +122,21 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = React.memo(({
 
           {/* Centre Quick Add: the app's most frequent action, one thumb away. */}
           <div className="flex items-center justify-center">
-            <motion.button
-              whileTap={{ scale: 0.9 }}
+            <button
               type="button"
               id="mobile-nav-quick-add-btn"
               data-testid="mobile-nav-quick-add-btn"
               aria-label="Add a transaction"
               onClick={onOpenQuickAdd}
-              className="w-12 h-12 -mt-5 rounded-xl bg-brand-fill hover:bg-brand-fill-hover text-white shadow-quick-add flex items-center justify-center cursor-pointer border-4 border-surface-1"
+              className="w-12 h-12 -mt-5 rounded-xl bg-brand-fill hover:bg-brand-fill-hover text-white shadow-quick-add flex items-center justify-center transition-colors duration-150 cursor-pointer border-4 border-surface-1"
             >
               <Plus className="w-5 h-5" />
-            </motion.button>
+            </button>
           </div>
 
           {PRIMARY_RIGHT.map(renderTab)}
 
-          <motion.button
-            whileTap={{ scale: 0.88 }}
+          <button
             type="button"
             id="mobile-nav-more-btn"
             data-testid="mobile-nav-more-btn"
@@ -151,7 +148,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = React.memo(({
             className={slotClass(isMoreActive)}
           >
             <SlotBody icon={MoreHorizontal} label="More" isActive={isMoreActive} />
-          </motion.button>
+          </button>
         </div>
       </nav>
 

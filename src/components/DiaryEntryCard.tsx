@@ -139,7 +139,7 @@ export const DiaryEntryCard: React.FC<DiaryEntryCardProps> = React.memo(({
 
       {/* Expandable breakdown of transactions for that day */}
       {isExpanded && outflowTxs.length > 0 && (
-        <div className="bg-surface-1 p-3 rounded-lg border border-line space-y-2 animate-fade-in text-xs">
+        <div className="bg-surface-1 p-3 rounded-lg border border-line space-y-2 text-xs">
           <div className="flex items-center justify-between text-[11px] font-semibold text-fg-secondary uppercase tracking-wider border-b border-line pb-1">
             <span>{dayInfo.dayName}'s Outflows</span>
             <span>Amount</span>

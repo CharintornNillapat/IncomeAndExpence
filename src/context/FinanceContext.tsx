@@ -55,6 +55,12 @@ export interface FinanceStateContextType {
   currentUser: User;
   isAuthenticated: boolean;
   isSyncing: boolean;
+  /**
+   * Why the last cloud load failed, or `null` after a clean one (Phase 53b).
+   * The navbar badge shows "Sync failed" from it and retries through
+   * `refreshFromCloud`. A load that read some tables still applied them.
+   */
+  syncError: string | null;
 
   // Wallets
   wallets: Wallet[];
@@ -477,6 +483,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
   const [currentUser, setCurrentUser] = useState<User>(() => safeGetLocalStorage('pf_user', DEFAULT_USER));
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
+  const [syncError, setSyncError] = useState<string | null>(null);
 
   const [wallets, setWallets] = useState<Wallet[]>(() => safeGetLocalStorage('pf_wallets', DEFAULT_STARTER_WALLETS));
   const [categories, setCategories] = useState<Category[]>(() =>
@@ -774,6 +781,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     }
 
     setIsAuthenticated(false);
+    setSyncError(null);
     setCurrentUser(DEFAULT_USER);
     setWallets(DEFAULT_STARTER_WALLETS);
     setCategories(withDefaultDescriptions(dedupeCategoriesByName(DEFAULT_SYSTEM_CATEGORIES), DEFAULT_SYSTEM_CATEGORIES));
@@ -992,11 +1000,15 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       if (failedReads.length === 0) {
         cloudRevisionRef.current += 1;
         lastCloudLoadAtRef.current = Date.now();
+        setSyncError(null);
       } else {
         console.error('[Supabase Sync Error] could not read:', failedReads.join(', '));
+        setSyncError(`Could not read ${failedReads.join(', ')}`);
       }
     } catch (err) {
       console.error('[Supabase Sync Error]', err);
+      // A sign-out during the load already reset this; a guest has nothing to sync.
+      if (!signedOutMeanwhile()) setSyncError('Could not reach the server');
     } finally {
       setIsSyncing(false);
     }
@@ -3142,6 +3154,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       currentUser,
       isAuthenticated,
       isSyncing,
+      syncError,
       wallets,
       totalNetWorth,
       categories,
@@ -3156,6 +3169,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       currentUser,
       isAuthenticated,
       isSyncing,
+      syncError,
       wallets,
       totalNetWorth,
       categories,

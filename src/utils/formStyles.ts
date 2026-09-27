@@ -16,16 +16,19 @@ export type FieldTone = 'subtle' | 'plain';
  * future surface that genuinely needs a different field can diverge here.
  */
 const FIELD_BASE =
-  'w-full text-xs rounded-lg border border-line-input bg-surface-2 text-fg focus:outline-none focus:ring-2 focus:ring-focus transition-colors';
+  'w-full min-h-[44px] text-xs rounded-lg border border-line-input bg-surface-2 text-fg focus:outline-none focus:ring-2 focus:ring-focus transition-colors';
 
 const TONE: Record<FieldTone, string> = {
   subtle: '',
   plain: '',
 };
 
-/** Bare label text with no block/margin - for labels whose spacing comes from a `gap-*`/`space-y-*` wrapper instead. */
+/**
+ * Bare label text with no block/margin - for labels whose spacing comes from a `gap-*`/`space-y-*` wrapper instead.
+ * Sentence case since Phase 53b: DESIGN.md keeps uppercase for compact metric labels, column headers and tickers, not form labels.
+ */
 export const LABEL_TEXT_CLASS =
-  'text-xs font-semibold uppercase tracking-wider text-fg-secondary';
+  'text-xs font-semibold text-fg-secondary';
 
 /** Block label with its own bottom margin - for labels in a plain (non-gapped) wrapper. */
 export const LABEL_CLASS = `${LABEL_TEXT_CLASS} block mb-1`;
@@ -45,13 +48,14 @@ export const OPTION_CLASS = 'bg-surface-2 text-fg';
 export const ERROR_BANNER_CLASS =
   'bg-expense-tint border border-expense-line text-expense p-3 rounded-lg text-xs font-medium';
 
+// Every button shape below keeps a 44px minimum height (DESIGN.md §4); `py-2.5` alone is 36px at text-xs.
 export const PRIMARY_BUTTON_CLASS =
-  'w-full py-2.5 sm:py-3 bg-brand-fill hover:bg-brand-fill-hover text-white rounded-lg font-semibold text-xs transition-colors duration-150 cursor-pointer';
+  'w-full min-h-[44px] py-2.5 sm:py-3 bg-brand-fill hover:bg-brand-fill-hover text-white rounded-lg font-semibold text-xs transition-colors duration-150 cursor-pointer';
 
 /** Same treatment as PRIMARY_BUTTON_CLASS without the sm: padding growth - for compact single-field forms and in-card actions. */
 export const PRIMARY_BUTTON_COMPACT_CLASS =
-  'w-full py-2.5 bg-brand-fill hover:bg-brand-fill-hover text-white rounded-lg font-semibold text-xs transition-colors duration-150 cursor-pointer';
+  'w-full min-h-[44px] py-2.5 bg-brand-fill hover:bg-brand-fill-hover text-white rounded-lg font-semibold text-xs transition-colors duration-150 cursor-pointer';
 
 /** Muted counterpart to the primary buttons, for a cancel/secondary form action. Not yet adopted by any form - see refactor-log.md Phase 17. */
 export const SECONDARY_BUTTON_CLASS =
-  'w-full py-2.5 sm:py-3 bg-surface-1 border border-line hover:border-brand text-fg-secondary rounded-lg font-semibold text-xs transition-colors duration-150 cursor-pointer';
+  'w-full min-h-[44px] py-2.5 sm:py-3 bg-surface-1 border border-line hover:border-brand text-fg-secondary rounded-lg font-semibold text-xs transition-colors duration-150 cursor-pointer';

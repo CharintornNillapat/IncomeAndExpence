@@ -14,7 +14,7 @@ export default defineConfig(() => {
         manifest: {
           name: 'FinLife Tracker',
           short_name: 'FinLife',
-          description: 'A personal finance and lifestyle tracking application with multi-wallet management, smart categorization, debt tracking, and daily holistic diary.',
+          description: 'A personal finance and lifestyle tracking application with multi-wallet management, smart categorization, debt tracking, and a daily diary.',
           theme_color: '#121824',
           background_color: '#0B0E14',
           display: 'standalone',
@@ -43,7 +43,7 @@ export default defineConfig(() => {
             {
               name: 'Quick Add Transaction',
               short_name: 'Quick Add',
-              description: 'Quickly record an expense, income, or transfer',
+              description: 'Quickly record an expense or income',
               url: '/?action=quick-add',
               icons: [
                 {
@@ -56,7 +56,7 @@ export default defineConfig(() => {
           ],
         },
         workbox: {
-          globPatterns: ['**/*.{js,css,html,ico,png,svg,json}'],
+          globPatterns: ['**/*.{js,css,html,ico,png,svg,json,woff2}'],
           runtimeCaching: [
             {
               urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,

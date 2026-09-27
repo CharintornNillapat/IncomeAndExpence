@@ -46,54 +46,33 @@ export const TxTypeIcon: React.FC<TxTypeIconProps> = ({ type, amount, variant = 
   );
 };
 
-export type TxAmountColorScheme = 'standard' | 'incomeOnly';
-
 interface TxAmountProps {
   amount: number;
   type: TransactionType;
-  /**
-   * `standard` (income / debt-repayment pending / else fg tokens -
-   * `TransactionTableRow`'s exact scheme) or `incomeOnly` (income /
-   * else fg - `WalletPopupModal`'s exact scheme, where debt-repayment
-   * has never had its own color). Ignored when `colorClassName` is given.
-   */
-  colorScheme?: TxAmountColorScheme;
-  /** A site's own divergent color scheme (e.g. `RecentTransactionsTable`'s 4-way income/expense/pending/transfer) - overrides both presets above. */
+  /** A site's own colour when it deliberately differs from the sign rule (e.g. `DiaryEntryCard`'s all-outflow list) - overrides `txTypeMetaFor(...).text`. */
   colorClassName?: string;
   className?: string;
 }
 
-const STANDARD_COLOR: Partial<Record<TransactionType, string>> = {
-  INCOME: 'text-income',
-  DEBT_REPAYMENT: 'text-pending',
-};
-
-const INCOME_ONLY_COLOR: Partial<Record<TransactionType, string>> = {
-  INCOME: 'text-income',
-};
-
-const DEFAULT_COLOR = 'text-fg';
-
 /**
  * T49: formats an amount with `formatCurrencyAmount` and the canonical
- * `TX_TYPE_META[type].sign` glyph ('+' for INCOME, the shared `MINUS`
- * (U+2212) otherwise) - not a per-site re-derived ternary. Adopting the
- * canonical sign at `RecentTransactionsTable` is a deliberate fix, not a
- * preserved behavior: that file's pre-existing inline ternary rendered no
- * sign at all for TRANSFER/DEBT_REPAYMENT/ADJUSTMENT, diverging from every
- * other renderer. Its color scheme (a 4th, `RecentTransactionsTable`-only
- * income/expense/pending/transfer split) is passed in via `colorClassName` rather
- * than added as a 3rd preset, since forcing that page's colors onto the
- * other two sites (or vice versa) would be a real visual regression at
- * whichever site didn't already use it.
+ * `txTypeMetaFor(type, amount).sign` glyph ('+' for INCOME and an upward
+ * ADJUSTMENT, the shared `MINUS` (U+2212) otherwise) - not a per-site
+ * re-derived ternary.
+ *
+ * Phase 53b (DESIGN.md §4): the colour comes from the same metadata, so every
+ * ledger renders `+` emerald, `−` rose, a transfer cyan and a repayment amber.
+ * Until then this took one of three per-site schemes (`standard`,
+ * `incomeOnly`, and `RecentTransactionsTable`'s own 4-way map); that table's
+ * map was already this rule, and the other two left expenses in plain text.
  */
-export const TxAmount: React.FC<TxAmountProps> = ({ amount, type, colorScheme = 'standard', colorClassName, className = '' }) => {
-  const preset = colorScheme === 'incomeOnly' ? INCOME_ONLY_COLOR : STANDARD_COLOR;
-  const color = colorClassName ?? preset[type] ?? DEFAULT_COLOR;
+export const TxAmount: React.FC<TxAmountProps> = ({ amount, type, colorClassName, className = '' }) => {
+  const meta = txTypeMetaFor(type, amount);
+  const color = colorClassName ?? meta.text;
 
   return (
-    <span className={`font-mono font-bold ${color} ${className}`.trim()}>
-      {txTypeMetaFor(type, amount).sign}
+    <span className={`font-mono tabular-nums font-bold ${color} ${className}`.trim()}>
+      {meta.sign}
       {formatCurrencyAmount(Math.abs(amount))}
     </span>
   );
