@@ -821,3 +821,28 @@ Built on the working tree after `npm run build`; the "before" column is Phase 52
 | chunk count | 35 | 35 | 0 |
 
 **Test-suite size:** unit **222 -> 243 tests in 12 files** (~27 s; the new harness tests' 600 ms quiet periods are most of the growth). Playwright unchanged at 357 runs.
+
+## Phase 53 baseline (T182, before the retheme) — measured at `2dce5d0`
+
+Clean `src/` (only `CLAUDE.md`, `DESIGN.md` and `anti-slop/` differ from HEAD). Built after `npm run clean`; gzip is `zlib` level 9, same script as Phases 51-52. The figures reproduce T181's recorded entry and all-JS totals exactly, so this is the "before" column for both 53a and 53b.
+
+| Chunk | Raw | Gzip |
+|---|---|---|
+| entry `index-*.js` | 177,660 B | 49,572 B |
+| `vendor-math-*.js` | 375,725 | 110,526 |
+| `vendor-supabase-*.js` (modulepreloaded) | 226,458 | 58,513 |
+| `vendor-react-*.js` (modulepreloaded) | 194,329 | 60,571 |
+| `vendor-motion-*.js` (modulepreloaded) | 136,712 | 45,216 |
+| `DashboardView-*.js` (lazy) | 47,954 | 11,250 |
+| `vendor-icons-*.js` (modulepreloaded) | 30,835 | 6,695 |
+| **all JS, summed** | **1,365,069 B** | 35 chunks |
+| `index-*.css` | 78,908 | 11,861 |
+| PWA precache | 44 entries, 1,565.94 KiB | |
+| build time | 16.7 s | after `clean`, cold |
+
+| Suite | Files | Tests | Runs | Wall clock |
+|---|---|---|---|---|
+| Playwright (chromium/firefox/webkit) | 23 | 119 | 357 | 7.9 m |
+| Vitest (`unit/`) | 12 | 243 | 243 | ~49 s |
+
+`npm run lint` clean. Playwright 357/357 on the first attempt with no retries. The unit wall clock (~49 s against ~27 s at T181) is environment time on this machine (66% of the run), not new tests.

@@ -364,3 +364,14 @@ Refer to `.env.example`:
 - Do NOT allow a negative amount on any type but ADJUSTMENT, and do NOT render a signed amount without `txTypeMetaFor` + `Math.abs`.
 - Do NOT give the starter wallets opening-balance rows without first deciding what every "fresh context has no transactions" spec should assert instead.
 - Do NOT render the mobile More sheet inside `<nav>`.
+
+<!-- antislop:start -->
+## antislop
+For UI, copy, people, or mobile layout work, load the `antislop` skill (core) and then the skill for the task. They are installed as user-level skills in `~/.claude/skills/`, not in this repo:
+- UI / visual: `antislop-ui`
+- Copy & text: `antislop-copywriting`
+- People: `antislop-human`
+- Mobile / responsive: `antislop-layoutmobile`
+Before starting, ask the user when antislop applies: during the work, or after it is done.
+To update antislop later: run `npx antislop-ai --update`.
+<!-- antislop:end -->
