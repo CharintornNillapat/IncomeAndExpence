@@ -226,9 +226,9 @@ export const CategoriesView: React.FC = () => {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
           {/* Left: Add Category (5 cols) */}
           <Card padding="lg" className="lg:col-span-5 space-y-4">
-            <div className="flex items-center gap-2 pb-3 border-b border-stone-100 dark:border-stone-800">
-              <Plus className="w-4 h-4 text-stone-700 dark:text-stone-300" />
-              <h3 className="text-sm font-bold text-stone-900 dark:text-white">Add Category</h3>
+            <div className="flex items-center gap-2 pb-3 border-b border-line">
+              <Plus className="w-4 h-4 text-fg-secondary" />
+              <h3 className="text-sm font-bold text-fg">Add Category</h3>
             </div>
 
             <form onSubmit={handleAddCategory} className="space-y-4">
@@ -262,7 +262,7 @@ export const CategoriesView: React.FC = () => {
                   placeholder="e.g., Streaming, music and app subscriptions"
                   className={inputClass('plain')}
                 />
-                <p className="mt-1 text-[11px] text-stone-400 dark:text-stone-500">
+                <p className="mt-1 text-[11px] text-fg-muted">
                   Optional. Helps auto-categorization recognize what belongs here.
                 </p>
               </div>
@@ -294,7 +294,7 @@ export const CategoriesView: React.FC = () => {
                       onClick={() => setNewCategoryColor(c)}
                       className={`w-7 h-7 rounded-full transition-transform cursor-pointer ${
                         newCategoryColor === c
-                          ? 'scale-125 ring-2 ring-stone-900 dark:ring-stone-100 ring-offset-2 dark:ring-offset-stone-900'
+                          ? 'scale-125 ring-2 ring-focus ring-offset-2 ring-offset-surface-1'
                           : ''
                       }`}
                       style={{ backgroundColor: c }}
@@ -313,12 +313,12 @@ export const CategoriesView: React.FC = () => {
 
           {/* Right: Categories List (7 cols) */}
           <Card padding="lg" className="lg:col-span-7 space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-stone-100 dark:border-stone-800">
+            <div className="flex items-center justify-between pb-3 border-b border-line">
               <div className="flex items-center gap-2">
-                <Tag className="w-4 h-4 text-stone-600 dark:text-stone-400" />
-                <h3 className="text-sm font-bold text-stone-900 dark:text-white">Your Categories</h3>
+                <Tag className="w-4 h-4 text-fg-secondary" />
+                <h3 className="text-sm font-bold text-fg">Your Categories</h3>
               </div>
-              <span className="text-xs text-stone-400 dark:text-stone-500">{activeCategories.length} active</span>
+              <span className="text-xs text-fg-muted">{activeCategories.length} active</span>
             </div>
 
             {activeCategories.length === 0 ? (
@@ -335,27 +335,27 @@ export const CategoriesView: React.FC = () => {
                     <div
                       key={cat.id}
                       id={`category-row-${cat.id}`}
-                      className="flex items-center justify-between gap-3 py-2.5 px-3 rounded-xl border border-stone-100 dark:border-stone-800 hover:bg-stone-50 dark:hover:bg-stone-800/50 transition-colors"
+                      className="flex items-center justify-between gap-3 py-2.5 px-3 rounded-lg border border-line hover:bg-surface-2 transition-colors"
                     >
                       <div className="flex items-center gap-2.5 min-w-0">
                         <span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: cat.color }} />
-                        <span className="text-xs font-semibold text-stone-900 dark:text-stone-100 truncate">{cat.name}</span>
-                        <span className="text-[10px] font-semibold text-stone-400 dark:text-stone-500 uppercase tracking-wider shrink-0">
+                        <span className="text-xs font-semibold text-fg truncate">{cat.name}</span>
+                        <span className="text-[10px] font-semibold text-fg-muted uppercase tracking-wider shrink-0">
                           {cat.type}
                         </span>
                       </div>
                       <div className="flex items-center gap-1.5 shrink-0">
                         {cat.isSystem ? (
-                          <span className="text-[10px] text-stone-400 dark:text-stone-500 uppercase font-semibold px-1.5">Default</span>
+                          <span className="text-[10px] text-fg-muted uppercase font-semibold px-1.5">Default</span>
                         ) : !canDelete ? (
-                          <span className="text-[10px] text-stone-400 dark:text-stone-500 uppercase font-semibold px-1.5">In use</span>
+                          <span className="text-[10px] text-fg-muted uppercase font-semibold px-1.5">In use</span>
                         ) : null}
                         <button
                           type="button"
                           id={`edit-category-${cat.id}`}
                           onClick={() => openEditCategory(cat)}
                           title="Edit category"
-                          className="p-1.5 text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 rounded transition-colors cursor-pointer"
+                          className="p-1.5 text-fg-muted hover:text-fg rounded-sm transition-colors cursor-pointer"
                         >
                           <Pencil className="w-3.5 h-3.5" />
                         </button>
@@ -368,7 +368,7 @@ export const CategoriesView: React.FC = () => {
                               setDeleteCategoryError(null);
                             }}
                             title="Delete category"
-                            className="p-1.5 text-stone-400 hover:text-rose-600 dark:hover:text-rose-400 rounded transition-colors cursor-pointer"
+                            className="p-1.5 text-fg-muted hover:text-expense rounded-sm transition-colors cursor-pointer"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
@@ -387,9 +387,9 @@ export const CategoriesView: React.FC = () => {
           <div className="lg:col-span-5 space-y-6">
             {/* Add Rule Form */}
             <Card padding="lg" className="space-y-4">
-              <div className="flex items-center gap-2 pb-3 border-b border-stone-100 dark:border-stone-800">
-                <Plus className="w-4 h-4 text-stone-700 dark:text-stone-300" />
-                <h3 className="text-sm font-bold text-stone-900 dark:text-white">Add Keyword Rule</h3>
+              <div className="flex items-center gap-2 pb-3 border-b border-line">
+                <Plus className="w-4 h-4 text-fg-secondary" />
+                <h3 className="text-sm font-bold text-fg">Add Keyword Rule</h3>
               </div>
 
               <form onSubmit={handleAddRule} className="space-y-4">
@@ -444,13 +444,13 @@ export const CategoriesView: React.FC = () => {
 
             {/* Smart Parser Live Sandbox */}
             <Card padding="lg" className="space-y-4">
-              <div className="flex items-center gap-2 pb-3 border-b border-stone-100 dark:border-stone-800">
-                <Sparkles className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-                <h3 className="text-sm font-bold text-stone-900 dark:text-white">Try Quick-Input Test</h3>
+              <div className="flex items-center gap-2 pb-3 border-b border-line">
+                <Sparkles className="w-4 h-4 text-brand" />
+                <h3 className="text-sm font-bold text-fg">Try Quick-Input Test</h3>
               </div>
 
               <div>
-                <label className="text-xs font-semibold uppercase tracking-wider text-stone-600 dark:text-stone-300 block mb-1">
+                <label className="text-xs font-semibold uppercase tracking-wider text-fg-secondary block mb-1">
                   Type sample text:
                 </label>
                 <input
@@ -463,26 +463,26 @@ export const CategoriesView: React.FC = () => {
                 />
               </div>
 
-              <div className="bg-stone-50 dark:bg-stone-800/80 rounded-xl p-3.5 border border-stone-100 dark:border-stone-700 space-y-2 text-xs">
+              <div className="bg-surface-2 rounded-lg p-3.5 border border-line space-y-2 text-xs">
                 <div className="flex justify-between" data-testid="metric-extracted-amount">
-                  <span className="text-stone-500 dark:text-stone-400">Extracted Amount:</span>
-                  <span className="font-mono font-bold text-stone-900 dark:text-stone-100">
+                  <span className="text-fg-secondary">Extracted Amount:</span>
+                  <span className="font-mono font-bold text-fg">
                     {matchResult.extractedAmount ? formatCurrencyAmount(matchResult.extractedAmount) : 'None detected'}
                   </span>
                 </div>
                 <div className="flex justify-between" data-testid="metric-matched-category">
-                  <span className="text-stone-500 dark:text-stone-400">Matched Category:</span>
-                  <span className="font-semibold text-emerald-700 dark:text-emerald-400">
+                  <span className="text-fg-secondary">Matched Category:</span>
+                  <span className="font-semibold text-brand">
                     {matchResult.categoryName || 'No keyword matched'}
                   </span>
                 </div>
                 <div className="flex justify-between" data-testid="metric-inferred-type">
-                  <span className="text-stone-500 dark:text-stone-400">Inferred Type:</span>
-                  <span className="font-mono text-stone-800 dark:text-stone-200">{matchResult.type || 'EXPENSE'}</span>
+                  <span className="text-fg-secondary">Inferred Type:</span>
+                  <span className="font-mono text-fg">{matchResult.type || 'EXPENSE'}</span>
                 </div>
                 <div className="flex justify-between" data-testid="metric-cleaned-description">
-                  <span className="text-stone-500 dark:text-stone-400">Cleaned Description:</span>
-                  <span className="text-stone-800 dark:text-stone-200 font-medium">"{matchResult.cleanDescription}"</span>
+                  <span className="text-fg-secondary">Cleaned Description:</span>
+                  <span className="text-fg font-medium">"{matchResult.cleanDescription}"</span>
                 </div>
               </div>
             </Card>
@@ -490,24 +490,24 @@ export const CategoriesView: React.FC = () => {
 
           {/* Right: Configured Rules Table (7 cols) */}
           <Card padding="lg" className="lg:col-span-7 space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-stone-100 dark:border-stone-800">
+            <div className="flex items-center justify-between pb-3 border-b border-line">
               <div className="flex items-center gap-2">
-                <Tag className="w-4 h-4 text-stone-600 dark:text-stone-400" />
-                <h3 className="text-sm font-bold text-stone-900 dark:text-white">Configured Keyword Mappings</h3>
+                <Tag className="w-4 h-4 text-fg-secondary" />
+                <h3 className="text-sm font-bold text-fg">Configured Keyword Mappings</h3>
               </div>
-              <span className="text-xs text-stone-400 dark:text-stone-500">{keywordRules.length} rules active</span>
+              <span className="text-xs text-fg-muted">{keywordRules.length} rules active</span>
             </div>
 
-            <div className="overflow-x-auto rounded-xl border border-stone-100 dark:border-stone-800">
+            <div className="overflow-x-auto rounded-lg border border-line">
               <table className="w-full text-left text-xs">
-                <thead className="bg-stone-50 dark:bg-stone-800/80 text-stone-500 dark:text-stone-400 uppercase tracking-wider font-semibold border-b border-stone-200 dark:border-stone-800">
+                <thead className="bg-surface-2 text-fg-secondary uppercase tracking-wider font-semibold border-b border-line">
                   <tr>
                     <th className="py-3 px-4">Keyword</th>
                     <th className="py-3 px-4">Mapped Category</th>
                     <th className="py-3 px-4">Action</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-stone-100 dark:divide-stone-800">
+                <tbody className="divide-y divide-line">
                   {keywordRules.length === 0 ? (
                     <tr>
                       <td colSpan={3}>
@@ -522,22 +522,22 @@ export const CategoriesView: React.FC = () => {
                   keywordRules.map((rule) => {
                     const cat = categoryMap.get(rule.categoryId);
                     return (
-                      <tr key={rule.id} id={`rule-row-${rule.id}`} className="hover:bg-stone-50 dark:hover:bg-stone-800/50">
-                        <td className="py-3 px-4 font-mono font-semibold text-stone-900 dark:text-stone-100">
+                      <tr key={rule.id} id={`rule-row-${rule.id}`} className="hover:bg-surface-2">
+                        <td className="py-3 px-4 font-mono font-semibold text-fg">
                           "{rule.keyword}"
                         </td>
                         <td className="py-3 px-4">
                           {cat ? (
                             <CategoryChip name={cat.name} color={cat.color} size="md" rounded="md" />
                           ) : (
-                            <span className="text-stone-400 dark:text-stone-500">Unknown</span>
+                            <span className="text-fg-muted">Unknown</span>
                           )}
                         </td>
                         <td className="py-3 px-4">
                           <button
                             type="button"
                             onClick={() => deleteKeywordRule(rule.id)}
-                            className="p-1 text-stone-400 hover:text-rose-600 dark:hover:text-rose-400 rounded transition-colors cursor-pointer"
+                            className="p-1 text-fg-muted hover:text-expense rounded-sm transition-colors cursor-pointer"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
@@ -584,7 +584,7 @@ export const CategoriesView: React.FC = () => {
               placeholder="e.g., Streaming, music and app subscriptions"
               className={inputClass('plain')}
             />
-            <p className="mt-1 text-[11px] text-stone-400 dark:text-stone-500">
+            <p className="mt-1 text-[11px] text-fg-muted">
               Optional. Helps auto-categorization recognize what belongs here.
             </p>
           </div>
@@ -600,7 +600,7 @@ export const CategoriesView: React.FC = () => {
                   onClick={() => setEditColor(c)}
                   className={`w-7 h-7 rounded-full transition-transform cursor-pointer ${
                     editColor === c
-                      ? 'scale-125 ring-2 ring-stone-900 dark:ring-stone-100 ring-offset-2 dark:ring-offset-stone-900'
+                      ? 'scale-125 ring-2 ring-focus ring-offset-2 ring-offset-surface-1'
                       : ''
                   }`}
                   style={{ backgroundColor: c }}
@@ -621,8 +621,8 @@ export const CategoriesView: React.FC = () => {
                   title={value}
                   className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors cursor-pointer ${
                     editIcon === value
-                      ? 'bg-stone-900 text-white dark:bg-stone-100 dark:text-stone-900'
-                      : 'bg-stone-100 text-stone-500 hover:bg-stone-200 dark:bg-stone-800 dark:text-stone-400 dark:hover:bg-stone-700'
+                      ? 'bg-brand-fill text-white'
+                      : 'bg-surface-2 text-fg-secondary hover:bg-surface-3'
                   }`}
                 >
                   <Icon className="w-4 h-4" />

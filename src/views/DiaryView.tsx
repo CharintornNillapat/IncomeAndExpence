@@ -25,11 +25,11 @@ import { buildLookupMap } from '../utils/mapUtils';
 // Static (never depends on component state), so it lives outside the
 // component instead of being recreated - or even re-useMemo'd - every render.
 const MOOD_LABELS: Record<number, { label: string; emoji: string; color: string }> = {
-  1: { label: 'Exhausted / Stressed', emoji: '😫', color: 'text-rose-600 bg-rose-50 border-rose-200' },
-  2: { label: 'Low Energy', emoji: '😕', color: 'text-orange-600 bg-orange-50 border-orange-200' },
-  3: { label: 'Neutral / Balanced', emoji: '😐', color: 'text-amber-600 bg-amber-50 border-amber-200' },
-  4: { label: 'Good & Focused', emoji: '😊', color: 'text-emerald-600 bg-emerald-50 border-emerald-200' },
-  5: { label: 'Peak Flow / Great', emoji: '🤩', color: 'text-green-600 bg-green-50 border-green-200' },
+  1: { label: 'Exhausted / Stressed', emoji: '😫', color: 'text-expense bg-expense-tint border-expense-line' },
+  2: { label: 'Low Energy', emoji: '😕', color: 'text-expense bg-expense-tint border-expense-line' },
+  3: { label: 'Neutral / Balanced', emoji: '😐', color: 'text-pending bg-pending-tint border-pending-line' },
+  4: { label: 'Good & Focused', emoji: '😊', color: 'text-income bg-income-tint border-income-line' },
+  5: { label: 'Peak Flow / Great', emoji: '🤩', color: 'text-income bg-income-tint border-income-line' },
 };
 
 // Stable fallback for a day with no transactions, so days that fall back to
@@ -181,7 +181,7 @@ export const DiaryView: React.FC = () => {
             id="export-diary-btn"
             type="button"
             onClick={() => exportDiaryToJson(diaryEntries)}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-stone-700 dark:text-stone-300 bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 rounded-xl transition-all cursor-pointer"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-fg-secondary bg-surface-2 hover:bg-surface-3 border border-line hover:border-brand rounded-lg transition-all cursor-pointer"
           >
             <Download className="w-3.5 h-3.5" />
             <span>Export Diary (JSON)</span>
@@ -192,13 +192,13 @@ export const DiaryView: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         {/* Left Column: Daily Logger Form (6 cols) */}
         <Card padding="lg" className="lg:col-span-6 space-y-6">
-          <div className="flex items-center justify-between pb-4 border-b border-stone-100 dark:border-stone-800">
+          <div className="flex items-center justify-between pb-4 border-b border-line">
             <div className="flex items-center gap-2">
-              <BookHeart className="w-5 h-5 text-stone-800 dark:text-stone-200" />
+              <BookHeart className="w-5 h-5 text-fg" />
               <div>
-                <h3 className="text-sm font-bold text-stone-900 dark:text-white">Daily Wellbeing Entry</h3>
+                <h3 className="text-sm font-bold text-fg">Daily Wellbeing Entry</h3>
                 <div className="flex items-center gap-1.5 mt-0.5">
-                  <span className="text-xs font-semibold text-stone-700 dark:text-stone-300">{selectedDayInfo.dayName}, {selectedDayInfo.fullDate}</span>
+                  <span className="text-xs font-semibold text-fg-secondary">{selectedDayInfo.dayName}, {selectedDayInfo.fullDate}</span>
                   {selectedDayInfo.badge && <Badge>{selectedDayInfo.badge}</Badge>}
                 </div>
               </div>
@@ -209,31 +209,31 @@ export const DiaryView: React.FC = () => {
               type="date"
               value={selectedDate}
               onChange={(e) => loadEntryForDate(e.target.value)}
-              className="text-xs border border-stone-200 dark:border-stone-700 rounded-xl px-3 py-1.5 bg-stone-50 dark:bg-stone-800 text-stone-900 dark:text-stone-100 font-mono focus:outline-none focus:border-stone-800 dark:focus:border-stone-400 cursor-pointer"
+              className="text-xs border border-line-input rounded-lg px-3 py-1.5 bg-surface-2 text-fg font-mono focus:outline-none focus:ring-2 focus:ring-focus cursor-pointer"
             />
           </div>
 
           {/* Real-time Day Outflow & Inflow summary for selected date */}
-          <div className="bg-stone-50 dark:bg-stone-800/80 rounded-xl p-3.5 border border-stone-200/80 dark:border-stone-700/80 flex items-center justify-between">
+          <div className="bg-surface-2 rounded-lg p-3.5 border border-line flex items-center justify-between">
             <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-400 flex items-center justify-center">
+              <div className="w-8 h-8 rounded-lg bg-expense-tint text-expense flex items-center justify-center">
                 <ArrowUpRight className="w-4 h-4" />
               </div>
               <div>
-                <span className="text-[11px] font-semibold uppercase tracking-wider text-stone-500 dark:text-stone-400 block">
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-fg-secondary block">
                   {selectedDayInfo.dayName} Outflow
                 </span>
-                <span className="text-xs text-stone-600 dark:text-stone-300 font-medium">
+                <span className="text-xs text-fg-secondary font-medium">
                   {selectedDateOutflowCount} outflow transaction(s)
                 </span>
               </div>
             </div>
             <div className="text-right">
-              <span className={`text-base font-black font-mono ${selectedDateData.totalOutflow > 0 ? 'text-rose-600 dark:text-rose-400' : 'text-stone-700 dark:text-stone-300'}`}>
+              <span className={`text-base font-black font-mono ${selectedDateData.totalOutflow > 0 ? 'text-expense' : 'text-fg-secondary'}`}>
                 {formatCurrencyAmount(selectedDateData.totalOutflow)}
               </span>
               {selectedDateData.totalIncome > 0 && (
-                <span className="text-[11px] font-mono text-emerald-600 dark:text-emerald-400 block font-semibold">
+                <span className="text-[11px] font-mono text-income block font-semibold">
                   +{formatCurrencyAmount(selectedDateData.totalIncome)} in
                 </span>
               )}
@@ -243,7 +243,7 @@ export const DiaryView: React.FC = () => {
           <form onSubmit={handleSaveEntry} className="space-y-5">
             {/* 1. Mood Selector (1 to 5) */}
             <div>
-              <label className="text-xs font-semibold uppercase tracking-wider text-stone-600 dark:text-stone-300 block mb-2">
+              <label className="text-xs font-semibold uppercase tracking-wider text-fg-secondary block mb-2">
                 1. Daily Mood Rating (1 - 5)
               </label>
               <div className="grid grid-cols-5 gap-2">
@@ -256,10 +256,10 @@ export const DiaryView: React.FC = () => {
                       id={`mood-btn-${level}`}
                       type="button"
                       onClick={() => setMood(level)}
-                      className={`flex flex-col items-center justify-center p-3 rounded-xl border transition-all cursor-pointer ${
+                      className={`flex flex-col items-center justify-center p-3 rounded-lg border transition-all cursor-pointer ${
                         isSelected
-                          ? 'border-stone-900 dark:border-stone-100 bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 shadow-xs scale-105'
-                          : 'border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 hover:bg-stone-100 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-300'
+                          ? 'border-brand-fill bg-brand-fill text-white scale-105'
+                          : 'border-line bg-surface-2 hover:bg-surface-3 text-fg-secondary'
                       }`}
                     >
                       <span className="text-xl">{info.emoji}</span>
@@ -268,16 +268,16 @@ export const DiaryView: React.FC = () => {
                   );
                 })}
               </div>
-              <p className="text-xs font-medium text-stone-600 dark:text-stone-400 mt-2 text-center">
-                Current Mood: <strong className="text-stone-900 dark:text-stone-100">{MOOD_LABELS[mood].label}</strong>
+              <p className="text-xs font-medium text-fg-secondary mt-2 text-center">
+                Current Mood: <strong className="text-fg">{MOOD_LABELS[mood].label}</strong>
               </p>
             </div>
 
             {/* 2. Workout Toggle & Note */}
-            <div className="bg-stone-50 dark:bg-stone-800/80 p-4 rounded-xl border border-stone-100 dark:border-stone-700 space-y-3">
+            <div className="bg-surface-2 p-4 rounded-lg border border-line space-y-3">
               <div className="flex items-center justify-between">
-                <label htmlFor="diary-workout-checkbox" className="text-xs font-semibold text-stone-800 dark:text-stone-200 flex items-center gap-2 cursor-pointer">
-                  <Dumbbell className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                <label htmlFor="diary-workout-checkbox" className="text-xs font-semibold text-fg flex items-center gap-2 cursor-pointer">
+                  <Dumbbell className="w-4 h-4 text-brand" />
                   <span>Physical Workout / Exercise Completed?</span>
                 </label>
                 <input
@@ -285,7 +285,7 @@ export const DiaryView: React.FC = () => {
                   type="checkbox"
                   checked={workout}
                   onChange={(e) => setWorkout(e.target.checked)}
-                  className="w-4 h-4 rounded text-stone-900 focus:ring-stone-800 cursor-pointer"
+                  className="w-4 h-4 rounded-sm border-line-input text-brand accent-brand-fill focus:ring-2 focus:ring-focus cursor-pointer"
                 />
               </div>
 
@@ -296,14 +296,14 @@ export const DiaryView: React.FC = () => {
                   value={workoutNote}
                   onChange={(e) => setWorkoutNote(e.target.value)}
                   placeholder="e.g. 5km run, Pilates, Heavy leg day..."
-                  className="w-full text-xs rounded-xl border border-stone-200 dark:border-stone-700 px-3 py-2 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 placeholder:text-stone-400 dark:placeholder:text-stone-500 focus:outline-none focus:border-stone-800 dark:focus:border-stone-400"
+                  className="w-full text-xs rounded-lg border border-line-input px-3 py-2 bg-surface-2 text-fg placeholder:text-fg-muted focus:outline-none focus:ring-2 focus:ring-focus"
                 />
               )}
             </div>
 
             {/* 3. Food Quality (Healthy, Average, Junk) */}
             <div>
-              <label className="text-xs font-semibold uppercase tracking-wider text-stone-600 dark:text-stone-300 block mb-2">
+              <label className="text-xs font-semibold uppercase tracking-wider text-fg-secondary block mb-2">
                 3. Nutrition & Food Quality
               </label>
               <div className="grid grid-cols-3 gap-3">
@@ -313,14 +313,14 @@ export const DiaryView: React.FC = () => {
                     id={`food-btn-${fq.toLowerCase()}`}
                     type="button"
                     onClick={() => setFoodQuality(fq)}
-                    className={`py-2.5 px-3 rounded-xl border text-xs font-semibold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                    className={`py-2.5 px-3 rounded-lg border text-xs font-semibold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                       foodQuality === fq
                         ? fq === 'HEALTHY'
-                          ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
+                          ? 'bg-income-tint text-income border-income'
                           : fq === 'AVERAGE'
-                          ? 'bg-amber-600 text-white border-amber-600 shadow-xs'
-                          : 'bg-rose-600 text-white border-rose-600 shadow-xs'
-                        : 'border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 text-stone-600 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-700'
+                          ? 'bg-pending-tint text-pending border-pending'
+                          : 'bg-expense-tint text-expense border-expense'
+                        : 'border-line bg-surface-2 text-fg-secondary hover:bg-surface-3'
                     }`}
                   >
                     <Utensils className="w-3.5 h-3.5" />
@@ -341,7 +341,7 @@ export const DiaryView: React.FC = () => {
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 placeholder="What went well today? Any financial triggers or stress points?"
-                className="w-full text-xs rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 p-3 text-stone-900 dark:text-stone-100 placeholder:text-stone-400 dark:placeholder:text-stone-500 focus:outline-none focus:border-stone-800 dark:focus:border-stone-400"
+                className="w-full text-xs rounded-lg border border-line-input bg-surface-2 p-3 text-fg placeholder:text-fg-muted focus:outline-none focus:ring-2 focus:ring-focus"
               />
             </div>
 
@@ -356,12 +356,12 @@ export const DiaryView: React.FC = () => {
                 <span>Save Diary Log for {selectedDayInfo.dayName} ({selectedDate})</span>
               </button>
               {saveSuccess && (
-                <p className="text-center text-xs text-emerald-600 dark:text-emerald-400 font-semibold mt-2 animate-fade-in">
+                <p className="text-center text-xs text-income font-semibold mt-2 animate-fade-in">
                   ✓ Diary entry logged for {selectedDayInfo.dayName}!
                 </p>
               )}
               {saveError && (
-                <p className="text-center text-xs text-rose-600 dark:text-rose-400 font-semibold mt-2">
+                <p className="text-center text-xs text-expense font-semibold mt-2">
                   {saveError}
                 </p>
               )}
@@ -371,17 +371,17 @@ export const DiaryView: React.FC = () => {
 
         {/* Right Column: Historical Diary Logs & Spending Correlation (6 cols) */}
         <Card padding="lg" className="lg:col-span-6 space-y-4">
-          <div className="flex items-center justify-between pb-3 border-b border-stone-100 dark:border-stone-800">
+          <div className="flex items-center justify-between pb-3 border-b border-line">
             <div className="flex items-center gap-2">
-              <Calendar className="w-4 h-4 text-stone-600 dark:text-stone-400" />
-              <h3 className="text-sm font-bold text-stone-900 dark:text-white">Recent Diary Entries</h3>
+              <Calendar className="w-4 h-4 text-fg-secondary" />
+              <h3 className="text-sm font-bold text-fg">Recent Diary Entries</h3>
             </div>
-            <span className="text-xs text-stone-400 dark:text-stone-500">{activeEntries.length} logged days</span>
+            <span className="text-xs text-fg-muted">{activeEntries.length} logged days</span>
           </div>
 
           <div className="space-y-3 max-h-[560px] overflow-y-auto pr-1">
             {enrichedEntries.length === 0 ? (
-              <p className="text-xs text-stone-400 dark:text-stone-500 text-center py-10">No diary entries logged yet.</p>
+              <p className="text-xs text-fg-muted text-center py-10">No diary entries logged yet.</p>
             ) : (
               enrichedEntries.map(({ entry, dayInfo, dayData, outflowTxs, moodInfo }) => (
                 <DiaryEntryCard

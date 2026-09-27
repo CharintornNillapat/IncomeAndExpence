@@ -17,14 +17,14 @@ export const DebtPayoffOverview: React.FC<DebtPayoffOverviewProps> = React.memo(
   paidDebtTarget,
 }) => {
   return (
-    <div className="bg-white dark:bg-stone-900 rounded-2xl border border-stone-200 dark:border-stone-800 p-6 shadow-xs flex flex-col justify-between transition-colors">
+    <div className="bg-surface-1 rounded-xl border border-line p-6 flex flex-col justify-between transition-colors">
       <div>
-        <div className="flex items-center justify-between pb-4 border-b border-stone-100 dark:border-stone-800">
+        <div className="flex items-center justify-between pb-4 border-b border-line">
           <div className="flex items-center gap-2">
-            <TrendingDown className="w-4 h-4 text-rose-600 dark:text-rose-400" />
-            <h3 className="text-sm font-bold text-stone-900 dark:text-white">Total Debt Payoff Target</h3>
+            <TrendingDown className="w-4 h-4 text-expense" />
+            <h3 className="text-sm font-bold text-fg">Total Debt Payoff Target</h3>
           </div>
-          <span className="text-xs font-semibold text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/60 px-2 py-0.5 rounded-full border border-rose-100 dark:border-rose-800">
+          <span className="text-xs font-semibold text-expense bg-expense-tint px-2 py-0.5 rounded-full border border-expense-line">
             {activeDebtCount} Active
           </span>
         </div>
@@ -32,22 +32,22 @@ export const DebtPayoffOverview: React.FC<DebtPayoffOverviewProps> = React.memo(
         <div className="mt-5 space-y-4">
           <div>
             <div className="flex justify-between text-xs mb-1">
-              <span className="text-stone-500 dark:text-stone-400">Payoff Progress:</span>
-              <span className="font-mono font-bold text-stone-900 dark:text-white">{debtProgressPercent.toFixed(1)}%</span>
+              <span className="text-fg-secondary">Payoff Progress:</span>
+              <span className="font-mono font-bold text-fg">{debtProgressPercent.toFixed(1)}%</span>
             </div>
             <ProgressMeter percent={debtProgressPercent} heightClassName="h-3" />
           </div>
 
           <div className="grid grid-cols-2 gap-3 pt-2">
-            <div className="bg-stone-50 dark:bg-stone-800/60 p-3 rounded-xl border border-stone-100 dark:border-stone-800">
-              <span className="text-[11px] text-stone-500 dark:text-stone-400 block">Remaining Balance</span>
-              <span className="text-base font-bold font-mono text-rose-600 dark:text-rose-400">
+            <div className="bg-surface-2 p-3 rounded-lg border border-line">
+              <span className="text-[11px] text-fg-secondary block">Remaining Balance</span>
+              <span className="text-base font-bold font-mono text-expense">
                 {formatCurrencyAmount(remainingDebtTarget)}
               </span>
             </div>
-            <div className="bg-stone-50 dark:bg-stone-800/60 p-3 rounded-xl border border-stone-100 dark:border-stone-800">
-              <span className="text-[11px] text-stone-500 dark:text-stone-400 block">Total Principal Paid</span>
-              <span className="text-base font-bold font-mono text-emerald-600 dark:text-emerald-400">
+            <div className="bg-surface-2 p-3 rounded-lg border border-line">
+              <span className="text-[11px] text-fg-secondary block">Total Principal Paid</span>
+              <span className="text-base font-bold font-mono text-income">
                 {formatCurrencyAmount(paidDebtTarget)}
               </span>
             </div>
@@ -55,7 +55,7 @@ export const DebtPayoffOverview: React.FC<DebtPayoffOverviewProps> = React.memo(
         </div>
       </div>
 
-      <p className="text-[11px] text-stone-400 dark:text-stone-500 mt-6 pt-4 border-t border-stone-100 dark:border-stone-800">
+      <p className="text-[11px] text-fg-muted mt-6 pt-4 border-t border-line">
         Payments automatically update your wallet balance and reduce what you owe.
       </p>
     </div>

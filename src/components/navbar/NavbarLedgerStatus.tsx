@@ -29,8 +29,8 @@ export const NavbarSyncBadge: React.FC<NavbarSyncBadgeProps> = ({ onOpenAuth }) 
   const { isAuthenticated, isSyncing } = useFinanceState();
 
   return isAuthenticated ? (
-    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 whitespace-nowrap">
-      <Cloud className={`w-3 h-3 text-emerald-600 dark:text-emerald-400 ${isSyncing ? 'animate-spin' : ''}`} />
+    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-income-tint text-income border border-income-line whitespace-nowrap">
+      <Cloud className={`w-3 h-3 text-income ${isSyncing ? 'animate-spin' : ''}`} />
       <span className="sm:hidden">{isSyncing ? 'Syncing...' : 'Synced'}</span>
       <span className="hidden sm:inline">{isSyncing ? 'Syncing...' : 'Cloud Synced'}</span>
     </span>
@@ -40,9 +40,9 @@ export const NavbarSyncBadge: React.FC<NavbarSyncBadgeProps> = ({ onOpenAuth }) 
       type="button"
       onClick={onOpenAuth}
       title="Click to authenticate & enable cloud sync"
-      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800 hover:bg-amber-100 dark:hover:bg-amber-900 transition-colors cursor-pointer whitespace-nowrap"
+      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-pending-tint text-pending border border-pending-line hover:border-pending transition-colors cursor-pointer whitespace-nowrap"
     >
-      <CloudOff className="w-3 h-3 text-amber-600 dark:text-amber-400 shrink-0" />
+      <CloudOff className="w-3 h-3 text-pending shrink-0" />
       <span className="sm:hidden">Local</span>
       <span className="hidden sm:inline">Local Only (Click to Sync)</span>
     </button>
@@ -62,16 +62,16 @@ export const NavbarBalanceAndAuth: React.FC<NavbarBalanceAndAuthProps> = ({ onOp
     <>
       {/* Live Net Worth aggregated query */}
       <div className="text-right hidden md:block pr-1">
-        <span className="text-[10px] font-semibold uppercase tracking-wider text-stone-400 dark:text-stone-500 block">
+        <span className="text-[10px] font-semibold uppercase tracking-wider text-fg-muted block">
           Total Balance
         </span>
-        <span className="text-sm sm:text-base font-bold font-mono text-stone-900 dark:text-white tracking-tight">
+        <span className="text-sm sm:text-base font-bold font-mono tabular-nums text-fg tracking-tight">
           <AnimatedCounter
             value={totalNetWorth}
             currencyPrefix={APP_CURRENCY_SYMBOL}
             duration={1.2}
           />{' '}
-          <span className="text-xs font-semibold text-stone-500 dark:text-stone-400 font-mono">
+          <span className="text-xs font-semibold text-fg-secondary font-mono">
             {APP_CURRENCY}
           </span>
         </span>
@@ -88,10 +88,10 @@ export const NavbarBalanceAndAuth: React.FC<NavbarBalanceAndAuthProps> = ({ onOp
           onClick={onOpenAccount}
           title="Account & Security"
           aria-label="Account & Security"
-          className="min-h-[44px] inline-flex items-center gap-1.5 bg-stone-50 dark:bg-stone-800 hover:bg-stone-100 dark:hover:bg-stone-700 border border-stone-200 dark:border-stone-700 py-1.5 px-2.5 rounded-xl text-xs transition-colors cursor-pointer"
+          className="min-h-[44px] inline-flex items-center gap-1.5 bg-surface-2 hover:bg-surface-3 border border-line py-1.5 px-2.5 rounded-lg text-xs transition-colors cursor-pointer"
         >
-          <UserCheck className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
-          <span className="max-w-[80px] sm:max-w-[120px] truncate font-semibold text-stone-700 dark:text-stone-200 hidden xs:inline">
+          <UserCheck className="w-3.5 h-3.5 text-income shrink-0" />
+          <span className="max-w-[80px] sm:max-w-[120px] truncate font-semibold text-fg hidden xs:inline">
             {currentUser.name || currentUser.email}
           </span>
         </motion.button>
@@ -102,9 +102,9 @@ export const NavbarBalanceAndAuth: React.FC<NavbarBalanceAndAuthProps> = ({ onOp
             type="button"
             id="navbar-signin-btn"
             onClick={onOpenAuth}
-            className="min-h-[44px] inline-flex items-center justify-center gap-1.5 bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-200 px-3 sm:px-3.5 py-2 rounded-xl text-xs font-semibold border border-stone-200 dark:border-stone-700 transition-all cursor-pointer"
+            className="min-h-[44px] inline-flex items-center justify-center gap-1.5 bg-surface-2 hover:bg-surface-3 text-fg px-3 sm:px-3.5 py-2 rounded-lg text-xs font-semibold border border-line transition-colors cursor-pointer"
           >
-            <LogIn className="w-3.5 h-3.5 text-stone-600 dark:text-stone-400 shrink-0" />
+            <LogIn className="w-3.5 h-3.5 text-fg-secondary shrink-0" />
             <span>Sign In</span>
           </motion.button>
           <motion.button
@@ -114,7 +114,7 @@ export const NavbarBalanceAndAuth: React.FC<NavbarBalanceAndAuthProps> = ({ onOp
             onClick={onOpenAccount}
             title="Account & Security"
             aria-label="Account & Security"
-            className="hidden sm:inline-flex min-h-[44px] min-w-[44px] items-center justify-center p-2 rounded-xl bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 border border-stone-200 dark:border-stone-700 text-stone-700 dark:text-stone-300 transition-colors cursor-pointer"
+            className="hidden sm:inline-flex min-h-[44px] min-w-[44px] items-center justify-center p-2 rounded-lg bg-surface-2 hover:bg-surface-3 border border-line text-fg-secondary transition-colors cursor-pointer"
           >
             <UserCog className="w-4 h-4" />
           </motion.button>

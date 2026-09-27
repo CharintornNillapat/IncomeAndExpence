@@ -50,29 +50,29 @@ export function SaveRuleChip({
       exit={{ opacity: 0, y: -4 }}
       transition={{ duration: 0.15 }}
       data-testid="tx-save-rule"
-      className={`mt-2 flex flex-col gap-1.5 rounded-xl border px-3 py-2 ${
+      className={`mt-2 flex flex-col gap-1.5 rounded-lg border px-3 py-2 ${
         saved
-          ? 'border-emerald-200 bg-emerald-50 dark:border-emerald-800/60 dark:bg-emerald-950/40'
-          : 'border-stone-200 bg-stone-50 dark:border-stone-700 dark:bg-stone-800'
+          ? 'border-income-line bg-income-tint'
+          : 'border-line bg-surface-2'
       }`}
     >
       <div className="flex items-center gap-2">
         {saved ? (
-          <Check className="h-3.5 w-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
+          <Check className="h-3.5 w-3.5 shrink-0 text-income" />
         ) : (
-          <Tag className="h-3.5 w-3.5 shrink-0 text-stone-500 dark:text-stone-400" />
+          <Tag className="h-3.5 w-3.5 shrink-0 text-fg-muted" />
         )}
 
         {saved ? (
-          <span className="min-w-0 flex-1 truncate text-xs text-emerald-800 dark:text-emerald-300">
+          <span className="min-w-0 flex-1 truncate text-xs text-income">
             Rule saved &mdash; <strong className="font-semibold">{keyword}</strong> now files under{' '}
             <strong className="font-semibold">{categoryName}</strong>
           </span>
         ) : (
           <>
-            <span className="min-w-0 flex-1 truncate text-xs text-stone-600 dark:text-stone-300">
-              Always file &ldquo;<strong className="font-semibold text-stone-900 dark:text-stone-100">{keyword}</strong>
-              &rdquo; under <strong className="font-semibold text-stone-900 dark:text-stone-100">{categoryName}</strong>?
+            <span className="min-w-0 flex-1 truncate text-xs text-fg-secondary">
+              Always file &ldquo;<strong className="font-semibold text-fg">{keyword}</strong>
+              &rdquo; under <strong className="font-semibold text-fg">{categoryName}</strong>?
             </span>
 
             {/*
@@ -86,7 +86,7 @@ export function SaveRuleChip({
               id={`${idPrefix}-save-rule-btn`}
               onClick={onSave}
               disabled={status === 'saving'}
-              className="shrink-0 cursor-pointer rounded-lg bg-stone-900 px-2.5 py-1 text-xs font-semibold text-white transition-colors hover:bg-stone-800 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-stone-100 dark:text-stone-900 dark:hover:bg-white"
+              className="shrink-0 cursor-pointer rounded-sm bg-brand-fill px-2.5 py-1 text-xs font-semibold text-white transition-colors hover:bg-brand-fill-hover disabled:cursor-not-allowed disabled:opacity-50"
             >
               {status === 'saving' ? 'Saving...' : 'Save rule'}
             </button>
@@ -96,7 +96,7 @@ export function SaveRuleChip({
               id={`${idPrefix}-save-rule-dismiss`}
               onClick={onDismiss}
               aria-label="Dismiss rule suggestion"
-              className="shrink-0 cursor-pointer rounded-lg p-1 text-stone-400 transition-colors hover:text-stone-700 dark:hover:text-stone-200"
+              className="shrink-0 cursor-pointer rounded-sm p-1 text-fg-muted transition-colors hover:text-fg"
             >
               <X className="h-3.5 w-3.5" />
             </button>
@@ -105,7 +105,7 @@ export function SaveRuleChip({
       </div>
 
       {error && !saved && (
-        <p className="text-[11px] font-medium text-rose-600 dark:text-rose-400">{error}</p>
+        <p className="text-[11px] font-medium text-expense">{error}</p>
       )}
     </motion.div>
   );

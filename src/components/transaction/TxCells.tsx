@@ -52,27 +52,27 @@ interface TxAmountProps {
   amount: number;
   type: TransactionType;
   /**
-   * `standard` (income emerald / debt-repayment amber / else stone -
-   * `TransactionTableRow`'s exact scheme) or `incomeOnly` (income emerald /
-   * else stone - `WalletPopupModal`'s exact scheme, where debt-repayment
+   * `standard` (income / debt-repayment pending / else fg tokens -
+   * `TransactionTableRow`'s exact scheme) or `incomeOnly` (income /
+   * else fg - `WalletPopupModal`'s exact scheme, where debt-repayment
    * has never had its own color). Ignored when `colorClassName` is given.
    */
   colorScheme?: TxAmountColorScheme;
-  /** A site's own divergent color scheme (e.g. `RecentTransactionsTable`'s 4-way emerald/rose/amber/indigo) - overrides both presets above. */
+  /** A site's own divergent color scheme (e.g. `RecentTransactionsTable`'s 4-way income/expense/pending/transfer) - overrides both presets above. */
   colorClassName?: string;
   className?: string;
 }
 
 const STANDARD_COLOR: Partial<Record<TransactionType, string>> = {
-  INCOME: 'text-emerald-600 dark:text-emerald-400',
-  DEBT_REPAYMENT: 'text-amber-600 dark:text-amber-400',
+  INCOME: 'text-income',
+  DEBT_REPAYMENT: 'text-pending',
 };
 
 const INCOME_ONLY_COLOR: Partial<Record<TransactionType, string>> = {
-  INCOME: 'text-emerald-600 dark:text-emerald-400',
+  INCOME: 'text-income',
 };
 
-const DEFAULT_COLOR = 'text-stone-900 dark:text-stone-100';
+const DEFAULT_COLOR = 'text-fg';
 
 /**
  * T49: formats an amount with `formatCurrencyAmount` and the canonical
@@ -82,7 +82,7 @@ const DEFAULT_COLOR = 'text-stone-900 dark:text-stone-100';
  * preserved behavior: that file's pre-existing inline ternary rendered no
  * sign at all for TRANSFER/DEBT_REPAYMENT/ADJUSTMENT, diverging from every
  * other renderer. Its color scheme (a 4th, `RecentTransactionsTable`-only
- * emerald/rose/amber/indigo split) is passed in via `colorClassName` rather
+ * income/expense/pending/transfer split) is passed in via `colorClassName` rather
  * than added as a 3rd preset, since forcing that page's colors onto the
  * other two sites (or vice versa) would be a real visual regression at
  * whichever site didn't already use it.
@@ -125,5 +125,5 @@ export const TxCategoryChip: React.FC<TxCategoryChipProps> = ({ category, size =
  * source instead of being retyped at every renderer that adopts it.
  */
 export const TxSoftDeletedTag: React.FC = () => (
-  <span className="inline-block text-[10px] font-semibold text-rose-600 dark:text-rose-400 uppercase">[Soft Deleted]</span>
+  <span className="inline-block text-[10px] font-semibold text-expense uppercase">[Soft Deleted]</span>
 );

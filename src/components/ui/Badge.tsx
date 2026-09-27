@@ -26,9 +26,8 @@ const BADGE_SIZE_CLASS: Record<BadgeSize, string> = {
  * two existing badges genuinely differ there (`font-bold` vs `font-medium`).
  */
 const BADGE_TONE_CLASS: Record<BadgeTone, string> = {
-  neutral: 'bg-stone-200 dark:bg-stone-700 text-stone-800 dark:text-stone-200 font-bold rounded',
-  amber:
-    'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 border border-amber-200/50 dark:border-amber-800/50 font-medium rounded',
+  neutral: 'bg-surface-3 text-fg font-bold rounded-sm',
+  amber: 'bg-pending-tint text-pending border border-pending-line font-medium rounded-sm',
 };
 
 /**

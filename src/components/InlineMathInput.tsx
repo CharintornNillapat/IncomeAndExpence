@@ -188,9 +188,9 @@ export const InlineMathInput: React.FC<InlineMathInputProps> = ({
       {label && (
         <div className="flex items-center justify-between">
           <label htmlFor={inputId} className={LABEL_TEXT_CLASS}>
-            {label} {required && <span className="text-rose-500">*</span>}
+            {label} {required && <span className="text-expense">*</span>}
             <span
-              className="inline-flex align-middle ml-1.5 text-stone-300 dark:text-stone-600 hover:text-stone-500 dark:hover:text-stone-400 cursor-help"
+              className="inline-flex align-middle ml-1.5 text-fg-muted hover:text-fg-secondary cursor-help"
               title="Supports formulas: 120/2 + 50"
               aria-label="Supports formulas: 120/2 + 50"
             >
@@ -198,8 +198,8 @@ export const InlineMathInput: React.FC<InlineMathInputProps> = ({
             </span>
           </label>
           {hasCalculation && evaluatedAmount !== null && (
-            <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-200 dark:border-emerald-800/60">
-              <Sparkles className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+            <span className="inline-flex items-center gap-1 text-xs font-medium text-brand bg-brand-tint px-2 py-0.5 rounded-sm border border-brand-line">
+              <Sparkles className="w-3 h-3 text-brand" />
               Calculated: {currencyPrefix}{formattedResult}
             </span>
           )}
@@ -208,15 +208,15 @@ export const InlineMathInput: React.FC<InlineMathInputProps> = ({
 
       {/* Main Input Control Container */}
       <div
-        className={`relative flex items-center rounded-xl border bg-white dark:bg-stone-800 px-3 py-2.5 transition-all shadow-xs ${
+        className={`relative flex items-center rounded-lg border px-3 py-2.5 transition-all ${
           errorMessage
-            ? 'border-rose-400 ring-2 ring-rose-100 dark:ring-rose-950/40'
+            ? 'border-expense ring-2 ring-expense-line'
             : isFocused
-            ? 'border-stone-800 dark:border-stone-400 ring-2 ring-stone-200 dark:ring-stone-700'
-            : 'border-stone-200 dark:border-stone-700 hover:border-stone-300 dark:hover:border-stone-600'
-        } ${disabled ? 'opacity-60 bg-stone-50 dark:bg-stone-900 cursor-not-allowed' : ''}`}
+            ? 'border-line-input ring-2 ring-focus'
+            : 'border-line-input hover:border-fg-muted'
+        } ${disabled ? 'opacity-60 bg-surface-1 cursor-not-allowed' : 'bg-surface-2'}`}
       >
-        <span className="text-stone-400 dark:text-stone-500 font-medium text-base select-none mr-2">
+        <span className="text-fg-muted font-medium text-base select-none mr-2">
           {currencyPrefix}
         </span>
 
@@ -232,7 +232,7 @@ export const InlineMathInput: React.FC<InlineMathInputProps> = ({
           disabled={disabled}
           autoComplete="off"
           spellCheck="false"
-          className="w-full text-base font-semibold text-stone-900 dark:text-stone-100 placeholder:text-stone-300 dark:placeholder:text-stone-600 placeholder:font-normal focus:outline-none bg-transparent"
+          className="w-full text-base font-semibold text-fg placeholder:text-fg-muted placeholder:font-normal focus:outline-none bg-transparent"
         />
 
         {/* Right Status / Action Preview */}
@@ -243,17 +243,17 @@ export const InlineMathInput: React.FC<InlineMathInputProps> = ({
               type="button"
               onClick={handleApplyResult}
               title="Click to replace expression with calculated sum"
-              className="inline-flex items-center gap-1 px-2 py-1 text-xs font-semibold text-stone-700 dark:text-stone-300 bg-stone-100 dark:bg-stone-700 hover:bg-stone-200 dark:hover:bg-stone-600 rounded-lg transition-colors border border-stone-200 dark:border-stone-600 cursor-pointer"
+              className="inline-flex items-center gap-1 px-2 py-1 text-xs font-semibold text-fg-secondary bg-surface-1 hover:bg-surface-3 rounded-lg transition-colors border border-line cursor-pointer"
             >
-              <Check className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+              <Check className="w-3 h-3 text-income" />
               <span className="font-mono">{currencyPrefix}{formattedResult}</span>
             </button>
           ) : evaluatedAmount !== null ? (
-            <div className="p-1 text-emerald-600 dark:text-emerald-400">
+            <div className="p-1 text-income">
               <Check className="w-4 h-4" />
             </div>
           ) : (
-            <div className="p-1 text-stone-400 dark:text-stone-500">
+            <div className="p-1 text-fg-muted">
               <Calculator className="w-4 h-4" />
             </div>
           )}
@@ -263,27 +263,27 @@ export const InlineMathInput: React.FC<InlineMathInputProps> = ({
         {/* Quick math operator buttons & error reporting */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs px-1">
           {errorMessage ? (
-            <p id={`${inputId}-error`} className="flex items-center gap-1.5 text-rose-600 dark:text-rose-400 font-medium py-0.5">
+            <p id={`${inputId}-error`} className="flex items-center gap-1.5 text-expense font-medium py-0.5">
               <AlertCircle className="w-4 h-4 shrink-0" />
               <span>{errorMessage}</span>
             </p>
           ) : (
-            <span className="text-stone-500 dark:text-stone-400 text-[11px] sm:text-xs">
-              Supports inline arithmetic: <code className="bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 px-1.5 py-0.5 rounded text-[11px] font-mono border border-stone-200 dark:border-stone-700">+ - * / ()</code>
+            <span className="text-fg-secondary text-[11px] sm:text-xs">
+              Supports inline arithmetic: <code className="bg-surface-2 text-fg-secondary px-1.5 py-0.5 rounded-sm text-[11px] font-mono border border-line">+ - * / ()</code>
             </span>
           )}
 
           {/* Quick Operator Shortcuts with mobile-friendly touch targets */}
           {!disabled && (
             <div className="flex items-center gap-1.5 self-end sm:self-auto">
-              <span className="text-[11px] text-stone-400 dark:text-stone-500 font-medium sm:hidden mr-1">Quick operators:</span>
+              <span className="text-[11px] text-fg-muted font-medium sm:hidden mr-1">Quick operators:</span>
               {['+', '-', '*', '/', '(', ')'].map((op) => (
                 <button
                   key={op}
                   id={`${inputId}-op-${op}`}
                   type="button"
                   onClick={() => handleQuickAdd(op)}
-                  className="min-w-8 h-8 px-2 flex items-center justify-center text-xs font-semibold rounded-lg bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 active:bg-stone-300 dark:active:bg-stone-600 text-stone-700 dark:text-stone-300 transition-colors cursor-pointer border border-stone-200 dark:border-stone-700"
+                  className="min-w-8 h-8 px-2 flex items-center justify-center text-xs font-semibold rounded-lg bg-surface-2 hover:bg-surface-3 active:bg-surface-3 text-fg-secondary transition-colors cursor-pointer border border-line hover:border-brand"
                 >
                   {op}
                 </button>
@@ -297,14 +297,14 @@ export const InlineMathInput: React.FC<InlineMathInputProps> = ({
             land after the amount is pre-filled, not just a mobile shortcut. */}
         {!disabled && (
           <div className="flex flex-wrap items-center gap-1.5 px-1">
-            <span className="text-[11px] text-stone-400 dark:text-stone-500 font-medium mr-1">Quick amount:</span>
+            <span className="text-[11px] text-fg-muted font-medium mr-1">Quick amount:</span>
             {[100, 500, 1000].map((amount) => (
               <button
                 key={amount}
                 id={`${inputId}-chip-${amount}`}
                 type="button"
                 onClick={() => handleQuickAmount(amount)}
-                className="min-h-8 px-2.5 flex items-center justify-center text-xs font-semibold rounded-lg bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 active:bg-emerald-200 dark:active:bg-emerald-900 text-emerald-700 dark:text-emerald-300 transition-colors cursor-pointer border border-emerald-100 dark:border-emerald-800/60"
+                className="min-h-8 px-2.5 flex items-center justify-center text-xs font-semibold rounded-lg bg-brand-tint text-brand transition-colors cursor-pointer border border-brand-line hover:border-brand active:border-brand"
               >
                 +{amount.toLocaleString()}
               </button>

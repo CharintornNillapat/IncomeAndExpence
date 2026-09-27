@@ -17,8 +17,8 @@ interface SectionHeaderProps {
  * single-root action markup (a bare button, or its own `<div className="flex
  * ...">` wrapping several).
  *
- * Adopting this standardizes every view's banner from `shadow-2xs` onto
- * `Card`'s `shadow-xs`, and - for the two banners that used stepped
+ * Adopting this standardized every view's banner onto `Card`'s shell (which,
+ * since Phase 53, is a border with no shadow), and - for the two banners that used stepped
  * `p-4 sm:p-5`/`gap-3 sm:gap-4` (`TransactionsView`, `DashboardView`'s
  * "Periodic Cashflow" section) - onto the flat `p-5`/`gap-4` every other view
  * already used. Both are deliberate, minor spacing unifications the phase
@@ -31,8 +31,8 @@ export const SectionHeader: React.FC<SectionHeaderProps> = ({ title, subtitle, a
       className={`flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${className}`.trim()}
     >
       <div>
-        <h2 className="text-base font-bold text-stone-900 dark:text-white">{title}</h2>
-        {subtitle && <p className="text-xs text-stone-500 dark:text-stone-400">{subtitle}</p>}
+        <h2 className="text-base font-bold text-fg">{title}</h2>
+        {subtitle && <p className="text-xs text-fg-secondary">{subtitle}</p>}
       </div>
       {action}
     </Card>

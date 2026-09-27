@@ -21,19 +21,19 @@ export const CashflowMetricsCards: React.FC<CashflowMetricsCardsProps> = React.m
       <motion.div
         whileHover={{ y: -2 }}
         data-testid="metric-card-income"
-        className="bg-white dark:bg-stone-900 rounded-2xl border-2 border-emerald-200/80 dark:border-emerald-900/60 p-4 sm:p-6 shadow-sm hover:shadow-md transition-all relative overflow-hidden flex flex-col justify-between"
+        className="bg-surface-1 rounded-xl border-2 border-income-line p-4 sm:p-6 transition-all relative overflow-hidden flex flex-col justify-between"
       >
         <div className="flex items-center justify-between">
-          <span className="text-xs font-bold uppercase tracking-wider text-emerald-800 dark:text-emerald-300 flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+          <span className="text-xs font-bold uppercase tracking-wider text-income flex items-center gap-2">
+            <span className="w-2.5 h-2.5 rounded-full bg-income-fill"></span>
             Total Income
           </span>
-          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center border border-emerald-100 dark:border-emerald-800">
+          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-income-tint text-income flex items-center justify-center border border-income-line">
             <ArrowDownLeft className="w-4 h-4 sm:w-5 sm:h-5 stroke-[2.5]" />
           </div>
         </div>
         <div className="mt-3.5 sm:mt-5">
-          <p className="text-2xl sm:text-3xl lg:text-4xl xl:text-5xl font-black font-mono tabular-nums tracking-tight text-emerald-600 dark:text-emerald-400">
+          <p className="text-2xl sm:text-3xl lg:text-4xl xl:text-5xl font-black font-mono tabular-nums tracking-tight text-income">
             <AnimatedCounter
               value={incomeTotal}
               currencyPrefix={APP_CURRENCY_SYMBOL}
@@ -41,8 +41,8 @@ export const CashflowMetricsCards: React.FC<CashflowMetricsCardsProps> = React.m
             />
           </p>
           <div className="flex items-center justify-between mt-2 sm:mt-3 text-xs">
-            <span className="hidden sm:inline text-stone-500 dark:text-stone-400 font-medium">Inflows across active accounts</span>
-            <span className="text-emerald-700 dark:text-emerald-300 font-semibold bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded-md border border-emerald-100 dark:border-emerald-800 text-[11px]">
+            <span className="hidden sm:inline text-fg-secondary font-medium">Inflows across active accounts</span>
+            <span className="text-income font-semibold bg-income-tint px-2 py-0.5 rounded-sm border border-income-line text-[11px]">
               + Inflow
             </span>
           </div>
@@ -53,19 +53,19 @@ export const CashflowMetricsCards: React.FC<CashflowMetricsCardsProps> = React.m
       <motion.div
         whileHover={{ y: -2 }}
         data-testid="metric-card-expense"
-        className="bg-white dark:bg-stone-900 rounded-2xl border-2 border-rose-200/80 dark:border-rose-900/60 p-4 sm:p-6 shadow-sm hover:shadow-md transition-all relative overflow-hidden flex flex-col justify-between"
+        className="bg-surface-1 rounded-xl border-2 border-expense-line p-4 sm:p-6 transition-all relative overflow-hidden flex flex-col justify-between"
       >
         <div className="flex items-center justify-between">
-          <span className="text-xs font-bold uppercase tracking-wider text-rose-800 dark:text-rose-300 flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-rose-500"></span>
+          <span className="text-xs font-bold uppercase tracking-wider text-expense flex items-center gap-2">
+            <span className="w-2.5 h-2.5 rounded-full bg-expense-fill"></span>
             Total Expense
           </span>
-          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 flex items-center justify-center border border-rose-100 dark:border-rose-800">
+          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-expense-tint text-expense flex items-center justify-center border border-expense-line">
             <ArrowUpRight className="w-4 h-4 sm:w-5 sm:h-5 stroke-[2.5]" />
           </div>
         </div>
         <div className="mt-3.5 sm:mt-5">
-          <p className="text-2xl sm:text-3xl lg:text-4xl xl:text-5xl font-black font-mono tabular-nums tracking-tight text-rose-600 dark:text-rose-400">
+          <p className="text-2xl sm:text-3xl lg:text-4xl xl:text-5xl font-black font-mono tabular-nums tracking-tight text-expense">
             <AnimatedCounter
               value={expenseTotal}
               currencyPrefix={APP_CURRENCY_SYMBOL}
@@ -73,8 +73,8 @@ export const CashflowMetricsCards: React.FC<CashflowMetricsCardsProps> = React.m
             />
           </p>
           <div className="flex items-center justify-between mt-2 sm:mt-3 text-xs">
-            <span className="hidden sm:inline text-stone-500 dark:text-stone-400 font-medium">Outflows & regular expenses</span>
-            <span className="text-rose-700 dark:text-rose-300 font-semibold bg-rose-50 dark:bg-rose-950/60 px-2 py-0.5 rounded-md border border-rose-100 dark:border-rose-800 text-[11px]">
+            <span className="hidden sm:inline text-fg-secondary font-medium">Outflows & regular expenses</span>
+            <span className="text-expense font-semibold bg-expense-tint px-2 py-0.5 rounded-sm border border-expense-line text-[11px]">
               − Outflow
             </span>
           </div>
@@ -85,21 +85,21 @@ export const CashflowMetricsCards: React.FC<CashflowMetricsCardsProps> = React.m
       <motion.div
         whileHover={{ y: -2 }}
         data-testid="metric-card-net"
-        className={`bg-white dark:bg-stone-900 rounded-2xl border-2 p-4 sm:p-6 shadow-sm hover:shadow-md transition-all relative overflow-hidden flex flex-col justify-between ${
-          netBalance >= 0 ? 'border-emerald-300 dark:border-emerald-800/80' : 'border-rose-300 dark:border-rose-800/80'
+        className={`bg-surface-1 rounded-xl border-2 p-4 sm:p-6 transition-all relative overflow-hidden flex flex-col justify-between ${
+          netBalance >= 0 ? 'border-income-line' : 'border-expense-line'
         }`}
       >
         <div className="flex items-center justify-between">
           <span className={`text-xs font-bold uppercase tracking-wider flex items-center gap-2 ${
-            netBalance >= 0 ? 'text-emerald-800 dark:text-emerald-300' : 'text-rose-800 dark:text-rose-300'
+            netBalance >= 0 ? 'text-income' : 'text-expense'
           }`}>
-            <span className={`w-2.5 h-2.5 rounded-full ${netBalance >= 0 ? 'bg-emerald-500' : 'bg-rose-500'}`}></span>
+            <span className={`w-2.5 h-2.5 rounded-full ${netBalance >= 0 ? 'bg-income-fill' : 'bg-expense-fill'}`}></span>
             Net Balance
           </span>
-          <div className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center border ${
-            netBalance >= 0 
-              ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 border-emerald-100 dark:border-emerald-800' 
-              : 'bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 border-rose-100 dark:border-rose-800'
+          <div className={`w-9 h-9 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center border ${
+            netBalance >= 0
+              ? 'bg-income-tint text-income border-income-line'
+              : 'bg-expense-tint text-expense border-expense-line'
           }`}>
             {netBalance >= 0 ? (
               <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5 stroke-[2.5]" />
@@ -110,7 +110,7 @@ export const CashflowMetricsCards: React.FC<CashflowMetricsCardsProps> = React.m
         </div>
         <div className="mt-3.5 sm:mt-5">
           <p className={`text-2xl sm:text-3xl lg:text-4xl xl:text-5xl font-black font-mono tabular-nums tracking-tight ${
-            netBalance >= 0 ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'
+            netBalance >= 0 ? 'text-income' : 'text-expense'
           }`}>
             {netBalance < 0 ? '-' : ''}
             <AnimatedCounter
@@ -120,13 +120,13 @@ export const CashflowMetricsCards: React.FC<CashflowMetricsCardsProps> = React.m
             />
           </p>
           <div className="flex items-center justify-between mt-2 sm:mt-3 text-xs">
-            <span className="hidden sm:inline text-stone-500 dark:text-stone-400 font-medium">
+            <span className="hidden sm:inline text-fg-secondary font-medium">
               {netBalance >= 0 ? 'Net positive surplus' : 'Net deficit'}
             </span>
-            <span className={`font-semibold px-2 py-0.5 rounded-md border text-[11px] ${
-              netBalance >= 0 
-                ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-100 dark:border-emerald-800' 
-                : 'bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border-rose-100 dark:border-rose-800'
+            <span className={`font-semibold px-2 py-0.5 rounded-sm border text-[11px] ${
+              netBalance >= 0
+                ? 'bg-income-tint text-income border-income-line'
+                : 'bg-expense-tint text-expense border-expense-line'
             }`}>
               Income − Expense
             </span>

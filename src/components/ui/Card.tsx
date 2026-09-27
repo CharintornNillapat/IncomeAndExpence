@@ -19,7 +19,7 @@ const PADDING_CLASS: Record<CardPadding, string> = {
 
 /**
  * T44: the card shell repeated across the app's view containers -
- * `rounded-2xl`, a subtle border, the warm stone background, and `shadow-xs`.
+ * `rounded-xl`, a 1px `border-line`, and the Surface 1 background (DESIGN.md: no card shadows).
  * Adopted only where an existing shell already matches this shape losslessly;
  * a shell with stepped responsive padding (e.g. `p-4 sm:p-5`), a non-white
  * background, a conditional per-state className, or its own framer-motion
@@ -28,9 +28,9 @@ const PADDING_CLASS: Record<CardPadding, string> = {
  */
 export const Card: React.FC<CardProps> = ({ children, className = '', padding = 'md', interactive = false }) => {
   const classes = [
-    'bg-white dark:bg-stone-900 rounded-2xl border border-stone-200 dark:border-stone-800 shadow-xs',
+    'bg-surface-1 rounded-xl border border-line',
     PADDING_CLASS[padding],
-    interactive ? 'hover:border-stone-300 dark:hover:border-stone-700 transition-all' : '',
+    interactive ? 'hover:border-brand transition-colors duration-150' : '',
     className,
   ]
     .filter(Boolean)

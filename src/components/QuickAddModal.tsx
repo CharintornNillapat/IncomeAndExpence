@@ -93,7 +93,7 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
     >
       {presets.length > 0 && (
         <div className="mb-4 flex flex-col gap-2">
-          <span className="text-[11px] font-semibold text-stone-400 dark:text-stone-500 uppercase tracking-wide">
+          <span className="text-[11px] font-semibold text-fg-muted uppercase tracking-wide">
             Quick templates
           </span>
           <div className="flex flex-wrap gap-2">
@@ -101,7 +101,7 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
               <span
                 key={preset.id}
                 id={`quickadd-preset-chip-${preset.id}`}
-                className="inline-flex items-center gap-1.5 pl-3 pr-1.5 py-1.5 text-xs font-medium rounded-full bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/60"
+                className="inline-flex items-center gap-1.5 pl-3 pr-1.5 py-1.5 text-xs font-medium rounded-full bg-brand-tint text-brand border border-brand-line"
               >
                 <button
                   type="button"
@@ -116,7 +116,7 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
                   id={`quickadd-preset-delete-${preset.id}`}
                   onClick={() => handleDeletePreset(preset.id)}
                   aria-label={`Delete ${preset.name} template`}
-                  className="p-0.5 rounded-full hover:bg-emerald-100 dark:hover:bg-emerald-900 cursor-pointer"
+                  className="p-0.5 rounded-full hover:bg-brand-tint cursor-pointer"
                 >
                   <X className="w-3 h-3" />
                 </button>
@@ -124,7 +124,7 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
             ))}
           </div>
           {presetError && (
-            <p className="text-[11px] font-medium text-rose-600 dark:text-rose-400">{presetError}</p>
+            <p className="text-[11px] font-medium text-expense">{presetError}</p>
           )}
         </div>
       )}

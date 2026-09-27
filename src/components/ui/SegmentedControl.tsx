@@ -49,7 +49,7 @@ export function SegmentedControl<T extends string>({
 
   return (
     <div
-      className={`bg-stone-100 dark:bg-stone-800 p-1 rounded-xl gap-1 border border-stone-200 dark:border-stone-700 ${className}`.trim()}
+      className={`bg-surface-2 p-1 rounded-lg gap-1 border border-line ${className}`.trim()}
     >
       {options.map((option) => {
         const isActive = option.value === value;
@@ -60,18 +60,18 @@ export function SegmentedControl<T extends string>({
             type="button"
             whileTap={{ scale: 0.95 }}
             onClick={() => onChange(option.value)}
-            className={`relative text-center font-semibold rounded-lg transition-colors cursor-pointer truncate ${
+            className={`relative text-center font-semibold rounded-md transition-colors cursor-pointer truncate ${
               fill ? 'flex-1' : ''
             } ${SIZE_CLASS[size]} ${
               isActive
-                ? 'text-stone-900 dark:text-white'
-                : 'text-stone-500 dark:text-stone-400 hover:text-stone-800 dark:hover:text-stone-200'
+                ? 'text-fg'
+                : 'text-fg-secondary hover:text-fg'
             }`.trim()}
           >
             {isActive && (
               <motion.span
                 layoutId={`${instanceId}-pill`}
-                className="absolute inset-0 z-0 bg-white dark:bg-stone-700 rounded-lg shadow-xs"
+                className="absolute inset-0 z-0 bg-surface-3 rounded-md"
                 transition={{ type: 'spring', stiffness: 500, damping: 35 }}
               />
             )}

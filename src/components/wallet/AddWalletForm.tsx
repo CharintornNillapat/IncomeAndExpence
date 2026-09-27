@@ -124,7 +124,7 @@ export const AddWalletForm: React.FC<AddWalletFormProps> = ({
           <label className={LABEL_CLASS}>Currency</label>
           <div
             id={ids.currency}
-            className="w-full text-xs rounded-xl border border-stone-200 dark:border-stone-700 px-3 py-2.5 bg-stone-100 dark:bg-stone-800 text-stone-500 dark:text-stone-400 font-mono"
+            className="w-full text-xs rounded-lg border border-line px-3 py-2.5 bg-surface-2 text-fg-secondary font-mono"
           >
             {APP_CURRENCY} ({APP_CURRENCY_SYMBOL})
           </div>
@@ -157,7 +157,7 @@ export const AddWalletForm: React.FC<AddWalletFormProps> = ({
               onClick={() => setWalletColor(c)}
               className={`w-7 h-7 rounded-full transition-transform cursor-pointer ${
                 walletColor === c
-                  ? 'scale-125 ring-2 ring-stone-900 dark:ring-stone-100 ring-offset-2 dark:ring-offset-stone-900'
+                  ? 'scale-125 ring-2 ring-focus ring-offset-2 ring-offset-surface-1'
                   : ''
               }`}
               style={{ backgroundColor: c }}

@@ -35,19 +35,19 @@ export function CategorySuggestionChip({
       exit={{ opacity: 0, y: -4 }}
       transition={{ duration: 0.15 }}
       data-testid="tx-category-suggestion"
-      className="mt-2 flex items-center gap-2 rounded-xl border border-stone-200 bg-stone-50 px-3 py-2 dark:border-stone-700 dark:bg-stone-800"
+      className="mt-2 flex items-center gap-2 rounded-lg border border-line bg-surface-2 px-3 py-2"
     >
-      <Sparkles className="h-3.5 w-3.5 shrink-0 text-stone-500 dark:text-stone-400" />
+      <Sparkles className="h-3.5 w-3.5 shrink-0 text-fg-muted" />
 
-      <span className="min-w-0 flex-1 truncate text-xs text-stone-600 dark:text-stone-300">
-        Looks like <strong className="font-semibold text-stone-900 dark:text-stone-100">{suggestion.categoryName}</strong>
+      <span className="min-w-0 flex-1 truncate text-xs text-fg-secondary">
+        Looks like <strong className="font-semibold text-fg">{suggestion.categoryName}</strong>
       </span>
 
       <button
         type="button"
         id={`${idPrefix}-suggestion-apply`}
         onClick={onApply}
-        className="shrink-0 cursor-pointer rounded-lg bg-stone-900 px-2.5 py-1 text-xs font-semibold text-white transition-colors hover:bg-stone-800 dark:bg-stone-100 dark:text-stone-900 dark:hover:bg-white"
+        className="shrink-0 cursor-pointer rounded-sm bg-brand-fill px-2.5 py-1 text-xs font-semibold text-white transition-colors hover:bg-brand-fill-hover"
       >
         Apply
       </button>
@@ -57,7 +57,7 @@ export function CategorySuggestionChip({
         id={`${idPrefix}-suggestion-dismiss`}
         onClick={onDismiss}
         aria-label="Dismiss category suggestion"
-        className="shrink-0 cursor-pointer rounded-lg p-1 text-stone-400 transition-colors hover:text-stone-700 dark:hover:text-stone-200"
+        className="shrink-0 cursor-pointer rounded-sm p-1 text-fg-muted transition-colors hover:text-fg"
       >
         <X className="h-3.5 w-3.5" />
       </button>

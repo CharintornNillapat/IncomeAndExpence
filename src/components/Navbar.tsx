@@ -58,12 +58,12 @@ export const Navbar: React.FC<NavbarProps> = React.memo(({ activeTab, setActiveT
   const renderThemeIcon = () => {
     switch (theme) {
       case 'light':
-        return <Sun className="w-4 h-4 text-amber-500" />;
+        return <Sun className="w-4 h-4 text-pending" />;
       case 'dark':
-        return <Moon className="w-4 h-4 text-indigo-400" />;
+        return <Moon className="w-4 h-4 text-brand" />;
       case 'system':
       default:
-        return <Monitor className="w-4 h-4 text-stone-500 dark:text-stone-400" />;
+        return <Monitor className="w-4 h-4 text-fg-secondary" />;
     }
   };
 
@@ -80,7 +80,7 @@ export const Navbar: React.FC<NavbarProps> = React.memo(({ activeTab, setActiveT
   };
 
   return (
-    <header className="sticky top-0 z-40 bg-white dark:bg-stone-900 border-b border-stone-200 dark:border-stone-800 shadow-2xs transition-colors duration-200">
+    <header className="sticky top-0 z-40 bg-surface-1 border-b border-line transition-colors duration-200">
       <div className="max-w-7xl mx-auto px-3 sm:px-6">
         {/* Top brand & live net worth row */}
         <div className="h-16 flex items-center justify-between gap-2 sm:gap-4">
@@ -90,7 +90,7 @@ export const Navbar: React.FC<NavbarProps> = React.memo(({ activeTab, setActiveT
               <img
                 src="/pwa-192x192.png"
                 alt="FinLife"
-                className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl object-contain bg-stone-900 shadow-xs border border-stone-800"
+                className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg object-contain bg-surface-2 border border-line"
                 onError={(e) => {
                   const target = e.currentTarget;
                   target.style.display = 'none';
@@ -99,7 +99,7 @@ export const Navbar: React.FC<NavbarProps> = React.memo(({ activeTab, setActiveT
                   }
                 }}
               />
-              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-stone-900 text-emerald-400 hidden items-center justify-center font-black text-xs sm:text-sm shadow-xs border border-stone-800">
+              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-surface-2 text-brand hidden items-center justify-center font-black text-xs sm:text-sm border border-line">
                 FL
               </div>
             </div>
@@ -107,14 +107,14 @@ export const Navbar: React.FC<NavbarProps> = React.memo(({ activeTab, setActiveT
             <div className="min-w-0">
               <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
                 {/* Title hidden on mobile */}
-                <h1 className="hidden sm:block text-base font-bold text-stone-900 dark:text-white tracking-tight whitespace-nowrap">
+                <h1 className="hidden sm:block text-base font-bold text-fg tracking-tight whitespace-nowrap">
                   FinLife Tracker
                 </h1>
 
                 {/* Condensed Sync Badge */}
                 <NavbarSyncBadge onOpenAuth={onOpenAuth} />
               </div>
-              <p className="text-xs text-stone-500 dark:text-stone-400 hidden md:block truncate">
+              <p className="text-xs text-fg-secondary hidden md:block truncate">
                 Full-Stack Personal Finance & Holistic Lifestyle Management
               </p>
             </div>
@@ -131,7 +131,7 @@ export const Navbar: React.FC<NavbarProps> = React.memo(({ activeTab, setActiveT
               onClick={cycleTheme}
               title={`Theme: ${getThemeLabel()} (Click to cycle)`}
               aria-label={`Current theme is ${getThemeLabel()}. Click to switch.`}
-              className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center p-2 rounded-xl bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 border border-stone-200 dark:border-stone-700 text-stone-700 dark:text-stone-300 transition-colors cursor-pointer"
+              className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center p-2 rounded-lg bg-surface-2 hover:bg-surface-3 border border-line text-fg-secondary transition-colors cursor-pointer"
             >
               {renderThemeIcon()}
               <span className="sr-only">Toggle theme</span>
@@ -146,9 +146,9 @@ export const Navbar: React.FC<NavbarProps> = React.memo(({ activeTab, setActiveT
               id="navbar-quick-add-btn"
               type="button"
               onClick={onOpenQuickAdd}
-              className="min-h-[44px] inline-flex items-center justify-center gap-1.5 bg-stone-900 dark:bg-emerald-600 hover:bg-stone-800 dark:hover:bg-emerald-500 text-white px-3 sm:px-4 py-2 rounded-xl text-xs font-semibold shadow-xs transition-all cursor-pointer"
+              className="min-h-[44px] inline-flex items-center justify-center gap-1.5 bg-brand-fill hover:bg-brand-fill-hover text-white px-3 sm:px-4 py-2 rounded-lg text-xs font-semibold transition-colors duration-150 cursor-pointer"
             >
-              <PlusCircle className="w-4 h-4 text-emerald-400 dark:text-white shrink-0" />
+              <PlusCircle className="w-4 h-4 text-white shrink-0" />
               <span className="hidden sm:inline">Add Entry</span>
               <span className="sm:hidden">Add</span>
             </motion.button>
@@ -158,7 +158,7 @@ export const Navbar: React.FC<NavbarProps> = React.memo(({ activeTab, setActiveT
         {/* Desktop Navigation Tabs Bar (Hidden on mobile, uses MobileBottomNav instead) */}
         <nav
           aria-label="Desktop Navigation"
-          className="hidden sm:flex items-center gap-1 overflow-x-auto no-scrollbar py-2 border-t border-stone-100 dark:border-stone-800 md:justify-start lg:justify-between"
+          className="hidden sm:flex items-center gap-1 overflow-x-auto no-scrollbar py-2 border-t border-line md:justify-start lg:justify-between"
         >
           {NAV_ITEMS.map((item) => {
             const Icon = item.icon;
@@ -172,13 +172,13 @@ export const Navbar: React.FC<NavbarProps> = React.memo(({ activeTab, setActiveT
                 aria-current={isActive ? 'page' : undefined}
                 type="button"
                 onClick={() => setActiveTab(item.id)}
-                className={`min-h-[40px] sm:min-h-[44px] inline-flex items-center justify-center gap-2 px-3 sm:px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer shrink-0 md:shrink ${
+                className={`min-h-[40px] sm:min-h-[44px] inline-flex items-center justify-center gap-2 px-3 sm:px-3.5 py-2 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors duration-150 cursor-pointer shrink-0 md:shrink ${
                   isActive
-                    ? 'bg-stone-900 dark:bg-stone-800 text-white shadow-xs'
-                    : 'text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100 hover:bg-stone-100 dark:hover:bg-stone-800/60'
+                    ? 'bg-brand-tint text-brand'
+                    : 'text-fg-secondary hover:text-fg hover:bg-surface-2'
                 }`}
               >
-                <Icon className={`w-4 h-4 ${isActive ? 'text-white' : 'text-stone-500 dark:text-stone-400'} shrink-0`} />
+                <Icon className={`w-4 h-4 ${isActive ? 'text-brand' : 'text-fg-muted'} shrink-0`} />
                 <span>{item.label}</span>
               </motion.button>
             );

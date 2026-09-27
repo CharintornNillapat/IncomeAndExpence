@@ -38,7 +38,7 @@ const TAB_DEFS: Array<{
   iconClassName: string;
 }> = [
   { id: 'OVERVIEW', buttonId: 'tab-btn-overview', label: 'Wallets', icon: Layers, iconClassName: '' },
-  { id: 'TRANSACTIONS', buttonId: 'tab-btn-txs', label: 'Activity', icon: Receipt, iconClassName: 'text-amber-600 dark:text-amber-400' },
+  { id: 'TRANSACTIONS', buttonId: 'tab-btn-txs', label: 'Activity', icon: Receipt, iconClassName: 'text-brand' },
 ];
 
 interface WalletPopupModalProps {
@@ -151,20 +151,20 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
   const header = (
     <>
       {/* Modal Header */}
-      <div className="px-4 sm:px-6 py-3.5 sm:py-4 border-b border-stone-200/70 dark:border-stone-800 flex items-center justify-between bg-stone-50/70 dark:bg-stone-900/70 backdrop-blur-xs shrink-0">
+      <div className="px-4 sm:px-6 py-3.5 sm:py-4 border-b border-line flex items-center justify-between bg-surface-1/70 backdrop-blur-xs shrink-0">
         <div className="flex items-center gap-3">
-          <div className="w-9 sm:w-10 h-9 sm:h-10 rounded-xl bg-stone-900 dark:bg-stone-800 text-white flex items-center justify-center shadow-xs shrink-0 border border-stone-700">
-            <WalletIcon className="w-4 sm:w-5 h-4 sm:h-5 text-emerald-400" />
+          <div className="w-9 sm:w-10 h-9 sm:h-10 rounded-lg bg-brand-tint flex items-center justify-center shrink-0 border border-brand-line">
+            <WalletIcon className="w-4 sm:w-5 h-4 sm:h-5 text-brand" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h3 id="wallet-popup-modal-title" className="text-sm sm:text-base font-bold text-stone-900 dark:text-white">Wallets & Accounts</h3>
-              <span className="text-[10px] sm:text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/60">
+              <h3 id="wallet-popup-modal-title" className="text-sm sm:text-base font-bold text-fg">Wallets & Accounts</h3>
+              <span className="text-[10px] sm:text-xs font-semibold px-2 py-0.5 rounded-full bg-brand-tint text-brand border border-brand-line">
                 {activeWallets.length}
               </span>
             </div>
-            <p className="text-xs text-stone-500 dark:text-stone-400 font-mono">
-              Total: <strong className="text-stone-900 dark:text-stone-100">{formatCurrencyAmount(totalNetWorth)}</strong>
+            <p className="text-xs text-fg-secondary font-mono">
+              Total: <strong className="text-fg">{formatCurrencyAmount(totalNetWorth)}</strong>
             </p>
           </div>
         </div>
@@ -174,14 +174,14 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
           id="close-wallet-modal-btn"
           type="button"
           onClick={onClose}
-          className="p-2 rounded-xl text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 hover:bg-stone-200/80 dark:hover:bg-stone-800 transition-colors cursor-pointer"
+          className="p-2 rounded-lg text-fg-muted hover:text-fg hover:bg-surface-2 transition-colors cursor-pointer"
         >
           <X className="w-5 h-5" />
         </motion.button>
       </div>
 
       {/* Tab Navigation Controls (T39: mapped array over the 2 surviving tabs) */}
-      <div className="flex border-b border-stone-200 dark:border-stone-800 px-3 sm:px-6 bg-white dark:bg-stone-900 gap-1 sm:gap-3 overflow-x-auto text-xs font-semibold shrink-0 no-scrollbar">
+      <div className="flex border-b border-line px-3 sm:px-6 bg-surface-1 gap-1 sm:gap-3 overflow-x-auto text-xs font-semibold shrink-0 no-scrollbar">
         {TAB_DEFS.map((tab) => {
           const TabIcon = tab.icon;
           return (
@@ -192,8 +192,8 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
               onClick={() => setActiveTab(tab.id)}
               className={`py-3 px-2 sm:px-3 border-b-2 transition-colors flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
                 activeTab === tab.id
-                  ? 'border-stone-900 dark:border-stone-100 text-stone-900 dark:text-white'
-                  : 'border-transparent text-stone-500 dark:text-stone-400 hover:text-stone-800 dark:hover:text-stone-200'
+                  ? 'border-brand text-fg'
+                  : 'border-transparent text-fg-secondary hover:text-fg'
               }`}
             >
               <TabIcon className={`w-4 h-4 ${tab.iconClassName}`} />
@@ -230,24 +230,24 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
                       key={wallet.id}
                       id={`modal-wallet-card-${wallet.id}`}
                       onClick={() => setSelectedWalletId(wallet.id)}
-                      className={`p-3.5 sm:p-4 rounded-2xl border-2 transition-all cursor-pointer relative flex flex-col justify-between ${
-                        isSelected 
-                          ? 'border-stone-900 dark:border-stone-300 bg-stone-50/80 dark:bg-stone-800/90 shadow-xs' 
-                          : 'border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900/60 hover:border-stone-300 dark:hover:border-stone-700'
+                      className={`p-3.5 sm:p-4 rounded-xl border-2 transition-all cursor-pointer relative flex flex-col justify-between ${
+                        isSelected
+                          ? 'border-brand bg-surface-2'
+                          : 'border-line bg-surface-1 hover:border-line-input'
                       }`}
                     >
                       <div>
                         <div className="flex items-start justify-between gap-2">
                           <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
                             <div
-                              className="w-9 sm:w-10 h-9 sm:h-10 rounded-xl flex items-center justify-center text-white shrink-0 shadow-xs"
+                              className="w-9 sm:w-10 h-9 sm:h-10 rounded-lg flex items-center justify-center text-white shrink-0"
                               style={{ backgroundColor: wallet.color }}
                             >
                               <Icon className="w-4 sm:w-5 h-4 sm:h-5" />
                             </div>
                             <div className="min-w-0">
-                              <h4 className="text-xs sm:text-sm font-bold text-stone-900 dark:text-white truncate">{wallet.name}</h4>
-                              <span className="text-[10px] sm:text-[11px] font-medium text-stone-500 dark:text-stone-400 capitalize">
+                              <h4 className="text-xs sm:text-sm font-bold text-fg truncate">{wallet.name}</h4>
+                              <span className="text-[10px] sm:text-[11px] font-medium text-fg-secondary capitalize">
                                 {wallet.type.replace('_', ' ').toLowerCase()}
                               </span>
                             </div>
@@ -263,7 +263,7 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
                                 setIsAdjustingBalance(wallet.id);
                                 setAdjustedBalance(wallet.balance);
                               }}
-                              className="p-1.5 rounded-lg text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 hover:bg-stone-200 dark:hover:bg-stone-700 transition-colors"
+                              className="p-1.5 rounded-lg text-fg-muted hover:text-fg hover:bg-surface-3 transition-colors"
                             >
                               <Sliders className="w-3.5 h-3.5" />
                             </button>
@@ -274,7 +274,7 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
                                 e.stopPropagation();
                                 setWalletToDelete(wallet);
                               }}
-                              className="p-1.5 rounded-lg text-stone-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
+                              className="p-1.5 rounded-lg text-fg-muted hover:text-expense hover:bg-expense-tint transition-colors"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
                             </button>
@@ -283,8 +283,8 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
 
                         {/* Balance display or adjustment editor */}
                         {isAdjustingBalance === wallet.id ? (
-                          <div className="mt-3 p-2.5 bg-white dark:bg-stone-800 rounded-xl border border-stone-300 dark:border-stone-700 space-y-2" onClick={(e) => e.stopPropagation()}>
-                            <label className="text-[10px] font-bold uppercase tracking-wider text-stone-500 dark:text-stone-400 block">
+                          <div className="mt-3 p-2.5 bg-surface-1 rounded-lg border border-line space-y-2" onClick={(e) => e.stopPropagation()}>
+                            <label className="text-[10px] font-bold uppercase tracking-wider text-fg-secondary block">
                               Set Balance ({APP_CURRENCY_SYMBOL})
                             </label>
                             <div className="flex flex-wrap sm:flex-nowrap items-center gap-2">
@@ -294,21 +294,21 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
                                 step="0.01"
                                 value={adjustedBalance}
                                 onChange={(e) => setAdjustedBalance(parseFloat(e.target.value) || 0)}
-                                className="w-full text-xs font-mono px-2.5 py-1.5 rounded-lg border border-stone-300 dark:border-stone-600 bg-white dark:bg-stone-900 text-stone-900 dark:text-white focus:outline-none focus:border-stone-900 dark:focus:border-stone-400"
+                                className="w-full text-xs font-mono px-2.5 py-1.5 rounded-lg border border-line-input bg-surface-2 text-fg placeholder:text-fg-muted focus:outline-none focus:ring-2 focus:ring-focus"
                               />
                               <div className="flex items-center gap-1 shrink-0">
                                 <button
                                   type="button"
                                   id="wallet-adjust-save-btn"
                                   onClick={() => handleSaveBalanceAdjustment(wallet.id)}
-                                  className="px-3 py-1.5 bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 rounded-lg text-xs font-semibold hover:bg-stone-800 dark:hover:bg-white"
+                                  className="px-3 py-1.5 bg-brand-fill hover:bg-brand-fill-hover text-white rounded-lg text-xs font-semibold"
                                 >
                                   Save
                                 </button>
                                 <button
                                   type="button"
                                   onClick={() => setIsAdjustingBalance(null)}
-                                  className="px-2 py-1.5 text-stone-500 dark:text-stone-400 text-xs hover:text-stone-800 dark:hover:text-stone-200"
+                                  className="px-2 py-1.5 text-fg-secondary text-xs hover:text-fg"
                                 >
                                   Cancel
                                 </button>
@@ -317,24 +317,24 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
                           </div>
                         ) : (
                           <div className="mt-3 sm:mt-4">
-                            <span className="text-[10px] font-bold uppercase tracking-wider text-stone-400 dark:text-stone-500 block">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-fg-muted block">
                               Balance
                             </span>
                             <div className="flex items-baseline gap-1.5 mt-0.5">
                               <span
                                 id={`modal-wallet-balance-${wallet.id}`}
-                                className="text-lg sm:text-xl font-black font-mono text-stone-900 dark:text-white"
+                                className="text-lg sm:text-xl font-black font-mono text-fg"
                               >
                                 {formatCurrencyAmount(wallet.balance)}
                               </span>
-                              <span className="text-[11px] font-semibold text-stone-500 dark:text-stone-400 font-mono">{APP_CURRENCY}</span>
+                              <span className="text-[11px] font-semibold text-fg-secondary font-mono">{APP_CURRENCY}</span>
                             </div>
                           </div>
                         )}
                       </div>
 
-                      <div className="mt-3 pt-2.5 border-t border-stone-100 dark:border-stone-800 flex items-center justify-between text-[11px]">
-                        <span className="text-stone-400 dark:text-stone-500 font-mono">
+                      <div className="mt-3 pt-2.5 border-t border-line flex items-center justify-between text-[11px]">
+                        <span className="text-fg-muted font-mono">
                           {percentOfTotal > 0 ? `${percentOfTotal.toFixed(1)}% of total` : '0%'}
                         </span>
                         <button
@@ -343,7 +343,7 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
                             e.stopPropagation();
                             onOpenTransfer(wallet.id);
                           }}
-                          className="text-indigo-600 dark:text-indigo-400 font-semibold hover:underline flex items-center gap-1 cursor-pointer"
+                          className="text-transfer font-semibold hover:underline flex items-center gap-1 cursor-pointer"
                         >
                           <ArrowLeftRight className="w-3 h-3" />
                           <span>Transfer</span>
@@ -356,17 +356,17 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
 
               {/* Selected Wallet Quick Summary Banner */}
               {currentWallet && (
-                <div className="p-4 rounded-2xl bg-stone-900 dark:bg-stone-800/90 border border-stone-800 dark:border-stone-700 text-white flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 shadow-xs">
+                <div className="p-4 rounded-xl bg-surface-2 border border-line text-fg flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
                   <div className="flex items-center gap-3">
-                    <div 
-                      className="w-9 sm:w-10 h-9 sm:h-10 rounded-xl flex items-center justify-center shrink-0"
+                    <div
+                      className="w-9 sm:w-10 h-9 sm:h-10 rounded-lg flex items-center justify-center shrink-0"
                       style={{ backgroundColor: currentWallet.color }}
                     >
                       {React.createElement(getWalletIcon(currentWallet.type), { className: 'w-4 sm:w-5 h-4 sm:h-5 text-white' })}
                     </div>
                     <div>
                       <h4 className="text-xs sm:text-sm font-bold">{currentWallet.name}</h4>
-                      <p className="text-[11px] sm:text-xs text-stone-300 dark:text-stone-400">
+                      <p className="text-[11px] sm:text-xs text-fg-secondary">
                         {currentWallet.type.replace('_', ' ')} • {APP_CURRENCY}
                       </p>
                     </div>
@@ -376,15 +376,15 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
                     <button
                       type="button"
                       onClick={() => onOpenTransfer(currentWallet.id)}
-                      className="flex-1 sm:flex-none px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-semibold transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                      className="flex-1 sm:flex-none px-3 py-1.5 rounded-lg bg-surface-1 hover:bg-surface-3 border border-line hover:border-brand text-fg text-xs font-semibold transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
                     >
-                      <ArrowLeftRight className="w-3.5 h-3.5 text-emerald-400" />
+                      <ArrowLeftRight className="w-3.5 h-3.5 text-transfer" />
                       <span>Transfer</span>
                     </button>
                     <button
                       type="button"
                       onClick={() => setActiveTab('TRANSACTIONS')}
-                      className="flex-1 sm:flex-none px-3 py-1.5 rounded-xl bg-white dark:bg-stone-100 text-stone-900 text-xs font-semibold transition-colors hover:bg-stone-100 dark:hover:bg-stone-200 flex items-center justify-center gap-1.5 cursor-pointer"
+                      className="flex-1 sm:flex-none px-3 py-1.5 rounded-lg bg-brand-fill hover:bg-brand-fill-hover text-white text-xs font-semibold transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
                     >
                       <Receipt className="w-3.5 h-3.5" />
                       <span>Activity</span>
@@ -398,15 +398,15 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
           {/* TAB 2: WALLET SPECIFIC ACTIVITY (T40: 5-row preview + handoff) */}
           {activeTab === 'TRANSACTIONS' && (
             <div className="space-y-4">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-stone-50 dark:bg-stone-800/80 p-3 rounded-xl border border-stone-200 dark:border-stone-700">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-surface-2 p-3 rounded-lg border border-line">
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-semibold text-stone-700 dark:text-stone-300">
+                  <span className="text-xs font-semibold text-fg-secondary">
                     Account Activity:
                   </span>
                   <select
                     value={selectedWalletId}
                     onChange={(e) => setSelectedWalletId(e.target.value)}
-                    className="text-xs font-semibold bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-lg px-2.5 py-1.5 text-stone-900 dark:text-white focus:outline-none"
+                    className="text-xs font-semibold bg-surface-1 border border-line-input rounded-lg px-2.5 py-1.5 text-fg focus:outline-none"
                   >
                     {activeWallets.map((w) => (
                       <option key={w.id} value={w.id}>
@@ -420,7 +420,7 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
                   type="button"
                   id="wallet-modal-view-all-tx-btn"
                   onClick={() => onViewAllTransactions?.(selectedWalletId)}
-                  className="inline-flex items-center gap-1 text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer shrink-0"
+                  className="inline-flex items-center gap-1 text-xs font-semibold text-brand hover:underline cursor-pointer shrink-0"
                 >
                   <span>View all</span>
                   <ChevronRight className="w-3.5 h-3.5" />
@@ -428,7 +428,7 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
               </div>
 
               {walletTransactions.length === 0 ? (
-                <div className="text-center py-10 text-stone-400 dark:text-stone-500 text-xs">
+                <div className="text-center py-10 text-fg-muted text-xs">
                   No recent activity recorded for this wallet.
                 </div>
               ) : (
@@ -436,26 +436,26 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
                   {walletTransactions.map((tx) => {
                     const tint =
                       tx.type === 'INCOME'
-                        ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400'
+                        ? 'bg-income-tint text-income'
                         : tx.type === 'EXPENSE'
-                        ? 'bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400'
-                        : 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400';
+                        ? 'bg-expense-tint text-expense'
+                        : 'bg-transfer-tint text-transfer';
                     return (
                     <div
                       key={tx.id}
-                      className="p-3 rounded-xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900/80 flex items-center justify-between text-xs gap-3"
+                      className="p-3 rounded-lg border border-line bg-surface-1 flex items-center justify-between text-xs gap-3"
                     >
                       <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
                         <TxTypeIcon type={tx.type} amount={tx.amount} variant="compact" size="sm" tintOverride={tint} />
                         <div className="min-w-0">
-                          <p className="font-semibold text-stone-900 dark:text-stone-100 truncate">{tx.description}</p>
-                          <span className="text-[10px] text-stone-400 dark:text-stone-500 font-mono">{tx.transactionDate}</span>
+                          <p className="font-semibold text-fg truncate">{tx.description}</p>
+                          <span className="text-[10px] text-fg-muted font-mono">{tx.transactionDate}</span>
                         </div>
                       </div>
 
                       <div className="text-right shrink-0">
                         <TxAmount amount={tx.amount} type={tx.type} colorScheme="incomeOnly" />
-                        <span className="text-[10px] text-stone-400 dark:text-stone-500 block uppercase font-medium">{tx.type}</span>
+                        <span className="text-[10px] text-fg-muted block uppercase font-medium">{tx.type}</span>
                       </div>
                     </div>
                     );

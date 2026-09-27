@@ -386,7 +386,7 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
               id="tx-export-csv-btn"
               type="button"
               onClick={() => exportTransactionsToCsv(rawTransactions, wallets, categories, debts)}
-              className="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-stone-700 dark:text-stone-300 bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 rounded-xl transition-all cursor-pointer"
+              className="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-fg-secondary bg-surface-2 hover:bg-surface-3 border border-line hover:border-brand rounded-lg transition-all cursor-pointer"
             >
               <Download className="w-3.5 h-3.5" />
               <span>Export CSV</span>
@@ -397,9 +397,9 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
               id="diary-export-json-btn"
               type="button"
               onClick={() => exportDiaryToJson(diaryEntries)}
-              className="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-stone-700 dark:text-stone-300 bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 rounded-xl transition-all cursor-pointer"
+              className="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-fg-secondary bg-surface-2 hover:bg-surface-3 border border-line hover:border-brand rounded-lg transition-all cursor-pointer"
             >
-              <FileText className="w-3.5 h-3.5 text-stone-500 dark:text-stone-400" />
+              <FileText className="w-3.5 h-3.5 text-fg-muted" />
               <span className="hidden sm:inline">Export Diary (JSON)</span>
               <span className="sm:hidden">Diary</span>
             </button>
@@ -409,7 +409,7 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
               id="tx-import-csv-btn"
               type="button"
               onClick={() => setIsImportModalOpen(true)}
-              className="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/40 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 rounded-xl border border-indigo-200 dark:border-indigo-800/60 transition-all cursor-pointer"
+              className="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-brand bg-brand-tint rounded-lg border border-brand-line hover:border-brand transition-all cursor-pointer"
             >
               <Upload className="w-3.5 h-3.5" />
               <span>Import CSV</span>
@@ -420,9 +420,9 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
               id="tx-open-add-modal-btn"
               type="button"
               onClick={() => setIsAddModalOpen(true)}
-              className="min-h-[44px] inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white dark:text-stone-900 bg-stone-900 hover:bg-stone-800 dark:bg-stone-100 dark:hover:bg-white rounded-xl shadow-xs transition-all cursor-pointer"
+              className="min-h-[44px] inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-brand-fill hover:bg-brand-fill-hover rounded-lg transition-all cursor-pointer"
             >
-              <Plus className="w-4 h-4 text-emerald-400 dark:text-emerald-600" />
+              <Plus className="w-4 h-4" />
               <span>Add Transaction</span>
             </button>
           </div>
@@ -430,18 +430,18 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
       />
 
       {/* Filter & Search Bar */}
-      <div className="bg-white dark:bg-stone-900 p-3.5 sm:p-4 rounded-2xl border border-stone-200 dark:border-stone-800 shadow-2xs space-y-3">
+      <div className="bg-surface-1 p-3.5 sm:p-4 rounded-xl border border-line space-y-3">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
           {/* Search */}
           <div className="relative lg:col-span-2">
-            <Search className="w-4 h-4 text-stone-400 dark:text-stone-500 absolute left-3 top-3 pointer-events-none" />
+            <Search className="w-4 h-4 text-fg-muted absolute left-3 top-3 pointer-events-none" />
             <input
               id="tx-search-input"
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Search description, amount, math..."
-              className="w-full min-h-[44px] pl-9 pr-8 py-2 text-xs rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 text-stone-900 dark:text-stone-100 placeholder:text-stone-400 dark:placeholder:text-stone-500 focus:outline-none focus:border-stone-800 dark:focus:border-stone-400 focus:ring-2 focus:ring-stone-200 dark:focus:ring-stone-700 transition-colors"
+              className="w-full min-h-[44px] pl-9 pr-8 py-2 text-xs rounded-lg border border-line-input bg-surface-2 text-fg placeholder:text-fg-muted focus:outline-none focus:ring-2 focus:ring-focus transition-colors"
             />
             {searchTerm && (
               <button
@@ -450,7 +450,7 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
                   setSearchTerm('');
                   setDebouncedSearchTerm('');
                 }}
-                className="absolute right-2.5 top-2.5 p-1 text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 rounded-lg cursor-pointer"
+                className="absolute right-2.5 top-2.5 p-1 text-fg-muted hover:text-fg rounded-sm cursor-pointer"
                 title="Clear search"
               >
                 <X className="w-3.5 h-3.5" />
@@ -464,7 +464,7 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
               id="tx-filter-wallet"
               value={selectedWalletId}
               onChange={(e) => setSelectedWalletId(e.target.value)}
-              className="w-full min-h-[44px] py-2 px-3 text-xs rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-none focus:border-stone-800 dark:focus:border-stone-400 focus:ring-2 focus:ring-stone-200 dark:focus:ring-stone-700 transition-colors"
+              className="w-full min-h-[44px] py-2 px-3 text-xs rounded-lg border border-line-input bg-surface-2 text-fg focus:outline-none focus:ring-2 focus:ring-focus transition-colors"
             >
               <option value="ALL">All Wallets</option>
               {wallets.map((w) => (
@@ -481,7 +481,7 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
               id="tx-filter-type"
               value={selectedType}
               onChange={(e) => setSelectedType(e.target.value)}
-              className="w-full min-h-[44px] py-2 px-3 text-xs rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-none focus:border-stone-800 dark:focus:border-stone-400 focus:ring-2 focus:ring-stone-200 dark:focus:ring-stone-700 transition-colors"
+              className="w-full min-h-[44px] py-2 px-3 text-xs rounded-lg border border-line-input bg-surface-2 text-fg focus:outline-none focus:ring-2 focus:ring-focus transition-colors"
             >
               <option value="ALL">All Types</option>
               <option value="EXPENSE">Expense</option>
@@ -494,7 +494,7 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
 
           {/* Soft Delete Switch */}
           <div className="flex items-center justify-between sm:justify-end gap-2 px-1 min-h-[44px]">
-            <label htmlFor="tx-show-deleted" className="text-xs font-semibold text-stone-600 dark:text-stone-300 cursor-pointer">
+            <label htmlFor="tx-show-deleted" className="text-xs font-semibold text-fg-secondary cursor-pointer">
               Show Soft Deleted
             </label>
             <input
@@ -502,7 +502,7 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
               type="checkbox"
               checked={showSoftDeleted}
               onChange={(e) => setShowSoftDeleted(e.target.checked)}
-              className="w-4 h-4 rounded border-stone-300 dark:border-stone-600 text-stone-900 dark:text-stone-100 focus:ring-stone-800 dark:focus:ring-stone-400 cursor-pointer accent-stone-900 dark:accent-stone-100"
+              className="w-4 h-4 rounded-sm bg-surface-2 border border-line-input text-fg focus:outline-none focus:ring-2 focus:ring-focus cursor-pointer accent-brand-fill"
             />
           </div>
         </div>
@@ -512,7 +512,7 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
       <Card padding="none" className="overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
-            <thead className="bg-stone-50 dark:bg-stone-800/80 border-b border-stone-200 dark:border-stone-800 text-stone-500 dark:text-stone-400 uppercase tracking-wider font-semibold text-[10px]">
+            <thead className="bg-surface-2 border-b border-line text-fg-secondary uppercase tracking-wider font-semibold text-[10px]">
               <tr>
                 <th className="py-3 px-3 sm:px-4">Date</th>
                 <th className="py-3 px-3 sm:px-4">Details</th>
@@ -522,7 +522,7 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
                 <th className="py-3 px-2 sm:px-4 text-center">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-stone-100 dark:divide-stone-800/60">
+            <tbody className="divide-y divide-line">
               {paginatedTransactions.length === 0 ? (
                 <tr>
                   <td colSpan={6}>
@@ -547,8 +547,8 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
         </div>
 
         {/* Pagination Footer */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 bg-stone-50 dark:bg-stone-800/60 border-t border-stone-200 dark:border-stone-800 text-xs">
-          <span className="text-stone-500 dark:text-stone-400 text-center sm:text-left text-[11px] sm:text-xs">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 bg-surface-2 border-t border-line text-xs">
+          <span className="text-fg-secondary text-center sm:text-left text-[11px] sm:text-xs">
             Showing {filteredTransactions.length === 0 ? 0 : (currentPage - 1) * pageSize + 1} to{' '}
             {Math.min(currentPage * pageSize, filteredTransactions.length)} of {filteredTransactions.length} entries
           </span>
@@ -559,11 +559,11 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
               type="button"
               disabled={currentPage === 1}
               onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-              className="min-h-[44px] px-3.5 py-1.5 rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-700 dark:text-stone-300 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer font-medium hover:bg-stone-50 dark:hover:bg-stone-750 transition-colors"
+              className="min-h-[44px] px-3.5 py-1.5 rounded-lg border border-line bg-surface-1 text-fg-secondary disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer font-medium hover:border-brand transition-colors"
             >
               Previous
             </button>
-            <span className="px-2 font-mono font-semibold text-stone-800 dark:text-stone-200">
+            <span className="px-2 font-mono font-semibold text-fg">
               {currentPage} / {totalPages}
             </span>
             <button
@@ -571,7 +571,7 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
               type="button"
               disabled={currentPage >= totalPages}
               onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-              className="min-h-[44px] px-3.5 py-1.5 rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-700 dark:text-stone-300 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer font-medium hover:bg-stone-50 dark:hover:bg-stone-750 transition-colors"
+              className="min-h-[44px] px-3.5 py-1.5 rounded-lg border border-line bg-surface-1 text-fg-secondary disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer font-medium hover:border-brand transition-colors"
             >
               Next
             </button>
@@ -639,13 +639,13 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
         {/* Step 1: Upload File */}
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <label className="text-xs font-semibold uppercase tracking-wider text-stone-700 dark:text-stone-300">
+            <label className="text-xs font-semibold uppercase tracking-wider text-fg-secondary">
               Select CSV File
             </label>
             <button
               type="button"
               onClick={handleDownloadSampleCsv}
-              className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1 cursor-pointer"
+              className="text-xs text-brand hover:underline flex items-center gap-1 cursor-pointer"
             >
               <Download className="w-3 h-3" /> Download Sample CSV Template
             </button>
@@ -656,22 +656,22 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
             type="file"
             accept=".csv,text/csv"
             onChange={handleCsvFileUpload}
-            className="w-full text-xs text-stone-600 dark:text-stone-400 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-stone-900 dark:file:bg-stone-100 file:text-white dark:file:text-stone-900 hover:file:bg-stone-800 dark:hover:file:bg-white cursor-pointer border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 rounded-xl p-2"
+            className="w-full text-xs text-fg-secondary file:mr-4 file:py-2.5 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-brand-fill file:text-white hover:file:bg-brand-fill-hover cursor-pointer border border-line-input bg-surface-2 rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-focus"
           />
 
           {isParsingCsv && (
-            <p className="text-xs text-stone-500 dark:text-stone-400 animate-pulse">Running dry-run validation checks...</p>
+            <p className="text-xs text-fg-secondary animate-pulse">Running dry-run validation checks...</p>
           )}
 
           {importFileError && (
-            <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 text-xs flex items-center gap-2">
+            <div className="p-3 rounded-lg bg-expense-tint border border-expense-line text-expense text-xs flex items-center gap-2">
               <AlertCircle className="w-4 h-4 shrink-0" />
               <span>{importFileError}</span>
             </div>
           )}
 
           {importSuccessMsg && (
-            <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 text-xs flex items-center gap-2">
+            <div className="p-3 rounded-lg bg-income-tint border border-income-line text-income text-xs flex items-center gap-2">
               <CheckCircle2 className="w-4 h-4 shrink-0" />
               <span>{importSuccessMsg}</span>
             </div>
@@ -681,22 +681,22 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
         {/* Dry Run Preview Summary & Table */}
         {importPreview && (
           <div className="space-y-4 pt-2">
-            <div className="grid grid-cols-4 gap-3 bg-stone-50 dark:bg-stone-800/80 p-3 rounded-xl border border-stone-200 dark:border-stone-700 text-xs">
+            <div className="grid grid-cols-4 gap-3 bg-surface-2 p-3 rounded-lg border border-line text-xs">
               <div>
-                <span className="text-stone-500 dark:text-stone-400 block">Total Rows</span>
-                <span className="font-bold text-stone-900 dark:text-stone-100 font-mono text-sm">{importPreview.totalRows}</span>
+                <span className="text-fg-secondary block">Total Rows</span>
+                <span className="font-bold text-fg font-mono text-sm">{importPreview.totalRows}</span>
               </div>
               <div>
-                <span className="text-stone-500 dark:text-stone-400 block">Valid Rows</span>
-                <span className="font-bold text-emerald-600 dark:text-emerald-400 font-mono text-sm">{importPreview.validRowsCount}</span>
+                <span className="text-fg-secondary block">Valid Rows</span>
+                <span className="font-bold text-income font-mono text-sm">{importPreview.validRowsCount}</span>
               </div>
               <div>
-                <span className="text-stone-500 dark:text-stone-400 block">Errors / Invalid</span>
-                <span className="font-bold text-rose-600 dark:text-rose-400 font-mono text-sm">{importPreview.invalidRowsCount}</span>
+                <span className="text-fg-secondary block">Errors / Invalid</span>
+                <span className="font-bold text-expense font-mono text-sm">{importPreview.invalidRowsCount}</span>
               </div>
               <div>
-                <span className="text-stone-500 dark:text-stone-400 block">Total Amount</span>
-                <span className="font-bold text-stone-900 dark:text-stone-100 font-mono text-sm">{formatCurrencyAmount(importPreview.totalAmount)}</span>
+                <span className="text-fg-secondary block">Total Amount</span>
+                <span className="font-bold text-fg font-mono text-sm">{formatCurrencyAmount(importPreview.totalAmount)}</span>
               </div>
             </div>
 
@@ -707,12 +707,12 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
               the network or spends TypeSafe credits until it is pressed,
               which is also how you skip it when offline or in a hurry.
             */}
-            <div className="flex flex-col gap-2 rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800/60 p-3">
+            <div className="flex flex-col gap-2 rounded-lg border border-line bg-surface-2 p-3">
               <div className="flex items-center justify-between gap-3 flex-wrap">
-                <span className="text-xs text-stone-600 dark:text-stone-300">
-                  <strong className="font-mono font-bold text-stone-900 dark:text-stone-100">{ruleMatchedCount}</strong>{' '}
+                <span className="text-xs text-fg-secondary">
+                  <strong className="font-mono font-bold text-fg">{ruleMatchedCount}</strong>{' '}
                   matched by rules &middot;{' '}
-                  <strong className="font-mono font-bold text-stone-900 dark:text-stone-100">{uncategorizedRows.length}</strong>{' '}
+                  <strong className="font-mono font-bold text-fg">{uncategorizedRows.length}</strong>{' '}
                   uncategorized
                 </span>
 
@@ -721,7 +721,7 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
                     type="button"
                     id="csv-classify-btn"
                     onClick={handleClassifyRemaining}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 hover:bg-stone-800 dark:hover:bg-white transition-colors cursor-pointer"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-brand-fill text-white hover:bg-brand-fill-hover transition-colors cursor-pointer"
                   >
                     <Sparkles className="w-3.5 h-3.5" />
                     Classify remaining with Jev
@@ -733,7 +733,7 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
                     type="button"
                     id="csv-classify-cancel-btn"
                     onClick={() => classifyAbortRef.current?.abort()}
-                    className="px-3 py-1.5 text-xs font-semibold rounded-xl border border-stone-300 dark:border-stone-600 text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-700 transition-colors cursor-pointer"
+                    className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-line text-fg-secondary hover:bg-surface-3 hover:border-brand transition-colors cursor-pointer"
                   >
                     Cancel
                   </button>
@@ -742,12 +742,12 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
 
               {classifyProgress && (
                 <div data-testid="csv-classify-progress" className="flex flex-col gap-1.5">
-                  <span className="text-[11px] font-medium text-stone-600 dark:text-stone-300">
+                  <span className="text-[11px] font-medium text-fg-secondary">
                     Classifying {classifyProgress.done} of {classifyProgress.total} with Jev&hellip;
                   </span>
-                  <div className="h-1.5 w-full rounded-full bg-stone-200 dark:bg-stone-700 overflow-hidden">
+                  <div className="h-1.5 w-full rounded-full bg-surface-3 overflow-hidden">
                     <div
-                      className="h-full bg-stone-900 dark:bg-stone-100 transition-all"
+                      className="h-full bg-brand-fill transition-all"
                       style={{
                         width: `${classifyProgress.total > 0 ? (classifyProgress.done / classifyProgress.total) * 100 : 0}%`,
                       }}
@@ -757,16 +757,16 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
               )}
 
               {classifyNote && !classifyProgress && (
-                <p data-testid="csv-classify-note" className="text-[11px] font-medium text-stone-600 dark:text-stone-400">
+                <p data-testid="csv-classify-note" className="text-[11px] font-medium text-fg-secondary">
                   {classifyNote}
                 </p>
               )}
             </div>
 
             {/* Dry Run Row Table */}
-            <div className="max-h-60 overflow-y-auto rounded-xl border border-stone-200 dark:border-stone-700 text-xs">
+            <div className="max-h-60 overflow-y-auto rounded-lg border border-line text-xs">
               <table className="w-full text-left">
-                <thead className="bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300 sticky top-0 font-semibold">
+                <thead className="bg-surface-2 text-fg-secondary sticky top-0 font-semibold">
                   <tr>
                     <th className="p-2">Row</th>
                     <th className="p-2">Status</th>
@@ -777,29 +777,29 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
                     <th className="p-2">Category</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-stone-100 dark:divide-stone-800">
+                <tbody className="divide-y divide-line">
                   {importPreview.rows.slice(0, CSV_PREVIEW_ROW_CAP).map((row) => (
-                    <tr key={row.rowIndex} className={row.isValid ? 'bg-white dark:bg-stone-900' : 'bg-rose-50/50 dark:bg-rose-950/30'}>
-                      <td className="p-2 font-mono text-stone-500 dark:text-stone-400">{row.rowIndex}</td>
+                    <tr key={row.rowIndex} className={row.isValid ? 'bg-surface-1' : 'bg-expense-tint'}>
+                      <td className="p-2 font-mono text-fg-secondary">{row.rowIndex}</td>
                       <td className="p-2">
                         {row.isValid ? (
-                          <span className="inline-flex items-center gap-1 text-emerald-700 dark:text-emerald-400 font-semibold text-[11px]">
+                          <span className="inline-flex items-center gap-1 text-income font-semibold text-[11px]">
                             <CheckCircle2 className="w-3.5 h-3.5" /> Valid
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1 text-rose-700 dark:text-rose-400 font-semibold text-[11px]">
+                          <span className="inline-flex items-center gap-1 text-expense font-semibold text-[11px]">
                             <AlertCircle className="w-3.5 h-3.5" /> Error
                           </span>
                         )}
                       </td>
-                      <td className="p-2 font-mono text-stone-700 dark:text-stone-300">{row.date}</td>
-                      <td className="p-2 text-stone-700 dark:text-stone-300">{row.walletName}</td>
-                      <td className="p-2 font-mono font-bold text-stone-900 dark:text-stone-100">{formatCurrencyAmount(row.amount)}</td>
+                      <td className="p-2 font-mono text-fg-secondary">{row.date}</td>
+                      <td className="p-2 text-fg-secondary">{row.walletName}</td>
+                      <td className="p-2 font-mono font-bold text-fg">{formatCurrencyAmount(row.amount)}</td>
                       <td className="p-2">
                         {row.isValid ? (
-                          <span className="text-stone-700 dark:text-stone-300">{row.description}</span>
+                          <span className="text-fg-secondary">{row.description}</span>
                         ) : (
-                          <span className="text-rose-600 dark:text-rose-400 font-medium">{row.errorMessage}</span>
+                          <span className="text-expense font-medium">{row.errorMessage}</span>
                         )}
                       </td>
                       {/*
@@ -814,7 +814,7 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
                               data-testid={`csv-row-category-${row.rowIndex}`}
                               value={row.categoryId || ''}
                               onChange={(e) => setRowCategory(row.rowIndex, e.target.value)}
-                              className="w-full max-w-[10rem] text-[11px] rounded-lg border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 px-1.5 py-1 text-stone-900 dark:text-stone-100 cursor-pointer"
+                              className="w-full max-w-[10rem] text-[11px] rounded-lg border border-line-input bg-surface-2 px-1.5 py-1 text-fg focus:outline-none focus:ring-2 focus:ring-focus cursor-pointer"
                             >
                               <option value="" className={OPTION_CLASS}>
                                 Uncategorized
@@ -834,7 +834,7 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
                                 return (
                                   <span
                                     data-testid={`csv-row-confidence-${row.rowIndex}`}
-                                    className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700 dark:text-emerald-400"
+                                    className="inline-flex items-center gap-1 text-[10px] font-semibold text-brand"
                                   >
                                     <Sparkles className="w-2.5 h-2.5" />
                                     {Math.round(suggestion.confidence * 100)}%
@@ -846,7 +846,7 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
                                   type="button"
                                   data-testid={`csv-row-confidence-${row.rowIndex}`}
                                   onClick={() => setRowCategory(row.rowIndex, suggestion.categoryId)}
-                                  className="inline-flex items-center gap-1 text-[10px] font-semibold text-stone-600 dark:text-stone-300 underline underline-offset-2 hover:text-stone-900 dark:hover:text-white cursor-pointer text-left"
+                                  className="inline-flex items-center gap-1 text-[10px] font-semibold text-fg-secondary underline underline-offset-2 hover:text-fg cursor-pointer text-left"
                                 >
                                   <Sparkles className="w-2.5 h-2.5 shrink-0" />
                                   {suggestion.categoryName} ({Math.round(suggestion.confidence * 100)}%)
@@ -855,7 +855,7 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
                             })()}
                           </div>
                         ) : (
-                          <span className="text-stone-400 dark:text-stone-600">&mdash;</span>
+                          <span className="text-fg-muted">&mdash;</span>
                         )}
                       </td>
                     </tr>
@@ -864,7 +864,7 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
                 {importPreview.rows.length > CSV_PREVIEW_ROW_CAP && (
                   <tfoot>
                     <tr>
-                      <td colSpan={7} className="p-2 text-center text-stone-500 dark:text-stone-400 italic">
+                      <td colSpan={7} className="p-2 text-center text-fg-secondary italic">
                         +{importPreview.rows.length - CSV_PREVIEW_ROW_CAP} more rows omitted from preview
                       </td>
                     </tr>
@@ -878,7 +878,7 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
               <div
                 id="import-commit-error"
                 role="alert"
-                className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 text-xs flex items-center gap-2"
+                className="p-3 rounded-lg bg-expense-tint border border-expense-line text-expense text-xs flex items-center gap-2"
               >
                 <AlertCircle className="w-4 h-4 shrink-0" />
                 <span>Import failed: {importCommitError}</span>
@@ -886,8 +886,8 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
             )}
 
             {/* Step 2 Confirmation Actions */}
-            <div className="flex items-center justify-between pt-3 border-t border-stone-100 dark:border-stone-800">
-              <p className="text-xs text-stone-500 dark:text-stone-400">
+            <div className="flex items-center justify-between pt-3 border-t border-line">
+              <p className="text-xs text-fg-secondary">
                 Commit inserts every valid row, then updates wallet balances. If the insert fails, nothing changes.
               </p>
               <button
@@ -895,10 +895,10 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
                 type="button"
                 disabled={importPreview.validRowsCount === 0 || isCommittingImport}
                 onClick={handleCommitImport}
-                className={`px-4 py-2.5 rounded-xl font-semibold text-xs transition-all flex items-center gap-2 cursor-pointer ${
+                className={`px-4 py-2.5 rounded-lg font-semibold text-xs transition-all flex items-center gap-2 cursor-pointer ${
                   importPreview.validRowsCount > 0 && !isCommittingImport
-                    ? 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-xs'
-                    : 'bg-stone-200 dark:bg-stone-800 text-stone-400 dark:text-stone-600 cursor-not-allowed'
+                    ? 'bg-brand-fill text-white hover:bg-brand-fill-hover'
+                    : 'bg-surface-3 text-fg-muted cursor-not-allowed'
                 }`}
               >
                 <CheckCircle2 className="w-4 h-4" />

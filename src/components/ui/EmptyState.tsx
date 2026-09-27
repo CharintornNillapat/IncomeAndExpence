@@ -17,9 +17,9 @@ interface EmptyStateProps {
 export const EmptyState: React.FC<EmptyStateProps> = ({ icon: Icon, title, subtitle, action, className = '' }) => {
   return (
     <div className={`flex flex-col items-center justify-center gap-2 text-center py-10 ${className}`.trim()}>
-      <Icon className="w-8 h-8 text-stone-300 dark:text-stone-600" />
-      <p className="text-xs font-semibold text-stone-600 dark:text-stone-300">{title}</p>
-      {subtitle && <p className="text-[11px] text-stone-400 dark:text-stone-500 max-w-xs">{subtitle}</p>}
+      <Icon className="w-8 h-8 text-fg-muted" />
+      <p className="text-xs font-semibold text-fg-secondary">{title}</p>
+      {subtitle && <p className="text-[11px] text-fg-muted max-w-xs">{subtitle}</p>}
       {action && <div className="mt-2">{action}</div>}
     </div>
   );

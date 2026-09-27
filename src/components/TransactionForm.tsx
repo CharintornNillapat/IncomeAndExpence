@@ -69,12 +69,12 @@ interface TransactionFormProps {
 
 /**
  * This form's "apply a stored value" chip - used by the saved-template chips
- * and the debt payoff chips (ADR 0015). Deliberately stone, not the emerald
- * of `InlineMathInput`'s quick-amount chips: those *add to* what is already
- * typed, these *replace* it with a target figure.
+ * and the debt payoff chips (ADR 0015). Deliberately neutral, not the brand
+ * tint of `InlineMathInput`'s quick-amount chips: those *add to* what is
+ * already typed, these *replace* it with a target figure.
  */
 const QUICK_CHIP_CLASS =
-  'inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-full bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-300 border border-stone-200 dark:border-stone-700 transition-colors cursor-pointer';
+  'inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-full bg-surface-2 hover:bg-surface-3 text-fg-secondary border border-line transition-colors cursor-pointer';
 
 /*
  * Bounds on a keyword this form will offer to save as a rule (ADR 0017).
@@ -603,20 +603,20 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
 
   const showShortcuts = !lockType && Boolean(onRequestTransfer || onRequestRepayDebt);
   const shortcutLinkClass =
-    'font-semibold text-stone-700 dark:text-stone-300 underline underline-offset-2 hover:text-stone-900 dark:hover:text-white cursor-pointer transition-colors';
+    'font-semibold text-fg-secondary underline underline-offset-2 hover:text-fg cursor-pointer transition-colors';
 
   return (
     <form
       id={`${formId}-form`}
       data-testid={formTestId}
       onSubmit={handleSubmit}
-      className="bg-white dark:bg-stone-900 rounded-2xl border border-stone-200 dark:border-stone-800 shadow-xs p-4 sm:p-6 space-y-5 transition-colors"
+      className="bg-surface-1 rounded-xl border border-line p-4 sm:p-6 space-y-5 transition-colors"
     >
       {!lockType && (
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-stone-100 dark:border-stone-800 pb-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-line pb-4">
         <div>
-          <h2 className="text-base sm:text-lg font-bold text-stone-900 dark:text-white">Record Transaction</h2>
-          <p className="text-xs text-stone-500 dark:text-stone-400">Log an expense or income</p>
+          <h2 className="text-base sm:text-lg font-bold text-fg">Record Transaction</h2>
+          <p className="text-xs text-fg-secondary">Log an expense or income</p>
         </div>
 
         {/* Transaction Type Segmented Toggle with mobile touch targets.
@@ -645,7 +645,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
           template silently override its fixed type. */}
       {!lockType && presets.length > 0 && (
         <div className="flex flex-wrap items-center gap-1.5">
-          <span className="text-[11px] font-semibold text-stone-400 dark:text-stone-500 uppercase tracking-wide mr-0.5">
+          <span className="text-[11px] font-semibold text-fg-muted uppercase tracking-wide mr-0.5">
             Templates
           </span>
           {presets.map((preset) => (
@@ -669,7 +669,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
           <label htmlFor={`${formId}-desc`} className={LABEL_TEXT_CLASS}>
             Note
           </label>
-          <span className="text-[11px] text-stone-400 dark:text-stone-500">
+          <span className="text-[11px] text-fg-muted">
             Type the amount right in the note
           </span>
         </div>
@@ -685,7 +685,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
                 ? 'e.g., Monthly student loan payment 4000'
                 : 'e.g. ข้าวมันไก่ 60, bts 45, or ค่าไฟ 1200'
             }
-            className={`w-full text-sm rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 py-2.5 pl-3.5 text-stone-900 dark:text-stone-100 placeholder:text-stone-400 dark:placeholder:text-stone-500 focus:outline-none focus:border-stone-800 dark:focus:border-stone-400 focus:ring-2 focus:ring-stone-200 dark:focus:ring-stone-700 transition-colors ${
+            className={`w-full text-sm rounded-lg border border-line-input bg-surface-2 py-2.5 pl-3.5 text-fg placeholder:text-fg-muted focus:outline-none focus:ring-2 focus:ring-focus transition-colors ${
               isVoiceSupported ? 'pr-11' : 'pr-3.5'
             }`}
           />
@@ -709,8 +709,8 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
               title={isListening ? 'Stop dictation' : 'Dictate the note'}
               className={`absolute right-2 top-1/2 -translate-y-1/2 flex items-center justify-center w-8 h-8 rounded-lg transition-colors cursor-pointer disabled:cursor-not-allowed disabled:opacity-40 ${
                 isListening
-                  ? 'bg-rose-100 text-rose-600 dark:bg-rose-950/60 dark:text-rose-400'
-                  : 'text-stone-400 hover:text-stone-700 hover:bg-stone-100 dark:hover:text-stone-200 dark:hover:bg-stone-700'
+                  ? 'bg-expense-tint text-expense'
+                  : 'text-fg-muted hover:text-fg hover:bg-surface-3'
               }`}
             >
               <Mic className={`w-4 h-4 ${isListening ? 'animate-pulse' : ''}`} />
@@ -723,16 +723,16 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
           {isListening && (
             <p
               data-testid="tx-voice-listening"
-              className="flex items-center gap-1.5 text-[11px] font-medium text-rose-600 dark:text-rose-400"
+              className="flex items-center gap-1.5 text-[11px] font-medium text-expense"
             >
-              <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
+              <span className="w-1.5 h-1.5 rounded-full bg-expense-fill animate-pulse" />
               Listening&hellip; speak the note and the amount, e.g. &ldquo;ข้าวมันไก่ 60&rdquo;
             </p>
           )}
           {voiceError && !isListening && (
             <p
               data-testid="tx-voice-error"
-              className="flex items-start gap-1.5 text-[11px] font-medium text-amber-700 dark:text-amber-400"
+              className="flex items-start gap-1.5 text-[11px] font-medium text-pending"
             >
               <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-px" />
               <span>{voiceError.message}</span>
@@ -779,14 +779,14 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
       {repayTargetDebt && (
         <div
           data-testid={`${idBase}-payoff-preview`}
-          className="flex flex-col gap-3 rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800/60 p-3 -mt-1"
+          className="flex flex-col gap-3 rounded-lg border border-line bg-surface-2 p-3 -mt-1"
         >
           {/* Each chip seeds the amount field above rather than replacing it,
               so `#repay-amount-math` remains the single control
               `tests/debts.spec.ts` fills. */}
           {remainingDebt > 0 && (
           <div className="flex flex-wrap items-center gap-1.5">
-            <span className="text-[11px] font-semibold text-stone-400 dark:text-stone-500 uppercase tracking-wide mr-0.5">
+            <span className="text-[11px] font-semibold text-fg-muted uppercase tracking-wide mr-0.5">
               Quick payoff
             </span>
             <button
@@ -824,28 +824,28 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
               every keystroke, and ADR 0009 forbids children in its span. */}
           <div className="flex flex-col gap-1.5">
             <div className="flex items-baseline justify-between gap-2 flex-wrap">
-              <span className="text-[11px] font-semibold uppercase tracking-wide text-stone-500 dark:text-stone-400">
+              <span className="text-[11px] font-semibold uppercase tracking-wide text-fg-secondary">
                 Remaining after payment
               </span>
               <span className="flex items-baseline gap-1.5 font-mono text-sm">
                 <span
                   className={
                     plannedPayment > 0
-                      ? 'text-stone-400 dark:text-stone-500 line-through'
-                      : 'font-bold text-stone-900 dark:text-stone-100'
+                      ? 'text-fg-muted line-through'
+                      : 'font-bold text-fg'
                   }
                 >
                   {formatCurrencyAmount(remainingDebt)}
                 </span>
                 {plannedPayment > 0 && (
                   <>
-                    <ArrowRight className="w-3 h-3 self-center shrink-0 text-stone-400 dark:text-stone-500" />
+                    <ArrowRight className="w-3 h-3 self-center shrink-0 text-fg-muted" />
                     <span
                       data-testid={`${idBase}-remaining-after`}
                       className={`font-bold ${
                         projectedRemaining === 0
-                          ? 'text-emerald-600 dark:text-emerald-400'
-                          : 'text-rose-600 dark:text-rose-400'
+                          ? 'text-income'
+                          : 'text-expense'
                       }`}
                     >
                       {formatCurrencyAmount(projectedRemaining)}
@@ -857,9 +857,9 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
 
             <ProgressMeter percent={projectedPercent} heightClassName="h-2.5" />
 
-            <div className="flex items-center justify-between text-[11px] text-stone-500 dark:text-stone-400">
+            <div className="flex items-center justify-between text-[11px] text-fg-secondary">
               <span>Payoff progress</span>
-              <span className="font-mono font-bold text-stone-700 dark:text-stone-300">
+              <span className="font-mono font-bold text-fg">
                 {displayPercent.toFixed(1)}%
               </span>
             </div>
@@ -873,7 +873,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
           {isOverpaying ? (
             <p
               data-testid={`${idBase}-overpayment-note`}
-              className="flex items-start gap-1.5 text-[11px] font-medium rounded-lg border border-amber-200 dark:border-amber-800/60 bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 px-2.5 py-2"
+              className="flex items-start gap-1.5 text-[11px] font-medium rounded-lg border border-pending-line bg-pending-tint text-pending px-2.5 py-2"
             >
               <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-px" />
               <span>
@@ -884,7 +884,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
           ) : settlesExactly ? (
             <p
               data-testid={`${idBase}-settle-note`}
-              className="flex items-center gap-1.5 text-[11px] font-medium rounded-lg border border-emerald-200 dark:border-emerald-800/60 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 px-2.5 py-2"
+              className="flex items-center gap-1.5 text-[11px] font-medium rounded-lg border border-income-line bg-income-tint text-income px-2.5 py-2"
             >
               <Sparkles className="w-3.5 h-3.5 shrink-0" />
               <span>This payment settles the debt in full.</span>
@@ -907,7 +907,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
               id={walletSelectId}
               value={walletId}
               onChange={(e) => setWalletId(e.target.value)}
-              className="w-full text-sm rounded-xl border border-stone-200 dark:border-stone-700 px-3 py-2.5 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-none focus:border-stone-800 dark:focus:border-stone-400 focus:ring-2 focus:ring-stone-200 dark:focus:ring-stone-700 transition-colors"
+              className="w-full text-sm rounded-lg border border-line-input px-3 py-2.5 bg-surface-2 text-fg focus:outline-none focus:ring-2 focus:ring-focus transition-colors"
             >
               {wallets.map((w) => (
                 <option key={w.id} value={w.id} className={OPTION_CLASS}>
@@ -928,7 +928,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
                 id={`${formId}-debt`}
                 value={debtId}
                 onChange={(e) => setDebtId(e.target.value)}
-                className="w-full text-sm rounded-xl border border-stone-200 dark:border-stone-700 px-3 py-2.5 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-none focus:border-stone-800 dark:focus:border-stone-400 focus:ring-2 focus:ring-stone-200 dark:focus:ring-stone-700 transition-colors"
+                className="w-full text-sm rounded-lg border border-line-input px-3 py-2.5 bg-surface-2 text-fg focus:outline-none focus:ring-2 focus:ring-focus transition-colors"
               >
                 {debts.map((d) => (
                   <option key={d.id} value={d.id} className={OPTION_CLASS}>
@@ -947,8 +947,8 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
                     Sits on the label of the field it wrote, which is now always
                     on screen, so overriding it is a single click. */}
                 {autoMatchedCategory && (
-                  <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-800 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded-md border border-emerald-200 dark:border-emerald-800">
-                    <Sparkles className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+                  <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-brand bg-brand-tint px-2 py-0.5 rounded-sm border border-brand-line">
+                    <Sparkles className="w-3 h-3 text-brand" />
                     Auto-categorized: <strong>{autoMatchedCategory}</strong>
                   </span>
                 )}
@@ -964,7 +964,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
                     userTouchedRef.current.category = true;
                     dismissSuggestion();
                   }}
-                  className="w-full text-sm rounded-xl border border-stone-200 dark:border-stone-700 px-3 py-2.5 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-none focus:border-stone-800 dark:focus:border-stone-400 focus:ring-2 focus:ring-stone-200 dark:focus:ring-stone-700 transition-colors"
+                  className="w-full text-sm rounded-lg border border-line-input px-3 py-2.5 bg-surface-2 text-fg focus:outline-none focus:ring-2 focus:ring-focus transition-colors"
                 >
                   {categories.map((c) => (
                     <option key={c.id} value={c.id} className={OPTION_CLASS}>
@@ -1019,7 +1019,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
             type="date"
             value={date}
             onChange={(e) => setDate(e.target.value)}
-            className="w-full text-sm rounded-xl border border-stone-200 dark:border-stone-700 px-3.5 py-2.5 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-none focus:border-stone-800 dark:focus:border-stone-400 focus:ring-2 focus:ring-stone-200 dark:focus:ring-stone-700 [color-scheme:light] dark:[color-scheme:dark] transition-colors"
+            className="w-full text-sm rounded-lg border border-line-input px-3.5 py-2.5 bg-surface-2 text-fg focus:outline-none focus:ring-2 focus:ring-focus [color-scheme:light] dark:[color-scheme:dark] transition-colors"
           />
         </div>
       </div>
@@ -1027,10 +1027,10 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
       {/* Save-as-template: only offered for EXPENSE/INCOME (the two types `Preset`
           supports - see types.ts) on a form that isn't locked to one fixed type. */}
       {!lockType && (type === 'EXPENSE' || type === 'INCOME') && (
-        <div className="flex flex-col gap-2 rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800/60 p-3">
+        <div className="flex flex-col gap-2 rounded-lg border border-line bg-surface-2 p-3">
           <label
             htmlFor={`${formId}-save-template-checkbox`}
-            className="flex items-center gap-2 text-xs font-medium text-stone-700 dark:text-stone-300 cursor-pointer"
+            className="flex items-center gap-2 text-xs font-medium text-fg-secondary cursor-pointer"
           >
             <input
               id={`${formId}-save-template-checkbox`}
@@ -1040,7 +1040,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
                 setSaveAsTemplate(e.target.checked);
                 if (!e.target.checked) setTemplateSaveError(null);
               }}
-              className="rounded border-stone-300 dark:border-stone-600 text-stone-900 dark:text-stone-100 focus:ring-stone-400 cursor-pointer"
+              className="rounded-sm border-line-input text-brand accent-brand-fill focus:ring-2 focus:ring-focus cursor-pointer"
             />
             Save as a quick template
           </label>
@@ -1051,11 +1051,11 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
               value={templateName}
               onChange={(e) => setTemplateName(e.target.value)}
               placeholder="Template name, e.g. Morning Coffee"
-              className="w-full text-sm rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 px-3.5 py-2.5 text-stone-900 dark:text-stone-100 placeholder:text-stone-400 dark:placeholder:text-stone-500 focus:outline-none focus:border-stone-800 dark:focus:border-stone-400 focus:ring-2 focus:ring-stone-200 dark:focus:ring-stone-700 transition-colors"
+              className="w-full text-sm rounded-lg border border-line-input bg-surface-2 px-3.5 py-2.5 text-fg placeholder:text-fg-muted focus:outline-none focus:ring-2 focus:ring-focus transition-colors"
             />
           )}
           {templateSaveError && (
-            <p className="text-[11px] font-medium text-rose-600 dark:text-rose-400">{templateSaveError}</p>
+            <p className="text-[11px] font-medium text-expense">{templateSaveError}</p>
           )}
         </div>
       )}
@@ -1067,17 +1067,17 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
           id={submitBtnId}
           type="submit"
           disabled={!canSubmit}
-          className={`w-full min-h-[48px] py-3 px-4 rounded-xl font-semibold text-sm transition-all flex items-center justify-center gap-2 cursor-pointer ${
+          className={`w-full min-h-[48px] py-3 px-4 rounded-lg font-semibold text-sm transition-all flex items-center justify-center gap-2 cursor-pointer ${
             canSubmit
-              ? 'bg-stone-900 hover:bg-stone-800 dark:bg-stone-100 dark:hover:bg-white text-white dark:text-stone-900 shadow-sm'
-              : 'bg-stone-200 dark:bg-stone-800 text-stone-400 dark:text-stone-600 cursor-not-allowed'
+              ? 'bg-brand-fill hover:bg-brand-fill-hover text-white'
+              : 'bg-surface-3 text-fg-muted cursor-not-allowed'
           }`}
         >
           <span>
             {isSubmitting ? 'Saving...' : `Record ${type === 'DEBT_REPAYMENT' ? 'Debt Payment' : 'Transaction'}`}
           </span>
           {amount !== null && isAmountValid && (
-            <span className="font-mono text-xs bg-stone-800 dark:bg-stone-200 px-2 py-0.5 rounded text-stone-200 dark:text-stone-800">
+            <span className="font-mono text-xs bg-brand-fill-hover px-2 py-0.5 rounded-sm text-white">
               {formatCurrencyAmount(amount)}
             </span>
           )}
@@ -1086,13 +1086,13 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
 
         {submitError && (
           <div className={`${ERROR_BANNER_CLASS} flex items-center gap-2 mt-2`}>
-            <AlertCircle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0" />
+            <AlertCircle className="w-4 h-4 text-expense shrink-0" />
             <span>{submitError}</span>
           </div>
         )}
 
         {isSubmitted && (
-          <p className="text-center text-xs font-medium text-emerald-600 dark:text-emerald-400 mt-2">
+          <p className="text-center text-xs font-medium text-income mt-2">
             ✓ Transaction successfully logged!
           </p>
         )}
@@ -1102,7 +1102,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
              so this is what keeps them one tap away instead of a dead end.
              Each link renders only if its caller wired a handler. */}
       {showShortcuts && (
-        <p className="text-center text-xs text-stone-500 dark:text-stone-400 pt-1">
+        <p className="text-center text-xs text-fg-secondary pt-1">
           Need to{' '}
           {onRequestTransfer && (
             <button

@@ -66,8 +66,10 @@ Fills and badge tints use the 500 shade. Text uses the shade in the table, becau
 | Brand (violet) | `#8B5CF6`, tint `rgba(139, 92, 246, 0.12)` | `#A78BFA` (>= 5.84) | `#7C3AED` (>= 5.20) |
 | Income (emerald) | `#10B981`, tint `rgba(16, 185, 129, 0.12)` | `#10B981` (>= 6.26) | `#047857` (>= 5.01) |
 | Expense (rose) | `#F43F5E`, tint `rgba(244, 63, 94, 0.12)` | `#FB7185` (>= 5.90) | `#BE123C` (>= 5.74) |
-| Pending (amber) | `#F59E0B`, tint `rgba(245, 158, 11, 0.12)` | `#F59E0B` (>= 7.39) | `#B45309` (>= 4.58) |
-| Transfer (cyan) | `#06B6D4`, tint `rgba(6, 182, 212, 0.12)` | `#06B6D4` (>= 6.54) | `#0E7490` (>= 4.89) |
+| Pending (amber) | `#F59E0B`, tint `rgba(245, 158, 11, 0.12)` | `#F59E0B` (>= 7.39) | `#92400E` (>= 5.96) |
+| Transfer (cyan) | `#06B6D4`, tint `rgba(6, 182, 212, 0.12)` | `#06B6D4` (>= 6.54) | `#155E75` (>= 5.97) |
+
+Light pending and transfer text are one shade darker than the 700s (`#B45309`, `#0E7490`). The 700s pass on plain surfaces but drop to 4.22 to 4.40:1 on their own tint, which is where badges put them. Every text color is checked on its own tint as well as on the three surfaces; run `node scripts/wcag-tokens.mjs`.
 
 ### Primary Button
 - Fill `#7C3AED` (Violet-600) with white text: 5.70:1, in both themes.

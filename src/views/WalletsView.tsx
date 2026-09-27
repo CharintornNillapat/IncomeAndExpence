@@ -73,9 +73,9 @@ export const WalletsView: React.FC<WalletsViewProps> = ({ onOpenTransfer, onOpen
               id="wallet-transfer-modal-btn"
               type="button"
               onClick={() => onOpenTransfer?.()}
-              className="inline-flex items-center gap-1.5 px-3 sm:px-3.5 py-2 text-xs font-semibold text-stone-700 dark:text-stone-300 bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 rounded-xl transition-all cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-3 sm:px-3.5 py-2 text-xs font-semibold text-fg-secondary bg-surface-2 hover:bg-surface-3 border border-line hover:border-brand rounded-lg transition-all cursor-pointer"
             >
-              <ArrowLeftRight className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+              <ArrowLeftRight className="w-3.5 h-3.5 text-transfer" />
               <span>Transfer</span>
             </button>
 
@@ -83,9 +83,9 @@ export const WalletsView: React.FC<WalletsViewProps> = ({ onOpenTransfer, onOpen
               id="wallet-add-modal-btn"
               type="button"
               onClick={() => onOpenAddWallet?.()}
-              className="inline-flex items-center gap-1.5 px-3 sm:px-3.5 py-2 text-xs font-semibold text-white dark:text-stone-900 bg-stone-900 hover:bg-stone-800 dark:bg-stone-100 dark:hover:bg-white rounded-xl shadow-xs transition-all cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-3 sm:px-3.5 py-2 text-xs font-semibold text-white bg-brand-fill hover:bg-brand-fill-hover rounded-lg transition-all cursor-pointer"
             >
-              <Plus className="w-4 h-4 text-emerald-400 dark:text-emerald-600" />
+              <Plus className="w-4 h-4 text-white" />
               <span>Add Wallet</span>
             </button>
           </div>
@@ -111,20 +111,20 @@ export const WalletsView: React.FC<WalletsViewProps> = ({ onOpenTransfer, onOpen
               whileTap={{ scale: 0.98 }}
               key={wallet.id}
               id={`wallet-entity-${wallet.id}`}
-              className="bg-white dark:bg-stone-900 rounded-2xl border border-stone-200 dark:border-stone-800 p-5 shadow-xs hover:border-stone-300 dark:hover:border-stone-700 transition-all flex flex-col justify-between"
+              className="bg-surface-1 rounded-xl border border-line p-5 hover:border-brand transition-all flex flex-col justify-between"
             >
               <div>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div
-                      className="w-10 h-10 rounded-xl flex items-center justify-center text-white shadow-xs"
+                      className="w-10 h-10 rounded-lg flex items-center justify-center text-white"
                       style={{ backgroundColor: wallet.color }}
                     >
                       <Icon className="w-5 h-5" />
                     </div>
                     <div>
-                      <h3 className="text-sm font-bold text-stone-900 dark:text-white">{wallet.name}</h3>
-                      <span className="text-[11px] font-medium text-stone-400 dark:text-stone-500 capitalize">
+                      <h3 className="text-sm font-bold text-fg">{wallet.name}</h3>
+                      <span className="text-[11px] font-medium text-fg-muted capitalize">
                         {wallet.type.replace('_', ' ').toLowerCase()}
                       </span>
                     </div>
@@ -136,37 +136,37 @@ export const WalletsView: React.FC<WalletsViewProps> = ({ onOpenTransfer, onOpen
                     type="button"
                     onClick={() => handleOpenDeleteWallet(wallet)}
                     title="Delete wallet"
-                    className="p-1.5 text-stone-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg transition-colors cursor-pointer"
+                    className="p-1.5 text-fg-muted hover:text-expense hover:bg-expense-tint rounded-lg transition-colors cursor-pointer"
                   >
                     <Trash2 className="w-4 h-4" />
                   </motion.button>
                 </div>
 
                 <div className="mt-6">
-                  <span className="text-xs font-semibold uppercase tracking-wider text-stone-400 dark:text-stone-500 block">
+                  <span className="text-xs font-semibold uppercase tracking-wider text-fg-muted block">
                     Current Balance
                   </span>
                   <div className="flex items-baseline gap-2 mt-1">
-                    <div className="text-2xl font-bold font-mono text-stone-900 dark:text-white">
+                    <div className="text-2xl font-bold font-mono text-fg">
                       <AnimatedCounter
                         value={wallet.balance}
                         currencyPrefix={APP_CURRENCY_SYMBOL}
                         duration={0.8}
                       />
                     </div>
-                    <span className="text-xs font-semibold text-stone-500 dark:text-stone-400 font-mono">{APP_CURRENCY}</span>
+                    <span className="text-xs font-semibold text-fg-secondary font-mono">{APP_CURRENCY}</span>
                   </div>
                 </div>
               </div>
 
-              <div className="pt-4 mt-4 border-t border-stone-100 dark:border-stone-800 flex items-center justify-between text-[11px] text-stone-400 dark:text-stone-500">
+              <div className="pt-4 mt-4 border-t border-line flex items-center justify-between text-[11px] text-fg-muted">
                 {/* `createdAt` is a full ISO instant; slicing its first 10 characters
                     would read the UTC calendar date, which at UTC+7 shows the wrong
                     day for anything created 00:00-06:59 local. `toIsoDate` reads the
                     `Date`'s local calendar components instead. */}
                 <span>Created: {toIsoDate(new Date(wallet.createdAt))}</span>
-                <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-medium">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> Active Source
+                <span className="inline-flex items-center gap-1 text-income font-medium">
+                  <span className="w-1.5 h-1.5 rounded-full bg-income-fill" /> Active Source
                 </span>
               </div>
             </motion.div>

@@ -81,7 +81,7 @@ export const Modal: React.FC<ModalProps> = ({
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.2 }}
-          className="fixed inset-0 z-50 bg-stone-900/60 dark:bg-black/70 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-4"
+          className="fixed inset-0 z-50 bg-scrim backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-4"
           onClick={(e) => {
             if (closeOnBackdropClick && e.target === e.currentTarget) onClose();
           }}
@@ -96,24 +96,24 @@ export const Modal: React.FC<ModalProps> = ({
             animate={{ y: 0, scale: 1, opacity: 1 }}
             exit={{ y: 40, scale: 0.96, opacity: 0 }}
             transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-            className={`bg-white/95 dark:bg-stone-900/95 backdrop-blur-xl rounded-t-3xl sm:rounded-2xl w-full ${maxWidthClassName} max-h-[92vh] sm:max-h-[90vh] flex flex-col shadow-2xl border border-stone-200/80 dark:border-stone-800 overflow-hidden ${panelClassName}`}
+            className={`bg-surface-1/95 backdrop-blur-xl rounded-t-xl sm:rounded-lg w-full ${maxWidthClassName} max-h-[92vh] sm:max-h-[90vh] flex flex-col shadow-modal border border-line overflow-hidden ${panelClassName}`}
           >
             {showMobileHandle && (
               <div className="sm:hidden pt-3 pb-1 flex justify-center cursor-pointer shrink-0" onClick={onClose}>
-                <div className="w-12 h-1.5 rounded-full bg-stone-300 dark:bg-stone-700" />
+                <div className="w-12 h-1.5 rounded-full bg-surface-3" />
               </div>
             )}
 
             {header}
 
             {!header && title && (
-              <div className="px-4 sm:px-6 py-3.5 sm:py-4 border-b border-stone-100/80 dark:border-stone-800 flex items-center justify-between shrink-0">
+              <div className="px-4 sm:px-6 py-3.5 sm:py-4 border-b border-line flex items-center justify-between shrink-0">
                 <div>
-                  <h3 id={resolvedTitleId} className="text-base sm:text-lg font-bold text-stone-900 dark:text-white">
+                  <h3 id={resolvedTitleId} className="text-base sm:text-lg font-bold text-fg">
                     {title}
                   </h3>
                   {subtitle && (
-                    <p className="text-xs text-stone-500 dark:text-stone-400 hidden sm:block">{subtitle}</p>
+                    <p className="text-xs text-fg-secondary hidden sm:block">{subtitle}</p>
                   )}
                 </div>
                 {showCloseButton && (
@@ -123,7 +123,7 @@ export const Modal: React.FC<ModalProps> = ({
                     id={closeButtonId}
                     onClick={onClose}
                     aria-label="Close modal"
-                    className="p-2 rounded-xl text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 hover:bg-stone-100 dark:hover:bg-stone-800 active:bg-stone-200 transition-colors cursor-pointer"
+                    className="p-2 rounded-lg text-fg-muted hover:text-fg hover:bg-surface-2 active:bg-surface-3 transition-colors cursor-pointer"
                   >
                     <X className="w-5 h-5" />
                   </motion.button>
@@ -136,7 +136,7 @@ export const Modal: React.FC<ModalProps> = ({
             </div>
 
             {footer && (
-              <div className="px-4 sm:px-6 py-3 border-t border-stone-100/80 dark:border-stone-800 shrink-0">
+              <div className="px-4 sm:px-6 py-3 border-t border-line shrink-0">
                 {footer}
               </div>
             )}

@@ -50,10 +50,10 @@ const MORE_ITEMS: NavItemConfig[] = [
 const MORE_TAB_IDS = new Set<ActiveTab>(MORE_ITEMS.map((i) => i.id));
 
 const slotClass = (isActive: boolean) =>
-  `relative flex flex-col items-center justify-center min-h-[52px] py-1 px-0.5 rounded-xl transition-all cursor-pointer ${
+  `relative flex flex-col items-center justify-center min-h-[52px] py-1 px-0.5 rounded-lg transition-colors duration-150 cursor-pointer ${
     isActive
-      ? 'text-stone-950 dark:text-white font-bold'
-      : 'text-stone-400 dark:text-stone-500 hover:text-stone-700 dark:hover:text-stone-300'
+      ? 'text-fg font-bold'
+      : 'text-fg-muted hover:text-fg'
   }`;
 
 const SlotBody: React.FC<{ icon: React.FC<{ className?: string }>; label: string; isActive: boolean }> = ({
@@ -65,18 +65,18 @@ const SlotBody: React.FC<{ icon: React.FC<{ className?: string }>; label: string
     {isActive && (
       <motion.div
         layoutId="mobileActiveTabPill"
-        className="absolute inset-x-1 inset-y-1 bg-stone-100 dark:bg-stone-800 rounded-xl -z-10"
+        className="absolute inset-x-1 inset-y-1 bg-brand-tint rounded-lg -z-10"
         transition={{ type: 'spring', stiffness: 500, damping: 35 }}
       />
     )}
     <Icon
       className={`w-5 h-5 transition-transform duration-200 ${
-        isActive ? 'scale-110 text-stone-900 dark:text-emerald-400' : 'text-stone-400 dark:text-stone-500'
+        isActive ? 'scale-110 text-brand' : 'text-fg-muted'
       }`}
     />
     <span
       className={`text-[11px] tracking-tight mt-0.5 truncate max-w-full leading-tight ${
-        isActive ? 'text-stone-900 dark:text-white font-bold' : 'text-stone-500 dark:text-stone-400 font-medium'
+        isActive ? 'text-fg font-bold' : 'text-fg-secondary font-medium'
       }`}
     >
       {label}
@@ -116,7 +116,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = React.memo(({
     <>
       <nav
         aria-label="Mobile Navigation"
-        className="sm:hidden fixed bottom-0 left-0 right-0 w-full z-40 bg-white/95 dark:bg-stone-950/95 backdrop-blur-md border-t border-stone-200 dark:border-stone-800 shadow-[0_-4px_20px_rgba(0,0,0,0.06)] pb-[env(safe-area-inset-bottom,0.5rem)]"
+        className="sm:hidden fixed bottom-0 left-0 right-0 w-full z-40 bg-surface-1/95 backdrop-blur-md border-t border-line pb-[env(safe-area-inset-bottom,0.5rem)]"
       >
         <div className="grid grid-cols-5 items-center px-1 py-1.5 max-w-lg mx-auto">
           {PRIMARY_LEFT.map(renderTab)}
@@ -130,7 +130,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = React.memo(({
               data-testid="mobile-nav-quick-add-btn"
               aria-label="Add a transaction"
               onClick={onOpenQuickAdd}
-              className="w-12 h-12 -mt-5 rounded-2xl bg-stone-900 dark:bg-emerald-600 text-white shadow-lg shadow-stone-900/20 dark:shadow-emerald-900/40 flex items-center justify-center cursor-pointer border-4 border-white dark:border-stone-950"
+              className="w-12 h-12 -mt-5 rounded-xl bg-brand-fill hover:bg-brand-fill-hover text-white shadow-quick-add flex items-center justify-center cursor-pointer border-4 border-surface-1"
             >
               <Plus className="w-5 h-5" />
             </motion.button>
@@ -180,10 +180,10 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = React.memo(({
                 setIsMoreOpen(false);
                 setActiveTab(item.id);
               }}
-              className={`w-full min-h-[52px] flex items-center gap-3 px-3 rounded-xl text-sm font-semibold transition-colors cursor-pointer ${
+              className={`w-full min-h-[52px] flex items-center gap-3 px-3 rounded-lg text-sm font-semibold transition-colors cursor-pointer ${
                 isActive
-                  ? 'bg-stone-900 dark:bg-stone-800 text-white'
-                  : 'text-stone-700 dark:text-stone-200 hover:bg-stone-100 dark:hover:bg-stone-800'
+                  ? 'bg-brand-tint text-brand'
+                  : 'text-fg hover:bg-surface-2'
               }`}
             >
               <Icon className="w-5 h-5 shrink-0" />
@@ -192,7 +192,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = React.memo(({
             </button>
           );
         })}
-        <div className="border-t border-stone-100 dark:border-stone-800 pt-1.5">
+        <div className="border-t border-line pt-1.5">
           <button
             id="mobile-nav-account-btn"
             type="button"
@@ -200,7 +200,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = React.memo(({
               setIsMoreOpen(false);
               onOpenAccount();
             }}
-            className="w-full min-h-[52px] flex items-center gap-3 px-3 rounded-xl text-sm font-semibold text-stone-700 dark:text-stone-200 hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors cursor-pointer"
+            className="w-full min-h-[52px] flex items-center gap-3 px-3 rounded-lg text-sm font-semibold text-fg hover:bg-surface-2 transition-colors cursor-pointer"
           >
             <UserCog className="w-5 h-5 shrink-0" />
             <span className="flex-1 text-left">Account &amp; Security</span>

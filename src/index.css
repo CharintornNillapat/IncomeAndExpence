@@ -18,6 +18,116 @@
 
 @custom-variant dark (&:where(.dark, .dark *));
 
+/*
+ * Design tokens (DESIGN.md, Phase 53). Each value is set once for light on
+ * `:root` and once for dark on `.dark`, and `@theme inline` below maps the
+ * variables onto Tailwind colour utilities. So `bg-surface-1` is already the
+ * right colour in both themes and never needs a `dark:` twin.
+ *
+ * `scripts/wcag-tokens.mjs` reads these two blocks directly and checks every
+ * text / input-border / focus pair against WCAG, so a value changed here is
+ * re-measured by running it.
+ */
+:root {
+  --canvas: #FFFFFF;
+  --surface-1: #F8FAFC;
+  --surface-2: #F1F5F9;
+  --surface-3: #E2E8F0;
+  --line: #E2E8F0;
+  --line-input: #7C8BA1;
+  --fg: #0F172A;
+  --fg-secondary: #475569;
+  --fg-muted: #586880;
+  --focus: #7C3AED;
+  --scrim: rgba(15, 23, 42, 0.55);
+  --brand-text: #7C3AED;
+  --income-text: #047857;
+  --expense-text: #BE123C;
+  --pending-text: #92400E;
+  --transfer-text: #155E75;
+}
+
+.dark {
+  --canvas: #0B0E14;
+  --surface-1: #121824;
+  --surface-2: #1A2234;
+  --surface-3: #243048;
+  --line: #243048;
+  --line-input: #5E7092;
+  --fg: #F8FAFC;
+  --fg-secondary: #94A3B8;
+  --fg-muted: #8190A6;
+  --focus: #8B5CF6;
+  --scrim: rgba(0, 0, 0, 0.7);
+  --brand-text: #A78BFA;
+  --income-text: #10B981;
+  --expense-text: #FB7185;
+  --pending-text: #F59E0B;
+  --transfer-text: #06B6D4;
+}
+
+@theme inline {
+  --color-canvas: var(--canvas);
+  --color-surface-1: var(--surface-1);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-line: var(--line);
+  --color-line-input: var(--line-input);
+  --color-fg: var(--fg);
+  --color-fg-secondary: var(--fg-secondary);
+  --color-fg-muted: var(--fg-muted);
+  --color-focus: var(--focus);
+  --color-scrim: var(--scrim);
+  --color-brand: var(--brand-text);
+  --color-income: var(--income-text);
+  --color-expense: var(--expense-text);
+  --color-pending: var(--pending-text);
+  --color-transfer: var(--transfer-text);
+}
+
+/*
+ * Theme-independent values. Fills are the 500 shades and never sit behind
+ * text, except the brand fill, which carries white text at 5.70:1 (Violet-500
+ * would be 4.23:1). Tints are 12% of the fill; `-line` borders are 30%.
+ */
+@theme {
+  --color-brand-fill: #7C3AED;
+  --color-brand-fill-hover: #6D28D9;
+  --color-brand-tint: rgba(139, 92, 246, 0.12);
+  --color-brand-line: rgba(139, 92, 246, 0.3);
+  --color-income-fill: #10B981;
+  --color-income-tint: rgba(16, 185, 129, 0.12);
+  --color-income-line: rgba(16, 185, 129, 0.3);
+  --color-expense-fill: #F43F5E;
+  --color-expense-tint: rgba(244, 63, 94, 0.12);
+  --color-expense-line: rgba(244, 63, 94, 0.3);
+  --color-pending-fill: #F59E0B;
+  --color-pending-tint: rgba(245, 158, 11, 0.12);
+  --color-pending-line: rgba(245, 158, 11, 0.3);
+  --color-transfer-fill: #06B6D4;
+  --color-transfer-tint: rgba(6, 182, 212, 0.12);
+  --color-transfer-line: rgba(6, 182, 212, 0.3);
+
+  /* The only two elevations DESIGN.md allows: layers that sit above the page, and the one glow. */
+  --shadow-modal: 0 20px 40px -15px rgba(0, 0, 0, 0.7);
+  --shadow-quick-add: 0 0 20px rgba(139, 92, 246, 0.2);
+
+  /*
+   * JetBrains Mono has no U+0E3F glyph, so the baht sign falls through to the
+   * first Thai-capable system font. System monospace faces come before them so
+   * digits stay monospaced even before the web font has loaded.
+   */
+  --font-mono: "JetBrains Mono Variable", ui-monospace, SFMono-Regular, Menlo, Consolas, "Leelawadee UI", Thonburi, "Noto Sans Thai", monospace;
+  --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+@layer base {
+  /* The canvas behind the app root, so overscroll and the first paint match the theme. */
+  html {
+    background-color: var(--canvas);
+  }
+}
+
 @layer utilities {
   /* Hide scrollbar for Chrome, Safari and Opera */
   .no-scrollbar::-webkit-scrollbar {

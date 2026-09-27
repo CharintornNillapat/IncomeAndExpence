@@ -93,15 +93,15 @@ const TransferWalletPanel: React.FC<TransferWalletPanelProps> = ({
   return (
     <div
       data-testid={testId}
-      className="flex h-full flex-col gap-2.5 rounded-2xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 p-3 sm:p-3.5 transition-colors"
+      className="flex h-full flex-col gap-2.5 rounded-xl border border-line bg-surface-1 p-3 sm:p-3.5 transition-colors"
     >
-      <span className="text-[10px] font-semibold uppercase tracking-wider text-stone-400 dark:text-stone-500">
+      <span className="text-[10px] font-semibold uppercase tracking-wider text-fg-muted">
         {label}
       </span>
 
       <div className="flex items-center gap-2">
         <div
-          className="w-8 h-8 rounded-xl flex items-center justify-center text-white shrink-0 shadow-2xs"
+          className="w-8 h-8 rounded-lg flex items-center justify-center text-white shrink-0"
           style={{ backgroundColor: wallet?.color || '#a8a29e' }}
         >
           <Icon className="w-4 h-4" />
@@ -111,7 +111,7 @@ const TransferWalletPanel: React.FC<TransferWalletPanelProps> = ({
           value={value}
           onChange={(e) => onChange(e.target.value)}
           aria-label={label}
-          className="min-w-0 flex-1 bg-transparent text-xs font-bold text-stone-900 dark:text-stone-100 border-0 p-0 focus:outline-none focus:ring-0 cursor-pointer"
+          className="min-w-0 flex-1 bg-transparent text-xs font-bold text-fg border-0 p-0 focus:outline-none focus:ring-0 cursor-pointer"
         >
           {wallets.map((w) => (
             <option key={w.id} value={w.id} className={OPTION_CLASS}>
@@ -125,21 +125,21 @@ const TransferWalletPanel: React.FC<TransferWalletPanelProps> = ({
         <div
           className={`font-mono text-sm font-bold tabular-nums transition-colors ${
             afterBalance !== null
-              ? 'text-stone-400 dark:text-stone-500 line-through decoration-1'
-              : 'text-stone-900 dark:text-stone-100'
+              ? 'text-fg-muted line-through decoration-1'
+              : 'text-fg'
           }`}
         >
           {formatCurrencyAmount(wallet?.balance ?? 0)}
         </div>
         {afterBalance !== null && (
           <div className="flex items-center gap-1">
-            <ArrowRight className="w-3 h-3 shrink-0 text-stone-400 dark:text-stone-500" />
+            <ArrowRight className="w-3 h-3 shrink-0 text-fg-muted" />
             <span
               data-testid={afterTestId}
               className={`font-mono text-sm font-bold tabular-nums ${
                 isOverdrawn
-                  ? 'text-rose-600 dark:text-rose-400'
-                  : 'text-emerald-700 dark:text-emerald-400'
+                  ? 'text-expense'
+                  : 'text-income'
               }`}
             >
               {formatCurrencyAmount(afterBalance)}
@@ -272,7 +272,7 @@ export const WalletTransferForm: React.FC<WalletTransferFormProps> = ({
 
   const errorBanner = transferError && (
     <div className={`${ERROR_BANNER_CLASS} flex items-center gap-2`}>
-      <AlertCircle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0" />
+      <AlertCircle className="w-4 h-4 text-expense shrink-0" />
       <span>{transferError}</span>
     </div>
   );
@@ -292,8 +292,8 @@ export const WalletTransferForm: React.FC<WalletTransferFormProps> = ({
   return (
     <form onSubmit={handleExecuteTransfer} className="space-y-4">
       {statusMessage && (
-        <div className="bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 p-3 rounded-xl text-xs font-semibold flex items-center gap-2">
-          <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+        <div className="bg-income-tint border border-income-line text-income p-3 rounded-lg text-xs font-semibold flex items-center gap-2">
+          <CheckCircle2 className="w-4 h-4 text-income shrink-0" />
           <span>{statusMessage}</span>
         </div>
       )}
@@ -323,7 +323,7 @@ export const WalletTransferForm: React.FC<WalletTransferFormProps> = ({
             onClick={handleSwap}
             aria-label="Swap source and destination wallets"
             title="Swap source and destination"
-            className="w-9 h-9 rounded-full flex items-center justify-center border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 text-stone-500 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100 hover:border-stone-300 dark:hover:border-stone-600 transition-colors cursor-pointer"
+            className="w-9 h-9 rounded-full flex items-center justify-center border border-line bg-surface-2 text-fg-secondary hover:text-fg hover:border-brand transition-colors cursor-pointer"
           >
             <ArrowLeftRight className="w-4 h-4 rotate-90 sm:rotate-0" />
           </motion.button>
@@ -347,9 +347,9 @@ export const WalletTransferForm: React.FC<WalletTransferFormProps> = ({
       {isOverdrawn && sourceAfter !== null && (
         <div
           data-testid="transfer-overdraft-warning"
-          className="flex items-center gap-2 rounded-xl border border-amber-200 dark:border-amber-800/60 bg-amber-50 dark:bg-amber-950/40 p-3 text-xs font-medium text-amber-800 dark:text-amber-300"
+          className="flex items-center gap-2 rounded-lg border border-pending-line bg-pending-tint p-3 text-xs font-medium text-pending"
         >
-          <AlertTriangle className="w-4 h-4 shrink-0 text-amber-600 dark:text-amber-400" />
+          <AlertTriangle className="w-4 h-4 shrink-0 text-pending" />
           <span>
             This overdraws <strong>{sourceWallet?.name}</strong> by{' '}
             {formatCurrencyAmount(Math.abs(sourceAfter))}.
@@ -378,7 +378,7 @@ export const WalletTransferForm: React.FC<WalletTransferFormProps> = ({
               id={ids.transferAll}
               type="button"
               onClick={handleTransferAll}
-              className="text-[11px] font-semibold text-stone-500 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100 underline underline-offset-2 cursor-pointer transition-colors"
+              className="text-[11px] font-semibold text-fg-secondary hover:text-fg underline underline-offset-2 cursor-pointer transition-colors"
             >
               Transfer all ({formatCurrencyAmount(sourceWallet.balance)})
             </button>
@@ -408,10 +408,10 @@ export const WalletTransferForm: React.FC<WalletTransferFormProps> = ({
           id={ids.submit}
           type="submit"
           disabled={!canSubmit}
-          className={`w-full py-2.5 sm:py-3 rounded-xl font-semibold text-xs transition-all flex items-center justify-center gap-2 cursor-pointer ${
+          className={`w-full py-2.5 sm:py-3 rounded-lg font-semibold text-xs transition-all flex items-center justify-center gap-2 cursor-pointer ${
             canSubmit
-              ? 'bg-stone-900 hover:bg-stone-800 dark:bg-stone-100 dark:hover:bg-white text-white dark:text-stone-900 shadow-xs'
-              : 'bg-stone-200 dark:bg-stone-800 text-stone-400 dark:text-stone-600 cursor-not-allowed'
+              ? 'bg-brand-fill hover:bg-brand-fill-hover text-white'
+              : 'bg-surface-3 text-fg-muted cursor-not-allowed'
           }`}
         >
           <ArrowLeftRight className="w-4 h-4" />

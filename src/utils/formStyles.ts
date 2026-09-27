@@ -8,44 +8,50 @@
  */
 export type FieldTone = 'subtle' | 'plain';
 
+/*
+ * Phase 53 (DESIGN.md section 4): every field sits on Surface 2 with the
+ * dedicated `line-input` border (3:1 against any surface) and a 2px violet
+ * focus ring in place of the outline. Both tones now render the same field;
+ * `FieldTone` stays as the public parameter because callers pass it, and a
+ * future surface that genuinely needs a different field can diverge here.
+ */
 const FIELD_BASE =
-  'w-full text-xs rounded-xl border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-100 focus:outline-none focus:border-stone-800 dark:focus:border-stone-400';
+  'w-full text-xs rounded-lg border border-line-input bg-surface-2 text-fg focus:outline-none focus:ring-2 focus:ring-focus transition-colors';
 
 const TONE: Record<FieldTone, string> = {
-  subtle:
-    'bg-stone-50 dark:bg-stone-800 focus:ring-2 focus:ring-stone-200 dark:focus:ring-stone-700 transition-colors',
-  plain: 'bg-white dark:bg-stone-800',
+  subtle: '',
+  plain: '',
 };
 
 /** Bare label text with no block/margin - for labels whose spacing comes from a `gap-*`/`space-y-*` wrapper instead. */
 export const LABEL_TEXT_CLASS =
-  'text-xs font-semibold uppercase tracking-wider text-stone-600 dark:text-stone-300';
+  'text-xs font-semibold uppercase tracking-wider text-fg-secondary';
 
 /** Block label with its own bottom margin - for labels in a plain (non-gapped) wrapper. */
 export const LABEL_CLASS = `${LABEL_TEXT_CLASS} block mb-1`;
 
 /** Text / number / textarea inputs use slightly wider horizontal padding than selects. */
 export function inputClass(tone: FieldTone): string {
-  return `${FIELD_BASE} px-3.5 py-2.5 placeholder:text-stone-400 dark:placeholder:text-stone-500 ${TONE[tone]}`;
+  return `${FIELD_BASE} px-3.5 py-2.5 placeholder:text-fg-muted ${TONE[tone]}`.trim();
 }
 
 export function selectClass(tone: FieldTone): string {
-  return `${FIELD_BASE} px-3 py-2.5 ${TONE[tone]}`;
+  return `${FIELD_BASE} px-3 py-2.5 ${TONE[tone]}`.trim();
 }
 
-/** Native <option> elements need explicit dark colours to render correctly. */
-export const OPTION_CLASS = 'dark:bg-stone-800 dark:text-stone-100';
+/** Native <option> elements need explicit colours to render correctly in the dark theme. */
+export const OPTION_CLASS = 'bg-surface-2 text-fg';
 
 export const ERROR_BANNER_CLASS =
-  'bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 p-3 rounded-xl text-xs font-medium';
+  'bg-expense-tint border border-expense-line text-expense p-3 rounded-lg text-xs font-medium';
 
 export const PRIMARY_BUTTON_CLASS =
-  'w-full py-2.5 sm:py-3 bg-stone-900 hover:bg-stone-800 dark:bg-stone-100 dark:hover:bg-white text-white dark:text-stone-900 rounded-xl font-semibold text-xs transition-all shadow-xs cursor-pointer';
+  'w-full py-2.5 sm:py-3 bg-brand-fill hover:bg-brand-fill-hover text-white rounded-lg font-semibold text-xs transition-colors duration-150 cursor-pointer';
 
 /** Same treatment as PRIMARY_BUTTON_CLASS without the sm: padding growth - for compact single-field forms and in-card actions. */
 export const PRIMARY_BUTTON_COMPACT_CLASS =
-  'w-full py-2.5 bg-stone-900 hover:bg-stone-800 dark:bg-stone-100 dark:hover:bg-white text-white dark:text-stone-900 rounded-xl font-semibold text-xs transition-all shadow-xs cursor-pointer';
+  'w-full py-2.5 bg-brand-fill hover:bg-brand-fill-hover text-white rounded-lg font-semibold text-xs transition-colors duration-150 cursor-pointer';
 
 /** Muted counterpart to the primary buttons, for a cancel/secondary form action. Not yet adopted by any form - see refactor-log.md Phase 17. */
 export const SECONDARY_BUTTON_CLASS =
-  'w-full py-2.5 sm:py-3 bg-stone-100 hover:bg-stone-200 dark:bg-stone-800 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-300 rounded-xl font-semibold text-xs transition-all cursor-pointer';
+  'w-full py-2.5 sm:py-3 bg-surface-1 border border-line hover:border-brand text-fg-secondary rounded-lg font-semibold text-xs transition-colors duration-150 cursor-pointer';

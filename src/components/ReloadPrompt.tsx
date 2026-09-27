@@ -38,22 +38,22 @@ export const ReloadPrompt: React.FC = React.memo(() => {
   return (
     <aside
       aria-label="App update notification"
-      className="fixed bottom-5 right-5 z-50 max-w-sm w-[calc(100vw-2.5rem)] bg-stone-900 text-white rounded-2xl p-4 shadow-2xl border border-stone-800 animate-in fade-in slide-in-from-bottom-5 duration-200"
+      className="fixed bottom-5 right-5 z-50 max-w-sm w-[calc(100vw-2.5rem)] bg-surface-1 text-fg rounded-lg p-4 shadow-modal border border-line animate-in fade-in slide-in-from-bottom-5 duration-200"
     >
       <div className="flex items-start gap-3">
-        <div className="p-2 rounded-xl bg-stone-800 text-emerald-400 shrink-0">
+        <div className="p-2 rounded-lg bg-brand-tint text-brand shrink-0">
           {needRefresh ? (
             <RefreshCw className="w-5 h-5 animate-spin" style={{ animationDuration: '3s' }} />
           ) : (
-            <CheckCircle2 className="w-5 h-5 text-emerald-400" />
+            <CheckCircle2 className="w-5 h-5 text-income" />
           )}
         </div>
 
         <div className="flex-1 min-w-0">
-          <h4 className="text-xs font-bold text-white">
+          <h4 className="text-xs font-bold text-fg">
             {needRefresh ? 'New Update Available' : 'App Ready for Offline Use'}
           </h4>
-          <p className="text-[11px] text-stone-400 mt-0.5 leading-relaxed">
+          <p className="text-[11px] text-fg-secondary mt-0.5 leading-relaxed">
             {needRefresh
               ? 'A newer version of FinLife is available. Reload to update.'
               : 'All assets and cached data are saved for fast offline access.'}
@@ -65,7 +65,7 @@ export const ReloadPrompt: React.FC = React.memo(() => {
                 type="button"
                 id="pwa-reload-button"
                 onClick={() => updateServiceWorker(true)}
-                className="px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-stone-950 font-bold text-xs rounded-xl shadow-xs transition-all cursor-pointer"
+                className="px-3 py-1.5 bg-brand-fill hover:bg-brand-fill-hover text-white font-bold text-xs rounded-lg transition-colors duration-150 cursor-pointer"
               >
                 Update Now
               </button>
@@ -74,7 +74,7 @@ export const ReloadPrompt: React.FC = React.memo(() => {
               type="button"
               id="pwa-dismiss-button"
               onClick={close}
-              className="px-3 py-1.5 bg-stone-800 hover:bg-stone-700 text-stone-300 font-semibold text-xs rounded-xl transition-all cursor-pointer"
+              className="px-3 py-1.5 bg-surface-2 hover:bg-surface-3 text-fg-secondary font-semibold text-xs rounded-lg transition-colors duration-150 cursor-pointer"
             >
               Dismiss
             </button>
@@ -84,7 +84,7 @@ export const ReloadPrompt: React.FC = React.memo(() => {
         <button
           type="button"
           onClick={close}
-          className="text-stone-500 hover:text-stone-300 p-1 rounded-lg transition-colors cursor-pointer"
+          className="text-fg-muted hover:text-fg p-1 rounded-lg transition-colors cursor-pointer"
           aria-label="Close notification"
         >
           <X className="w-4 h-4" />

@@ -261,7 +261,7 @@ const MainApp: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-stone-100 dark:bg-stone-950 text-stone-900 dark:text-stone-100 font-sans flex flex-col selection:bg-stone-900 selection:text-white transition-colors duration-200">
+    <div className="min-h-screen bg-canvas text-fg font-sans flex flex-col selection:bg-brand-fill selection:text-white transition-colors duration-200">
       {/* Top Navbar */}
       <Navbar
         activeTab={activeTab}
@@ -312,10 +312,10 @@ const MainApp: React.FC = () => {
       <ReloadPrompt />
 
       {/* Footer (with safe bottom margin on mobile) */}
-      <footer className="border-t border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 py-6 mt-6 sm:mt-12 mb-16 sm:mb-0 text-center text-xs text-stone-500 dark:text-stone-400 transition-colors duration-200">
+      <footer className="border-t border-line bg-surface-1 py-6 mt-6 sm:mt-12 mb-16 sm:mb-0 text-center text-xs text-fg-secondary transition-colors duration-200">
         <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
           <p>FinLife Tracker — Full-Stack Personal Finance & Holistic Lifestyle Management</p>
-          <p className="text-stone-400 dark:text-stone-500 font-mono text-[11px]">Supabase Realtime Cloud Sync • Safe Math.js • Single-Tx Repayments</p>
+          <p className="text-fg-muted font-mono text-[11px]">Supabase Realtime Cloud Sync • Safe Math.js • Single-Tx Repayments</p>
         </div>
       </footer>
 

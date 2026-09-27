@@ -85,23 +85,23 @@ const AccountModalBody: React.FC<Omit<AccountModalProps, 'isOpen'>> = ({ onClose
       {/* Where the data lives */}
       <div
         id="account-status-card"
-        className="p-4 rounded-2xl bg-stone-50 dark:bg-stone-800/60 border border-stone-200 dark:border-stone-700 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+        className="p-4 rounded-xl bg-surface-2 border border-line flex flex-col sm:flex-row sm:items-center justify-between gap-3"
       >
         <div className="flex items-center gap-3 min-w-0">
           <div
-            className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border ${
+            className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 border ${
               isAuthenticated
-                ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800'
-                : 'bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800'
+                ? 'bg-income-tint text-income border-income-line'
+                : 'bg-pending-tint text-pending border-pending-line'
             }`}
           >
             <Cloud className="w-5 h-5" />
           </div>
           <div className="min-w-0">
-            <p className="text-sm font-bold text-stone-900 dark:text-white">
+            <p className="text-sm font-bold text-fg">
               {isAuthenticated ? 'Cloud sync on' : 'Guest mode - this device only'}
             </p>
-            <p className="text-xs text-stone-500 dark:text-stone-400 truncate">
+            <p className="text-xs text-fg-secondary truncate">
               {isAuthenticated
                 ? currentUser.email
                 : 'Your data is stored in this browser. Sign in to sync it across devices.'}
@@ -117,7 +117,7 @@ const AccountModalBody: React.FC<Omit<AccountModalProps, 'isOpen'>> = ({ onClose
                 type="button"
                 onClick={handleManualSync}
                 disabled={isSyncing}
-                className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-stone-700 dark:text-stone-300 bg-white dark:bg-stone-900 hover:bg-stone-100 dark:hover:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-xl transition-colors cursor-pointer disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-fg-secondary bg-surface-1 hover:bg-surface-3 border border-line hover:border-brand rounded-lg transition-colors cursor-pointer disabled:opacity-50"
               >
                 <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
                 <span>{isSyncing ? 'Syncing…' : 'Sync now'}</span>
@@ -126,7 +126,7 @@ const AccountModalBody: React.FC<Omit<AccountModalProps, 'isOpen'>> = ({ onClose
                 id="navbar-signout-btn"
                 type="button"
                 onClick={() => setIsConfirmingSignOut(true)}
-                className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-rose-700 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/50 hover:bg-rose-100 dark:hover:bg-rose-900/60 border border-rose-200 dark:border-rose-800 rounded-xl transition-colors cursor-pointer"
+                className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold border border-expense text-expense bg-transparent hover:bg-expense-tint rounded-lg transition-colors cursor-pointer"
               >
                 <LogOut className="w-3.5 h-3.5" />
                 <span>Sign out</span>
@@ -150,7 +150,7 @@ const AccountModalBody: React.FC<Omit<AccountModalProps, 'isOpen'>> = ({ onClose
       </div>
 
       {syncFeedback && (
-        <div className="p-3 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 rounded-xl text-xs font-semibold flex items-center gap-2">
+        <div className="p-3 bg-income-tint border border-income-line text-income rounded-lg text-xs font-semibold flex items-center gap-2">
           <CheckCircle2 className="w-4 h-4 shrink-0" />
           <span>{syncFeedback}</span>
         </div>
@@ -230,23 +230,23 @@ const SessionsSection: React.FC = () => {
   };
 
   return (
-    <section id="account-sessions" className="rounded-2xl border border-stone-200 dark:border-stone-800 p-4 sm:p-5 space-y-3">
+    <section id="account-sessions" className="rounded-xl border border-line p-4 sm:p-5 space-y-3">
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          <KeyRound className="w-4 h-4 text-stone-700 dark:text-stone-300" />
-          <h3 className="text-sm font-bold text-stone-900 dark:text-white">Signed-in devices</h3>
+          <KeyRound className="w-4 h-4 text-fg-secondary" />
+          <h3 className="text-sm font-bold text-fg">Signed-in devices</h3>
         </div>
         {sessions && (
-          <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 font-mono">
+          <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-surface-2 text-fg-secondary font-mono">
             {sessions.length}
           </span>
         )}
       </div>
 
       {isLoading ? (
-        <p className="text-xs text-stone-500 dark:text-stone-400">Loading your sessions…</p>
+        <p className="text-xs text-fg-secondary">Loading your sessions…</p>
       ) : sessions === null ? (
-        <p id="account-sessions-unavailable" className="text-xs text-stone-500 dark:text-stone-400">
+        <p id="account-sessions-unavailable" className="text-xs text-fg-secondary">
           The session list is unavailable right now{loadError ? ` (${loadError})` : ''}. Signing out other devices still
           works.
         </p>
@@ -259,23 +259,23 @@ const SessionsSection: React.FC = () => {
               <li
                 key={s.id}
                 id={`session-item-${s.id}`}
-                className={`p-3 rounded-xl border flex items-start gap-3 ${
+                className={`p-3 rounded-lg border flex items-start gap-3 ${
                   s.isCurrent
-                    ? 'border-emerald-500/60 dark:border-emerald-500/40 bg-emerald-50/30 dark:bg-emerald-950/20'
-                    : 'border-stone-200 dark:border-stone-800'
+                    ? 'border-brand-line bg-brand-tint'
+                    : 'border-line'
                 }`}
               >
-                <Icon className="w-4 h-4 mt-0.5 text-stone-500 dark:text-stone-400 shrink-0" />
+                <Icon className="w-4 h-4 mt-0.5 text-fg-secondary shrink-0" />
                 <div className="min-w-0 text-xs">
-                  <p className="font-semibold text-stone-900 dark:text-white flex flex-wrap items-center gap-2">
+                  <p className="font-semibold text-fg flex flex-wrap items-center gap-2">
                     <span>{device.label}</span>
                     {s.isCurrent && (
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300">
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-brand-tint text-brand">
                         This device
                       </span>
                     )}
                   </p>
-                  <p className="text-stone-500 dark:text-stone-400 font-mono mt-0.5">
+                  <p className="text-fg-secondary font-mono mt-0.5">
                     {s.ip ?? 'IP unknown'} · last active {formatLocalDateTime(s.lastActive) ?? 'unknown'}
                   </p>
                 </div>
@@ -286,7 +286,7 @@ const SessionsSection: React.FC = () => {
       )}
 
       {feedback && (
-        <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-400 flex items-center gap-1.5">
+        <p className="text-xs font-semibold text-income flex items-center gap-1.5">
           <CheckCircle2 className="w-3.5 h-3.5" /> {feedback}
         </p>
       )}
@@ -297,7 +297,7 @@ const SessionsSection: React.FC = () => {
           type="button"
           onClick={() => setConfirming('others')}
           disabled={sessions !== null && otherSessions.length === 0}
-          className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-rose-700 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/50 hover:bg-rose-100 dark:hover:bg-rose-900/60 border border-rose-200 dark:border-rose-800 rounded-xl transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+          className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold border border-expense text-expense bg-transparent hover:bg-expense-tint rounded-lg transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <ShieldCheck className="w-3.5 h-3.5" />
           <span>Sign out other devices</span>
@@ -306,7 +306,7 @@ const SessionsSection: React.FC = () => {
           id="account-signout-everywhere-btn"
           type="button"
           onClick={() => setConfirming('everywhere')}
-          className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-stone-700 dark:text-stone-300 bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 border border-stone-200 dark:border-stone-700 rounded-xl transition-colors cursor-pointer"
+          className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-fg-secondary bg-surface-2 hover:bg-surface-3 border border-line hover:border-brand rounded-lg transition-colors cursor-pointer"
         >
           <LogOut className="w-3.5 h-3.5" />
           <span>Sign out everywhere</span>
@@ -355,10 +355,10 @@ const ProfileSection: React.FC = () => {
   };
 
   return (
-    <section className="rounded-2xl border border-stone-200 dark:border-stone-800 p-4 sm:p-5 space-y-3">
+    <section className="rounded-xl border border-line p-4 sm:p-5 space-y-3">
       <div className="flex items-center gap-2">
-        <UserIcon className="w-4 h-4 text-stone-700 dark:text-stone-300" />
-        <h3 className="text-sm font-bold text-stone-900 dark:text-white">Profile</h3>
+        <UserIcon className="w-4 h-4 text-fg-secondary" />
+        <h3 className="text-sm font-bold text-fg">Profile</h3>
       </div>
       <form onSubmit={handleUpdateProfile} className="space-y-3">
         <div>
@@ -418,10 +418,10 @@ const PasswordSection: React.FC = () => {
   };
 
   return (
-    <section className="rounded-2xl border border-stone-200 dark:border-stone-800 p-4 sm:p-5 space-y-3">
+    <section className="rounded-xl border border-line p-4 sm:p-5 space-y-3">
       <div className="flex items-center gap-2">
-        <Lock className="w-4 h-4 text-stone-700 dark:text-stone-300" />
-        <h3 className="text-sm font-bold text-stone-900 dark:text-white">Change Password</h3>
+        <Lock className="w-4 h-4 text-fg-secondary" />
+        <h3 className="text-sm font-bold text-fg">Change Password</h3>
       </div>
       <form onSubmit={handleUpdatePassword} className="space-y-3">
         <div>
@@ -452,7 +452,7 @@ const PasswordSection: React.FC = () => {
           disabled={isSubmitting || !newPassword}
           className={`${PRIMARY_BUTTON_COMPACT_CLASS} flex items-center justify-center gap-2 disabled:opacity-50`}
         >
-          <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+          <ShieldCheck className="w-3.5 h-3.5 text-white" />
           <span>{isSubmitting ? 'Updating…' : 'Update password'}</span>
         </button>
       </form>
@@ -463,13 +463,13 @@ const PasswordSection: React.FC = () => {
 const FormFeedback: React.FC<{ success: string | null; error: string | null }> = ({ success, error }) => (
   <>
     {success && (
-      <div className="p-2.5 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 rounded-xl text-xs flex items-center gap-2">
+      <div className="p-2.5 bg-income-tint border border-income-line text-income rounded-lg text-xs flex items-center gap-2">
         <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
         <span>{success}</span>
       </div>
     )}
     {error && (
-      <div className="p-2.5 bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800 text-rose-800 dark:text-rose-300 rounded-xl text-xs flex items-center gap-2">
+      <div className="p-2.5 bg-expense-tint border border-expense-line text-expense rounded-lg text-xs flex items-center gap-2">
         <AlertCircle className="w-3.5 h-3.5 shrink-0" />
         <span>{error}</span>
       </div>

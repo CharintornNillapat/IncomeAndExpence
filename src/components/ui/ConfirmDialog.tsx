@@ -56,7 +56,7 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
             type="button"
             onClick={onClose}
             disabled={isLoading}
-            className="px-4 py-2.5 rounded-xl text-xs font-semibold bg-stone-100 hover:bg-stone-200 dark:bg-stone-800 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-300 transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+            className="px-4 py-2.5 rounded-lg text-xs font-semibold bg-surface-1 border border-line hover:border-brand text-fg-secondary transition-colors duration-150 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
           >
             {cancelText}
           </button>
@@ -65,10 +65,10 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
             type="button"
             onClick={onConfirm}
             disabled={isLoading}
-            className={`px-4 py-2.5 rounded-xl text-xs font-semibold shadow-xs transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed ${
+            className={`px-4 py-2.5 rounded-lg text-xs font-semibold transition-colors duration-150 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed ${
               isDestructive
-                ? 'bg-rose-600 hover:bg-rose-700 text-white'
-                : 'bg-stone-900 hover:bg-stone-800 dark:bg-stone-100 dark:hover:bg-white text-white dark:text-stone-900'
+                ? 'border border-expense text-expense bg-transparent hover:bg-expense-tint'
+                : 'bg-brand-fill hover:bg-brand-fill-hover text-white'
             }`}
           >
             {isLoading ? 'Working…' : confirmText}
@@ -78,12 +78,12 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
     >
       <div className="flex items-start gap-3">
         {isDestructive && (
-          <div className="w-9 h-9 rounded-xl bg-rose-100 dark:bg-rose-950/50 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0">
+          <div className="w-9 h-9 rounded-lg bg-expense-tint text-expense flex items-center justify-center shrink-0">
             <AlertTriangle className="w-4.5 h-4.5" />
           </div>
         )}
         <div className="flex-1 pt-1.5 space-y-2">
-          <p className="text-xs text-stone-600 dark:text-stone-300 leading-relaxed">{description}</p>
+          <p className="text-xs text-fg-secondary leading-relaxed">{description}</p>
           {error && <div className={ERROR_BANNER_CLASS}>{error}</div>}
         </div>
       </div>

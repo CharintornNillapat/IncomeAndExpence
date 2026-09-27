@@ -40,9 +40,9 @@ export const GuestDataNotice: React.FC = () => {
   return (
     <div
       id="auth-guest-data-notice"
-      className="p-3 bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800 rounded-xl text-xs text-amber-900 dark:text-amber-200 flex items-start gap-2"
+      className="p-3 bg-pending-tint border border-pending-line rounded-lg text-xs text-pending flex items-start gap-2"
     >
-      <Info className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+      <Info className="w-4 h-4 text-pending shrink-0 mt-0.5" />
       <div className="space-y-2">
         <p>
           This device holds <strong>{guestTransactionCount}</strong> guest transaction
@@ -54,7 +54,7 @@ export const GuestDataNotice: React.FC = () => {
           type="button"
           onClick={handleExport}
           disabled={isExporting}
-          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg font-semibold bg-white dark:bg-stone-900 border border-amber-300 dark:border-amber-700 text-amber-800 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/40 transition-colors cursor-pointer disabled:opacity-50"
+          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg font-semibold bg-surface-1 border border-pending-line hover:border-pending text-pending hover:bg-pending-tint transition-colors cursor-pointer disabled:opacity-50"
         >
           <Download className="w-3.5 h-3.5" />
           <span>{isExporting ? 'Preparing…' : 'Export them as CSV first'}</span>
