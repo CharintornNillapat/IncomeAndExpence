@@ -21,6 +21,7 @@ import { todayIsoDate, daysAgoIsoDate, formatDayInfo } from '../utils/date';
 import { LABEL_CLASS, PRIMARY_BUTTON_COMPACT_CLASS } from '../utils/formStyles';
 import { exportDiaryToJson } from '../utils/diaryExport';
 import { buildLookupMap } from '../utils/mapUtils';
+import { isIncome, isSpending } from '../selectors/ledger';
 
 // Static (never depends on component state), so it lives outside the
 // component instead of being recreated - or even re-useMemo'd - every render.
@@ -79,9 +80,11 @@ export const DiaryView: React.FC = () => {
           map[dateKey] = { totalOutflow: 0, totalIncome: 0, transactions: [] };
         }
 
-        if (t.type === 'EXPENSE' || t.type === 'DEBT_REPAYMENT') {
+        // Spec L1 (ADR 0028): a day's outflow is its spending. A debt repayment
+        // used to count here too, unlike the dashboard.
+        if (isSpending(t, categoryMap)) {
           map[dateKey].totalOutflow += t.amount;
-        } else if (t.type === 'INCOME') {
+        } else if (isIncome(t, categoryMap)) {
           map[dateKey].totalIncome += t.amount;
         }
 
@@ -89,7 +92,7 @@ export const DiaryView: React.FC = () => {
       });
 
     return map;
-  }, [transactions]);
+  }, [transactions, categoryMap]);
 
   // Only confirms once the entry is actually persisted (onSuccess fires after
   // upsertDiaryEntry resolves with success: true).
@@ -136,8 +139,8 @@ export const DiaryView: React.FC = () => {
     [selectedDate, todayIso, yesterdayIso]
   );
   const selectedDateOutflowCount = useMemo(
-    () => selectedDateData.transactions.filter((t) => t.type === 'EXPENSE' || t.type === 'DEBT_REPAYMENT').length,
-    [selectedDateData]
+    () => selectedDateData.transactions.filter((t) => isSpending(t, categoryMap)).length,
+    [selectedDateData, categoryMap]
   );
 
   // Precomputes everything each entry card needs - the day's formatted
@@ -152,11 +155,11 @@ export const DiaryView: React.FC = () => {
         entry,
         dayInfo: formatDayInfo(entry.date, todayIso, yesterdayIso),
         dayData,
-        outflowTxs: dayData.transactions.filter((t) => t.type === 'EXPENSE' || t.type === 'DEBT_REPAYMENT'),
+        outflowTxs: dayData.transactions.filter((t) => isSpending(t, categoryMap)),
         moodInfo: MOOD_LABELS[entry.mood],
       };
     });
-  }, [activeEntries, dailyTransactionsMap, todayIso, yesterdayIso]);
+  }, [activeEntries, dailyTransactionsMap, categoryMap, todayIso, yesterdayIso]);
 
   // Stable across renders (module-scope setter + context action only) so
   // DiaryEntryCard's React.memo isn't defeated by a fresh closure per row.

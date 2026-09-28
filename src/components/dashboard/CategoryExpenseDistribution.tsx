@@ -4,6 +4,8 @@ import { formatCurrencyAmount } from '../../utils/currency';
 import { ProgressMeter } from '../ui/ProgressMeter';
 
 interface CategoryBreakdownItem {
+  /** `null` for the one "Uncategorized" row (`spendingByCategory`, ADR 0028). */
+  categoryId: string | null;
   name: string;
   amount: number;
   color: string;
@@ -37,7 +39,7 @@ export const CategoryExpenseDistribution: React.FC<CategoryExpenseDistributionPr
           categoryBreakdown.map((item) => {
             const percent = totalExpenseAmount > 0 ? (item.amount / totalExpenseAmount) * 100 : 0;
             return (
-              <div key={item.name} className="space-y-1.5">
+              <div key={item.categoryId ?? 'uncategorized'} className="space-y-1.5">
                 <div className="flex items-center justify-between text-xs">
                   <span className="font-semibold text-fg">{item.name}</span>
                   <div className="flex items-center gap-2">

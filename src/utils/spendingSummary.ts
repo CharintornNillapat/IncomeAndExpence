@@ -8,6 +8,8 @@ import type {
 } from '../types';
 import { formatCurrencyAmount } from './currency';
 import { roundToCents } from './money';
+import { buildLookupMap } from './mapUtils';
+import { isIncome, isSpending } from '../selectors/ledger';
 
 /*
  * Monthly spending aggregation and the sentence renderer (ADR 0020).
@@ -60,9 +62,11 @@ function txMonth(tx: Transaction): string {
 /**
  * Aggregates two calendar months of spending into the payload.
  *
- * Only EXPENSE and DEBT_REPAYMENT count toward category spending, matching
- * what `DashboardView` already shows. TRANSFER is excluded on purpose: it
- * moves money between the user's own wallets and spends nothing.
+ * Spending and income are `isSpending` / `isIncome` (spec L1, ADR 0028), the
+ * same definition the dashboard's Expense card and category chart use. Until
+ * Phase 55b this counted DEBT_REPAYMENT as spending while the Expense card did
+ * not, so the insight and the card beside it could disagree. A transfer, a
+ * repayment and an adjustment spend nothing.
  */
 export function buildSpendingSummary(
   transactions: Transaction[],
@@ -73,6 +77,7 @@ export function buildSpendingSummary(
   const previous = previousMonthKey(current);
 
   const nameById = new Map(categories.map((c) => [c.id, c.name]));
+  const categoriesById = buildLookupMap(categories);
 
   const currentByCategory = new Map<string, { total: number; count: number }>();
   const previousByCategory = new Map<string, number>();
@@ -86,10 +91,10 @@ export function buildSpendingSummary(
     const month = txMonth(tx);
     if (month !== current && month !== previous) continue;
 
-    const isSpend = tx.type === 'EXPENSE' || tx.type === 'DEBT_REPAYMENT';
+    const isSpend = isSpending(tx, categoriesById);
 
     if (month === current) {
-      if (tx.type === 'INCOME') income += tx.amount;
+      if (isIncome(tx, categoriesById)) income += tx.amount;
       if (isSpend) expense += tx.amount;
     } else if (isSpend) {
       previousExpense += tx.amount;
