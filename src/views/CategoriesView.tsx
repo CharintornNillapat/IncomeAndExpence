@@ -341,7 +341,7 @@ export const CategoriesView: React.FC = () => {
                     <div
                       key={cat.id}
                       id={`category-row-${cat.id}`}
-                      className="flex items-center justify-between gap-3 py-2.5 px-3 rounded-lg border border-line hover:bg-surface-2 transition-colors"
+                      className="flex items-center justify-between gap-3 py-2.5 px-3 rounded-lg border border-line hover:bg-surface-2 transition-control"
                     >
                       <div className="flex items-center gap-2.5 min-w-0">
                         <span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: cat.color }} />
@@ -620,7 +620,7 @@ export const CategoriesView: React.FC = () => {
                   title={value}
                   aria-label={`Icon ${value}`}
                   aria-pressed={editIcon === value}
-                  className={`w-11 h-11 rounded-lg flex items-center justify-center transition-colors duration-150 cursor-pointer ${
+                  className={`w-11 h-11 rounded-lg flex items-center justify-center transition-control duration-150 cursor-pointer ${
                     editIcon === value
                       ? 'bg-brand-fill text-white'
                       : 'bg-surface-2 text-fg-secondary hover:bg-surface-3'

@@ -50,7 +50,7 @@ const MORE_ITEMS: NavItemConfig[] = [
 const MORE_TAB_IDS = new Set<ActiveTab>(MORE_ITEMS.map((i) => i.id));
 
 const slotClass = (isActive: boolean) =>
-  `relative flex flex-col items-center justify-center min-h-[52px] py-1 px-0.5 rounded-lg transition-colors duration-150 cursor-pointer ${
+  `relative flex flex-col items-center justify-center min-h-[52px] py-1 px-0.5 rounded-lg transition-control duration-150 cursor-pointer ${
     isActive
       ? 'text-fg font-bold'
       : 'text-fg-muted hover:text-fg'
@@ -70,7 +70,7 @@ const SlotBody: React.FC<{ icon: React.FC<{ className?: string }>; label: string
       />
     )}
     <Icon
-      className={`w-5 h-5 transition-colors duration-150 ${
+      className={`w-5 h-5 transition-control duration-150 ${
         isActive ? 'text-brand' : 'text-fg-muted'
       }`}
     />
@@ -128,7 +128,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = React.memo(({
               data-testid="mobile-nav-quick-add-btn"
               aria-label="Add a transaction"
               onClick={onOpenQuickAdd}
-              className="w-12 h-12 -mt-5 rounded-xl bg-brand-fill hover:bg-brand-fill-hover text-white shadow-quick-add flex items-center justify-center transition-colors duration-150 cursor-pointer border-4 border-surface-1"
+              className="w-12 h-12 -mt-5 rounded-xl bg-brand-fill hover:bg-brand-fill-hover text-white shadow-quick-add flex items-center justify-center transition-control duration-150 cursor-pointer border-4 border-surface-1"
             >
               <Plus className="w-5 h-5" />
             </button>
@@ -177,7 +177,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = React.memo(({
                 setIsMoreOpen(false);
                 setActiveTab(item.id);
               }}
-              className={`w-full min-h-[52px] flex items-center gap-3 px-3 rounded-lg text-sm font-semibold transition-colors cursor-pointer ${
+              className={`w-full min-h-[52px] flex items-center gap-3 px-3 rounded-lg text-sm font-semibold transition-control cursor-pointer ${
                 isActive
                   ? 'bg-brand-tint text-brand'
                   : 'text-fg hover:bg-surface-2'
@@ -197,7 +197,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = React.memo(({
               setIsMoreOpen(false);
               onOpenAccount();
             }}
-            className="w-full min-h-[52px] flex items-center gap-3 px-3 rounded-lg text-sm font-semibold text-fg hover:bg-surface-2 transition-colors cursor-pointer"
+            className="w-full min-h-[52px] flex items-center gap-3 px-3 rounded-lg text-sm font-semibold text-fg hover:bg-surface-2 transition-control cursor-pointer"
           >
             <UserCog className="w-5 h-5 shrink-0" />
             <span className="flex-1 text-left">Account &amp; Security</span>

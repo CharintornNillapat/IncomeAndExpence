@@ -69,7 +69,7 @@ export const NavbarSyncBadge: React.FC<NavbarSyncBadgeProps> = ({ onOpenAuth }) 
         title="Sign in to sync across devices"
         className={BADGE_BUTTON}
       >
-        <span className={`${MUTED_PILL} ${PILL_FOCUS} group-hover:border-brand transition-colors duration-150`}>
+        <span className={`${MUTED_PILL} ${PILL_FOCUS} group-hover:border-brand transition-control duration-150`}>
           <Circle className="w-2.5 h-2.5 shrink-0" />
           <span>Local</span>
         </span>
@@ -101,7 +101,7 @@ export const NavbarSyncBadge: React.FC<NavbarSyncBadgeProps> = ({ onOpenAuth }) 
         aria-label="Sync failed. Try again"
         className={BADGE_BUTTON}
       >
-        <span className={`${PILL} ${PILL_FOCUS} bg-expense-tint text-expense border-expense-line group-hover:border-expense transition-colors duration-150`}>
+        <span className={`${PILL} ${PILL_FOCUS} bg-expense-tint text-expense border-expense-line group-hover:border-expense transition-control duration-150`}>
           <AlertTriangle className="w-3 h-3 shrink-0" />
           <span>Sync failed</span>
         </span>

@@ -435,7 +435,7 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Search description, amount, math..."
-              className="w-full min-h-[44px] pl-9 pr-11 py-2 text-xs rounded-lg border border-line-input bg-surface-2 text-fg placeholder:text-fg-muted focus:outline-none focus:ring-2 focus:ring-focus transition-colors"
+              className="w-full min-h-[44px] pl-9 pr-11 py-2 text-xs rounded-lg border border-line-input bg-surface-2 text-fg placeholder:text-fg-muted focus:outline-none focus:ring-2 focus:ring-focus transition-control"
             />
             {searchTerm && (
               <IconButton
@@ -457,7 +457,7 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
               id="tx-filter-wallet"
               value={selectedWalletId}
               onChange={(e) => setSelectedWalletId(e.target.value)}
-              className="w-full min-h-[44px] py-2 px-3 text-xs rounded-lg border border-line-input bg-surface-2 text-fg focus:outline-none focus:ring-2 focus:ring-focus transition-colors"
+              className="w-full min-h-[44px] py-2 px-3 text-xs rounded-lg border border-line-input bg-surface-2 text-fg focus:outline-none focus:ring-2 focus:ring-focus transition-control"
             >
               <option value="ALL">All Wallets</option>
               {wallets.map((w) => (
@@ -474,7 +474,7 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
               id="tx-filter-type"
               value={selectedType}
               onChange={(e) => setSelectedType(e.target.value)}
-              className="w-full min-h-[44px] py-2 px-3 text-xs rounded-lg border border-line-input bg-surface-2 text-fg focus:outline-none focus:ring-2 focus:ring-focus transition-colors"
+              className="w-full min-h-[44px] py-2 px-3 text-xs rounded-lg border border-line-input bg-surface-2 text-fg focus:outline-none focus:ring-2 focus:ring-focus transition-control"
             >
               <option value="ALL">All Types</option>
               <option value="EXPENSE">Expense</option>

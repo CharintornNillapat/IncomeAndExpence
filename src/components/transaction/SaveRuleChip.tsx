@@ -86,7 +86,7 @@ export function SaveRuleChip({
               id={`${idPrefix}-save-rule-btn`}
               onClick={onSave}
               disabled={status === 'saving'}
-              className="shrink-0 cursor-pointer rounded-sm bg-brand-fill px-2.5 py-1 text-xs font-semibold text-white transition-colors hover:bg-brand-fill-hover disabled:cursor-not-allowed disabled:opacity-50"
+              className="shrink-0 cursor-pointer rounded-sm bg-brand-fill px-2.5 py-1 text-xs font-semibold text-white transition-control hover:bg-brand-fill-hover disabled:cursor-not-allowed disabled:opacity-50"
             >
               {status === 'saving' ? 'Saving...' : 'Save rule'}
             </button>
@@ -96,7 +96,7 @@ export function SaveRuleChip({
               id={`${idPrefix}-save-rule-dismiss`}
               onClick={onDismiss}
               aria-label="Dismiss rule suggestion"
-              className="shrink-0 cursor-pointer rounded-sm p-1 text-fg-muted transition-colors hover:text-fg"
+              className="shrink-0 cursor-pointer rounded-sm p-1 text-fg-muted transition-control hover:text-fg"
             >
               <X className="h-3.5 w-3.5" />
             </button>

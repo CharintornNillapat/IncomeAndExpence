@@ -18,7 +18,7 @@ export interface ButtonClassOptions {
  * the global `:focus-visible` rule in index.css, so no variant carries its own.
  */
 const BASE =
-  'inline-flex items-center justify-center gap-2 min-h-[44px] rounded-button font-semibold transition-colors duration-150 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed';
+  'inline-flex items-center justify-center gap-2 min-h-[44px] rounded-button font-semibold transition-control duration-150 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed';
 
 const SIZE_CLASS: Record<ButtonSize, string> = {
   md: 'px-3.5 py-2 text-xs',

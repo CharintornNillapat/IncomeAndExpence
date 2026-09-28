@@ -29,7 +29,7 @@ const TONE_CLASS: Record<IconButtonTone, string> = {
  */
 export function IconButton({ label, children, tone = 'neutral', bordered = false, className = '', type = 'button', ...rest }: IconButtonProps) {
   const classes = [
-    'inline-flex items-center justify-center shrink-0 min-h-[44px] min-w-[44px] rounded-button transition-colors duration-150 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed',
+    'inline-flex items-center justify-center shrink-0 min-h-[44px] min-w-[44px] rounded-button transition-control duration-150 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed',
     TONE_CLASS[tone],
     bordered ? 'border border-line-control' : '',
     className,

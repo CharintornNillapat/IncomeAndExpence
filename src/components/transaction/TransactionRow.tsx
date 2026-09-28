@@ -54,7 +54,7 @@ export const TransactionRow: React.FC<TransactionRowProps> = ({
   const direction = walletId ? transferDirection(tx, walletId) : undefined;
 
   const classes = [
-    'w-full flex items-center gap-3 px-4 py-3 text-left transition-colors duration-150',
+    'w-full flex items-center gap-3 px-4 py-3 text-left transition-control duration-150',
     onSelect ? 'cursor-pointer hover:bg-surface-2' : '',
     // Spec 6.2: the row being edited sits on the soft violet with a 3px violet
     // edge. An inset shadow draws the edge without shifting the row's content.

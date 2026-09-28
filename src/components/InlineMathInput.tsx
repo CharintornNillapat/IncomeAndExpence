@@ -243,7 +243,7 @@ export const InlineMathInput: React.FC<InlineMathInputProps> = ({
               type="button"
               onClick={handleApplyResult}
               title="Click to replace expression with calculated sum"
-              className="inline-flex items-center gap-1 px-2 py-1 text-xs font-semibold text-fg-secondary bg-surface-1 hover:bg-surface-3 rounded-lg transition-colors border border-line cursor-pointer"
+              className="inline-flex items-center gap-1 px-2 py-1 text-xs font-semibold text-fg-secondary bg-surface-1 hover:bg-surface-3 rounded-lg transition-control border border-line cursor-pointer"
             >
               <Check className="w-3 h-3 text-income" />
               <span>{currencyPrefix}{formattedResult}</span>
@@ -283,7 +283,7 @@ export const InlineMathInput: React.FC<InlineMathInputProps> = ({
                   id={`${inputId}-op-${op}`}
                   type="button"
                   onClick={() => handleQuickAdd(op)}
-                  className="min-w-8 h-8 px-2 flex items-center justify-center text-xs font-semibold rounded-lg bg-surface-2 hover:bg-surface-3 active:bg-surface-3 text-fg-secondary transition-colors cursor-pointer border border-line hover:border-brand"
+                  className="min-w-8 h-8 px-2 flex items-center justify-center text-xs font-semibold rounded-lg bg-surface-2 hover:bg-surface-3 active:bg-surface-3 text-fg-secondary transition-control cursor-pointer border border-line hover:border-brand"
                 >
                   {op}
                 </button>
@@ -304,7 +304,7 @@ export const InlineMathInput: React.FC<InlineMathInputProps> = ({
                 id={`${inputId}-chip-${amount}`}
                 type="button"
                 onClick={() => handleQuickAmount(amount)}
-                className="min-h-8 px-2.5 flex items-center justify-center text-xs font-semibold rounded-lg bg-brand-tint text-brand transition-colors cursor-pointer border border-brand-line hover:border-brand active:border-brand"
+                className="min-h-8 px-2.5 flex items-center justify-center text-xs font-semibold rounded-lg bg-brand-tint text-brand transition-control cursor-pointer border border-brand-line hover:border-brand active:border-brand"
               >
                 +{amount.toLocaleString()}
               </button>

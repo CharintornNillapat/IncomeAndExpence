@@ -94,7 +94,7 @@ export const Navbar: React.FC<NavbarProps> = React.memo(({ activeTab, setActiveT
    * CLAUDE.md's 44px floor rather than the spec's 40px header buttons.
    */
   return (
-    <header className="sticky top-0 z-40 bg-header border-b border-line transition-colors duration-200">
+    <header className="sticky top-0 z-40 bg-header border-b border-line transition-control duration-200">
       <div className="max-w-7xl mx-auto px-3 sm:px-6 h-14 md:h-16 flex items-center gap-2 sm:gap-3">
         <div className="relative shrink-0">
           <img
@@ -135,7 +135,7 @@ export const Navbar: React.FC<NavbarProps> = React.memo(({ activeTab, setActiveT
                 type="button"
                 title={item.label}
                 onClick={() => setActiveTab(item.id)}
-                className={`min-h-[44px] min-w-[44px] inline-flex items-center justify-center px-3 rounded-button text-sm font-medium whitespace-nowrap transition-colors duration-150 cursor-pointer shrink-0 ${
+                className={`min-h-[44px] min-w-[44px] inline-flex items-center justify-center px-3 rounded-button text-sm font-medium whitespace-nowrap transition-control duration-150 cursor-pointer shrink-0 ${
                   isActive
                     ? 'bg-brand-soft text-brand-soft-text'
                     : 'text-fg-secondary hover:text-fg hover:bg-surface-3'

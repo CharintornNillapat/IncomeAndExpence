@@ -30,7 +30,7 @@ export const TransactionTableRow: React.FC<TransactionTableRowProps> = React.mem
   return (
     <tr
       id={`tx-row-${tx.id}`}
-      className={`hover:bg-surface-2 transition-colors border-b border-line ${
+      className={`hover:bg-surface-2 transition-control border-b border-line ${
         tx.isDeleted ? 'opacity-50 bg-expense-tint' : ''
       }`}
     >

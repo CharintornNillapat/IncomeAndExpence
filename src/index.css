@@ -290,6 +290,18 @@
   }
 }
 
+/*
+ * Audit 004 finding 2: Tailwind's `transition-colors` also animates
+ * `outline-color`, so the focus outline above faded in from the text colour
+ * for its first 150ms. Controls use this instead: the same colour properties,
+ * timing and `duration-*` hook, without the outline.
+ */
+@utility transition-control {
+  transition-property: color, background-color, border-color, text-decoration-color, fill, stroke;
+  transition-timing-function: var(--tw-ease, var(--default-transition-timing-function));
+  transition-duration: var(--tw-duration, var(--default-transition-duration));
+}
+
 @layer utilities {
   /* Hide scrollbar for Chrome, Safari and Opera */
   .no-scrollbar::-webkit-scrollbar {

@@ -187,7 +187,7 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
               type="button"
               id={tab.buttonId}
               onClick={() => setActiveTab(tab.id)}
-              className={`min-h-[44px] py-3 px-2 sm:px-3 border-b-2 transition-colors flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
+              className={`min-h-[44px] py-3 px-2 sm:px-3 border-b-2 transition-control flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
                 activeTab === tab.id
                   ? 'border-brand text-fg'
                   : 'border-transparent text-fg-secondary hover:text-fg'

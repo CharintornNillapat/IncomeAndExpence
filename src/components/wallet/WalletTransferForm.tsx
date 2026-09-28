@@ -93,7 +93,7 @@ const TransferWalletPanel: React.FC<TransferWalletPanelProps> = ({
   return (
     <div
       data-testid={testId}
-      className="flex h-full flex-col gap-2.5 rounded-xl border border-line bg-surface-1 p-3 sm:p-3.5 transition-colors"
+      className="flex h-full flex-col gap-2.5 rounded-xl border border-line bg-surface-1 p-3 sm:p-3.5 transition-control"
     >
       <span className="text-[10px] font-semibold uppercase tracking-wider text-fg-muted">
         {label}
@@ -123,7 +123,7 @@ const TransferWalletPanel: React.FC<TransferWalletPanelProps> = ({
 
       <div className="mt-auto">
         <div
-          className={`text-sm font-bold tabular-nums transition-colors ${
+          className={`text-sm font-bold tabular-nums transition-control ${
             afterBalance !== null
               ? 'text-fg-muted line-through decoration-1'
               : 'text-fg'
@@ -322,7 +322,7 @@ export const WalletTransferForm: React.FC<WalletTransferFormProps> = ({
             onClick={handleSwap}
             aria-label="Swap source and destination wallets"
             title="Swap source and destination"
-            className="w-11 h-11 rounded-full flex items-center justify-center border border-line bg-surface-2 text-fg-secondary hover:text-fg hover:border-brand transition-colors duration-150 cursor-pointer"
+            className="w-11 h-11 rounded-full flex items-center justify-center border border-line bg-surface-2 text-fg-secondary hover:text-fg hover:border-brand transition-control duration-150 cursor-pointer"
           >
             <ArrowLeftRight className="w-4 h-4 rotate-90 sm:rotate-0" />
           </button>
@@ -377,7 +377,7 @@ export const WalletTransferForm: React.FC<WalletTransferFormProps> = ({
               id={ids.transferAll}
               type="button"
               onClick={handleTransferAll}
-              className="text-[11px] font-semibold text-fg-secondary hover:text-fg underline underline-offset-2 cursor-pointer transition-colors"
+              className="text-[11px] font-semibold text-fg-secondary hover:text-fg underline underline-offset-2 cursor-pointer transition-control"
             >
               Transfer all ({formatCurrencyAmount(sourceWallet.balance)})
             </button>

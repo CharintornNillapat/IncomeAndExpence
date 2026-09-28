@@ -54,7 +54,7 @@ export const GuestDataNotice: React.FC = () => {
           type="button"
           onClick={handleExport}
           disabled={isExporting}
-          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg font-semibold bg-surface-1 border border-pending-line hover:border-pending text-pending hover:bg-pending-tint transition-colors cursor-pointer disabled:opacity-50"
+          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg font-semibold bg-surface-1 border border-pending-line hover:border-pending text-pending hover:bg-pending-tint transition-control cursor-pointer disabled:opacity-50"
         >
           <Download className="w-3.5 h-3.5" />
           <span>{isExporting ? 'Preparing…' : 'Export them as CSV first'}</span>

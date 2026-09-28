@@ -259,7 +259,7 @@ export const DiaryView: React.FC = () => {
                       id={`mood-btn-${level}`}
                       type="button"
                       onClick={() => setMood(level)}
-                      className={`flex flex-col items-center justify-center p-3 rounded-lg border transition-colors duration-150 cursor-pointer ${
+                      className={`flex flex-col items-center justify-center p-3 rounded-lg border transition-control duration-150 cursor-pointer ${
                         isSelected
                           ? 'border-brand-fill bg-brand-fill text-white'
                           : 'border-line bg-surface-2 hover:bg-surface-3 text-fg-secondary'
@@ -326,7 +326,7 @@ export const DiaryView: React.FC = () => {
                     id={`food-btn-${fq.toLowerCase()}`}
                     type="button"
                     onClick={() => setFoodQuality(fq)}
-                    className={`min-h-[44px] py-2.5 px-3 rounded-lg border text-xs font-semibold transition-colors duration-150 flex items-center justify-center gap-1.5 cursor-pointer ${
+                    className={`min-h-[44px] py-2.5 px-3 rounded-lg border text-xs font-semibold transition-control duration-150 flex items-center justify-center gap-1.5 cursor-pointer ${
                       foodQuality === fq
                         ? fq === 'HEALTHY'
                           ? 'bg-income-tint text-income border-income'
