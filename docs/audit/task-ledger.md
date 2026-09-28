@@ -1088,7 +1088,7 @@ Spec section 4, the fourteen shared components. ADR `0029`. The plan was approve
 - one global `:focus-visible` rule;
 - 44px everywhere, including where the spec draws 40px.
 
-Branch `phase-56-components`, draft PR.
+Branch `phase-56-components`, draft PR #2. Merged into `main` as `a86e5d0` with the owner's go-ahead. Push run `36405543706` passed, and Vercel `dpl_CGrLhV7LsZafrX4M5FweApxDY25T` serves a build that matches the local one byte for byte (see the refactor log).
 
 | # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
 |---|---|---|---|---|---|---|---|---|---|---|

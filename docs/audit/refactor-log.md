@@ -45,6 +45,16 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
   - 390px, four views: 0 under 44px, no page overflow.
   - Light Transactions and dark Debts screenshots: neutral chips with dots, one button shape per variant, the `line` progress track.
 
+**CI and deploy:**
+- Merged as PR #2 with a merge commit, `a86e5d0`, so the shas this entry and the ledger cite stay valid. Merged with the user's explicit go-ahead.
+- The branch also carried `8c55728`, the T201 closure record from `main`, which had not been pushed.
+- PR run `36385714575` on `033657c`: success in 3 m 42 s. Push run `36405543706` on `a86e5d0`: success in 4 m 28 s. Lint, unit and all three browser jobs passed, 119/119 each, with no retries.
+- Vercel `dpl_CGrLhV7LsZafrX4M5FweApxDY25T` Production `READY`. `income-and-expence-neon.vercel.app` serves `index-DeNtAUhg.js` at **172,870 B**.
+- **All 54 files of the local build were hashed against production.** 50 are byte-for-byte identical, including every JS chunk, the CSS, the fonts, `index.html` and the manifest.
+  - `pwa-192x192.svg`, `pwa-512x512.svg` and `robots.txt` differ only in line endings, as in Phase 55.
+  - `sw.js` lists the same 53 precache entries. It differs only in the two SVGs' revisions, which hash the CRLF bytes, and in the order of the entries.
+- **Audit 004 decisions** are recorded in the audit: finding 2 is fixed in the next styles or page pass, 1 and 4 move to the Categories and Transactions pages, and 3 stays on watch.
+
 ## Phase 55 - FinLife redesign steps 1-2 (Foundation, Logic) and CI speed: T199-T211 (2026-09-28, commits `1cb9a18`...`8a0c0ad`)
 
 **Changed**
