@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 55 - FinLife redesign steps 1-2 (Foundation, Logic) and CI speed: T199-T211 (2026-09-28, commits `1cb9a18`...(docs))
+## Phase 55 - FinLife redesign steps 1-2 (Foundation, Logic) and CI speed: T199-T211 (2026-09-28, commits `1cb9a18`...`8a0c0ad`)
 
 **Changed**
 - **CI (55-CI).**

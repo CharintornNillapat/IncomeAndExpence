@@ -1104,10 +1104,10 @@ ADRs `0027` (foundation) and `0028` (selectors). Work ran on branch `phase-55-ci
 | T205 | Amounts: `formatCurrencyAmount` puts U+2212 before ฿; transfer unsigned except in one wallet's view (`direction`); adjustment and repayment grey | `currency.ts`, `txTypeMeta.ts`, `TxCells.tsx`, `Money.tsx`, `WalletPopupModal.tsx`, `unit/tx-cells.test.tsx` | High | Med | 1h | done | - | 97d2b4e | tx-cells 251 -> 257 | - |
 | T206 | Header: one 64 px row, tabs left, no total balance; bottom nav under `md` | `Navbar.tsx`, `NavbarLedgerStatus.tsx`, `MobileBottomNav.tsx`, `App.tsx` | High | Med | 1h | done | - | 97d2b4e | MCP 1280/900/390, light and dark: one row, 0 controls under 44 px, no overflow | - |
 | T207 | `wallet-balance-<id>` testid; `soft-delete.spec.ts:108` locator moved, assertions unchanged | `WalletsView.tsx`, `tests/soft-delete.spec.ts` | Med | Low | 0.25h | done | T204 | 97d2b4e | the only spec edit in Phase 55 | - |
-| T208 | ADR `0027`, `DESIGN.md` rewrite, selector contract, `CLAUDE.md` | docs | Low | Low | 1h | done | all 55a | (docs commit) | - | - |
+| T208 | ADR `0027`, `DESIGN.md` rewrite, selector contract, `CLAUDE.md` | docs | Low | Low | 1h | done | all 55a | 8a0c0ad | - | - |
 | T209 | `src/selectors/` (8 modules) and `shiftIsoDate`; three unit files written first and red against the missing modules | `src/selectors/*`, `src/utils/date.ts`, `unit/selectors-*.test.ts` | High | Low | 2h | done | - | bcb1987 | 47 new tests; the spec's L4 figures reproduce to the cent | unit 257 -> 304 |
 | T210 | Wire L1 to L5: dashboard range and totals, category chart by id, insights spending, diary outflow, one active-wallet predicate | `DashboardView.tsx`, `CategoryExpenseDistribution.tsx`, `spendingSummary.ts`, `DiaryView.tsx`, `FinanceContext.tsx`, `useWallets.ts`, `unit/spending-summary.test.ts` | High | Med | 1h | done | T209 | bcb1987 | two spending-summary tests red against the old code first; MCP with a seeded ledger: Expense card = chart total = ฿150.25 in all four ranges, the ฿300 repayment, ฿500 transfer and −฿40 adjustment excluded; diary outflow ฿150.25 | - |
-| T211 | ADR `0028`, `CLAUDE.md`, refactor log, metrics, sha backfill | docs | Low | Low | 1h | done | all | (docs commit) | - | - |
+| T211 | ADR `0028`, `CLAUDE.md`, refactor log, metrics, sha backfill | docs | Low | Low | 1h | done | all | 8a0c0ad (sha backfill: this row's own commit) | - | - |
 
 **Notes on execution:**
 - **Local run 1 of 55a had two timeouts in 357 runs**:
