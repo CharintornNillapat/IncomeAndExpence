@@ -120,7 +120,8 @@ export const Navbar: React.FC<NavbarProps> = React.memo(({ activeTab, setActiveT
 
         <nav
           aria-label="Desktop Navigation"
-          className="hidden md:flex items-center gap-1 min-w-0 flex-1 overflow-x-auto no-scrollbar md:ml-2 xl:ml-4"
+          // `p-1` is the focus outline's room: 2px offset + 2px width, which `overflow-x-auto` would otherwise clip (ADR 0029).
+          className="hidden md:flex items-center gap-1 min-w-0 flex-1 overflow-x-auto no-scrollbar p-1 md:ml-1 xl:ml-3"
         >
           {NAV_ITEMS.map((item) => {
             const Icon = item.icon;
