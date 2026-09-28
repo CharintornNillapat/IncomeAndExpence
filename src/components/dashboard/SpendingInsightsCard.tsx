@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Sparkles, RefreshCw, ChevronDown, ChevronUp, WifiOff } from 'lucide-react';
+import { ChartLine, RefreshCw, ChevronDown, ChevronUp, WifiOff } from 'lucide-react';
 import type { Category, Transaction } from '../../types';
 import { buildSpendingSummary, hasEnoughData, renderInsight } from '../../utils/spendingSummary';
 import { fetchInsight, readCachedVerdict } from '../../utils/insightsClient';
@@ -99,7 +99,9 @@ export const SpendingInsightsCard: React.FC<SpendingInsightsCardProps> = ({
     <div data-testid="insights-card" className="bg-surface-1 rounded-card border border-line p-6">
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-start gap-2 min-w-0 pt-0.5">
-          <Sparkles aria-hidden="true" className="w-4 h-4 shrink-0 mt-1 text-fg-secondary" />
+          {/* Audit 005 finding 1: a line chart names what the card compares (this
+              month against last), where the sparkle only said a model was involved. */}
+          <ChartLine aria-hidden="true" className="w-4 h-4 shrink-0 mt-1 text-fg-secondary" />
           <h2 className="text-base font-semibold text-fg">Spending insights · {period}</h2>
         </div>
 
@@ -167,7 +169,7 @@ export const SpendingInsightsCard: React.FC<SpendingInsightsCardProps> = ({
               <p className="text-sm text-fg-secondary text-center">
                 Summarize how this month compares with last.
               </p>
-              <Button id="insights-generate-btn" onClick={generate} icon={<Sparkles className="w-3.5 h-3.5" />}>
+              <Button id="insights-generate-btn" onClick={generate} icon={<ChartLine aria-hidden="true" className="w-3.5 h-3.5" />}>
                 Generate insights
               </Button>
             </div>
