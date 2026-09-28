@@ -167,6 +167,13 @@ describe('acceptance check 3: net worth is wallets minus debt', () => {
     expect(card.textContent).toContain('In 3 wallets');
     expect(card.textContent).toContain('฿32,172.48');
     expect(card.textContent).toContain(`${MINUS}฿22,577.00`);
+    expect(screen.getByText('฿9,595.48').className).toContain('text-fg');
+  });
+
+  it('turns red when debt passes what the wallets hold (spec section 3)', () => {
+    render(<NetWorthCard netWorth={-38850} walletTotal={7650} walletCount={3} debtRemaining={46500} />);
+    const figure = screen.getByText(`${MINUS}฿38,850.00`);
+    expect(figure.className).toContain('text-expense');
   });
 });
 

@@ -24,7 +24,8 @@ export const NetWorthCard: React.FC<NetWorthCardProps> = ({ netWorth, walletTota
       </div>
 
       <p className="flex items-baseline gap-2 flex-wrap">
-        <Money value={netWorth} className="text-4xl font-semibold tracking-tight text-fg" />
+        {/* Spec section 3: a net figure is the primary text colour, red only when negative. */}
+        <Money value={netWorth} className={`text-4xl font-semibold tracking-tight ${netWorth < 0 ? 'text-expense' : 'text-fg'}`} />
         <span className="text-sm text-fg-muted">{APP_CURRENCY}</span>
       </p>
 
