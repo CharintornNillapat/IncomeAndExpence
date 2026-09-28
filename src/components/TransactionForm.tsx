@@ -795,7 +795,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
               onClick={() => seedPayoffAmount(remainingDebt)}
               className={QUICK_CHIP_CLASS}
             >
-              Pay in full <strong className="font-mono">{formatCurrencyAmount(remainingDebt)}</strong>
+              Pay in full <strong>{formatCurrencyAmount(remainingDebt)}</strong>
             </button>
             <button
               type="button"
@@ -803,7 +803,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
               onClick={() => seedPayoffAmount(roundToCents(remainingDebt / 2))}
               className={QUICK_CHIP_CLASS}
             >
-              50% <strong className="font-mono">{formatCurrencyAmount(roundToCents(remainingDebt / 2))}</strong>
+              50% <strong>{formatCurrencyAmount(roundToCents(remainingDebt / 2))}</strong>
             </button>
             {showMinimumChip && (
               <button
@@ -812,7 +812,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
                 onClick={() => seedPayoffAmount(minimumDue)}
                 className={QUICK_CHIP_CLASS}
               >
-                Minimum due <strong className="font-mono">{formatCurrencyAmount(minimumDue)}</strong>
+                Minimum due <strong>{formatCurrencyAmount(minimumDue)}</strong>
               </button>
             )}
           </div>
@@ -827,7 +827,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
               <span className="text-[11px] font-semibold uppercase tracking-wide text-fg-secondary">
                 Remaining after payment
               </span>
-              <span className="flex items-baseline gap-1.5 font-mono text-sm">
+              <span className="flex items-baseline gap-1.5 text-sm">
                 <span
                   className={
                     plannedPayment > 0
@@ -859,7 +859,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
 
             <div className="flex items-center justify-between text-[11px] text-fg-secondary">
               <span>Payoff progress</span>
-              <span className="font-mono font-bold text-fg">
+              <span className="font-bold text-fg">
                 {displayPercent.toFixed(1)}%
               </span>
             </div>
@@ -877,7 +877,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
             >
               <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-px" />
               <span>
-                Maximum payable is <strong className="font-mono">{formatCurrencyAmount(remainingDebt)}</strong>.
+                Maximum payable is <strong>{formatCurrencyAmount(remainingDebt)}</strong>.
                 That is all that remains on {repayTargetDebt.name}. Use <strong>Pay in full</strong> to clear it exactly.
               </span>
             </p>
@@ -1076,7 +1076,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
             {isSubmitting ? 'Saving...' : `Record ${type === 'DEBT_REPAYMENT' ? 'Debt Payment' : 'Transaction'}`}
           </span>
           {amount !== null && isAmountValid && (
-            <span className="font-mono text-xs bg-brand-fill-hover px-2 py-0.5 rounded-sm text-white">
+            <span className="text-xs bg-brand-fill-hover px-2 py-0.5 rounded-sm text-white">
               {formatCurrencyAmount(amount)}
             </span>
           )}

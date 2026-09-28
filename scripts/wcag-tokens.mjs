@@ -2,7 +2,8 @@
 // Reads the :root and .dark custom properties straight from the stylesheet, so
 // the numbers always describe what ships, then checks every text token against
 // every surface it can sit on, input borders and the focus ring at 3:1
-// (WCAG 1.4.11), and semantic text on its own 12% tint. Exits 1 on any failure.
+// (WCAG 1.4.11), and semantic text on its own tint background. Exits 1 on any
+// failure.
 //
 // Usage: node scripts/wcag-tokens.mjs
 import { readFileSync } from 'node:fs';
@@ -48,7 +49,6 @@ function ratio(a, b) {
   return (x + 0.05) / (y + 0.05);
 }
 
-const TINTS = { brand: '139, 92, 246', income: '16, 185, 129', expense: '244, 63, 94', pending: '245, 158, 11', transfer: '6, 182, 212' };
 const light = block(':root');
 const themes = { light, dark: { ...light, ...block('.dark') } };
 
@@ -64,19 +64,27 @@ function check(theme, label, fg, bg, min) {
 for (const [theme, v] of Object.entries(themes)) {
   const c = name => parse(v[name]);
   const surfaces = ['canvas', 'surface-1', 'surface-2'];
-  for (const text of ['fg', 'fg-secondary', 'fg-muted', 'brand-text', 'income-text', 'expense-text', 'pending-text', 'transfer-text']) {
-    for (const s of surfaces) check(theme, `${text} on ${s}`, c(text), c(s), 4.5);
+  // `--fg-disabled` is left out on purpose: WCAG 1.4.3 exempts disabled controls.
+  for (const text of ['fg', 'fg-secondary', 'fg-muted', 'brand-text', 'income-text', 'expense-text', 'pending-text', 'transfer-text', 'adjust-text']) {
+    for (const s of [...surfaces, 'header']) check(theme, `${text} on ${s}`, c(text), c(s), 4.5);
   }
-  for (const text of ['fg', 'fg-secondary']) check(theme, `${text} on surface-3`, c(text), c('surface-3'), 4.5);
+  for (const text of ['fg', 'fg-secondary']) {
+    for (const s of ['surface-3', 'control-active']) check(theme, `${text} on ${s}`, c(text), c(s), 4.5);
+  }
   for (const s of surfaces) {
     check(theme, `line-input on ${s}`, c('line-input'), c(s), 3);
     check(theme, `focus on ${s}`, c('focus'), c(s), 3);
   }
-  for (const [hue, rgb] of Object.entries(TINTS)) {
-    for (const s of ['surface-1', 'surface-2']) {
-      const tint = over(parse(`rgba(${rgb}, 0.12)`), c(s));
-      check(theme, `${hue}-text on ${hue}-tint over ${s}`, c(`${hue}-text`), tint, 4.5);
-    }
+  // Each hue's text on its own solid `-bg` (the spec's tint colours).
+  for (const hue of ['income', 'expense', 'transfer', 'adjust', 'pending']) {
+    check(theme, `${hue}-text on ${hue}-bg`, c(`${hue}-text`), c(`${hue}-bg`), 4.5);
+  }
+  check(theme, 'pending-body on pending-bg', c('pending-body'), c('pending-bg'), 4.5);
+  check(theme, 'brand-soft-text on brand-soft-bg', c('brand-soft-text'), c('brand-soft-bg'), 4.5);
+  check(theme, 'selected-text on selected-bg', c('selected-text'), c('selected-bg'), 4.5);
+  for (const s of ['surface-1', 'surface-2']) {
+    const tint = over(parse('rgba(139, 92, 246, 0.12)'), c(s));
+    check(theme, `brand-text on brand-tint over ${s}`, c('brand-text'), tint, 4.5);
   }
   check(theme, 'white on brand fill #7C3AED', [255, 255, 255, 1], parse('#7C3AED'), 4.5);
   check(theme, 'white on brand fill hover #6D28D9', [255, 255, 255, 1], parse('#6D28D9'), 4.5);

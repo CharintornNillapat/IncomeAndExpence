@@ -18,6 +18,7 @@ import { todayIsoDate } from '../utils/date';
 import { OPTION_CLASS } from '../utils/formStyles';
 import { getWalletIcon } from '../utils/walletIcons';
 import { TxTypeIcon, TxAmount } from './transaction/TxCells';
+import { transferDirection } from './transaction/txTypeMeta';
 
 // T39: TRANSFER and ADD_WALLET are retired - WalletsView (via the shared,
 // shell-level TransferFundsModal/AddWalletModal, T41) is the sole owner of
@@ -163,7 +164,7 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
                 {activeWallets.length}
               </span>
             </div>
-            <p className="text-xs text-fg-secondary font-mono">
+            <p className="text-xs text-fg-secondary">
               Total: <strong className="text-fg">{formatCurrencyAmount(totalNetWorth)}</strong>
             </p>
           </div>
@@ -296,7 +297,7 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
                                 step="0.01"
                                 value={adjustedBalance}
                                 onChange={(e) => setAdjustedBalance(parseFloat(e.target.value) || 0)}
-                                className="w-full min-h-[44px] text-xs font-mono px-2.5 py-1.5 rounded-lg border border-line-input bg-surface-2 text-fg placeholder:text-fg-muted focus:outline-none focus:ring-2 focus:ring-focus"
+                                className="w-full min-h-[44px] text-xs px-2.5 py-1.5 rounded-lg border border-line-input bg-surface-2 text-fg placeholder:text-fg-muted focus:outline-none focus:ring-2 focus:ring-focus"
                               />
                               <div className="flex items-center gap-1 shrink-0">
                                 <button
@@ -325,18 +326,18 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
                             <div className="flex items-baseline gap-1.5 mt-0.5">
                               <span
                                 id={`modal-wallet-balance-${wallet.id}`}
-                                className="text-lg sm:text-xl font-black font-mono text-fg"
+                                className="text-lg sm:text-xl font-black text-fg"
                               >
                                 {formatCurrencyAmount(wallet.balance)}
                               </span>
-                              <span className="text-[11px] font-semibold text-fg-secondary font-mono">{APP_CURRENCY}</span>
+                              <span className="text-[11px] font-semibold text-fg-secondary">{APP_CURRENCY}</span>
                             </div>
                           </div>
                         )}
                       </div>
 
                       <div className="mt-3 pt-2.5 border-t border-line flex items-center justify-between text-[11px]">
-                        <span className="text-fg-muted font-mono">
+                        <span className="text-fg-muted">
                           {percentOfTotal > 0 ? `${percentOfTotal.toFixed(1)}% of total` : '0%'}
                         </span>
                         <button
@@ -436,10 +437,9 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
                 </div>
               ) : (
                 <div className="space-y-2">
-                  {/* Icon tint and amount colour both come from `txTypeMetaFor`, so an
-                      adjustment takes its direction's colour and a repayment amber
-                      (DESIGN.md §4). This list used to paint every non-income,
-                      non-expense row in the transfer cyan. */}
+                  {/* Icon tint and amount colour both come from `txTypeMetaFor`. This
+                      is one wallet's own view, so a transfer is signed by which
+                      way it moved for this wallet (ADR 0027). */}
                   {walletTransactions.map((tx) => {
                     return (
                     <div
@@ -450,12 +450,12 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
                         <TxTypeIcon type={tx.type} amount={tx.amount} variant="compact" size="sm" />
                         <div className="min-w-0">
                           <p className="font-semibold text-fg truncate">{tx.description}</p>
-                          <span className="text-[10px] text-fg-muted font-mono">{tx.transactionDate}</span>
+                          <span className="text-[10px] text-fg-muted">{tx.transactionDate}</span>
                         </div>
                       </div>
 
                       <div className="text-right shrink-0">
-                        <TxAmount amount={tx.amount} type={tx.type} />
+                        <TxAmount amount={tx.amount} type={tx.type} direction={transferDirection(tx, selectedWalletId)} />
                         <span className="text-[10px] text-fg-muted block uppercase font-medium">{tx.type}</span>
                       </div>
                     </div>

@@ -73,7 +73,7 @@ export const RecentTransactionsTable: React.FC<RecentTransactionsTableProps> = R
 
                 return (
                   <tr key={tx.id} className="hover:bg-surface-2 transition-colors">
-                    <td className="py-3 px-3 sm:px-4 font-mono text-fg-secondary whitespace-nowrap text-[11px] sm:text-xs">
+                    <td className="py-3 px-3 sm:px-4 text-fg-secondary whitespace-nowrap text-[11px] sm:text-xs">
                       {tx.transactionDate}
                     </td>
 
@@ -129,14 +129,14 @@ export const RecentTransactionsTable: React.FC<RecentTransactionsTableProps> = R
                         </span>
                       )}
                       {tx.type === 'DEBT_REPAYMENT' && (
-                        <span className="inline-flex items-center gap-1 text-pending font-semibold text-[11px]">
+                        <span className="inline-flex items-center gap-1 text-adjust font-semibold text-[11px]">
                           <TrendingDown className="w-3 h-3" /> Repayment
                         </span>
                       )}
                     </td>
 
                     {/* Amount */}
-                    <td className="py-3 px-3 sm:px-4 text-right font-mono font-bold whitespace-nowrap text-xs sm:text-sm">
+                    <td className="py-3 px-3 sm:px-4 text-right font-bold whitespace-nowrap text-xs sm:text-sm">
                       <TxAmount amount={tx.amount} type={tx.type} />
                       <span className="text-[10px] text-fg-muted ml-1 hidden sm:inline">{currency}</span>
                     </td>

@@ -35,7 +35,7 @@ export const TotalWealthHero: React.FC<TotalWealthHeroProps> = React.memo(({
             <h1 className="text-4xl sm:text-[40px] sm:leading-[48px] font-bold tracking-tight text-fg">
               <Money value={totalNetWorth} />
             </h1>
-            <span className="text-xs sm:text-sm font-semibold font-mono text-fg-secondary">
+            <span className="text-xs sm:text-sm font-semibold text-fg-secondary">
               {APP_CURRENCY}
             </span>
           </div>

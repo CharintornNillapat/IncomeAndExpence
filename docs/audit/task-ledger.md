@@ -1081,6 +1081,43 @@ Approved explicitly by the user, planned and approved before any code was writte
 - **One negative control was redone** because the first attempt produced malformed TypeScript that the dev server still served — the tests failed, but possibly for the wrong reason.
 - **No flakes.** Phase 44's `wallets.spec.ts` webkit flake has now not reproduced across three consecutive phases; still watched rather than closed.
 
+## Phase 55 - FinLife redesign, steps 1 and 2 (Foundation, Logic), plus CI speed: T199-T211 (2026-09-28)
+
+The owner wrote `docs/design/finlife-redesign-spec.md`. This phase covers its section 9 steps 1 and 2, plus a CI speed-up requested in the same plan. Phase 54 stays reserved for audit 001 finding 6. The plan was approved in plan mode.
+
+The owner's four decisions:
+- the light theme stays;
+- IBM Plex Sans Thai is self-hosted and `font-mono` goes, with the one class-based locator moved;
+- an adjustment is grey, as the spec says (reversing Phase 53b);
+- all L1 to L13 selectors are built, and only L1 to L5 are wired now.
+
+ADRs `0027` (foundation) and `0028` (selectors). Work ran on branch `phase-55-ci` with draft PR #1, so CI could be measured without touching `main`.
+
+| # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
+|---|---|---|---|---|---|---|---|---|---|---|
+| T199 | CI: a `checks` job gates one E2E job per browser (matrix, `fail-fast: false`), each installing only its browser | `.github/workflows/playwright.yml` | High | Low | 0.5h | done | - | 1cb9a18 | run `36373804867` green | job wall time 13 m 47 s -> 5 m 18 s |
+| T200 | CI: browser cache keyed by lockfile; a hit runs `install-deps` only | same | Med | Low | 0.25h | done | T199 | 1cb9a18 | cache hit on run `36374212154` | browser step 53 s -> 12-35 s |
+| T201 | CI: `concurrency` cancel-in-progress; `paths-ignore` for docs-only pushes and PRs | same | Med | Low | 0.25h | done | T199 | 1cb9a18 | docs-only push skipped: see notes | - |
+| T202 | CI: `workers: 2` per browser job, on trial | `playwright.config.ts` | Med | Med | 0.25h | done (kept) | T199 | b33e18c | 3 consecutive green attempts of run `36374212154`, 0 flaky, 0 retries | 4 m 31 s-4 m 48 s per run |
+| T203 | Tokens: spec dark values under the app's names, new roles, solid hue tints, derived light set; the spec's input border not used (1.26:1) | `src/index.css`, `scripts/wcag-tokens.mjs` | High | Med | 1.5h | done | - | 97d2b4e | all WCAG pairs pass, both themes | CSS 43,802 -> 46,984 B |
+| T204 | IBM Plex Sans Thai (400-700, thai + latin, self-hosted, precached); `tabular-nums` on body; every `font-mono` on an amount removed | `package.json`, `src/index.css`, 21 components/views | High | Med | 1h | done | T203 | 97d2b4e | ฿ served by the font's thai subset | fonts 40,404 -> 120,532 B; precache 45 -> 53 entries |
+| T205 | Amounts: `formatCurrencyAmount` puts U+2212 before ฿; transfer unsigned except in one wallet's view (`direction`); adjustment and repayment grey | `currency.ts`, `txTypeMeta.ts`, `TxCells.tsx`, `Money.tsx`, `WalletPopupModal.tsx`, `unit/tx-cells.test.tsx` | High | Med | 1h | done | - | 97d2b4e | tx-cells 251 -> 257 | - |
+| T206 | Header: one 64 px row, tabs left, no total balance; bottom nav under `md` | `Navbar.tsx`, `NavbarLedgerStatus.tsx`, `MobileBottomNav.tsx`, `App.tsx` | High | Med | 1h | done | - | 97d2b4e | MCP 1280/900/390, light and dark: one row, 0 controls under 44 px, no overflow | - |
+| T207 | `wallet-balance-<id>` testid; `soft-delete.spec.ts:108` locator moved, assertions unchanged | `WalletsView.tsx`, `tests/soft-delete.spec.ts` | Med | Low | 0.25h | done | T204 | 97d2b4e | the only spec edit in Phase 55 | - |
+| T208 | ADR `0027`, `DESIGN.md` rewrite, selector contract, `CLAUDE.md` | docs | Low | Low | 1h | done | all 55a | 8a0c0ad | - | - |
+| T209 | `src/selectors/` (8 modules) and `shiftIsoDate`; three unit files written first and red against the missing modules | `src/selectors/*`, `src/utils/date.ts`, `unit/selectors-*.test.ts` | High | Low | 2h | done | - | bcb1987 | 47 new tests; the spec's L4 figures reproduce to the cent | unit 257 -> 304 |
+| T210 | Wire L1 to L5: dashboard range and totals, category chart by id, insights spending, diary outflow, one active-wallet predicate | `DashboardView.tsx`, `CategoryExpenseDistribution.tsx`, `spendingSummary.ts`, `DiaryView.tsx`, `FinanceContext.tsx`, `useWallets.ts`, `unit/spending-summary.test.ts` | High | Med | 1h | done | T209 | bcb1987 | two spending-summary tests red against the old code first; MCP with a seeded ledger: Expense card = chart total = ฿150.25 in all four ranges, the ฿300 repayment, ฿500 transfer and −฿40 adjustment excluded; diary outflow ฿150.25 | - |
+| T211 | ADR `0028`, `CLAUDE.md`, refactor log, metrics, sha backfill | docs | Low | Low | 1h | done | all | 8a0c0ad (sha backfill: this row's own commit) | - | - |
+
+**Notes on execution:**
+- **Local run 1 of 55a had two timeouts in 357 runs**:
+  - Firefox, clicking the More button at 390 px;
+  - WebKit, waiting for `#tx-import-csv-btn` to be stable.
+  Neither reproduced in a second full run (357/357), in 3 repeats of both spec files on all browsers (180 runs, 1 more Firefox More-sheet timeout) or in 4 repeats on Firefox (48/48). They are recorded as intermittent and watched, not closed. CI ran all three engines green four times with no retry.
+- **`pending` was not renamed `warning`**: about 40 call sites for a word. The mapping is documented in `src/index.css` and ADR `0027`.
+- **The debt repayment's colour is a decision.** The spec names none. It is grey, because L1 says it is not spending and amber is reserved for real problems. ADR `0027`.
+- **`TransactionTableRow`'s repayment badge is still amber.** It belongs to the TransactionRow component, spec step 3.
+
 ## Phase 53b - Antislop audit 001 remediation: static money, state-only motion, a sync status that can fail: T188-T198 (2026-09-28)
 
 Second half of Phase 53. The owner's decisions on 53a's open questions:

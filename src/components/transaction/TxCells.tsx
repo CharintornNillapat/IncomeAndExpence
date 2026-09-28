@@ -1,7 +1,7 @@
 import React from 'react';
 import { TransactionType, Category } from '../../types';
 import { formatCurrencyAmount } from '../../utils/currency';
-import { TX_TYPE_META, txTypeMetaFor } from './txTypeMeta';
+import { TX_TYPE_META, txTypeMetaFor, TransferDirection } from './txTypeMeta';
 import { CategoryChip, CategoryChipSize, ChipRounding } from '../ui/Badge';
 
 export type TxTypeIconVariant = 'full' | 'compact';
@@ -49,6 +49,8 @@ export const TxTypeIcon: React.FC<TxTypeIconProps> = ({ type, amount, variant = 
 interface TxAmountProps {
   amount: number;
   type: TransactionType;
+  /** Set only inside one wallet's own view: a transfer then shows `+` arriving or `−` leaving (see `transferDirection`). */
+  direction?: TransferDirection;
   /** A site's own colour when it deliberately differs from the sign rule (e.g. `DiaryEntryCard`'s all-outflow list) - overrides `txTypeMetaFor(...).text`. */
   colorClassName?: string;
   className?: string;
@@ -56,22 +58,20 @@ interface TxAmountProps {
 
 /**
  * T49: formats an amount with `formatCurrencyAmount` and the canonical
- * `txTypeMetaFor(type, amount).sign` glyph ('+' for INCOME and an upward
- * ADJUSTMENT, the shared `MINUS` (U+2212) otherwise) - not a per-site
+ * `txTypeMetaFor(type, amount, direction).sign` glyph - not a per-site
  * re-derived ternary.
  *
- * Phase 53b (DESIGN.md §4): the colour comes from the same metadata, so every
- * ledger renders `+` emerald, `−` rose, a transfer cyan and a repayment amber.
- * Until then this took one of three per-site schemes (`standard`,
- * `incomeOnly`, and `RecentTransactionsTable`'s own 4-way map); that table's
- * map was already this rule, and the other two left expenses in plain text.
+ * The colour comes from the same metadata (spec section 3, ADR 0027): income
+ * green `+`, expense red `−`, a transfer blue and unsigned, an adjustment or a
+ * repayment grey. Digits align through the body's `tabular-nums`, not a
+ * monospace face.
  */
-export const TxAmount: React.FC<TxAmountProps> = ({ amount, type, colorClassName, className = '' }) => {
-  const meta = txTypeMetaFor(type, amount);
+export const TxAmount: React.FC<TxAmountProps> = ({ amount, type, direction, colorClassName, className = '' }) => {
+  const meta = txTypeMetaFor(type, amount, direction);
   const color = colorClassName ?? meta.text;
 
   return (
-    <span className={`font-mono tabular-nums font-bold ${color} ${className}`.trim()}>
+    <span className={`tabular-nums font-bold ${color} ${className}`.trim()}>
       {meta.sign}
       {formatCurrencyAmount(Math.abs(amount))}
     </span>

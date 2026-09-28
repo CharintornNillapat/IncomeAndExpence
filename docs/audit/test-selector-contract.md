@@ -178,3 +178,16 @@ Nothing was removed in this phase. `#repay-amount-math`, `#repay-wallet-select`,
 **Heading text moved:** the diary's `h2` is "Daily Diary" (was "Holistic Mini Diary"). `diary.spec.ts:15` and `theme.spec.ts:55` changed their regex in the same commit, the only spec edits in Phase 53. The export filename `holistic_diary_export_*` is unchanged. The fragile-selector list above still names the old regex, as a record of what it was.
 
 **Money text is byte-identical.** `Money` renders `formatCurrencyAmount` output, so every `฿1,000.00` assertion is unaffected. A negative now reads `−฿1,000.00` (it read `฿-1,000.00` through `AnimatedCounter`); no spec asserts on a negative balance.
+
+## Added and changed in Phase 55a (ADR `0027`)
+
+| Selector | Notes | File |
+|---|---|---|
+| `data-testid="wallet-balance-<id>"` | **New.** The balance on each Wallets-view card. `soft-delete.spec.ts:108` moved to it from `div.text-2xl.font-bold.font-mono`, the last class-based locator in the suite, which dropping `font-mono` would have broken. The assertions are unchanged. | `src/views/WalletsView.tsx` |
+| `#nav-tab-*` | **Unchanged ids**, still with `aria-current="page"`. They now sit in the header's single row, visible from `md` (768 px) instead of `sm`. From `lg` they are text; between `md` and `lg` they are icons, with the label kept as `sr-only` text and as the `title`, so a role query by name still finds them. | `src/components/Navbar.tsx` |
+| `nav[aria-label="Mobile Navigation"]`, `#mobile-nav-tab-*` | **Unchanged.** The bottom nav now shows under `md` instead of under `sm`. Every mobile spec runs at 390 px. | `src/components/MobileBottomNav.tsx` |
+| `#navbar-theme-toggle-btn`, `#navbar-quick-add-btn`, `#navbar-signin-btn`, `#navbar-account-btn`, `#navbar-sync-badge-btn`, `#navbar-sync-status` | **Unchanged ids.** The header's total balance is gone. "Add Entry" reads "Add entry". | `src/components/Navbar.tsx`, `src/components/navbar/NavbarLedgerStatus.tsx` |
+
+**The heading "FinLife Tracker" is still an `h1`**, now visible from `xl` (1280 px) rather than `sm`. `theme.spec.ts:11` runs at Playwright's Desktop viewport, 1280 px wide.
+
+**Money text:** positive amounts are byte-identical. A negative is now `−฿1,000.00` from `formatCurrencyAmount` itself, and no spec asserts on one. A transfer's amount lost its `−` outside a wallet's own view (`฿500.00`, was `−฿500.00`). No spec asserts on a transfer row's amount text.

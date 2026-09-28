@@ -27,6 +27,7 @@ import {
 import { APP_CURRENCY, formatCurrencyAmount } from '../utils/currency';
 import { roundToCents } from '../utils/money';
 import { todayIsoDate } from '../utils/date';
+import { walletTotal } from '../selectors/wallets';
 import { dedupeCategoriesByName, withDefaultDescriptions } from '../utils/categoryUtils';
 import { generateIdempotencyKey } from '../utils/ids';
 
@@ -699,12 +700,10 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     };
   }, [flushPendingWrites]);
 
-  // Net Worth aggregation
-  const totalNetWorth = useMemo(() => {
-    return wallets
-      .filter((w) => !w.isDeleted && !w.isArchived)
-      .reduce((sum, w) => sum + Number(w.balance || 0), 0);
-  }, [wallets]);
+  // The sum of every active wallet (spec L3's first term, ADR 0028). Named
+  // "net worth" before debts entered the picture; the debt-inclusive figure is
+  // `netWorth(wallets, debts)` in `src/selectors/wallets.ts`.
+  const totalNetWorth = useMemo(() => walletTotal(wallets), [wallets]);
 
   // `loadSupabaseData` and `seedInitialUserAccount` call each other. Routing the
   // back-edge through a ref breaks the dependency cycle so both can be memoised

@@ -30,8 +30,20 @@ export function todayIsoDate(): string {
  * daylight-saving transition still step by exactly one calendar day.
  */
 export function daysAgoIsoDate(days: number): string {
-  const d = new Date();
-  d.setDate(d.getDate() - days);
+  return shiftIsoDate(todayIsoDate(), -days);
+}
+
+/**
+ * A local calendar date (`YYYY-MM-DD`) moved by `days` calendar days, which
+ * may be negative. Built from the date's own components with `setDate`, never
+ * `new Date(iso)` (UTC midnight) or millisecond arithmetic (DST), so it is the
+ * same stepping `daysAgoIsoDate` has always done, from any starting day - the
+ * selectors in `src/selectors/` take "today" as an argument (ADR 0028).
+ */
+export function shiftIsoDate(iso: string, days: number): string {
+  const [year, month, day] = iso.split('-').map(Number);
+  const d = new Date(year, month - 1, day);
+  d.setDate(d.getDate() + days);
   return toIsoDate(d);
 }
 

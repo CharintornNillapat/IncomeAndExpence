@@ -1,37 +1,36 @@
-import { ArrowDownLeft, ArrowUpRight, RefreshCw, Landmark, TrendingUp, TrendingDown } from 'lucide-react';
-import { TransactionType } from '../../types';
+import { ArrowDownLeft, ArrowUpRight, ArrowLeftRight, Landmark, Minus, Plus, TrendingUp, TrendingDown } from 'lucide-react';
+import { Transaction, TransactionType } from '../../types';
 import { MINUS } from '../../utils/currency';
 
 export interface TxTypeMeta {
   /** Canonical display name for the type (e.g. used where the full word is shown verbatim). */
   label: string;
-  /** Full-size badge icon, per `TransactionTableRow`'s existing 4-way vocabulary - the most granular of the app's several icon sets, so it is the one centralized here. */
+  /** Full-size badge icon: the spec's one set, ↙ income, ↗ expense, ⇄ transfer, +/− adjustment (section 4.9). */
   icon: React.FC<{ className?: string }>;
   /** Compact icon for space-constrained surfaces (e.g. `WalletPopupModal`'s activity list) - binary Trending{Up,Down}, matching that surface's existing ternary exactly. */
   compactIcon: React.FC<{ className?: string }>;
-  /** Badge background + text classes (light + dark), matching `TransactionTableRow`'s existing 4-way scheme exactly. */
+  /** Badge background + text classes, one token pair per meaning. */
   tint: string;
-  /** Canonical amount-prefix glyph: '+' for INCOME, the shared `MINUS` (U+2212) for everything else. */
+  /** Amount prefix: '+' for money in, the shared `MINUS` (U+2212) for money out, '' for a transfer seen from outside either wallet. */
   sign: string;
-  /** Amount text colour (DESIGN.md §4): `+` emerald, `−` rose, transfer cyan, repayment amber. */
+  /** Amount text colour (spec section 3): income green, expense red, transfer blue, adjustment and repayment grey. */
   text: string;
 }
 
 /**
  * T35: centralizes the type -> icon/label/tint/sign mapping that was the
  * single most duplicated fragment across the app's transaction renderers
- * (see docs/audit/ui-ux-audit-report.md finding D). `ADJUSTMENT` mirrors
- * `EXPENSE` because that is its existing fallback appearance everywhere it
- * is not explicitly branched on today - it has no dedicated visual
- * treatment of its own to preserve.
+ * (see docs/audit/ui-ux-audit-report.md finding D).
  *
- * Not every renderer can consume every field losslessly: `RecentTransactionsTable`'s
- * Type column and `WalletPopupModal`'s activity-tab badge background each use
- * their own distinct icon/color scheme that has already diverged from this
- * one (see the audit finding). Forcing full adoption there would change what
- * is on screen, which this task explicitly avoids - only `label`/`sign` (and,
- * for `WalletPopupModal`, `compactIcon`) are adopted in those two files,
- * matching fields that already agree exactly with the shared token.
+ * Phase 55a (spec sections 3 and 4.8, ADR 0027): a transfer carries no sign,
+ * because it moves money between the user's own wallets. A balance adjustment
+ * and a debt repayment are grey: neither is income or spending (spec L1), so
+ * neither takes the income or expense colour. That reverses Phase 53b's
+ * "upward adjustment is green" rule, by the owner's decision.
+ *
+ * `RecentTransactionsTable`'s Type column still draws its own icons, and
+ * `WalletPopupModal` uses `compactIcon`; the page phase moves both onto one
+ * TransactionRow.
  */
 export const TX_TYPE_META: Record<TransactionType, TxTypeMeta> = {
   INCOME: {
@@ -52,47 +51,69 @@ export const TX_TYPE_META: Record<TransactionType, TxTypeMeta> = {
   },
   TRANSFER: {
     label: 'Transfer',
-    icon: RefreshCw,
-    compactIcon: TrendingDown,
+    icon: ArrowLeftRight,
+    compactIcon: ArrowLeftRight,
     tint: 'bg-transfer-tint text-transfer',
-    sign: MINUS,
+    sign: '',
     text: 'text-transfer',
   },
   DEBT_REPAYMENT: {
     label: 'Debt Repayment',
     icon: Landmark,
     compactIcon: TrendingDown,
-    tint: 'bg-pending-tint text-pending',
+    tint: 'bg-adjust-tint text-adjust',
     sign: MINUS,
-    text: 'text-pending',
+    text: 'text-adjust',
   },
   ADJUSTMENT: {
     label: 'Adjustment',
-    icon: ArrowUpRight,
+    icon: Minus,
     compactIcon: TrendingDown,
-    tint: 'bg-expense-tint text-expense',
+    tint: 'bg-adjust-tint text-adjust',
     sign: MINUS,
-    text: 'text-expense',
+    text: 'text-adjust',
   },
 };
 
-/** An upward ADJUSTMENT: the adjustment label with the credit treatment. */
+/** An upward ADJUSTMENT: the same grey, with the plus sign and icon. */
 const ADJUSTMENT_UP: TxTypeMeta = {
-  ...TX_TYPE_META.INCOME,
-  label: TX_TYPE_META.ADJUSTMENT.label,
+  ...TX_TYPE_META.ADJUSTMENT,
+  icon: Plus,
+  compactIcon: TrendingUp,
+  sign: '+',
 };
+
+/** A transfer seen from the wallet it arrives in, or the one it leaves (spec section 4.8). */
+const TRANSFER_IN: TxTypeMeta = { ...TX_TYPE_META.TRANSFER, sign: '+' };
+const TRANSFER_OUT: TxTypeMeta = { ...TX_TYPE_META.TRANSFER, sign: MINUS };
+
+/** Which way a transfer moved for one wallet: `IN`, `OUT`, or `undefined` when that wallet is neither end. */
+export type TransferDirection = 'IN' | 'OUT';
+
+export function transferDirection(
+  tx: Pick<Transaction, 'type' | 'walletId' | 'destinationWalletId'>,
+  walletId: string
+): TransferDirection | undefined {
+  if (tx.type !== 'TRANSFER') return undefined;
+  if (tx.walletId === walletId) return 'OUT';
+  if (tx.destinationWalletId === walletId) return 'IN';
+  return undefined;
+}
 
 /**
  * ADR 0024: the metadata for one transaction. An ADJUSTMENT's amount is
- * signed, so its direction - and with it the glyph, icon and tint - comes from
- * the amount, not the type: `TX_TYPE_META.ADJUSTMENT` alone rendered every
- * upward correction as a debit. Every other type's amount is always positive,
- * so for them this is exactly `TX_TYPE_META[type]`.
+ * signed, so its direction - and with it the glyph and icon - comes from the
+ * amount, not the type: `TX_TYPE_META.ADJUSTMENT` alone rendered every upward
+ * correction as a debit. Every other type's amount is always positive.
  *
- * Callers pair it with `Math.abs(amount)`: the sign is carried by `.sign`, and
- * `formatCurrencyAmount` renders a negative as `฿-1,000.00`.
+ * `direction` is for a transfer shown inside one wallet's own view (ADR 0027):
+ * there it is money in or out of that wallet, so it takes a sign. Everywhere
+ * else a transfer is unsigned.
+ *
+ * Callers pair it with `Math.abs(amount)`: the sign is carried by `.sign`.
  */
-export function txTypeMetaFor(type: TransactionType, amount: number): TxTypeMeta {
+export function txTypeMetaFor(type: TransactionType, amount: number, direction?: TransferDirection): TxTypeMeta {
   if (type === 'ADJUSTMENT' && amount > 0) return ADJUSTMENT_UP;
+  if (type === 'TRANSFER' && direction) return direction === 'IN' ? TRANSFER_IN : TRANSFER_OUT;
   return TX_TYPE_META[type];
 }

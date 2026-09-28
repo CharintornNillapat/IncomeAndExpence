@@ -4,6 +4,8 @@ import { formatCurrencyAmount } from '../../utils/currency';
 import { ProgressMeter } from '../ui/ProgressMeter';
 
 interface CategoryBreakdownItem {
+  /** `null` for the one "Uncategorized" row (`spendingByCategory`, ADR 0028). */
+  categoryId: string | null;
   name: string;
   amount: number;
   color: string;
@@ -25,7 +27,7 @@ export const CategoryExpenseDistribution: React.FC<CategoryExpenseDistributionPr
           <PieChart className="w-4 h-4 text-fg-secondary" />
           <h3 className="text-sm font-bold text-fg">Expense Category Distribution</h3>
         </div>
-        <span className="text-xs text-fg-muted font-mono">
+        <span className="text-xs text-fg-muted">
           Total: {formatCurrencyAmount(totalExpenseAmount)}
         </span>
       </div>
@@ -37,12 +39,12 @@ export const CategoryExpenseDistribution: React.FC<CategoryExpenseDistributionPr
           categoryBreakdown.map((item) => {
             const percent = totalExpenseAmount > 0 ? (item.amount / totalExpenseAmount) * 100 : 0;
             return (
-              <div key={item.name} className="space-y-1.5">
+              <div key={item.categoryId ?? 'uncategorized'} className="space-y-1.5">
                 <div className="flex items-center justify-between text-xs">
                   <span className="font-semibold text-fg">{item.name}</span>
                   <div className="flex items-center gap-2">
-                    <span className="font-mono text-fg-secondary">{percent.toFixed(1)}%</span>
-                    <span className="font-mono font-bold text-fg">
+                    <span className="text-fg-secondary">{percent.toFixed(1)}%</span>
+                    <span className="font-bold text-fg">
                       {formatCurrencyAmount(item.amount)}
                     </span>
                   </div>

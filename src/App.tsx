@@ -273,7 +273,7 @@ const MainApp: React.FC = () => {
       {/* Main Content Area with Touch Swipe Gestures, Framer Slide Animations & Suspense */}
       <main
         {...swipeHandlers}
-        className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 py-4 sm:py-8 pb-24 sm:pb-8 overflow-x-hidden touch-pan-y"
+        className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 py-4 sm:py-8 pb-24 md:pb-8 overflow-x-hidden touch-pan-y"
       >
         <Suspense fallback={<ViewLoadingFallback view={activeTab} />}>
           <AnimatePresence mode="wait" custom={direction}>
@@ -293,7 +293,7 @@ const MainApp: React.FC = () => {
         </Suspense>
       </main>
 
-      {/* Mobile Fixed Bottom Navigation Bar (block sm:hidden) */}
+      {/* Bottom navigation under 768px (md:hidden), where the header's tabs hide (spec section 8) */}
       <MobileBottomNav
         activeTab={activeTab}
         setActiveTab={handleTabChange}

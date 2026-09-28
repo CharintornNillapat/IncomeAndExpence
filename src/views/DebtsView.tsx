@@ -202,7 +202,7 @@ export const DebtsView: React.FC = () => {
                   setTotalAmount(val);
                   setRemainingAmount(val);
                 }}
-                className={`${inputClass('subtle')} font-mono`}
+                className={inputClass('subtle')}
               />
             </div>
 
@@ -217,7 +217,7 @@ export const DebtsView: React.FC = () => {
                 min="0"
                 value={remainingAmount}
                 onChange={(e) => setRemainingAmount(parseFloat(e.target.value) || 0)}
-                className={`${inputClass('subtle')} font-mono`}
+                className={inputClass('subtle')}
               />
             </div>
           </div>
@@ -234,7 +234,7 @@ export const DebtsView: React.FC = () => {
                 min="0"
                 value={interestRate}
                 onChange={(e) => setInterestRate(parseFloat(e.target.value) || 0)}
-                className={`${inputClass('subtle')} font-mono`}
+                className={inputClass('subtle')}
               />
             </div>
 
@@ -249,7 +249,7 @@ export const DebtsView: React.FC = () => {
                 min="0"
                 value={minimumPayment}
                 onChange={(e) => setMinimumPayment(parseFloat(e.target.value) || 0)}
-                className={`${inputClass('subtle')} font-mono`}
+                className={inputClass('subtle')}
               />
             </div>
           </div>

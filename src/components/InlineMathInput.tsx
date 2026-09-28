@@ -246,7 +246,7 @@ export const InlineMathInput: React.FC<InlineMathInputProps> = ({
               className="inline-flex items-center gap-1 px-2 py-1 text-xs font-semibold text-fg-secondary bg-surface-1 hover:bg-surface-3 rounded-lg transition-colors border border-line cursor-pointer"
             >
               <Check className="w-3 h-3 text-income" />
-              <span className="font-mono">{currencyPrefix}{formattedResult}</span>
+              <span>{currencyPrefix}{formattedResult}</span>
             </button>
           ) : evaluatedAmount !== null ? (
             <div className="p-1 text-income">

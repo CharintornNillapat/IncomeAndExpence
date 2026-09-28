@@ -13,10 +13,13 @@ import { RecentTransactionsTable } from '../components/dashboard/RecentTransacti
 import { SectionHeader } from '../components/ui/SectionHeader';
 import { SpendingInsightsCard } from '../components/dashboard/SpendingInsightsCard';
 import { SegmentedControl } from '../components/ui/SegmentedControl';
-import { todayIsoDate, daysAgoIsoDate } from '../utils/date';
+import { todayIsoDate } from '../utils/date';
 import { buildLookupMap } from '../utils/mapUtils';
+import { roundToCents } from '../utils/money';
+import { filterByRange, TimeRange } from '../selectors/timeRange';
+import { spendingByCategory, sumIncome, sumSpending } from '../selectors/ledger';
 
-export type TimeFilter = 'DAY' | 'WEEK' | 'MONTH' | 'ALL';
+export type TimeFilter = TimeRange;
 
 interface DashboardViewProps {
   onNavigate?: (tab: string) => void;
@@ -94,76 +97,30 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     [onOpenWalletTransactions]
   );
 
-  // Filter transactions based on time breakdown (Memoized). `transactionDate`
-  // is a local-calendar `YYYY-MM-DD` string, so every cutoff is computed once,
-  // outside the per-transaction predicate, as the same kind of string
-  // (`todayIsoDate()`/`daysAgoIsoDate()`) and compared with plain string
-  // operators - never `new Date(tx.transactionDate)`. Parsing a bare date
-  // string constructs UTC midnight, which at UTC+7 sits 7 hours after local
-  // midnight and would misclassify transactions filed near the local-day
-  // boundary. Lexicographic comparison on same-format ISO strings matches
-  // chronological order exactly, with no timezone parsing involved.
-  const filteredTransactions = useMemo(() => {
-    const activeTxs = transactions.filter((t) => !t.isDeleted);
-
-    if (timeFilter === 'ALL') return activeTxs;
-
-    if (timeFilter === 'DAY') {
-      const todayIso = todayIsoDate();
-      return activeTxs.filter((tx) => tx.transactionDate === todayIso);
-    }
-
-    const cutoffIso = daysAgoIsoDate(timeFilter === 'WEEK' ? 7 : 30);
-    return activeTxs.filter((tx) => tx.transactionDate >= cutoffIso);
-  }, [transactions, timeFilter]);
-
-  // Aggregate Metrics for Selected Timeframe (Memoized)
-  const incomeTotal = useMemo(() => {
-    return filteredTransactions
-      .filter((t) => t.type === 'INCOME')
-      .reduce((sum, t) => sum + t.amount, 0);
-  }, [filteredTransactions]);
-
-  const expenseTotal = useMemo(() => {
-    return filteredTransactions
-      .filter((t) => t.type === 'EXPENSE')
-      .reduce((sum, t) => sum + t.amount, 0);
-  }, [filteredTransactions]);
-
-  const debtRepaymentTotal = useMemo(() => {
-    return filteredTransactions
-      .filter((t) => t.type === 'DEBT_REPAYMENT')
-      .reduce((sum, t) => sum + t.amount, 0);
-  }, [filteredTransactions]);
-
-  const netBalance = useMemo(() => {
-    return incomeTotal - expenseTotal;
-  }, [incomeTotal, expenseTotal]);
-
   const walletMap = useMemo(() => buildLookupMap(allWallets), [allWallets]);
 
   const categoryMap = useMemo(() => buildLookupMap(categories), [categories]);
 
-  // Category Expense Distribution (Memoized). Reuses `categoryMap` above
-  // instead of building a second, identical id->Category lookup over the
-  // same `categories` array.
-  const categoryBreakdown = useMemo(() => {
-    const expenseMap: Record<string, { name: string; amount: number; color: string }> = {};
+  // Spec L1 and L2 through the shared selectors (ADR 0028). The range is
+  // today's `TimeRange` with the same boundaries as before (WEEK from today - 7,
+  // MONTH from today - 30); `isSpending` is EXPENSE only. The category chart
+  // used to add debt repayments on top and group by name, so its total and the
+  // Expense card disagreed; both are `sumSpending`'s figure now.
+  const filteredTransactions = useMemo(
+    () => filterByRange(transactions, timeFilter, todayIsoDate()),
+    [transactions, timeFilter]
+  );
 
-    filteredTransactions
-      .filter((t) => t.type === 'EXPENSE' || t.type === 'DEBT_REPAYMENT')
-      .forEach((tx) => {
-        const cat = tx.categoryId ? categoryMap.get(tx.categoryId) : undefined;
-        const name = cat ? cat.name : 'Uncategorized';
-        const color = cat?.color || '#94a3b8';
-        if (!expenseMap[name]) {
-          expenseMap[name] = { name, amount: 0, color };
-        }
-        expenseMap[name].amount += tx.amount;
-      });
+  const incomeTotal = useMemo(() => sumIncome(filteredTransactions, categoryMap), [filteredTransactions, categoryMap]);
 
-    return Object.values(expenseMap).sort((a, b) => b.amount - a.amount);
-  }, [filteredTransactions, categoryMap]);
+  const expenseTotal = useMemo(() => sumSpending(filteredTransactions, categoryMap), [filteredTransactions, categoryMap]);
+
+  const netBalance = useMemo(() => roundToCents(incomeTotal - expenseTotal), [incomeTotal, expenseTotal]);
+
+  const categoryBreakdown = useMemo(
+    () => spendingByCategory(filteredTransactions, categoryMap),
+    [filteredTransactions, categoryMap]
+  );
 
   // Compact Recent 5 Transactions for Dashboard Preview (Memoized). A single
   // linear pass keeping a running top-5 (by `transactionDate`, newest first)
@@ -249,7 +206,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-stretch">
         <CategoryExpenseDistribution
           categoryBreakdown={categoryBreakdown}
-          totalExpenseAmount={expenseTotal + debtRepaymentTotal}
+          totalExpenseAmount={expenseTotal}
         />
 
         <DebtPayoffOverview

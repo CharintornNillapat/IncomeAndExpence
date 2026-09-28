@@ -67,11 +67,16 @@ function summaryOf(
 }
 
 describe('buildSpendingSummary — what counts as spending', () => {
-  it('counts EXPENSE and DEBT_REPAYMENT, and excludes TRANSFER', () => {
+  // Phase 55b (ADR 0028, spec L1): this test asserted that a repayment counted
+  // as spending (300 = 100 + 200). The dashboard's Expense card never counted
+  // it, so the insight and the card disagreed. Spending is EXPENSE only now,
+  // on every screen, through `isSpending`.
+  it('counts EXPENSE only, and excludes DEBT_REPAYMENT, ADJUSTMENT and TRANSFER', () => {
     const summary = buildSpendingSummary(
       [
         tx({ amount: 100, transactionDate: '2026-09-02', categoryId: 'cat-food' }),
         tx({ amount: 200, transactionDate: '2026-09-03', categoryId: 'cat-debt', type: 'DEBT_REPAYMENT' }),
+        tx({ amount: -40, transactionDate: '2026-09-03', type: 'ADJUSTMENT' }),
         // Moves money between the user's own wallets and spends nothing.
         tx({ amount: 500, transactionDate: '2026-09-04', categoryId: 'cat-food', type: 'TRANSFER' }),
       ],
@@ -79,11 +84,21 @@ describe('buildSpendingSummary — what counts as spending', () => {
       NOW
     );
 
-    expect(summary.totals.expense).toBe(300);
-    expect(summary.categories.map((c) => [c.name, c.current])).toEqual([
-      ['Debt', 200],
-      ['Food & Dining', 100],
-    ]);
+    expect(summary.totals.expense).toBe(100);
+    expect(summary.categories.map((c) => [c.name, c.current])).toEqual([['Food & Dining', 100]]);
+  });
+
+  it('excludes an EXPENSE filed under the Debt Repayment category', () => {
+    const summary = buildSpendingSummary(
+      [
+        tx({ amount: 100, transactionDate: '2026-09-02', categoryId: 'cat-food' }),
+        tx({ amount: 60, transactionDate: '2026-09-02', categoryId: 'cat-debt' }),
+      ],
+      CATEGORIES,
+      NOW
+    );
+
+    expect(summary.totals.expense).toBe(100);
   });
 
   it('excludes soft-deleted rows from both the totals and the categories', () => {
@@ -139,13 +154,15 @@ describe('buildSpendingSummary — what counts as spending', () => {
       [
         tx({ amount: 10, transactionDate: '2026-09-02', categoryId: 'cat-food' }),
         tx({ amount: 900, transactionDate: '2026-09-02', categoryId: 'cat-transport' }),
-        tx({ amount: 400, transactionDate: '2026-09-02', categoryId: 'cat-debt', type: 'DEBT_REPAYMENT' }),
+        tx({ amount: 400, transactionDate: '2026-09-02', categoryId: 'cat-food' }),
       ],
       CATEGORIES,
       NOW
     );
 
-    expect(summary.categories.map((c) => c.name)).toEqual(['Transport', 'Debt', 'Food & Dining']);
+    // The middle row was a DEBT_REPAYMENT until Phase 55b; a repayment is no
+    // longer spending (spec L1), so an expense takes its place.
+    expect(summary.categories.map((c) => c.name)).toEqual(['Transport', 'Food & Dining']);
   });
 });
 

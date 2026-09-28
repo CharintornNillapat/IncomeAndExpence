@@ -144,10 +144,10 @@ export const WalletsView: React.FC<WalletsViewProps> = ({ onOpenTransfer, onOpen
                     Current Balance
                   </span>
                   <div className="flex items-baseline gap-2 mt-1">
-                    <div className="text-2xl font-bold font-mono text-fg">
+                    <div data-testid={`wallet-balance-${wallet.id}`} className="text-2xl font-bold text-fg">
                       <Money value={wallet.balance} />
                     </div>
-                    <span className="text-xs font-semibold text-fg-secondary font-mono">{APP_CURRENCY}</span>
+                    <span className="text-xs font-semibold text-fg-secondary">{APP_CURRENCY}</span>
                   </div>
                 </div>
               </div>
