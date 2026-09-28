@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 56 - FinLife redesign step 3 (shared components): T212-T221 (2026-09-28, commits `1cc6e12`...)
+## Phase 56 - FinLife redesign step 3 (shared components): T212-T221 (2026-09-28, commits `1cc6e12`...`5ca1e8b`)
 
 **Changed**
 - **Focus and tokens.**
