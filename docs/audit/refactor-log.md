@@ -4,6 +4,47 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
+## Phase 56 - FinLife redesign step 3 (shared components): T212-T221 (2026-09-28, commits `1cc6e12`...`5ca1e8b`)
+
+**Changed**
+- **Focus and tokens.**
+  - `src/index.css`: a global `:focus-visible` outline, and the tokens `chip-text` and `danger-line`.
+  - `scripts/wcag-tokens.mjs`: pairs for focus on the header and `surface-3`, chip text, and expense text on the menu surfaces.
+- **New in `src/components/ui/`:** `Button`, `IconButton`, `Chip`, `ProgressBar`, `PageHeader`, `AllocationBar`, `WarningBanner`, `OverflowMenu`; `Inset` in `Card.tsx`.
+- **New in `src/components/transaction/`:** `TransactionRow`, `DayGroupHeader`. `src/utils/date.ts` gains `formatDayLabel`.
+- **Adopted at about 40 sites:**
+  - `Button` / `IconButton` in the header, account, auth, dashboard, debts, diary, wallets, transactions, categories and wallet forms, plus `ConfirmDialog`, `Modal` and `ReloadPrompt`;
+  - `SegmentedControl` at its 4 callers;
+  - `Chip` in the transaction tables and the rules table;
+  - `ProgressBar` at 5 sites.
+- **Removed:**
+  - `ProgressMeter`;
+  - `CategoryChip` and `categoryTint`;
+  - `Badge`'s amber tone;
+  - `formStyles`' `PRIMARY_BUTTON_CLASS`, `PRIMARY_BUTTON_COMPACT_CLASS` and `SECONDARY_BUTTON_CLASS`.
+- **Tests.** `unit/ui-controls.test.tsx`, `unit/ui-display.test.tsx`, `unit/tx-row.test.tsx` (new). Unit 304 -> 353. No Playwright spec edited.
+- **Docs.** ADR `0029`, `DESIGN.md` (focus, the component table, exceptions, deviations), `CLAUDE.md`, `test-selector-contract.md` (Phase 56 section, page-phase hazards, three stale line refs fixed), antislop audit 004.
+
+**Surprises**
+- **Not one `<button>` in the app had a focus style.** Audit 003 finding 4 named the header, but the gap was app-wide; the global rule closes both.
+- **The new outline was clipped by the header's own nav.** `overflow-x-auto` clips on both axes, so the outline showed on one side of a tab only. The MCP pass caught it; `p-1` gives the outline room. An audit script then checked every control on every view for a clipping ancestor.
+- **`transition-colors` animates `outline-color` too**, so the ring starts in the text colour and settles on violet within 150ms. A script that reads the outline right after focusing an element sees the wrong colour; it is correct 400ms later.
+- **Deleting three button strings shrank the JS by 10.4 kB.** The same class strings were compiled into every chunk that used them. Rollup also regrouped the shared chunks (`TxCells` joined `ledger`; `Badge`'s own chunk is gone).
+- **`AuthModal`'s close button had no accessible name at all.**
+
+**Gate:**
+- **Lint:** clean. **Unit:** 353/353. **WCAG:** all pairs pass, both themes.
+- **Playwright (local, 4 workers):** four full runs.
+  - Run 1: 356/357 (WebKit, a nav tab not stable).
+  - Run 2: 355/357 (Firefox, a click and a `goto` load).
+  - Run 3: 357/357.
+  - Run 4, after the nav padding fix: 357/357.
+  - A control run of the flaky spec on `main` and on the branch, 120 each, passed on both. These are the intermittents of audit 003 finding 5.
+- **MCP.**
+  - 1280px, all six views: 0 controls under 44px, 0 clipped focus rings, no horizontal overflow.
+  - 390px, four views: 0 under 44px, no page overflow.
+  - Light Transactions and dark Debts screenshots: neutral chips with dots, one button shape per variant, the `line` progress track.
+
 ## Phase 55 - FinLife redesign steps 1-2 (Foundation, Logic) and CI speed: T199-T211 (2026-09-28, commits `1cb9a18`...`8a0c0ad`)
 
 **Changed**
@@ -51,7 +92,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 - **All 55 files of the local build were hashed against production.** 51 are byte-for-byte identical: every JS chunk, the CSS, the eight font files, `index.html` and the manifest.
   - The other 4 differ only in line endings. `pwa-192x192.svg`, `pwa-512x512.svg` and `robots.txt` are CRLF in the Windows checkout and LF on Vercel; with `\r` stripped they hash equal.
   - `sw.js` differs only in the precache revisions of those two SVGs, which hash the CRLF bytes.
-- **Not yet verified:** the `paths-ignore` skip. A pull request's filter sees the whole PR diff, and this merge's push touched `src/`, so the first docs-only push to `main` is the test.
+- **The `paths-ignore` skip works.** A pull request's filter sees the whole PR diff and the merge push touched `src/`, so neither could test it. The docs-only push `79ed8de` to `main` created no Actions run (`total_count: 0` after two minutes).
 
 ## Phase 53b - Antislop audit 001 remediation: static money, state-only motion, a sync status that can fail: T188-T198 (2026-09-28, commits `f422692`...`afd5de4`)
 

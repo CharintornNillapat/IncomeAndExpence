@@ -1,7 +1,7 @@
 import React from 'react';
 import { PieChart } from 'lucide-react';
 import { formatCurrencyAmount } from '../../utils/currency';
-import { ProgressMeter } from '../ui/ProgressMeter';
+import { ProgressBar } from '../ui/ProgressBar';
 
 interface CategoryBreakdownItem {
   /** `null` for the one "Uncategorized" row (`spendingByCategory`, ADR 0028). */
@@ -50,7 +50,7 @@ export const CategoryExpenseDistribution: React.FC<CategoryExpenseDistributionPr
                   </div>
                 </div>
                 {/* Progress bar */}
-                <ProgressMeter percent={percent} color={item.color} />
+                <ProgressBar percent={percent} color={item.color} size="sm" label={`${item.name} share of spending`} />
               </div>
             );
           })

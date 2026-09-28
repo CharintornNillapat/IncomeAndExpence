@@ -48,14 +48,5 @@ export const OPTION_CLASS = 'bg-surface-2 text-fg';
 export const ERROR_BANNER_CLASS =
   'bg-expense-tint border border-expense-line text-expense p-3 rounded-lg text-xs font-medium';
 
-// Every button shape below keeps a 44px minimum height (DESIGN.md §4); `py-2.5` alone is 36px at text-xs.
-export const PRIMARY_BUTTON_CLASS =
-  'w-full min-h-[44px] py-2.5 sm:py-3 bg-brand-fill hover:bg-brand-fill-hover text-white rounded-lg font-semibold text-xs transition-colors duration-150 cursor-pointer';
-
-/** Same treatment as PRIMARY_BUTTON_CLASS without the sm: padding growth - for compact single-field forms and in-card actions. */
-export const PRIMARY_BUTTON_COMPACT_CLASS =
-  'w-full min-h-[44px] py-2.5 bg-brand-fill hover:bg-brand-fill-hover text-white rounded-lg font-semibold text-xs transition-colors duration-150 cursor-pointer';
-
-/** Muted counterpart to the primary buttons, for a cancel/secondary form action. Not yet adopted by any form - see refactor-log.md Phase 17. */
-export const SECONDARY_BUTTON_CLASS =
-  'w-full min-h-[44px] py-2.5 sm:py-3 bg-surface-1 border border-line hover:border-brand text-fg-secondary rounded-lg font-semibold text-xs transition-colors duration-150 cursor-pointer';
+// Buttons are not here: they are `components/ui/Button` (Phase 56, ADR 0029), which replaced the
+// PRIMARY_BUTTON_CLASS / PRIMARY_BUTTON_COMPACT_CLASS / SECONDARY_BUTTON_CLASS strings.

@@ -1,6 +1,8 @@
 import React, { useSyncExternalStore } from 'react';
 import { AlertTriangle, Circle, RefreshCw, UserCheck, LogIn, UserCog } from 'lucide-react';
 import { useFinanceActions, useFinanceState } from '../../context/FinanceContext';
+import { Button } from '../ui/Button';
+import { IconButton } from '../ui/IconButton';
 
 /**
  * T34: the only finance-context subscribers in the Navbar area. `Navbar.tsx`
@@ -32,6 +34,14 @@ const subscribeOnline = (onChange: () => void) => {
 const useIsOnline = () => useSyncExternalStore(subscribeOnline, () => navigator.onLine, () => true);
 
 const PILL = 'inline-flex items-center gap-1 px-2 py-0.5 rounded-sm text-[10px] font-semibold border whitespace-nowrap';
+
+/*
+ * A badge button's 44px box is invisible, so the global focus outline would
+ * float around empty space. It moves onto the visible pill instead (ADR 0029).
+ */
+const BADGE_BUTTON =
+  'group inline-flex items-center min-h-[44px] min-w-[44px] -my-3 cursor-pointer focus-visible:outline-none';
+const PILL_FOCUS = 'group-focus-visible:outline-2 group-focus-visible:outline-focus group-focus-visible:outline-offset-2';
 const MUTED_PILL = `${PILL} bg-surface-2 text-fg-secondary border-line`;
 
 /**
@@ -57,9 +67,9 @@ export const NavbarSyncBadge: React.FC<NavbarSyncBadgeProps> = ({ onOpenAuth }) 
         type="button"
         onClick={onOpenAuth}
         title="Sign in to sync across devices"
-        className="group inline-flex items-center min-h-[44px] min-w-[44px] -my-3 cursor-pointer"
+        className={BADGE_BUTTON}
       >
-        <span className={`${MUTED_PILL} group-hover:border-brand transition-colors duration-150`}>
+        <span className={`${MUTED_PILL} ${PILL_FOCUS} group-hover:border-brand transition-colors duration-150`}>
           <Circle className="w-2.5 h-2.5 shrink-0" />
           <span>Local</span>
         </span>
@@ -89,9 +99,9 @@ export const NavbarSyncBadge: React.FC<NavbarSyncBadgeProps> = ({ onOpenAuth }) 
         onClick={() => void refreshFromCloud()}
         title={`${syncError}. Tap to try again.`}
         aria-label="Sync failed. Try again"
-        className="group inline-flex items-center min-h-[44px] min-w-[44px] -my-3 cursor-pointer"
+        className={BADGE_BUTTON}
       >
-        <span className={`${PILL} bg-expense-tint text-expense border-expense-line group-hover:border-expense transition-colors duration-150`}>
+        <span className={`${PILL} ${PILL_FOCUS} bg-expense-tint text-expense border-expense-line group-hover:border-expense transition-colors duration-150`}>
           <AlertTriangle className="w-3 h-3 shrink-0" />
           <span>Sync failed</span>
         </span>
@@ -135,40 +145,35 @@ export const NavbarAuth: React.FC<NavbarAuthProps> = ({ onOpenAuth, onOpenAccoun
           the name pill opens Account & Security, which holds sign-out behind a
           confirmation (ADR 0024: sign-out clears this device). */}
       {isAuthenticated ? (
-        <button
-          type="button"
+        <Button
           id="navbar-account-btn"
+          variant="secondary"
           onClick={onOpenAccount}
           title="Account & Security"
           aria-label="Account & Security"
-          className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center gap-1.5 border border-line-control hover:bg-surface-3 py-1.5 px-2.5 rounded-button text-xs transition-colors cursor-pointer"
+          className="min-w-[44px]"
+          icon={<UserCheck className="w-3.5 h-3.5 text-income shrink-0" />}
         >
-          <UserCheck className="w-3.5 h-3.5 text-income shrink-0" />
-          <span className="max-w-[80px] sm:max-w-[120px] truncate font-semibold text-fg hidden xs:inline">
+          <span className="max-w-[80px] sm:max-w-[120px] truncate text-fg hidden xs:inline">
             {currentUser.name || currentUser.email}
           </span>
-        </button>
+        </Button>
       ) : (
         <>
-          <button
-            type="button"
+          <Button
             id="navbar-signin-btn"
+            variant="secondary"
             onClick={onOpenAuth}
-            className="min-h-[44px] inline-flex items-center justify-center gap-1.5 hover:bg-surface-3 text-fg px-3 sm:px-3.5 py-2 rounded-button text-xs font-semibold border border-line-control transition-colors cursor-pointer"
+            icon={<LogIn className="w-3.5 h-3.5 shrink-0" />}
           >
-            <LogIn className="w-3.5 h-3.5 text-fg-secondary shrink-0" />
             <span>Sign In</span>
-          </button>
-          <button
-            type="button"
-            id="navbar-account-btn"
-            onClick={onOpenAccount}
-            title="Account & Security"
-            aria-label="Account & Security"
-            className="hidden sm:inline-flex min-h-[44px] min-w-[44px] items-center justify-center p-2 rounded-button hover:bg-surface-3 hover:text-fg border border-line-control text-fg-secondary transition-colors cursor-pointer"
-          >
-            <UserCog className="w-4 h-4" />
-          </button>
+          </Button>
+          {/* The wrapper owns the breakpoint, so `hidden` never competes with the button's own `inline-flex`. */}
+          <span className="hidden sm:inline-flex">
+            <IconButton id="navbar-account-btn" label="Account & Security" bordered onClick={onOpenAccount}>
+              <UserCog className="w-4 h-4" />
+            </IconButton>
+          </span>
         </>
       )}
     </>

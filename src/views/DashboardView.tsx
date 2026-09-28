@@ -183,6 +183,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <SegmentedControl<TimeFilter>
               className="flex items-center self-start sm:self-auto"
               size="sm"
+              ariaLabel="Period"
               value={timeFilter}
               onChange={setTimeFilter}
               options={(['DAY', 'WEEK', 'MONTH', 'ALL'] as TimeFilter[]).map((f) => ({

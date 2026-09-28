@@ -1,9 +1,11 @@
 import React from 'react';
-import { Landmark, RotateCcw, Trash2 } from 'lucide-react';
+import { RotateCcw, Trash2 } from 'lucide-react';
 import { Transaction, Wallet, Category } from '../types';
 import { TX_TYPE_META } from './transaction/txTypeMeta';
 import { TxTypeIcon, TxAmount, TxCategoryChip, TxSoftDeletedTag } from './transaction/TxCells';
-import { Badge } from './ui/Badge';
+import { Chip } from './ui/Chip';
+import { IconButton } from './ui/IconButton';
+import { SYSTEM_CATEGORY_COLOR } from '../selectors/ledger';
 
 interface TransactionTableRowProps {
   tx: Transaction;
@@ -49,11 +51,9 @@ export const TransactionTableRow: React.FC<TransactionTableRowProps> = React.mem
             {/* Mobile-only secondary info: wallet & category badges */}
             <div className="flex items-center gap-1.5 mt-0.5 sm:hidden flex-wrap">
               {isDebtRepayment ? (
-                <Badge tone="amber" size="sm" icon={<Landmark className="w-2.5 h-2.5" />}>
-                  Debt Payoff
-                </Badge>
+                <Chip label="Debt Payoff" color={SYSTEM_CATEGORY_COLOR} size="sm" />
               ) : (
-                <TxCategoryChip category={category} size="sm" rounded="sm" showDot className="max-w-[100px]" />
+                <TxCategoryChip category={category} size="sm" className="max-w-[100px]" />
               )}
               <span className="text-[10px] text-fg-muted truncate max-w-[90px]">
                 {wallet?.name || 'Wallet'}
@@ -83,11 +83,9 @@ export const TransactionTableRow: React.FC<TransactionTableRowProps> = React.mem
       {/* Category (Hidden on mobile, displayed inline in description cell) */}
       <td className="hidden sm:table-cell py-3.5 px-4">
         {isDebtRepayment ? (
-          <Badge tone="amber" size="md" icon={<Landmark className="w-3 h-3" />}>
-            {TX_TYPE_META.DEBT_REPAYMENT.label}
-          </Badge>
+          <Chip label={TX_TYPE_META.DEBT_REPAYMENT.label} color={SYSTEM_CATEGORY_COLOR} />
         ) : category ? (
-          <TxCategoryChip category={category} size="md" rounded="md" className="max-w-[130px]" />
+          <TxCategoryChip category={category} className="max-w-[130px]" />
         ) : (
           <span className="text-fg-muted">No category</span>
         )}
@@ -101,27 +99,18 @@ export const TransactionTableRow: React.FC<TransactionTableRowProps> = React.mem
       {/* Actions with accessible 44px min touch target */}
       <td className="py-2 px-2 sm:px-4 text-center">
         {tx.isDeleted ? (
-          <button
-            id={`tx-restore-btn-${tx.id}`}
-            type="button"
-            onClick={() => onRestore(tx.id)}
-            title="Restore transaction"
-            aria-label="Restore transaction"
-            className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center text-income hover:bg-income-tint rounded-lg transition-colors cursor-pointer"
-          >
+          <IconButton id={`tx-restore-btn-${tx.id}`} label="Restore transaction" tone="income" onClick={() => onRestore(tx.id)}>
             <RotateCcw className="w-4 h-4" />
-          </button>
+          </IconButton>
         ) : (
-          <button
+          <IconButton
             id={`tx-delete-btn-${tx.id}`}
-            type="button"
+            label="Delete and reverse the wallet change"
+            tone="danger"
             onClick={() => onDelete(tx.id)}
-            title="Delete and reverse the wallet change"
-            aria-label="Delete and reverse the wallet change"
-            className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center text-fg-muted hover:text-expense hover:bg-expense-tint rounded-lg transition-colors cursor-pointer"
           >
             <Trash2 className="w-4 h-4" />
-          </button>
+          </IconButton>
         )}
       </td>
     </tr>

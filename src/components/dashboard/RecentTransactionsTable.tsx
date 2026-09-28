@@ -1,9 +1,9 @@
 import React from 'react';
 import { Calendar, ChevronRight, Receipt, ArrowDownLeft, ArrowUpRight, ArrowLeftRight, TrendingDown } from 'lucide-react';
 import { Transaction, Wallet, Category } from '../../types';
-import { APP_CURRENCY } from '../../utils/currency';
 import { TxAmount, TxCategoryChip } from '../transaction/TxCells';
 import { EmptyState } from '../ui/EmptyState';
+import { Button } from '../ui/Button';
 
 interface RecentTransactionsTableProps {
   transactions: Transaction[];
@@ -29,15 +29,14 @@ export const RecentTransactionsTable: React.FC<RecentTransactionsTableProps> = R
           </div>
         </div>
 
-        <button
+        <Button
           id="dashboard-view-all-transactions-btn"
-          type="button"
+          variant="secondary"
           onClick={() => onNavigate?.('transactions')}
-          className="min-h-[44px] inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold text-fg-secondary hover:text-fg bg-surface-2 hover:bg-surface-3 border border-line hover:border-brand rounded-lg transition-colors duration-150 cursor-pointer"
         >
           <span>View All</span>
           <ChevronRight className="w-3.5 h-3.5 text-fg-muted" />
-        </button>
+        </Button>
       </div>
 
       {/* Compact Transactions Table with Progressive Disclosure */}
@@ -69,7 +68,6 @@ export const RecentTransactionsTable: React.FC<RecentTransactionsTableProps> = R
                 const wallet = tx.walletId ? walletMap.get(tx.walletId) : undefined;
                 const destWallet = tx.destinationWalletId ? walletMap.get(tx.destinationWalletId) : undefined;
                 const category = tx.categoryId ? categoryMap.get(tx.categoryId) : undefined;
-                const currency = APP_CURRENCY;
 
                 return (
                   <tr key={tx.id} className="hover:bg-surface-2 transition-colors">
@@ -83,7 +81,7 @@ export const RecentTransactionsTable: React.FC<RecentTransactionsTableProps> = R
                         
                         {/* Mobile subtitled badges */}
                         <div className="flex items-center gap-1.5 mt-0.5 sm:hidden flex-wrap">
-                          <TxCategoryChip category={category} size="sm" rounded="sm" showDot className="max-w-[90px]" />
+                          <TxCategoryChip category={category} size="sm" className="max-w-[90px]" />
                           <span className="text-[10px] text-fg-muted truncate max-w-[80px]">
                             {wallet?.name || 'Wallet'}
                           </span>
@@ -94,7 +92,7 @@ export const RecentTransactionsTable: React.FC<RecentTransactionsTableProps> = R
                     {/* Category Column (Hidden on mobile) */}
                     <td className="hidden sm:table-cell py-3 px-4">
                       {category ? (
-                        <TxCategoryChip category={category} size="md" rounded="full" showDot className="max-w-[120px]" />
+                        <TxCategoryChip category={category} className="max-w-[120px]" />
                       ) : (
                         <span className="text-fg-muted text-[11px]">
                           {tx.type === 'TRANSFER' ? 'Transfer' : tx.type === 'DEBT_REPAYMENT' ? 'Debt' : 'General'}
@@ -137,8 +135,8 @@ export const RecentTransactionsTable: React.FC<RecentTransactionsTableProps> = R
 
                     {/* Amount */}
                     <td className="py-3 px-3 sm:px-4 text-right font-bold whitespace-nowrap text-xs sm:text-sm">
+                      {/* Spec 4.8: the currency code sits on the hero figure only, never after each row. */}
                       <TxAmount amount={tx.amount} type={tx.type} />
-                      <span className="text-[10px] text-fg-muted ml-1 hidden sm:inline">{currency}</span>
                     </td>
                   </tr>
                 );

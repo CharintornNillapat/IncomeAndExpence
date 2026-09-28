@@ -1,6 +1,7 @@
 import React, { useEffect, useId } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X } from 'lucide-react';
+import { IconButton } from './ui/IconButton';
 
 export interface ModalProps {
   isOpen: boolean;
@@ -120,15 +121,9 @@ export const Modal: React.FC<ModalProps> = ({
                   )}
                 </div>
                 {showCloseButton && (
-                  <button
-                    type="button"
-                    id={closeButtonId}
-                    onClick={onClose}
-                    aria-label="Close modal"
-                    className="min-w-[44px] min-h-[44px] -mr-2 inline-flex items-center justify-center rounded-lg text-fg-muted hover:text-fg hover:bg-surface-2 active:bg-surface-3 transition-colors duration-150 cursor-pointer"
-                  >
+                  <IconButton id={closeButtonId} label="Close modal" onClick={onClose} className="-mr-2">
                     <X className="w-5 h-5" />
-                  </button>
+                  </IconButton>
                 )}
               </div>
             )}

@@ -2,10 +2,10 @@ import React from 'react';
 import { TransactionType, Category } from '../../types';
 import { formatCurrencyAmount } from '../../utils/currency';
 import { TX_TYPE_META, txTypeMetaFor, TransferDirection } from './txTypeMeta';
-import { CategoryChip, CategoryChipSize, ChipRounding } from '../ui/Badge';
+import { Chip, ChipSize } from '../ui/Chip';
 
 export type TxTypeIconVariant = 'full' | 'compact';
-export type TxTypeIconSize = 'sm' | 'md';
+export type TxTypeIconSize = 'sm' | 'md' | 'lg';
 
 interface TxTypeIconProps {
   type: TransactionType;
@@ -13,7 +13,7 @@ interface TxTypeIconProps {
   amount?: number;
   /** `full` (`TX_TYPE_META.icon`, the 4-way icon set) or `compact` (`.compactIcon`, the binary Trending{Up,Down} set). */
   variant?: TxTypeIconVariant;
-  /** `sm` = fixed `w-7 h-7` box (matches `WalletPopupModal`'s activity list); `md` = `w-7 h-7 sm:w-8 sm:h-8` (matches `TransactionTableRow`'s single icon spanning both breakpoints). */
+  /** `sm` = fixed `w-7 h-7` box (matches `WalletPopupModal`'s activity list); `md` = `w-7 h-7 sm:w-8 sm:h-8` (matches `TransactionTableRow`'s single icon spanning both breakpoints); `lg` = the spec's 36px tile (`TransactionRow`). */
   size?: TxTypeIconSize;
   /** A site's own tint string when it has already diverged from `TX_TYPE_META.tint` (e.g. `WalletPopupModal`'s 3-way scheme) - overrides the token default rather than changing what's on screen. */
   tintOverride?: string;
@@ -21,18 +21,17 @@ interface TxTypeIconProps {
 }
 
 const ICON_BOX_SIZE_CLASS: Record<TxTypeIconSize, string> = {
-  sm: 'w-7 h-7',
-  md: 'w-7 h-7 sm:w-8 sm:h-8',
+  sm: 'w-7 h-7 rounded-lg',
+  md: 'w-7 h-7 sm:w-8 sm:h-8 rounded-lg',
+  lg: 'w-9 h-9 rounded-inner',
 };
 
 /**
- * T49: the icon-in-a-tinted-box cell repeated (with a genuinely different
- * icon set and tint scheme per divergent site - see `txTypeMeta.ts`'s own
- * note) across `TransactionTableRow` and `WalletPopupModal`'s activity list.
- * `RecentTransactionsTable`'s Type column uses a 3rd icon set entirely
- * (`ArrowLeftRight`/`TrendingDown` for TRANSFER/DEBT_REPAYMENT, not
- * `TX_TYPE_META`'s `RefreshCw`/`Landmark`) and stays local - adopting this
- * component there would render the wrong icon, not just a different one.
+ * T49: the icon-in-a-tinted-box cell shared by `TransactionTableRow` and
+ * `WalletPopupModal`'s activity list, and (Phase 56) the 36px tile of
+ * `TransactionRow` (size `lg`, spec 4.9). `RecentTransactionsTable`'s Type
+ * column still draws its own icons; it moves onto `TransactionRow` in the
+ * page phase, which gives the app one icon set everywhere.
  */
 export const TxTypeIcon: React.FC<TxTypeIconProps> = ({ type, amount, variant = 'full', size = 'md', tintOverride, className = '' }) => {
   const meta = amount === undefined ? TX_TYPE_META[type] : txTypeMetaFor(type, amount);
@@ -40,8 +39,8 @@ export const TxTypeIcon: React.FC<TxTypeIconProps> = ({ type, amount, variant = 
   const tint = tintOverride ?? meta.tint;
 
   return (
-    <div className={`${ICON_BOX_SIZE_CLASS[size]} rounded-lg flex items-center justify-center shrink-0 ${tint} ${className}`.trim()}>
-      <Icon className="w-3.5 h-3.5" />
+    <div className={`${ICON_BOX_SIZE_CLASS[size]} flex items-center justify-center shrink-0 ${tint} ${className}`.trim()}>
+      <Icon className={size === 'lg' ? 'w-4 h-4' : 'w-3.5 h-3.5'} />
     </div>
   );
 };
@@ -81,21 +80,21 @@ export const TxAmount: React.FC<TxAmountProps> = ({ amount, type, direction, col
 interface TxCategoryChipProps {
   /** Renders nothing when absent - callers keep their own fallback branch (a debt badge, an em dash, a type-name string) alongside this, unchanged. */
   category: Category | undefined;
-  size?: CategoryChipSize;
-  rounded?: ChipRounding;
-  showDot?: boolean;
+  size?: ChipSize;
   className?: string;
 }
 
 /**
- * T49: thin pass-through over `CategoryChip` (Phase 26) scoped to the
- * transaction-row shape - callers still own the "no category" branch (a
- * debt badge, an em dash, or a type-name fallback string), since that part
- * differs per site and isn't a category chip at all.
+ * T49: thin pass-through over the shared chip, scoped to the transaction-row
+ * shape - callers still own the "no category" branch, since that part differs
+ * per site and isn't a category chip at all (L13 unifies it in the page phase).
+ *
+ * Phase 56 (spec 4.7): the chip is neutral with the category's colour on its
+ * dot, so the rounding and dot options each call site used to pick are gone.
  */
-export const TxCategoryChip: React.FC<TxCategoryChipProps> = ({ category, size = 'md', rounded = 'md', showDot = false, className = '' }) => {
+export const TxCategoryChip: React.FC<TxCategoryChipProps> = ({ category, size = 'md', className = '' }) => {
   if (!category) return null;
-  return <CategoryChip name={category.name} color={category.color} size={size} rounded={rounded} showDot={showDot} className={className} />;
+  return <Chip label={category.name} color={category.color} size={size} className={className} />;
 };
 
 /**

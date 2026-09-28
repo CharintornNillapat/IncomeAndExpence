@@ -3,6 +3,8 @@ import { Sparkles, RefreshCw, ChevronDown, ChevronUp, WifiOff } from 'lucide-rea
 import type { Category, Transaction } from '../../types';
 import { buildSpendingSummary, hasEnoughData, renderInsight } from '../../utils/spendingSummary';
 import { fetchInsight, readCachedVerdict } from '../../utils/insightsClient';
+import { Button } from '../ui/Button';
+import { IconButton } from '../ui/IconButton';
 
 interface SpendingInsightsCardProps {
   transactions: Transaction[];
@@ -101,28 +103,25 @@ export const SpendingInsightsCard: React.FC<SpendingInsightsCardProps> = ({
 
         <div className="flex items-center gap-1.5 shrink-0">
           {lines && !isCollapsed && (
-            <button
-              type="button"
+            <IconButton
               id="insights-refresh-btn"
+              label="Refresh insights"
               onClick={generate}
               disabled={isGenerating}
-              aria-label="Refresh insights"
-              title="Refresh insights"
-              className="min-w-[44px] min-h-[44px] -my-2 inline-flex items-center justify-center rounded-lg text-fg-muted hover:text-fg hover:bg-surface-2 transition-colors cursor-pointer disabled:cursor-not-allowed disabled:opacity-40"
+              className="-my-2"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${isGenerating ? 'animate-spin' : ''}`} />
-            </button>
+            </IconButton>
           )}
-          <button
-            type="button"
+          <IconButton
             id="insights-collapse-btn"
+            label={isCollapsed ? 'Expand insights' : 'Collapse insights'}
             onClick={toggleCollapsed}
             aria-expanded={!isCollapsed}
-            aria-label={isCollapsed ? 'Expand insights' : 'Collapse insights'}
-            className="min-w-[44px] min-h-[44px] -my-2 -mr-2 inline-flex items-center justify-center rounded-lg text-fg-muted hover:text-fg hover:bg-surface-2 transition-colors cursor-pointer"
+            className="-my-2 -mr-2"
           >
             {isCollapsed ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronUp className="w-3.5 h-3.5" />}
-          </button>
+          </IconButton>
         </div>
       </div>
 
@@ -166,15 +165,9 @@ export const SpendingInsightsCard: React.FC<SpendingInsightsCardProps> = ({
               <p className="text-xs text-fg-secondary text-center">
                 Summarize how this month compares with last.
               </p>
-              <button
-                type="button"
-                id="insights-generate-btn"
-                onClick={generate}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-brand-fill hover:bg-brand-fill-hover text-white transition-colors cursor-pointer"
-              >
-                <Sparkles className="w-3.5 h-3.5" />
+              <Button id="insights-generate-btn" onClick={generate} icon={<Sparkles className="w-3.5 h-3.5" />}>
                 Generate insights
-              </button>
+              </Button>
             </div>
           )}
         </div>

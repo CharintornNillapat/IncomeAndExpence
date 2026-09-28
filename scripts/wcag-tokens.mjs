@@ -68,13 +68,17 @@ for (const [theme, v] of Object.entries(themes)) {
   for (const text of ['fg', 'fg-secondary', 'fg-muted', 'brand-text', 'income-text', 'expense-text', 'pending-text', 'transfer-text', 'adjust-text']) {
     for (const s of [...surfaces, 'header']) check(theme, `${text} on ${s}`, c(text), c(s), 4.5);
   }
-  for (const text of ['fg', 'fg-secondary']) {
+  // Phase 56: `expense-text` joins them - the OverflowMenu's Delete item sits on surface-3, and on control-active when hovered.
+  for (const text of ['fg', 'fg-secondary', 'expense-text']) {
     for (const s of ['surface-3', 'control-active']) check(theme, `${text} on ${s}`, c(text), c(s), 4.5);
   }
   for (const s of surfaces) {
     check(theme, `line-input on ${s}`, c('line-input'), c(s), 3);
-    check(theme, `focus on ${s}`, c('focus'), c(s), 3);
   }
+  // Phase 56: the global :focus-visible outline sits 2px outside the control, on whatever holds it.
+  for (const s of [...surfaces, 'header', 'surface-3']) check(theme, `focus on ${s}`, c('focus'), c(s), 3);
+  // Phase 56: the neutral chip (spec 4.7) - its text on the adjust tint it always sits on.
+  check(theme, 'chip-text on adjust-bg', c('chip-text'), c('adjust-bg'), 4.5);
   // Each hue's text on its own solid `-bg` (the spec's tint colours).
   for (const hue of ['income', 'expense', 'transfer', 'adjust', 'pending']) {
     check(theme, `${hue}-text on ${hue}-bg`, c(`${hue}-text`), c(`${hue}-bg`), 4.5);

@@ -1,6 +1,7 @@
 import React from 'react';
 import { ArrowLeftRight, Plus, ChevronRight } from 'lucide-react';
 import { Money } from '../ui/Money';
+import { Button } from '../ui/Button';
 import { APP_CURRENCY } from '../../utils/currency';
 
 interface TotalWealthHeroProps {
@@ -47,35 +48,34 @@ export const TotalWealthHero: React.FC<TotalWealthHeroProps> = React.memo(({
 
         {/* Quick actions, each at least 44px tall */}
         <div className="flex flex-wrap items-center gap-2 sm:gap-2.5 pt-1 sm:pt-0">
-          <button
+          <Button
             id="hero-transfer-funds-btn"
-            type="button"
             onClick={onOpenTransfer}
-            className="min-h-[44px] flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 px-4 py-2.5 text-xs font-bold text-white bg-brand-fill hover:bg-brand-fill-hover rounded-lg transition-colors duration-150 cursor-pointer"
+            className="flex-1 sm:flex-initial"
+            icon={<ArrowLeftRight className="w-4 h-4 shrink-0" />}
           >
-            <ArrowLeftRight className="w-4 h-4 text-white shrink-0" />
             <span>Transfer Funds</span>
-          </button>
+          </Button>
 
-          <button
+          <Button
             id="hero-add-wallet-btn"
-            type="button"
+            variant="secondary"
             onClick={onOpenAddWallet}
-            className="min-h-[44px] flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 px-4 py-2.5 text-xs font-bold text-fg bg-surface-2 hover:bg-surface-3 border border-line rounded-lg transition-colors duration-150 cursor-pointer"
+            className="flex-1 sm:flex-initial"
+            icon={<Plus className="w-4 h-4 text-brand shrink-0" />}
           >
-            <Plus className="w-4 h-4 text-brand shrink-0" />
             <span>Add Wallet</span>
-          </button>
+          </Button>
 
-          <button
+          <Button
             id="hero-manage-all-wallets-btn"
-            type="button"
+            variant="secondary"
             onClick={onOpenManageWallets}
-            className="min-h-[44px] w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-4 py-2.5 text-xs font-semibold text-fg bg-surface-2 hover:bg-surface-3 border border-line rounded-lg transition-colors duration-150 cursor-pointer"
+            className="w-full sm:w-auto"
           >
             <span>Manage All Wallets</span>
             <ChevronRight className="w-4 h-4 text-fg-muted" />
-          </button>
+          </Button>
         </div>
       </div>
     </div>

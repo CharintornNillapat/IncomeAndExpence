@@ -3,7 +3,7 @@ import { Wallet as WalletIcon, ChevronRight, ArrowLeftRight } from 'lucide-react
 import { Wallet } from '../../types';
 import { Money } from '../ui/Money';
 import { Card } from '../ui/Card';
-import { ProgressMeter } from '../ui/ProgressMeter';
+import { ProgressBar } from '../ui/ProgressBar';
 import { EmptyState } from '../ui/EmptyState';
 import { getWalletIcon } from '../../utils/walletIcons';
 
@@ -117,7 +117,7 @@ export const WalletAccountsGrid: React.FC<WalletAccountsGridProps> = React.memo(
                     {percentOfNetWorth > 0 ? `${percentOfNetWorth.toFixed(1)}%` : '0%'}
                   </span>
                 </div>
-                <ProgressMeter percent={percentOfNetWorth} color={wallet.color} heightClassName="h-1.5" />
+                <ProgressBar percent={percentOfNetWorth} color={wallet.color} size="sm" label={`${wallet.name} share of total`} />
 
                 <div className="flex items-center justify-between mt-2.5 pt-1 text-[11px]">
                   <span className="text-fg-muted text-[10px]">Tap to inspect</span>

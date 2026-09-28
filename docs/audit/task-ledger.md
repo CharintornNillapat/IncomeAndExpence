@@ -1081,6 +1081,40 @@ Approved explicitly by the user, planned and approved before any code was writte
 - **One negative control was redone** because the first attempt produced malformed TypeScript that the dev server still served — the tests failed, but possibly for the wrong reason.
 - **No flakes.** Phase 44's `wallets.spec.ts` webkit flake has now not reproduced across three consecutive phases; still watched rather than closed.
 
+## Phase 56 - FinLife redesign, step 3 (shared components): T212-T221 (2026-09-28)
+
+Spec section 4, the fourteen shared components. ADR `0029`. The plan was approved in plan mode. The owner's decisions:
+- build and unit-test all fourteen, but adopt only the drop-ins now;
+- one global `:focus-visible` rule;
+- 44px everywhere, including where the spec draws 40px.
+
+Branch `phase-56-components`, draft PR.
+
+| # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
+|---|---|---|---|---|---|---|---|---|---|---|
+| T212 | Tokens `chip-text`, `danger-line`; global `:focus-visible` outline; WCAG pairs for focus (header, surface-3), chip text, expense on menu surfaces | `src/index.css`, `scripts/wcag-tokens.mjs` | High | Low | 0.5h | done | - | 1cc6e12 | all pairs pass; lowest focus pair 3.89:1 (dark menu) | CSS +1,848 B (whole phase) |
+| T213 | `Button` (4 variants, 3 sizes, `buttonClass`) and `IconButton` (required `label`) | `ui/Button.tsx`, `ui/IconButton.tsx`, `unit/ui-controls.test.tsx` | High | Low | 1h | done | - | 1cc6e12 | default type and title caught by mutation; `@ts-expect-error` pins the required label | - |
+| T214 | Adopt `Button` at about 40 sites; delete `formStyles`' three button strings | header, account, auth, dashboard, debts, diary, wallets, transactions, categories, wallet forms, `ConfirmDialog`, `ReloadPrompt` | High | Med | 2h | done | T213 | 1cc6e12 | 357 unedited | - |
+| T215 | Adopt `IconButton` at the icon-only buttons; `AuthModal`'s close gains a name; Clear search and the diary delete reach 44px | same, plus `Modal`, `TransactionTableRow`, `SpendingInsightsCard`, `WalletPopupModal` | High | Med | 1h | done | T213 | 1cc6e12 | 0 controls under 44px on 6 views at 1280 and 4 at 390 | - |
+| T216 | `SegmentedControl`: card tray, `control-active`, `aria-pressed`, `mode="tabs"` for Categories | `ui/SegmentedControl.tsx` + 4 callers | Med | Low | 0.5h | done | - | 1cc6e12 | 2 tests red against the old component first | - |
+| T217 | `Card` (radius 16, padding 24/28) and `Inset`; `Chip` replaces `CategoryChip`/`categoryTint`; grey system chip for repayments (audit 003 #3); `Badge` loses amber; recent table drops per-row "THB"; `TxTypeIcon` size `lg` | `ui/Card.tsx`, `ui/Chip.tsx`, `ui/Badge.tsx`, `TxCells.tsx`, `TransactionTableRow.tsx`, `RecentTransactionsTable.tsx`, `CategoriesView.tsx`, `selectors/ledger.ts` | Med | Low | 1h | done | T212 | 1cc6e12 | chip text 10.09:1 / 9.45:1 | - |
+| T218 | `ProgressBar` replaces `ProgressMeter` at 5 sites (`line` track, `role="progressbar"`, 200ms) | `ui/ProgressBar.tsx` + callers | Med | Low | 0.5h | done | - | 1cc6e12 | `toFixed(1)` labels untouched | - |
+| T219 | Build-only: `PageHeader`, `TransactionRow`, `DayGroupHeader` (+ `formatDayLabel`), `AllocationBar`, `WarningBanner`, `OverflowMenu` | `ui/*`, `transaction/*`, `utils/date.ts`, `unit/ui-display.test.tsx`, `unit/tx-row.test.tsx` | High | Low | 2.5h | done | T213, T217 | 1cc6e12 | 3 files red against the missing modules first; 0 B in the bundle until adopted | unit 304 -> 353 |
+| T220 | ADR `0029`, `DESIGN.md` components and deviations, `CLAUDE.md`, selector contract (+ stale line refs), ledger, log, metrics; antislop audit 004 | docs | Low | Low | 1.5h | done | all | acf0b2f, 5ca1e8b (audit) | - | - |
+| T221 | sha backfill | docs | Low | Low | 0.1h | done | T220 | (this row's own commit) | - | - |
+
+**Notes on execution:**
+- **A clipped focus ring, found by the MCP pass and fixed (`726269b`).** The header nav is `overflow-x-auto`, which clipped the new outline on three sides of every tab. The nav gained `p-1`, which is the outline's 2px offset plus its 2px width. An audit script then checked every control on all six views for an ancestor that would clip a 4px ring: none at 1280px. At 390px the only hit was the transactions table, which is 16px wider than its scroller. That predates this phase, and focusing the button scrolls it into view.
+- **The outline fades in from the text colour.** Tailwind's `transition-colors` includes `outline-color`, so for 150ms the outline starts in `currentColor`. It settles on `--focus`, measured after 400ms. Recorded, not changed (audit 004).
+- **Intermittent local E2E failures, again all "waiting for stable" or "performing click action" timeouts.**
+  - Run 1 was 356/357: WebKit `#nav-tab-diary`. 30 repeats passed.
+  - Run 2 was 355/357: Firefox `#account-signin-btn` and a Firefox `goto` load.
+  - Targeted repeats hit 2 more in `account-and-mobile-nav` on Firefox, on the untouched mobile nav.
+  - **Control run:** the same spec 10x on `main` gave 120/120, and on the branch 120/120.
+  - Run 3 and run 4 were 357/357.
+  - These are the pattern of audit 003 finding 5, not a regression that reproduces. They stay on watch.
+- **Deliberately not adopted:** the in-chip dismiss crosses, the note microphone, the calculator keys, the pickers, text links, the mobile Quick Add and the transfer swap. `DESIGN.md` lists why.
+
 ## Phase 55 - FinLife redesign, steps 1 and 2 (Foundation, Logic), plus CI speed: T199-T211 (2026-09-28)
 
 The owner wrote `docs/design/finlife-redesign-spec.md`. This phase covers its section 9 steps 1 and 2, plus a CI speed-up requested in the same plan. Phase 54 stays reserved for audit 001 finding 6. The plan was approved in plan mode.
@@ -1097,7 +1131,7 @@ ADRs `0027` (foundation) and `0028` (selectors). Work ran on branch `phase-55-ci
 |---|---|---|---|---|---|---|---|---|---|---|
 | T199 | CI: a `checks` job gates one E2E job per browser (matrix, `fail-fast: false`), each installing only its browser | `.github/workflows/playwright.yml` | High | Low | 0.5h | done | - | 1cb9a18 | run `36373804867` green | job wall time 13 m 47 s -> 5 m 18 s |
 | T200 | CI: browser cache keyed by lockfile; a hit runs `install-deps` only | same | Med | Low | 0.25h | done | T199 | 1cb9a18 | cache hit on run `36374212154` | browser step 53 s -> 12-35 s |
-| T201 | CI: `concurrency` cancel-in-progress; `paths-ignore` for docs-only pushes and PRs | same | Med | Low | 0.25h | done | T199 | 1cb9a18 | cancel-in-progress seen on the branch; the docs-only skip is unverified until the first docs-only push to `main` (see notes) | - |
+| T201 | CI: `concurrency` cancel-in-progress; `paths-ignore` for docs-only pushes and PRs | same | Med | Low | 0.25h | done | T199 | 1cb9a18 | cancel-in-progress seen on the branch; docs-only push `79ed8de` to `main` created no run (see notes) | - |
 | T202 | CI: `workers: 2` per browser job, on trial | `playwright.config.ts` | Med | Med | 0.25h | done (kept) | T199 | b33e18c | 3 consecutive green attempts of run `36374212154`, 0 flaky, 0 retries | 4 m 31 s-4 m 48 s per run |
 | T203 | Tokens: spec dark values under the app's names, new roles, solid hue tints, derived light set; the spec's input border not used (1.26:1) | `src/index.css`, `scripts/wcag-tokens.mjs` | High | Med | 1.5h | done | - | 97d2b4e | all WCAG pairs pass, both themes | CSS 43,802 -> 46,984 B |
 | T204 | IBM Plex Sans Thai (400-700, thai + latin, self-hosted, precached); `tabular-nums` on body; every `font-mono` on an amount removed | `package.json`, `src/index.css`, 21 components/views | High | Med | 1h | done | T203 | 97d2b4e | ฿ served by the font's thai subset | fonts 40,404 -> 120,532 B; precache 45 -> 53 entries |
@@ -1117,7 +1151,8 @@ ADRs `0027` (foundation) and `0028` (selectors). Work ran on branch `phase-55-ci
 - **`pending` was not renamed `warning`**: about 40 call sites for a word. The mapping is documented in `src/index.css` and ADR `0027`.
 - **The debt repayment's colour is a decision.** The spec names none. It is grey, because L1 says it is not spending and amber is reserved for real problems. ADR `0027`.
 - **`TransactionTableRow`'s repayment badge is still amber.** It belongs to the TransactionRow component, spec step 3.
-- **The docs-only skip could not be tested on the branch.** A pull request's `paths-ignore` looks at the whole PR diff, which touches `src/`, so every PR run ran. The merge push to `main` touched `src/` too. The first docs-only push to `main` is the test.
+- **The docs-only skip could not be tested on the branch.** A pull request's `paths-ignore` looks at the whole PR diff, which touches `src/`, so every PR run ran. The merge push to `main` touched `src/` too.
+- **Verified on `main`:** `79ed8de` (only `docs/audit/*.md`) was pushed with the user's go-ahead. Two minutes later `actions/runs?head_sha=` returned `total_count: 0` and the commit had no check runs. T201 is closed.
 - **Deployed.** PR #1 merged as `41c5216` (a merge commit, so these shas stay valid). CI and the byte-for-byte production check are in the refactor log.
 - **Audit 003's findings are open by decision.** 1 to 3 go to the shared components and page phases, 4 to the shared components pass, and 5 is watched without gating.
 

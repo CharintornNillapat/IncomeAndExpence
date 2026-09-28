@@ -62,8 +62,9 @@ export interface CategorySpend {
 }
 
 export const UNCATEGORIZED_NAME = 'Uncategorized';
-/** The spec's system grey, for the row that has no category of its own. */
-export const UNCATEGORIZED_COLOR = '#6B7385';
+/** The spec's system grey (section 1): system categories, and the row that has no category of its own. */
+export const SYSTEM_CATEGORY_COLOR = '#6B7385';
+export const UNCATEGORIZED_COLOR = SYSTEM_CATEGORY_COLOR;
 
 /**
  * Spending per category, largest first. Grouped by category id, so two

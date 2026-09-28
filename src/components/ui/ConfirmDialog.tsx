@@ -2,6 +2,7 @@ import React from 'react';
 import { AlertTriangle } from 'lucide-react';
 import { Modal } from '../Modal';
 import { ERROR_BANNER_CLASS } from '../../utils/formStyles';
+import { Button } from './Button';
 
 interface ConfirmDialogProps {
   isOpen: boolean;
@@ -23,11 +24,8 @@ interface ConfirmDialogProps {
  * T42: shared confirmation dialog over `Modal.tsx`, for irreversible actions
  * only (wallet delete, debt delete) - never for transaction soft-delete,
  * which is reversible via restore and where a confirm would be pure friction.
- * The two side-by-side compact buttons are their own shape (not the
- * full-width single-column `PRIMARY_BUTTON_CLASS`/`SECONDARY_BUTTON_CLASS`
- * forms use), so they stay local classes rather than forcing a mismatched
- * shared one - the same call `WalletPopupModal`'s inline Save/Cancel balance
- * editor buttons already made.
+ * Its two buttons are the shared `Button` (Phase 56): secondary to cancel,
+ * danger (or primary, for a non-destructive confirm) to proceed.
  */
 export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
   isOpen,
@@ -51,28 +49,17 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
       closeOnBackdropClick={!isLoading}
       footer={
         <div className="flex items-center justify-end gap-2.5">
-          <button
-            id="cancel-confirm-btn"
-            type="button"
-            onClick={onClose}
-            disabled={isLoading}
-            className="px-4 py-2.5 rounded-lg text-xs font-semibold bg-surface-1 border border-line hover:border-brand text-fg-secondary transition-colors duration-150 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
-          >
+          <Button id="cancel-confirm-btn" variant="secondary" onClick={onClose} disabled={isLoading}>
             {cancelText}
-          </button>
-          <button
+          </Button>
+          <Button
             id="confirm-destructive-btn"
-            type="button"
+            variant={isDestructive ? 'danger' : 'primary'}
             onClick={onConfirm}
             disabled={isLoading}
-            className={`px-4 py-2.5 rounded-lg text-xs font-semibold transition-colors duration-150 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed ${
-              isDestructive
-                ? 'border border-expense text-expense bg-transparent hover:bg-expense-tint'
-                : 'bg-brand-fill hover:bg-brand-fill-hover text-white'
-            }`}
           >
             {isLoading ? 'Working…' : confirmText}
-          </button>
+          </Button>
         </div>
       }
     >

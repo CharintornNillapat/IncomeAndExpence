@@ -12,6 +12,8 @@ import {
   Monitor
 } from 'lucide-react';
 import { NavbarSyncBadge, NavbarAuth } from './navbar/NavbarLedgerStatus';
+import { Button } from './ui/Button';
+import { IconButton } from './ui/IconButton';
 import { useTheme } from '../hooks/useTheme';
 
 // 'security' left the tab bar in ADR 0024: it is the Account & Security modal
@@ -118,7 +120,8 @@ export const Navbar: React.FC<NavbarProps> = React.memo(({ activeTab, setActiveT
 
         <nav
           aria-label="Desktop Navigation"
-          className="hidden md:flex items-center gap-1 min-w-0 flex-1 overflow-x-auto no-scrollbar md:ml-2 xl:ml-4"
+          // `p-1` is the focus outline's room: 2px offset + 2px width, which `overflow-x-auto` would otherwise clip (ADR 0029).
+          className="hidden md:flex items-center gap-1 min-w-0 flex-1 overflow-x-auto no-scrollbar p-1 md:ml-1 xl:ml-3"
         >
           {NAV_ITEMS.map((item) => {
             const Icon = item.icon;
@@ -148,29 +151,26 @@ export const Navbar: React.FC<NavbarProps> = React.memo(({ activeTab, setActiveT
         <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 ml-auto">
           <NavbarSyncBadge onOpenAuth={onOpenAuth} />
 
-          <button
-            type="button"
+          <IconButton
             id="navbar-theme-toggle-btn"
+            label={`Theme: ${getThemeLabel()}. Click to switch.`}
+            bordered
             onClick={cycleTheme}
-            title={`Theme: ${getThemeLabel()} (click to change)`}
-            aria-label={`Current theme is ${getThemeLabel()}. Click to switch.`}
-            className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center rounded-button border border-line-control text-fg-secondary hover:text-fg hover:bg-surface-3 transition-colors duration-150 cursor-pointer"
           >
             {renderThemeIcon()}
-          </button>
+          </IconButton>
 
           <NavbarAuth onOpenAuth={onOpenAuth} onOpenAccount={onOpenAccount} />
 
-          <button
+          <Button
             id="navbar-quick-add-btn"
-            type="button"
+            size="header"
             onClick={onOpenQuickAdd}
-            className="min-h-[44px] inline-flex items-center justify-center gap-1.5 bg-brand-fill hover:bg-brand-fill-hover text-white px-3 sm:px-4 rounded-button text-sm font-semibold transition-colors duration-150 cursor-pointer"
+            icon={<PlusCircle className="w-4 h-4 shrink-0" />}
           >
-            <PlusCircle className="w-4 h-4 text-white shrink-0" />
             <span className="hidden sm:inline">Add entry</span>
             <span className="sm:hidden">Add</span>
-          </button>
+          </Button>
         </div>
       </div>
     </header>

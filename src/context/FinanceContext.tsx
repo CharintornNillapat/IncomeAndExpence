@@ -2404,7 +2404,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     // (take it again). No upper cap on the reversal: restoring a repayment
     // written before the ADR 0016 guard can push `remainingAmount` above
     // `totalAmount`, and capping would silently discard the difference - the
-    // same sin as clamping an overpayment. `ProgressMeter` and the payoff
+    // same sin as clamping an overpayment. `ProgressBar` and the payoff
     // block's `displayPercent` both clamp, so it renders as 100% rather than
     // breaking.
     const debtNewRemaining: number | null = targetDebt

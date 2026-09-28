@@ -4,6 +4,7 @@ import { Category, DiaryEntry, Transaction, Wallet } from '../types';
 import { formatCurrencyAmount } from '../utils/currency';
 import { DayInfo } from '../utils/date';
 import { Badge } from './ui/Badge';
+import { IconButton } from './ui/IconButton';
 import { TxAmount } from './transaction/TxCells';
 
 interface MoodInfo {
@@ -86,14 +87,9 @@ export const DiaryEntryCard: React.FC<DiaryEntryCardProps> = React.memo(({
             </span>
           </div>
 
-          <button
-            type="button"
-            title="Delete entry"
-            onClick={() => onDelete(entry.id)}
-            className="p-1 text-fg-muted hover:text-expense rounded-sm cursor-pointer"
-          >
+          <IconButton label="Delete entry" tone="danger" onClick={() => onDelete(entry.id)} className="-my-3 -mr-3">
             <Trash2 className="w-3.5 h-3.5" />
-          </button>
+          </IconButton>
         </div>
       </div>
 

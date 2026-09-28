@@ -20,7 +20,8 @@ import { useFinanceActions, useFinanceState } from '../../context/FinanceContext
 import { useSubmitHandler } from '../../hooks/useSubmitHandler';
 import { useTransientFlash } from '../../hooks/useTransientFlash';
 import { supabase } from '../../lib/supabase';
-import { LABEL_CLASS, inputClass, PRIMARY_BUTTON_COMPACT_CLASS } from '../../utils/formStyles';
+import { Button } from '../ui/Button';
+import { LABEL_CLASS, inputClass } from '../../utils/formStyles';
 import { describeUserAgent } from '../../utils/userAgent';
 import { formatLocalDateTime } from '../../utils/date';
 import type { AuthSession } from '../../types';
@@ -112,39 +113,36 @@ const AccountModalBody: React.FC<Omit<AccountModalProps, 'isOpen'>> = ({ onClose
         <div className="flex flex-wrap items-center gap-2 shrink-0">
           {isAuthenticated ? (
             <>
-              <button
+              <Button
                 id="account-sync-btn"
-                type="button"
+                variant="secondary"
                 onClick={handleManualSync}
                 disabled={isSyncing}
-                className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-fg-secondary bg-surface-1 hover:bg-surface-3 border border-line hover:border-brand rounded-lg transition-colors cursor-pointer disabled:opacity-50"
+                icon={<RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />}
               >
-                <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
                 <span>{isSyncing ? 'Syncing…' : 'Sync now'}</span>
-              </button>
-              <button
+              </Button>
+              <Button
                 id="navbar-signout-btn"
-                type="button"
+                variant="danger"
                 onClick={() => setIsConfirmingSignOut(true)}
-                className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold border border-expense text-expense bg-transparent hover:bg-expense-tint rounded-lg transition-colors cursor-pointer"
+                icon={<LogOut className="w-3.5 h-3.5" />}
               >
-                <LogOut className="w-3.5 h-3.5" />
                 <span>Sign out</span>
-              </button>
+              </Button>
             </>
           ) : (
-            <button
+            <Button
               id="account-signin-btn"
-              type="button"
+              block
               onClick={() => {
                 onClose();
                 onRequestSignIn();
               }}
-              className={`${PRIMARY_BUTTON_COMPACT_CLASS} inline-flex items-center gap-1.5`}
+              icon={<LogIn className="w-3.5 h-3.5" />}
             >
-              <LogIn className="w-3.5 h-3.5" />
               <span>Sign in</span>
-            </button>
+            </Button>
           )}
         </div>
       </div>
@@ -292,25 +290,23 @@ const SessionsSection: React.FC = () => {
       )}
 
       <div className="flex flex-wrap gap-2 pt-1">
-        <button
+        <Button
           id="account-signout-others-btn"
-          type="button"
+          variant="danger"
           onClick={() => setConfirming('others')}
           disabled={sessions !== null && otherSessions.length === 0}
-          className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold border border-expense text-expense bg-transparent hover:bg-expense-tint rounded-lg transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+          icon={<ShieldCheck className="w-3.5 h-3.5" />}
         >
-          <ShieldCheck className="w-3.5 h-3.5" />
           <span>Sign out other devices</span>
-        </button>
-        <button
+        </Button>
+        <Button
           id="account-signout-everywhere-btn"
-          type="button"
+          variant="secondary"
           onClick={() => setConfirming('everywhere')}
-          className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-fg-secondary bg-surface-2 hover:bg-surface-3 border border-line hover:border-brand rounded-lg transition-colors cursor-pointer"
+          icon={<LogOut className="w-3.5 h-3.5" />}
         >
-          <LogOut className="w-3.5 h-3.5" />
           <span>Sign out everywhere</span>
-        </button>
+        </Button>
       </div>
 
       <ConfirmDialog
@@ -373,14 +369,9 @@ const ProfileSection: React.FC = () => {
           />
         </div>
         <FormFeedback success={success} error={error} />
-        <button
-          type="submit"
-          disabled={isSubmitting}
-          className={`${PRIMARY_BUTTON_COMPACT_CLASS} flex items-center justify-center gap-2 disabled:opacity-50`}
-        >
-          <Save className="w-3.5 h-3.5" />
+        <Button type="submit" block disabled={isSubmitting} icon={<Save className="w-3.5 h-3.5" />}>
           <span>{isSubmitting ? 'Saving…' : 'Save profile'}</span>
-        </button>
+        </Button>
       </form>
     </section>
   );
@@ -447,14 +438,9 @@ const PasswordSection: React.FC = () => {
           />
         </div>
         <FormFeedback success={success} error={error} />
-        <button
-          type="submit"
-          disabled={isSubmitting || !newPassword}
-          className={`${PRIMARY_BUTTON_COMPACT_CLASS} flex items-center justify-center gap-2 disabled:opacity-50`}
-        >
-          <ShieldCheck className="w-3.5 h-3.5 text-white" />
+        <Button type="submit" block disabled={isSubmitting || !newPassword} icon={<ShieldCheck className="w-3.5 h-3.5" />}>
           <span>{isSubmitting ? 'Updating…' : 'Update password'}</span>
-        </button>
+        </Button>
       </form>
     </section>
   );

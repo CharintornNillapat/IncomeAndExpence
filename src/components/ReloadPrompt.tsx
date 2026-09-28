@@ -1,6 +1,8 @@
 import React from 'react';
 import { useRegisterSW } from 'virtual:pwa-register/react';
 import { RefreshCw, CheckCircle2, X } from 'lucide-react';
+import { Button } from './ui/Button';
+import { IconButton } from './ui/IconButton';
 
 // T75: takes no props and subscribes to no finance context - `React.memo`
 // here means `MainApp` (its only parent) re-rendering for an unrelated
@@ -61,34 +63,19 @@ export const ReloadPrompt: React.FC = React.memo(() => {
 
           <div className="flex items-center gap-2 mt-3">
             {needRefresh && (
-              <button
-                type="button"
-                id="pwa-reload-button"
-                onClick={() => updateServiceWorker(true)}
-                className="px-3 py-1.5 bg-brand-fill hover:bg-brand-fill-hover text-white font-bold text-xs rounded-lg transition-colors duration-150 cursor-pointer"
-              >
+              <Button id="pwa-reload-button" onClick={() => updateServiceWorker(true)}>
                 Update Now
-              </button>
+              </Button>
             )}
-            <button
-              type="button"
-              id="pwa-dismiss-button"
-              onClick={close}
-              className="px-3 py-1.5 bg-surface-2 hover:bg-surface-3 text-fg-secondary font-semibold text-xs rounded-lg transition-colors duration-150 cursor-pointer"
-            >
+            <Button id="pwa-dismiss-button" variant="secondary" onClick={close}>
               Dismiss
-            </button>
+            </Button>
           </div>
         </div>
 
-        <button
-          type="button"
-          onClick={close}
-          className="text-fg-muted hover:text-fg p-1 rounded-lg transition-colors cursor-pointer"
-          aria-label="Close notification"
-        >
+        <IconButton label="Close notification" onClick={close} className="-mt-3 -mr-3">
           <X className="w-4 h-4" />
-        </button>
+        </IconButton>
       </div>
     </aside>
   );

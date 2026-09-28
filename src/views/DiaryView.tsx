@@ -18,7 +18,8 @@ import { Badge } from '../components/ui/Badge';
 import { FoodQuality, Transaction } from '../types';
 import { formatCurrencyAmount } from '../utils/currency';
 import { todayIsoDate, daysAgoIsoDate, formatDayInfo } from '../utils/date';
-import { LABEL_CLASS, PRIMARY_BUTTON_COMPACT_CLASS } from '../utils/formStyles';
+import { LABEL_CLASS } from '../utils/formStyles';
+import { Button } from '../components/ui/Button';
 import { exportDiaryToJson } from '../utils/diaryExport';
 import { buildLookupMap } from '../utils/mapUtils';
 import { isIncome, isSpending } from '../selectors/ledger';
@@ -180,15 +181,14 @@ export const DiaryView: React.FC = () => {
         title="Daily Diary"
         subtitle="Log your mood, workouts and meals, and see them beside that day's spending"
         action={
-          <button
+          <Button
             id="export-diary-btn"
-            type="button"
+            variant="secondary"
             onClick={() => exportDiaryToJson(diaryEntries)}
-            className="min-h-[44px] inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-fg-secondary bg-surface-2 hover:bg-surface-3 border border-line hover:border-brand rounded-lg transition-colors duration-150 cursor-pointer"
+            icon={<Download className="w-3.5 h-3.5" />}
           >
-            <Download className="w-3.5 h-3.5" />
             <span>Export Diary (JSON)</span>
-          </button>
+          </Button>
         }
       />
 
@@ -360,14 +360,9 @@ export const DiaryView: React.FC = () => {
 
             {/* Submit */}
             <div>
-              <button
-                id="save-diary-entry-btn"
-                type="submit"
-                className={`${PRIMARY_BUTTON_COMPACT_CLASS} flex items-center justify-center gap-2`}
-              >
-                <Check className="w-4 h-4" />
+              <Button id="save-diary-entry-btn" type="submit" block icon={<Check className="w-4 h-4" />}>
                 <span>Save Diary Log for {selectedDayInfo.dayName} ({selectedDate})</span>
-              </button>
+              </Button>
               {saveSuccess && (
                 <p className="text-center text-xs text-income font-semibold mt-2">
                   ✓ Diary entry logged for {selectedDayInfo.dayName}!
