@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { cashFlow, spendingByCategory } from '../src/selectors/ledger';
 import { walletShares } from '../src/selectors/wallets';
 import { moodSpendingDays } from '../src/selectors/diary';
-import { greetingFor, formatLongDate, formatShortDate, formatWeekdayDate, shiftIsoDate } from '../src/utils/date';
+import { greetingFor, formatLongDate, formatShortDate, formatWeekdayDate, formatMonthName, shiftIsoDate } from '../src/utils/date';
 import { buildLookupMap } from '../src/utils/mapUtils';
 import type { Category, DiaryEntry, Transaction, Wallet } from '../src/types';
 
@@ -214,6 +214,11 @@ describe('dashboard header dates', () => {
   it('prints a short date with its year', () => {
     expect(formatShortDate('2027-01-01')).toBe('Jan 1, 2027');
     expect(formatShortDate('2028-04-01')).toBe('Apr 1, 2028');
+  });
+
+  it('names a calendar month', () => {
+    expect(formatMonthName('2026-09')).toBe('September');
+    expect(formatMonthName('2026-01')).toBe('January');
   });
 
   it('prints a nearby day with its weekday and no year', () => {

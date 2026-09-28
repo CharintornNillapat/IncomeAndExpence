@@ -5,6 +5,7 @@ import { buildSpendingSummary, hasEnoughData, renderInsight } from '../../utils/
 import { fetchInsight, readCachedVerdict } from '../../utils/insightsClient';
 import { Button } from '../ui/Button';
 import { IconButton } from '../ui/IconButton';
+import { formatMonthName, shiftIsoDate } from '../../utils/date';
 
 interface SpendingInsightsCardProps {
   transactions: Transaction[];
@@ -34,8 +35,8 @@ function writeCollapsed(value: boolean): void {
 /**
  * The monthly wrap-up (ADR 0020).
  *
- * Shell copied from `CategoryExpenseDistribution` so the two sit together as
- * siblings rather than as a card and a bolt-on.
+ * Since Phase 57 it sits full width under the Dashboard's rows, on the same
+ * card shell as the cards around it, titled with the two months it compares.
  *
  * The model picks a pattern; the sentences are rendered here from the app's
  * own numbers, so nothing on this card can disagree with the distribution
@@ -90,15 +91,16 @@ export const SpendingInsightsCard: React.FC<SpendingInsightsCardProps> = ({
     writeCollapsed(next);
   };
 
+  // Phase 57 (ADR 0030): the card keeps its own calendar-month comparison
+  // (ADR 0020) and names it, so it never claims the Dashboard's period.
+  const period = `${formatMonthName(summary.month)} vs ${formatMonthName(shiftIsoDate(`${summary.month}-01`, -1).slice(0, 7))}`;
+
   return (
-    <div
-      data-testid="insights-card"
-      className="bg-surface-1 rounded-xl border border-line p-6 transition-colors"
-    >
-      <div className="flex items-center justify-between gap-3 pb-4 border-b border-line">
+    <div data-testid="insights-card" className="bg-surface-1 rounded-card border border-line p-6">
+      <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2 min-w-0">
-          <Sparkles className="w-4 h-4 shrink-0 text-fg-secondary" />
-          <h3 className="text-sm font-bold text-fg truncate">Monthly Spending Insights</h3>
+          <Sparkles aria-hidden="true" className="w-4 h-4 shrink-0 text-fg-secondary" />
+          <h2 className="text-base font-semibold text-fg truncate">Spending insights · {period}</h2>
         </div>
 
         <div className="flex items-center gap-1.5 shrink-0">
@@ -126,9 +128,9 @@ export const SpendingInsightsCard: React.FC<SpendingInsightsCardProps> = ({
       </div>
 
       {!isCollapsed && (
-        <div className="mt-5">
+        <div className="mt-4">
           {!enoughData ? (
-            <p className="text-xs text-fg-muted text-center py-8">
+            <p className="text-sm text-fg-muted text-center py-6">
               No spending recorded this month yet.
             </p>
           ) : isGenerating ? (
@@ -144,7 +146,7 @@ export const SpendingInsightsCard: React.FC<SpendingInsightsCardProps> = ({
             <div className="space-y-3">
               <div data-testid="insights-body" className="space-y-2">
                 {lines.map((line, i) => (
-                  <p key={i} className="text-xs leading-relaxed text-fg-secondary">
+                  <p key={i} className="text-sm leading-relaxed text-fg-secondary">
                     {line}
                   </p>
                 ))}
@@ -162,7 +164,7 @@ export const SpendingInsightsCard: React.FC<SpendingInsightsCardProps> = ({
             </div>
           ) : (
             <div className="flex flex-col items-center gap-3 py-4">
-              <p className="text-xs text-fg-secondary text-center">
+              <p className="text-sm text-fg-secondary text-center">
                 Summarize how this month compares with last.
               </p>
               <Button id="insights-generate-btn" onClick={generate} icon={<Sparkles className="w-3.5 h-3.5" />}>

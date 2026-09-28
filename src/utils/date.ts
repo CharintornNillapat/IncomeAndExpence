@@ -89,6 +89,11 @@ export function formatWeekdayDate(iso: string): string {
   return localDate(iso).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
 }
 
+/** A calendar month key (`YYYY-MM`) as its name: "September". */
+export function formatMonthName(monthKey: string): string {
+  return localDate(`${monthKey}-01`).toLocaleDateString('en-US', { month: 'long' });
+}
+
 /** The Dashboard's greeting for a local hour (0 to 23): morning from 5, afternoon from 12, evening from 18. */
 export function greetingFor(hour: number): string {
   if (hour >= 5 && hour < 12) return 'Good morning';
