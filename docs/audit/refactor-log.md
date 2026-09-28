@@ -46,7 +46,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 - A cold Debts load shows the static skeleton (`role="status"`, no animation).
 - Keyboard focus on a transfer select shows the violet ring.
 - The hero balance renders ฿ with JetBrains Mono digits in Chromium, Firefox and WebKit.
-- Build: all JS -6,449 B, CSS -1,731 B, and one 40,404 B font added to the precache.
+- Build: all JS -6,455 B, CSS -1,731 B, and one 40,404 B font added to the precache.
 - Audit 002: every approved finding PASS. Finding 6 remains the one FAIL, by your decision.
 
 ## Phase 53a - Semantic design tokens: the stone palette is retired: T182-T187 (2026-09-27, commits `a19b8ac`...`6b02a75`)

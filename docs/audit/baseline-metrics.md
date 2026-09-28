@@ -879,7 +879,7 @@ Built with `npm run build`; gzip is `zlib` level 9, same script.
 | `vendor-motion-*.js` (modulepreloaded) | 136,712 / 45,216 | 129,389 / 42,453 | **-7,323 B** / -2,763 B |
 | `DashboardView-*.js` (lazy) | 42,504 / 10,605 | 41,385 / 10,149 | -1,119 B |
 | `TransactionsView-*.js` (lazy) | 26,411 / 7,857 | 26,770 / 7,914 | +359 B |
-| **all JS, summed** | 1,341,862 B | 1,335,413 B | **-6,449 B** |
+| **all JS, summed** | 1,341,862 B | 1,335,407 B | **-6,455 B** |
 | `index-*.css` | 45,533 / 8,344 | 43,802 / 8,420 | -1,731 B |
 | `jetbrains-mono-latin-wght-normal-*.woff2` | - | 40,404 B | new, precached |
 | chunk count | 35 | 35 | 0 |
