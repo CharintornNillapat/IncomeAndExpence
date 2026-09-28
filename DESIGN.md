@@ -48,11 +48,13 @@ Values live in `src/index.css`, on `:root` (light) and `.dark`. `@theme inline` 
 | Input edge | `line-input` | `#5E7092` | `#7C8BA1` |
 | Text 1 / 2 / 3 | `fg` / `fg-secondary` / `fg-muted` | `#E8EAF0` / `#A3AABB` / `#8A93A6` | `#0F172A` / `#475569` / `#586880` |
 | Disabled text | `fg-disabled` | `#4A5163` | `#94A3B8` |
+| Chip text (on `adjust` tint) | `chip-text` | `#C9CFDC` | `#334155` |
+| Danger-button edge | `danger-line` | `#4A2227` | `#FECDD3` |
 
 Each hue has a text token and a solid `-tint` background: `income`, `expense`, `transfer`, `adjust`, `pending` (plus `pending-line` and `pending-body` for the warning banner), and `brand-soft` for the active nav tab. The primary button fill is `#7C3AED` with white text, at 5.70:1 in both themes.
 
 ### Contrast (WCAG AA)
-Every text token passes 4.5:1 on every surface it can sit on, in both themes. Every hue passes on its own tint. `fg-muted` is the faintest text allowed: 5.80:1 on a dark card. Input edges and the focus ring reach 3:1 (WCAG 1.4.11). Run `node scripts/wcag-tokens.mjs` after changing any value; it reads `src/index.css` and exits 1 on a failure. `fg-disabled` is exempt, as WCAG exempts disabled controls.
+Every text token passes 4.5:1 on every surface it can sit on, in both themes. Every hue passes on its own tint. `fg-muted` is the faintest text allowed: 5.80:1 on a dark card. Input edges and the focus outline reach 3:1 (WCAG 1.4.11); the outline is checked against every surface it can sit on, header and menu included. Run `node scripts/wcag-tokens.mjs` after changing any value; it reads `src/index.css` and exits 1 on a failure. `fg-disabled` is exempt, as WCAG exempts disabled controls.
 
 ### Identity colours (wallets and categories)
 Wallets and categories take their own colour from the muted identity palette in spec section 1. It avoids red, green, blue, cyan and amber, which carry money meaning. The migration of existing colours is a later phase (spec section 5.1).
@@ -117,8 +119,38 @@ Wallets and categories take their own colour from the muted identity palette in 
 ### Touch targets
 - **44x44px minimum hit box** on every interactive element. A small visual (a swatch, a pill, a checkbox) sits inside a 44px box rather than growing.
 
+### Focus (spec section 7)
+- **One focus style:** every control reached by keyboard shows `outline: 2px solid var(--focus); outline-offset: 2px`, from one global `:focus-visible` rule.
+- A control whose 44px box is invisible (the sync badge) moves the outline onto what is drawn.
+- Inputs keep their own 2px `focus` ring instead, in the same violet.
+- Never remove an outline without one of these in its place.
+
 ### Inputs
-- `surface-2` background, 1px `line-input` edge, 2px `focus` ring. Never remove an outline without the ring in its place.
+- `surface-2` background, 1px `line-input` edge, 2px `focus` ring.
+
+### Shared components (spec section 4, ADR 0029)
+Build a screen from these, not from a re-typed class string.
+
+| Component | Where | Rules |
+|---|---|---|
+| `Button` | `ui/Button` | Four variants: primary (the one main action in an area), secondary, soft (`brand-soft`), danger (red text, `danger-line` edge). `type="button"` unless it submits. |
+| `IconButton` | `ui/IconButton` | 44 x 44. A required `label` becomes `aria-label` and `title`. Tones: neutral, danger, income. |
+| `SegmentedControl` | `ui/SegmentedControl` | A `surface-1` tray with the selected option on `control-active` in bold, exposed as `aria-pressed`, or as `role="tab"` + `aria-selected` when it switches content. |
+| `Chip` | `ui/Chip` | A neutral pill (`adjust` tint, `chip-text`). The item's colour is a 7px dot and nowhere else. System categories use the grey `#6B7385` dot. |
+| `Card`, `Inset` | `ui/Card` | Card: `surface-1`, `rounded-card`, 24 to 28px padding, neutral edge. Inset: a box inside a card, `surface-2`, `rounded-inner`. |
+| `PageHeader` | `ui/PageHeader` | h1 and one line on the left, actions on the right, no card. |
+| `ProgressBar` | `ui/ProgressBar` | A `line` track 6, 8 or 10px tall, the fill by meaning (payoff is `income`) or an item's own colour. It prints no number. |
+| `AllocationBar` | `ui/AllocationBar` | One bar split by share, 3px gaps, each item's own colour; only positive values take a share. Its name lists the shares. |
+| `WarningBanner` | `ui/WarningBanner` | `pending` tint and edge, a triangle, `role="note"`, an optional action. For something to fix, never for a normal value. |
+| `OverflowMenu` | `ui/OverflowMenu` | "⋯" for rare or destructive actions. `surface-3` menu, `line-strong` edge, Delete in red, full keyboard support, no entrance animation. |
+| `TransactionRow` | `transaction/TransactionRow` | 36px tile, the L6/L7 title and second line, the L10/L13 chip (none for a transfer), a signed amount. The whole row is a button when it can be selected. |
+| `DayGroupHeader` | `transaction/DayGroupHeader` | "Yesterday · Sun, Sep 27" and the day's L11 net: `fg` when zero or more, `expense` when negative, always signed. |
+
+Exceptions that keep their own markup, each for a reason:
+- Inside another control: the dismiss crosses in `CategorySuggestionChip`, `SaveRuleChip` and the preset chips, the note field's microphone, and the calculator keys.
+- Selection grids: the colour and icon pickers, the diary's mood and meal buttons. Their selected style is the page phase's.
+- Text links: "View all", "Download sample", the form's shortcut row.
+- The mobile centre Quick Add and the transfer swap button. Each is a single, round shape.
 
 ### Sync indicator (header)
 Five states. The first is for guests; the other four are for a signed-in user, checked in this order.
@@ -156,7 +188,8 @@ Five states. The first is for guests; the other four are for a signed-in user, c
 | Spec | App | Why |
 |---|---|---|
 | `--border-control` `#252B38` on inputs | Inputs keep `line-input` `#5E7092`; `#252B38` is `line-control`, for secondary buttons only | `#252B38` is 1.26:1 on a card, under WCAG 1.4.11's 3:1 for an input's edge. A button's label identifies it; an input has only its edge. |
-| Header buttons 40px | 44px | The app's 44px floor (section 4). |
+| Header buttons and `IconButton` 40px | 44px | The app's 44px floor (section 4). The owner kept it for every control, header included (2026-09-28, ADR 0029). |
+| Editing row background `#1C1930` | `brand-soft` (`#1E1A33`) | Two near-identical violets would be two tokens for one meaning. |
 | Header title "FinLife" | "FinLife Tracker" | `theme.spec.ts` finds the heading by that name. |
 | Dark only | Dark and light | The owner kept the light theme (2026-09-28). Light values are derived per role and pass the same checks. |
-| "Display settings" icon button | The theme button keeps its own label ("Current theme is Dark. Click to switch.") | Spec section 11: name a button for what it does. |
+| "Display settings" icon button | The theme button keeps its own label ("Theme: Dark. Click to switch.") | Spec section 11: name a button for what it does. |

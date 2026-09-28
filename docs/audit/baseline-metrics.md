@@ -932,3 +932,42 @@ The browser step went from 53 s (all three browsers) to 12-35 s per job on a cac
 
 **Intermittent local failures since 55a:** 3 timeouts in 1,428 full-suite runs (four full runs). Two were Firefox in `account-and-mobile-nav.spec.ts`: a click on More, and a `page.goto` waiting for `load`. One was WebKit waiting for `#tx-import-csv-btn` to be stable. None reproduced in 300 targeted repeats, and CI has seen none.
 - **Unverified hypothesis:** Firefox delays the `load` event for web fonts, and the page now requests up to six font files where it requested one.
+
+## Phase 56 (shared components) — delta against Phase 55b
+
+Built with `npm run build` on the final Phase 56 tree and, for the per-chunk table, `main` (`8c55728`, Phase 55b) rebuilt the same way on the same machine. Gzip is `zlib` level 9.
+
+| Chunk | Phase 55b | Phase 56 | Delta |
+|---|---|---|---|
+| entry `index-*.js` | 173,497 B / 49,129 B gzip | 172,870 B / 49,461 B gzip | -627 B raw / +332 B gzip |
+| **all JS, summed** | 1,335,397 B | 1,324,986 B | **-10,411 B** |
+| `index-*.css` | 46,984 B / 8,961 B gzip | 48,822 B / 9,359 B gzip | +1,838 B |
+| fonts (`woff2`) | 120,532 B | 120,532 B | 0 |
+| JS chunks | 37 | 36 | -1 |
+| PWA precache | 54 entries, 1,623.43 KiB | 53 entries, 1,615.06 KiB | -8.37 KiB |
+
+Per chunk (raw bytes, 55b -> 56; every other chunk is byte-identical):
+
+| Chunk | Delta | Why |
+|---|---|---|
+| `DashboardView` | -2,933 | hero, recent table and insights buttons became component calls; the per-row "THB" went |
+| `TransactionsView` | -2,508 | seven header, pagination and import buttons |
+| `TxCells` | -2,011 (chunk gone) | Rollup merged it into the `ledger` shared chunk |
+| `ledger` | +1,989 | now also holds `TxCells` and `Chip`'s use |
+| `AccountModal` | -1,089 | five buttons |
+| `Badge` | -1,086 (chunk gone) | `CategoryChip` moved out, and `Badge`'s remaining users (`DiaryView`, `DiaryEntryCard`) share one chunk, so it no longer needs its own |
+| `WalletsView`, `DebtsView`, `CategoriesView`, `ConfirmDialog` | -682, -681, -578, -489 | buttons |
+| `ProgressMeter` -> `ProgressBar` | -462 / +716 | ARIA attributes and tones |
+| `Chip` | +540 (new chunk) | shared by the tables and the rules list |
+| entry | -627 | the header's buttons shrank more than `Button` and `IconButton` added (both live in the entry, since the header and `ReloadPrompt` are eager) |
+
+**Why the total fell:** each call site used to carry its own copy of a 150 to 250 character class string, and minification cannot share a string between chunks. Gzip already compressed the repetition, so the entry's gzip size *rose* 332 B while its raw size fell: the new component code is what gzip sees.
+
+**The build-only components cost 0 B.** `PageHeader`, `TransactionRow`, `DayGroupHeader`, `AllocationBar`, `WarningBanner` and `OverflowMenu` have no importer yet, so Rollup drops them. `grep` finds none of their strings in `dist/`.
+
+**CSS grew 1,838 B** for the new utilities: the button variants' `hover:` pairs, `rounded-card`/`-inner`/`-control` where they were not yet emitted, `text-chip-text`, `border-danger-line`, the `group-focus-visible:outline-*` trio and the `:focus-visible` rule.
+
+| Suite | Files | Tests | Runs | Wall clock |
+|---|---|---|---|---|
+| Playwright (local, 4 workers) | 23 | 119 | 357 | 5.6 / 6.0 / 4.9 / 4.9 m (four runs) |
+| Vitest (`unit/`) | 18 | 353 | 353 | ~33 s |

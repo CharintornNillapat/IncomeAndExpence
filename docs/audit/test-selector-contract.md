@@ -146,9 +146,11 @@ Nothing was removed in this phase. `#repay-amount-math`, `#repay-wallet-select`,
 
 ## Known remaining fragile selectors (not yet hardened; addressed in later phases per the roadmap)
 
-- `transaction.spec.ts:55` — `^Income$` button text (Phase 27, SegmentedControl must preserve option labels exactly).
-- `transaction.spec.ts:100` — `button[title="Clear search"]` (a tooltip string, reword risk).
-- `transaction.spec.ts:119` — `span` filtered by `Calculated:` text.
+- `transaction.spec.ts:58` — `^Income$` button text (Phase 27, SegmentedControl must preserve option labels exactly).
+- `transaction.spec.ts:103` — `button[title="Clear search"]` (a tooltip string, reword risk; since Phase 56 it is `IconButton`'s `label`, which sets the title).
+- `transaction.spec.ts:124` — `span` filtered by `Calculated:` text.
+
+(Line numbers corrected in Phase 56; they had drifted from :55, :100 and :119.)
 - Heading text assertions (`/Wallets & Accounts/i`, `/Debts & Loans/i`, `/Holistic Mini Diary/i`, `/FinLife Tracker/i`) — Phase 25's `SectionHeader` must render identical `h2` text.
 - `date-boundary.spec.ts:31,34` — hardcoded seeded id `wallet-entity-wal-main-checking` and literal string `Created: 2026-09-18` (stable unless the seed data or date-formatting changes).
 
@@ -191,3 +193,25 @@ Nothing was removed in this phase. `#repay-amount-math`, `#repay-wallet-select`,
 **The heading "FinLife Tracker" is still an `h1`**, now visible from `xl` (1280 px) rather than `sm`. `theme.spec.ts:11` runs at Playwright's Desktop viewport, 1280 px wide.
 
 **Money text:** positive amounts are byte-identical. A negative is now `−฿1,000.00` from `formatCurrencyAmount` itself, and no spec asserts on one. A transfer's amount lost its `−` outside a wallet's own view (`฿500.00`, was `−฿500.00`). No spec asserts on a transfer row's amount text.
+
+## Changed in Phase 56 (ADR `0029`, shared components)
+
+Nothing was added or removed. Every id below now renders through a shared component, **on the same element type**, and no spec was edited.
+
+| Selector | Notes | File |
+|---|---|---|
+| Every `button[id^=…]` and `#…-btn` moved to `Button` / `IconButton` | **Still `<button>` elements with the same ids.** `Button` is `type="button"` unless it submits; every form submit still passes `type="submit"`, which about twelve steps locate by, and `disabled` is still the native attribute behind `toBeEnabled` / `toBeDisabled`. | `src/components/ui/Button.tsx`, `IconButton.tsx` and their callers |
+| `button[title="Clear search"]` | **Unchanged title**, now from `IconButton`'s `label`, which sets both `aria-label` and `title`. The button grew from `p-1` to 44 × 44. | `src/views/TransactionsView.tsx` |
+| Button named "Close modal" | **Unchanged name** (`categories.spec.ts:108`), now an `IconButton` label. | `src/components/Modal.tsx` |
+| `#auth-close-btn` | **Unchanged id.** Gained a name, "Close"; it had none. Playwright matches role names by substring, so it cannot satisfy a query for "Close modal". | `src/components/AuthModal.tsx` |
+| `#time-filter-*`, `#category-subtab-*`, `#auth-tab-*`, `${formId}-type-expense` / `-income` | **Unchanged ids and labels.** The options now carry `aria-pressed`; the Categories switcher carries `role="tab"` + `aria-selected`. No spec reads either. | `src/components/ui/SegmentedControl.tsx` |
+| `#navbar-theme-toggle-btn` | **Unchanged id.** Its label is now "Theme: <mode>. Click to switch." (it had a separate title and aria-label). No spec reads it. | `src/components/Navbar.tsx` |
+
+**Text a spec reads is unchanged**: category names still render as text inside each row (`csv-classify.spec.ts`), the repayment chip keeps its words, `[Soft Deleted]` is untouched, and the percentages keep `toFixed(1)` at their call sites.
+
+### Hazards for the page phase
+
+These components are built but not yet on screen. Adopting them must keep the contract:
+- **`TransactionRow`** renders a `<button>` or a `<div>`. `tr[id^="tx-row-"]` is typed, so a row that stops being a `<tr>` needs a locator move in every spec that uses it. The date must stay as text inside each row: `presets.spec.ts:214-215` filters rows by date, and a date shown only in a `DayGroupHeader` would make the count-2 assertion fail and the count-0 one pass vacuously. The row's `meta` slot is for that date.
+- **`OverflowMenu`'s items exist only while it is open.** Moving `tx-delete-btn-*`, `delete-wallet-*`, `delete-debt-*` or `delete-category-*` into one adds a menu-open step to each spec that clicks them (a locator move, which the policy allows). `debts.spec.ts:63` (`settle-debt-*` count 0) and `categories.spec.ts:28` (`delete-category-cat-food` count 0) must open the menu before asserting, or they pass because the menu is closed, which is a weakened assertion and forbidden.
+- **`PageHeader` is an `h1`.** `theme.spec.ts` and `diary.spec.ts` find headings by name; the text must survive, and a second heading with the same name on one view would break the unique match.

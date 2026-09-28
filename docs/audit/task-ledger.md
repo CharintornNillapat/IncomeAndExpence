@@ -1081,6 +1081,40 @@ Approved explicitly by the user, planned and approved before any code was writte
 - **One negative control was redone** because the first attempt produced malformed TypeScript that the dev server still served — the tests failed, but possibly for the wrong reason.
 - **No flakes.** Phase 44's `wallets.spec.ts` webkit flake has now not reproduced across three consecutive phases; still watched rather than closed.
 
+## Phase 56 - FinLife redesign, step 3 (shared components): T212-T221 (2026-09-28)
+
+Spec section 4, the fourteen shared components. ADR `0029`. The plan was approved in plan mode. The owner's decisions:
+- build and unit-test all fourteen, but adopt only the drop-ins now;
+- one global `:focus-visible` rule;
+- 44px everywhere, including where the spec draws 40px.
+
+Branch `phase-56-components`, draft PR.
+
+| # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
+|---|---|---|---|---|---|---|---|---|---|---|
+| T212 | Tokens `chip-text`, `danger-line`; global `:focus-visible` outline; WCAG pairs for focus (header, surface-3), chip text, expense on menu surfaces | `src/index.css`, `scripts/wcag-tokens.mjs` | High | Low | 0.5h | done | - | 1cc6e12 | all pairs pass; lowest focus pair 3.89:1 (dark menu) | CSS +1,848 B (whole phase) |
+| T213 | `Button` (4 variants, 3 sizes, `buttonClass`) and `IconButton` (required `label`) | `ui/Button.tsx`, `ui/IconButton.tsx`, `unit/ui-controls.test.tsx` | High | Low | 1h | done | - | 1cc6e12 | default type and title caught by mutation; `@ts-expect-error` pins the required label | - |
+| T214 | Adopt `Button` at about 40 sites; delete `formStyles`' three button strings | header, account, auth, dashboard, debts, diary, wallets, transactions, categories, wallet forms, `ConfirmDialog`, `ReloadPrompt` | High | Med | 2h | done | T213 | 1cc6e12 | 357 unedited | - |
+| T215 | Adopt `IconButton` at the icon-only buttons; `AuthModal`'s close gains a name; Clear search and the diary delete reach 44px | same, plus `Modal`, `TransactionTableRow`, `SpendingInsightsCard`, `WalletPopupModal` | High | Med | 1h | done | T213 | 1cc6e12 | 0 controls under 44px on 6 views at 1280 and 4 at 390 | - |
+| T216 | `SegmentedControl`: card tray, `control-active`, `aria-pressed`, `mode="tabs"` for Categories | `ui/SegmentedControl.tsx` + 4 callers | Med | Low | 0.5h | done | - | 1cc6e12 | 2 tests red against the old component first | - |
+| T217 | `Card` (radius 16, padding 24/28) and `Inset`; `Chip` replaces `CategoryChip`/`categoryTint`; grey system chip for repayments (audit 003 #3); `Badge` loses amber; recent table drops per-row "THB"; `TxTypeIcon` size `lg` | `ui/Card.tsx`, `ui/Chip.tsx`, `ui/Badge.tsx`, `TxCells.tsx`, `TransactionTableRow.tsx`, `RecentTransactionsTable.tsx`, `CategoriesView.tsx`, `selectors/ledger.ts` | Med | Low | 1h | done | T212 | 1cc6e12 | chip text 10.09:1 / 9.45:1 | - |
+| T218 | `ProgressBar` replaces `ProgressMeter` at 5 sites (`line` track, `role="progressbar"`, 200ms) | `ui/ProgressBar.tsx` + callers | Med | Low | 0.5h | done | - | 1cc6e12 | `toFixed(1)` labels untouched | - |
+| T219 | Build-only: `PageHeader`, `TransactionRow`, `DayGroupHeader` (+ `formatDayLabel`), `AllocationBar`, `WarningBanner`, `OverflowMenu` | `ui/*`, `transaction/*`, `utils/date.ts`, `unit/ui-display.test.tsx`, `unit/tx-row.test.tsx` | High | Low | 2.5h | done | T213, T217 | 1cc6e12 | 3 files red against the missing modules first; 0 B in the bundle until adopted | unit 304 -> 353 |
+| T220 | ADR `0029`, `DESIGN.md` components and deviations, `CLAUDE.md`, selector contract (+ stale line refs), ledger, log, metrics; antislop audit 004 | docs | Low | Low | 1.5h | done | all | (docs commit) | - | - |
+| T221 | sha backfill | docs | Low | Low | 0.1h | done | T220 | (this row's own commit) | - | - |
+
+**Notes on execution:**
+- **A clipped focus ring, found by the MCP pass and fixed.** The header nav is `overflow-x-auto`, which clipped the new outline on three sides of every tab. The nav gained `p-1`, which is the outline's 2px offset plus its 2px width. An audit script then checked every control on all six views for an ancestor that would clip a 4px ring: none at 1280px. At 390px the only hit was the transactions table, which is 16px wider than its scroller. That predates this phase, and focusing the button scrolls it into view.
+- **The outline fades in from the text colour.** Tailwind's `transition-colors` includes `outline-color`, so for 150ms the outline starts in `currentColor`. It settles on `--focus`, measured after 400ms. Recorded, not changed (audit 004).
+- **Intermittent local E2E failures, again all "waiting for stable" or "performing click action" timeouts.**
+  - Run 1 was 356/357: WebKit `#nav-tab-diary`. 30 repeats passed.
+  - Run 2 was 355/357: Firefox `#account-signin-btn` and a Firefox `goto` load.
+  - Targeted repeats hit 2 more in `account-and-mobile-nav` on Firefox, on the untouched mobile nav.
+  - **Control run:** the same spec 10x on `main` gave 120/120, and on the branch 120/120.
+  - Run 3 and run 4 were 357/357.
+  - These are the pattern of audit 003 finding 5, not a regression that reproduces. They stay on watch.
+- **Deliberately not adopted:** the in-chip dismiss crosses, the note microphone, the calculator keys, the pickers, text links, the mobile Quick Add and the transfer swap. `DESIGN.md` lists why.
+
 ## Phase 55 - FinLife redesign, steps 1 and 2 (Foundation, Logic), plus CI speed: T199-T211 (2026-09-28)
 
 The owner wrote `docs/design/finlife-redesign-spec.md`. This phase covers its section 9 steps 1 and 2, plus a CI speed-up requested in the same plan. Phase 54 stays reserved for audit 001 finding 6. The plan was approved in plan mode.
