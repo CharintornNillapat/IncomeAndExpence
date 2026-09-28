@@ -124,6 +124,7 @@ Wallets and categories take their own colour from the muted identity palette in 
 - A control whose 44px box is invisible (the sync badge) moves the outline onto what is drawn.
 - Inputs keep their own 2px `focus` ring instead, in the same violet.
 - Never remove an outline without one of these in its place.
+- **A control's colour transition is `transition-control`, never `transition-colors`** (Phase 57, audit 004 finding 2). Tailwind's `transition-colors` also animates `outline-color`, which made the outline fade in from the text colour; `transition-control` lists the same colour properties without it.
 
 ### Inputs
 - `surface-2` background, 1px `line-input` edge, 2px `focus` ring.
@@ -149,8 +150,28 @@ Build a screen from these, not from a re-typed class string.
 Exceptions that keep their own markup, each for a reason:
 - Inside another control: the dismiss crosses in `CategorySuggestionChip`, `SaveRuleChip` and the preset chips, the note field's microphone, and the calculator keys.
 - Selection grids: the colour and icon pickers, the diary's mood and meal buttons. Their selected style is the page phase's.
-- Text links: "View all", "Download sample", the form's shortcut row.
+- Text links: "View all", "Download sample", the form's shortcut row. On the Dashboard they are `dashboard/DashboardLink`, a `<button>` drawn as a link with a 44px hit box.
 - The mobile centre Quick Add and the transfer swap button. Each is a single, round shape.
+
+### Page layout (spec section 6)
+- `main` pads 16px on phones and 32px top, 40px sides, 48px bottom from `md`. It keeps `max-w-7xl` until every page is redesigned (see Deviations).
+- Sections are 24px apart. Card rows sit on a 12-column grid with 16px gaps.
+
+### Dashboard (spec 6.1, ADR 0030)
+One period for the whole page, chosen in the `PageHeader`. Every figure comes from `src/selectors/`, computed once in the view.
+
+| Block | Width (`xl` / `md`) | Rules |
+|---|---|---|
+| PageHeader | full | A greeting by the local hour, the long date, and the period control. |
+| Net worth | 5/12 / 5/12 | `netWorth` (L3) with "THB", the only place the code shows. Insets: "In N wallets" and "Debt remaining" (signed, red). |
+| Cash flow | 7/12 / 7/12 | Income, Spending and Left over on a neutral edge. Left over is `fg`, red only when negative. One `ProgressBar` of the share of income spent. |
+| Debt warning | full | `WarningBanner`, only when L5 fires. Names the debt when exactly one outruns the surplus. |
+| Wallets | full | A plain heading with its links, then one card: `AllocationBar` and one button row per wallet ("type · share%"). |
+| Spending by category | 7/12 / full | `spendingByCategory` (L1), total at the right, a caption naming what is excluded. |
+| Debt payoff | 5/12 / full | Overall progress, then each debt with its L4 figure, in `pending` when it alone passes the surplus; "Overdue" in red. |
+| Recent activity | 8/12 / full | `TransactionRow`s under `DayGroupHeader`s (L11), with a cancelling adjustment pair folded into one expandable row (L8). |
+| Mood & spending | 4/12 / full | Diary days in the period, a five-bar meter (no emoji) and that day's signed spending. |
+| Spending insights | full | ADR 0020's card, titled with its own months. |
 
 ### Sync indicator (header)
 Five states. The first is for guests; the other four are for a signed-in user, checked in this order.
@@ -193,3 +214,9 @@ Five states. The first is for guests; the other four are for a signed-in user, c
 | Header title "FinLife" | "FinLife Tracker" | `theme.spec.ts` finds the heading by that name. |
 | Dark only | Dark and light | The owner kept the light theme (2026-09-28). Light values are derived per role and pass the same checks. |
 | "Display settings" icon button | The theme button keeps its own label ("Theme: Dark. Click to switch.") | Spec section 11: name a button for what it does. |
+| Pages full width | `main` keeps `max-w-7xl` (1280px) | Temporary, until every page is redesigned: the old Transactions table and forms would stretch across a wide screen (owner, 2026-09-28, ADR 0030). |
+| "~฿4,391/mo needed" | "฿4,391.23 / month needed" | Every displayed amount goes through `formatCurrencyAmount`. |
+| Mood-row spending red, unsigned | Signed, `−฿340.00` | Spec section 7: colour never carries the meaning alone. |
+| Spent-vs-left bar in red and green | One `ProgressBar` of the spent share on the neutral track | A green remainder would read as income; the caption states the share. |
+| Static "Good morning" | Greeting by the local hour | The page is open at every hour. |
+| "…uses the period on the right" | "…uses the selected period" | On a phone the control sits below the text. |

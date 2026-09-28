@@ -4,6 +4,48 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
+## Phase 57 - FinLife redesign step 4, the Dashboard: T222-T233 (2026-09-28, commits `5e40415`...`873d714`)
+
+**Changed**
+- **Selectors.** `cashFlow` (`ledger.ts`), `walletShares` (`wallets.ts`), `moodSpendingDays` (new `diary.ts`).
+- **Date helpers.** `formatLongDate`, `formatShortDate`, `formatWeekdayDate`, `formatMonthName`, `greetingFor` (`utils/date.ts`).
+- **The Dashboard, rebuilt to spec 6.1.** `DashboardView.tsx` computes every figure once. It renders ten pieces in `src/components/dashboard/`:
+  - `NetWorthCard`, `CashFlowCard`, `DebtWarningBanner`;
+  - `WalletsSection`, `CategorySpendingCard`, `DebtPayoffCard`;
+  - `RecentActivityCard`, `MoodSpendingCard`;
+  - `DashboardLink`, and the restyled `SpendingInsightsCard`.
+- **On screen for the first time:**
+  - selectors: L3 `netWorth`, L4 and L5 `debtPlan` / `monthlySurplus`, L8 `foldAdjustmentPairs`, L11 `groupByDay`, and `formatRangeLabel`;
+  - components: `PageHeader`, `AllocationBar`, `WarningBanner`, `TransactionRow`, `DayGroupHeader`.
+- **Removed:** `TotalWealthHero`, `CashflowMetricsCards`, `WalletAccountsGrid`, `CategoryExpenseDistribution`, `DebtPayoffOverview`, `RecentTransactionsTable`.
+- **Audit 004 finding 2.** `@utility transition-control` in `index.css` replaces `transition-colors` in every file.
+- **Layout.** `App.tsx`'s `main` takes the spec's padding.
+- **Scripts.** `scripts/wcag-tokens.mjs`: `fg` on the warning tint, and the mood meter's bars.
+- **Tests.**
+  - `unit/selectors-dashboard.test.ts` and `unit/dashboard.test.tsx` (new). Unit 353 -> 385.
+  - `tests/theme.spec.ts:58` locator move, the only spec edit.
+- **Docs.** ADR `0030`, `DESIGN.md` (page layout, the Dashboard table, transition rule, six deviations), `CLAUDE.md`, `test-selector-contract.md`, antislop audit 005.
+
+**Surprises**
+- **A unit test found a latent bug before it could ship.** The Wallets section's Transfer link passed the click event to `onTransfer`. `DashboardView` happened to wrap it; wired straight to `onOpenTransfer(walletId?)`, the event would have seeded the transfer form as a wallet id.
+- **Six stale Vite servers were still listening on ports 3000 to 3005**, the oldest from the day before. Playwright's `reuseExistingServer` would have tested whatever answered on 3000. All were stopped before the full runs.
+- **The entry chunk grew 1,389 B, mostly the new date helpers.** `utils/date.ts` is already eager (`FinanceContext` imports it), so functions added to it for a lazy view still land in the entry. A later phase could give the Dashboard's formatters their own module.
+- **A negative net worth was drawn in the primary text colour.** Spec section 3's net rule covers it; the MCP screenshots showed it, and a unit test now pins both colours.
+
+**Gate:**
+- **Lint:** clean. **Unit:** 385/385. **WCAG:** all pairs pass in both themes, including the two new ones.
+- **Playwright (local, 4 workers):**
+  - Run 1: 353/357.
+  - Runs 2 and 3: 356/357.
+  - Every failure was a timeout (`goto`, a context close, or a click waiting for "stable"), never an assertion.
+  - Repeats of the failed tests passed 40/40. The `csv-classify` WebKit control was branch 139/140, `main` 80/80.
+  - Recorded as audit 005 finding 3.
+- **MCP.**
+  - Seeded ledger: two debts with due dates, an adjustment pair, a transfer, two diary days.
+  - Spending equals the category total in all four periods. The L5 banner names Car loan at ฿10,500.00 a month.
+  - At 1280, 900 and 390px, light and dark: 0 controls under 44px, 0 clipped focus rings, no page overflow.
+  - The focus outline is violet on the first read after focus, on every control type checked.
+
 ## Phase 56 - FinLife redesign step 3 (shared components): T212-T221 (2026-09-28, commits `1cc6e12`...`5ca1e8b`)
 
 **Changed**

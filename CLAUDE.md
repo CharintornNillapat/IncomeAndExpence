@@ -22,7 +22,7 @@ FinLife Tracker is a full-stack personal finance and holistic lifestyle manageme
 ├── src/
 │   ├── components/      # Reusable UI components, modals, and navigation
 │   │   ├── account/     # AccountModal (Account & Security) + GuestDataNotice (ADR 0024)
-│   │   ├── dashboard/   # Dashboard-specific summary and metric cards
+│   │   ├── dashboard/   # Dashboard cards (spec 6.1, ADR 0030): figures in, layout out
 │   │   ├── transaction/ # Transaction tokens/cells + CategorySuggestionChip
 │   │   └── wallet/      # Shared wallet forms (AddWalletForm, WalletTransferForm)
 │   ├── context/         # FinanceContext.tsx (monolithic app state, local fallback, Supabase sync)
@@ -78,6 +78,7 @@ From `package.json` (requires `npm install` prior to execution):
   - **Loading is a static outline** (`ViewLoadingFallback`, the insights skeleton), never a pulse or a stacked spinner.
   - **Uppercase with `tracking-wider` is for compact metric labels, column headers and tickers only**, not form labels.
   - **Focus is one global rule** (ADR `0029`): `:focus-visible` in `index.css` draws the spec's 2px violet outline, offset 2px, on every control. Do not give a control its own focus style. Fields keep their `focus:ring-2 ring-focus`, and a control whose 44px box is invisible (`NavbarSyncBadge`) moves the outline onto what it draws.
+  - **A control transitions with `transition-control`, never `transition-colors`** (ADR `0030`, audit 004 finding 2). Tailwind's `transition-colors` includes `outline-color`, so the outline faded in from the text colour for 150ms. `transition-control` (an `@utility` in `index.css`) lists the same colour properties without it and keeps the `duration-*` hook.
   - **A removed focus outline needs a replacement:** `focus:outline-none` goes with `focus-visible:ring-2 focus-visible:ring-focus` (or `focus:ring-*`).
   - **No em dash in user-facing text.**
 - **Buttons are `ui/Button` and `ui/IconButton`** (ADR `0029`), never a re-typed class string.
@@ -105,7 +106,7 @@ From `package.json` (requires `npm install` prior to execution):
   - `TxCells.tsx`'s `TxTypeIcon` (sizes `sm`/`md`/`lg`), `TxAmount`, `TxCategoryChip` and `TxSoftDeletedTag`.
   - `TransactionRow` and `DayGroupHeader`.
 
-  `PageHeader`, `TransactionRow`, `DayGroupHeader`, `AllocationBar`, `WarningBanner` and `OverflowMenu` are built and unit-tested but not yet on screen; the page redesign adopts them. `OverflowMenu`'s items exist only while it is open, so a spec asserting an action is absent must open it first. A new primitive goes in `ui/` unless its props are typed against a specific domain model (a `TransactionType`, a `Wallet`), in which case it goes beside that domain's other files, matching `wallet/`'s existing precedent for `AddWalletForm`/`WalletTransferForm`. Each of these primitives takes an escape-hatch prop (e.g. `TxAmount.colorClassName`, `TxTypeIcon.tintOverride`) for the one field a specific call site had already diverged on before the primitive existed — check whether a call site's appearance is supposed to differ before assuming a mismatch is a bug. See `docs/audit/decisions/0006-ui-primitive-inventory.md`.
+  `PageHeader`, `TransactionRow`, `DayGroupHeader`, `AllocationBar` and `WarningBanner` are on the Dashboard since Phase 57 (ADR `0030`); the other pages adopt them in their own phases. `OverflowMenu` is built and unit-tested but not yet on screen. `OverflowMenu`'s items exist only while it is open, so a spec asserting an action is absent must open it first. A new primitive goes in `ui/` unless its props are typed against a specific domain model (a `TransactionType`, a `Wallet`), in which case it goes beside that domain's other files, matching `wallet/`'s existing precedent for `AddWalletForm`/`WalletTransferForm`. Each of these primitives takes an escape-hatch prop (e.g. `TxAmount.colorClassName`, `TxTypeIcon.tintOverride`) for the one field a specific call site had already diverged on before the primitive existed — check whether a call site's appearance is supposed to differ before assuming a mismatch is a bug. See `docs/audit/decisions/0006-ui-primitive-inventory.md`.
 - **Data Integrity**: Soft deletion (`isDeleted: true`) on records to protect ledger and history integrity.
 - **Unused symbols**: `tsconfig.json` sets `noUnusedLocals` and `noUnusedParameters`, so `npm run lint` fails on dead imports and locals. Prefix a deliberately unused parameter with `_` (see `_event` in `FinanceContext.tsx`).
 - **Re-renders**: Never wrap a component in `React.memo` while it still subscribes to `useFinanceState()`/`useFinanceActions()` (or any other context) directly — a context value change re-renders every subscriber regardless of `React.memo`'s props comparison, so the memo would look like a fix while doing nothing. Cut the subscription first (read the data in a parent and pass it down as props, or extract a self-subscribing child), then memo the now-props-only component.
@@ -150,12 +151,18 @@ The redesign spec's logic rules (section 5, L1 to L13) live in pure functions in
   - `spendingByCategory` groups by category **id** and adds up to exactly `sumSpending`.
 - **Every selector takes `today` as an ISO string**; none reads the clock. Callers pass `todayIsoDate()`.
 - **L2 - `TimeRange` keeps the dashboard's boundaries.** DAY is today, WEEK is from `today − 7`, MONTH is from `today − 30`, and WEEK, MONTH and ALL have an open end. `date-boundary.spec.ts` depends on WEEK.
-- **L3 - `walletTotal` / `activeWallets`** (not deleted, not archived) back `totalNetWorth` and `useWallets().wallets`. `netWorth(wallets, debts)` subtracts active debts' remainders. The hero still shows the wallet total under "Total Money Across All Wallets".
+- **L3 - `walletTotal` / `activeWallets`** (not deleted, not archived) back `totalNetWorth` and `useWallets().wallets`. `netWorth(wallets, debts)` subtracts active debts' remainders. Since Phase 57 the Dashboard's Net worth card shows it, with the wallet total and the debt remaining beside it.
 - **L4 / L5 - `monthsLeft` is `max(1, month difference − 1)`.**
   - `requiredMonthly` rounds to cents and is `null` without a due date.
   - `debtPlan` sums the rounded figures and warns when the total exceeds `monthlySurplus`, which is income minus spending over MONTH.
   - The spec's worked example is the unit test: 2026-09-28, ฿4,391.23 and ฿522.41.
-- **L6 to L13** (`display`, `adjustments`, `categories`, `pagination`) are built and tested but not yet on screen. They are adopted with the page redesign, where the rows and the list that show them are rebuilt.
+- **L6 to L13** (`display`, `adjustments`, `categories`, `pagination`) are built and tested. The Dashboard uses L6, L7, L10 and L13 through `TransactionRow`, and L8 and L11 in its Recent activity (Phase 57). L9 and L12 wait for the Categories and Transactions pages.
+- **The Dashboard computes every figure once, in `DashboardView`, and its cards only lay figures out** (ADR `0030`). Phase 57 added three selectors for it:
+  - `cashFlow` (`ledger.ts`) is built on `sumIncome`/`sumSpending`, so the Cash flow card's Spending equals the category card's total;
+  - `walletShares` (`wallets.ts`) shares positive balances only, like `AllocationBar`;
+  - `moodSpendingDays` (`diary.ts`) lists the diary days in the period with each day's `sumSpending`.
+
+  The L5 surplus is always the past 30 days, whatever period the page shows.
 - A system category is matched by **type**, never by id (signed-in rows carry uuids).
 
 ## Transaction entry: one configurable engine
@@ -346,7 +353,7 @@ Two suites, with a hard boundary between them — see "Unit tests" below for why
 - **CI Mode** (Phase 55-CI): a `checks` job (lint, unit) gates one E2E job per browser (`--project=<browser>`, matrix, `fail-fast: false`), each with 2 workers and retries. Browser binaries are cached by lockfile hash; a hit still runs `install-deps`. Pushes and PRs that touch only `docs/`, `anti-slop/` or Markdown skip the workflow, and a newer push cancels an older run on the same ref.
 
 ## Unit tests: what the browser cannot reach
-`npm run test:unit` runs Vitest over **`unit/`** — 353 tests in 18 files, ~33 s (ADR `0021`, extended by `0022`, `0023`, `0024`, `0026`, `0027`, `0028` and `0029`; the reconnect tests' debounce windows and the sign-out tests' 400 ms writer waits are most of the growth from ~3 s). It exists because four phases in a row closed with a coverage hole for the same structural reason, not because E2E coverage was thin.
+`npm run test:unit` runs Vitest over **`unit/`** — 384 tests in 20 files, ~32 s (ADR `0021`, extended by `0022`, `0023`, `0024`, `0026`, `0027`, `0028`, `0029` and `0030`; the reconnect tests' debounce windows and the sign-out tests' 400 ms writer waits are most of the growth from ~3 s). It exists because four phases in a row closed with a coverage hole for the same structural reason, not because E2E coverage was thin.
 - **The directory is `unit/`, not `tests/unit/`, and that is load-bearing.** Two default globs collide. Vitest's default `include` is `**/*.{test,spec}.?(c|m)[jt]s?(x)`, which collects all 22 Playwright specs. Playwright's default `testMatch` is `**/*.@(spec|test).?(c|m)[jt]s?(x)` — note `@(spec|test)` — which collects `*.test.ts` as readily as `*.spec.ts`. So the boundary is pinned three times: a directory `testDir: './tests'` cannot see, an explicit `include` in `vitest.config.ts`, and an explicit `testMatch: '**/*.spec.ts'` in `playwright.config.ts`. The last is redundant today **on purpose** — it makes a future move of the unit tests under `tests/` read as the breaking change it is.
 - **`vitest.config.ts` is its own file, never a `test` key on `vite.config.ts`.** `vite build` does not read it, which makes zero production bundle impact structural rather than a matter of discipline.
 - **`environment: 'node'` is the default; the two DOM suites opt in per file** with a `// @vitest-environment jsdom` docblock. The pure-module suites never touch jsdom's `AbortSignal`, `fetch` or timer surfaces, which differ from Node's in ways that fail about the environment rather than the code.
@@ -437,6 +444,9 @@ Refer to `.env.example`:
 - Do NOT name an icon button with `sr-only` text; `IconButton`'s `label` sets `aria-label` and `title`, and hidden text would duplicate `getByText` matches.
 - Do NOT colour a chip's background or text with its category colour; the colour is the 7px dot's (spec 4.7).
 - Do NOT move a spec-asserted action into `OverflowMenu` without adding the menu-open step to its spec, and never let a "count 0" assertion pass only because the menu is closed.
+- Do NOT use `transition-colors` (or `transition-all`) on a focusable control; use `transition-control`, which leaves the focus outline out (ADR `0030`).
+- Do NOT give a Dashboard element an id with another page's prefix (`tx-row-`, `debt-card-`, `open-repay-modal-`, `settle-debt-`, `wallet-entity-`), and do NOT render any Dashboard text twice for a breakpoint. Specs match those page-wide right after a tab switch, and `getByText` is strict.
+- Do NOT pass a click handler's event into `onOpenTransfer(walletId?)`; call it with no argument, or the event is read as a wallet id.
 
 <!-- antislop:start -->
 ## antislop
