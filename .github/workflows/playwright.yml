@@ -3,13 +3,24 @@ name: Playwright E2E Tests
 on:
   push:
     branches: [ main, master ]
+    # A docs-only push (an ADR, the audit logs, a sha backfill) cannot change
+    # what the suites test. If branch protection ever makes this check
+    # required, a docs-only PR would wait on it forever: drop the filter then.
+    paths-ignore: [ 'docs/**', 'anti-slop/**', '**/*.md' ]
   pull_request:
     branches: [ main, master ]
+    paths-ignore: [ 'docs/**', 'anti-slop/**', '**/*.md' ]
+
+# A newer push to the same ref tests a superset of the same code, so the older
+# run is cancelled rather than left to finish (Phase 55, T201).
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  test:
-    name: Run Playwright Tests
-    timeout-minutes: 60
+  checks:
+    name: Type-check and unit tests
+    timeout-minutes: 15
     runs-on: ubuntu-24.04
 
     steps:
@@ -28,19 +39,59 @@ jobs:
       - name: Type-check (tsc --noEmit)
         run: npm run lint
 
-      # Placed BEFORE the browser install on purpose (ADR 0021): the unit
-      # suite runs in seconds, so a failure here aborts the job without ever
-      # downloading three browsers. It reaches the logic Playwright
-      # structurally cannot - the isSecureContext branch, the retry clock,
-      # the threshold boundaries and the ledger guards' ordering.
+      # Its own job, and every browser job `needs` it (ADR 0021): the unit
+      # suite runs in seconds, so a failure here stops the run before any
+      # browser is downloaded. It reaches the logic Playwright structurally
+      # cannot - the isSecureContext branch, the retry clock, the threshold
+      # boundaries and the ledger guards' ordering.
       - name: Unit tests (Vitest)
         run: npm run test:unit
 
-      - name: Install Playwright browsers with OS dependencies
-        run: npx playwright install --with-deps
+  e2e:
+    name: E2E (${{ matrix.project }})
+    needs: checks
+    timeout-minutes: 30
+    runs-on: ubuntu-24.04
+    # One job per browser, run side by side (Phase 55, T199). fail-fast is off
+    # so a failure in one engine still reports the other two.
+    strategy:
+      fail-fast: false
+      matrix:
+        project: [ chromium, firefox, webkit ]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      - name: Install project dependencies
+        run: npm ci
+
+      # The browser binaries are keyed by the lockfile, which pins the
+      # Playwright version. The OS packages they need are not cached, so a hit
+      # still runs install-deps (Phase 55, T200).
+      - name: Cache Playwright browser
+        id: browser-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ matrix.project }}-${{ hashFiles('package-lock.json') }}
+
+      - name: Install Playwright browser with OS dependencies
+        if: steps.browser-cache.outputs.cache-hit != 'true'
+        run: npx playwright install --with-deps ${{ matrix.project }}
+
+      - name: Install OS dependencies for the cached browser
+        if: steps.browser-cache.outputs.cache-hit == 'true'
+        run: npx playwright install-deps ${{ matrix.project }}
 
       - name: Run Playwright E2E tests
-        run: npx playwright test
+        run: npx playwright test --project=${{ matrix.project }}
         env:
           CI: true
 
@@ -48,6 +99,6 @@ jobs:
         uses: actions/upload-artifact@v7
         if: ${{ !cancelled() }}
         with:
-          name: playwright-report
+          name: playwright-report-${{ matrix.project }}
           path: playwright-report/
           retention-days: 30
