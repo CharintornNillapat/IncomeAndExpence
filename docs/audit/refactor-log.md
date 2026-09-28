@@ -43,6 +43,16 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
   - In Cash's own view the transfer reads `+฿500.00`; on the dashboard it reads `฿500.00`.
 - **MCP** at 1280 px (light and dark), 900 px and 390 px: one header row; tabs show icons between `md` and `lg`; 0 controls under 44 px; no overflow; no console errors; Plex loaded, with the thai subset serving `฿`.
 
+**CI and deploy:**
+- Merged as PR #1 with a merge commit, `41c5216`, so the shas this entry and the ledger cite stay valid. Merged with the user's explicit go-ahead.
+- The branch also carries antislop audit 003 (`b8a3f03`), the spec and mockup under `docs/design/` (`b049408`), and the user's decisions on the audit (`d02a4d9`).
+- PR run `36378587387` on `d02a4d9`: success in 4 m 28 s. Push run `36378910827` on `41c5216`: success in 5 m 09 s. Lint, unit and all three browser jobs passed.
+- Vercel `dpl_EG5kAWsvidJPZmsCgGXGFuEdWrB4` Production `READY`. `income-and-expence-neon.vercel.app` serves `index-pAmce-1O.js` at **173,497 B**.
+- **All 55 files of the local build were hashed against production.** 51 are byte-for-byte identical: every JS chunk, the CSS, the eight font files, `index.html` and the manifest.
+  - The other 4 differ only in line endings. `pwa-192x192.svg`, `pwa-512x512.svg` and `robots.txt` are CRLF in the Windows checkout and LF on Vercel; with `\r` stripped they hash equal.
+  - `sw.js` differs only in the precache revisions of those two SVGs, which hash the CRLF bytes.
+- **Not yet verified:** the `paths-ignore` skip. A pull request's filter sees the whole PR diff, and this merge's push touched `src/`, so the first docs-only push to `main` is the test.
+
 ## Phase 53b - Antislop audit 001 remediation: static money, state-only motion, a sync status that can fail: T188-T198 (2026-09-28, commits `f422692`...`afd5de4`)
 
 **Changed**
