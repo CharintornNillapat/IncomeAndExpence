@@ -4,6 +4,45 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
+## Phase 55 - FinLife redesign steps 1-2 (Foundation, Logic) and CI speed: T199-T211 (2026-09-28, commits `1cb9a18`...(docs))
+
+**Changed**
+- **CI (55-CI).**
+  - `.github/workflows/playwright.yml`: a `checks` job (lint, unit) gates three per-browser E2E jobs, with a browser cache, `concurrency` and `paths-ignore`.
+  - `playwright.config.ts`: `workers: 2` on CI.
+- **Foundation (55a, ADR `0027`).**
+  - Tokens and fonts: `src/index.css` (spec tokens, IBM Plex Sans Thai `@font-face`, `tabular-nums`), `scripts/wcag-tokens.mjs` (new pairs), `package.json` (`@fontsource/ibm-plex-sans-thai` in, JetBrains Mono out).
+  - Amounts: `currency.ts` (negative as `−฿`), `txTypeMeta.ts` and `TxCells.tsx` (transfer direction, grey adjustment and repayment), `Money.tsx`.
+  - Header: `Navbar.tsx` (one row), `NavbarLedgerStatus.tsx` (no balance; `NavbarAuth`), `MobileBottomNav.tsx` and `App.tsx` (`md` breakpoint).
+  - `font-mono` removed across 21 files. `WalletsView.tsx` gains the `wallet-balance-<id>` testid.
+- **Logic (55b, ADR `0028`).**
+  - `src/selectors/` (new): `ledger`, `timeRange`, `wallets`, `debts`, `display`, `adjustments`, `categories`, `pagination`. `src/utils/date.ts` gains `shiftIsoDate`.
+  - Wired into `DashboardView`, `CategoryExpenseDistribution`, `spendingSummary.ts`, `DiaryView`, `FinanceContext` (`totalNetWorth`) and `useWallets`.
+- **Tests.**
+  - `tests/soft-delete.spec.ts:108` locator moved to the testid (the only spec edit).
+  - `unit/tx-cells.test.tsx` rewritten to the new rules.
+  - `unit/spending-summary.test.ts`: two tests now assert that a repayment is not spending.
+  - `unit/selectors-{ledger,debts,display}.test.ts` (new). Unit 251 -> 304.
+- **Docs.** `DESIGN.md` (rewritten to the spec, with a deviations table), ADRs `0027` and `0028`, `test-selector-contract.md`, `CLAUDE.md`.
+
+**Surprises**
+- **The spec's own control border fails WCAG for inputs.** `#252B38` is 1.26:1 on the spec's card. It became `line-control` for buttons only; inputs keep `#5E7092`, the value Phase 53's grill chose for the same reason.
+- **A transfer printed `−` everywhere.** `TX_TYPE_META.TRANSFER.sign` was `MINUS`, so the dashboard read a transfer between two of the user's own wallets as money out. It is unsigned now, except inside one wallet's view.
+- **IBM Plex Sans Thai's thai subset carries `฿`**, so the fallback that DESIGN.md and ADR `0025` explained is gone. The latin subset carries U+2212.
+- **Four definitions of "spending" were live, not three.** The diary's day outflow counted repayments too, which the spec's screenshot could not show.
+- **Two intermittent E2E timeouts in 55a's first local run** (Firefox More sheet at 390 px, WebKit CSV button stability) did not reproduce in a second full run or in 228 targeted repeats, and CI never saw them. They are watched in the ledger notes.
+
+**Gate:**
+- **CI:** 13 m 47 s -> 4 m 31 s to 4 m 48 s per run, five consecutive green runs on the branch (one at `workers: 1`, three reruns at `workers: 2`, one on the 55a commit), 0 flaky.
+- **Lint:** clean. **Unit:** 304/304. **WCAG:** all pairs pass in both themes.
+- **Playwright:** 357/357 locally on the final run of each sub-phase, four full runs in all, with three intermittent timeouts across the other two runs (see the ledger notes).
+- **MCP, 55b, with a seeded ledger:**
+  - The seed held an expense of ฿100.25, an expense of ฿50, a ฿300 repayment, a ฿500 transfer and a −฿40 adjustment.
+  - The Expense card and the category chart's total are both **฿150.25** in every range.
+  - The diary's day outflow is ฿150.25.
+  - In Cash's own view the transfer reads `+฿500.00`; on the dashboard it reads `฿500.00`.
+- **MCP** at 1280 px (light and dark), 900 px and 390 px: one header row; tabs show icons between `md` and `lg`; 0 controls under 44 px; no overflow; no console errors; Plex loaded, with the thai subset serving `฿`.
+
 ## Phase 53b - Antislop audit 001 remediation: static money, state-only motion, a sync status that can fail: T188-T198 (2026-09-28, commits `f422692`...`afd5de4`)
 
 **Changed**

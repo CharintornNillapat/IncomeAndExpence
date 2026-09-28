@@ -894,3 +894,41 @@ Built with `npm run build`; gzip is `zlib` level 9, same script.
 |---|---|---|---|---|
 | Playwright | 23 | 119 | 357 | 4.9 m (final run of three, all green) |
 | Vitest (`unit/`) | 12 | 251 | 251 | ~50 s |
+
+## Phase 55 (redesign foundation and logic, CI) — delta against Phase 53b
+
+Built with `npm run build`. 55a was measured on its own commit (`97d2b4e`) before 55b's changes; gzip is `zlib` level 9 where given.
+
+| Chunk | Phase 53b | Phase 55a | Phase 55b | Delta (53b to 55b) |
+|---|---|---|---|---|
+| entry `index-*.js` | 174,297 B | 173,276 B | 173,497 B / 49,129 B gzip | -800 B |
+| **all JS, summed** | 1,335,407 B | 1,334,577 B | 1,335,397 B | -10 B |
+| `index-*.css` | 43,802 B | 46,984 B | 46,984 B / 8,961 B gzip | +3,182 B |
+| fonts (`woff2`, precached) | 40,404 B (1 file) | 120,532 B (8 files) | 120,532 B | +80,128 B |
+| JS chunks | 35 | - | 37 | +2 |
+| PWA precache | 45 entries, 1,542.09 KiB | 53 entries, 1,622.63 KiB | 54 entries, 1,623.43 KiB | +81.34 KiB |
+
+**Why:**
+- **The fonts are the phase's cost.** IBM Plex Sans Thai in four weights and two subsets replaces one JetBrains Mono file. A page fetches only the weight and subset combinations it renders (six on the dashboard, measured in the MCP pass), `font-display: swap` means text never waits, and every file is precached for offline use.
+- **The entry shrank** because the navbar no longer subscribes to or renders the total balance, and the `font-mono` classes left.
+- **CSS grew** by the new tokens, eight `@font-face` rules where there was one, and the utilities the new header uses.
+- **55b adds the selectors to shared chunks** (the dashboard, diary and insights all import `ledger`), about 820 B of JS in total.
+
+| Suite | Files | Tests | Runs | Wall clock |
+|---|---|---|---|---|
+| Playwright (local, 4 workers) | 23 | 119 | 357 | 5.1 m / 5.1 m (55a); 4.8 m / 4.6 m (55b) |
+| Vitest (`unit/`) | 15 | 304 | 304 | ~75 s locally |
+
+**CI (55-CI):**
+
+| Run | Shape | Wall clock |
+|---|---|---|
+| `36367819548` (Phase 53b, before) | one job, 3 browsers, 1 worker | 13 m 47 s (Playwright 12 m 04 s) |
+| `36373804867` | `checks` + 3 browser jobs, 1 worker, cache miss | 5 m 18 s |
+| `36374212154` attempts 1-3 | same, 2 workers, cache hit | 4 m 31 s / 4 m 48 s / 4 m 31 s |
+| `36375847772` (55a commit) | same | 4 m 33 s |
+
+The browser step went from 53 s (all three browsers) to 12-35 s per job on a cache hit, which still runs `install-deps`. At 2 workers, chromium runs its 119 tests in 1.6-1.9 m, firefox in 2.6-2.8 m and webkit in 2.1-2.9 m.
+
+**Intermittent local failures since 55a:** 3 timeouts in 1,428 full-suite runs (four full runs). Two were Firefox in `account-and-mobile-nav.spec.ts`: a click on More, and a `page.goto` waiting for `load`. One was WebKit waiting for `#tx-import-csv-btn` to be stable. None reproduced in 300 targeted repeats, and CI has seen none.
+- **Unverified hypothesis:** Firefox delays the `load` event for web fonts, and the page now requests up to six font files where it requested one.
