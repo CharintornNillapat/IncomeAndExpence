@@ -25,7 +25,7 @@ import { buildLookupMap } from '../utils/mapUtils';
 import { Category } from '../types';
 import { SectionHeader } from '../components/ui/SectionHeader';
 import { Card } from '../components/ui/Card';
-import { CategoryChip } from '../components/ui/Badge';
+import { Chip } from '../components/ui/Chip';
 import { EmptyState } from '../components/ui/EmptyState';
 import { SegmentedControl } from '../components/ui/SegmentedControl';
 import { Modal } from '../components/Modal';
@@ -36,8 +36,9 @@ import {
   selectClass,
   OPTION_CLASS,
   ERROR_BANNER_CLASS,
-  PRIMARY_BUTTON_COMPACT_CLASS,
 } from '../utils/formStyles';
+import { Button } from '../components/ui/Button';
+import { IconButton } from '../components/ui/IconButton';
 
 type CategorySubTab = 'MANAGE' | 'RULES';
 type CreatableCategoryType = 'EXPENSE' | 'INCOME';
@@ -211,6 +212,8 @@ export const CategoriesView: React.FC = () => {
         action={
           <SegmentedControl<CategorySubTab>
             size="sm"
+            mode="tabs"
+            ariaLabel="Categories and smart rules"
             value={subTab}
             onChange={setSubTab}
             options={[
@@ -308,9 +311,9 @@ export const CategoriesView: React.FC = () => {
 
               {addCategoryError && <div className={ERROR_BANNER_CLASS}>{addCategoryError}</div>}
 
-              <button id="save-category-btn" type="submit" className={PRIMARY_BUTTON_COMPACT_CLASS}>
+              <Button id="save-category-btn" type="submit" block>
                 Add Category
-              </button>
+              </Button>
             </form>
           </Card>
 
@@ -353,30 +356,27 @@ export const CategoriesView: React.FC = () => {
                         ) : !canDelete ? (
                           <span className="text-[10px] text-fg-muted uppercase font-semibold px-1.5">In use</span>
                         ) : null}
-                        <button
-                          type="button"
+                        <IconButton
                           id={`edit-category-${cat.id}`}
+                          label="Edit category"
                           onClick={() => openEditCategory(cat)}
-                          title="Edit category"
-                          aria-label="Edit category"
-                          className="min-w-[44px] min-h-[44px] -my-2 inline-flex items-center justify-center text-fg-muted hover:text-fg rounded-sm transition-colors duration-150 cursor-pointer"
+                          className="-my-2"
                         >
                           <Pencil className="w-3.5 h-3.5" />
-                        </button>
+                        </IconButton>
                         {canDelete && (
-                          <button
-                            type="button"
+                          <IconButton
                             id={`delete-category-${cat.id}`}
+                            label="Delete category"
+                            tone="danger"
                             onClick={() => {
                               setCategoryToDelete(cat);
                               setDeleteCategoryError(null);
                             }}
-                            title="Delete category"
-                            aria-label="Delete category"
-                            className="min-w-[44px] min-h-[44px] -my-2 inline-flex items-center justify-center text-fg-muted hover:text-expense rounded-sm transition-colors duration-150 cursor-pointer"
+                            className="-my-2"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
-                          </button>
+                          </IconButton>
                         )}
                       </div>
                     </div>
@@ -437,13 +437,9 @@ export const CategoriesView: React.FC = () => {
                   </div>
                 )}
 
-                <button
-                  id="save-keyword-rule-btn"
-                  type="submit"
-                  className={PRIMARY_BUTTON_COMPACT_CLASS}
-                >
+                <Button id="save-keyword-rule-btn" type="submit" block>
                   Add Rule
-                </button>
+                </Button>
               </form>
             </Card>
 
@@ -533,21 +529,15 @@ export const CategoriesView: React.FC = () => {
                         </td>
                         <td className="py-3 px-4">
                           {cat ? (
-                            <CategoryChip name={cat.name} color={cat.color} size="md" rounded="md" />
+                            <Chip label={cat.name} color={cat.color} />
                           ) : (
                             <span className="text-fg-muted">Unknown</span>
                           )}
                         </td>
                         <td className="py-3 px-4">
-                          <button
-                            type="button"
-                            onClick={() => deleteKeywordRule(rule.id)}
-                            aria-label="Delete rule"
-                            title="Delete rule"
-                            className="min-w-[44px] min-h-[44px] -my-2 inline-flex items-center justify-center text-fg-muted hover:text-expense rounded-sm transition-colors duration-150 cursor-pointer"
-                          >
+                          <IconButton label="Delete rule" tone="danger" onClick={() => deleteKeywordRule(rule.id)} className="-my-2">
                             <Trash2 className="w-3.5 h-3.5" />
-                          </button>
+                          </IconButton>
                         </td>
                       </tr>
                     );
@@ -644,9 +634,9 @@ export const CategoriesView: React.FC = () => {
 
           {editCategoryError && <div className={ERROR_BANNER_CLASS}>{editCategoryError}</div>}
 
-          <button id="edit-category-save-btn" type="submit" className={PRIMARY_BUTTON_COMPACT_CLASS}>
+          <Button id="edit-category-save-btn" type="submit" block>
             Save Changes
-          </button>
+          </Button>
         </form>
       </Modal>
 

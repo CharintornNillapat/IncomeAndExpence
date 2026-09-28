@@ -15,7 +15,8 @@ import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { SectionHeader } from '../components/ui/SectionHeader';
 import { Card } from '../components/ui/Card';
 import { EmptyState } from '../components/ui/EmptyState';
-import { LABEL_CLASS, inputClass, ERROR_BANNER_CLASS, PRIMARY_BUTTON_CLASS } from '../utils/formStyles';
+import { LABEL_CLASS, inputClass, ERROR_BANNER_CLASS } from '../utils/formStyles';
+import { Button } from '../components/ui/Button';
 
 export const DebtsView: React.FC = () => {
   const { debts, wallets, addDebt, settleDebt, deleteDebt } = useDebts();
@@ -127,15 +128,9 @@ export const DebtsView: React.FC = () => {
         title="Debts & Loans"
         subtitle="Track payoff goals and make repayments from your wallets"
         action={
-          <button
-            id="open-add-debt-btn"
-            type="button"
-            onClick={() => setIsAddDebtOpen(true)}
-            className="min-h-[44px] inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-brand-fill hover:bg-brand-fill-hover rounded-lg transition-colors duration-150 cursor-pointer"
-          >
-            <Plus className="w-4 h-4 text-white" />
+          <Button id="open-add-debt-btn" onClick={() => setIsAddDebtOpen(true)} icon={<Plus className="w-4 h-4" />}>
             <span>Add Debt</span>
-          </button>
+          </Button>
         }
       />
 
@@ -274,13 +269,9 @@ export const DebtsView: React.FC = () => {
               </div>
             )}
 
-            <button
-              id="save-new-debt-btn"
-              type="submit"
-              className={PRIMARY_BUTTON_CLASS}
-            >
+            <Button id="save-new-debt-btn" type="submit" size="lg" block>
               Add Debt
-            </button>
+            </Button>
           </div>
         </form>
       </Modal>

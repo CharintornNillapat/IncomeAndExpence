@@ -1,7 +1,7 @@
 import React from 'react';
 import { TrendingDown } from 'lucide-react';
 import { formatCurrencyAmount } from '../../utils/currency';
-import { ProgressMeter } from '../ui/ProgressMeter';
+import { ProgressBar } from '../ui/ProgressBar';
 
 interface DebtPayoffOverviewProps {
   activeDebtCount: number;
@@ -35,7 +35,7 @@ export const DebtPayoffOverview: React.FC<DebtPayoffOverviewProps> = React.memo(
               <span className="text-fg-secondary">Payoff Progress:</span>
               <span className="font-bold text-fg">{debtProgressPercent.toFixed(1)}%</span>
             </div>
-            <ProgressMeter percent={debtProgressPercent} heightClassName="h-3" />
+            <ProgressBar percent={debtProgressPercent} size="lg" label="Payoff progress" />
           </div>
 
           <div className="grid grid-cols-2 gap-3 pt-2">

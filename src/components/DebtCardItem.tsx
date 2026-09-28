@@ -2,8 +2,9 @@ import React from 'react';
 import { TrendingDown, CheckCircle2, Check, Trash2, CreditCard } from 'lucide-react';
 import { Debt } from '../types';
 import { formatCurrencyAmount } from '../utils/currency';
-import { PRIMARY_BUTTON_COMPACT_CLASS } from '../utils/formStyles';
-import { ProgressMeter } from './ui/ProgressMeter';
+import { ProgressBar } from './ui/ProgressBar';
+import { Button } from './ui/Button';
+import { IconButton } from './ui/IconButton';
 
 interface DebtCardItemProps {
   debt: Debt;
@@ -56,27 +57,25 @@ export const DebtCardItem: React.FC<DebtCardItemProps> = React.memo(({
 
           <div className="flex items-center gap-1">
             {!debt.isSettled && (
-              <button
+              <IconButton
                 id={`settle-debt-${debt.id}`}
-                type="button"
+                label="Mark fully settled"
+                tone="income"
                 onClick={() => onSettle(debt.id)}
-                title="Mark fully settled"
-                aria-label="Mark fully settled"
-                className="min-w-[44px] min-h-[44px] -my-2 inline-flex items-center justify-center text-fg-muted hover:text-income hover:bg-income-tint rounded-lg transition-colors cursor-pointer"
+                className="-my-2"
               >
                 <Check className="w-4 h-4" />
-              </button>
+              </IconButton>
             )}
-            <button
+            <IconButton
               id={`delete-debt-${debt.id}`}
-              type="button"
+              label="Delete debt"
+              tone="danger"
               onClick={() => onDelete(debt.id)}
-              title="Delete debt"
-              aria-label="Delete debt"
-              className="min-w-[44px] min-h-[44px] -my-2 -mr-2 inline-flex items-center justify-center text-fg-muted hover:text-expense hover:bg-expense-tint rounded-lg transition-colors cursor-pointer"
+              className="-my-2 -mr-2"
             >
               <Trash2 className="w-4 h-4" />
-            </button>
+            </IconButton>
           </div>
         </div>
 
@@ -87,7 +86,7 @@ export const DebtCardItem: React.FC<DebtCardItemProps> = React.memo(({
               <span className="text-fg-secondary">Repayment Progress:</span>
               <span className="font-bold text-fg">{progressPercent.toFixed(1)}%</span>
             </div>
-            <ProgressMeter percent={progressPercent} heightClassName="h-3" />
+            <ProgressBar percent={progressPercent} size="lg" label="Repayment progress" />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
@@ -117,15 +116,14 @@ export const DebtCardItem: React.FC<DebtCardItemProps> = React.memo(({
       {/* Action Button: Atomic Repay */}
       <div className="pt-5 mt-4 border-t border-line">
         {!debt.isSettled ? (
-          <button
+          <Button
             id={`open-repay-modal-${debt.id}`}
-            type="button"
+            block
             onClick={() => onOpenRepay(debt)}
-            className={`${PRIMARY_BUTTON_COMPACT_CLASS} flex items-center justify-center gap-2`}
+            icon={<CreditCard className="w-4 h-4 text-white/80" />}
           >
-            <CreditCard className="w-4 h-4 text-white/80" />
             <span>Make Repayment</span>
-          </button>
+          </Button>
         ) : (
           <div className="text-center py-1.5 text-xs font-semibold text-income bg-income-tint rounded-lg border border-income-line">
             ✓ Debt Fully Settled

@@ -12,6 +12,8 @@ import {
 import { useFinanceState, useFinanceActions } from '../context/FinanceContext';
 import { Modal } from './Modal';
 import { ConfirmDialog } from './ui/ConfirmDialog';
+import { Button } from './ui/Button';
+import { IconButton } from './ui/IconButton';
 import { Wallet } from '../types';
 import { APP_CURRENCY, APP_CURRENCY_SYMBOL, formatCurrencyAmount } from '../utils/currency';
 import { todayIsoDate } from '../utils/date';
@@ -170,15 +172,9 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
           </div>
         </div>
 
-        <button
-          id="close-wallet-modal-btn"
-          type="button"
-          onClick={onClose}
-          aria-label="Close wallet details"
-          className="min-w-[44px] min-h-[44px] -mr-2 inline-flex items-center justify-center rounded-lg text-fg-muted hover:text-fg hover:bg-surface-2 transition-colors duration-150 cursor-pointer"
-        >
+        <IconButton id="close-wallet-modal-btn" label="Close wallet details" onClick={onClose} className="-mr-2">
           <X className="w-5 h-5" />
-        </button>
+        </IconButton>
       </div>
 
       {/* Tab Navigation Controls (T39: mapped array over the 2 surviving tabs) */}
@@ -255,32 +251,29 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
                           </div>
 
                           <div className="flex items-center gap-1 shrink-0">
-                            <button
-                              type="button"
+                            <IconButton
                               id={`wallet-adjust-btn-${wallet.id}`}
-                              title="Adjust Balance"
+                              label="Adjust Balance"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setIsAdjustingBalance(wallet.id);
                                 setAdjustedBalance(wallet.balance);
                               }}
-                              aria-label="Adjust Balance"
-                              className="min-w-[44px] min-h-[44px] -my-2 inline-flex items-center justify-center rounded-lg text-fg-muted hover:text-fg hover:bg-surface-3 transition-colors duration-150 cursor-pointer"
+                              className="-my-2"
                             >
                               <Sliders className="w-3.5 h-3.5" />
-                            </button>
-                            <button
-                              type="button"
-                              title="Delete Wallet"
+                            </IconButton>
+                            <IconButton
+                              label="Delete Wallet"
+                              tone="danger"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setWalletToDelete(wallet);
                               }}
-                              aria-label="Delete Wallet"
-                              className="min-w-[44px] min-h-[44px] -my-2 inline-flex items-center justify-center rounded-lg text-fg-muted hover:text-expense hover:bg-expense-tint transition-colors duration-150 cursor-pointer"
+                              className="-my-2"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
-                            </button>
+                            </IconButton>
                           </div>
                         </div>
 
@@ -300,21 +293,12 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
                                 className="w-full min-h-[44px] text-xs px-2.5 py-1.5 rounded-lg border border-line-input bg-surface-2 text-fg placeholder:text-fg-muted focus:outline-none focus:ring-2 focus:ring-focus"
                               />
                               <div className="flex items-center gap-1 shrink-0">
-                                <button
-                                  type="button"
-                                  id="wallet-adjust-save-btn"
-                                  onClick={() => handleSaveBalanceAdjustment(wallet.id)}
-                                  className="min-h-[44px] px-3 py-1.5 bg-brand-fill hover:bg-brand-fill-hover text-white rounded-lg text-xs font-semibold transition-colors duration-150 cursor-pointer"
-                                >
+                                <Button id="wallet-adjust-save-btn" onClick={() => handleSaveBalanceAdjustment(wallet.id)}>
                                   Save
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => setIsAdjustingBalance(null)}
-                                  className="min-h-[44px] px-2 py-1.5 text-fg-secondary text-xs hover:text-fg cursor-pointer"
-                                >
+                                </Button>
+                                <Button variant="secondary" onClick={() => setIsAdjustingBalance(null)}>
                                   Cancel
-                                </button>
+                                </Button>
                               </div>
                             </div>
                           </div>
@@ -376,22 +360,21 @@ export const WalletPopupModal: React.FC<WalletPopupModalProps> = ({
                   </div>
 
                   <div className="flex flex-wrap items-center gap-2">
-                    <button
-                      type="button"
+                    <Button
+                      variant="secondary"
                       onClick={() => onOpenTransfer(currentWallet.id)}
-                      className="flex-1 sm:flex-none min-h-[44px] px-3 py-1.5 rounded-lg bg-surface-1 hover:bg-surface-3 border border-line hover:border-brand text-fg text-xs font-semibold transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                      className="flex-1 sm:flex-none"
+                      icon={<ArrowLeftRight className="w-3.5 h-3.5 text-transfer" />}
                     >
-                      <ArrowLeftRight className="w-3.5 h-3.5 text-transfer" />
                       <span>Transfer</span>
-                    </button>
-                    <button
-                      type="button"
+                    </Button>
+                    <Button
                       onClick={() => setActiveTab('TRANSACTIONS')}
-                      className="flex-1 sm:flex-none min-h-[44px] px-3 py-1.5 rounded-lg bg-brand-fill hover:bg-brand-fill-hover text-white text-xs font-semibold transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                      className="flex-1 sm:flex-none"
+                      icon={<Receipt className="w-3.5 h-3.5" />}
                     >
-                      <Receipt className="w-3.5 h-3.5" />
                       <span>Activity</span>
-                    </button>
+                    </Button>
                   </div>
                 </div>
               )}

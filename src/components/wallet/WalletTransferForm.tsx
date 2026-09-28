@@ -10,6 +10,7 @@ import { todayIsoDate } from '../../utils/date';
 import { getWalletIcon } from '../../utils/walletIcons';
 import { InlineMathInput } from '../InlineMathInput';
 import { EmptyState } from '../ui/EmptyState';
+import { Button } from '../ui/Button';
 import {
   FieldTone,
   LABEL_CLASS,
@@ -401,23 +402,20 @@ export const WalletTransferForm: React.FC<WalletTransferFormProps> = ({
       {errorPlacement === 'bottom' && errorBanner}
 
       <div className="pt-2">
-        <button
+        <Button
           id={ids.submit}
           type="submit"
+          size="lg"
+          block
           disabled={!canSubmit}
-          className={`w-full min-h-[44px] py-2.5 sm:py-3 rounded-lg font-semibold text-xs transition-colors duration-150 flex items-center justify-center gap-2 cursor-pointer ${
-            canSubmit
-              ? 'bg-brand-fill hover:bg-brand-fill-hover text-white'
-              : 'bg-surface-3 text-fg-muted cursor-not-allowed'
-          }`}
+          icon={<ArrowLeftRight className="w-4 h-4" />}
         >
-          <ArrowLeftRight className="w-4 h-4" />
           <span>
             {isTransferring
               ? 'Transferring...'
               : `Transfer ${formatCurrencyAmount(transferAmount ?? 0)}`}
           </span>
-        </button>
+        </Button>
       </div>
     </form>
   );

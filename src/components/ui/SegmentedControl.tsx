@@ -19,7 +19,16 @@ interface SegmentedControlProps<T extends string> {
   fill?: boolean;
   /** Tray-level layout classes (display/alignment/width) - callers keep their own flex/grid shape here. */
   className?: string;
+  /**
+   * `pressed` (default): a group of toggle buttons, the selected one `aria-pressed`.
+   * `tabs`: a tablist that switches what is shown below it, the selected tab `aria-selected` (spec 6.6).
+   */
+  mode?: SegmentedControlMode;
+  /** Names the group or tablist for assistive technology. */
+  ariaLabel?: string;
 }
+
+export type SegmentedControlMode = 'pressed' | 'tabs';
 
 // Both sizes keep a 44px hit box (DESIGN.md §4); `sm` differs only in padding.
 const SIZE_CLASS: Record<SegmentedControlSize, string> = {
@@ -37,6 +46,10 @@ const SIZE_CLASS: Record<SegmentedControlSize, string> = {
  * mounted at once (e.g. the dashboard period filter and the quick-add
  * transaction-type toggle it renders alongside) never share a layout
  * animation.
+ *
+ * Phase 56 (spec 4.6, ADR 0029): a bordered card-coloured tray, the selected
+ * option on `control-active` in bold, and the selection exposed in ARIA -
+ * `aria-pressed` for a toggle group, `role="tab"` + `aria-selected` for tabs.
  */
 export function SegmentedControl<T extends string>({
   options,
@@ -45,12 +58,17 @@ export function SegmentedControl<T extends string>({
   size = 'md',
   fill = false,
   className = '',
+  mode = 'pressed',
+  ariaLabel,
 }: SegmentedControlProps<T>) {
   const instanceId = useId();
+  const isTabs = mode === 'tabs';
 
   return (
     <div
-      className={`bg-surface-2 p-1 rounded-lg gap-1 border border-line ${className}`.trim()}
+      role={isTabs ? 'tablist' : 'group'}
+      aria-label={ariaLabel}
+      className={`bg-surface-1 p-1 rounded-control gap-1 border border-line ${className}`.trim()}
     >
       {options.map((option) => {
         const isActive = option.value === value;
@@ -59,19 +77,22 @@ export function SegmentedControl<T extends string>({
             key={option.value}
             id={option.id}
             type="button"
+            role={isTabs ? 'tab' : undefined}
+            aria-selected={isTabs ? isActive : undefined}
+            aria-pressed={isTabs ? undefined : isActive}
             onClick={() => onChange(option.value)}
-            className={`relative text-center font-semibold rounded-md transition-colors duration-150 cursor-pointer truncate ${
+            className={`relative text-center rounded-button transition-colors duration-150 cursor-pointer truncate ${
               fill ? 'flex-1' : ''
             } ${SIZE_CLASS[size]} ${
               isActive
-                ? 'text-fg'
-                : 'text-fg-secondary hover:text-fg'
+                ? 'text-fg font-bold'
+                : 'text-fg-secondary font-semibold hover:text-fg'
             }`.trim()}
           >
             {isActive && (
               <motion.span
                 layoutId={`${instanceId}-pill`}
-                className="absolute inset-0 z-0 bg-surface-3 rounded-md"
+                className="absolute inset-0 z-0 bg-control-active rounded-button"
                 transition={{ duration: 0.2, ease: 'easeOut' }}
               />
             )}

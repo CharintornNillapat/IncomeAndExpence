@@ -25,6 +25,8 @@ import { Modal } from '../components/Modal';
 import { SectionHeader } from '../components/ui/SectionHeader';
 import { Card } from '../components/ui/Card';
 import { EmptyState } from '../components/ui/EmptyState';
+import { Button } from '../components/ui/Button';
+import { IconButton } from '../components/ui/IconButton';
 import { buildLookupMap } from '../utils/mapUtils';
 import { useTransientFlash } from '../hooks/useTransientFlash';
 import { OPTION_CLASS } from '../utils/formStyles';
@@ -383,49 +385,40 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
         action={
           <div className="flex flex-wrap items-center gap-2">
             {/* CSV Export */}
-            <button
+            <Button
               id="tx-export-csv-btn"
-              type="button"
+              variant="secondary"
               onClick={() => exportTransactionsToCsv(rawTransactions, wallets, categories, debts)}
-              className="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-fg-secondary bg-surface-2 hover:bg-surface-3 border border-line hover:border-brand rounded-lg transition-all cursor-pointer"
+              icon={<Download className="w-3.5 h-3.5" />}
             >
-              <Download className="w-3.5 h-3.5" />
               <span>Export CSV</span>
-            </button>
+            </Button>
 
             {/* Diary JSON Export */}
-            <button
+            <Button
               id="diary-export-json-btn"
-              type="button"
+              variant="secondary"
               onClick={() => exportDiaryToJson(diaryEntries)}
-              className="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-fg-secondary bg-surface-2 hover:bg-surface-3 border border-line hover:border-brand rounded-lg transition-all cursor-pointer"
+              icon={<FileText className="w-3.5 h-3.5 text-fg-muted" />}
             >
-              <FileText className="w-3.5 h-3.5 text-fg-muted" />
               <span className="hidden sm:inline">Export Diary (JSON)</span>
               <span className="sm:hidden">Diary</span>
-            </button>
+            </Button>
 
             {/* 2-Step Import CSV */}
-            <button
+            <Button
               id="tx-import-csv-btn"
-              type="button"
+              variant="soft"
               onClick={() => setIsImportModalOpen(true)}
-              className="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-brand bg-brand-tint rounded-lg border border-brand-line hover:border-brand transition-all cursor-pointer"
+              icon={<Upload className="w-3.5 h-3.5" />}
             >
-              <Upload className="w-3.5 h-3.5" />
               <span>Import CSV</span>
-            </button>
+            </Button>
 
             {/* Add Transaction */}
-            <button
-              id="tx-open-add-modal-btn"
-              type="button"
-              onClick={() => setIsAddModalOpen(true)}
-              className="min-h-[44px] inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-brand-fill hover:bg-brand-fill-hover rounded-lg transition-all cursor-pointer"
-            >
-              <Plus className="w-4 h-4" />
+            <Button id="tx-open-add-modal-btn" onClick={() => setIsAddModalOpen(true)} icon={<Plus className="w-4 h-4" />}>
               <span>Add Transaction</span>
-            </button>
+            </Button>
           </div>
         }
       />
@@ -442,20 +435,19 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Search description, amount, math..."
-              className="w-full min-h-[44px] pl-9 pr-8 py-2 text-xs rounded-lg border border-line-input bg-surface-2 text-fg placeholder:text-fg-muted focus:outline-none focus:ring-2 focus:ring-focus transition-colors"
+              className="w-full min-h-[44px] pl-9 pr-11 py-2 text-xs rounded-lg border border-line-input bg-surface-2 text-fg placeholder:text-fg-muted focus:outline-none focus:ring-2 focus:ring-focus transition-colors"
             />
             {searchTerm && (
-              <button
-                type="button"
+              <IconButton
+                label="Clear search"
                 onClick={() => {
                   setSearchTerm('');
                   setDebouncedSearchTerm('');
                 }}
-                className="absolute right-2.5 top-2.5 p-1 text-fg-muted hover:text-fg rounded-sm cursor-pointer"
-                title="Clear search"
+                className="absolute right-0 top-0"
               >
                 <X className="w-3.5 h-3.5" />
-              </button>
+              </IconButton>
             )}
           </div>
 
@@ -565,27 +557,25 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
           </span>
 
           <div className="flex items-center gap-1.5">
-            <button
+            <Button
               id="tx-prev-page-btn"
-              type="button"
+              variant="secondary"
               disabled={currentPage === 1}
               onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-              className="min-h-[44px] px-3.5 py-1.5 rounded-lg border border-line bg-surface-1 text-fg-secondary disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer font-medium hover:border-brand transition-colors"
             >
               Previous
-            </button>
+            </Button>
             <span className="px-2 font-semibold text-fg">
               {currentPage} / {totalPages}
             </span>
-            <button
+            <Button
               id="tx-next-page-btn"
-              type="button"
+              variant="secondary"
               disabled={currentPage >= totalPages}
               onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-              className="min-h-[44px] px-3.5 py-1.5 rounded-lg border border-line bg-surface-1 text-fg-secondary disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer font-medium hover:border-brand transition-colors"
             >
               Next
-            </button>
+            </Button>
           </div>
         </div>
       </Card>
@@ -728,26 +718,15 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
                 </span>
 
                 {uncategorizedRows.length > 0 && !classifyProgress && (
-                  <button
-                    type="button"
-                    id="csv-classify-btn"
-                    onClick={handleClassifyRemaining}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-brand-fill text-white hover:bg-brand-fill-hover transition-colors cursor-pointer"
-                  >
-                    <Sparkles className="w-3.5 h-3.5" />
+                  <Button id="csv-classify-btn" onClick={handleClassifyRemaining} icon={<Sparkles className="w-3.5 h-3.5" />}>
                     Classify remaining with Jev
-                  </button>
+                  </Button>
                 )}
 
                 {classifyProgress && (
-                  <button
-                    type="button"
-                    id="csv-classify-cancel-btn"
-                    onClick={() => classifyAbortRef.current?.abort()}
-                    className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-line text-fg-secondary hover:bg-surface-3 hover:border-brand transition-colors cursor-pointer"
-                  >
+                  <Button id="csv-classify-cancel-btn" variant="secondary" onClick={() => classifyAbortRef.current?.abort()}>
                     Cancel
-                  </button>
+                  </Button>
                 )}
               </div>
 
@@ -902,22 +881,17 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
               <p className="text-xs text-fg-secondary">
                 Commit inserts every valid row, then updates wallet balances. If the insert fails, nothing changes.
               </p>
-              <button
+              <Button
                 id="commit-import-btn"
-                type="button"
                 disabled={importPreview.validRowsCount === 0 || isCommittingImport}
                 onClick={handleCommitImport}
-                className={`px-4 py-2.5 rounded-lg font-semibold text-xs transition-all flex items-center gap-2 cursor-pointer ${
-                  importPreview.validRowsCount > 0 && !isCommittingImport
-                    ? 'bg-brand-fill text-white hover:bg-brand-fill-hover'
-                    : 'bg-surface-3 text-fg-muted cursor-not-allowed'
-                }`}
+                className="shrink-0"
+                icon={<CheckCircle2 className="w-4 h-4" />}
               >
-                <CheckCircle2 className="w-4 h-4" />
                 <span>
                   {isCommittingImport ? 'Importing…' : `Confirm & Commit (${importPreview.validRowsCount} Rows)`}
                 </span>
-              </button>
+              </Button>
             </div>
           </div>
         )}

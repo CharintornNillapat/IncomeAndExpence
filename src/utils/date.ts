@@ -48,6 +48,28 @@ export function shiftIsoDate(iso: string, days: number): string {
 }
 
 /**
+ * Spec 4.10: a day group's heading - "Sun, Sep 27", with "Today · " or
+ * "Yesterday · " in front when it is one of those, and the year only when it
+ * is not `today`'s. Built from local calendar components like
+ * `formatDayInfo`, and `today` is an argument so a list formats every day
+ * against the same one.
+ */
+export function formatDayLabel(iso: string, today: string): string {
+  const [year, month, day] = iso.split('-').map(Number);
+  const date = new Date(year, month - 1, day);
+  const sameYear = iso.slice(0, 4) === today.slice(0, 4);
+  const label = date.toLocaleDateString('en-US', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    ...(sameYear ? {} : { year: 'numeric' }),
+  });
+  if (iso === today) return `Today · ${label}`;
+  if (iso === shiftIsoDate(today, -1)) return `Yesterday · ${label}`;
+  return label;
+}
+
+/**
  * An instant (a full ISO timestamp such as a session's last refresh) as local
  * `YYYY-MM-DD HH:MM`. The timestamp is an instant, so parsing it is correct -
  * unlike a bare calendar-day string - and the output uses local components,

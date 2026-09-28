@@ -20,7 +20,8 @@ import { APP_CURRENCY_SYMBOL, formatCurrencyAmount } from '../utils/currency';
 import { todayIsoDate } from '../utils/date';
 import { LABEL_TEXT_CLASS, OPTION_CLASS, ERROR_BANNER_CLASS } from '../utils/formStyles';
 import { SegmentedControl } from './ui/SegmentedControl';
-import { ProgressMeter } from './ui/ProgressMeter';
+import { Button } from './ui/Button';
+import { ProgressBar } from './ui/ProgressBar';
 
 interface TransactionFormProps {
   wallets: Wallet[];
@@ -519,7 +520,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
     repayTargetDebt && repayTargetDebt.totalAmount > 0
       ? ((repayTargetDebt.totalAmount - projectedRemaining) / repayTargetDebt.totalAmount) * 100
       : 100;
-  // `ProgressMeter` clamps its own bar; the printed number does not get that
+  // `ProgressBar` clamps its own bar; the printed number does not get that
   // for free, and a debt created with remaining > total (the add-debt form
   // permits it) would otherwise print a negative percentage beside a
   // correctly-pinned bar.
@@ -625,6 +626,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
             from the shortcut row at the bottom of this form. */}
         <SegmentedControl<TransactionType>
           className="grid grid-cols-2 sm:flex w-full sm:w-auto"
+          ariaLabel="Transaction type"
           value={type}
           onChange={(t) => {
             setType(t);
@@ -855,7 +857,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
               </span>
             </div>
 
-            <ProgressMeter percent={projectedPercent} heightClassName="h-2.5" />
+            <ProgressBar percent={projectedPercent} size="lg" label="Payoff progress after this payment" />
 
             <div className="flex items-center justify-between text-[11px] text-fg-secondary">
               <span>Payoff progress</span>
@@ -1062,16 +1064,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
 
       {/* 5. Submit Button */}
       <div className="pt-2">
-        <button
-          id={submitBtnId}
-          type="submit"
-          disabled={!canSubmit}
-          className={`w-full min-h-[48px] py-3 px-4 rounded-lg font-semibold text-sm transition-colors duration-150 flex items-center justify-center gap-2 cursor-pointer ${
-            canSubmit
-              ? 'bg-brand-fill hover:bg-brand-fill-hover text-white'
-              : 'bg-surface-3 text-fg-muted cursor-not-allowed'
-          }`}
-        >
+        <Button id={submitBtnId} type="submit" size="lg" block disabled={!canSubmit} className="sm:text-sm">
           <span>
             {isSubmitting ? 'Saving...' : `Record ${type === 'DEBT_REPAYMENT' ? 'Debt Payment' : 'Transaction'}`}
           </span>
@@ -1081,7 +1074,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
             </span>
           )}
           <ArrowRight className="w-4 h-4" />
-        </button>
+        </Button>
 
         {submitError && (
           <div className={`${ERROR_BANNER_CLASS} flex items-center gap-2 mt-2`}>

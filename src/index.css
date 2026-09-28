@@ -144,6 +144,8 @@
   --transfer-bg: #F0F9FF;
   --adjust-text: #475569;
   --adjust-bg: #F1F5F9;
+  --chip-text: #334155;
+  --danger-line: #FECDD3;
   --pending-text: #92400E;
   --pending-bg: #FFFBEB;
   --pending-line: #FCD34D;
@@ -181,6 +183,8 @@
   --transfer-bg: #0E2533;
   --adjust-text: #A3AABB;
   --adjust-bg: #1E2233;
+  --chip-text: #C9CFDC;
+  --danger-line: #4A2227;
   --pending-text: #FBBF24;
   --pending-bg: #231C0B;
   --pending-line: #4A3A12;
@@ -218,6 +222,8 @@
   --color-transfer-tint: var(--transfer-bg);
   --color-adjust: var(--adjust-text);
   --color-adjust-tint: var(--adjust-bg);
+  --color-chip-text: var(--chip-text);
+  --color-danger-line: var(--danger-line);
   --color-pending: var(--pending-text);
   --color-pending-tint: var(--pending-bg);
   --color-pending-line: var(--pending-line);
@@ -271,6 +277,16 @@
    */
   body {
     font-variant-numeric: tabular-nums;
+  }
+
+  /*
+   * Spec section 7 (ADR 0029): one visible focus style for every control
+   * reached by keyboard. Fields keep their own `focus:ring-2 ring-focus` in the
+   * same violet, because they already drop the outline for it.
+   */
+  :focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
   }
 }
 

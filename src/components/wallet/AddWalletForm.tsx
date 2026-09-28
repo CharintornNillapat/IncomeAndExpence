@@ -9,10 +9,10 @@ import {
   LABEL_CLASS,
   OPTION_CLASS,
   ERROR_BANNER_CLASS,
-  PRIMARY_BUTTON_CLASS,
   inputClass,
   selectClass,
 } from '../../utils/formStyles';
+import { Button } from '../ui/Button';
 import { WALLET_COLOR_PALETTE, WALLET_TYPE_OPTIONS } from './walletFormStyles';
 
 /**
@@ -174,13 +174,9 @@ export const AddWalletForm: React.FC<AddWalletFormProps> = ({
           <div className={`${ERROR_BANNER_CLASS} mb-3`}>{createWalletError}</div>
         )}
 
-        <button
-          id={ids.submit}
-          type="submit"
-          className={PRIMARY_BUTTON_CLASS}
-        >
+        <Button id={ids.submit} type="submit" size="lg" block>
           Add Wallet
-        </button>
+        </Button>
       </div>
     </form>
   );
