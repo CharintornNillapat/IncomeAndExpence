@@ -103,7 +103,7 @@ export const WalletsView: React.FC<WalletsViewProps> = ({ onOpenTransfer, onOpen
             <div
               key={wallet.id}
               id={`wallet-entity-${wallet.id}`}
-              className="bg-surface-1 rounded-xl border border-line p-5 hover:border-brand transition-colors duration-150 flex flex-col justify-between"
+              className="bg-surface-1 rounded-xl border border-line p-5 hover:border-brand transition-control duration-150 flex flex-col justify-between"
             >
               <div>
                 <div className="flex items-center justify-between">

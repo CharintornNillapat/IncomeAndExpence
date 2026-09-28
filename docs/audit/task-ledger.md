@@ -1081,6 +1081,44 @@ Approved explicitly by the user, planned and approved before any code was writte
 - **One negative control was redone** because the first attempt produced malformed TypeScript that the dev server still served — the tests failed, but possibly for the wrong reason.
 - **No flakes.** Phase 44's `wallets.spec.ts` webkit flake has now not reproduced across three consecutive phases; still watched rather than closed.
 
+## Phase 57 - FinLife redesign, step 4, first page (the Dashboard): T222-T233 (2026-09-28)
+
+Spec 6.1 and section 9 step 4. ADR `0030`. The plan was approved in plan mode. The owner's decisions:
+- the insights card stays, titled with its own months;
+- `main` takes the spec's padding but keeps `max-w-7xl` for now;
+- `theme.spec.ts:58` moves its locator to `net-worth-card`;
+- antislop in mode 2 (audit 005).
+
+Branch `phase-57-dashboard`, draft PR. It also carries `2739e4e`, the Phase 56 deploy record, which was not pushed.
+
+| # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
+|---|---|---|---|---|---|---|---|---|---|---|
+| T222 | Selectors `cashFlow`, `walletShares`, `moodSpendingDays`; date helpers `formatLongDate`, `formatShortDate`, `formatWeekdayDate`, `formatMonthName`, `greetingFor` | `selectors/ledger.ts`, `selectors/wallets.ts`, `selectors/diary.ts` (new), `utils/date.ts`, `unit/selectors-dashboard.test.ts` | High | Low | 1h | done | - | 5e40415 | red against the missing modules first; 2 mutations caught | unit 353 -> 368 |
+| T223 | `@utility transition-control` replaces `transition-colors` everywhere (audit 004 finding 2); `main` padding 16px, then 32/40/48 from `md` | `index.css`, `App.tsx`, 22 components | Med | Low | 0.5h | done | - | dfb9174 | outline `rgb(124, 58, 237)` on the first read after focus (MCP) | - |
+| T224 | `PageHeader` (greeting, long date, period control) and the 12-column grid | `DashboardView.tsx` | High | Med | 0.5h | done | T222 | e43ea5d | `#time-filter-*` unchanged | - |
+| T225 | `NetWorthCard` (L3) and `CashFlowCard`; `metric-card-expense` moves; `TotalWealthHero` and `CashflowMetricsCards` deleted; `theme.spec.ts:58` locator move | `dashboard/*`, `tests/theme.spec.ts` | High | Med | 1h | done | T222 | e43ea5d, 873d714 | Spending equals the category total in all four periods (MCP) | - |
+| T226 | `DebtWarningBanner` (L5) and `DebtPayoffCard` (L4, per debt); `DebtPayoffOverview` deleted | `dashboard/*` | High | Low | 1h | done | T222 | e43ea5d | Car loan ฿42,000 due Feb 1, 2027: ฿10,500.00 / month, banner shown | - |
+| T227 | Wallets section: links keep the hero ids, `AllocationBar`, one button row per wallet; `WalletAccountsGrid` deleted | `dashboard/WalletsSection.tsx` | High | Med | 1h | done | T222 | e43ea5d, 20558ac | `#dashboard-wallet-card-*` now a `<button>` | - |
+| T228 | `CategorySpendingCard`; `CategoryExpenseDistribution` deleted | `dashboard/*` | Med | Low | 0.5h | done | - | e43ea5d | - | - |
+| T229 | `RecentActivityCard`: `TransactionRow`, `DayGroupHeader`, the L8 fold that expands; `RecentTransactionsTable` deleted | `dashboard/*` | High | Med | 1h | done | - | e43ea5d | each description once (strict `getByText` specs pass) | - |
+| T230 | `MoodSpendingCard`: five-bar meter, signed spending, the "Log today" button | `dashboard/*` | Med | Low | 0.5h | done | T222 | e43ea5d | - | - |
+| T231 | `SpendingInsightsCard` restyled, titled "Spending insights · September vs August" | `dashboard/SpendingInsightsCard.tsx` | Low | Low | 0.25h | done | - | e43ea5d | `insights.spec.ts` unedited, 10/10 per browser | - |
+| T232 | `unit/dashboard.test.tsx`: spec 10's checks per card | `unit/dashboard.test.tsx` | High | Low | 1h | done | T224-T231 | 20558ac, 873d714 | 4 mutations caught; found the click event reaching `onTransfer` | unit 368 -> 385 |
+| T233 | ADR `0030`, `DESIGN.md`, `CLAUDE.md`, selector contract, ledger, log, metrics, antislop audit 005, sha backfill | docs | Low | Low | 1.5h | done | all | f4fb38c, 5efc483 (audit), backfill (this row's own commit) | - | - |
+
+**Notes on execution:**
+- **Found by the unit tests: the Wallets section passed the click event to `onTransfer`.** `DashboardView` wraps it, so nothing broke. Wired straight to `onOpenTransfer(walletId?)`, though, the event would have been read as a wallet id. The links now call their handlers with no argument.
+- **Found in the MCP pass:**
+  - At 390px a wallet row's share and the insights title were truncated. Both now wrap.
+  - A negative net worth was drawn in `fg`, not red. Spec section 3 treats it as a net figure (`873d714`).
+- **Six stale dev servers** from earlier runs were still listening on ports 3000 to 3005. The oldest was a day old, and Playwright reuses whatever answers on 3000. All six were stopped before the full runs, so each run started a fresh server.
+- **Local E2E (4 workers):**
+  - Run 1: 353/357. Two Firefox failures (a `goto` timeout, and a protocol error closing a context) and two WebKit ones (clicks waiting for "stable"). The four tests passed 40/40 in repeats.
+  - Run 2: 356/357. WebKit `#tx-import-csv-btn` was not stable.
+  - Run 3, after the net worth fix: 356/357. The same WebKit button again.
+  - **Control:** `csv-classify.spec.ts` on WebKit, 10 repeats: branch 79/80, `main` 80/80. The two failing tests then ran 30 more times each on the branch: 60/60.
+  - So the rate cannot be told apart from audit 004 finding 3. The pattern is audit 005 finding 3, and CI is the cross-check.
+
 ## Phase 56 - FinLife redesign, step 3 (shared components): T212-T221 (2026-09-28)
 
 Spec section 4, the fourteen shared components. ADR `0029`. The plan was approved in plan mode. The owner's decisions:
@@ -1088,7 +1126,7 @@ Spec section 4, the fourteen shared components. ADR `0029`. The plan was approve
 - one global `:focus-visible` rule;
 - 44px everywhere, including where the spec draws 40px.
 
-Branch `phase-56-components`, draft PR.
+Branch `phase-56-components`, draft PR #2. Merged into `main` as `a86e5d0` with the owner's go-ahead. Push run `36405543706` passed, and Vercel `dpl_CGrLhV7LsZafrX4M5FweApxDY25T` serves a build that matches the local one byte for byte (see the refactor log).
 
 | # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
 |---|---|---|---|---|---|---|---|---|---|---|

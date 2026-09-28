@@ -81,7 +81,7 @@ export function SegmentedControl<T extends string>({
             aria-selected={isTabs ? isActive : undefined}
             aria-pressed={isTabs ? undefined : isActive}
             onClick={() => onChange(option.value)}
-            className={`relative text-center rounded-button transition-colors duration-150 cursor-pointer truncate ${
+            className={`relative text-center rounded-button transition-control duration-150 cursor-pointer truncate ${
               fill ? 'flex-1' : ''
             } ${SIZE_CLASS[size]} ${
               isActive

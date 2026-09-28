@@ -21,6 +21,21 @@ export function walletTotal(wallets: Wallet[]): number {
   return roundToCents(total);
 }
 
+/**
+ * Each active wallet's share of the money it holds, in percent, keyed by id -
+ * the Dashboard's AllocationBar and the "type · share%" line under each
+ * wallet. Only a positive balance takes a share, the same rule as
+ * `AllocationBar`, so a credit card in debt neither gets a share nor shrinks
+ * the others'. A wallet with no share is absent from the map.
+ */
+export function walletShares(wallets: Wallet[]): Map<string, number> {
+  const holding = wallets.filter((wallet) => isActiveWallet(wallet) && Number(wallet.balance) > 0);
+  const total = holding.reduce((sum, wallet) => sum + Number(wallet.balance), 0);
+  const shares = new Map<string, number>();
+  for (const wallet of holding) shares.set(wallet.id, (Number(wallet.balance) / total) * 100);
+  return shares;
+}
+
 /** An active debt: not deleted and not settled. */
 export function isActiveDebt(debt: Debt): boolean {
   return !debt.isDeleted && !debt.isSettled;

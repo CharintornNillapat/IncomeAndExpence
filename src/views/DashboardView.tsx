@@ -1,25 +1,39 @@
-﻿import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { useFinanceState } from '../context/FinanceContext';
-import { Transaction } from '../types';
 import { useWallets } from '../hooks/useWallets';
 import { useDebts } from '../hooks/useDebts';
 import { WalletPopupModal, WalletModalTab } from '../components/WalletPopupModal';
-import { TotalWealthHero } from '../components/dashboard/TotalWealthHero';
-import { WalletAccountsGrid } from '../components/dashboard/WalletAccountsGrid';
-import { CashflowMetricsCards } from '../components/dashboard/CashflowMetricsCards';
-import { CategoryExpenseDistribution } from '../components/dashboard/CategoryExpenseDistribution';
-import { DebtPayoffOverview } from '../components/dashboard/DebtPayoffOverview';
-import { RecentTransactionsTable } from '../components/dashboard/RecentTransactionsTable';
-import { SectionHeader } from '../components/ui/SectionHeader';
-import { SpendingInsightsCard } from '../components/dashboard/SpendingInsightsCard';
+import { PageHeader } from '../components/ui/PageHeader';
 import { SegmentedControl } from '../components/ui/SegmentedControl';
-import { todayIsoDate } from '../utils/date';
+import { NetWorthCard } from '../components/dashboard/NetWorthCard';
+import { CashFlowCard } from '../components/dashboard/CashFlowCard';
+import { DebtWarningBanner } from '../components/dashboard/DebtWarningBanner';
+import { WalletsSection } from '../components/dashboard/WalletsSection';
+import { CategorySpendingCard } from '../components/dashboard/CategorySpendingCard';
+import { DebtPayoffCard } from '../components/dashboard/DebtPayoffCard';
+import { RecentActivityCard } from '../components/dashboard/RecentActivityCard';
+import { MoodSpendingCard } from '../components/dashboard/MoodSpendingCard';
+import { SpendingInsightsCard } from '../components/dashboard/SpendingInsightsCard';
+import { formatLongDate, greetingFor, todayIsoDate } from '../utils/date';
 import { buildLookupMap } from '../utils/mapUtils';
-import { roundToCents } from '../utils/money';
-import { filterByRange, TimeRange } from '../selectors/timeRange';
-import { spendingByCategory, sumIncome, sumSpending } from '../selectors/ledger';
+import { filterByRange, formatRangeLabel, TimeRange } from '../selectors/timeRange';
+import { cashFlow, groupByDay, spendingByCategory } from '../selectors/ledger';
+import { debtRemaining, netWorth, walletShares, walletTotal } from '../selectors/wallets';
+import { debtPlan, monthlySurplus } from '../selectors/debts';
+import { foldAdjustmentPairs } from '../selectors/adjustments';
+import { moodSpendingDays } from '../selectors/diary';
 
 export type TimeFilter = TimeRange;
+
+/** How many activity items (a folded adjustment pair counts as one) the Recent activity card shows. */
+const RECENT_ITEMS = 6;
+
+const PERIODS: { value: TimeFilter; label: string; name: string }[] = [
+  { value: 'DAY', label: 'Today', name: 'today' },
+  { value: 'WEEK', label: 'This week', name: 'this week' },
+  { value: 'MONTH', label: 'Past 30 days', name: 'past 30 days' },
+  { value: 'ALL', label: 'All time', name: 'all time' },
+];
 
 interface DashboardViewProps {
   onNavigate?: (tab: string) => void;
@@ -31,19 +45,24 @@ interface DashboardViewProps {
   onOpenWalletTransactions?: (walletId: string) => void;
 }
 
+/**
+ * Spec 6.1 (ADR 0030): one period for the whole page (L2), and every figure
+ * through `src/selectors/` (ADR 0028), computed once here and passed down.
+ * The cards only lay figures out.
+ */
 export const DashboardView: React.FC<DashboardViewProps> = ({
   onNavigate,
   onOpenTransfer,
   onOpenAddWallet,
   onOpenWalletTransactions,
 }) => {
-  const { transactions, categories, currentUser } = useFinanceState();
-  // `wallets` here is already the active (non-deleted) set; `allWallets` still
-  // includes soft-deleted ones so historic rows can resolve their wallet name.
-  const { wallets: activeWallets, allWallets, totalNetWorth } = useWallets();
-  const { metrics: debtSummary } = useDebts();
+  const { transactions, categories, diaryEntries, currentUser } = useFinanceState();
+  // `wallets` here is already the active set; `allWallets` still includes
+  // deleted ones so historic rows can resolve their wallet name.
+  const { wallets: activeWallets, allWallets } = useWallets();
+  const { debts, metrics: debtSummary } = useDebts();
   const [timeFilter, setTimeFilter] = useState<TimeFilter>('MONTH');
-  
+
   // Wallet Popup Modal State in Dashboard
   const [isWalletModalOpen, setIsWalletModalOpen] = useState<boolean>(false);
   const [walletModalTab, setWalletModalTab] = useState<WalletModalTab>('OVERVIEW');
@@ -55,31 +74,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     setIsWalletModalOpen(true);
   }, []);
 
-  // T41: Transfer and Add Wallet no longer open tabs inside this view's own
-  // WalletPopupModal (T39 retired those tabs) - they open the shared,
-  // shell-level TransferFundsModal/AddWalletModal that App.tsx owns, so the
-  // exact same modal (and ids) is reachable from WalletsView too.
-  const handleHeroOpenTransfer = useCallback(() => {
-    onOpenTransfer?.();
-  }, [onOpenTransfer]);
-
-  const handleHeroOpenAddWallet = useCallback(() => {
-    onOpenAddWallet?.();
-  }, [onOpenAddWallet]);
-
-  const handleOpenManageWallets = useCallback(() => {
-    openWalletModal('OVERVIEW');
-  }, [openWalletModal]);
-
-  const handleWalletCardOpen = useCallback(
-    (walletId: string) => openWalletModal('OVERVIEW', walletId),
-    [openWalletModal]
-  );
-
-  const handleGridOpenTransfer = useCallback(
-    (walletId: string) => onOpenTransfer?.(walletId),
-    [onOpenTransfer]
-  );
+  // T41: Transfer and Add Wallet open the shared, shell-level modals App.tsx
+  // owns. The section's Transfer passes no wallet, so the form seeds its
+  // defaults (`transfer-preview.spec.ts`).
+  const handleOpenTransfer = useCallback(() => onOpenTransfer?.(), [onOpenTransfer]);
+  const handleOpenAddWallet = useCallback(() => onOpenAddWallet?.(), [onOpenAddWallet]);
+  const handleOpenManageWallets = useCallback(() => openWalletModal('OVERVIEW'), [openWalletModal]);
+  const handleOpenWallet = useCallback((walletId: string) => openWalletModal('OVERVIEW', walletId), [openWalletModal]);
 
   const handlePopupOpenTransfer = useCallback(
     (walletId: string) => {
@@ -97,149 +98,136 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     [onOpenWalletTransactions]
   );
 
-  const walletMap = useMemo(() => buildLookupMap(allWallets), [allWallets]);
+  const goTo = useCallback((tab: string) => () => onNavigate?.(tab), [onNavigate]);
 
+  const today = todayIsoDate();
+  const walletMap = useMemo(() => buildLookupMap(allWallets), [allWallets]);
   const categoryMap = useMemo(() => buildLookupMap(categories), [categories]);
 
-  // Spec L1 and L2 through the shared selectors (ADR 0028). The range is
-  // today's `TimeRange` with the same boundaries as before (WEEK from today - 7,
-  // MONTH from today - 30); `isSpending` is EXPENSE only. The category chart
-  // used to add debt repayments on top and group by name, so its total and the
-  // Expense card disagreed; both are `sumSpending`'s figure now.
-  const filteredTransactions = useMemo(
-    () => filterByRange(transactions, timeFilter, todayIsoDate()),
-    [transactions, timeFilter]
+  // L2: one period for the page. Cash flow and the category card read the
+  // same filtered rows, so their Spending is one figure (acceptance check 1).
+  const periodRows = useMemo(() => filterByRange(transactions, timeFilter, today), [transactions, timeFilter, today]);
+  const flow = useMemo(() => cashFlow(periodRows, categoryMap), [periodRows, categoryMap]);
+  const categoryRows = useMemo(() => spendingByCategory(periodRows, categoryMap), [periodRows, categoryMap]);
+
+  // L3
+  const wealth = useMemo(
+    () => ({
+      netWorth: netWorth(activeWallets, debts),
+      walletTotal: walletTotal(activeWallets),
+      debtRemaining: debtRemaining(debts),
+      shares: walletShares(activeWallets),
+    }),
+    [activeWallets, debts]
   );
 
-  const incomeTotal = useMemo(() => sumIncome(filteredTransactions, categoryMap), [filteredTransactions, categoryMap]);
-
-  const expenseTotal = useMemo(() => sumSpending(filteredTransactions, categoryMap), [filteredTransactions, categoryMap]);
-
-  const netBalance = useMemo(() => roundToCents(incomeTotal - expenseTotal), [incomeTotal, expenseTotal]);
-
-  const categoryBreakdown = useMemo(
-    () => spendingByCategory(filteredTransactions, categoryMap),
-    [filteredTransactions, categoryMap]
+  // L4 and L5: the surplus is always the past 30 days, whatever the period.
+  const plan = useMemo(
+    () => debtPlan(debts, today, monthlySurplus(transactions, today, categoryMap)),
+    [debts, today, transactions, categoryMap]
   );
 
-  // Compact Recent 5 Transactions for Dashboard Preview (Memoized). A single
-  // linear pass keeping a running top-5 (by `transactionDate`, newest first)
-  // instead of sorting the entire ledger just to keep 5 rows of it - O(n)
-  // instead of O(n log n), and the only per-transaction work is a handful of
-  // string comparisons against an at-most-5-element buffer.
-  const recentTransactions = useMemo(() => {
-    // Ascending by date while filling; index 0 is always the oldest (and
-    // therefore first to be evicted) of the currently-held top 5.
-    const top: Transaction[] = [];
+  // L8 and L11: the newest live rows, a cancelling adjustment pair folded,
+  // and each day's net over all of that day's rows.
+  const { recentItems, dayNets } = useMemo(() => {
+    const live = transactions
+      .filter((tx) => !tx.isDeleted)
+      .sort((a, b) =>
+        a.transactionDate !== b.transactionDate
+          ? a.transactionDate < b.transactionDate ? 1 : -1
+          : a.createdAt < b.createdAt ? 1 : a.createdAt > b.createdAt ? -1 : 0
+      );
+    const items = foldAdjustmentPairs(live).slice(0, RECENT_ITEMS);
+    const nets = new Map(groupByDay(live, categoryMap).map((day) => [day.date, day.net]));
+    return { recentItems: items, dayNets: nets };
+  }, [transactions, categoryMap]);
 
-    for (const t of transactions) {
-      if (t.isDeleted) continue;
+  const mood = useMemo(
+    () => moodSpendingDays(diaryEntries, transactions, categoryMap, timeFilter, today),
+    [diaryEntries, transactions, categoryMap, timeFilter, today]
+  );
+  const todayLogged = useMemo(() => diaryEntries.some((entry) => !entry.isDeleted && entry.date === today), [diaryEntries, today]);
 
-      if (top.length < 5) {
-        let i = top.length - 1;
-        while (i >= 0 && top[i].transactionDate > t.transactionDate) i--;
-        top.splice(i + 1, 0, t);
-      } else if (t.transactionDate > top[0].transactionDate) {
-        top.shift();
-        let i = top.length - 1;
-        while (i >= 0 && top[i].transactionDate > t.transactionDate) i--;
-        top.splice(i + 1, 0, t);
-      }
-    }
-
-    return top.reverse();
-  }, [transactions]);
+  const period = PERIODS.find((p) => p.value === timeFilter) ?? PERIODS[2];
 
   return (
-    <div className="space-y-8">
-      {/* 1. Total Wealth & Complete Net Worth Hero Section */}
-      <section aria-label="Total Wealth & Net Worth">
-        <TotalWealthHero
-          totalNetWorth={totalNetWorth}
-          activeWalletCount={activeWallets.length}
-          onOpenTransfer={handleHeroOpenTransfer}
-          onOpenAddWallet={handleHeroOpenAddWallet}
-          onOpenManageWallets={handleOpenManageWallets}
-        />
-      </section>
+    <div className="flex flex-col gap-6">
+      <PageHeader
+        title={greetingFor(new Date().getHours())}
+        description={`${formatLongDate(today)} · every figure below uses the selected period`}
+        actions={
+          <SegmentedControl<TimeFilter>
+            size="sm"
+            ariaLabel="Period"
+            value={timeFilter}
+            onChange={setTimeFilter}
+            options={PERIODS.map((p) => ({ value: p.value, id: `time-filter-${p.value.toLowerCase()}`, label: p.label }))}
+          />
+        }
+      />
 
-      {/* 2. All User Wallets & Accounts Grid */}
-      <section aria-label="User Wallets & Accounts">
-        <WalletAccountsGrid
-          wallets={activeWallets}
-          totalNetWorth={totalNetWorth}
-          onOpenWallet={handleWalletCardOpen}
-          onOpenTransfer={handleGridOpenTransfer}
-        />
-      </section>
-
-      {/* 3. Financial Performance & Timeframe Breakdown */}
-      <section aria-label="Performance Breakdown" className="space-y-4">
-        <SectionHeader
-          className="transition-colors"
-          title="Income and spending by period"
-          subtitle="Filter cashflow by day, week, month, or all-time records"
-          action={
-            <SegmentedControl<TimeFilter>
-              className="flex items-center self-start sm:self-auto"
-              size="sm"
-              ariaLabel="Period"
-              value={timeFilter}
-              onChange={setTimeFilter}
-              options={(['DAY', 'WEEK', 'MONTH', 'ALL'] as TimeFilter[]).map((f) => ({
-                value: f,
-                id: `time-filter-${f.toLowerCase()}`,
-                label: f === 'DAY' ? 'Today' : f === 'WEEK' ? 'This Week' : f === 'MONTH' ? 'Past 30 Days' : 'All Time',
-              }))}
-            />
-          }
-        />
-
-        {/* 3 Prominent Hero Metric Cards */}
-        <CashflowMetricsCards
-          incomeTotal={incomeTotal}
-          expenseTotal={expenseTotal}
-          netBalance={netBalance}
-        />
-      </section>
-
-      {/* 4. Category & Debt Progress Breakdown */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-stretch">
-        <CategoryExpenseDistribution
-          categoryBreakdown={categoryBreakdown}
-          totalExpenseAmount={expenseTotal}
-        />
-
-        <DebtPayoffOverview
-          activeDebtCount={debtSummary.activeCount}
-          debtProgressPercent={debtSummary.progressPercent}
-          remainingDebtTarget={debtSummary.remainingTarget}
-          paidDebtTarget={debtSummary.paidTarget}
-        />
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+        <div className="md:col-span-5">
+          <NetWorthCard
+            netWorth={wealth.netWorth}
+            walletTotal={wealth.walletTotal}
+            walletCount={activeWallets.length}
+            debtRemaining={wealth.debtRemaining}
+          />
+        </div>
+        <div className="md:col-span-7">
+          <CashFlowCard flow={flow} periodName={period.name} periodDates={formatRangeLabel(timeFilter, today)} />
+        </div>
       </div>
 
-      {/* 4b. The monthly wrap-up (ADR 0020). Sits under the distribution it
-             talks about, and owns its own fetching - this view stays unaware
-             that a network call exists. */}
-      <section aria-label="Monthly Spending Insights">
-        <SpendingInsightsCard
-          transactions={transactions}
-          categories={categories}
-          userId={currentUser.id}
-        />
+      <DebtWarningBanner plan={plan} onReviewPlan={goTo('debts')} />
+
+      <WalletsSection
+        wallets={activeWallets}
+        shares={wealth.shares}
+        onTransfer={handleOpenTransfer}
+        onAddWallet={handleOpenAddWallet}
+        onManageWallets={handleOpenManageWallets}
+        onOpenWallet={handleOpenWallet}
+      />
+
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-4">
+        <div className="xl:col-span-7">
+          <CategorySpendingCard rows={categoryRows} total={flow.spending} />
+        </div>
+        <div className="xl:col-span-5">
+          <DebtPayoffCard
+            plan={plan}
+            paid={debtSummary.paidTarget}
+            total={debtSummary.totalTarget}
+            progressPercent={debtSummary.progressPercent}
+            onOpenDebts={goTo('debts')}
+          />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-4">
+        <div className="xl:col-span-8">
+          <RecentActivityCard
+            items={recentItems}
+            dayNets={dayNets}
+            wallets={walletMap}
+            categories={categoryMap}
+            today={today}
+            onViewAll={goTo('transactions')}
+          />
+        </div>
+        <div className="xl:col-span-4">
+          <MoodSpendingCard mood={mood} today={today} todayLogged={todayLogged} onOpenDiary={goTo('diary')} />
+        </div>
+      </div>
+
+      {/* The monthly wrap-up (ADR 0020) owns its own fetching and its own
+          calendar-month period, which its title names. */}
+      <section aria-label="Spending insights">
+        <SpendingInsightsCard transactions={transactions} categories={categories} userId={currentUser.id} />
       </section>
 
-      {/* 5. Compact Recent 5 Transactions List with View All Button */}
-      <section aria-label="Recent Transactions">
-        <RecentTransactionsTable
-          transactions={recentTransactions}
-          walletMap={walletMap}
-          categoryMap={categoryMap}
-          onNavigate={onNavigate}
-        />
-      </section>
-
-      {/* Wallet Management & Transfer Pop-up Modal */}
       <WalletPopupModal
         isOpen={isWalletModalOpen}
         onClose={() => setIsWalletModalOpen(false)}

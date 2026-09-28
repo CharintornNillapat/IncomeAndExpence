@@ -29,9 +29,9 @@ const ICON_BOX_SIZE_CLASS: Record<TxTypeIconSize, string> = {
 /**
  * T49: the icon-in-a-tinted-box cell shared by `TransactionTableRow` and
  * `WalletPopupModal`'s activity list, and (Phase 56) the 36px tile of
- * `TransactionRow` (size `lg`, spec 4.9). `RecentTransactionsTable`'s Type
- * column still draws its own icons; it moves onto `TransactionRow` in the
- * page phase, which gives the app one icon set everywhere.
+ * `TransactionRow` (size `lg`, spec 4.9), which the Dashboard's Recent
+ * activity uses since Phase 57. The other pages move onto `TransactionRow`
+ * in their own phases, which gives the app one icon set everywhere.
  */
 export const TxTypeIcon: React.FC<TxTypeIconProps> = ({ type, amount, variant = 'full', size = 'md', tintOverride, className = '' }) => {
   const meta = amount === undefined ? TX_TYPE_META[type] : txTypeMetaFor(type, amount);

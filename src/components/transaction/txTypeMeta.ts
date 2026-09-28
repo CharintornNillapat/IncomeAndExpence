@@ -28,9 +28,8 @@ export interface TxTypeMeta {
  * neither takes the income or expense colour. That reverses Phase 53b's
  * "upward adjustment is green" rule, by the owner's decision.
  *
- * `RecentTransactionsTable`'s Type column still draws its own icons, and
- * `WalletPopupModal` uses `compactIcon`; the page phase moves both onto one
- * TransactionRow.
+ * `WalletPopupModal` still uses `compactIcon`; its page phase moves it onto
+ * `TransactionRow`, as Phase 57 did for the Dashboard's recent activity.
  */
 export const TX_TYPE_META: Record<TransactionType, TxTypeMeta> = {
   INCOME: {

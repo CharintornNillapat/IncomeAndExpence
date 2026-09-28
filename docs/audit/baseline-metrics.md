@@ -971,3 +971,37 @@ Per chunk (raw bytes, 55b -> 56; every other chunk is byte-identical):
 |---|---|---|---|---|
 | Playwright (local, 4 workers) | 23 | 119 | 357 | 5.6 / 6.0 / 4.9 / 4.9 m (four runs) |
 | Vitest (`unit/`) | 18 | 353 | 353 | ~33 s |
+
+## Phase 57 (the Dashboard) — delta against Phase 56
+
+Built with `npx vite build` in the repo on the final Phase 57 tree. For the per-chunk table, `main` (`2739e4e`) was checked out and rebuilt the same way, in the same directory. Its entry, 172,870 B, is byte for byte what production serves. Gzip is `zlib` level 9.
+
+| Chunk | Phase 56 | Phase 57 | Delta |
+|---|---|---|---|
+| entry `index-*.js` | 172,870 B / 49,461 B gzip | 174,259 B / 49,830 B gzip | +1,389 B raw / +369 B gzip |
+| **all JS, summed** | 1,324,986 B | 1,329,954 B | **+4,968 B** |
+| `index-*.css` | 48,822 B / 9,359 B gzip | 47,902 B / 9,307 B gzip | -920 B |
+| fonts (`woff2`) | 120,532 B | 120,532 B | 0 |
+| JS chunks | 36 | 38 | +2 |
+| PWA precache | 53 entries, 1,615.06 KiB | 55 entries, 1,619.02 KiB | +3.96 KiB |
+
+Per chunk (raw bytes; every other chunk is byte-identical):
+
+| Chunk | Delta | Why |
+|---|---|---|
+| `DashboardView` | +2,739 | ten cards where there were seven. The chunk now also holds code with no caller until now: `TransactionRow`, `DayGroupHeader`, the display selectors (L6/L7/L10/L13), the L8 fold, the debt plan and the mood selector |
+| entry | +1,389 | the five date helpers (`utils/date.ts` is eager, so they land in the entry although only the lazy Dashboard calls them), `walletShares`, and one more byte per `transition-control` |
+| `Card` | +494 (new chunk) | `Card`/`Inset` now shared by the Dashboard and other views, so Rollup split it out of `SectionHeader` (-275) |
+| `walletFormStyles` | +336 (new chunk) | `WALLET_TYPE_OPTIONS` is now read by the Dashboard as well as `AddWalletForm`, so it left `AddWalletModal` (-249) |
+| `ledger` | +390 | `cashFlow`, and `groupByDay`, which had no caller until now and was tree-shaken |
+| `vendor-icons` | -36 | the old hero's and table's icons out; chevrons and arrows in |
+| seven view chunks | +4 to +39 each | `transition-colors` -> `transition-control` |
+
+**CSS fell 920 B.** The six deleted components took their one-off utilities with them: the coloured `border-2` edges, the share-bar layout, the table's column classes. The new cards reuse existing utilities, plus `@container` and `@md:grid-cols-3`.
+
+| Suite | Files | Tests | Runs | Wall clock |
+|---|---|---|---|---|
+| Playwright (local, 4 workers) | 23 | 119 | 357 | 6.3 / 6.9 / 5.5 m (three runs) |
+| Vitest (`unit/`) | 20 | 385 | 385 | ~32-36 s |
+
+**Intermittent local failures:** 6 in 1,071 full-suite runs (3 full runs). All were timeouts: a Firefox `goto`, a Firefox context close, and four WebKit clicks waiting for "stable". No assertion failed. See audit 005 finding 3 for the control runs.

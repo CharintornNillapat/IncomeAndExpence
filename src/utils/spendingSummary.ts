@@ -24,7 +24,7 @@ import { isIncome, isSpending } from '../selectors/ledger';
  *
  * The split matters: the model picks *which pattern*, never *how much*. Every
  * currency figure below comes from `formatCurrencyAmount` over ledger data, so
- * the card can never contradict `CategoryExpenseDistribution` sitting beside it.
+ * the card can never contradict the Dashboard's category card.
  */
 
 /** A category must move by at least this much to be called a spike. */

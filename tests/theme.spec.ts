@@ -55,6 +55,6 @@ test.describe('Navigation & Theme E2E Tests', () => {
     await expect(page.getByRole('heading', { name: /Daily Diary/i })).toBeVisible();
 
     await gotoTab(page, 'dashboard');
-    await expect(page.getByText(/Total Money Across All Wallets/i)).toBeVisible();
+    await expect(page.getByTestId('net-worth-card')).toBeVisible();
   });
 });

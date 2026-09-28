@@ -215,3 +215,26 @@ These components are built but not yet on screen. Adopting them must keep the co
 - **`TransactionRow`** renders a `<button>` or a `<div>`. `tr[id^="tx-row-"]` is typed, so a row that stops being a `<tr>` needs a locator move in every spec that uses it. The date must stay as text inside each row: `presets.spec.ts:214-215` filters rows by date, and a date shown only in a `DayGroupHeader` would make the count-2 assertion fail and the count-0 one pass vacuously. The row's `meta` slot is for that date.
 - **`OverflowMenu`'s items exist only while it is open.** Moving `tx-delete-btn-*`, `delete-wallet-*`, `delete-debt-*` or `delete-category-*` into one adds a menu-open step to each spec that clicks them (a locator move, which the policy allows). `debts.spec.ts:63` (`settle-debt-*` count 0) and `categories.spec.ts:28` (`delete-category-cat-food` count 0) must open the menu before asserting, or they pass because the menu is closed, which is a weakened assertion and forbidden.
 - **`PageHeader` is an `h1`.** `theme.spec.ts` and `diary.spec.ts` find headings by name; the text must survive, and a second heading with the same name on one view would break the unique match.
+
+## Changed in Phase 57 (ADR `0030`, the Dashboard)
+
+The Dashboard is the landing view, so it mounts in every run of every spec.
+
+| Selector | Now | File |
+|---|---|---|
+| `[data-testid="metric-card-expense"]` | **Moved** from the retired `CashflowMetricsCards` onto the Cash flow card's Spending cell. It holds only the period's spending, now signed (`−฿1,000.00`), which still contains the `฿1,000.00` `date-boundary.spec.ts:94` looks for and not the `฿3,000.00` it rules out. `metric-card-income` and `metric-card-net` moved with it; no spec reads them. | `src/components/dashboard/CashFlowCard.tsx` |
+| `[data-testid="net-worth-card"]` | **New.** `theme.spec.ts:58` moved to it from the text "Total Money Across All Wallets", which the spec's Net worth card replaces. The assertion (the Dashboard renders after a theme switch) is unchanged. The phase's only spec edit. | `src/components/dashboard/NetWorthCard.tsx` |
+| `#hero-transfer-funds-btn`, `#hero-add-wallet-btn`, `#hero-manage-all-wallets-btn` | **Unchanged ids, still `<button>`s**, now the Wallets section's text links. Transfer still calls `onOpenTransfer()` with no wallet, so the form seeds Main Checking to Cash (`transfer-preview.spec.ts:39-40`). | `src/components/dashboard/WalletsSection.tsx` |
+| `#dashboard-wallet-card-{id}` | **Unchanged id**, now a `<button>` that opens the wallet popup (`account-and-mobile-nav.spec.ts:131` clicks its centre). The inner `wallet-quick-transfer-*` button is gone, so nothing inside competes for the click. | same |
+| `#time-filter-*` | **Unchanged ids.** Labels are now "Today / This week / Past 30 days / All time"; no spec reads them. | `src/views/DashboardView.tsx` |
+| `#dashboard-view-all-transactions-btn` | **Unchanged id**, now in Recent activity. | `src/components/dashboard/RecentActivityCard.tsx` |
+| `insights-*` | **Unchanged ids, testids and render conditions.** The card's title now names its months; no spec reads it. | `src/components/dashboard/SpendingInsightsCard.tsx` |
+| `#dashboard-repay-btn`, `#dashboard-all-debts-btn`, `#dashboard-log-mood-btn`, `#dashboard-debt-{id}`, `#dashboard-adjustment-pair-{wallet}-{date}`, `[data-testid="dashboard-debt-warning"]` | **New**, not yet used by a spec. | the new Dashboard cards |
+| `wallet-quick-transfer-*` | **Retired** with the per-card Transfer buttons (spec 6.1). No spec used it. | - |
+
+**Text a spec reads on the Dashboard** is unchanged: each transaction's description appears once (`transaction.spec.ts:43,76`, `storage-persistence.spec.ts:44`), and a new wallet's name is the first, visible match (`wallet-forms.spec.ts:73`, `account-and-mobile-nav.spec.ts:144`).
+
+### Hazards the Dashboard now carries
+- **Its recent activity is `TransactionRow`s, which are `<div>`s.** They cannot match `tr[id^="tx-row-"]`, which is why they carry no id. The Transactions page's own rows keep that prefix until its phase.
+- **Its ids use the `dashboard-` prefix only.** Specs filter the Debt Payoff page's `debt-card-`, `open-repay-modal-` and `settle-debt-`, and the Transactions page's `tx-row-`, page-wide straight after `gotoTab`, while the Dashboard may still be leaving.
+- **The Mood card's caption says "From your Daily Diary"** as a `<p>`, not a heading, so `diary.spec.ts`'s `/Daily Diary/i` heading query still matches one element.

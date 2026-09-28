@@ -260,7 +260,7 @@ const MainApp: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-canvas text-fg font-sans flex flex-col selection:bg-brand-fill selection:text-white transition-colors duration-200">
+    <div className="min-h-screen bg-canvas text-fg font-sans flex flex-col selection:bg-brand-fill selection:text-white transition-control duration-200">
       {/* Top Navbar */}
       <Navbar
         activeTab={activeTab}
@@ -273,7 +273,7 @@ const MainApp: React.FC = () => {
       {/* Main Content Area with Touch Swipe Gestures, Framer Slide Animations & Suspense */}
       <main
         {...swipeHandlers}
-        className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 py-4 sm:py-8 pb-24 md:pb-8 overflow-x-hidden touch-pan-y"
+        className="flex-1 max-w-7xl w-full mx-auto px-4 pt-4 pb-24 md:px-10 md:pt-8 md:pb-12 overflow-x-hidden touch-pan-y"
       >
         <Suspense fallback={<ViewLoadingFallback view={activeTab} />}>
           <AnimatePresence mode="wait" custom={direction}>
@@ -311,7 +311,7 @@ const MainApp: React.FC = () => {
       <ReloadPrompt />
 
       {/* Footer (with safe bottom margin on mobile) */}
-      <footer className="border-t border-line bg-surface-1 py-6 mt-6 sm:mt-12 mb-16 sm:mb-0 text-center text-xs text-fg-secondary transition-colors duration-200">
+      <footer className="border-t border-line bg-surface-1 py-6 mt-6 sm:mt-12 mb-16 sm:mb-0 text-center text-xs text-fg-secondary transition-control duration-200">
         <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
           <p>FinLife Tracker · Track money and daily habits</p>
         </div>

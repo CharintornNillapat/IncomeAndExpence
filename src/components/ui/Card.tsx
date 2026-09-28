@@ -35,7 +35,7 @@ export const Card: React.FC<CardProps> = ({ children, className = '', padding = 
   const classes = [
     'bg-surface-1 rounded-card border border-line',
     PADDING_CLASS[padding],
-    interactive ? 'hover:border-brand transition-colors duration-150' : '',
+    interactive ? 'hover:border-brand transition-control duration-150' : '',
     className,
   ]
     .filter(Boolean)

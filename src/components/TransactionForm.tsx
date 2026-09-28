@@ -75,7 +75,7 @@ interface TransactionFormProps {
  * already typed, these *replace* it with a target figure.
  */
 const QUICK_CHIP_CLASS =
-  'inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-full bg-surface-2 hover:bg-surface-3 text-fg-secondary border border-line transition-colors cursor-pointer';
+  'inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-full bg-surface-2 hover:bg-surface-3 text-fg-secondary border border-line transition-control cursor-pointer';
 
 /*
  * Bounds on a keyword this form will offer to save as a rule (ADR 0017).
@@ -604,14 +604,14 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
 
   const showShortcuts = !lockType && Boolean(onRequestTransfer || onRequestRepayDebt);
   const shortcutLinkClass =
-    'font-semibold text-fg-secondary underline underline-offset-2 hover:text-fg cursor-pointer transition-colors';
+    'font-semibold text-fg-secondary underline underline-offset-2 hover:text-fg cursor-pointer transition-control';
 
   return (
     <form
       id={`${formId}-form`}
       data-testid={formTestId}
       onSubmit={handleSubmit}
-      className="bg-surface-1 rounded-xl border border-line p-4 sm:p-6 space-y-5 transition-colors"
+      className="bg-surface-1 rounded-xl border border-line p-4 sm:p-6 space-y-5 transition-control"
     >
       {!lockType && (
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-line pb-4">
@@ -687,7 +687,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
                 ? 'e.g., Monthly student loan payment 4000'
                 : 'e.g. ข้าวมันไก่ 60, bts 45, or ค่าไฟ 1200'
             }
-            className={`w-full text-sm rounded-lg border border-line-input bg-surface-2 py-2.5 pl-3.5 text-fg placeholder:text-fg-muted focus:outline-none focus:ring-2 focus:ring-focus transition-colors ${
+            className={`w-full text-sm rounded-lg border border-line-input bg-surface-2 py-2.5 pl-3.5 text-fg placeholder:text-fg-muted focus:outline-none focus:ring-2 focus:ring-focus transition-control ${
               isVoiceSupported ? 'pr-11' : 'pr-3.5'
             }`}
           />
@@ -709,7 +709,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
               aria-pressed={isListening}
               aria-label={isListening ? 'Stop dictation' : 'Dictate the note'}
               title={isListening ? 'Stop dictation' : 'Dictate the note'}
-              className={`absolute right-2 top-1/2 -translate-y-1/2 flex items-center justify-center w-8 h-8 rounded-lg transition-colors cursor-pointer disabled:cursor-not-allowed disabled:opacity-40 ${
+              className={`absolute right-2 top-1/2 -translate-y-1/2 flex items-center justify-center w-8 h-8 rounded-lg transition-control cursor-pointer disabled:cursor-not-allowed disabled:opacity-40 ${
                 isListening
                   ? 'bg-expense-tint text-expense'
                   : 'text-fg-muted hover:text-fg hover:bg-surface-3'
@@ -909,7 +909,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
               id={walletSelectId}
               value={walletId}
               onChange={(e) => setWalletId(e.target.value)}
-              className="w-full text-sm rounded-lg border border-line-input px-3 py-2.5 bg-surface-2 text-fg focus:outline-none focus:ring-2 focus:ring-focus transition-colors"
+              className="w-full text-sm rounded-lg border border-line-input px-3 py-2.5 bg-surface-2 text-fg focus:outline-none focus:ring-2 focus:ring-focus transition-control"
             >
               {wallets.map((w) => (
                 <option key={w.id} value={w.id} className={OPTION_CLASS}>
@@ -930,7 +930,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
                 id={`${formId}-debt`}
                 value={debtId}
                 onChange={(e) => setDebtId(e.target.value)}
-                className="w-full text-sm rounded-lg border border-line-input px-3 py-2.5 bg-surface-2 text-fg focus:outline-none focus:ring-2 focus:ring-focus transition-colors"
+                className="w-full text-sm rounded-lg border border-line-input px-3 py-2.5 bg-surface-2 text-fg focus:outline-none focus:ring-2 focus:ring-focus transition-control"
               >
                 {debts.map((d) => (
                   <option key={d.id} value={d.id} className={OPTION_CLASS}>
@@ -966,7 +966,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
                     userTouchedRef.current.category = true;
                     dismissSuggestion();
                   }}
-                  className="w-full text-sm rounded-lg border border-line-input px-3 py-2.5 bg-surface-2 text-fg focus:outline-none focus:ring-2 focus:ring-focus transition-colors"
+                  className="w-full text-sm rounded-lg border border-line-input px-3 py-2.5 bg-surface-2 text-fg focus:outline-none focus:ring-2 focus:ring-focus transition-control"
                 >
                   {categories.map((c) => (
                     <option key={c.id} value={c.id} className={OPTION_CLASS}>
@@ -1021,7 +1021,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
             type="date"
             value={date}
             onChange={(e) => setDate(e.target.value)}
-            className="w-full text-sm rounded-lg border border-line-input px-3.5 py-2.5 bg-surface-2 text-fg focus:outline-none focus:ring-2 focus:ring-focus [color-scheme:light] dark:[color-scheme:dark] transition-colors"
+            className="w-full text-sm rounded-lg border border-line-input px-3.5 py-2.5 bg-surface-2 text-fg focus:outline-none focus:ring-2 focus:ring-focus [color-scheme:light] dark:[color-scheme:dark] transition-control"
           />
         </div>
       </div>
@@ -1053,7 +1053,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
               value={templateName}
               onChange={(e) => setTemplateName(e.target.value)}
               placeholder="Template name, e.g. Morning Coffee"
-              className="w-full text-sm rounded-lg border border-line-input bg-surface-2 px-3.5 py-2.5 text-fg placeholder:text-fg-muted focus:outline-none focus:ring-2 focus:ring-focus transition-colors"
+              className="w-full text-sm rounded-lg border border-line-input bg-surface-2 px-3.5 py-2.5 text-fg placeholder:text-fg-muted focus:outline-none focus:ring-2 focus:ring-focus transition-control"
             />
           )}
           {templateSaveError && (

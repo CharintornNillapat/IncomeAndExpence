@@ -16,7 +16,7 @@ export type FieldTone = 'subtle' | 'plain';
  * future surface that genuinely needs a different field can diverge here.
  */
 const FIELD_BASE =
-  'w-full min-h-[44px] text-xs rounded-lg border border-line-input bg-surface-2 text-fg focus:outline-none focus:ring-2 focus:ring-focus transition-colors';
+  'w-full min-h-[44px] text-xs rounded-lg border border-line-input bg-surface-2 text-fg focus:outline-none focus:ring-2 focus:ring-focus transition-control';
 
 const TONE: Record<FieldTone, string> = {
   subtle: '',

@@ -69,6 +69,38 @@ export function formatDayLabel(iso: string, today: string): string {
   return label;
 }
 
+function localDate(iso: string): Date {
+  const [year, month, day] = iso.split('-').map(Number);
+  return new Date(year, month - 1, day);
+}
+
+/** The Dashboard header's date: "Monday, Sep 28, 2026". */
+export function formatLongDate(iso: string): string {
+  return localDate(iso).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+/** A date with its year and no weekday, such as a debt's due date: "Jan 1, 2027". */
+export function formatShortDate(iso: string): string {
+  return localDate(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+/** A nearby day with its weekday and no year: "Mon, Sep 28". */
+export function formatWeekdayDate(iso: string): string {
+  return localDate(iso).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+}
+
+/** A calendar month key (`YYYY-MM`) as its name: "September". */
+export function formatMonthName(monthKey: string): string {
+  return localDate(`${monthKey}-01`).toLocaleDateString('en-US', { month: 'long' });
+}
+
+/** The Dashboard's greeting for a local hour (0 to 23): morning from 5, afternoon from 12, evening from 18. */
+export function greetingFor(hour: number): string {
+  if (hour >= 5 && hour < 12) return 'Good morning';
+  if (hour >= 12 && hour < 18) return 'Good afternoon';
+  return 'Good evening';
+}
+
 /**
  * An instant (a full ISO timestamp such as a session's last refresh) as local
  * `YYYY-MM-DD HH:MM`. The timestamp is an instant, so parsing it is correct -
