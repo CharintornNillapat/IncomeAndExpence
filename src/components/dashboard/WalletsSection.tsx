@@ -48,13 +48,16 @@ export const WalletsSection: React.FC<WalletsSectionProps> = ({
         Wallets
       </h2>
       <div className="flex items-center gap-x-5 flex-wrap">
-        <DashboardLink id="hero-transfer-funds-btn" onClick={onTransfer}>
+        {/* Called with no argument: the click event must never reach
+            `onOpenTransfer(walletId?)` as a wallet id (transfer-preview.spec.ts
+            expects the form's own defaults). */}
+        <DashboardLink id="hero-transfer-funds-btn" onClick={() => onTransfer()}>
           Transfer
         </DashboardLink>
-        <DashboardLink id="hero-add-wallet-btn" onClick={onAddWallet}>
+        <DashboardLink id="hero-add-wallet-btn" onClick={() => onAddWallet()}>
           Add wallet
         </DashboardLink>
-        <DashboardLink id="hero-manage-all-wallets-btn" onClick={onManageWallets}>
+        <DashboardLink id="hero-manage-all-wallets-btn" onClick={() => onManageWallets()}>
           Manage wallets
         </DashboardLink>
       </div>
