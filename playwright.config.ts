@@ -24,8 +24,13 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   /* Retry on CI only */
   retries: process.env.CI ? 2 : 0,
-  /* Opt out of parallel tests on CI. */
-  workers: process.env.CI ? 1 : undefined,
+  /*
+   * Two workers on CI (Phase 55, T202). Each CI job now runs one browser, and
+   * GitHub's ubuntu runners have 4 vCPUs; local runs use more without flakes.
+   * Kept only if three consecutive CI runs stay green, since the Vite dev
+   * server compiles each module on first request.
+   */
+  workers: process.env.CI ? 2 : undefined,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: 'html',
   /*
