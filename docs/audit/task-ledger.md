@@ -1097,7 +1097,7 @@ ADRs `0027` (foundation) and `0028` (selectors). Work ran on branch `phase-55-ci
 |---|---|---|---|---|---|---|---|---|---|---|
 | T199 | CI: a `checks` job gates one E2E job per browser (matrix, `fail-fast: false`), each installing only its browser | `.github/workflows/playwright.yml` | High | Low | 0.5h | done | - | 1cb9a18 | run `36373804867` green | job wall time 13 m 47 s -> 5 m 18 s |
 | T200 | CI: browser cache keyed by lockfile; a hit runs `install-deps` only | same | Med | Low | 0.25h | done | T199 | 1cb9a18 | cache hit on run `36374212154` | browser step 53 s -> 12-35 s |
-| T201 | CI: `concurrency` cancel-in-progress; `paths-ignore` for docs-only pushes and PRs | same | Med | Low | 0.25h | done | T199 | 1cb9a18 | cancel-in-progress seen on the branch; the docs-only skip is unverified until the first docs-only push to `main` (see notes) | - |
+| T201 | CI: `concurrency` cancel-in-progress; `paths-ignore` for docs-only pushes and PRs | same | Med | Low | 0.25h | done | T199 | 1cb9a18 | cancel-in-progress seen on the branch; docs-only push `79ed8de` to `main` created no run (see notes) | - |
 | T202 | CI: `workers: 2` per browser job, on trial | `playwright.config.ts` | Med | Med | 0.25h | done (kept) | T199 | b33e18c | 3 consecutive green attempts of run `36374212154`, 0 flaky, 0 retries | 4 m 31 s-4 m 48 s per run |
 | T203 | Tokens: spec dark values under the app's names, new roles, solid hue tints, derived light set; the spec's input border not used (1.26:1) | `src/index.css`, `scripts/wcag-tokens.mjs` | High | Med | 1.5h | done | - | 97d2b4e | all WCAG pairs pass, both themes | CSS 43,802 -> 46,984 B |
 | T204 | IBM Plex Sans Thai (400-700, thai + latin, self-hosted, precached); `tabular-nums` on body; every `font-mono` on an amount removed | `package.json`, `src/index.css`, 21 components/views | High | Med | 1h | done | T203 | 97d2b4e | ฿ served by the font's thai subset | fonts 40,404 -> 120,532 B; precache 45 -> 53 entries |
@@ -1117,7 +1117,8 @@ ADRs `0027` (foundation) and `0028` (selectors). Work ran on branch `phase-55-ci
 - **`pending` was not renamed `warning`**: about 40 call sites for a word. The mapping is documented in `src/index.css` and ADR `0027`.
 - **The debt repayment's colour is a decision.** The spec names none. It is grey, because L1 says it is not spending and amber is reserved for real problems. ADR `0027`.
 - **`TransactionTableRow`'s repayment badge is still amber.** It belongs to the TransactionRow component, spec step 3.
-- **The docs-only skip could not be tested on the branch.** A pull request's `paths-ignore` looks at the whole PR diff, which touches `src/`, so every PR run ran. The merge push to `main` touched `src/` too. The first docs-only push to `main` is the test.
+- **The docs-only skip could not be tested on the branch.** A pull request's `paths-ignore` looks at the whole PR diff, which touches `src/`, so every PR run ran. The merge push to `main` touched `src/` too.
+- **Verified on `main`:** `79ed8de` (only `docs/audit/*.md`) was pushed with the user's go-ahead. Two minutes later `actions/runs?head_sha=` returned `total_count: 0` and the commit had no check runs. T201 is closed.
 - **Deployed.** PR #1 merged as `41c5216` (a merge commit, so these shas stay valid). CI and the byte-for-byte production check are in the refactor log.
 - **Audit 003's findings are open by decision.** 1 to 3 go to the shared components and page phases, 4 to the shared components pass, and 5 is watched without gating.
 

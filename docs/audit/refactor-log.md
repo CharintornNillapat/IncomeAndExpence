@@ -51,7 +51,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 - **All 55 files of the local build were hashed against production.** 51 are byte-for-byte identical: every JS chunk, the CSS, the eight font files, `index.html` and the manifest.
   - The other 4 differ only in line endings. `pwa-192x192.svg`, `pwa-512x512.svg` and `robots.txt` are CRLF in the Windows checkout and LF on Vercel; with `\r` stripped they hash equal.
   - `sw.js` differs only in the precache revisions of those two SVGs, which hash the CRLF bytes.
-- **Not yet verified:** the `paths-ignore` skip. A pull request's filter sees the whole PR diff, and this merge's push touched `src/`, so the first docs-only push to `main` is the test.
+- **The `paths-ignore` skip works.** A pull request's filter sees the whole PR diff and the merge push touched `src/`, so neither could test it. The docs-only push `79ed8de` to `main` created no Actions run (`total_count: 0` after two minutes).
 
 ## Phase 53b - Antislop audit 001 remediation: static money, state-only motion, a sync status that can fail: T188-T198 (2026-09-28, commits `f422692`...`afd5de4`)
 
