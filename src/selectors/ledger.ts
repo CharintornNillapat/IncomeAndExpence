@@ -53,6 +53,30 @@ export function sumIncome(txs: Transaction[], categories?: CategoryLookup): numb
   return sumWhere(txs, (tx) => isIncome(tx, categories));
 }
 
+export interface CashFlow {
+  income: number;
+  spending: number;
+  /** Income minus spending; negative when spending passed income. */
+  leftOver: number;
+  /** Spending as a share of income, or `null` when there was no income to share. Not clamped. */
+  spentPercent: number | null;
+}
+
+/**
+ * The Dashboard's Cash flow card (spec 6.1). The same two sums as every other
+ * screen, so its Spending is the category chart's total to the cent.
+ */
+export function cashFlow(txs: Transaction[], categories?: CategoryLookup): CashFlow {
+  const income = sumIncome(txs, categories);
+  const spending = sumSpending(txs, categories);
+  return {
+    income,
+    spending,
+    leftOver: roundToCents(income - spending),
+    spentPercent: income > 0 ? (spending / income) * 100 : null,
+  };
+}
+
 export interface CategorySpend {
   /** `null` for spending with no category, or one that no longer exists. */
   categoryId: string | null;
