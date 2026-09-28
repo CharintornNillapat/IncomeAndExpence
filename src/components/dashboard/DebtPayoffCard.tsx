@@ -66,13 +66,13 @@ export const DebtPayoffCard: React.FC<DebtPayoffCardProps> = ({ plan, paid, tota
                     <Money value={-debt.remainingAmount} className="shrink-0 text-sm font-semibold text-expense" />
                   </div>
                   <ProgressBar percent={percent} tone="income" size="sm" label={`${debt.name} payoff progress`} />
-                  <div className="flex items-baseline justify-between gap-3 text-xs">
+                  <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 text-xs">
                     <span className={item.overdue ? 'font-semibold text-expense' : 'text-fg-muted'}>
                       {item.overdue ? 'Overdue' : `${percent.toFixed(1)}%`}
                       {debt.dueDate ? ` · due ${formatShortDate(debt.dueDate)}` : ' · no due date'}
                     </span>
                     {item.required !== null && (
-                      <span className={item.exceedsSurplus ? 'shrink-0 font-medium text-pending' : 'shrink-0 text-fg-secondary'}>
+                      <span className={item.exceedsSurplus ? 'font-medium text-pending' : 'text-fg-secondary'}>
                         {formatCurrencyAmount(item.required)} / month needed
                       </span>
                     )}

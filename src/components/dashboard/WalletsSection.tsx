@@ -103,7 +103,8 @@ export const WalletsSection: React.FC<WalletsSectionProps> = ({
                   </span>
                   <span className="flex-1 min-w-0">
                     <span className="block text-sm font-semibold text-fg truncate">{wallet.name}</span>
-                    <span className="block text-xs text-fg-muted truncate">
+                    {/* Wraps rather than truncates, so the share survives a narrow row. */}
+                    <span className="block text-xs text-fg-muted">
                       {typeLabel(wallet.type)}
                       {share !== undefined && ` · ${share.toFixed(1)}%`}
                     </span>

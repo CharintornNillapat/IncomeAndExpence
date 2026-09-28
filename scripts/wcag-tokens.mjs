@@ -84,6 +84,10 @@ for (const [theme, v] of Object.entries(themes)) {
     check(theme, `${hue}-text on ${hue}-bg`, c(`${hue}-text`), c(`${hue}-bg`), 4.5);
   }
   check(theme, 'pending-body on pending-bg', c('pending-body'), c('pending-bg'), 4.5);
+  // Phase 57: the Dashboard's debt banner sets its figures in `fg` on the warning tint.
+  check(theme, 'fg on pending-bg', c('fg'), c('pending-bg'), 4.5);
+  // Phase 57: the mood meter's filled bars against its empty ones (non-text, WCAG 1.4.11).
+  check(theme, 'brand-text vs line-strong (mood meter)', c('brand-text'), c('line-strong'), 3);
   check(theme, 'brand-soft-text on brand-soft-bg', c('brand-soft-text'), c('brand-soft-bg'), 4.5);
   check(theme, 'selected-text on selected-bg', c('selected-text'), c('selected-bg'), 4.5);
   for (const s of ['surface-1', 'surface-2']) {
