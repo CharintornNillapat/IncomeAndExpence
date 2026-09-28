@@ -46,6 +46,19 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
   - At 1280, 900 and 390px, light and dark: 0 controls under 44px, 0 clipped focus rings, no page overflow.
   - The focus outline is violet on the first read after focus, on every control type checked.
 
+**After review:**
+- **Audit 005 finding 1 fixed** in `a6d7241`: the insights card uses `ChartLine` instead of `Sparkles`. It is not `TrendingUp`, which is already the wallet popup's income icon.
+- The owner's other decisions: finding 4 moves to Phase 58, findings 2 and 5 are accepted, finding 3 is watched.
+- **Firefox control of `insights.spec.ts`**, 70 runs each: branch 67/70, `main` 66/70, with the same Quick Add timeouts and disappearing dialog on both. So this is not a Phase 57 regression.
+
+**CI and deploy:**
+- Merged as PR #3 with a merge commit, `dd057b7`, with the user's explicit go-ahead. It also published `2739e4e`, the Phase 56 deploy record.
+- PR run `36430283538` on `42d65c3`: success in 4 m 34 s. PR run `36434834640` on `a6d7241`: success in 4 m 00 s. Push run `36435411711` on `dd057b7`: success in 4 m 12 s. Every browser job passed 119/119, with no retries.
+- Vercel `dpl_DRE4k97Gb3Uu9rkedLpD7CmTQxAU` Production `READY`. `income-and-expence-neon.vercel.app` serves `index-BtDuLrfu.js` at **174,259 B**.
+- **All 56 files of the local build were hashed against production.** 52 are byte-for-byte identical.
+  - The two PWA SVGs and `robots.txt` differ only in line endings.
+  - `sw.js` lists the same 55 precache entries. It differs only in the two SVGs' revisions.
+
 ## Phase 56 - FinLife redesign step 3 (shared components): T212-T221 (2026-09-28, commits `1cc6e12`...`5ca1e8b`)
 
 **Changed**

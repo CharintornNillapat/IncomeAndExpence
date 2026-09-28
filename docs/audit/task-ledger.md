@@ -1089,7 +1089,10 @@ Spec 6.1 and section 9 step 4. ADR `0030`. The plan was approved in plan mode. T
 - `theme.spec.ts:58` moves its locator to `net-worth-card`;
 - antislop in mode 2 (audit 005).
 
-Branch `phase-57-dashboard`, draft PR. It also carries `2739e4e`, the Phase 56 deploy record, which was not pushed.
+Branch `phase-57-dashboard`, draft PR #3. It also carried `2739e4e`, the Phase 56 deploy record, which had not been pushed.
+- After review, audit 005 finding 1 was fixed in `a6d7241`.
+- Merged into `main` as `dd057b7` with the owner's go-ahead. Push run `36435411711` passed.
+- Vercel `dpl_DRE4k97Gb3Uu9rkedLpD7CmTQxAU` serves a build that matches the local one byte for byte (see the refactor log).
 
 | # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
 |---|---|---|---|---|---|---|---|---|---|---|
