@@ -115,7 +115,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = React.memo(({
     <>
       <nav
         aria-label="Mobile Navigation"
-        className="sm:hidden fixed bottom-0 left-0 right-0 w-full z-40 bg-surface-1/95 backdrop-blur-md border-t border-line pb-[env(safe-area-inset-bottom,0.5rem)]"
+        className="md:hidden fixed bottom-0 left-0 right-0 w-full z-40 bg-surface-1/95 backdrop-blur-md border-t border-line pb-[env(safe-area-inset-bottom,0.5rem)]"
       >
         <div className="grid grid-cols-5 items-center px-1 py-1.5 max-w-lg mx-auto">
           {PRIMARY_LEFT.map(renderTab)}

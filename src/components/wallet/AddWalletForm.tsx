@@ -123,7 +123,7 @@ export const AddWalletForm: React.FC<AddWalletFormProps> = ({
           <label className={LABEL_CLASS}>Currency</label>
           <div
             id={ids.currency}
-            className="w-full text-xs rounded-lg border border-line px-3 py-2.5 bg-surface-2 text-fg-secondary font-mono"
+            className="w-full text-xs rounded-lg border border-line px-3 py-2.5 bg-surface-2 text-fg-secondary"
           >
             {APP_CURRENCY} ({APP_CURRENCY_SYMBOL})
           </div>
@@ -141,7 +141,7 @@ export const AddWalletForm: React.FC<AddWalletFormProps> = ({
           min={walletType === 'CREDIT_CARD' ? undefined : '0'}
           value={initialBalance}
           onChange={(e) => setInitialBalance(parseFloat(e.target.value) || 0)}
-          className={`${inputClass(tone)} font-mono`}
+          className={inputClass(tone)}
         />
       </div>
 

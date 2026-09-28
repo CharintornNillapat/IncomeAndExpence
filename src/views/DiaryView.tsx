@@ -209,7 +209,7 @@ export const DiaryView: React.FC = () => {
               type="date"
               value={selectedDate}
               onChange={(e) => loadEntryForDate(e.target.value)}
-              className="min-h-[44px] text-xs border border-line-input rounded-lg px-3 py-1.5 bg-surface-2 text-fg font-mono focus:outline-none focus:ring-2 focus:ring-focus cursor-pointer"
+              className="min-h-[44px] text-xs border border-line-input rounded-lg px-3 py-1.5 bg-surface-2 text-fg focus:outline-none focus:ring-2 focus:ring-focus cursor-pointer"
             />
           </div>
 
@@ -229,11 +229,11 @@ export const DiaryView: React.FC = () => {
               </div>
             </div>
             <div className="text-right">
-              <span className={`text-base font-black font-mono ${selectedDateData.totalOutflow > 0 ? 'text-expense' : 'text-fg-secondary'}`}>
+              <span className={`text-base font-black ${selectedDateData.totalOutflow > 0 ? 'text-expense' : 'text-fg-secondary'}`}>
                 {formatCurrencyAmount(selectedDateData.totalOutflow)}
               </span>
               {selectedDateData.totalIncome > 0 && (
-                <span className="text-[11px] font-mono text-income block font-semibold">
+                <span className="text-[11px] text-income block font-semibold">
                   +{formatCurrencyAmount(selectedDateData.totalIncome)} in
                 </span>
               )}

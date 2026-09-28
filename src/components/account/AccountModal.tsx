@@ -237,7 +237,7 @@ const SessionsSection: React.FC = () => {
           <h3 className="text-sm font-bold text-fg">Signed-in devices</h3>
         </div>
         {sessions && (
-          <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-surface-2 text-fg-secondary font-mono">
+          <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-surface-2 text-fg-secondary">
             {sessions.length}
           </span>
         )}
@@ -275,7 +275,7 @@ const SessionsSection: React.FC = () => {
                       </span>
                     )}
                   </p>
-                  <p className="text-fg-secondary font-mono mt-0.5">
+                  <p className="text-fg-secondary mt-0.5">
                     {s.ip ?? 'IP unknown'} · last active {formatLocalDateTime(s.lastActive) ?? 'unknown'}
                   </p>
                 </div>

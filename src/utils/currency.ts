@@ -25,9 +25,13 @@ const CURRENCY_DISPLAY_OPTIONS: Intl.NumberFormatOptions = {
 };
 
 /**
- * Formats an amount as Thai Baht, e.g. `฿1,234.50`.
+ * Formats an amount as Thai Baht, e.g. `฿1,234.50`, and a negative as
+ * `−฿1,234.50`: `MINUS` before the symbol (spec section 4.8, Phase 55a). Until
+ * then a negative came out as `฿-1,234.50`, which is why every signed display
+ * (`TxAmount`, `Money`) formats `Math.abs` and prints its own sign.
  */
 export function formatCurrencyAmount(amount: number): string {
-  const formattedNum = (Number(amount) || 0).toLocaleString('en-US', CURRENCY_DISPLAY_OPTIONS);
-  return `${APP_CURRENCY_SYMBOL}${formattedNum}`;
+  const value = Number(amount) || 0;
+  const formattedNum = Math.abs(value).toLocaleString('en-US', CURRENCY_DISPLAY_OPTIONS);
+  return `${value < 0 ? MINUS : ''}${APP_CURRENCY_SYMBOL}${formattedNum}`;
 }

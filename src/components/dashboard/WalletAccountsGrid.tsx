@@ -100,12 +100,12 @@ export const WalletAccountsGrid: React.FC<WalletAccountsGridProps> = React.memo(
                     Balance
                   </span>
                   <div className="flex items-baseline gap-1.5 mt-0.5 flex-wrap">
-                    <span className={`text-xl sm:text-2xl font-black font-mono tracking-tight ${
+                    <span className={`text-xl sm:text-2xl font-black tracking-tight ${
                       wallet.balance < 0 ? 'text-expense' : 'text-fg'
                     }`}>
                       <Money value={wallet.balance} />
                     </span>
-                    <span className="text-[11px] font-semibold font-mono text-fg-muted">{wallet.currency}</span>
+                    <span className="text-[11px] font-semibold text-fg-muted">{wallet.currency}</span>
                   </div>
                 </div>
               </div>
@@ -113,7 +113,7 @@ export const WalletAccountsGrid: React.FC<WalletAccountsGridProps> = React.memo(
               <div className="mt-3.5 sm:mt-4 pt-3 border-t border-line">
                 <div className="flex items-center justify-between text-[10px] text-fg-secondary mb-1.5">
                   <span>Share of Total</span>
-                  <span className="font-mono font-bold text-fg-secondary">
+                  <span className="font-bold text-fg-secondary">
                     {percentOfNetWorth > 0 ? `${percentOfNetWorth.toFixed(1)}%` : '0%'}
                   </span>
                 </div>

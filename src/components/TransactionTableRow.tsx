@@ -33,7 +33,7 @@ export const TransactionTableRow: React.FC<TransactionTableRowProps> = React.mem
       }`}
     >
       {/* Date */}
-      <td className="py-3 px-3 sm:px-4 font-mono text-fg-secondary whitespace-nowrap text-[11px] sm:text-xs">
+      <td className="py-3 px-3 sm:px-4 text-fg-secondary whitespace-nowrap text-[11px] sm:text-xs">
         {tx.transactionDate}
       </td>
 
@@ -62,7 +62,7 @@ export const TransactionTableRow: React.FC<TransactionTableRowProps> = React.mem
 
             {/* Formula display on tablet/desktop */}
             {tx.rawInput && tx.rawInput !== tx.amount.toString() && (
-              <p className="hidden sm:block text-[10px] text-fg-muted font-mono truncate">
+              <p className="hidden sm:block text-[10px] text-fg-muted truncate">
                 Formula: <span className="text-fg-secondary">{tx.rawInput}</span>
               </p>
             )}
@@ -94,7 +94,7 @@ export const TransactionTableRow: React.FC<TransactionTableRowProps> = React.mem
       </td>
 
       {/* Amount */}
-      <td className="py-3 px-3 sm:px-4 text-right font-mono font-bold whitespace-nowrap text-xs sm:text-sm">
+      <td className="py-3 px-3 sm:px-4 text-right font-bold whitespace-nowrap text-xs sm:text-sm">
         <TxAmount amount={tx.amount} type={tx.type} />
       </td>
 

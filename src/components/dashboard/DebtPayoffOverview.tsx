@@ -33,7 +33,7 @@ export const DebtPayoffOverview: React.FC<DebtPayoffOverviewProps> = React.memo(
           <div>
             <div className="flex justify-between text-xs mb-1">
               <span className="text-fg-secondary">Payoff Progress:</span>
-              <span className="font-mono font-bold text-fg">{debtProgressPercent.toFixed(1)}%</span>
+              <span className="font-bold text-fg">{debtProgressPercent.toFixed(1)}%</span>
             </div>
             <ProgressMeter percent={debtProgressPercent} heightClassName="h-3" />
           </div>
@@ -41,13 +41,13 @@ export const DebtPayoffOverview: React.FC<DebtPayoffOverviewProps> = React.memo(
           <div className="grid grid-cols-2 gap-3 pt-2">
             <div className="bg-surface-2 p-3 rounded-lg border border-line">
               <span className="text-[11px] text-fg-secondary block">Remaining Balance</span>
-              <span className="text-base font-bold font-mono text-expense">
+              <span className="text-base font-bold text-expense">
                 {formatCurrencyAmount(remainingDebtTarget)}
               </span>
             </div>
             <div className="bg-surface-2 p-3 rounded-lg border border-line">
               <span className="text-[11px] text-fg-secondary block">Total Principal Paid</span>
-              <span className="text-base font-bold font-mono text-income">
+              <span className="text-base font-bold text-income">
                 {formatCurrencyAmount(paidDebtTarget)}
               </span>
             </div>

@@ -19,26 +19,95 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 /*
- * JetBrains Mono, self-hosted and latin only (Phase 53b, T188). The package's
- * own `index.css` would declare six subsets; amounts need only digits, `.`, `,`,
- * `+` and `−`, so one 40 kB file is the whole font and the service worker
- * precaches it (`woff2` is in `globPatterns`). The baht sign is outside this
- * range on purpose: the font has no U+0E3F, so it falls through `--font-mono`.
+ * IBM Plex Sans Thai, self-hosted (Phase 55a, T204; spec section 2). Four
+ * weights in two subsets: `thai` (U+0E01-0E5B, which holds the baht sign
+ * U+0E3F) and `latin` (which holds U+2212, the minus `Money` prints). The
+ * package's own CSS would also declare cyrillic-ext and latin-ext files the app
+ * never renders. Eight files, 118 kB, all precached (`woff2` is in the workbox
+ * `globPatterns`), so the font works offline.
  */
 @font-face {
-  font-family: 'JetBrains Mono Variable';
+  font-family: 'IBM Plex Sans Thai';
   font-style: normal;
   font-display: swap;
-  font-weight: 100 800;
-  src: url('../node_modules/@fontsource-variable/jetbrains-mono/files/jetbrains-mono-latin-wght-normal.woff2') format('woff2-variations');
+  font-weight: 400;
+  src: url('../node_modules/@fontsource/ibm-plex-sans-thai/files/ibm-plex-sans-thai-thai-400-normal.woff2') format('woff2');
+  unicode-range: U+02D7, U+0303, U+0331, U+0E01-0E5B, U+200C-200D, U+25CC;
+}
+@font-face {
+  font-family: 'IBM Plex Sans Thai';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 500;
+  src: url('../node_modules/@fontsource/ibm-plex-sans-thai/files/ibm-plex-sans-thai-thai-500-normal.woff2') format('woff2');
+  unicode-range: U+02D7, U+0303, U+0331, U+0E01-0E5B, U+200C-200D, U+25CC;
+}
+@font-face {
+  font-family: 'IBM Plex Sans Thai';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 600;
+  src: url('../node_modules/@fontsource/ibm-plex-sans-thai/files/ibm-plex-sans-thai-thai-600-normal.woff2') format('woff2');
+  unicode-range: U+02D7, U+0303, U+0331, U+0E01-0E5B, U+200C-200D, U+25CC;
+}
+@font-face {
+  font-family: 'IBM Plex Sans Thai';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 700;
+  src: url('../node_modules/@fontsource/ibm-plex-sans-thai/files/ibm-plex-sans-thai-thai-700-normal.woff2') format('woff2');
+  unicode-range: U+02D7, U+0303, U+0331, U+0E01-0E5B, U+200C-200D, U+25CC;
+}
+@font-face {
+  font-family: 'IBM Plex Sans Thai';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 400;
+  src: url('../node_modules/@fontsource/ibm-plex-sans-thai/files/ibm-plex-sans-thai-latin-400-normal.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'IBM Plex Sans Thai';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 500;
+  src: url('../node_modules/@fontsource/ibm-plex-sans-thai/files/ibm-plex-sans-thai-latin-500-normal.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'IBM Plex Sans Thai';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 600;
+  src: url('../node_modules/@fontsource/ibm-plex-sans-thai/files/ibm-plex-sans-thai-latin-600-normal.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'IBM Plex Sans Thai';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 700;
+  src: url('../node_modules/@fontsource/ibm-plex-sans-thai/files/ibm-plex-sans-thai-latin-700-normal.woff2') format('woff2');
   unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
 
 /*
- * Design tokens (DESIGN.md, Phase 53). Each value is set once for light on
- * `:root` and once for dark on `.dark`, and `@theme inline` below maps the
- * variables onto Tailwind colour utilities. So `bg-surface-1` is already the
- * right colour in both themes and never needs a `dark:` twin.
+ * Design tokens (`docs/design/finlife-redesign-spec.md` section 1, Phase 55a,
+ * ADR 0027). Each value is set once for light on `:root` and once for dark on
+ * `.dark`, and `@theme inline` below maps the variables onto Tailwind colour
+ * utilities. So `bg-surface-1` is already the right colour in both themes and
+ * never needs a `dark:` twin.
+ *
+ * The dark values are the spec's. The spec names map onto the app's existing
+ * names: `--bg-page` is `--canvas`, `--bg-card` is `--surface-1`, `--bg-inset`
+ * is `--surface-2`, `--bg-raised` is `--surface-3`, `--border` is `--line`,
+ * `--text-1/2/3` are `--fg` / `--fg-secondary` / `--fg-muted`, `--warning` is
+ * `--pending-*`, and `--primary-soft-*` is `--brand-soft-*`. The light values
+ * are derived to the same roles.
+ *
+ * One spec value is not used: `--border-control` (#252B38) measures 1.2:1 on a
+ * card, under WCAG 1.4.11's 3:1 for an input's boundary. It is `--line-control`,
+ * for buttons, whose label identifies them; inputs keep `--line-input`.
  *
  * `scripts/wcag-tokens.mjs` reads these two blocks directly and checks every
  * text / input-border / focus pair against WCAG, so a value changed here is
@@ -46,65 +115,119 @@
  */
 :root {
   --canvas: #FFFFFF;
+  --header: #F8FAFC;
   --surface-1: #F8FAFC;
   --surface-2: #F1F5F9;
   --surface-3: #E2E8F0;
+  --control-active: #E2E8F0;
   --line: #E2E8F0;
+  --line-control: #CBD5E1;
+  --line-strong: #CBD5E1;
   --line-input: #7C8BA1;
   --fg: #0F172A;
   --fg-secondary: #475569;
   --fg-muted: #586880;
+  --fg-disabled: #94A3B8;
   --focus: #7C3AED;
   --scrim: rgba(15, 23, 42, 0.55);
-  --brand-text: #7C3AED;
+  --brand-text: #6D28D9;
+  --brand-soft-bg: #F5F3FF;
+  --brand-soft-line: #DDD6FE;
+  --brand-soft-text: #5B21B6;
+  --selected-bg: #EDE9FE;
+  --selected-text: #4C1D95;
   --income-text: #047857;
+  --income-bg: #ECFDF5;
   --expense-text: #BE123C;
+  --expense-bg: #FFF1F2;
+  --transfer-text: #075985;
+  --transfer-bg: #F0F9FF;
+  --adjust-text: #475569;
+  --adjust-bg: #F1F5F9;
   --pending-text: #92400E;
-  --transfer-text: #155E75;
+  --pending-bg: #FFFBEB;
+  --pending-line: #FCD34D;
+  --pending-body: #78350F;
 }
 
 .dark {
   --canvas: #0B0E14;
-  --surface-1: #121824;
-  --surface-2: #1A2234;
-  --surface-3: #243048;
-  --line: #243048;
+  --header: #0F131B;
+  --surface-1: #131722;
+  --surface-2: #0F131B;
+  --surface-3: #1A1F2B;
+  --control-active: #262B3A;
+  --line: #1F2532;
+  --line-control: #252B38;
+  --line-strong: #2A3140;
   --line-input: #5E7092;
-  --fg: #F8FAFC;
-  --fg-secondary: #94A3B8;
-  --fg-muted: #8190A6;
+  --fg: #E8EAF0;
+  --fg-secondary: #A3AABB;
+  --fg-muted: #8A93A6;
+  --fg-disabled: #4A5163;
   --focus: #8B5CF6;
   --scrim: rgba(0, 0, 0, 0.7);
-  --brand-text: #A78BFA;
-  --income-text: #10B981;
-  --expense-text: #FB7185;
-  --pending-text: #F59E0B;
-  --transfer-text: #06B6D4;
+  --brand-text: #B79CFF;
+  --brand-soft-bg: #1E1A33;
+  --brand-soft-line: #3A3160;
+  --brand-soft-text: #D4C4FF;
+  --selected-bg: #251E45;
+  --selected-text: #FFFFFF;
+  --income-text: #34D399;
+  --income-bg: #0F2A21;
+  --expense-text: #F87171;
+  --expense-bg: #2E1719;
+  --transfer-text: #38BDF8;
+  --transfer-bg: #0E2533;
+  --adjust-text: #A3AABB;
+  --adjust-bg: #1E2233;
+  --pending-text: #FBBF24;
+  --pending-bg: #231C0B;
+  --pending-line: #4A3A12;
+  --pending-body: #F3E3B5;
 }
 
 @theme inline {
   --color-canvas: var(--canvas);
+  --color-header: var(--header);
   --color-surface-1: var(--surface-1);
   --color-surface-2: var(--surface-2);
   --color-surface-3: var(--surface-3);
+  --color-control-active: var(--control-active);
   --color-line: var(--line);
+  --color-line-control: var(--line-control);
+  --color-line-strong: var(--line-strong);
   --color-line-input: var(--line-input);
   --color-fg: var(--fg);
   --color-fg-secondary: var(--fg-secondary);
   --color-fg-muted: var(--fg-muted);
+  --color-fg-disabled: var(--fg-disabled);
   --color-focus: var(--focus);
   --color-scrim: var(--scrim);
   --color-brand: var(--brand-text);
+  --color-brand-soft: var(--brand-soft-bg);
+  --color-brand-soft-line: var(--brand-soft-line);
+  --color-brand-soft-text: var(--brand-soft-text);
+  --color-selected: var(--selected-bg);
+  --color-on-selected: var(--selected-text);
   --color-income: var(--income-text);
+  --color-income-tint: var(--income-bg);
   --color-expense: var(--expense-text);
-  --color-pending: var(--pending-text);
+  --color-expense-tint: var(--expense-bg);
   --color-transfer: var(--transfer-text);
+  --color-transfer-tint: var(--transfer-bg);
+  --color-adjust: var(--adjust-text);
+  --color-adjust-tint: var(--adjust-bg);
+  --color-pending: var(--pending-text);
+  --color-pending-tint: var(--pending-bg);
+  --color-pending-line: var(--pending-line);
+  --color-pending-body: var(--pending-body);
 }
 
 /*
- * Theme-independent values. Fills are the 500 shades and never sit behind
- * text, except the brand fill, which carries white text at 5.70:1 (Violet-500
- * would be 4.23:1). Tints are 12% of the fill; `-line` borders are 30%.
+ * Theme-independent values. Fills never sit behind text, except the brand
+ * fill, which carries white text at 5.70:1. `-line` borders are 30% of the
+ * fill; the tints above are solid per theme (the spec's `-bg` colours).
  */
 @theme {
   --color-brand-fill: #7C3AED;
@@ -112,35 +235,42 @@
   --color-brand-tint: rgba(139, 92, 246, 0.12);
   --color-brand-line: rgba(139, 92, 246, 0.3);
   --color-income-fill: #10B981;
-  --color-income-tint: rgba(16, 185, 129, 0.12);
   --color-income-line: rgba(16, 185, 129, 0.3);
   --color-expense-fill: #F43F5E;
-  --color-expense-tint: rgba(244, 63, 94, 0.12);
   --color-expense-line: rgba(244, 63, 94, 0.3);
   --color-pending-fill: #F59E0B;
-  --color-pending-tint: rgba(245, 158, 11, 0.12);
-  --color-pending-line: rgba(245, 158, 11, 0.3);
-  --color-transfer-fill: #06B6D4;
-  --color-transfer-tint: rgba(6, 182, 212, 0.12);
-  --color-transfer-line: rgba(6, 182, 212, 0.3);
+  --color-transfer-fill: #38BDF8;
+  --color-transfer-line: rgba(56, 189, 248, 0.3);
+
+  /* Spec section 1 radii: card, a box inside a card, a control, a button. */
+  --radius-card: 16px;
+  --radius-inner: 12px;
+  --radius-control: 10px;
+  --radius-button: 8px;
 
   /* The only two elevations DESIGN.md allows: layers that sit above the page, and the one glow. */
   --shadow-modal: 0 20px 40px -15px rgba(0, 0, 0, 0.7);
   --shadow-quick-add: 0 0 20px rgba(139, 92, 246, 0.2);
 
   /*
-   * JetBrains Mono has no U+0E3F glyph, so the baht sign falls through to the
-   * first Thai-capable system font. System monospace faces come before them so
-   * digits stay monospaced even before the web font has loaded.
+   * IBM Plex Sans Thai covers Thai, Latin and the baht sign in one family
+   * (spec section 2). The system stack is only what paints before it loads.
    */
-  --font-mono: "JetBrains Mono Variable", ui-monospace, SFMono-Regular, Menlo, Consolas, "Leelawadee UI", Thonburi, "Noto Sans Thai", monospace;
-  --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-sans: "IBM Plex Sans Thai", system-ui, -apple-system, "Segoe UI", "Leelawadee UI", Thonburi, "Noto Sans Thai", Roboto, sans-serif;
 }
 
 @layer base {
   /* The canvas behind the app root, so overscroll and the first paint match the theme. */
   html {
     background-color: var(--canvas);
+  }
+
+  /*
+   * Spec section 2: numbers no longer use a monospace face. Tabular figures on
+   * the body keep every amount's digits aligned in columns instead.
+   */
+  body {
+    font-variant-numeric: tabular-nums;
   }
 }
 

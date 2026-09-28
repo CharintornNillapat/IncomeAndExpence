@@ -471,7 +471,7 @@ export const CategoriesView: React.FC = () => {
               <div className="bg-surface-2 rounded-lg p-3.5 border border-line space-y-2 text-xs">
                 <div className="flex justify-between" data-testid="metric-extracted-amount">
                   <span className="text-fg-secondary">Extracted Amount:</span>
-                  <span className="font-mono font-bold text-fg">
+                  <span className="font-bold text-fg">
                     {matchResult.extractedAmount ? formatCurrencyAmount(matchResult.extractedAmount) : 'None detected'}
                   </span>
                 </div>
@@ -483,7 +483,7 @@ export const CategoriesView: React.FC = () => {
                 </div>
                 <div className="flex justify-between" data-testid="metric-inferred-type">
                   <span className="text-fg-secondary">Inferred Type:</span>
-                  <span className="font-mono text-fg">{matchResult.type || 'EXPENSE'}</span>
+                  <span className="text-fg">{matchResult.type || 'EXPENSE'}</span>
                 </div>
                 <div className="flex justify-between" data-testid="metric-cleaned-description">
                   <span className="text-fg-secondary">Cleaned Description:</span>
@@ -528,7 +528,7 @@ export const CategoriesView: React.FC = () => {
                     const cat = categoryMap.get(rule.categoryId);
                     return (
                       <tr key={rule.id} id={`rule-row-${rule.id}`} className="hover:bg-surface-2">
-                        <td className="py-3 px-4 font-mono font-semibold text-fg">
+                        <td className="py-3 px-4 font-semibold text-fg">
                           "{rule.keyword}"
                         </td>
                         <td className="py-3 px-4">

@@ -574,7 +574,7 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
             >
               Previous
             </button>
-            <span className="px-2 font-mono font-semibold text-fg">
+            <span className="px-2 font-semibold text-fg">
               {currentPage} / {totalPages}
             </span>
             <button
@@ -695,19 +695,19 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
             <div className="grid grid-cols-4 gap-3 bg-surface-2 p-3 rounded-lg border border-line text-xs">
               <div>
                 <span className="text-fg-secondary block">Total Rows</span>
-                <span className="font-bold text-fg font-mono text-sm">{importPreview.totalRows}</span>
+                <span className="font-bold text-fg text-sm">{importPreview.totalRows}</span>
               </div>
               <div>
                 <span className="text-fg-secondary block">Valid Rows</span>
-                <span className="font-bold text-income font-mono text-sm">{importPreview.validRowsCount}</span>
+                <span className="font-bold text-income text-sm">{importPreview.validRowsCount}</span>
               </div>
               <div>
                 <span className="text-fg-secondary block">Errors / Invalid</span>
-                <span className="font-bold text-expense font-mono text-sm">{importPreview.invalidRowsCount}</span>
+                <span className="font-bold text-expense text-sm">{importPreview.invalidRowsCount}</span>
               </div>
               <div>
                 <span className="text-fg-secondary block">Total Amount</span>
-                <span className="font-bold text-fg font-mono text-sm">{formatCurrencyAmount(importPreview.totalAmount)}</span>
+                <span className="font-bold text-fg text-sm">{formatCurrencyAmount(importPreview.totalAmount)}</span>
               </div>
             </div>
 
@@ -721,9 +721,9 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
             <div className="flex flex-col gap-2 rounded-lg border border-line bg-surface-2 p-3">
               <div className="flex items-center justify-between gap-3 flex-wrap">
                 <span className="text-xs text-fg-secondary">
-                  <strong className="font-mono font-bold text-fg">{ruleMatchedCount}</strong>{' '}
+                  <strong className="font-bold text-fg">{ruleMatchedCount}</strong>{' '}
                   matched by rules &middot;{' '}
-                  <strong className="font-mono font-bold text-fg">{uncategorizedRows.length}</strong>{' '}
+                  <strong className="font-bold text-fg">{uncategorizedRows.length}</strong>{' '}
                   uncategorized
                 </span>
 
@@ -792,7 +792,7 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
                 <tbody className="divide-y divide-line">
                   {importPreview.rows.slice(0, CSV_PREVIEW_ROW_CAP).map((row) => (
                     <tr key={row.rowIndex} className={row.isValid ? 'bg-surface-1' : 'bg-expense-tint'}>
-                      <td className="p-2 font-mono text-fg-secondary">{row.rowIndex}</td>
+                      <td className="p-2 text-fg-secondary">{row.rowIndex}</td>
                       <td className="p-2">
                         {row.isValid ? (
                           <span className="inline-flex items-center gap-1 text-income font-semibold text-[11px]">
@@ -804,9 +804,9 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
                           </span>
                         )}
                       </td>
-                      <td className="p-2 font-mono text-fg-secondary">{row.date}</td>
+                      <td className="p-2 text-fg-secondary">{row.date}</td>
                       <td className="p-2 text-fg-secondary">{row.walletName}</td>
-                      <td className="p-2 font-mono font-bold text-fg">{formatCurrencyAmount(row.amount)}</td>
+                      <td className="p-2 font-bold text-fg">{formatCurrencyAmount(row.amount)}</td>
                       <td className="p-2">
                         {row.isValid ? (
                           <span className="text-fg-secondary">{row.description}</span>

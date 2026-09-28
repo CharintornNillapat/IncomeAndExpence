@@ -1,8 +1,6 @@
 import React, { useSyncExternalStore } from 'react';
 import { AlertTriangle, Circle, RefreshCw, UserCheck, LogIn, UserCog } from 'lucide-react';
 import { useFinanceActions, useFinanceState } from '../../context/FinanceContext';
-import { APP_CURRENCY } from '../../utils/currency';
-import { Money } from '../ui/Money';
 
 /**
  * T34: the only finance-context subscribers in the Navbar area. `Navbar.tsx`
@@ -12,12 +10,9 @@ import { Money } from '../ui/Money';
  * CLAUDE.md's "no component above view level subscribes to finance state"
  * rule, which this file previously violated.
  *
- * Split into two components (not one) because their DOM lives in two
- * different, non-adjacent places in Navbar's markup: the sync badge sits in
- * the left logo cluster, the balance+auth cluster sits in the right action
- * row. Keeping them separate preserves the exact DOM structure and sibling
- * order Navbar had before this extraction, rather than wrapping both in a
- * single component that could only occupy one spot in the tree.
+ * Split into two components (not one) because Navbar places them apart: the
+ * theme toggle sits between the sync badge and the account controls in the
+ * right action row (Phase 55a).
  */
 
 interface NavbarSyncBadgeProps {
@@ -103,8 +98,10 @@ export const NavbarSyncBadge: React.FC<NavbarSyncBadgeProps> = ({ onOpenAuth }) 
       </button>
     );
   } else {
+    // Spec section 4.1: a green dot and the word, no pill. The dot is the
+    // only status dot in the app (ADR 0026).
     badge = (
-      <span className={`${PILL} bg-income-tint text-income border-income-line`}>
+      <span className="inline-flex items-center gap-1.5 text-xs font-medium text-fg-secondary whitespace-nowrap">
         <span className="w-2 h-2 rounded-full bg-income-fill shrink-0" />
         <span>Synced</span>
       </span>
@@ -118,30 +115,22 @@ export const NavbarSyncBadge: React.FC<NavbarSyncBadgeProps> = ({ onOpenAuth }) 
   );
 };
 
-interface NavbarBalanceAndAuthProps {
+interface NavbarAuthProps {
   onOpenAuth: () => void;
   /** Opens Account & Security (ADR 0024), which now holds sign-out. */
   onOpenAccount: () => void;
 }
 
-export const NavbarBalanceAndAuth: React.FC<NavbarBalanceAndAuthProps> = ({ onOpenAuth, onOpenAccount }) => {
-  const { totalNetWorth, isAuthenticated, currentUser } = useFinanceState();
+/**
+ * The header's account controls. Until Phase 55a this also showed the total
+ * balance; spec section 4.1 took it out of the header, since the dashboard
+ * already shows it, and with it this component's `totalNetWorth` subscription.
+ */
+export const NavbarAuth: React.FC<NavbarAuthProps> = ({ onOpenAuth, onOpenAccount }) => {
+  const { isAuthenticated, currentUser } = useFinanceState();
 
   return (
     <>
-      {/* Live Net Worth aggregated query */}
-      <div className="text-right hidden md:block pr-1">
-        <span className="text-[10px] font-semibold uppercase tracking-wider text-fg-muted block">
-          Total Balance
-        </span>
-        <span className="text-sm sm:text-base font-bold font-mono tabular-nums text-fg tracking-tight">
-          <Money value={totalNetWorth} />{' '}
-          <span className="text-xs font-semibold text-fg-secondary font-mono">
-            {APP_CURRENCY}
-          </span>
-        </span>
-      </div>
-
       {/* Auth status action with consistent 44px min touch target. Signed in,
           the name pill opens Account & Security, which holds sign-out behind a
           confirmation (ADR 0024: sign-out clears this device). */}
@@ -152,7 +141,7 @@ export const NavbarBalanceAndAuth: React.FC<NavbarBalanceAndAuthProps> = ({ onOp
           onClick={onOpenAccount}
           title="Account & Security"
           aria-label="Account & Security"
-          className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center gap-1.5 bg-surface-2 hover:bg-surface-3 border border-line py-1.5 px-2.5 rounded-lg text-xs transition-colors cursor-pointer"
+          className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center gap-1.5 border border-line-control hover:bg-surface-3 py-1.5 px-2.5 rounded-button text-xs transition-colors cursor-pointer"
         >
           <UserCheck className="w-3.5 h-3.5 text-income shrink-0" />
           <span className="max-w-[80px] sm:max-w-[120px] truncate font-semibold text-fg hidden xs:inline">
@@ -165,7 +154,7 @@ export const NavbarBalanceAndAuth: React.FC<NavbarBalanceAndAuthProps> = ({ onOp
             type="button"
             id="navbar-signin-btn"
             onClick={onOpenAuth}
-            className="min-h-[44px] inline-flex items-center justify-center gap-1.5 bg-surface-2 hover:bg-surface-3 text-fg px-3 sm:px-3.5 py-2 rounded-lg text-xs font-semibold border border-line transition-colors cursor-pointer"
+            className="min-h-[44px] inline-flex items-center justify-center gap-1.5 hover:bg-surface-3 text-fg px-3 sm:px-3.5 py-2 rounded-button text-xs font-semibold border border-line-control transition-colors cursor-pointer"
           >
             <LogIn className="w-3.5 h-3.5 text-fg-secondary shrink-0" />
             <span>Sign In</span>
@@ -176,7 +165,7 @@ export const NavbarBalanceAndAuth: React.FC<NavbarBalanceAndAuthProps> = ({ onOp
             onClick={onOpenAccount}
             title="Account & Security"
             aria-label="Account & Security"
-            className="hidden sm:inline-flex min-h-[44px] min-w-[44px] items-center justify-center p-2 rounded-lg bg-surface-2 hover:bg-surface-3 border border-line text-fg-secondary transition-colors cursor-pointer"
+            className="hidden sm:inline-flex min-h-[44px] min-w-[44px] items-center justify-center p-2 rounded-button hover:bg-surface-3 hover:text-fg border border-line-control text-fg-secondary transition-colors cursor-pointer"
           >
             <UserCog className="w-4 h-4" />
           </button>

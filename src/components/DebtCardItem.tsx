@@ -85,7 +85,7 @@ export const DebtCardItem: React.FC<DebtCardItemProps> = React.memo(({
           <div>
             <div className="flex justify-between text-xs mb-1.5">
               <span className="text-fg-secondary">Repayment Progress:</span>
-              <span className="font-mono font-bold text-fg">{progressPercent.toFixed(1)}%</span>
+              <span className="font-bold text-fg">{progressPercent.toFixed(1)}%</span>
             </div>
             <ProgressMeter percent={progressPercent} heightClassName="h-3" />
           </div>
@@ -93,13 +93,13 @@ export const DebtCardItem: React.FC<DebtCardItemProps> = React.memo(({
           <div className="grid grid-cols-2 gap-3">
             <div className="bg-surface-2 p-3 rounded-lg border border-line">
               <span className="text-[11px] text-fg-secondary block">Remaining Balance</span>
-              <span className="text-base font-bold font-mono text-expense">
+              <span className="text-base font-bold text-expense">
                 {formatCurrencyAmount(debt.remainingAmount)}
               </span>
             </div>
             <div className="bg-surface-2 p-3 rounded-lg border border-line">
               <span className="text-[11px] text-fg-secondary block">Total Principal Target</span>
-              <span className="text-base font-bold font-mono text-fg">
+              <span className="text-base font-bold text-fg">
                 {formatCurrencyAmount(debt.totalAmount)}
               </span>
             </div>

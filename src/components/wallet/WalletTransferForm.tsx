@@ -122,7 +122,7 @@ const TransferWalletPanel: React.FC<TransferWalletPanelProps> = ({
 
       <div className="mt-auto">
         <div
-          className={`font-mono text-sm font-bold tabular-nums transition-colors ${
+          className={`text-sm font-bold tabular-nums transition-colors ${
             afterBalance !== null
               ? 'text-fg-muted line-through decoration-1'
               : 'text-fg'
@@ -135,7 +135,7 @@ const TransferWalletPanel: React.FC<TransferWalletPanelProps> = ({
             <ArrowRight className="w-3 h-3 shrink-0 text-fg-muted" />
             <span
               data-testid={afterTestId}
-              className={`font-mono text-sm font-bold tabular-nums ${
+              className={`text-sm font-bold tabular-nums ${
                 isOverdrawn
                   ? 'text-expense'
                   : 'text-income'

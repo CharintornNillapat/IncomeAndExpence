@@ -100,12 +100,13 @@ test.describe('Soft-delete lifecycle', () => {
     // <option> in the Quick Add wallet select whenever more than one wallet
     // exists, which is Cash Wallet (`wal-cash`). Asserting against this one
     // wallet's own card (not a dashboard total) keeps the test independent
-    // of any other wallet's balance and of AnimatedCounter's own render
-    // strategy - only its settled text content is asserted, never a
-    // render count, so a later change there cannot break this spec.
+    // of any other wallet's balance - only its settled text content is
+    // asserted. The balance is found by its testid; until Phase 55a this
+    // locator matched Tailwind classes, and dropping `font-mono` (ADR 0027)
+    // would have broken it.
     await gotoTab(page, 'wallets');
     const cashWalletCard = page.locator('#wallet-entity-wal-cash');
-    const balance = cashWalletCard.locator('div.text-2xl.font-bold.font-mono');
+    const balance = cashWalletCard.getByTestId('wallet-balance-wal-cash');
     await expect(balance).toContainText('฿150.00');
 
     // A ฿150 EXPENSE against Cash Wallet must drop its balance to exactly ฿0.00.

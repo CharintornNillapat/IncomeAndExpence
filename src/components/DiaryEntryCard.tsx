@@ -81,7 +81,7 @@ export const DiaryEntryCard: React.FC<DiaryEntryCardProps> = React.memo(({
             <span className="text-[10px] text-fg-muted block font-semibold uppercase tracking-wider">
               Day Outflow
             </span>
-            <span className={`text-xs font-mono font-bold ${dayData.totalOutflow > 0 ? 'text-expense' : 'text-fg-secondary'}`}>
+            <span className={`text-xs font-bold ${dayData.totalOutflow > 0 ? 'text-expense' : 'text-fg-secondary'}`}>
               {formatCurrencyAmount(dayData.totalOutflow)}
             </span>
           </div>
