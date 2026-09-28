@@ -1104,7 +1104,7 @@ Branch `phase-57-dashboard`, draft PR. It also carries `2739e4e`, the Phase 56 d
 | T230 | `MoodSpendingCard`: five-bar meter, signed spending, the "Log today" button | `dashboard/*` | Med | Low | 0.5h | done | T222 | e43ea5d | - | - |
 | T231 | `SpendingInsightsCard` restyled, titled "Spending insights · September vs August" | `dashboard/SpendingInsightsCard.tsx` | Low | Low | 0.25h | done | - | e43ea5d | `insights.spec.ts` unedited, 10/10 per browser | - |
 | T232 | `unit/dashboard.test.tsx`: spec 10's checks per card | `unit/dashboard.test.tsx` | High | Low | 1h | done | T224-T231 | 20558ac, 873d714 | 4 mutations caught; found the click event reaching `onTransfer` | unit 368 -> 385 |
-| T233 | ADR `0030`, `DESIGN.md`, `CLAUDE.md`, selector contract, ledger, log, metrics, antislop audit 005, sha backfill | docs | Low | Low | 1.5h | done | all | (the docs and backfill commits) | - | - |
+| T233 | ADR `0030`, `DESIGN.md`, `CLAUDE.md`, selector contract, ledger, log, metrics, antislop audit 005, sha backfill | docs | Low | Low | 1.5h | done | all | f4fb38c, 5efc483 (audit), backfill (this row's own commit) | - | - |
 
 **Notes on execution:**
 - **Found by the unit tests: the Wallets section passed the click event to `onTransfer`.** `DashboardView` wraps it, so nothing broke. Wired straight to `onOpenTransfer(walletId?)`, though, the event would have been read as a wallet id. The links now call their handlers with no argument.

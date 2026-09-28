@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 57 - FinLife redesign step 4, the Dashboard: T222-T233 (2026-09-28, commits `5e40415`...`873d714`)
+## Phase 57 - FinLife redesign step 4, the Dashboard: T222-T233 (2026-09-28, commits `5e40415`...`5efc483`)
 
 **Changed**
 - **Selectors.** `cashFlow` (`ledger.ts`), `walletShares` (`wallets.ts`), `moodSpendingDays` (new `diary.ts`).
