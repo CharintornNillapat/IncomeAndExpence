@@ -1099,10 +1099,10 @@ Branch `phase-58s-security`. It also carries `092e87c`, the Phase 58a deploy rec
 | T245 | `profiles` migration and its probe | `supabase/migrations/20260930_phase58s_profiles_hardening.sql`, `supabase/tests/20260930_phase58s.probe.sql` | High | Med | 1h | done | - | ca5d465 | probe OK in `BEGIN … ROLLBACK`; two negative controls failed as designed | - |
 | T246 | Vercel firewall rules | - | High | Low | 0.3h | **blocked** | the owner | - | the API answers `404 Seawall Config not found` to every create; the project has no firewall configuration yet | - |
 | T247 | Apply the migration live | live DB | High | Med | 0.3h | done | T245 | - (applied 2026-09-30) | body md5 matches the file; Phase 58s and Phase 52 probes OK after | - |
-| T248 | `checkCaller` in both proxies | `api/classify.ts`, `api/insights.ts` | High | Med | 1h | done | - | (this phase's code commit) | 2 mutations caught (13 and 4 failures) | - |
-| T249 | `authorizationHeader()`; the clients send it; a 401 is `unavailable` without latching | `src/lib/supabase.ts`, `src/utils/jevClassifier.ts`, `src/utils/insightsClient.ts` | High | Low | 0.5h | done | T248 | (this phase's code commit) | 3 mutations caught | - |
-| T250 | Tests: `proxy-contract` caller-check block; `proxy-auth-client` (new) | `unit/` | High | Low | 1h | done | T248, T249 | (this phase's code commit) | 5 mutations caught in all | unit 396 -> 443 |
-| T251 | ADR `0032`, `CLAUDE.md`, ledger, log, metrics | docs | Low | Low | 0.5h | done | all | (this phase's docs commit) | - | - |
+| T248 | `checkCaller` in both proxies | `api/classify.ts`, `api/insights.ts` | High | Med | 1h | done | - | 6a8e790 | 2 mutations caught (13 and 4 failures) | - |
+| T249 | `authorizationHeader()`; the clients send it; a 401 is `unavailable` without latching | `src/lib/supabase.ts`, `src/utils/jevClassifier.ts`, `src/utils/insightsClient.ts` | High | Low | 0.5h | done | T248 | 6a8e790 | 3 mutations caught | - |
+| T250 | Tests: `proxy-contract` caller-check block; `proxy-auth-client` (new) | `unit/` | High | Low | 1h | done | T248, T249 | 6a8e790 | 5 mutations caught in all | unit 396 -> 443 |
+| T251 | ADR `0032`, `CLAUDE.md`, ledger, log, metrics | docs | Low | Low | 0.5h | done | all | 7561cf1 | - | - |
 | T252 | sha backfill; draft PR | docs | Low | Low | 0.1h | done | T251 | (this row's own commit) | - | - |
 
 **Notes on execution:**

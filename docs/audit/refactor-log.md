@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 58s - Security: the AI proxies' callers and `public.profiles`: T245-T252 (2026-09-30, commits `ca5d465`...)
+## Phase 58s - Security: the AI proxies' callers and `public.profiles`: T245-T252 (2026-09-30, commits `ca5d465`...`7561cf1`)
 
 **Changed**
 - **`api/classify.ts`, `api/insights.ts`:** `checkCaller` runs after the missing-key 404 and before the body.
