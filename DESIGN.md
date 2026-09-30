@@ -143,7 +143,7 @@ Build a screen from these, not from a re-typed class string.
 | `ProgressBar` | `ui/ProgressBar` | A `line` track 6, 8 or 10px tall, the fill by meaning (payoff is `income`) or an item's own colour. It prints no number. |
 | `AllocationBar` | `ui/AllocationBar` | One bar split by share, 3px gaps, each item's own colour; only positive values take a share. Its name lists the shares. |
 | `WarningBanner` | `ui/WarningBanner` | `pending` tint and edge, a triangle, `role="note"`, an optional action. For something to fix, never for a normal value. |
-| `OverflowMenu` | `ui/OverflowMenu` | "⋯" for rare or destructive actions. `surface-3` menu, `line-strong` edge, Delete in red, full keyboard support, no entrance animation. |
+| `OverflowMenu` | `ui/OverflowMenu` | "⋯" for rare or destructive actions. `surface-3` menu, `line-strong` edge, Delete in red, full keyboard support, no entrance animation. With `triggerLabel` the trigger is a secondary button with text and a chevron, for a page-level menu such as "Import / export" (ADR 0031). |
 | `TransactionRow` | `transaction/TransactionRow` | 36px tile, the L6/L7 title and second line, the L10/L13 chip (none for a transfer), a signed amount. The whole row is a button when it can be selected. |
 | `DayGroupHeader` | `transaction/DayGroupHeader` | "Yesterday · Sun, Sep 27" and the day's L11 net: `fg` when zero or more, `expense` when negative, always signed. |
 
@@ -172,6 +172,13 @@ One period for the whole page, chosen in the `PageHeader`. Every figure comes fr
 | Recent activity | 8/12 / full | `TransactionRow`s under `DayGroupHeader`s (L11), with a cancelling adjustment pair folded into one expandable row (L8). |
 | Mood & spending | 4/12 / full | Diary days in the period, a five-bar meter (no emoji) and that day's signed spending. |
 | Spending insights | full | ADR 0020's card, titled with its own months. |
+
+### Transactions (spec 6.2, ADR 0031)
+- **Header:** `PageHeader` "Transactions", an "Import / export" menu, and the one primary button, "Add transaction".
+- **Filter row:** search (grows to fill), date range, wallet, category, a type control (All / Income / Expense / Transfer), and Show deleted. On a phone the selects share their rows evenly.
+- **List:** one card, with a summary line at the top (the range, In, Out, and what is not counted). Below it, `DayGroupHeader`s and `TransactionRow` buttons, inset 8px so a row's focus ring has room, and "Load 25 more" at the foot.
+- **Panel:** the selected row's details, with Delete (danger) or Restore. It sits inline at 4/12 beside the list from `xl` and opens as a sheet or dialog below that. The choice is made in JavaScript, so it is never rendered twice. The selected row takes the soft violet with a 3px violet edge.
+- **No trash button on a row.** Deleting happens in the panel.
 
 ### Sync indicator (header)
 Five states. The first is for guests; the other four are for a signed-in user, checked in this order.
@@ -220,3 +227,5 @@ Five states. The first is for guests; the other four are for a signed-in user, c
 | Spent-vs-left bar in red and green | One `ProgressBar` of the spent share on the neutral track | A green remainder would read as income; the caption states the share. |
 | Static "Good morning" | Greeting by the local hour | The page is open at every hour. |
 | "…uses the period on the right" | "…uses the selected period" | On a phone the control sits below the text. |
+| Transactions: "Click any row to edit it", and an edit panel | "Click any row to see it, or to delete or restore it", and a panel that shows the row | Editing needs a new ledger write, split into Phase 58b by the owner (ADR 0031). |
+| A transfer row: "Transfer" over "Main → Cash" only | "Main → Cash · Funds transfer" when the transfer has a note of its own | The title is always "Transfer", so a note the user wrote would otherwise disappear. |

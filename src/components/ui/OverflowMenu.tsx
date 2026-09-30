@@ -1,5 +1,6 @@
 import React, { useEffect, useId, useRef, useState } from 'react';
-import { MoreHorizontal } from 'lucide-react';
+import { ChevronDown, MoreHorizontal } from 'lucide-react';
+import { Button } from './Button';
 import { IconButton } from './IconButton';
 
 export interface OverflowMenuItem {
@@ -13,9 +14,17 @@ export interface OverflowMenuItem {
 }
 
 interface OverflowMenuProps {
-  /** Names the trigger, e.g. "More actions for Cash". */
+  /** Names the trigger, e.g. "More actions for Cash", and the menu. */
   label: string;
   items: OverflowMenuItem[];
+  /**
+   * Draws the trigger as a secondary `Button` with this text and a chevron
+   * instead of the "⋯" icon: a page-level menu such as "Import / export"
+   * (spec 6.2). Its visible text is then its name.
+   */
+  triggerLabel?: string;
+  /** The trigger's id, for a menu a spec opens. */
+  triggerId?: string;
   className?: string;
 }
 
@@ -34,7 +43,7 @@ interface OverflowMenuProps {
  * absent must open the menu first, or the assertion passes for the wrong
  * reason (recorded in `test-selector-contract.md`).
  */
-export const OverflowMenu: React.FC<OverflowMenuProps> = ({ label, items, className = '' }) => {
+export const OverflowMenu: React.FC<OverflowMenuProps> = ({ label, items, triggerLabel, triggerId, className = '' }) => {
   const [isOpen, setIsOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -95,24 +104,33 @@ export const OverflowMenu: React.FC<OverflowMenuProps> = ({ label, items, classN
     }
   };
 
+  const triggerProps = {
+    ref: triggerRef,
+    id: triggerId,
+    'aria-haspopup': 'menu' as const,
+    'aria-expanded': isOpen,
+    'aria-controls': isOpen ? menuId : undefined,
+    onClick: () => setIsOpen((open) => !open),
+    onKeyDown: (event: React.KeyboardEvent<HTMLButtonElement>) => {
+      if (event.key === 'ArrowDown' && !isOpen) {
+        event.preventDefault();
+        setIsOpen(true);
+      }
+    },
+  };
+
   return (
     <div ref={rootRef} className={`relative inline-flex ${className}`.trim()}>
-      <IconButton
-        ref={triggerRef}
-        label={label}
-        aria-haspopup="menu"
-        aria-expanded={isOpen}
-        aria-controls={isOpen ? menuId : undefined}
-        onClick={() => setIsOpen((open) => !open)}
-        onKeyDown={(event) => {
-          if (event.key === 'ArrowDown' && !isOpen) {
-            event.preventDefault();
-            setIsOpen(true);
-          }
-        }}
-      >
-        <MoreHorizontal className="w-4 h-4" />
-      </IconButton>
+      {triggerLabel ? (
+        <Button variant="secondary" {...triggerProps}>
+          {triggerLabel}
+          <ChevronDown aria-hidden="true" className="w-4 h-4" />
+        </Button>
+      ) : (
+        <IconButton label={label} {...triggerProps}>
+          <MoreHorizontal className="w-4 h-4" />
+        </IconButton>
+      )}
 
       {isOpen && (
         <div

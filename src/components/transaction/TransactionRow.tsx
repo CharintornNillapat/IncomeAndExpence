@@ -19,6 +19,12 @@ interface TransactionRowProps {
   selected?: boolean;
   /** Extra text for the second line, such as the date a flat list needs to show. */
   meta?: React.ReactNode;
+  /**
+   * The row's date as hidden text, for a list that shows the date only in a
+   * `DayGroupHeader` above it. Assistive technology still reads each row's
+   * date, and `presets.spec.ts` filters rows by it (Phase 58a, ADR 0031).
+   */
+  dateText?: string;
   id?: string;
   className?: string;
 }
@@ -45,6 +51,7 @@ export const TransactionRow: React.FC<TransactionRowProps> = ({
   onSelect,
   selected = false,
   meta,
+  dateText,
   id,
   className = '',
 }) => {
@@ -74,6 +81,7 @@ export const TransactionRow: React.FC<TransactionRowProps> = ({
         <span className="flex items-center gap-1.5 text-xs text-fg-muted truncate">
           <span className="truncate">{secondaryLine(tx, wallets)}</span>
           {meta}
+          {dateText && <span className="sr-only">, {dateText}</span>}
         </span>
         {tx.isDeleted && <TxSoftDeletedTag />}
       </span>

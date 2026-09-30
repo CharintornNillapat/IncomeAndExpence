@@ -72,7 +72,7 @@ test.describe('Transaction templates (quick presets)', () => {
     await expect(modal).not.toBeVisible();
 
     await gotoTab(page, 'transactions');
-    const rows = page.locator('tr[id^="tx-row-"]').filter({ hasText: description });
+    const rows = page.locator('button[id^="tx-row-"]').filter({ hasText: description });
     await expect(rows).toHaveCount(2);
   });
 
@@ -109,7 +109,7 @@ test.describe('Transaction templates (quick presets)', () => {
     await expect(modal).not.toBeVisible();
 
     await gotoTab(page, 'transactions');
-    const rows = page.locator('tr[id^="tx-row-"]').filter({ hasText: description });
+    const rows = page.locator('button[id^="tx-row-"]').filter({ hasText: description });
     await expect(rows).toHaveCount(1);
   });
 
@@ -209,7 +209,7 @@ test.describe('Preset apply respects local calendar days (UTC+7)', () => {
     // Both the original save-as-template submission and the one-tap replay
     // were created at this same pinned instant, so both rows must carry the
     // local calendar day.
-    const rows = page.locator('tr[id^="tx-row-"]').filter({ hasText: description });
+    const rows = page.locator('button[id^="tx-row-"]').filter({ hasText: description });
     await expect(rows).toHaveCount(2);
     await expect(rows.filter({ hasText: '2026-09-18' })).toHaveCount(2);
     await expect(rows.filter({ hasText: '2026-09-17' })).toHaveCount(0);

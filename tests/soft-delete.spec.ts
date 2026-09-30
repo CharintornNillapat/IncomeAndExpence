@@ -22,23 +22,27 @@ test.describe('Soft-delete lifecycle', () => {
     await addQuickTransaction(page, marker);
     await gotoTab(page, 'transactions');
 
-    const row = page.locator('tr[id^="tx-row-"]').filter({ hasText: marker });
+    const row = page.locator('button[id^="tx-row-"]').filter({ hasText: marker });
     await expect(row).toBeVisible();
 
-    await row.locator('button[id^="tx-delete-btn-"]').click();
+    // Phase 58a: Delete lives in the selected row's panel, not on the row.
+    await row.click();
+    await page.locator('button[id^="tx-delete-btn-"]').click();
     // Default view (Show Soft Deleted unchecked) excludes deleted rows entirely.
-    await expect(page.locator('tr[id^="tx-row-"]').filter({ hasText: marker })).toHaveCount(0);
+    await expect(page.locator('button[id^="tx-row-"]').filter({ hasText: marker })).toHaveCount(0);
 
     // The record still exists - it is flagged, not gone. The toggle reveals it.
     const showDeletedToggle = page.locator('#tx-show-deleted');
     await expect(showDeletedToggle).not.toBeChecked();
     await showDeletedToggle.check();
 
-    const deletedRow = page.locator('tr[id^="tx-row-"]').filter({ hasText: marker });
+    const deletedRow = page.locator('button[id^="tx-row-"]').filter({ hasText: marker });
     await expect(deletedRow).toBeVisible();
     await expect(deletedRow.getByText('[Soft Deleted]')).toBeVisible();
 
-    const restoreBtn = deletedRow.locator('button[id^="tx-restore-btn-"]');
+    // Phase 58a: Restore lives in the selected row's panel, not on the row.
+    await deletedRow.click();
+    const restoreBtn = page.locator('button[id^="tx-restore-btn-"]');
     await expect(restoreBtn).toBeVisible();
     await restoreBtn.click();
 
@@ -47,7 +51,7 @@ test.describe('Soft-delete lifecycle', () => {
 
     // Turning the toggle back off still shows it - it is active again, not deleted.
     await showDeletedToggle.uncheck();
-    await expect(page.locator('tr[id^="tx-row-"]').filter({ hasText: marker })).toBeVisible();
+    await expect(page.locator('button[id^="tx-row-"]').filter({ hasText: marker })).toBeVisible();
   });
 
   test('wallet: soft-delete removes it from the active grid and survives a reload', async ({ page }) => {
@@ -118,9 +122,11 @@ test.describe('Soft-delete lifecycle', () => {
     // Soft-deleting the expense must reverse its effect: the balance returns
     // to exactly ฿150.00, not merely "no longer zero."
     await gotoTab(page, 'transactions');
-    const row = page.locator('tr[id^="tx-row-"]').filter({ hasText: marker });
+    const row = page.locator('button[id^="tx-row-"]').filter({ hasText: marker });
     await expect(row).toBeVisible();
-    await row.locator('button[id^="tx-delete-btn-"]').click();
+    // Phase 58a: Delete lives in the selected row's panel, not on the row.
+    await row.click();
+    await page.locator('button[id^="tx-delete-btn-"]').click();
 
     await gotoTab(page, 'wallets');
     await expect(balance).toContainText('฿150.00');
@@ -129,9 +135,10 @@ test.describe('Soft-delete lifecycle', () => {
     // back to exactly ฿0.00.
     await gotoTab(page, 'transactions');
     await page.locator('#tx-show-deleted').check();
-    const deletedRow = page.locator('tr[id^="tx-row-"]').filter({ hasText: marker });
+    const deletedRow = page.locator('button[id^="tx-row-"]').filter({ hasText: marker });
     await expect(deletedRow).toBeVisible();
-    await deletedRow.locator('button[id^="tx-restore-btn-"]').click();
+    await deletedRow.click();
+    await page.locator('button[id^="tx-restore-btn-"]').click();
 
     await gotoTab(page, 'wallets');
     await expect(balance).toContainText('฿0.00');
@@ -169,9 +176,11 @@ test.describe('Soft-delete lifecycle', () => {
     // Soft-deleting must give the debt back exactly, not merely "more than
     // ฿4,000" - this is the assertion the missing handling failed.
     await gotoTab(page, 'transactions');
-    const row = page.locator('tr[id^="tx-row-"]').filter({ hasText: marker });
+    const row = page.locator('button[id^="tx-row-"]').filter({ hasText: marker });
     await expect(row).toBeVisible();
-    await row.locator('button[id^="tx-delete-btn-"]').click();
+    // Phase 58a: Delete lives in the selected row's panel, not on the row.
+    await row.click();
+    await page.locator('button[id^="tx-delete-btn-"]').click();
 
     await gotoTab(page, 'debts');
     await expect(card).toContainText('฿4,500.00');
@@ -180,9 +189,10 @@ test.describe('Soft-delete lifecycle', () => {
     // Restoring must reapply it exactly.
     await gotoTab(page, 'transactions');
     await page.locator('#tx-show-deleted').check();
-    const deletedRow = page.locator('tr[id^="tx-row-"]').filter({ hasText: marker });
+    const deletedRow = page.locator('button[id^="tx-row-"]').filter({ hasText: marker });
     await expect(deletedRow).toBeVisible();
-    await deletedRow.locator('button[id^="tx-restore-btn-"]').click();
+    await deletedRow.click();
+    await page.locator('button[id^="tx-restore-btn-"]').click();
 
     await gotoTab(page, 'debts');
     await expect(card).toContainText('฿4,000.00');
@@ -210,9 +220,11 @@ test.describe('Soft-delete lifecycle', () => {
     // both directions, so the card becomes actionable again rather than
     // staying settled against a non-zero balance.
     await gotoTab(page, 'transactions');
-    const row = page.locator('tr[id^="tx-row-"]').filter({ hasText: marker });
+    const row = page.locator('button[id^="tx-row-"]').filter({ hasText: marker });
     await expect(row).toBeVisible();
-    await row.locator('button[id^="tx-delete-btn-"]').click();
+    // Phase 58a: Delete lives in the selected row's panel, not on the row.
+    await row.click();
+    await page.locator('button[id^="tx-delete-btn-"]').click();
 
     await gotoTab(page, 'debts');
     await expect(card).not.toContainText('✓ Debt Fully Settled');

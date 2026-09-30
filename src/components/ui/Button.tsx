@@ -41,6 +41,8 @@ export function buttonClass({ variant = 'primary', size = 'md', block = false, c
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement>, Omit<ButtonClassOptions, 'className'> {
   /** An icon before the label. */
   icon?: React.ReactNode;
+  /** React 19 passes `ref` as a prop; `OverflowMenu` returns focus to a text trigger through it. */
+  ref?: React.Ref<HTMLButtonElement>;
 }
 
 /**

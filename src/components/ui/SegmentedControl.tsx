@@ -30,10 +30,11 @@ interface SegmentedControlProps<T extends string> {
 
 export type SegmentedControlMode = 'pressed' | 'tabs';
 
-// Both sizes keep a 44px hit box (DESIGN.md §4); `sm` differs only in padding.
+// Both sizes keep a 44px hit box (DESIGN.md §4) in both directions, so a short
+// label ("All") is not narrower than the floor; `sm` differs only in padding.
 const SIZE_CLASS: Record<SegmentedControlSize, string> = {
-  sm: 'min-h-[44px] px-3.5 py-1.5 text-xs',
-  md: 'min-h-[44px] py-2 px-2 sm:px-3 text-xs',
+  sm: 'min-h-[44px] min-w-[44px] px-3.5 py-1.5 text-xs',
+  md: 'min-h-[44px] min-w-[44px] py-2 px-2 sm:px-3 text-xs',
 };
 
 /**

@@ -1,0 +1,153 @@
+// @vitest-environment jsdom
+import { describe, it, expect, beforeAll, afterAll, afterEach, vi } from 'vitest';
+import { render, cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
+import { FinanceProvider } from '../src/context/FinanceContext';
+import { TransactionsView } from '../src/views/TransactionsView';
+import { TransactionDetails } from '../src/components/transaction/TransactionDrawer';
+import { buildLookupMap } from '../src/utils/mapUtils';
+import { formatCurrencyAmount, MINUS } from '../src/utils/currency';
+import { shiftIsoDate, todayIsoDate } from '../src/utils/date';
+import type { Transaction, Wallet } from '../src/types';
+
+/**
+ * Phase 58a (ADR 0031, spec 6.2): the Transactions page, mounted inside the
+ * real `FinanceProvider` in guest mode, seeded through localStorage the way
+ * a returning guest's ledger is. The provider is inert under test (no
+ * Supabase, no realtime), so delete and restore run the real guest path.
+ *
+ * jsdom has no `matchMedia`, so the page takes its narrow layout: the
+ * selected row's panel opens as a sheet. The wide layout is checked in the
+ * browser (MCP) and by the Playwright suite at 1280px.
+ */
+let originalTz: string | undefined;
+beforeAll(() => {
+  originalTz = process.env.TZ;
+  process.env.TZ = 'Asia/Bangkok';
+});
+afterAll(() => {
+  process.env.TZ = originalTz;
+});
+afterEach(() => {
+  cleanup();
+  localStorage.clear();
+});
+
+let seq = 0;
+function tx(overrides: Partial<Transaction> & Pick<Transaction, 'type' | 'amount'>): Transaction {
+  seq += 1;
+  return {
+    id: `seed-${seq}`,
+    userId: 'guest',
+    walletId: 'wal-cash',
+    description: `row ${seq}`,
+    transactionDate: todayIsoDate(),
+    isDeleted: false,
+    createdBy: 'guest',
+    createdAt: new Date(Date.UTC(2026, 8, 1, 0, 0, seq)).toISOString(),
+    updatedAt: '',
+    ...overrides,
+  };
+}
+
+function mount(rows: Transaction[]) {
+  localStorage.setItem('pf_transactions', JSON.stringify(rows));
+  return render(
+    <FinanceProvider>
+      <TransactionsView />
+    </FinanceProvider>
+  );
+}
+
+const rowButtons = () => [...document.querySelectorAll('button[id^="tx-row-"]')];
+
+describe('the summary line follows the filters on the L1 definition', () => {
+  it('counts income and spending only: no transfer, repayment, adjustment or deleted row', () => {
+    mount([
+      tx({ type: 'INCOME', amount: 1000, categoryId: 'cat-salary' }),
+      tx({ type: 'EXPENSE', amount: 250, categoryId: 'cat-food' }),
+      tx({ type: 'TRANSFER', amount: 500, destinationWalletId: 'wal-main-checking' }),
+      tx({ type: 'ADJUSTMENT', amount: -40, categoryId: 'cat-adjust' }),
+      tx({ type: 'DEBT_REPAYMENT', amount: 300, categoryId: 'cat-debt', debtId: 'debt-1' }),
+      tx({ type: 'EXPENSE', amount: 999, categoryId: 'cat-food', isDeleted: true }),
+    ]);
+    const summary = screen.getByText('Transfers and balance adjustments are not counted').parentElement!;
+    expect(summary.textContent).toContain(`In +${formatCurrencyAmount(1000)}`);
+    expect(summary.textContent).toContain(`Out ${MINUS}${formatCurrencyAmount(250)}`);
+    expect(summary.textContent).toContain('All time');
+  });
+});
+
+describe('rows are grouped by day, newest first', () => {
+  it('heads each day with its L11 net and keeps each row\'s ISO date in the row', () => {
+    const yesterday = shiftIsoDate(todayIsoDate(), -1);
+    mount([
+      tx({ type: 'EXPENSE', amount: 100, categoryId: 'cat-food', description: 'Lunch' }),
+      tx({ type: 'TRANSFER', amount: 500, destinationWalletId: 'wal-main-checking', description: 'Funds transfer' }),
+      tx({ type: 'INCOME', amount: 700, categoryId: 'cat-salary', description: 'Pay', transactionDate: yesterday }),
+    ]);
+    const headers = screen.getAllByText(/^(Today|Yesterday) · /);
+    expect(headers.map((h) => h.textContent)).toEqual([expect.stringMatching(/^Today/), expect.stringMatching(/^Yesterday/)]);
+    expect(headers[0].parentElement!.textContent).toContain(`${MINUS}${formatCurrencyAmount(100)}`);
+    expect(headers[1].parentElement!.textContent).toContain(`+${formatCurrencyAmount(700)}`);
+
+    const pay = rowButtons().find((b) => b.textContent?.includes('Pay'))!;
+    expect(pay.textContent).toContain(yesterday);
+    // A transfer's own note stays visible under its wallets.
+    expect(rowButtons().some((b) => b.textContent?.includes('Cash Wallet → Main Checking · Funds transfer'))).toBe(true);
+  });
+});
+
+describe('L12: 25 rows at a time', () => {
+  it('shows 25, then loads the rest, and the button goes when nothing is left', () => {
+    mount(Array.from({ length: 30 }, (_, i) => tx({ type: 'EXPENSE', amount: 10 + i, categoryId: 'cat-food' })));
+    expect(rowButtons()).toHaveLength(25);
+    const more = screen.getByRole('button', { name: 'Load 5 more' });
+    expect(more.id).toBe('tx-load-more-btn');
+    fireEvent.click(more);
+    expect(rowButtons()).toHaveLength(30);
+    expect(screen.queryByRole('button', { name: /^Load \d+ more$/ })).toBeNull();
+    expect(screen.getByText('Showing 30 of 30')).toBeTruthy();
+  });
+
+  it('starts again from 25 when a filter changes', () => {
+    mount(Array.from({ length: 30 }, (_, i) => tx({ type: 'EXPENSE', amount: 10 + i, categoryId: 'cat-food' })));
+    fireEvent.click(screen.getByRole('button', { name: 'Load 5 more' }));
+    expect(rowButtons()).toHaveLength(30);
+    fireEvent.click(document.getElementById('tx-filter-type-expense')!);
+    expect(rowButtons()).toHaveLength(25);
+  });
+});
+
+describe('the selected row\'s panel holds Delete and Restore', () => {
+  it('deletes through the panel, hides the row, and restores it from Show deleted', async () => {
+    mount([tx({ type: 'EXPENSE', amount: 150, categoryId: 'cat-food', description: 'Panel target' })]);
+    const row = () => rowButtons().find((b) => b.textContent?.includes('Panel target'));
+
+    fireEvent.click(row()!);
+    expect(row()!.getAttribute('aria-current')).toBe('true');
+    const dialog = await screen.findByRole('dialog');
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Delete' }));
+
+    await waitFor(() => expect(row()).toBeUndefined());
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+
+    fireEvent.click(document.getElementById('tx-show-deleted')!);
+    await waitFor(() => expect(row()?.textContent).toContain('[Soft Deleted]'));
+
+    fireEvent.click(row()!);
+    fireEvent.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Restore' }));
+    await waitFor(() => expect(row()?.textContent).not.toContain('[Soft Deleted]'));
+  });
+
+  it('shows a failed delete instead of discarding it', async () => {
+    const t = tx({ type: 'EXPENSE', amount: 150, categoryId: 'cat-food' });
+    const wallets = buildLookupMap<Wallet>([
+      { id: 'wal-cash', userId: 'u', name: 'Cash Wallet', type: 'CASH', currency: 'THB', balance: 0, color: '#D9A066', icon: 'x', isArchived: false, isDeleted: false, createdAt: '', updatedAt: '' },
+    ]);
+    const onDelete = vi.fn().mockResolvedValue({ success: false, error: 'The server did not answer.' });
+    render(<TransactionDetails tx={t} category={undefined} wallets={wallets} onDelete={onDelete} onRestore={vi.fn()} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+    expect((await screen.findByRole('alert')).textContent).toBe('The server did not answer.');
+    expect(onDelete).toHaveBeenCalledWith(t.id);
+  });
+});

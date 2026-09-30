@@ -4,6 +4,41 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
+## Phase 58a - FinLife redesign step 4, the Transactions page: T234-T244 (2026-09-30, commits `449ffe0`...`e65ccf5`)
+
+**Changed**
+- **`TransactionsView.tsx`, rebuilt to spec 6.2:**
+  - `PageHeader`, an "Import / export" `OverflowMenu`, and "Add transaction";
+  - the filter row: range and category are new, and type is a control;
+  - one list card: a summary line, day groups, `TransactionRow` buttons and "Load 25 more";
+  - a panel for the selected row, inline at `xl` and a `Modal` below.
+- **New:** `transaction/ImportCsvModal.tsx` (the import, moved unchanged), `transaction/TransactionDrawer.tsx` (`TransactionDetails`), `hooks/useMediaQuery.ts`.
+- **Changed components:**
+  - `TransactionRow` (`dateText`), `TxTypeIcon` (a `<span>`);
+  - `OverflowMenu` (`triggerLabel`, `triggerId`), `Button` (`ref`), `SegmentedControl` (44px minimum width);
+  - `secondaryLine` (a transfer's note).
+- **Removed:** `TransactionTableRow`, `TxCategoryChip`; Export Diary on this page; the Previous/Next pager.
+- **Tests:**
+  - `unit/transactions-page.test.tsx` (new), plus tests in `selectors-display`, `tx-row` and `ui-controls`. Unit 385 -> 396.
+  - Spec edits, all locator or step moves: 17 row locators, seven Delete/Restore steps in `soft-delete`, and three menu steps in `csv` and `csv-classify`.
+- **Docs:** ADR `0031`, `DESIGN.md` (the Transactions section, two deviations, the menu trigger), `CLAUDE.md`, `test-selector-contract.md`, antislop audit 006.
+
+**Surprises**
+- **The old trash button discarded the delete's result**, so a failed delete showed nothing. The panel shows it.
+- **Grouping has to follow paging, not lead it.** Grouping all rows first and then cutting at 25 would leave a half-shown day with a net for the whole day beside only some of its rows. Paging first and taking the net from all of that day's filtered rows keeps each day's net true.
+- **A transfer's note had nowhere to go.** L7 titles every transfer "Transfer", so the "Funds transfer" note a spec reads would have vanished. It now follows the wallets on the second line.
+- **Chromium's full-page screenshot fooled the layout check** by reporting a narrower viewport mid-capture (see the ledger note).
+
+**Gate:**
+- **Lint:** clean. **Unit:** 396/396. **WCAG:** all pairs pass. No token changed.
+- **Playwright (local, 4 workers):** runs 1 and 2 were 356/357, both failing the same Firefox Quick Add test under load. That test passed 20/20 in isolation on the branch and on `main`.
+- **MCP**, seeded with 33 rows (28 expenses over ten days, an income, a transfer with a note, an adjustment pair and a deleted row):
+  - At 1280px light, 900px dark and 390px light: 0 controls under 44px, 0 clipped rings, and no page overflow. That closes audit 004 finding 4.
+  - Filters: type, range, category and wallet each narrow the list, and Out equals the seeded expenses.
+  - "Load 7 more" appended the rest.
+  - Delete, Show deleted and Restore worked through the panel, and Escape closed the sheet.
+  - Focus moved to the panel's heading when it opened and back to the row when it closed.
+
 ## Phase 57 - FinLife redesign step 4, the Dashboard: T222-T233 (2026-09-28, commits `5e40415`...`5efc483`)
 
 **Changed**
@@ -45,6 +80,19 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
   - Spending equals the category total in all four periods. The L5 banner names Car loan at ฿10,500.00 a month.
   - At 1280, 900 and 390px, light and dark: 0 controls under 44px, 0 clipped focus rings, no page overflow.
   - The focus outline is violet on the first read after focus, on every control type checked.
+
+**After review:**
+- **Audit 005 finding 1 fixed** in `a6d7241`: the insights card uses `ChartLine` instead of `Sparkles`. It is not `TrendingUp`, which is already the wallet popup's income icon.
+- The owner's other decisions: finding 4 moves to Phase 58, findings 2 and 5 are accepted, finding 3 is watched.
+- **Firefox control of `insights.spec.ts`**, 70 runs each: branch 67/70, `main` 66/70, with the same Quick Add timeouts and disappearing dialog on both. So this is not a Phase 57 regression.
+
+**CI and deploy:**
+- Merged as PR #3 with a merge commit, `dd057b7`, with the user's explicit go-ahead. It also published `2739e4e`, the Phase 56 deploy record.
+- PR run `36430283538` on `42d65c3`: success in 4 m 34 s. PR run `36434834640` on `a6d7241`: success in 4 m 00 s. Push run `36435411711` on `dd057b7`: success in 4 m 12 s. Every browser job passed 119/119, with no retries.
+- Vercel `dpl_DRE4k97Gb3Uu9rkedLpD7CmTQxAU` Production `READY`. `income-and-expence-neon.vercel.app` serves `index-BtDuLrfu.js` at **174,259 B**.
+- **All 56 files of the local build were hashed against production.** 52 are byte-for-byte identical.
+  - The two PWA SVGs and `robots.txt` differ only in line endings.
+  - `sw.js` lists the same 55 precache entries. It differs only in the two SVGs' revisions.
 
 ## Phase 56 - FinLife redesign step 3 (shared components): T212-T221 (2026-09-28, commits `1cc6e12`...`5ca1e8b`)
 
