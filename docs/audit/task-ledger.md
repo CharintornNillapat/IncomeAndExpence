@@ -1092,7 +1092,10 @@ The owner's decisions:
 - remove client writes to `profiles` and sync it from `auth.users`, probe first, apply on the owner's word;
 - the owner re-saves `TYPESAFE_API_KEY` as "sensitive" and reviews TypeSafe's spend caps.
 
-Branch `phase-58s-security`. It also carries `092e87c`, the Phase 58a deploy record, which was not pushed.
+Branch `phase-58s-security`, draft PR #5. It also carried `092e87c`, the Phase 58a deploy record, which had not been pushed.
+- Merged into `main` as `acb969c` with the owner's go-ahead. Push run `36712827442` passed.
+- Vercel `dpl_AD4WfDGUWor3G7fDCBjGyPEyTW8w` serves a build that matches the local one byte for byte. Live checks on production passed: a fake token gets 401, and a guest's invalid body gets 400 (see the refactor log).
+- T246 stays open: the owner creates the firewall rules in the dashboard, then the burst test runs.
 
 | # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
 |---|---|---|---|---|---|---|---|---|---|---|

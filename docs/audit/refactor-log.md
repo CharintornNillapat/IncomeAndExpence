@@ -30,6 +30,23 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 - **Playwright (local, 4 workers):** run 1 was 356/357. WebKit `insights.spec.ts:66` timed out seeding a transaction (the Quick Add submit never became "stable"), before any insights request. The spec then passed 70/70 on WebKit in isolation. It is the known Quick Add intermittent. No spec was edited.
 - **Build:** entry +196 B, all JS +290 B, CSS unchanged (see the metrics). **WCAG:** no token changed.
 
+**CI and deploy:**
+- PR run `36711544772` on `7ab85a4`: success in 4 m 24 s. Unit 443/443 with no `.env` on the runner, and 119/119 per browser.
+- **Preview** (`dpl_9vBx7Hqc6gx5ouJs1fyyKyWAYsf9`, behind Vercel login, reached through a share link). The preview has no `VITE_SUPABASE_*` settings, by the owner's decision. Both endpoints answered:
+  - a guest with an invalid body: 400;
+  - `Authorization: Basic …`: 401;
+  - a bearer token: 503.
+- Merged as PR #5 with a merge commit, `acb969c`, with the owner's go-ahead. It also published `092e87c`, the Phase 58a deploy record.
+- Push run `36712827442` on `acb969c`: success in 4 m 36 s. Unit 443/443; 119/119 per browser, no retries.
+- Vercel `dpl_AD4WfDGUWor3G7fDCBjGyPEyTW8w` Production `READY`. `income-and-expence-neon.vercel.app` serves `index-Cm57dWV9.js` at **174,476 B**.
+- **All 56 files of the local build were hashed against production.** 52 are byte-for-byte identical, the two SVGs and `robots.txt` differ only in line endings, and `sw.js` has the same precache entries apart from the SVGs' revisions.
+- **Live checks on production**, both endpoints, none reaching TypeSafe:
+  - a guest with an invalid body: 400;
+  - a fake bearer token: 401;
+  - a fake JWT-shaped token: 401 (the auth server answers 403, which the proxy maps to 401);
+  - `Authorization: Basic …`: 401.
+- **The firewall rules are still pending.** The Vercel API still answers `404 Seawall Config not found`. The owner is creating the rules in the dashboard. A burst test (31 guest requests with invalid bodies, costing nothing) remains to be run once they exist.
+
 ## Phase 58a - FinLife redesign step 4, the Transactions page: T234-T244 (2026-09-30, commits `449ffe0`...`e65ccf5`)
 
 **Changed**
