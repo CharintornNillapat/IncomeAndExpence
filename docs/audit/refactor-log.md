@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 58b - Editing a transaction (spec 6.2's edit panel): T253-T266 (2026-09-30, commits `dc166a0`...)
+## Phase 58b - Editing a transaction (spec 6.2's edit panel): T253-T266 (2026-09-30, commits `dc166a0`...`5f19972`)
 
 **Changed**
 - **Database, applied live on 2026-09-30:** `update_transaction` (`20260930_phase58b_update_transaction.sql`).

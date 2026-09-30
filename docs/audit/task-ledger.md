@@ -1108,9 +1108,9 @@ Branch `phase-58b-edit`. It also carries `280e70a`, the Phase 58s deploy record,
 | T261 | Page tests | `unit/transactions-page.test.tsx` | High | Low | 1h | done | T257-T259 | 235c1a0 | 4 mutations caught | unit 462 -> 470 |
 | T262 | `tests/transaction-edit.spec.ts` | `tests/` | High | Low | 0.5h | done | T258 | c685a7a | a wallet-write control failed 2 of 3 | E2E 357 -> 366 runs |
 | T263 | Gate: lint, unit, WCAG, build, Playwright twice, MCP | - | - | - | 1h | done | all | 336c0ca (MCP fix) | 366/366 twice; MCP clean but for audit 007 finding 1 | see metrics |
-| T264 | ADR `0033`, `DESIGN.md`, `CLAUDE.md`, selector contract | docs | Low | Low | 1h | done | all | (this phase's docs commit) | - | - |
-| T265 | Ledger, log, metrics, antislop audit 007 | docs | Low | Low | 0.5h | done | all | (this phase's docs commit) | - | - |
-| T266 | sha backfill; PR on the owner's word | docs | Low | Low | 0.1h | done | T265 | (this row's own commit) | - | - |
+| T264 | ADR `0033`, `DESIGN.md`, `CLAUDE.md`, selector contract | docs | Low | Low | 1h | done | all | 5f19972 | - | - |
+| T265 | Ledger, log, metrics, antislop audit 007 | docs | Low | Low | 0.5h | done | all | 5f19972 | - | - |
+| T266 | sha backfill; PR on the owner's word | docs | Low | Low | 0.1h | backfill done, PR waiting | T265 | (this row's own commit) | - | - |
 
 **Notes on execution:**
 - **The probe earned its keep on its first run.** The amount check also covered adjustments, whose amounts are signed since ADR `0024`, so a note edit of a downward adjustment was refused. The money checks now apply to income, expense and transfer only, and probe step 10 pins the case.
