@@ -1088,7 +1088,10 @@ Spec 6.2, the page. ADR `0031`. The plan was approved; the owner's decisions:
 - 58b edits money fields on income, expense and transfer only, through a new `EditTransactionPanel`;
 - antislop in mode 2 (audit 006).
 
-Branch `phase-58a-transactions`, draft PR. It also carries `01e6c16`, the Phase 57 deploy record, which was not pushed.
+Branch `phase-58a-transactions`, draft PR #4. It also carried `01e6c16`, the Phase 57 deploy record, which had not been pushed.
+- Merged into `main` as `f3a5819` with the owner's go-ahead. Push run `36707649627` passed.
+- Vercel `dpl_BE1rwtXSVF2j5N3eYTeWBLmFCi5P` serves a build that matches the local one byte for byte (see the refactor log).
+- Audit 006 findings 1 and 2 move to Phase 58b.
 
 | # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
 |---|---|---|---|---|---|---|---|---|---|---|

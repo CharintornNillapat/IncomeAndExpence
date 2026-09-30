@@ -39,6 +39,20 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
   - Delete, Show deleted and Restore worked through the panel, and Escape closed the sheet.
   - Focus moved to the panel's heading when it opened and back to the row when it closed.
 
+**After review:**
+- The owner's decisions on audit 006:
+  - findings 1 and 2 move to Phase 58b: the import's three sparkle icons, and the panel going inline from `lg`;
+  - findings 3, 4 and 5 are accepted or watched.
+- PR run `36703900326` on `3f8495b`: success in 5 m 15 s, 119/119 per browser.
+
+**CI and deploy:**
+- Merged as PR #4 with a merge commit, `f3a5819`, with the user's explicit go-ahead. It also published `01e6c16`, the Phase 57 deploy record.
+- Push run `36707649627` on `f3a5819`: success in 4 m 15 s. Unit 396/396; chromium, firefox and webkit each passed 119/119 with no retries.
+- Vercel `dpl_BE1rwtXSVF2j5N3eYTeWBLmFCi5P` Production `READY`. `income-and-expence-neon.vercel.app` serves `index-qcenOcVZ.js` at **174,280 B**.
+- **All 56 files of the local build were hashed against production.** 52 are byte-for-byte identical.
+  - The two PWA SVGs and `robots.txt` differ only in line endings.
+  - `sw.js` lists the same 55 precache entries, in a different order. Its entries differ only in the two SVGs' revisions.
+
 ## Phase 57 - FinLife redesign step 4, the Dashboard: T222-T233 (2026-09-28, commits `5e40415`...`5efc483`)
 
 **Changed**
