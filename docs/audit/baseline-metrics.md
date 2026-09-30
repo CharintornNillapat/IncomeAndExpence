@@ -1037,4 +1037,30 @@ Per chunk (raw bytes; every other chunk is byte-identical):
 
 **Intermittent local failures:** 2 in 714 full-suite runs, both `account-and-mobile-nav.spec.ts:60` on Firefox, where the Quick Add dialog never appeared. The test passed 20/20 in isolation on both the branch and `main`.
 
+## Phase 58s (the AI proxies' callers, `public.profiles`) — delta against Phase 58a
+
+`main` (`f3a5819`) and the Phase 58s tree were each built with `npx vite build` in the repo, one after the other. Gzip is `zlib` level 9. The `api/` functions are not part of the client bundle.
+
+| Chunk | Phase 58a | Phase 58s | Delta |
+|---|---|---|---|
+| entry `index-*.js` | 174,280 B / 49,837 B gzip | 174,476 B / 49,930 B gzip | +196 B raw / +93 B gzip |
+| **all JS, summed** | 1,332,841 B | 1,333,131 B | **+290 B** |
+| `index-*.css` | unchanged | unchanged | 0 |
+| PWA precache | 55 entries, 1,621.89 KiB | 55 entries, 1,622.17 KiB | +0.28 KiB |
+
+Per chunk (raw bytes; every other chunk is byte-identical):
+
+| Chunk | Delta | Why |
+|---|---|---|
+| entry | +196 | `authorizationHeader()` in `src/lib/supabase.ts`, which the entry already loads for `FinanceContext` |
+| `TransactionForm` | +72 | `jevClassifier` spreading the header, and its 401 branch |
+| `DashboardView` | +22 | `insightsClient` spreading the header |
+
+| Suite | Files | Tests | Runs | Wall clock |
+|---|---|---|---|---|
+| Playwright (local, 4 workers) | 23 | 119 | 357 | 5.9 m (run 1) |
+| Vitest (`unit/`) | 22 | 443 | 443 | ~33 s |
+
+**Intermittent local failures:** run 1 was 356/357. The failure was WebKit `insights.spec.ts:66`, in its seeding step: the Quick Add submit button never became "stable", before any insights request was made. The whole insights spec then passed 70/70 on WebKit in isolation (`--repeat-each=10`). It is the Quick Add intermittent of audit 005 and 006 finding 3.
+
 **Intermittent local failures:** 6 in 1,071 full-suite runs (3 full runs). All were timeouts: a Firefox `goto`, a Firefox context close, and four WebKit clicks waiting for "stable". No assertion failed. See audit 005 finding 3 for the control runs.

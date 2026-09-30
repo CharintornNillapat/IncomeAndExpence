@@ -4,6 +4,32 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
+## Phase 58s - Security: the AI proxies' callers and `public.profiles`: T245-T252 (2026-09-30, commits `ca5d465`...)
+
+**Changed**
+- **`api/classify.ts`, `api/insights.ts`:** `checkCaller` runs after the missing-key 404 and before the body.
+  - No header: a guest, allowed.
+  - A malformed header, or a token that `/auth/v1/user` refuses: 401.
+  - No answer from the auth server: 503.
+  - TypeSafe is never called on a 401 or 503. An accepted token is cached for 60 s.
+- **Client:** `authorizationHeader()` in `src/lib/supabase.ts`. `classifyOnce` and `fetchInsight` send it; a guest sends none. A 401 is `unavailable` for that call and never latches.
+- **Database, applied live on 2026-09-30:** `20260930_phase58s_profiles_hardening.sql`.
+  - It removes every client write to `public.profiles` (the update policy, and the `anon` and `authenticated` write grants).
+  - It adds `handle_user_updated`, which copies an email or metadata-name change from `auth.users`.
+- **Tests:** a caller-check block per endpoint in `proxy-contract`, and `proxy-auth-client` (new). Unit 396 -> 443 in 22 files.
+- **Docs:** ADR `0032`, `CLAUDE.md` (the proxies, the migration, the unit count, three Do-NOT lines).
+
+**Surprises**
+- **The outside review had the `profiles` risk backwards.** It saw drift and found none. The real hole was that any signed-in user could promote themselves to `ADMIN`. The probe's control showed it on the live schema.
+- **The Vercel firewall API cannot create a project's first configuration.** Every create answered `404 Seawall Config not found`, so the rate-limit rules wait for the owner. Until they exist, the token check alone does nothing against a caller who sends no header.
+- **A local `.env` flips `isSupabaseConfigured` in unit tests,** so a naive client test would pass on a laptop and fail on CI, or the other way round.
+
+**Gate:**
+- **Probes:** Phase 58s OK before and after applying. Phase 52 OK after. The deployed body's md5 matches the file. Two negative controls failed as designed.
+- **Lint:** clean. **Unit:** 443/443. Five mutations were each caught.
+- **Playwright (local, 4 workers):** run 1 was 356/357. WebKit `insights.spec.ts:66` timed out seeding a transaction (the Quick Add submit never became "stable"), before any insights request. The spec then passed 70/70 on WebKit in isolation. It is the known Quick Add intermittent. No spec was edited.
+- **Build:** entry +196 B, all JS +290 B, CSS unchanged (see the metrics). **WCAG:** no token changed.
+
 ## Phase 58a - FinLife redesign step 4, the Transactions page: T234-T244 (2026-09-30, commits `449ffe0`...`e65ccf5`)
 
 **Changed**
