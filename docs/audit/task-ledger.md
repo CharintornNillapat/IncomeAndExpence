@@ -1100,8 +1100,8 @@ Branch `phase-58a-transactions`, draft PR. It also carries `01e6c16`, the Phase 
 | T239 | `TransactionDetails` panel: inline at `xl`, a `Modal` below, Delete or Restore with surfaced errors, focus in and back; `soft-delete` clicks the row first | `transaction/TransactionDrawer.tsx`, `TransactionsView.tsx`, `soft-delete.spec.ts` | High | Med | 1h | done | T238 | 261448d | delete, Show deleted, restore and Escape all work at 1280, 900 and 390px (MCP) | - |
 | T240 | `unit/transactions-page.test.tsx`: the page in the real guest provider | `unit/` | High | Low | 1h | done | T239 | 5aa6f48 | 3 mutations caught | unit 390 -> 396 |
 | T241 | Gate: lint, unit, build, WCAG, Playwright, MCP | - | - | - | 1h | done | all | 3b639ca (MCP fixes) | see notes | see metrics |
-| T242 | ADR `0031`, `DESIGN.md`, `CLAUDE.md`, selector contract | docs | Low | Low | 1h | done | all | (the docs commit) | - | - |
-| T243 | Ledger, log, metrics, antislop audit 006 | docs | Low | Low | 0.5h | done | all | (the docs and audit commits) | - | - |
+| T242 | ADR `0031`, `DESIGN.md`, `CLAUDE.md`, selector contract | docs | Low | Low | 1h | done | all | fbc389e | - | - |
+| T243 | Ledger, log, metrics, antislop audit 006 | docs | Low | Low | 0.5h | done | all | fbc389e, e65ccf5 (audit) | - | - |
 | T244 | sha backfill; draft PR | docs | Low | Low | 0.1h | done | T243 | (this row's own commit) | - | - |
 
 **Notes on execution:**
