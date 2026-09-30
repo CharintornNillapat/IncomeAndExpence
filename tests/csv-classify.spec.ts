@@ -67,6 +67,8 @@ function csv(rows: Array<{ desc: string; amount: string }>): string {
 
 async function openImportWith(page: Page, content: string) {
   await gotoTab(page, 'transactions');
+  // Phase 58a: Import CSV sits in the page's "Import / export" menu.
+  await page.locator('#tx-import-export-btn').click();
   await page.locator('#tx-import-csv-btn').click();
   const fileInput = page.locator('#csv-file-input');
   await expect(fileInput).toBeVisible();
@@ -134,7 +136,7 @@ test.describe('CSV import auto-categorization', () => {
     await expect(page.getByText(/Successfully imported 1 transactions/i)).toBeVisible();
 
     // The preview is not the proof - the committed ledger row is.
-    const row = page.locator('tr[id^="tx-row-"]').filter({ hasText: marker });
+    const row = page.locator('button[id^="tx-row-"]').filter({ hasText: marker });
     await expect(row).toContainText(TRANSPORT.name);
   });
 
@@ -178,7 +180,7 @@ test.describe('CSV import auto-categorization', () => {
     await page.locator('#commit-import-btn').click();
     await expect(page.getByText(/Successfully imported 1 transactions/i)).toBeVisible();
 
-    const row = page.locator('tr[id^="tx-row-"]').filter({ hasText: marker });
+    const row = page.locator('button[id^="tx-row-"]').filter({ hasText: marker });
     await expect(row).toContainText(GROCERIES.name);
     await expect(row).not.toContainText(TRANSPORT.name);
   });
@@ -270,6 +272,6 @@ test.describe('CSV import auto-categorization', () => {
     // "Unavailable" must never mean "cannot import".
     await page.locator('#commit-import-btn').click();
     await expect(page.getByText(/Successfully imported 1 transactions/i)).toBeVisible();
-    await expect(page.locator('tr[id^="tx-row-"]').filter({ hasText: marker })).toBeVisible();
+    await expect(page.locator('button[id^="tx-row-"]').filter({ hasText: marker })).toBeVisible();
   });
 });

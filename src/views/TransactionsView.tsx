@@ -1,46 +1,31 @@
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
-import { 
-  Plus, 
-  Download, 
-  Upload, 
-  Search, 
-  FileText, 
-  CheckCircle2, 
-  AlertCircle, 
-  X,
-  Sparkles,
-  Check,
-} from 'lucide-react';
+import { Plus, Search, X, Check } from 'lucide-react';
 import { useFinanceState } from '../context/FinanceContext';
 import { useTransactions } from '../hooks/useTransactions';
-import { ImportPreviewSummary, ImportRowValidation, TransactionType } from '../types';
+import { useMediaQuery } from '../hooks/useMediaQuery';
+import { Transaction, TransactionType } from '../types';
 import { todayIsoDate } from '../utils/date';
-import { formatCurrencyAmount } from '../utils/currency';
-import { generateIdempotencyKey } from '../utils/ids';
-import { exportTransactionsToCsv, parseAndValidateTransactionCsv } from '../utils/csvExchange';
-import { exportDiaryToJson } from '../utils/diaryExport';
+import { exportTransactionsToCsv } from '../utils/csvExchange';
+import { buildLookupMap } from '../utils/mapUtils';
+import { OPTION_CLASS } from '../utils/formStyles';
 import { TransactionForm } from '../components/TransactionForm';
-import { TransactionTableRow } from '../components/TransactionTableRow';
 import { Modal } from '../components/Modal';
-import { SectionHeader } from '../components/ui/SectionHeader';
+import { PageHeader } from '../components/ui/PageHeader';
 import { Card } from '../components/ui/Card';
 import { EmptyState } from '../components/ui/EmptyState';
 import { Button } from '../components/ui/Button';
 import { IconButton } from '../components/ui/IconButton';
-import { buildLookupMap } from '../utils/mapUtils';
-import { useTransientFlash } from '../hooks/useTransientFlash';
-import { OPTION_CLASS } from '../utils/formStyles';
-import { matchSmartDescription } from '../utils/smartMatcher';
-import { toClassifyCandidates } from '../utils/jevClassifier';
-import type { JevSuggestion } from '../utils/jevClassifier';
-import { classifyBatch } from '../utils/batchClassifier';
-import type { BatchClassifyProgress } from '../utils/batchClassifier';
-
-// Caps the CSV dry-run preview's rendered rows so a large import doesn't put
-// thousands of `<tr>`s in the DOM at once - the summary counts above the
-// table already total the whole file, and every valid row still commits
-// regardless of whether it was rendered in this preview.
-const CSV_PREVIEW_ROW_CAP = 100;
+import { Money } from '../components/ui/Money';
+import { OverflowMenu } from '../components/ui/OverflowMenu';
+import { SegmentedControl } from '../components/ui/SegmentedControl';
+import { TransactionRow } from '../components/transaction/TransactionRow';
+import { DayGroupHeader } from '../components/transaction/DayGroupHeader';
+import { TransactionDetails } from '../components/transaction/TransactionDrawer';
+import { ImportCsvModal } from '../components/transaction/ImportCsvModal';
+import { formatRangeLabel, rangeBounds, TimeRange } from '../selectors/timeRange';
+import { groupByDay, sumIncome, sumSpending } from '../selectors/ledger';
+import { PAGE_STEP, hasMoreRows, visibleRows } from '../selectors/pagination';
+import { displayTitle, systemCategoryLabel } from '../selectors/display';
 
 interface TransactionsViewProps {
   /** Pre-selects the wallet filter (T40: the wallet popup's Activity preview hands off here via "View all"). */
@@ -53,25 +38,53 @@ interface TransactionsViewProps {
   onNavigateToDebts?: () => void;
 }
 
+type TypeFilter = 'ALL' | 'INCOME' | 'EXPENSE' | 'TRANSFER';
+
+const RANGE_OPTIONS: { value: TimeRange; label: string }[] = [
+  { value: 'ALL', label: 'All time' },
+  { value: 'DAY', label: 'Today' },
+  { value: 'WEEK', label: 'This week' },
+  { value: 'MONTH', label: 'Past 30 days' },
+];
+
+const TYPE_OPTIONS: { value: TypeFilter; label: string }[] = [
+  { value: 'ALL', label: 'All' },
+  { value: 'INCOME', label: 'Income' },
+  { value: 'EXPENSE', label: 'Expense' },
+  { value: 'TRANSFER', label: 'Transfer' },
+];
+
+/** The filter row's selects: the same shape as the search box beside them. */
+const FILTER_SELECT_CLASS =
+  'min-h-[44px] py-2 px-3 text-xs rounded-lg border border-line-input bg-surface-2 text-fg focus:outline-none focus:ring-2 focus:ring-focus transition-control';
+
+/** Newest day first; inside a day, the most recently recorded first. */
+function byNewest(a: Transaction, b: Transaction): number {
+  if (a.transactionDate !== b.transactionDate) return a.transactionDate < b.transactionDate ? 1 : -1;
+  return a.createdAt < b.createdAt ? 1 : a.createdAt > b.createdAt ? -1 : 0;
+}
+
+/**
+ * Spec 6.2 (Phase 58a, ADR 0031): a filter row, one list grouped by day with
+ * "Load 25 more" (L12), and a side panel for the selected row that holds
+ * Delete and Restore. Editing a row arrives in Phase 58b. The CSV import lives
+ * in `ImportCsvModal`, unchanged.
+ */
 export const TransactionsView: React.FC<TransactionsViewProps> = ({
   initialWalletFilter,
   onConsumeInitialWalletFilter,
   onOpenTransfer,
   onNavigateToDebts,
 }) => {
-  const {
-    wallets,
-    categories,
-    keywordRules,
-    diaryEntries,
-    debts,
-  } = useFinanceState();
+  const { wallets, categories, debts } = useFinanceState();
 
   // Filter States
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState<string>('');
   const [selectedWalletId, setSelectedWalletId] = useState<string>(initialWalletFilter || 'ALL');
-  const [selectedType, setSelectedType] = useState<string>('ALL');
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string>('ALL');
+  const [selectedType, setSelectedType] = useState<TypeFilter>('ALL');
+  const [range, setRange] = useState<TimeRange>('ALL');
 
   // This view remounts fresh on every navigation to the tab (App.tsx keys the
   // active view by `activeTab`, so switching away and back unmounts it), so
@@ -85,6 +98,17 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
     // eslint-disable-next-line
   }, []);
 
+  // Debounce search input by 250ms
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
+  const today = todayIsoDate();
+  const bounds = useMemo(() => rangeBounds(range, today), [range, today]);
+
   // Filtering, soft-delete visibility and the write actions all come from the
   // domain hook; 'ALL' is the view's sentinel for "no filter", which the hook
   // expresses as `undefined`.
@@ -94,491 +118,308 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
     addTransaction,
     deleteTransaction,
     restoreTransaction,
-    commitBulkImport,
     showSoftDeleted,
     setShowSoftDeleted,
   } = useTransactions({
     walletId: selectedWalletId === 'ALL' ? undefined : selectedWalletId,
+    categoryId: selectedCategoryId === 'ALL' ? undefined : selectedCategoryId,
     type: selectedType === 'ALL' ? undefined : (selectedType as TransactionType),
+    startDate: bounds.start ?? undefined,
+    endDate: bounds.end ?? undefined,
     searchQuery: debouncedSearchTerm,
   });
-  const [currentPage, setCurrentPage] = useState<number>(1);
-  const pageSize = 8;
 
-  // Debounce search input by 250ms
+  // L12: 25 at a time. A filter change starts the list again from the top.
+  const [shownCount, setShownCount] = useState<number>(PAGE_STEP);
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedSearchTerm(searchTerm);
-    }, 250);
-    return () => clearTimeout(timer);
-  }, [searchTerm]);
-
-  // Reset page when filters change
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [debouncedSearchTerm, selectedWalletId, selectedType, showSoftDeleted]);
+    setShownCount(PAGE_STEP);
+  }, [debouncedSearchTerm, selectedWalletId, selectedCategoryId, selectedType, range, showSoftDeleted]);
 
   // Modal States
   const [isAddModalOpen, setIsAddModalOpen] = useState<boolean>(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState<boolean>(false);
-  
-  // CSV Import State
-  const [importPreview, setImportPreview] = useState<ImportPreviewSummary | null>(null);
-  const [importFileError, setImportFileError] = useState<string | null>(null);
-  const [importCommitError, setImportCommitError] = useState<string | null>(null);
-  const [isCommittingImport, setIsCommittingImport] = useState<boolean>(false);
-  // A ref as well as the state: a fast double-tap lands both clicks before the
-  // disabled state commits, and the second click would start a second commit
-  // (the guest path's keys are per-row and `Date.now()`-based, and the legacy
-  // signed-in fallback has no replay). This is an in-flight guard, not import
-  // dedupe - ADR 0019 and `csv.spec.ts` still expect two separate imports of
-  // the same row to produce two rows.
-  const commitInFlightRef = useRef<boolean>(false);
-  // The current preview's import key (ADR 0023), armed when a file is parsed.
-  const importKeyRef = useRef<string | null>(null);
-  const [isParsingCsv, setIsParsingCsv] = useState<boolean>(false);
-  const { value: importSuccessMsg, flash: flashImportSuccess, clear: clearImportSuccess } = useTransientFlash<string | null>(null);
 
-  /*
-   * Layer 2 state (ADR 0019). All preview-only: none of it reaches
-   * `commitBulkImport`, which reads `categoryId` off the row and nothing else.
-   * `ImportRowValidation` is the commit payload and deliberately does not
-   * carry confidence or applied/suggested state.
-   */
-  const [rowSuggestions, setRowSuggestions] = useState<Map<number, JevSuggestion>>(new Map());
-  const [classifyProgress, setClassifyProgress] = useState<BatchClassifyProgress | null>(null);
-  const [classifyNote, setClassifyNote] = useState<string | null>(null);
-  const classifyAbortRef = useRef<AbortController | null>(null);
-
-  // Maps for O(1) row lookups
   const walletMap = useMemo(() => buildLookupMap(wallets), [wallets]);
-
   const categoryMap = useMemo(() => buildLookupMap(categories), [categories]);
 
   // Active-only slices for the Add Transaction modal (Memoized, T9)
   const activeWalletsForForm = useMemo(() => wallets.filter((w) => !w.isDeleted), [wallets]);
   const activeCategoriesForForm = useMemo(() => categories.filter((c) => !c.isDeleted), [categories]);
 
-  const handleRestoreTx = useCallback((id: string) => {
-    restoreTransaction(id);
-  }, [restoreTransaction]);
+  const sortedRows = useMemo(() => [...filteredTransactions].sort(byNewest), [filteredTransactions]);
+  const shownRows = useMemo(() => visibleRows(sortedRows, shownCount), [sortedRows, shownCount]);
+  const shownDays = useMemo(() => groupByDay(shownRows, categoryMap), [shownRows, categoryMap]);
+  // L11: a day's net counts every filtered row of that day, not only the ones loaded so far.
+  const dayNets = useMemo(
+    () => new Map(groupByDay(sortedRows, categoryMap).map((day) => [day.date, day.net])),
+    [sortedRows, categoryMap]
+  );
+  // The summary line follows the filters, on the L1 definition: a transfer, a
+  // repayment and an adjustment are neither In nor Out, and neither is a deleted row.
+  const totalIn = useMemo(() => sumIncome(sortedRows, categoryMap), [sortedRows, categoryMap]);
+  const totalOut = useMemo(() => sumSpending(sortedRows, categoryMap), [sortedRows, categoryMap]);
 
-  const handleDeleteTx = useCallback((id: string) => {
-    deleteTransaction(id);
-  }, [deleteTransaction]);
+  // The selected row. It closes when the row leaves the list, such as a
+  // delete while "Show deleted" is off.
+  const [selectedTxId, setSelectedTxId] = useState<string | null>(null);
+  const selectedTx = useMemo(
+    () => (selectedTxId ? sortedRows.find((tx) => tx.id === selectedTxId) ?? null : null),
+    [selectedTxId, sortedRows]
+  );
+  useEffect(() => {
+    if (selectedTxId && !selectedTx) setSelectedTxId(null);
+  }, [selectedTxId, selectedTx]);
 
-  // Pagination
-  const totalPages = Math.ceil(filteredTransactions.length / pageSize) || 1;
-  const paginatedTransactions = useMemo(() => {
-    const start = (currentPage - 1) * pageSize;
-    return filteredTransactions.slice(start, start + pageSize);
-  }, [filteredTransactions, currentPage, pageSize]);
+  // One render path by width, never two copies hidden by CSS (ADR 0031).
+  const isWide = useMediaQuery('(min-width: 1280px)');
+  const drawerTitleRef = useRef<HTMLHeadingElement>(null);
+  const lastSelectedRef = useRef<string | null>(null);
 
-  // Handle CSV File Selection (Step 1: Dry-Run Parse)
-  const handleCsvFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const selectRow = useCallback((tx: Transaction) => {
+    lastSelectedRef.current = tx.id;
+    setSelectedTxId(tx.id);
+  }, []);
 
-    setImportFileError(null);
-    setImportCommitError(null);
-    clearImportSuccess();
-    setIsParsingCsv(true);
+  const closeDrawer = useCallback(() => {
+    setSelectedTxId(null);
+    // Back to the row that opened it, when it is still in the list.
+    const rowId = lastSelectedRef.current;
+    if (rowId) requestAnimationFrame(() => document.getElementById(`tx-row-${rowId}`)?.focus());
+  }, []);
 
-    resetClassification();
+  // Keyboard users land on the panel they just opened.
+  useEffect(() => {
+    if (selectedTxId && isWide) drawerTitleRef.current?.focus();
+  }, [selectedTxId, isWide]);
 
-    try {
-      const text = await file.text();
-      const preview = await parseAndValidateTransactionCsv(text, wallets, debts);
-      // Layer 1 runs here, synchronously and for free, before the preview is
-      // ever shown (ADR 0011's ordering, applied to the bulk path).
-      setImportPreview(applyRuleLayer(preview));
-      // One key per preview (ADR 0023): a retry of THIS preview after a lost
-      // response replays; the next file gets a new key and imports again,
-      // which is what ADR 0019's "no dedupe" requires.
-      importKeyRef.current = generateIdempotencyKey();
-    } catch (err: any) {
-      setImportFileError(err.message || 'Failed to parse CSV file');
-    } finally {
-      setIsParsingCsv(false);
-    }
-  };
-
-  /*
-   * ------------------------------------------------------------------
-   * The importer's two categorization layers (ADR 0019)
-   * ------------------------------------------------------------------
-   */
-
-  /**
-   * A row is eligible when it is valid and its `categoryName` does not resolve
-   * to a live category. That covers both "no Category column" and "names a
-   * category you do not have" - in either case the row was going to commit
-   * uncategorized, so filling it can only improve on the status quo.
-   */
-  const isEligibleForCategorization = useCallback(
-    (row: ImportRowValidation): boolean => {
-      if (!row.isValid) return false;
-      if (row.categoryId) return false;
-      if (!row.categoryName) return true;
-      const named = row.categoryName.trim().toLowerCase();
-      return !categories.some((c) => !c.isDeleted && c.name.trim().toLowerCase() === named);
-    },
-    [categories]
+  const selectedCategory = selectedTx?.categoryId ? categoryMap.get(selectedTx.categoryId) : undefined;
+  const details = selectedTx && (
+    <TransactionDetails
+      tx={selectedTx}
+      category={selectedCategory}
+      wallets={walletMap}
+      onDelete={deleteTransaction}
+      onRestore={restoreTransaction}
+    />
   );
 
-  const resetClassification = () => {
-    classifyAbortRef.current?.abort();
-    classifyAbortRef.current = null;
-    setRowSuggestions(new Map());
-    setClassifyProgress(null);
-    setClassifyNote(null);
-  };
+  const listCard = (
+    <Card padding="none" className="overflow-hidden">
+      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 px-5 py-4 border-b border-line">
+        <p className="flex flex-wrap items-baseline gap-x-4 gap-y-1 text-sm">
+          <span className="font-semibold text-fg">{formatRangeLabel(range, today)}</span>
+          <span className="text-fg-secondary">
+            In <Money value={totalIn} showPlus className="font-semibold text-income" />
+          </span>
+          <span className="text-fg-secondary">
+            Out <Money value={-totalOut} className="font-semibold text-expense" />
+          </span>
+        </p>
+        <span className="text-xs text-fg-muted">Transfers and balance adjustments are not counted</span>
+      </div>
 
-  /** Layer 1: the synchronous keyword matcher, authoritative and free. */
-  const applyRuleLayer = (preview: ImportPreviewSummary): ImportPreviewSummary => ({
-    ...preview,
-    rows: preview.rows.map((row) => {
-      if (!isEligibleForCategorization(row)) return row;
-      const match = matchSmartDescription(row.description, keywordRules, categories);
-      // A rule may only supply a category whose type agrees with the row's.
-      // `type` drives the wallet debit direction in `commitBulkImport` and is
-      // never changed here, so a disagreement means the rule does not apply.
-      if (!match.categoryId || match.type !== row.type) return row;
-      return { ...row, categoryId: match.categoryId };
-    }),
-  });
+      {sortedRows.length === 0 ? (
+        <EmptyState icon={Search} title="No transactions match your current filters." />
+      ) : (
+        <div className="flex flex-col">
+          {shownDays.map((day) => (
+            <div key={day.date} className="flex flex-col">
+              <DayGroupHeader date={day.date} today={today} net={dayNets.get(day.date) ?? day.net} />
+              {day.transactions.map((tx) => (
+                <TransactionRow
+                  key={tx.id}
+                  id={`tx-row-${tx.id}`}
+                  tx={tx}
+                  category={tx.categoryId ? categoryMap.get(tx.categoryId) : undefined}
+                  wallets={walletMap}
+                  onSelect={selectRow}
+                  selected={tx.id === selectedTxId}
+                  dateText={tx.transactionDate.slice(0, 10)}
+                  className="px-5"
+                />
+              ))}
+            </div>
+          ))}
+        </div>
+      )}
 
-  const uncategorizedRows = useMemo(
-    () => (importPreview ? importPreview.rows.filter(isEligibleForCategorization) : []),
-    [importPreview, isEligibleForCategorization]
+      {sortedRows.length > 0 && (
+        <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-3 border-t border-line text-xs text-fg-secondary">
+          <span>
+            Showing {shownRows.length} of {sortedRows.length}
+          </span>
+          {hasMoreRows(sortedRows, shownCount) && (
+            <Button id="tx-load-more-btn" variant="secondary" onClick={() => setShownCount((n) => n + PAGE_STEP)}>
+              Load {Math.min(PAGE_STEP, sortedRows.length - shownRows.length)} more
+            </Button>
+          )}
+        </div>
+      )}
+    </Card>
   );
-
-  const ruleMatchedCount = useMemo(
-    () => (importPreview ? importPreview.rows.filter((r) => r.isValid && r.categoryId).length : 0),
-    [importPreview]
-  );
-
-  /** Layer 2: Jev, on the rows Layer 1 did not resolve, behind an explicit tap. */
-  const handleClassifyRemaining = async () => {
-    if (!importPreview || uncategorizedRows.length === 0) return;
-
-    const controller = new AbortController();
-    classifyAbortRef.current = controller;
-    setClassifyNote(null);
-    setClassifyProgress({ done: 0, total: uncategorizedRows.length });
-
-    const candidates = toClassifyCandidates(categories);
-    const result = await classifyBatch(
-      uncategorizedRows.map((r) => ({ id: r.rowIndex, text: r.description })),
-      categories,
-      candidates,
-      { onProgress: setClassifyProgress, signal: controller.signal }
-    );
-
-    classifyAbortRef.current = null;
-    setClassifyProgress(null);
-
-    if (controller.signal.aborted) return;
-
-    if (result.unavailable) {
-      // A very different message from "nothing matched": the endpoint is not
-      // there (an unconfigured deployment, or the dev server, which does not
-      // serve `api/`). The import still commits perfectly well without it.
-      setClassifyNote('Jev is unavailable right now. Import still works, and categories stay blank.');
-      return;
-    }
-
-    // Only AUTO_FILL is written. SUGGEST is held in `rowSuggestions` for the
-    // user to accept with one click, mirroring the live form's gate exactly.
-    setImportPreview((prev) => {
-      if (!prev) return prev;
-      return {
-        ...prev,
-        rows: prev.rows.map((row) => {
-          const suggestion = result.suggestions.get(row.rowIndex);
-          if (!suggestion || !isEligibleForCategorization(row)) return row;
-          // A category whose type disagrees with the row's is demoted to a
-          // suggestion, never applied - the row's own `type` is authoritative
-          // because it drives the wallet debit direction.
-          if (suggestion.strength !== 'AUTO_FILL' || suggestion.type !== row.type) return row;
-          return { ...row, categoryId: suggestion.categoryId };
-        }),
-      };
-    });
-
-    setRowSuggestions(result.suggestions);
-
-    const autoFilled = Array.from(result.suggestions.values()).filter((s) => s.strength === 'AUTO_FILL').length;
-    setClassifyNote(
-      `Classified ${result.suggestions.size} of ${uncategorizedRows.length}: ${autoFilled} applied, ` +
-        `${result.suggestions.size - autoFilled} to confirm. ${result.attempted} request${result.attempted === 1 ? '' : 's'} sent.`
-    );
-  };
-
-  /** A manual pick, or accepting a mid-confidence suggestion. Always wins. */
-  const setRowCategory = (rowIndex: number, categoryId: string) => {
-    setImportPreview((prev) =>
-      prev
-        ? {
-            ...prev,
-            rows: prev.rows.map((row) =>
-              row.rowIndex === rowIndex ? { ...row, categoryId: categoryId || undefined } : row
-            ),
-          }
-        : prev
-    );
-  };
-
-  // Handle Commit Import (Step 2). Signed in, `commitBulkImport` commits the
-  // whole preview in one database transaction (ADR 0023); only its fallback
-  // for an unmigrated project inserts first and compensates (ADR 0022).
-  const handleCommitImport = async () => {
-    if (!importPreview || importPreview.validRowsCount === 0) return;
-    if (commitInFlightRef.current) return;
-    commitInFlightRef.current = true;
-    setIsCommittingImport(true);
-    setImportCommitError(null);
-
-    try {
-      const validRows = importPreview.rows.filter((r) => r.isValid);
-      const result = await commitBulkImport(validRows, importKeyRef.current ?? undefined);
-
-      if (!result.success) {
-        // Keep the preview open and populated so the user can retry.
-        setImportCommitError(result.error || 'The import could not be saved.');
-        return;
-      }
-
-      const skippedNote = result.skippedCount > 0
-        ? ` ${result.skippedCount} row${result.skippedCount === 1 ? '' : 's'} skipped (unknown or deleted wallet).`
-        : '';
-      setImportPreview(null);
-      resetClassification();
-      flashImportSuccess(
-        `Successfully imported ${result.insertedCount} transactions (${formatCurrencyAmount(result.totalAmount)})!${skippedNote}`,
-        2000,
-        () => setIsImportModalOpen(false)
-      );
-    } finally {
-      commitInFlightRef.current = false;
-      setIsCommittingImport(false);
-    }
-  };
-
-  // Download Sample CSV
-  const handleDownloadSampleCsv = () => {
-    const sampleCsv = `Date,Wallet,Category,Type,Amount,Description,DestinationWallet\n${todayIsoDate()},Chase Checking,Food & Dining,EXPENSE,35.50,Lunch with team,\n${todayIsoDate()},Chase Checking,Salary,INCOME,3200.00,Monthly Paycheck,\n${todayIsoDate()},Chase Checking,,TRANSFER,500.00,Savings Deposit,Marcus High-Yield Savings`;
-    const blob = new Blob([sampleCsv], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'sample_transactions_template.csv';
-    a.click();
-    URL.revokeObjectURL(url);
-  };
 
   return (
-    <div className="space-y-4 sm:space-y-6">
-      <SectionHeader
-        title="Transaction Management"
-        subtitle="Record, delete and restore transactions, or import a CSV file."
-        action={
-          <div className="flex flex-wrap items-center gap-2">
-            {/* CSV Export */}
-            <Button
-              id="tx-export-csv-btn"
-              variant="secondary"
-              onClick={() => exportTransactionsToCsv(rawTransactions, wallets, categories, debts)}
-              icon={<Download className="w-3.5 h-3.5" />}
-            >
-              <span>Export CSV</span>
-            </Button>
-
-            {/* Diary JSON Export */}
-            <Button
-              id="diary-export-json-btn"
-              variant="secondary"
-              onClick={() => exportDiaryToJson(diaryEntries)}
-              icon={<FileText className="w-3.5 h-3.5 text-fg-muted" />}
-            >
-              <span className="hidden sm:inline">Export Diary (JSON)</span>
-              <span className="sm:hidden">Diary</span>
-            </Button>
-
-            {/* 2-Step Import CSV */}
-            <Button
-              id="tx-import-csv-btn"
-              variant="soft"
-              onClick={() => setIsImportModalOpen(true)}
-              icon={<Upload className="w-3.5 h-3.5" />}
-            >
-              <span>Import CSV</span>
-            </Button>
-
-            {/* Add Transaction */}
+    <div className="flex flex-col gap-6">
+      <PageHeader
+        title="Transactions"
+        description="Click any row to see it, or to delete or restore it"
+        actions={
+          <>
+            <OverflowMenu
+              label="Import or export transactions"
+              triggerLabel="Import / export"
+              triggerId="tx-import-export-btn"
+              items={[
+                { id: 'tx-import-csv-btn', label: 'Import CSV', onSelect: () => setIsImportModalOpen(true) },
+                {
+                  id: 'tx-export-csv-btn',
+                  label: 'Export CSV',
+                  onSelect: () => exportTransactionsToCsv(rawTransactions, wallets, categories, debts),
+                },
+              ]}
+            />
             <Button id="tx-open-add-modal-btn" onClick={() => setIsAddModalOpen(true)} icon={<Plus className="w-4 h-4" />}>
-              <span>Add Transaction</span>
+              Add transaction
             </Button>
-          </div>
+          </>
         }
       />
 
-      {/* Filter & Search Bar */}
-      <div className="bg-surface-1 p-3.5 sm:p-4 rounded-xl border border-line space-y-3">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-          {/* Search */}
-          <div className="relative lg:col-span-2">
-            <Search className="w-4 h-4 text-fg-muted absolute left-3 top-3 pointer-events-none" />
+      {/* Filter row, in the spec's order: search, range, wallet, category, type, show deleted. */}
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="relative flex-1 min-w-[14rem]">
+          <Search className="w-4 h-4 text-fg-muted absolute left-3 top-3.5 pointer-events-none" />
+          <input
+            id="tx-search-input"
+            type="text"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Search description, amount, math..."
+            aria-label="Search transactions"
+            className="w-full min-h-[44px] pl-9 pr-11 py-2 text-xs rounded-lg border border-line-input bg-surface-2 text-fg placeholder:text-fg-muted focus:outline-none focus:ring-2 focus:ring-focus transition-control"
+          />
+          {searchTerm && (
+            <IconButton
+              label="Clear search"
+              onClick={() => {
+                setSearchTerm('');
+                setDebouncedSearchTerm('');
+              }}
+              className="absolute right-0 top-0"
+            >
+              <X className="w-3.5 h-3.5" />
+            </IconButton>
+          )}
+        </div>
+
+        <select
+          id="tx-filter-range"
+          aria-label="Date range"
+          value={range}
+          onChange={(e) => setRange(e.target.value as TimeRange)}
+          className={FILTER_SELECT_CLASS}
+        >
+          {RANGE_OPTIONS.map((option) => (
+            <option key={option.value} value={option.value} className={OPTION_CLASS}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+
+        <select
+          id="tx-filter-wallet"
+          aria-label="Wallet"
+          value={selectedWalletId}
+          onChange={(e) => setSelectedWalletId(e.target.value)}
+          className={FILTER_SELECT_CLASS}
+        >
+          <option value="ALL" className={OPTION_CLASS}>All wallets</option>
+          {wallets.map((w) => (
+            <option key={w.id} value={w.id} className={OPTION_CLASS}>
+              {w.name}
+            </option>
+          ))}
+        </select>
+
+        <select
+          id="tx-filter-category"
+          aria-label="Category"
+          value={selectedCategoryId}
+          onChange={(e) => setSelectedCategoryId(e.target.value)}
+          className={FILTER_SELECT_CLASS}
+        >
+          <option value="ALL" className={OPTION_CLASS}>All categories</option>
+          {activeCategoriesForForm.map((c) => (
+            <option key={c.id} value={c.id} className={OPTION_CLASS}>
+              {systemCategoryLabel(c)}
+            </option>
+          ))}
+        </select>
+
+        <SegmentedControl<TypeFilter>
+          size="sm"
+          ariaLabel="Type"
+          value={selectedType}
+          onChange={setSelectedType}
+          options={TYPE_OPTIONS.map((option) => ({ ...option, id: `tx-filter-type-${option.value.toLowerCase()}` }))}
+        />
+
+        <div className="flex items-center gap-1 min-h-[44px]">
+          <label htmlFor="tx-show-deleted" className="text-xs font-semibold text-fg-secondary cursor-pointer">
+            Show deleted
+          </label>
+          {/* Same shape as the diary's workout checkbox: a drawn 16px box under a
+              transparent 44px native input, which stays the element specs check. */}
+          <span className="relative w-11 h-11 inline-flex items-center justify-center shrink-0">
             <input
-              id="tx-search-input"
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Search description, amount, math..."
-              className="w-full min-h-[44px] pl-9 pr-11 py-2 text-xs rounded-lg border border-line-input bg-surface-2 text-fg placeholder:text-fg-muted focus:outline-none focus:ring-2 focus:ring-focus transition-control"
+              id="tx-show-deleted"
+              type="checkbox"
+              checked={showSoftDeleted}
+              onChange={(e) => setShowSoftDeleted(e.target.checked)}
+              className="peer absolute inset-0 w-full h-full opacity-0 cursor-pointer"
             />
-            {searchTerm && (
-              <IconButton
-                label="Clear search"
-                onClick={() => {
-                  setSearchTerm('');
-                  setDebouncedSearchTerm('');
-                }}
-                className="absolute right-0 top-0"
-              >
-                <X className="w-3.5 h-3.5" />
-              </IconButton>
-            )}
-          </div>
-
-          {/* Wallet Filter */}
-          <div>
-            <select
-              id="tx-filter-wallet"
-              value={selectedWalletId}
-              onChange={(e) => setSelectedWalletId(e.target.value)}
-              className="w-full min-h-[44px] py-2 px-3 text-xs rounded-lg border border-line-input bg-surface-2 text-fg focus:outline-none focus:ring-2 focus:ring-focus transition-control"
+            <span
+              aria-hidden="true"
+              className="w-4 h-4 rounded-sm border border-line-input bg-surface-2 flex items-center justify-center peer-checked:bg-brand-fill peer-checked:border-brand-fill peer-focus-visible:ring-2 peer-focus-visible:ring-focus pointer-events-none"
             >
-              <option value="ALL">All Wallets</option>
-              {wallets.map((w) => (
-                <option key={w.id} value={w.id} className={OPTION_CLASS}>
-                  {w.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Type Filter */}
-          <div>
-            <select
-              id="tx-filter-type"
-              value={selectedType}
-              onChange={(e) => setSelectedType(e.target.value)}
-              className="w-full min-h-[44px] py-2 px-3 text-xs rounded-lg border border-line-input bg-surface-2 text-fg focus:outline-none focus:ring-2 focus:ring-focus transition-control"
-            >
-              <option value="ALL">All Types</option>
-              <option value="EXPENSE">Expense</option>
-              <option value="INCOME">Income</option>
-              <option value="TRANSFER">Transfer</option>
-              <option value="DEBT_REPAYMENT">Debt Repayment</option>
-              <option value="ADJUSTMENT">Adjustment</option>
-            </select>
-          </div>
-
-          {/* Soft Delete Switch */}
-          <div className="flex items-center justify-between sm:justify-end gap-2 px-1 min-h-[44px]">
-            <label htmlFor="tx-show-deleted" className="text-xs font-semibold text-fg-secondary cursor-pointer">
-              Show Soft Deleted
-            </label>
-            {/* Same shape as the diary's workout checkbox: a drawn 16px box under a
-                transparent 44px native input, which stays the element specs check. */}
-            <span className="relative w-11 h-11 inline-flex items-center justify-center shrink-0">
-              <input
-                id="tx-show-deleted"
-                type="checkbox"
-                checked={showSoftDeleted}
-                onChange={(e) => setShowSoftDeleted(e.target.checked)}
-                className="peer absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-              />
-              <span
-                aria-hidden="true"
-                className="w-4 h-4 rounded-sm border border-line-input bg-surface-2 flex items-center justify-center peer-checked:bg-brand-fill peer-checked:border-brand-fill peer-focus-visible:ring-2 peer-focus-visible:ring-focus pointer-events-none"
-              >
-                {showSoftDeleted && <Check className="w-3 h-3 text-white" />}
-              </span>
+              {showSoftDeleted && <Check className="w-3 h-3 text-white" />}
             </span>
-          </div>
+          </span>
         </div>
       </div>
 
-      {/* Transaction Table */}
-      <Card padding="none" className="overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead className="bg-surface-2 border-b border-line text-fg-secondary uppercase tracking-wider font-semibold text-[10px]">
-              <tr>
-                <th className="py-3 px-3 sm:px-4">Date</th>
-                <th className="py-3 px-3 sm:px-4">Details</th>
-                <th className="hidden md:table-cell py-3 px-4">Wallet</th>
-                <th className="hidden sm:table-cell py-3 px-4">Category</th>
-                <th className="py-3 px-3 sm:px-4 text-right">Amount</th>
-                <th className="py-3 px-2 sm:px-4 text-center">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-line">
-              {paginatedTransactions.length === 0 ? (
-                <tr>
-                  <td colSpan={6}>
-                    <EmptyState icon={Search} title="No transactions match your current filters." />
-                  </td>
-                </tr>
-              ) : (
-                paginatedTransactions.map((tx) => (
-                  <TransactionTableRow
-                    key={tx.id}
-                    tx={tx}
-                    wallet={walletMap.get(tx.walletId)}
-                    destWallet={tx.destinationWalletId ? walletMap.get(tx.destinationWalletId) : undefined}
-                    category={tx.categoryId ? categoryMap.get(tx.categoryId) : undefined}
-                    onRestore={handleRestoreTx}
-                    onDelete={handleDeleteTx}
-                  />
-                ))
-              )}
-            </tbody>
-          </table>
+      {/* Spec 6.2: the list takes the full width until a row is selected, then 8/12 beside the panel. */}
+      {selectedTx && isWide ? (
+        <div className="grid grid-cols-12 gap-4 items-start">
+          <div className="col-span-8">{listCard}</div>
+          <aside id="tx-drawer" aria-labelledby="tx-drawer-title" className="col-span-4 sticky top-20">
+            <Card className="flex flex-col gap-5">
+              <div className="flex items-start justify-between gap-3">
+                <h2 id="tx-drawer-title" ref={drawerTitleRef} tabIndex={-1} className="text-base font-semibold text-fg break-words min-w-0">
+                  {displayTitle(selectedTx, selectedCategory)}
+                </h2>
+                <IconButton id="tx-drawer-close-btn" label="Close details" onClick={closeDrawer} className="-mr-2 -mt-2">
+                  <X className="w-4 h-4" />
+                </IconButton>
+              </div>
+              {details}
+            </Card>
+          </aside>
         </div>
+      ) : (
+        listCard
+      )}
 
-        {/* Pagination Footer */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 bg-surface-2 border-t border-line text-xs">
-          <span className="text-fg-secondary text-center sm:text-left text-[11px] sm:text-xs">
-            Showing {filteredTransactions.length === 0 ? 0 : (currentPage - 1) * pageSize + 1} to{' '}
-            {Math.min(currentPage * pageSize, filteredTransactions.length)} of {filteredTransactions.length} entries
-          </span>
-
-          <div className="flex items-center gap-1.5">
-            <Button
-              id="tx-prev-page-btn"
-              variant="secondary"
-              disabled={currentPage === 1}
-              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-            >
-              Previous
-            </Button>
-            <span className="px-2 font-semibold text-fg">
-              {currentPage} / {totalPages}
-            </span>
-            <Button
-              id="tx-next-page-btn"
-              variant="secondary"
-              disabled={currentPage >= totalPages}
-              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-            >
-              Next
-            </Button>
-          </div>
-        </div>
-      </Card>
+      {/* Below `xl` the same panel opens as a bottom sheet. Rendered only there, so it never doubles the inline one. */}
+      <Modal
+        isOpen={!!selectedTx && !isWide}
+        onClose={closeDrawer}
+        title={selectedTx ? displayTitle(selectedTx, selectedCategory) : ''}
+        closeButtonId="tx-drawer-close-btn"
+        maxWidthClassName="max-w-md"
+      >
+        {!isWide && details}
+      </Modal>
 
       {/* Add Transaction Modal / Responsive Mobile Bottom Sheet */}
       <Modal
@@ -621,281 +462,7 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
         />
       </Modal>
 
-      {/* Two-Step CSV Import Modal */}
-      <Modal
-        isOpen={isImportModalOpen}
-        onClose={() => {
-          setIsImportModalOpen(false);
-          setImportPreview(null);
-          setImportCommitError(null);
-          // Aborts a run still in flight - closing the modal must not leave
-          // requests walking a list nobody is looking at any more.
-          resetClassification();
-        }}
-        title="Two-Step CSV Transaction Import"
-        subtitle="Step 1: check the rows. Step 2: import them."
-        maxWidthClassName="max-w-3xl"
-        bodyClassName="space-y-6"
-      >
-        {/* Step 1: Upload File */}
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <label className="text-xs font-semibold text-fg-secondary">
-              Select CSV File
-            </label>
-            <button
-              type="button"
-              onClick={handleDownloadSampleCsv}
-              className="text-xs text-brand hover:underline flex items-center gap-1 cursor-pointer"
-            >
-              <Download className="w-3 h-3" /> Download Sample CSV Template
-            </button>
-          </div>
-
-          <input
-            id="csv-file-input"
-            type="file"
-            accept=".csv,text/csv"
-            onChange={handleCsvFileUpload}
-            className="w-full text-xs text-fg-secondary file:mr-4 file:py-2.5 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-brand-fill file:text-white hover:file:bg-brand-fill-hover cursor-pointer border border-line-input bg-surface-2 rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-focus"
-          />
-
-          {isParsingCsv && (
-            <p role="status" className="text-xs text-fg-secondary">Checking rows...</p>
-          )}
-
-          {importFileError && (
-            <div className="p-3 rounded-lg bg-expense-tint border border-expense-line text-expense text-xs flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 shrink-0" />
-              <span>{importFileError}</span>
-            </div>
-          )}
-
-          {importSuccessMsg && (
-            <div className="p-3 rounded-lg bg-income-tint border border-income-line text-income text-xs flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 shrink-0" />
-              <span>{importSuccessMsg}</span>
-            </div>
-          )}
-        </div>
-
-        {/* Dry Run Preview Summary & Table */}
-        {importPreview && (
-          <div className="space-y-4 pt-2">
-            <div className="grid grid-cols-4 gap-3 bg-surface-2 p-3 rounded-lg border border-line text-xs">
-              <div>
-                <span className="text-fg-secondary block">Total Rows</span>
-                <span className="font-bold text-fg text-sm">{importPreview.totalRows}</span>
-              </div>
-              <div>
-                <span className="text-fg-secondary block">Valid Rows</span>
-                <span className="font-bold text-income text-sm">{importPreview.validRowsCount}</span>
-              </div>
-              <div>
-                <span className="text-fg-secondary block">Errors / Invalid</span>
-                <span className="font-bold text-expense text-sm">{importPreview.invalidRowsCount}</span>
-              </div>
-              <div>
-                <span className="text-fg-secondary block">Total Amount</span>
-                <span className="font-bold text-fg text-sm">{formatCurrencyAmount(importPreview.totalAmount)}</span>
-              </div>
-            </div>
-
-            {/*
-              The importer's two categorization layers (ADR 0019). Layer 1 has
-              already run by the time this renders - it is synchronous and
-              free. Layer 2 is behind this button on purpose: nothing touches
-              the network or spends TypeSafe credits until it is pressed,
-              which is also how you skip it when offline or in a hurry.
-            */}
-            <div className="flex flex-col gap-2 rounded-lg border border-line bg-surface-2 p-3">
-              <div className="flex items-center justify-between gap-3 flex-wrap">
-                <span className="text-xs text-fg-secondary">
-                  <strong className="font-bold text-fg">{ruleMatchedCount}</strong>{' '}
-                  matched by rules &middot;{' '}
-                  <strong className="font-bold text-fg">{uncategorizedRows.length}</strong>{' '}
-                  uncategorized
-                </span>
-
-                {uncategorizedRows.length > 0 && !classifyProgress && (
-                  <Button id="csv-classify-btn" onClick={handleClassifyRemaining} icon={<Sparkles className="w-3.5 h-3.5" />}>
-                    Classify remaining with Jev
-                  </Button>
-                )}
-
-                {classifyProgress && (
-                  <Button id="csv-classify-cancel-btn" variant="secondary" onClick={() => classifyAbortRef.current?.abort()}>
-                    Cancel
-                  </Button>
-                )}
-              </div>
-
-              {classifyProgress && (
-                <div data-testid="csv-classify-progress" className="flex flex-col gap-1.5">
-                  <span className="text-[11px] font-medium text-fg-secondary">
-                    Classifying {classifyProgress.done} of {classifyProgress.total} with Jev&hellip;
-                  </span>
-                  <div className="h-1.5 w-full rounded-full bg-surface-3 overflow-hidden">
-                    <div
-                      className="h-full bg-brand-fill transition-all"
-                      style={{
-                        width: `${classifyProgress.total > 0 ? (classifyProgress.done / classifyProgress.total) * 100 : 0}%`,
-                      }}
-                    />
-                  </div>
-                </div>
-              )}
-
-              {classifyNote && !classifyProgress && (
-                <p data-testid="csv-classify-note" className="text-[11px] font-medium text-fg-secondary">
-                  {classifyNote}
-                </p>
-              )}
-            </div>
-
-            {/* Dry Run Row Table */}
-            <div className="max-h-60 overflow-y-auto rounded-lg border border-line text-xs">
-              <table className="w-full text-left">
-                {/* One of DESIGN.md's two blurs: rows scroll under this sticky header. */}
-                <thead className="bg-surface-2/90 backdrop-blur-sm text-fg-secondary sticky top-0 font-semibold">
-                  <tr>
-                    <th className="p-2">Row</th>
-                    <th className="p-2">Status</th>
-                    <th className="p-2">Date</th>
-                    <th className="p-2">Wallet</th>
-                    <th className="p-2">Amount</th>
-                    <th className="p-2">Description / Error</th>
-                    <th className="p-2">Category</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-line">
-                  {importPreview.rows.slice(0, CSV_PREVIEW_ROW_CAP).map((row) => (
-                    <tr key={row.rowIndex} className={row.isValid ? 'bg-surface-1' : 'bg-expense-tint'}>
-                      <td className="p-2 text-fg-secondary">{row.rowIndex}</td>
-                      <td className="p-2">
-                        {row.isValid ? (
-                          <span className="inline-flex items-center gap-1 text-income font-semibold text-[11px]">
-                            <CheckCircle2 className="w-3.5 h-3.5" /> Valid
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 text-expense font-semibold text-[11px]">
-                            <AlertCircle className="w-3.5 h-3.5" /> Error
-                          </span>
-                        )}
-                      </td>
-                      <td className="p-2 text-fg-secondary">{row.date}</td>
-                      <td className="p-2 text-fg-secondary">{row.walletName}</td>
-                      <td className="p-2 font-bold text-fg">{formatCurrencyAmount(row.amount)}</td>
-                      <td className="p-2">
-                        {row.isValid ? (
-                          <span className="text-fg-secondary">{row.description}</span>
-                        ) : (
-                          <span className="text-expense font-medium">{row.errorMessage}</span>
-                        )}
-                      </td>
-                      {/*
-                        The override channel. A manual pick writes `categoryId`
-                        directly and always wins - neither layer ever revisits a
-                        row, and `commitBulkImport` prefers the id it finds here.
-                      */}
-                      <td className="p-2">
-                        {row.isValid ? (
-                          <div className="flex flex-col gap-1">
-                            <select
-                              data-testid={`csv-row-category-${row.rowIndex}`}
-                              value={row.categoryId || ''}
-                              onChange={(e) => setRowCategory(row.rowIndex, e.target.value)}
-                              className="w-full max-w-[10rem] text-[11px] rounded-lg border border-line-input bg-surface-2 px-1.5 py-1 text-fg focus:outline-none focus:ring-2 focus:ring-focus cursor-pointer"
-                            >
-                              <option value="" className={OPTION_CLASS}>
-                                Uncategorized
-                              </option>
-                              {activeCategoriesForForm.map((c) => (
-                                <option key={c.id} value={c.id} className={OPTION_CLASS}>
-                                  {c.name}
-                                </option>
-                              ))}
-                            </select>
-                            {(() => {
-                              const suggestion = rowSuggestions.get(row.rowIndex);
-                              if (!suggestion) return null;
-                              // Applied: report it. Not applied (mid-confidence,
-                              // or a type disagreement): offer it as one click.
-                              if (row.categoryId === suggestion.categoryId) {
-                                return (
-                                  <span
-                                    data-testid={`csv-row-confidence-${row.rowIndex}`}
-                                    className="inline-flex items-center gap-1 text-[10px] font-semibold text-brand"
-                                  >
-                                    <Sparkles className="w-2.5 h-2.5" />
-                                    {Math.round(suggestion.confidence * 100)}%
-                                  </span>
-                                );
-                              }
-                              return (
-                                <button
-                                  type="button"
-                                  data-testid={`csv-row-confidence-${row.rowIndex}`}
-                                  onClick={() => setRowCategory(row.rowIndex, suggestion.categoryId)}
-                                  className="inline-flex items-center gap-1 text-[10px] font-semibold text-fg-secondary underline underline-offset-2 hover:text-fg cursor-pointer text-left"
-                                >
-                                  <Sparkles className="w-2.5 h-2.5 shrink-0" />
-                                  {suggestion.categoryName} ({Math.round(suggestion.confidence * 100)}%)
-                                </button>
-                              );
-                            })()}
-                          </div>
-                        ) : (
-                          <span className="text-fg-muted">No category</span>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-                {importPreview.rows.length > CSV_PREVIEW_ROW_CAP && (
-                  <tfoot>
-                    <tr>
-                      <td colSpan={7} className="p-2 text-center text-fg-secondary italic">
-                        +{importPreview.rows.length - CSV_PREVIEW_ROW_CAP} more rows omitted from preview
-                      </td>
-                    </tr>
-                  </tfoot>
-                )}
-              </table>
-            </div>
-
-            {/* Same banner as the Step 1 file error, so the modal reads as one surface. */}
-            {importCommitError && (
-              <div
-                id="import-commit-error"
-                role="alert"
-                className="p-3 rounded-lg bg-expense-tint border border-expense-line text-expense text-xs flex items-center gap-2"
-              >
-                <AlertCircle className="w-4 h-4 shrink-0" />
-                <span>Import failed: {importCommitError}</span>
-              </div>
-            )}
-
-            {/* Step 2 Confirmation Actions */}
-            <div className="flex items-center justify-between pt-3 border-t border-line">
-              <p className="text-xs text-fg-secondary">
-                Commit inserts every valid row, then updates wallet balances. If the insert fails, nothing changes.
-              </p>
-              <Button
-                id="commit-import-btn"
-                disabled={importPreview.validRowsCount === 0 || isCommittingImport}
-                onClick={handleCommitImport}
-                className="shrink-0"
-                icon={<CheckCircle2 className="w-4 h-4" />}
-              >
-                <span>
-                  {isCommittingImport ? 'Importing…' : `Confirm & Commit (${importPreview.validRowsCount} Rows)`}
-                </span>
-              </Button>
-            </div>
-          </div>
-        )}
-      </Modal>
+      <ImportCsvModal isOpen={isImportModalOpen} onClose={() => setIsImportModalOpen(false)} />
     </div>
   );
 };

@@ -144,7 +144,7 @@ test.describe('ledger fixes a user can see (ADR 0024)', () => {
     await expect(page.getByText('E2E Opening Vault').first()).toBeVisible();
 
     await gotoTab(page, 'transactions');
-    const row = page.locator('tr[id^="tx-row-"]').filter({ hasText: 'Opening balance' });
+    const row = page.locator('button[id^="tx-row-"]').filter({ hasText: 'Opening balance' });
     await expect(row).toHaveCount(1);
     await expect(row).toContainText('฿900.00');
   });

@@ -1,8 +1,7 @@
 import React from 'react';
-import { TransactionType, Category } from '../../types';
+import { TransactionType } from '../../types';
 import { formatCurrencyAmount } from '../../utils/currency';
 import { TX_TYPE_META, txTypeMetaFor, TransferDirection } from './txTypeMeta';
-import { Chip, ChipSize } from '../ui/Chip';
 
 export type TxTypeIconVariant = 'full' | 'compact';
 export type TxTypeIconSize = 'sm' | 'md' | 'lg';
@@ -13,7 +12,7 @@ interface TxTypeIconProps {
   amount?: number;
   /** `full` (`TX_TYPE_META.icon`, the 4-way icon set) or `compact` (`.compactIcon`, the binary Trending{Up,Down} set). */
   variant?: TxTypeIconVariant;
-  /** `sm` = fixed `w-7 h-7` box (matches `WalletPopupModal`'s activity list); `md` = `w-7 h-7 sm:w-8 sm:h-8` (matches `TransactionTableRow`'s single icon spanning both breakpoints); `lg` = the spec's 36px tile (`TransactionRow`). */
+  /** `sm` = fixed `w-7 h-7` box (matches `WalletPopupModal`'s activity list); `md` = `w-7 h-7 sm:w-8 sm:h-8`, the old transactions table's, kept as the default; `lg` = the spec's 36px tile (`TransactionRow`). */
   size?: TxTypeIconSize;
   /** A site's own tint string when it has already diverged from `TX_TYPE_META.tint` (e.g. `WalletPopupModal`'s 3-way scheme) - overrides the token default rather than changing what's on screen. */
   tintOverride?: string;
@@ -27,11 +26,11 @@ const ICON_BOX_SIZE_CLASS: Record<TxTypeIconSize, string> = {
 };
 
 /**
- * T49: the icon-in-a-tinted-box cell shared by `TransactionTableRow` and
- * `WalletPopupModal`'s activity list, and (Phase 56) the 36px tile of
- * `TransactionRow` (size `lg`, spec 4.9), which the Dashboard's Recent
- * activity uses since Phase 57. The other pages move onto `TransactionRow`
- * in their own phases, which gives the app one icon set everywhere.
+ * T49: the icon-in-a-tinted-box cell of `WalletPopupModal`'s activity list,
+ * and (Phase 56) the 36px tile of `TransactionRow` (size `lg`, spec 4.9),
+ * which the Dashboard (Phase 57) and the Transactions page (Phase 58a) use.
+ * The wallet popup moves onto `TransactionRow` in its own phase, which gives
+ * the app one icon set everywhere.
  */
 export const TxTypeIcon: React.FC<TxTypeIconProps> = ({ type, amount, variant = 'full', size = 'md', tintOverride, className = '' }) => {
   const meta = amount === undefined ? TX_TYPE_META[type] : txTypeMetaFor(type, amount);
@@ -77,26 +76,6 @@ export const TxAmount: React.FC<TxAmountProps> = ({ amount, type, direction, col
       {formatCurrencyAmount(Math.abs(amount))}
     </span>
   );
-};
-
-interface TxCategoryChipProps {
-  /** Renders nothing when absent - callers keep their own fallback branch (a debt badge, an em dash, a type-name string) alongside this, unchanged. */
-  category: Category | undefined;
-  size?: ChipSize;
-  className?: string;
-}
-
-/**
- * T49: thin pass-through over the shared chip, scoped to the transaction-row
- * shape - callers still own the "no category" branch, since that part differs
- * per site and isn't a category chip at all (L13 unifies it in the page phase).
- *
- * Phase 56 (spec 4.7): the chip is neutral with the category's colour on its
- * dot, so the rounding and dot options each call site used to pick are gone.
- */
-export const TxCategoryChip: React.FC<TxCategoryChipProps> = ({ category, size = 'md', className = '' }) => {
-  if (!category) return null;
-  return <Chip label={category.name} color={category.color} size={size} className={className} />;
 };
 
 /**

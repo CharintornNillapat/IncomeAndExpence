@@ -47,7 +47,7 @@ test.describe('Express note input', () => {
     // here would be lossy, and a mis-parse would mangle the note as well as
     // the amount.
     await gotoTab(page, 'transactions');
-    await expect(page.locator('tr[id^="tx-row-"]').filter({ hasText: 'ข้าวมันไก่ 60' })).toBeVisible();
+    await expect(page.locator('button[id^="tx-row-"]').filter({ hasText: 'ข้าวมันไก่ 60' })).toBeVisible();
   });
 
   test('a leading amount in the note is parsed too', async ({ page }) => {

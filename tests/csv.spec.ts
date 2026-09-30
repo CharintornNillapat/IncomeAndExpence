@@ -22,6 +22,8 @@ test.describe('CSV export/import round trip', () => {
     await expect(page.getByText(marker)).toBeVisible();
 
     const downloadPromise = page.waitForEvent('download');
+    // Phase 58a: Import and Export CSV sit in the page's "Import / export" menu.
+    await page.locator('#tx-import-export-btn').click();
     await page.locator('#tx-export-csv-btn').click();
     const download = await downloadPromise;
 
@@ -31,6 +33,7 @@ test.describe('CSV export/import round trip', () => {
     expect(csvContent).toContain(marker);
     expect(csvContent).toContain('321.00');
 
+    await page.locator('#tx-import-export-btn').click();
     await page.locator('#tx-import-csv-btn').click();
     const fileInput = page.locator('#csv-file-input');
     await expect(fileInput).toBeVisible();
