@@ -4,6 +4,41 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
+## Phase 58a - FinLife redesign step 4, the Transactions page: T234-T244 (2026-09-30, commits `449ffe0`...)
+
+**Changed**
+- **`TransactionsView.tsx`, rebuilt to spec 6.2:**
+  - `PageHeader`, an "Import / export" `OverflowMenu`, and "Add transaction";
+  - the filter row: range and category are new, and type is a control;
+  - one list card: a summary line, day groups, `TransactionRow` buttons and "Load 25 more";
+  - a panel for the selected row, inline at `xl` and a `Modal` below.
+- **New:** `transaction/ImportCsvModal.tsx` (the import, moved unchanged), `transaction/TransactionDrawer.tsx` (`TransactionDetails`), `hooks/useMediaQuery.ts`.
+- **Changed components:**
+  - `TransactionRow` (`dateText`), `TxTypeIcon` (a `<span>`);
+  - `OverflowMenu` (`triggerLabel`, `triggerId`), `Button` (`ref`), `SegmentedControl` (44px minimum width);
+  - `secondaryLine` (a transfer's note).
+- **Removed:** `TransactionTableRow`, `TxCategoryChip`; Export Diary on this page; the Previous/Next pager.
+- **Tests:**
+  - `unit/transactions-page.test.tsx` (new), plus tests in `selectors-display`, `tx-row` and `ui-controls`. Unit 385 -> 396.
+  - Spec edits, all locator or step moves: 17 row locators, seven Delete/Restore steps in `soft-delete`, and three menu steps in `csv` and `csv-classify`.
+- **Docs:** ADR `0031`, `DESIGN.md` (the Transactions section, two deviations, the menu trigger), `CLAUDE.md`, `test-selector-contract.md`, antislop audit 006.
+
+**Surprises**
+- **The old trash button discarded the delete's result**, so a failed delete showed nothing. The panel shows it.
+- **Grouping has to follow paging, not lead it.** Grouping all rows first and then cutting at 25 would leave a half-shown day with a net for the whole day beside only some of its rows. Paging first and taking the net from all of that day's filtered rows keeps each day's net true.
+- **A transfer's note had nowhere to go.** L7 titles every transfer "Transfer", so the "Funds transfer" note a spec reads would have vanished. It now follows the wallets on the second line.
+- **Chromium's full-page screenshot fooled the layout check** by reporting a narrower viewport mid-capture (see the ledger note).
+
+**Gate:**
+- **Lint:** clean. **Unit:** 396/396. **WCAG:** all pairs pass. No token changed.
+- **Playwright (local, 4 workers):** runs 1 and 2 were 356/357, both failing the same Firefox Quick Add test under load. That test passed 20/20 in isolation on the branch and on `main`.
+- **MCP**, seeded with 33 rows (28 expenses over ten days, an income, a transfer with a note, an adjustment pair and a deleted row):
+  - At 1280px light, 900px dark and 390px light: 0 controls under 44px, 0 clipped rings, and no page overflow. That closes audit 004 finding 4.
+  - Filters: type, range, category and wallet each narrow the list, and Out equals the seeded expenses.
+  - "Load 7 more" appended the rest.
+  - Delete, Show deleted and Restore worked through the panel, and Escape closed the sheet.
+  - Focus moved to the panel's heading when it opened and back to the row when it closed.
+
 ## Phase 57 - FinLife redesign step 4, the Dashboard: T222-T233 (2026-09-28, commits `5e40415`...`5efc483`)
 
 **Changed**

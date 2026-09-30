@@ -1004,4 +1004,37 @@ Per chunk (raw bytes; every other chunk is byte-identical):
 | Playwright (local, 4 workers) | 23 | 119 | 357 | 6.3 / 6.9 / 5.5 m (three runs) |
 | Vitest (`unit/`) | 20 | 385 | 385 | ~32-36 s |
 
+## Phase 58a (the Transactions page) — delta against Phase 57
+
+`main` (`01e6c16`) and the final Phase 58a tree were each built with `npx vite build` in the repo, one after the other. Gzip is `zlib` level 9.
+
+| Chunk | Phase 57 | Phase 58a | Delta |
+|---|---|---|---|
+| entry `index-*.js` | 174,259 B / 49,827 B gzip | 174,280 B / 49,837 B gzip | +21 B raw / +10 B gzip |
+| **all JS, summed** | 1,330,289 B | 1,332,841 B | **+2,552 B** |
+| `index-*.css` | 47,902 B / 9,307 B gzip | 47,958 B / 9,299 B gzip | +56 B |
+| JS chunks | 38 | 38 | 0 |
+| PWA precache | 55 entries, 1,619.34 KiB | 55 entries, 1,621.89 KiB | +2.55 KiB |
+
+Per chunk (raw bytes; every other chunk is byte-identical):
+
+| Chunk | Delta | Why |
+|---|---|---|
+| `timeRange` | +4,009 (new shared chunk) | `TransactionRow`, `DayGroupHeader`, the display selectors, `timeRange` and `pagination` are now used by two lazy views, so Rollup put them in one shared chunk, named after its first module |
+| `DashboardView` | -3,483 | the same code, which only the Dashboard used before, moved into that chunk |
+| `TransactionsView` | +3,410 | the filter row, the day-grouped list, the panel, the menu and `useMediaQuery`. The import code moved to `ImportCsvModal` but stays in this chunk, since only this view loads it |
+| `vendor-icons` | -1,150 | three icons no longer used anywhere: `Upload` and `FileText` (the old header's import and diary-export buttons) and `RotateCcw` (the table row's restore). No icon was added; `ChevronDown` and `MoreHorizontal` were already in use |
+| `DiaryView` / `diaryExport` | +552 / -676 (chunk gone) | only the diary exports JSON now, so the exporter joined its chunk |
+| `ledger` | -133 | `groupByDay` moved to the shared chunk with its two callers |
+| entry | +21 | `Button`'s `ref` and `SegmentedControl`'s minimum width |
+
+**CSS grew 56 B**, for `min-w-[44px]` and the panel's grid and sticky classes.
+
+| Suite | Files | Tests | Runs | Wall clock |
+|---|---|---|---|---|
+| Playwright (local, 4 workers) | 23 | 119 | 357 | 5.1 / 5.0 m (two runs) |
+| Vitest (`unit/`) | 21 | 396 | 396 | ~31 s |
+
+**Intermittent local failures:** 2 in 714 full-suite runs, both `account-and-mobile-nav.spec.ts:60` on Firefox, where the Quick Add dialog never appeared. The test passed 20/20 in isolation on both the branch and `main`.
+
 **Intermittent local failures:** 6 in 1,071 full-suite runs (3 full runs). All were timeouts: a Firefox `goto`, a Firefox context close, and four WebKit clicks waiting for "stable". No assertion failed. See audit 005 finding 3 for the control runs.

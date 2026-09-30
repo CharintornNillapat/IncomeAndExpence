@@ -238,3 +238,27 @@ The Dashboard is the landing view, so it mounts in every run of every spec.
 - **Its recent activity is `TransactionRow`s, which are `<div>`s.** They cannot match `tr[id^="tx-row-"]`, which is why they carry no id. The Transactions page's own rows keep that prefix until its phase.
 - **Its ids use the `dashboard-` prefix only.** Specs filter the Debt Payoff page's `debt-card-`, `open-repay-modal-` and `settle-debt-`, and the Transactions page's `tx-row-`, page-wide straight after `gotoTab`, while the Dashboard may still be leaving.
 - **The Mood card's caption says "From your Daily Diary"** as a `<p>`, not a heading, so `diary.spec.ts`'s `/Daily Diary/i` heading query still matches one element.
+
+## Changed in Phase 58a (ADR `0031`, the Transactions page)
+
+Seven specs use this page. Every edit below is a locator or step move that keeps its assertion.
+
+| Selector | Now | Specs moved |
+|---|---|---|
+| `tr[id^="tx-row-"]` → **`button[id^="tx-row-"]`** | Rows are `TransactionRow` buttons with the same `tx-row-{id}` id. | 17 locators: `soft-delete` (9), `presets` (3), `csv-classify` (3), `express-input` (1), `account-and-mobile-nav` (1) |
+| `button[id^="tx-delete-btn-"]`, `button[id^="tx-restore-btn-"]` | **Same ids, now in the selected row's panel** (`#tx-drawer`), not on the row. Delete is still immediate, with no confirmation. | `soft-delete` clicks the row first, then finds the button page-wide (seven places) |
+| `#tx-import-csv-btn`, `#tx-export-csv-btn` | **Same ids, now `OverflowMenu` items** under `#tx-import-export-btn`. They exist only while the menu is open. | `csv` (2) and `csv-classify` (1) open the menu first |
+| `#tx-show-deleted`, `#tx-search-input`, `button[title="Clear search"]` | **Unchanged.** The checkbox is still a native, checkable input under its drawn box. | none |
+| `#csv-file-input` and every `csv-*` id | **Unchanged.** The import moved to `ImportCsvModal` verbatim. | none |
+| `#tx-filter-wallet` | Unchanged id, still a `<select>`. | none |
+| `#tx-filter-type` (a `<select>`) | **Retired**, replaced by `SegmentedControl` options `#tx-filter-type-all/income/expense/transfer`. No spec used it. | none |
+| `#tx-prev-page-btn`, `#tx-next-page-btn` | **Retired**, replaced by `#tx-load-more-btn` "Load N more" (L12). No spec used them. | none |
+| `#diary-export-json-btn` | **Retired** from this page; the diary keeps `#export-diary-btn`. No spec used it. | none |
+| New | `#tx-filter-range`, `#tx-filter-category`, `#tx-drawer`, `#tx-drawer-title`, `#tx-drawer-close-btn`, `#tx-import-export-btn`, `#tx-load-more-btn` | - |
+
+**Text kept exactly:** "No transactions match your current filters.", "Successfully imported N transactions", the classify summary, `[Soft Deleted]` inside the row, and a row's ISO date. The date is now `sr-only` text inside the row, because the visible date is the day header's. `presets.spec.ts:214-215` filters by it.
+
+### Hazards this page now carries
+- **The panel is rendered once.** At `xl` it is inline (`#tx-drawer`); below that it is a `Modal`. The choice comes from `useMediaQuery`, never from CSS, so `toHaveCount` and strict `getByText` never see two copies. The panel shows the row's note, so a text count taken while it is open includes it. No spec counts text with the panel open.
+- **The rows are buttons, so nothing clickable can sit inside one.** A new per-row action goes in the panel or in an `OverflowMenu` beside the list, never inside the row.
+- **A transfer row's note is in its second line** (`wallet-forms.spec.ts:38` reads "Funds transfer" there). The title is always "Transfer".

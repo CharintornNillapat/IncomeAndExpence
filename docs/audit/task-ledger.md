@@ -1081,6 +1081,40 @@ Approved explicitly by the user, planned and approved before any code was writte
 - **One negative control was redone** because the first attempt produced malformed TypeScript that the dev server still served — the tests failed, but possibly for the wrong reason.
 - **No flakes.** Phase 44's `wallets.spec.ts` webkit flake has now not reproduced across three consecutive phases; still watched rather than closed.
 
+## Phase 58a - FinLife redesign, step 4, second page (Transactions): T234-T244 (2026-09-30)
+
+Spec 6.2, the page. ADR `0031`. The plan was approved; the owner's decisions:
+- split editing into Phase 58b (a new `update_transaction` RPC);
+- 58b edits money fields on income, expense and transfer only, through a new `EditTransactionPanel`;
+- antislop in mode 2 (audit 006).
+
+Branch `phase-58a-transactions`, draft PR. It also carries `01e6c16`, the Phase 57 deploy record, which was not pushed.
+
+| # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
+|---|---|---|---|---|---|---|---|---|---|---|
+| T234 | `secondaryLine` keeps a transfer's note; `TransactionRow.dateText` (`sr-only`); `TxTypeIcon` as a `<span>`; `OverflowMenu` text trigger; `Button` ref; `useMediaQuery` | `selectors/display.ts`, `transaction/*`, `ui/*`, `hooks/useMediaQuery.ts`, 3 unit files | Med | Low | 1h | done | - | 449ffe0 | note and date tests red first | unit 385 -> 390 |
+| T235 | `ImportCsvModal`: the CSV import moved out of the view | `transaction/ImportCsvModal.tsx` | Med | Med | 0.5h | done | - | 261448d | a whitespace-insensitive diff shows only the wrapper and the open and close props | view 901 -> 470 lines |
+| T236 | `PageHeader`, the "Import / export" menu, "Add transaction"; Export Diary removed; `csv` and `csv-classify` gain the menu step | `TransactionsView.tsx`, 2 specs | Med | Low | 0.5h | done | T234 | 261448d | - | - |
+| T237 | Filter row: search, range (new), wallet, category (new), type control, Show deleted | `TransactionsView.tsx` | Med | Low | 0.5h | done | - | 261448d | every filter narrows the list (MCP) | - |
+| T238 | List card: summary line, day groups with L11 nets over all filtered rows, `TransactionRow` buttons, "Load 25 more" (L12); `TransactionTableRow` and `TxCategoryChip` deleted; 17 row locators moved | `TransactionsView.tsx`, 5 specs | High | Med | 1h | done | T234 | 261448d, 3b639ca | Out equals the 28 seeded expenses, deleted row excluded (MCP) | - |
+| T239 | `TransactionDetails` panel: inline at `xl`, a `Modal` below, Delete or Restore with surfaced errors, focus in and back; `soft-delete` clicks the row first | `transaction/TransactionDrawer.tsx`, `TransactionsView.tsx`, `soft-delete.spec.ts` | High | Med | 1h | done | T238 | 261448d | delete, Show deleted, restore and Escape all work at 1280, 900 and 390px (MCP) | - |
+| T240 | `unit/transactions-page.test.tsx`: the page in the real guest provider | `unit/` | High | Low | 1h | done | T239 | 5aa6f48 | 3 mutations caught | unit 390 -> 396 |
+| T241 | Gate: lint, unit, build, WCAG, Playwright, MCP | - | - | - | 1h | done | all | 3b639ca (MCP fixes) | see notes | see metrics |
+| T242 | ADR `0031`, `DESIGN.md`, `CLAUDE.md`, selector contract | docs | Low | Low | 1h | done | all | (the docs commit) | - | - |
+| T243 | Ledger, log, metrics, antislop audit 006 | docs | Low | Low | 0.5h | done | all | (the docs and audit commits) | - | - |
+| T244 | sha backfill; draft PR | docs | Low | Low | 0.1h | done | T243 | (this row's own commit) | - | - |
+
+**Notes on execution:**
+- **Found in the MCP pass (`3b639ca`):**
+  - The list card's `overflow-hidden` clipped every row's focus ring. The list is now inset 8px.
+  - The type control's "All" was 43px wide. `SegmentedControl` options now keep a 44px minimum width.
+  - The phone filter row wrapped unevenly.
+- **A full-page screenshot showed a second panel** fading in over the page. The DOM had one; Chromium's full-page capture briefly reports a narrower viewport, which flips `useMediaQuery`. Plain screenshots were correct.
+- **Local E2E (4 workers), runs 1 and 2: 356/357 each.** Both failures were the same Firefox test, `account-and-mobile-nav.spec.ts:60`: the Quick Add dialog never appeared after the centre button was tapped.
+  - **Control:** that test 20 times on the branch and 20 on `main`: 20/20 on both.
+  - It fails only under full-suite load. It is the same Quick Add symptom audit 005 recorded on `main`, so it stays audit finding 3, on watch.
+- **Two untracked reports** appeared in the repo root during the phase, `AGY_AUDIT300926.md` and `SUGGESTS.md`, from another assistant. They were left untouched and out of every commit.
+
 ## Phase 57 - FinLife redesign, step 4, first page (the Dashboard): T222-T233 (2026-09-28)
 
 Spec 6.1 and section 9 step 4. ADR `0030`. The plan was approved in plan mode. The owner's decisions:
