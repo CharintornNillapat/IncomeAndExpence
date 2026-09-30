@@ -6,6 +6,7 @@ import {
   Category,
   KeywordRule,
   Transaction,
+  TransactionEdit,
   Debt,
   DiaryEntry,
   ImportRowValidation,
@@ -164,6 +165,13 @@ export interface FinanceActionsContextType {
   }) => Promise<{ success: boolean; error?: string; txId?: string }>;
   softDeleteTransaction: (id: string) => Promise<MutationResult>;
   restoreTransaction: (id: string) => Promise<MutationResult>;
+  /**
+   * Edits a live transaction (ADR 0033): reverses its old effect on the wallets
+   * and applies the new one. Signed in, it is one `update_transaction` RPC, with
+   * no fallback when the function is missing. A repayment or an adjustment
+   * edits only its note and date.
+   */
+  updateTransaction: (id: string, edit: TransactionEdit) => Promise<MutationResult>;
   /**
    * `importKey` names one import PREVIEW (ADR 0023): a retry of the same
    * preview after a lost response replays instead of importing twice. A new
@@ -365,6 +373,79 @@ function isMissingRpcError(err: { code?: string; message?: string } | null): boo
   if (!err) return false;
   if (err.code === '42883' || err.code === 'PGRST202') return true;
   return (err.message || '').toLowerCase().includes('could not find the function');
+}
+
+// Shape returned by `update_transaction` (ADR 0033): the row, and the balance of
+// every wallet on either side of the edit.
+interface UpdateTransactionResult {
+  changed: boolean;
+  transaction: any;
+  balances: { id: string; balance: number | string }[];
+}
+
+// ADR 0033: a repayment's or an adjustment's money is fixed once written; only
+// these three types can change type, amount or wallets, and only among
+// themselves.
+const MONEY_EDITABLE_TYPES: ReadonlySet<TransactionType> = new Set(['INCOME', 'EXPENSE', 'TRANSFER']);
+
+// The wallet movements one live transaction stands for: wallet id to signed
+// amount. Term for term `_ledger_apply_effect` with sign +1 - the source moves by
+// its type's direction, a transfer's destination receives the amount. An edit's
+// net movement is the new row's effects minus the old row's.
+function walletEffects(
+  tx: Pick<Transaction, 'type' | 'amount' | 'walletId' | 'destinationWalletId'>
+): Map<string, number> {
+  const effects = new Map<string, number>();
+  const sourceSign = tx.type === 'INCOME' || tx.type === 'ADJUSTMENT' ? 1 : -1;
+  effects.set(tx.walletId, sourceSign * tx.amount);
+  if (tx.type === 'TRANSFER' && tx.destinationWalletId) {
+    effects.set(tx.destinationWalletId, (effects.get(tx.destinationWalletId) ?? 0) + tx.amount);
+  }
+  return effects;
+}
+
+function sameMoney(a: Transaction, b: Transaction): boolean {
+  return (
+    a.type === b.type &&
+    a.amount === b.amount &&
+    a.walletId === b.walletId &&
+    (a.destinationWalletId ?? null) === (b.destinationWalletId ?? null)
+  );
+}
+
+function sameEdit(a: Transaction, b: Transaction): boolean {
+  return (
+    sameMoney(a, b) &&
+    (a.categoryId ?? null) === (b.categoryId ?? null) &&
+    a.description === b.description &&
+    a.transactionDate === b.transactionDate &&
+    (a.rawInput ?? null) === (b.rawInput ?? null)
+  );
+}
+
+// ADR 0033's rules, in `update_transaction`'s own words, checked before any
+// optimistic write so a refused edit never flickers on screen. The server checks
+// them again under its locks.
+function editRuleError(tx: Transaction, next: Transaction, wallets: Wallet[]): string | null {
+  if (tx.isDeleted) return 'Restore this transaction before editing it';
+  if (!MONEY_EDITABLE_TYPES.has(tx.type)) {
+    if (!sameMoney(tx, next) || (tx.categoryId ?? null) !== (next.categoryId ?? null)) {
+      return 'Only the note and date of a debt repayment or an adjustment can change';
+    }
+    return null;
+  }
+  if (!MONEY_EDITABLE_TYPES.has(next.type)) {
+    return 'A transaction can only become income, an expense or a transfer';
+  }
+  if (next.type === 'TRANSFER' && next.categoryId) return 'A transfer has no category';
+  if (next.type !== 'TRANSFER' && next.destinationWalletId) return 'Only a transfer has a destination wallet';
+  // A wallet the row already uses may since have been deleted; a newly chosen
+  // one must be live.
+  for (const chosen of [next.walletId, next.destinationWalletId]) {
+    if (!chosen || chosen === tx.walletId || chosen === tx.destinationWalletId) continue;
+    if (!wallets.some((w) => w.id === chosen && !w.isDeleted)) return 'Wallet not found or has been deleted';
+  }
+  return null;
 }
 
 // Row shape returned by `list_my_sessions` (ADR 0024).
@@ -2603,6 +2684,142 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     [setTransactionDeleted]
   );
 
+  // ADR 0033: edits a live transaction. The net wallet movement is the new row's
+  // effects minus the old row's (`walletEffects`), computed here from the refs
+  // BEFORE any setState (ADR 0022). Signed in, `update_transaction` does the same
+  // under its locks and the balances it returns replace these optimistic ones.
+  const updateTransaction = useCallback(async (id: string, edit: TransactionEdit): Promise<MutationResult> => {
+    const tx = transactionsRef.current.find((t) => t.id === id);
+    if (!tx) return { success: false, error: 'Transaction not found' };
+
+    // A repayment or an adjustment keeps its formula with its amount, which
+    // cannot change; for the others a blank formula is none.
+    const next: Transaction = {
+      ...tx,
+      type: edit.type,
+      amount: roundToCents(edit.amount),
+      walletId: edit.walletId,
+      destinationWalletId: edit.destinationWalletId || undefined,
+      categoryId: edit.categoryId || undefined,
+      description: edit.description,
+      transactionDate: edit.transactionDate,
+      rawInput: MONEY_EDITABLE_TYPES.has(tx.type) ? edit.rawInput?.trim() || undefined : tx.rawInput,
+    };
+
+    const ruleError = editRuleError(tx, next, walletsRef.current);
+    if (ruleError) return { success: false, error: ruleError };
+
+    const validation = TransactionSchema.safeParse({
+      amount: next.amount,
+      rawInput: next.rawInput,
+      type: next.type,
+      description: next.description,
+      walletId: next.walletId,
+      destinationWalletId: next.destinationWalletId,
+      categoryId: next.categoryId,
+      debtId: next.debtId,
+      transactionDate: next.transactionDate,
+    });
+    if (!validation.success) {
+      return { success: false, error: formatZodIssues(validation.error) };
+    }
+
+    // Nothing to write - the server would answer `changed: false` too.
+    if (sameEdit(tx, next)) return { success: true };
+
+    const deltas = new Map<string, number>();
+    if (!sameMoney(tx, next)) {
+      for (const [walletId, amount] of walletEffects(tx)) deltas.set(walletId, (deltas.get(walletId) ?? 0) - amount);
+      for (const [walletId, amount] of walletEffects(next)) deltas.set(walletId, (deltas.get(walletId) ?? 0) + amount);
+    }
+    const newBalances = new Map<string, number>();
+    for (const wallet of walletsRef.current) {
+      const delta = deltas.get(wallet.id);
+      if (delta) newBalances.set(wallet.id, roundToCents(wallet.balance + delta));
+    }
+
+    const previousTransactions = transactionsRef.current;
+    const previousWallets = walletsRef.current;
+    // T69: see `cloudRevisionRef`.
+    const cloudRevisionAtStart = cloudRevisionRef.current;
+    // The version this edit was made against, for the server's stale guard -
+    // read before the optimistic write below replaces it.
+    const expectedUpdatedAt = tx.updatedAt;
+
+    setTransactions((prev) =>
+      prev.map((t) => (t.id === id ? { ...next, updatedAt: new Date().toISOString() } : t))
+    );
+    if (newBalances.size > 0) {
+      setWallets((prev) =>
+        prev.map((w) => (newBalances.has(w.id) ? { ...w, balance: newBalances.get(w.id)! } : w))
+      );
+    }
+
+    if (!isAuthenticated) return { success: true };
+
+    const undo = async (reread: boolean) => {
+      if (cloudRevisionRef.current !== cloudRevisionAtStart) {
+        // A realtime reload landed mid-flight, so the snapshot is stale.
+        await refreshFromCloud();
+        return;
+      }
+      setTransactions(previousTransactions);
+      setWallets(previousWallets);
+      if (reread) await refreshFromCloud();
+    };
+
+    markLocalWrite(id);
+    for (const walletId of deltas.keys()) markLocalWrite(walletId);
+
+    const { data, error } = await supabase.rpc('update_transaction', {
+      p_transaction_id: id,
+      p_expected_updated_at: expectedUpdatedAt,
+      p_type: next.type,
+      p_amount: next.amount,
+      p_wallet_id: next.walletId,
+      p_destination_wallet_id: next.destinationWalletId ?? null,
+      p_category_id: next.categoryId ?? null,
+      p_description: next.description,
+      p_transaction_date: next.transactionDate,
+      p_raw_input: next.rawInput ?? null,
+    });
+
+    if (error) {
+      console.error('[Update Transaction Failed]', error);
+      // No legacy fallback (ADR 0033): an edit written as absolute balances
+      // could not be made atomic, so it waits for the migration instead.
+      if (isMissingRpcError(error)) {
+        await undo(false);
+        return { success: false, error: 'Editing needs the latest database update. Nothing was changed.' };
+      }
+      if (error.message === 'TRANSACTION_CHANGED') {
+        await undo(true);
+        return { success: false, error: 'This transaction changed on another device. Check it and try again.' };
+      }
+      // ADR 0023: no SQLSTATE means the edit may have committed. Re-read.
+      await undo(isUnknownOutcomeError(error));
+      return { success: false, error: error.message || 'Database error' };
+    }
+
+    const payload = data as UpdateTransactionResult | null;
+    if (!payload?.transaction) {
+      await undo(true);
+      return { success: false, error: 'update_transaction returned an unexpected response' };
+    }
+
+    const mapped = mapTransactionRow(payload.transaction);
+    setTransactions((prev) => prev.map((t) => (t.id === mapped.id ? mapped : t)));
+    const committed = new Map<string, number>();
+    for (const row of payload.balances ?? []) {
+      const balance = Number(row.balance);
+      if (Number.isFinite(balance)) committed.set(row.id, balance);
+    }
+    if (committed.size > 0) {
+      setWallets((prev) => prev.map((w) => (committed.has(w.id) ? { ...w, balance: committed.get(w.id)! } : w)));
+    }
+    return { success: true };
+  }, [isAuthenticated, markLocalWrite, refreshFromCloud]);
+
   // Bulk CSV Import
   const commitBulkImport = useCallback(async (validRows: ImportRowValidation[], importKey?: string) => {
     // Only active records may be referenced. Importing into a soft-deleted wallet
@@ -3211,6 +3428,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       addTransaction,
       softDeleteTransaction,
       restoreTransaction,
+      updateTransaction,
       commitBulkImport,
       addDebt,
       settleDebt,
@@ -3238,6 +3456,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       addTransaction,
       softDeleteTransaction,
       restoreTransaction,
+      updateTransaction,
       commitBulkImport,
       addDebt,
       settleDebt,
