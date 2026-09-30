@@ -54,9 +54,9 @@ const TYPE_OPTIONS: { value: TypeFilter; label: string }[] = [
   { value: 'TRANSFER', label: 'Transfer' },
 ];
 
-/** The filter row's selects: the same shape as the search box beside them. */
+/** The filter row's selects: the same shape as the search box beside them, sharing a row evenly on a phone. */
 const FILTER_SELECT_CLASS =
-  'min-h-[44px] py-2 px-3 text-xs rounded-lg border border-line-input bg-surface-2 text-fg focus:outline-none focus:ring-2 focus:ring-focus transition-control';
+  'flex-1 min-w-[8rem] sm:flex-none min-h-[44px] py-2 px-3 text-xs rounded-lg border border-line-input bg-surface-2 text-fg focus:outline-none focus:ring-2 focus:ring-focus transition-control';
 
 /** Newest day first; inside a day, the most recently recorded first. */
 function byNewest(a: Transaction, b: Transaction): number {
@@ -204,7 +204,7 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
   );
 
   const listCard = (
-    <Card padding="none" className="overflow-hidden">
+    <Card padding="none">
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 px-5 py-4 border-b border-line">
         <p className="flex flex-wrap items-baseline gap-x-4 gap-y-1 text-sm">
           <span className="font-semibold text-fg">{formatRangeLabel(range, today)}</span>
@@ -221,10 +221,12 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
       {sortedRows.length === 0 ? (
         <EmptyState icon={Search} title="No transactions match your current filters." />
       ) : (
-        <div className="flex flex-col">
+        // Inset by 8px, like the Dashboard's Recent activity: each row's 2px
+        // focus outline, 2px out, then has room inside the card.
+        <div className="flex flex-col gap-1 p-2">
           {shownDays.map((day) => (
             <div key={day.date} className="flex flex-col">
-              <DayGroupHeader date={day.date} today={today} net={dayNets.get(day.date) ?? day.net} />
+              <DayGroupHeader date={day.date} today={today} net={dayNets.get(day.date) ?? day.net} className="rounded-control" />
               {day.transactions.map((tx) => (
                 <TransactionRow
                   key={tx.id}
@@ -235,7 +237,7 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
                   onSelect={selectRow}
                   selected={tx.id === selectedTxId}
                   dateText={tx.transactionDate.slice(0, 10)}
-                  className="px-5"
+                  className="rounded-control"
                 />
               ))}
             </div>
