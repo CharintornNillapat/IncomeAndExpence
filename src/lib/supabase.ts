@@ -74,3 +74,22 @@ export const supabase = createClient(
     global: { fetch: fetchReportingUnauthorized },
   }
 );
+
+/**
+ * `{ Authorization: 'Bearer <access token>' }` while signed in, `{}` otherwise
+ * - for the app's own `/api/*` proxies, which verify the token (ADR 0032). A
+ * guest sends no header and is limited per IP instead.
+ *
+ * Never throws: the proxies' callers promise not to (ADR 0011, 0020), and a
+ * failed session read simply sends the request as a guest.
+ */
+export async function authorizationHeader(): Promise<Record<string, string>> {
+  if (!isSupabaseConfigured) return {};
+  try {
+    const { data } = await supabase.auth.getSession();
+    const token = data.session?.access_token;
+    return token ? { Authorization: `Bearer ${token}` } : {};
+  } catch {
+    return {};
+  }
+}

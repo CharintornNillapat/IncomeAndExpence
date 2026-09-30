@@ -21,6 +21,10 @@ import type { ClassifyCandidate, ClassifyRequest, ClassifyResponse } from '../sr
  * `instructions`/`criteria`/`model`/`state`, this endpoint would be an open
  * relay for arbitrary Jev prompts billed to this project's key.
  *
+ * Who may call it is `checkCaller`'s job (ADR 0032): a guest, or a signed-in
+ * caller whose token the auth server accepts. Guests are limited per IP by the
+ * Vercel firewall, not here.
+ *
  * Never log `text` - it is ledger content.
  */
 
@@ -69,6 +73,71 @@ function json(body: unknown, status: number): Response {
 
 function isPlainObject(v: unknown): v is Record<string, unknown> {
   return typeof v === 'object' && v !== null && !Array.isArray(v);
+}
+
+// --- Caller check (ADR 0032) -------------------------------------------------
+// Duplicated in `insights.ts` on purpose, like `json` and `isPlainObject`
+// above. A shared `api/_auth.ts` would be the first runtime import between
+// these functions, and whether Vercel resolves one under `"type": "module"` is
+// exactly the kind of fact `tsc` and the unit suite cannot see (the default
+// export lesson). Change both copies together.
+
+const AUTH_TIMEOUT_MS = 3000;
+const VERIFIED_TOKEN_TTL_MS = 60_000;
+const MAX_VERIFIED_TOKENS = 500;
+
+/** Access tokens the auth server accepted recently, to their expiry (ms). Per warm instance only. */
+const verifiedTokens = new Map<string, number>();
+
+/**
+ * Decides whether this caller may spend TypeSafe credits. Returns `null` to go
+ * on, or the response to send instead. Nothing here calls TypeSafe.
+ *
+ * - **No `Authorization` header: a guest, allowed.** The app works signed out,
+ *   and guests keep Jev. The Vercel firewall limits these requests per IP.
+ * - **A header that is not `Bearer <token>`: 401.**
+ * - **A token: the auth server decides** (`/auth/v1/user`, the same check as
+ *   `verifySession` in the app). Refused (401/403) is 401. No answer - a
+ *   timeout, a 5xx, a 429, or this deployment missing the Supabase settings -
+ *   is 503: an unverified token never spends credits, and it is not the
+ *   caller's fault either.
+ * - A verified token is remembered for a minute, so live typing does not add
+ *   an auth round-trip to every suggestion. A token revoked inside that minute
+ *   keeps classifying until it passes; it can do nothing else here.
+ */
+async function checkCaller(req: Request): Promise<Response | null> {
+  const header = req.headers.get('Authorization');
+  if (header === null) return null;
+
+  // The scheme is case-insensitive (RFC 7235); the token is one run of non-space.
+  const match = /^Bearer (\S+)$/i.exec(header);
+  if (!match) return json({ error: 'Unauthorized.' }, 401);
+  const token = match[1];
+
+  const now = Date.now();
+  const expiry = verifiedTokens.get(token);
+  if (expiry !== undefined && expiry > now) return null;
+
+  const supabaseUrl = process.env.VITE_SUPABASE_URL;
+  const anonKey = process.env.VITE_SUPABASE_ANON_KEY;
+  if (!supabaseUrl || !anonKey) return json({ error: 'Sign-in check unavailable.' }, 503);
+
+  let res: Response;
+  try {
+    res = await fetch(`${supabaseUrl.replace(/\/+$/, '')}/auth/v1/user`, {
+      headers: { apikey: anonKey, Authorization: `Bearer ${token}` },
+      signal: AbortSignal.timeout(AUTH_TIMEOUT_MS),
+    });
+  } catch {
+    return json({ error: 'Sign-in check unavailable.' }, 503);
+  }
+
+  if (res.status === 401 || res.status === 403) return json({ error: 'Unauthorized.' }, 401);
+  if (!res.ok) return json({ error: 'Sign-in check unavailable.' }, 503);
+
+  if (verifiedTokens.size >= MAX_VERIFIED_TOKENS) verifiedTokens.clear();
+  verifiedTokens.set(token, now + VERIFIED_TOKEN_TTL_MS);
+  return null;
 }
 
 /**
@@ -154,6 +223,9 @@ export async function POST(req: Request): Promise<Response> {
     // falls back to keyword rules silently. See ADR 0011.
     return json({ error: 'Classification is not configured.' }, 404);
   }
+
+  const refused = await checkCaller(req);
+  if (refused) return refused;
 
   let body: unknown;
   try {
