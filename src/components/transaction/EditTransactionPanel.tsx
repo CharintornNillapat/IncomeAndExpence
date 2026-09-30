@@ -203,6 +203,7 @@ export const EditTransactionPanel: React.FC<EditTransactionPanelProps> = ({ tx, 
         <>
           <SegmentedControl<EditableType>
             fill
+            className="flex"
             ariaLabel="Transaction type"
             value={draft.type as EditableType}
             onChange={changeType}
