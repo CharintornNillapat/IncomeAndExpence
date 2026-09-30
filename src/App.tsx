@@ -91,6 +91,9 @@ const MainApp: React.FC = () => {
   // itself right after it reads the value, so a later, unrelated navigation
   // to the tab does not inherit a stale filter.
   const [transactionsWalletFilter, setTransactionsWalletFilter] = useState<string | undefined>(undefined);
+  // Phase 58b: the same hand-off for one row - a Dashboard Recent activity row
+  // opens on the Transactions page with its edit panel. Cleared the same way.
+  const [transactionsSelectedTx, setTransactionsSelectedTx] = useState<string | undefined>(undefined);
 
   // PWA app shortcut "Quick Add Transaction" launches to `/?action=quick-add`.
   // Strip the query param immediately so it doesn't linger in the address bar
@@ -183,6 +186,14 @@ const MainApp: React.FC = () => {
     [handleTabChange]
   );
   const handleConsumeTransactionsWalletFilter = useCallback(() => setTransactionsWalletFilter(undefined), []);
+  const handleOpenTransaction = useCallback(
+    (txId: string) => {
+      setTransactionsSelectedTx(txId);
+      handleTabChange('transactions');
+    },
+    [handleTabChange]
+  );
+  const handleConsumeTransactionsSelectedTx = useCallback(() => setTransactionsSelectedTx(undefined), []);
 
   // TRANSFER and DEBT_REPAYMENT left TransactionForm's type toggle in ADR 0013,
   // so the form links out to their dedicated flows instead. These are the only
@@ -228,6 +239,7 @@ const MainApp: React.FC = () => {
             onOpenTransfer={handleOpenTransfer}
             onOpenAddWallet={handleOpenAddWallet}
             onOpenWalletTransactions={handleOpenWalletTransactions}
+            onOpenTransaction={handleOpenTransaction}
           />
         );
       case 'transactions':
@@ -235,6 +247,8 @@ const MainApp: React.FC = () => {
           <TransactionsView
             initialWalletFilter={transactionsWalletFilter}
             onConsumeInitialWalletFilter={handleConsumeTransactionsWalletFilter}
+            initialSelectedTxId={transactionsSelectedTx}
+            onConsumeInitialSelectedTx={handleConsumeTransactionsSelectedTx}
             onOpenTransfer={handleOpenTransfer}
             onNavigateToDebts={handleNavigateToDebts}
           />
@@ -254,6 +268,7 @@ const MainApp: React.FC = () => {
             onOpenTransfer={handleOpenTransfer}
             onOpenAddWallet={handleOpenAddWallet}
             onOpenWalletTransactions={handleOpenWalletTransactions}
+            onOpenTransaction={handleOpenTransaction}
           />
         );
     }

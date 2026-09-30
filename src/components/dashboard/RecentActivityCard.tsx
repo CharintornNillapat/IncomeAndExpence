@@ -17,6 +17,8 @@ interface RecentActivityCardProps {
   categories: ReadonlyMap<string, Category>;
   today: string;
   onViewAll: () => void;
+  /** Opens the row on the Transactions page with its edit panel (Phase 58b). Without it the rows are plain text. */
+  onOpenTransaction?: (txId: string) => void;
 }
 
 function itemDate(item: ActivityItem): string {
@@ -40,10 +42,10 @@ function byDay(items: ActivityItem[]): { date: string; items: ActivityItem[] }[]
  * adjustment that was immediately undone folded into one row that expands
  * (L8). The Transactions page still lists both rows of a pair.
  *
- * Rows are `TransactionRow`s without `onSelect`, so they are not buttons yet:
- * editing a row arrives with the Transactions page's editor. Each shows its
- * description exactly once, which `transaction.spec.ts` and
- * `storage-persistence.spec.ts` rely on.
+ * Since Phase 58b each row is a button that opens it on the Transactions page
+ * with its edit panel (audit 005 finding 4). Each shows its description
+ * exactly once, which `transaction.spec.ts` and `storage-persistence.spec.ts`
+ * rely on.
  */
 export const RecentActivityCard: React.FC<RecentActivityCardProps> = ({
   items,
@@ -52,6 +54,7 @@ export const RecentActivityCard: React.FC<RecentActivityCardProps> = ({
   categories,
   today,
   onViewAll,
+  onOpenTransaction,
 }) => {
   const [openPairs, setOpenPairs] = useState<ReadonlySet<string>>(() => new Set());
 
@@ -63,9 +66,13 @@ export const RecentActivityCard: React.FC<RecentActivityCardProps> = ({
       return next;
     });
 
+  // The id prefix is the Dashboard's own: specs match `tx-row-` page-wide
+  // right after a tab switch, and would find these too (CLAUDE.md, Do NOT).
   const row = (tx: Transaction) => (
     <TransactionRow
       key={tx.id}
+      id={onOpenTransaction ? `dashboard-tx-${tx.id}` : undefined}
+      onSelect={onOpenTransaction ? (selected) => onOpenTransaction(selected.id) : undefined}
       tx={tx}
       category={tx.categoryId ? categories.get(tx.categoryId) : undefined}
       wallets={wallets}

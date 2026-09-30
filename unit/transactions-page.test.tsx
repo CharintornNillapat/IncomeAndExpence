@@ -4,6 +4,7 @@ import { render, cleanup, fireEvent, screen, waitFor, within } from '@testing-li
 import { FinanceProvider } from '../src/context/FinanceContext';
 import { TransactionsView } from '../src/views/TransactionsView';
 import { TransactionDetails } from '../src/components/transaction/TransactionDrawer';
+import { RecentActivityCard } from '../src/components/dashboard/RecentActivityCard';
 import { buildLookupMap } from '../src/utils/mapUtils';
 import { formatCurrencyAmount, MINUS } from '../src/utils/currency';
 import { shiftIsoDate, todayIsoDate } from '../src/utils/date';
@@ -145,9 +146,158 @@ describe('the selected row\'s panel holds Delete and Restore', () => {
       { id: 'wal-cash', userId: 'u', name: 'Cash Wallet', type: 'CASH', currency: 'THB', balance: 0, color: '#D9A066', icon: 'x', isArchived: false, isDeleted: false, createdAt: '', updatedAt: '' },
     ]);
     const onDelete = vi.fn().mockResolvedValue({ success: false, error: 'The server did not answer.' });
-    render(<TransactionDetails tx={t} category={undefined} wallets={wallets} onDelete={onDelete} onRestore={vi.fn()} />);
+    render(
+      <TransactionDetails
+        tx={t}
+        category={undefined}
+        wallets={wallets}
+        walletList={[...wallets.values()]}
+        categoryList={[]}
+        onSave={vi.fn()}
+        onDelete={onDelete}
+        onRestore={vi.fn()}
+      />
+    );
     fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
     expect((await screen.findByRole('alert')).textContent).toBe('The server did not answer.');
     expect(onDelete).toHaveBeenCalledWith(t.id);
+  });
+});
+
+describe('the panel edits a live row (Phase 58b, ADR 0033)', () => {
+  const field = (id: string) => document.getElementById(id) as HTMLInputElement | HTMLSelectElement | null;
+
+  it('keeps Save disabled until something changes, then saves the edit through the ledger', async () => {
+    mount([tx({ type: 'EXPENSE', amount: 150, categoryId: 'cat-food', description: 'Edit target' })]);
+    const row = () => rowButtons().find((b) => b.textContent?.includes('Edit target'))!;
+    fireEvent.click(row());
+    const dialog = await screen.findByRole('dialog');
+    const save = within(dialog).getByRole('button', { name: 'Save changes' }) as HTMLButtonElement;
+    expect(save.disabled).toBe(true);
+
+    fireEvent.change(field('tx-edit-amount')!, { target: { value: '150+25' } });
+    expect(within(dialog).getByText(`= ${formatCurrencyAmount(175)}`)).toBeTruthy();
+    expect(save.disabled).toBe(false);
+
+    fireEvent.click(save);
+    await waitFor(() => expect(row().textContent).toContain(formatCurrencyAmount(175)));
+    expect(await within(dialog).findByText('Changes saved')).toBeTruthy();
+    // The saved row is the new baseline, so there is nothing left to save.
+    await waitFor(() => expect(save.disabled).toBe(true));
+  });
+
+  it('says why Save is off when the edit is incomplete', async () => {
+    mount([tx({ type: 'EXPENSE', amount: 150, categoryId: 'cat-food', description: 'Edit target' })]);
+    fireEvent.click(rowButtons()[0]);
+    const dialog = await screen.findByRole('dialog');
+    fireEvent.change(field('tx-edit-amount')!, { target: { value: '0' } });
+    expect(within(dialog).getByRole('status').textContent).toBe('Enter an amount greater than zero');
+    expect((within(dialog).getByRole('button', { name: 'Save changes' }) as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it('swaps Category and Wallet for From and To when the row becomes a transfer', async () => {
+    mount([tx({ type: 'EXPENSE', amount: 150, categoryId: 'cat-food', description: 'Edit target' })]);
+    fireEvent.click(rowButtons()[0]);
+    await screen.findByRole('dialog');
+    expect(field('tx-edit-category')).not.toBeNull();
+
+    fireEvent.click(document.getElementById('tx-edit-type-transfer')!);
+    expect(field('tx-edit-category')).toBeNull();
+    expect(field('tx-edit-from')!.value).toBe('wal-cash');
+    expect(field('tx-edit-to')!.value).not.toBe('wal-cash');
+    expect(field('tx-edit-to')!.value).not.toBe('');
+    // A second wallet was chosen for it, so the transfer can be saved as it stands.
+    expect((screen.getByRole('button', { name: 'Save changes' }) as HTMLButtonElement).disabled).toBe(false);
+  });
+
+  it("offers only a repayment's note and date", async () => {
+    mount([tx({ type: 'DEBT_REPAYMENT', amount: 300, categoryId: 'cat-debt', debtId: 'debt-starter-01', description: 'Loan pay' })]);
+    fireEvent.click(rowButtons()[0]);
+    const dialog = await screen.findByRole('dialog');
+    expect(field('tx-edit-amount')).toBeNull();
+    expect(field('tx-edit-wallet')).toBeNull();
+    expect(document.getElementById('tx-edit-type-income')).toBeNull();
+    expect(field('tx-edit-description')!.value).toBe('Loan pay');
+    expect(field('tx-edit-date')).not.toBeNull();
+    expect(within(dialog).getByText('Only the note and date of a debt repayment can change.')).toBeTruthy();
+  });
+
+  it('shows a failed save instead of discarding it', async () => {
+    const t = tx({ type: 'EXPENSE', amount: 150, categoryId: 'cat-food' });
+    const wallets = buildLookupMap<Wallet>([
+      { id: 'wal-cash', userId: 'u', name: 'Cash Wallet', type: 'CASH', currency: 'THB', balance: 0, color: '#D9A066', icon: 'x', isArchived: false, isDeleted: false, createdAt: '', updatedAt: '' },
+    ]);
+    const onSave = vi.fn().mockResolvedValue({ success: false, error: 'This transaction changed on another device. Check it and try again.' });
+    render(
+      <TransactionDetails
+        tx={t}
+        category={undefined}
+        wallets={wallets}
+        walletList={[...wallets.values()]}
+        categoryList={[]}
+        onSave={onSave}
+        onDelete={vi.fn()}
+        onRestore={vi.fn()}
+      />
+    );
+    fireEvent.change(field('tx-edit-description')!, { target: { value: 'Dinner' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+    expect((await screen.findByRole('alert')).textContent).toBe('This transaction changed on another device. Check it and try again.');
+    expect(onSave).toHaveBeenCalledWith(t.id, expect.objectContaining({ description: 'Dinner', amount: 150, type: 'EXPENSE' }));
+  });
+
+  it('takes a newer version of the row as its baseline, such as one a cloud reload brings', () => {
+    const t = tx({ type: 'EXPENSE', amount: 150, categoryId: 'cat-food', description: 'Before', updatedAt: '2026-09-01T00:00:00.000Z' });
+    const props = {
+      category: undefined,
+      wallets: new Map<string, Wallet>(),
+      walletList: [],
+      categoryList: [],
+      onSave: vi.fn(),
+      onDelete: vi.fn(),
+      onRestore: vi.fn(),
+    };
+    const { rerender } = render(<TransactionDetails tx={t} {...props} />);
+    expect(field('tx-edit-description')!.value).toBe('Before');
+
+    rerender(<TransactionDetails tx={{ ...t, description: 'After', updatedAt: '2026-09-02T00:00:00.000Z' }} {...props} />);
+    expect(field('tx-edit-description')!.value).toBe('After');
+  });
+
+  it('opens the row a Dashboard hand-off names, and reports the hand-off as used', async () => {
+    const target = tx({ type: 'EXPENSE', amount: 150, categoryId: 'cat-food', description: 'Handed off' });
+    localStorage.setItem('pf_transactions', JSON.stringify([tx({ type: 'EXPENSE', amount: 10, categoryId: 'cat-food' }), target]));
+    const consumed = vi.fn();
+    render(
+      <FinanceProvider>
+        <TransactionsView initialSelectedTxId={target.id} onConsumeInitialSelectedTx={consumed} />
+      </FinanceProvider>
+    );
+    const dialog = await screen.findByRole('dialog');
+    expect((within(dialog).getByRole('textbox', { name: 'Note' }) as HTMLInputElement).value).toBe('Handed off');
+    expect(consumed).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("the Dashboard's Recent activity rows open their row (Phase 58b)", () => {
+  it('calls the hand-off with the row id, from a button whose id is the Dashboard\'s own', () => {
+    const t = tx({ type: 'EXPENSE', amount: 150, categoryId: 'cat-food', description: 'Recent row' });
+    const onOpenTransaction = vi.fn();
+    render(
+      <RecentActivityCard
+        items={[{ kind: 'tx', tx: t }]}
+        dayNets={new Map()}
+        wallets={new Map()}
+        categories={new Map()}
+        today={todayIsoDate()}
+        onViewAll={vi.fn()}
+        onOpenTransaction={onOpenTransaction}
+      />
+    );
+    const button = document.getElementById(`dashboard-tx-${t.id}`)!;
+    expect(button.tagName).toBe('BUTTON');
+    expect(document.querySelector('[id^="tx-row-"]')).toBeNull();
+    fireEvent.click(button);
+    expect(onOpenTransaction).toHaveBeenCalledWith(t.id);
   });
 });

@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback, useRef } from 'react';
-import { Download, CheckCircle2, AlertCircle, Sparkles } from 'lucide-react';
+import { Download, CheckCircle2, AlertCircle, Tags } from 'lucide-react';
 import { useFinanceActions, useFinanceState } from '../../context/FinanceContext';
 import { ImportPreviewSummary, ImportRowValidation } from '../../types';
 import { todayIsoDate } from '../../utils/date';
@@ -370,7 +370,7 @@ export const ImportCsvModal: React.FC<ImportCsvModalProps> = ({ isOpen, onClose 
               </span>
 
               {uncategorizedRows.length > 0 && !classifyProgress && (
-                <Button id="csv-classify-btn" onClick={handleClassifyRemaining} icon={<Sparkles className="w-3.5 h-3.5" />}>
+                <Button id="csv-classify-btn" onClick={handleClassifyRemaining} icon={<Tags className="w-3.5 h-3.5" />}>
                   Classify remaining with Jev
                 </Button>
               )}
@@ -479,7 +479,6 @@ export const ImportCsvModal: React.FC<ImportCsvModalProps> = ({ isOpen, onClose 
                                   data-testid={`csv-row-confidence-${row.rowIndex}`}
                                   className="inline-flex items-center gap-1 text-[10px] font-semibold text-brand"
                                 >
-                                  <Sparkles className="w-2.5 h-2.5" />
                                   {Math.round(suggestion.confidence * 100)}%
                                 </span>
                               );
@@ -491,7 +490,6 @@ export const ImportCsvModal: React.FC<ImportCsvModalProps> = ({ isOpen, onClose 
                                 onClick={() => setRowCategory(row.rowIndex, suggestion.categoryId)}
                                 className="inline-flex items-center gap-1 text-[10px] font-semibold text-fg-secondary underline underline-offset-2 hover:text-fg cursor-pointer text-left"
                               >
-                                <Sparkles className="w-2.5 h-2.5 shrink-0" />
                                 {suggestion.categoryName} ({Math.round(suggestion.confidence * 100)}%)
                               </button>
                             );
