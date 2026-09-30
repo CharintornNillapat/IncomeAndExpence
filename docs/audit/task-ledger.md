@@ -1081,7 +1081,7 @@ Approved explicitly by the user, planned and approved before any code was writte
 - **One negative control was redone** because the first attempt produced malformed TypeScript that the dev server still served — the tests failed, but possibly for the wrong reason.
 - **No flakes.** Phase 44's `wallets.spec.ts` webkit flake has now not reproduced across three consecutive phases; still watched rather than closed.
 
-## Phase 58b - Editing a transaction (spec 6.2's edit panel): T253-T266 (2026-09-30)
+## Phase 58b - Editing a transaction (spec 6.2's edit panel): T253-T267 (2026-09-30)
 
 ADR `0033`. The plan was approved in plan mode; the owner's decisions:
 - a new `update_transaction` RPC, probe first, applied only on the owner's word;
@@ -1110,7 +1110,8 @@ Branch `phase-58b-edit`. It also carries `280e70a`, the Phase 58s deploy record,
 | T263 | Gate: lint, unit, WCAG, build, Playwright twice, MCP | - | - | - | 1h | done | all | 336c0ca (MCP fix) | 366/366 twice; MCP clean but for audit 007 finding 1 | see metrics |
 | T264 | ADR `0033`, `DESIGN.md`, `CLAUDE.md`, selector contract | docs | Low | Low | 1h | done | all | 5f19972 | - | - |
 | T265 | Ledger, log, metrics, antislop audit 007 | docs | Low | Low | 0.5h | done | all | 5f19972 | - | - |
-| T266 | sha backfill; PR on the owner's word | docs | Low | Low | 0.1h | backfill done, PR waiting | T265 | (this row's own commit) | - | - |
+| T266 | sha backfill; PR on the owner's word | docs | Low | Low | 0.1h | backfill done (d699ae6); draft PR on the owner's word, 2026-10-01 | T265 | d699ae6 | - | - |
+| T267 | Audit 007 finding 2: a repayment's or adjustment's panel names its wallet, and a repayment its debt | `EditTransactionPanel.tsx`, `TransactionDrawer.tsx`, `TransactionsView.tsx`, `unit/transactions-page.test.tsx` | Low | Low | 0.2h | done | the owner | (this row's own commit) | a control that dropped the debt failed its test; 366/366 | unit 470 -> 471 |
 
 **Notes on execution:**
 - **The probe earned its keep on its first run.** The amount check also covered adjustments, whose amounts are signed since ADR `0024`, so a note edit of a downward adjustment was refused. The money checks now apply to income, expense and transfer only, and probe step 10 pins the case.

@@ -78,7 +78,7 @@ There is no overdraft check (ADR `0014`).
 - **Placement:** it is the selected row's drawer body for a live row. A deleted row keeps the read-only details and Restore ("Restore it to edit it").
 - **The amount field** is a plain input that also takes a formula through `safeEvaluateMath`, the add form's evaluator. That lets it be 24px and coloured by type as the spec asks; `InlineMathInput`'s fixed styling could not. A formula becomes `rawInput`, a plain number clears it, and an untouched amount keeps the row's.
 - **Type changes:** switching to a transfer clears the category and picks a second wallet. A From or To select with no choice shows "Choose a wallet" rather than a wallet the draft does not hold.
-- **Repayment and adjustment:** the money is shown as text, with a line saying only the note and date can change.
+- **Repayment and adjustment:** the money is shown as text, with its wallet (and a repayment's debt) named read-only below it (T267, audit 007 finding 2), and a line saying only the note and date can change.
 - **Save changes** is disabled until something changes. It says why when the edit is incomplete ("Enter an amount greater than zero"), shows a failure in the alert banner, and reports "Changes saved".
 - **Baseline:** a newer version of the row, from a save or a cloud reload, becomes the panel's baseline.
 - Field ids are `tx-edit-*`; Save is `tx-save-btn-{id}`. None starts with `tx-row-`.

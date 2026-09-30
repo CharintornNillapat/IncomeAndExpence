@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import type { Category, Transaction, TransactionEdit, Wallet } from '../../types';
+import type { Category, Debt, Transaction, TransactionEdit, Wallet } from '../../types';
 import { Button } from '../ui/Button';
 import { EditTransactionPanel } from './EditTransactionPanel';
 import { Chip } from '../ui/Chip';
@@ -23,6 +23,8 @@ interface TransactionDetailsProps {
   /** The same wallets and every category, for the edit panel's selects. */
   walletList: Wallet[];
   categoryList: Category[];
+  /** The debt a repayment paid, if it still resolves. */
+  debt?: Debt;
   onSave: (id: string, edit: TransactionEdit) => Promise<WriteResult>;
   onDelete: (id: string) => Promise<WriteResult>;
   onRestore: (id: string) => Promise<WriteResult>;
@@ -55,6 +57,7 @@ export const TransactionDetails: React.FC<TransactionDetailsProps> = (props) =>
       tx={props.tx}
       wallets={props.walletList}
       categories={props.categoryList}
+      debt={props.debt}
       onSave={props.onSave}
       onDelete={props.onDelete}
     />

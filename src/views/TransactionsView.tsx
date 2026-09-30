@@ -204,6 +204,7 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
   }, [selectedTxId, isWide]);
 
   const selectedCategory = selectedTx?.categoryId ? categoryMap.get(selectedTx.categoryId) : undefined;
+  const selectedDebt = selectedTx?.debtId ? debts.find((d) => d.id === selectedTx.debtId) : undefined;
   const details = selectedTx && (
     <TransactionDetails
       tx={selectedTx}
@@ -211,6 +212,7 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
       wallets={walletMap}
       walletList={wallets}
       categoryList={categories}
+      debt={selectedDebt}
       onSave={updateTransaction}
       onDelete={deleteTransaction}
       onRestore={restoreTransaction}

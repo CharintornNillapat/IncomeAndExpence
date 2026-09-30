@@ -1085,10 +1085,12 @@ Per chunk (raw bytes; every other chunk, every vendor chunk included, is byte-id
 
 **CSS grew 492 B**: `@xs:grid-cols-2`, `focus-within:ring-*` for the amount box, and the panel's 24px amount.
 
+**T267** (audit 007 finding 2) added the read-only wallet and debt lines to the lazy `TransactionsView` chunk (34.62 kB, 10.90 kB gzip after it); the entry is unchanged at 178.45 kB, and the precache went from 1,632.83 to 1,633.53 KiB.
+
 | Suite | Files | Tests | Runs | Wall clock |
 |---|---|---|---|---|
 | Playwright (local, 4 workers) | 24 | 122 | 366 | 5.3 / 5.1 m (two runs) |
-| Vitest (`unit/`) | 22 | 470 | 470 | ~33 s |
+| Vitest (`unit/`) | 22 | 471 (470 before T267) | 471 | ~33 s |
 
 **Intermittent local failures:** none in 732 full-suite runs.
 

@@ -179,7 +179,7 @@ One period for the whole page, chosen in the `PageHeader`. Every figure comes fr
 - **List:** one card, with a summary line at the top (the range, In, Out, and what is not counted). Below it, `DayGroupHeader`s and `TransactionRow` buttons, inset 8px so a row's focus ring has room, and "Load 25 more" at the foot.
 - **Panel:** the selected row's edit panel. It sits inline at 4/12 beside the list from `lg` and opens as a sheet or dialog below that. The choice is made in JavaScript, so it is never rendered twice. The selected row takes the soft violet with a 3px violet edge.
   - **For income, expense and transfer:** a type control, the amount at 24px in the type's colour (it takes a sum, like `100+50`), the note, Category and Wallet side by side when there is room (From and To for a transfer), the date, then "Save changes" (primary) beside "Delete" (danger).
-  - **For a repayment or an adjustment:** the money as text with one line saying only the note and date can change, then the note and date fields.
+  - **For a repayment or an adjustment:** the money as text, its wallet (and a repayment's debt) as read-only lines, one line saying only the note and date can change, then the note and date fields.
   - **Save changes is disabled until something changes.** The line above it says why when the edit is incomplete, and "Changes saved" after a save. A failure shows in the red banner.
   - **For a deleted row:** its details, read-only, with Restore.
 - **No trash button on a row.** Deleting happens in the panel.

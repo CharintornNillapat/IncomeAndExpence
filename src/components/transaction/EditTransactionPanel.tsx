@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import type { Category, Transaction, TransactionEdit, TransactionType, Wallet } from '../../types';
+import type { Category, Debt, Transaction, TransactionEdit, TransactionType, Wallet } from '../../types';
 import { Button } from '../ui/Button';
 import { SegmentedControl } from '../ui/SegmentedControl';
 import { TxAmount } from './TxCells';
@@ -37,6 +37,8 @@ interface EditTransactionPanelProps {
   wallets: Wallet[];
   /** Every category; the select offers the live ones plus the row's own. */
   categories: Category[];
+  /** The debt a repayment paid, named read-only since its money cannot change. */
+  debt?: Debt;
   onSave: (id: string, edit: TransactionEdit) => Promise<WriteResult>;
   onDelete: (id: string) => Promise<WriteResult>;
 }
@@ -74,7 +76,7 @@ function draftOf(tx: Transaction): Draft {
  * coloured by type as the spec asks. A formula becomes the row's `rawInput`; a
  * plain number clears it, and an untouched amount keeps whatever the row had.
  */
-export const EditTransactionPanel: React.FC<EditTransactionPanelProps> = ({ tx, wallets, categories, onSave, onDelete }) => {
+export const EditTransactionPanel: React.FC<EditTransactionPanelProps> = ({ tx, wallets, categories, debt, onSave, onDelete }) => {
   const [draft, setDraft] = useState<Draft>(() => draftOf(tx));
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
@@ -196,6 +198,8 @@ export const EditTransactionPanel: React.FC<EditTransactionPanelProps> = ({ tx, 
   );
 
   const meta = txTypeMetaFor(draft.type, amount ?? tx.amount);
+  const lockedWallet = wallets.find((w) => w.id === tx.walletId);
+  const lockedWalletName = lockedWallet ? walletLabel(lockedWallet) : 'Unknown wallet';
 
   return (
     <div className="flex flex-col gap-4 @container">
@@ -238,7 +242,19 @@ export const EditTransactionPanel: React.FC<EditTransactionPanelProps> = ({ tx, 
         <div className="flex flex-col gap-1">
           <span className="text-xs font-semibold uppercase tracking-wider text-fg-secondary">{meta.label}</span>
           <TxAmount amount={tx.amount} type={tx.type} className="text-2xl" />
-          <span className="text-xs text-fg-muted">Only the note and date of a {tx.type === 'ADJUSTMENT' ? 'balance adjustment' : 'debt repayment'} can change.</span>
+          <dl className="flex flex-col gap-1 mt-2 text-sm">
+            <div className="flex justify-between gap-4">
+              <dt className="text-fg-muted shrink-0">Wallet</dt>
+              <dd className="text-fg text-right min-w-0 break-words">{lockedWalletName}</dd>
+            </div>
+            {tx.type === 'DEBT_REPAYMENT' && (
+              <div className="flex justify-between gap-4">
+                <dt className="text-fg-muted shrink-0">Debt</dt>
+                <dd className="text-fg text-right min-w-0 break-words">{debt?.name ?? 'Unknown debt'}</dd>
+              </div>
+            )}
+          </dl>
+          <span className="text-xs text-fg-muted mt-1">Only the note and date of a {tx.type === 'ADJUSTMENT' ? 'balance adjustment' : 'debt repayment'} can change.</span>
         </div>
       )}
 

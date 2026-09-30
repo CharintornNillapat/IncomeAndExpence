@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 58b - Editing a transaction (spec 6.2's edit panel): T253-T266 (2026-09-30, commits `dc166a0`...`5f19972`)
+## Phase 58b - Editing a transaction (spec 6.2's edit panel): T253-T267 (2026-09-30, commits `dc166a0`...`5f19972`, and T267's own)
 
 **Changed**
 - **Database, applied live on 2026-09-30:** `update_transaction` (`20260930_phase58b_update_transaction.sql`).
@@ -19,8 +19,9 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
   - The panel is inline from `lg`, and the header reads "Click any row to edit it".
   - The Dashboard's Recent activity rows are buttons (`dashboard-tx-`) that open their row through an `App.tsx` hand-off.
   - The CSV import's sparkle icons are gone.
+  - T267 (audit 007 finding 2, on the owner's word): a repayment's or an adjustment's panel names its wallet, and a repayment's names its debt, read-only.
 - **Tests:**
-  - an `update_transaction` stand-in and 10 signed-in tests, 9 guest tests, and 8 page tests: unit 443 -> 470;
+  - an `update_transaction` stand-in and 10 signed-in tests, 9 guest tests, and 8 page tests: unit 443 -> 470, and T267's test: 471;
   - `tests/transaction-edit.spec.ts` (3 guest tests): E2E 357 -> 366 runs;
   - the SQL probe.
 - **Docs:** ADR `0033`, `DESIGN.md` (the panel; two deviations added, one retired), `CLAUDE.md`, `test-selector-contract.md`, antislop audit 007.

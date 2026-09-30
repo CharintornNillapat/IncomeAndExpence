@@ -220,6 +220,17 @@ describe('the panel edits a live row (Phase 58b, ADR 0033)', () => {
     expect(field('tx-edit-description')!.value).toBe('Loan pay');
     expect(field('tx-edit-date')).not.toBeNull();
     expect(within(dialog).getByText('Only the note and date of a debt repayment can change.')).toBeTruthy();
+    // Its money is read-only, so the panel names where it went (audit 007 finding 2).
+    expect(within(dialog).getByText('Wallet').nextElementSibling!.textContent).toBe('Cash Wallet');
+    expect(within(dialog).getByText('Debt').nextElementSibling!.textContent).toBe('Student Loan');
+  });
+
+  it("names an adjustment's wallet, and no debt", async () => {
+    mount([tx({ type: 'ADJUSTMENT', amount: -40, categoryId: 'cat-adjust', description: 'Recount' })]);
+    fireEvent.click(rowButtons()[0]);
+    const dialog = await screen.findByRole('dialog');
+    expect(within(dialog).getByText('Wallet').nextElementSibling!.textContent).toBe('Cash Wallet');
+    expect(within(dialog).queryByText('Debt')).toBeNull();
   });
 
   it('shows a failed save instead of discarding it', async () => {
