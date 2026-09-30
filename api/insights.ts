@@ -21,6 +21,9 @@ import type { InsightsRequest, InsightsResponse, SpendingSummary } from '../src/
  * `instructions`/`criteria`/`model`/`state`/`questions`, this would be an open
  * relay for arbitrary Jev prompts billed to this project's key.
  *
+ * Who may call it is `checkCaller`'s job (ADR 0032), the same rule as
+ * `classify.ts`.
+ *
  * PRIVACY: the body carries no transaction text, no ids, no wallet names and
  * no individual amounts - see `SpendingSummary` in `src/types.ts`. Nothing
  * here is logged.
@@ -73,6 +76,57 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
 
 function isFiniteNumber(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value);
+}
+
+// --- Caller check (ADR 0032) -------------------------------------------------
+// A copy of `classify.ts`'s, on purpose: see the note there on why the two
+// functions share no runtime module. Change both copies together.
+
+const AUTH_TIMEOUT_MS = 3000;
+const VERIFIED_TOKEN_TTL_MS = 60_000;
+const MAX_VERIFIED_TOKENS = 500;
+
+/** Access tokens the auth server accepted recently, to their expiry (ms). Per warm instance only. */
+const verifiedTokens = new Map<string, number>();
+
+/**
+ * Returns `null` to go on, or the response to send instead. No header is a
+ * guest (limited per IP by the Vercel firewall); a malformed header or a token
+ * the auth server refuses is 401; no answer from it is 503. See `classify.ts`.
+ */
+async function checkCaller(req: Request): Promise<Response | null> {
+  const header = req.headers.get('Authorization');
+  if (header === null) return null;
+
+  // The scheme is case-insensitive (RFC 7235); the token is one run of non-space.
+  const match = /^Bearer (\S+)$/i.exec(header);
+  if (!match) return json({ error: 'Unauthorized.' }, 401);
+  const token = match[1];
+
+  const now = Date.now();
+  const expiry = verifiedTokens.get(token);
+  if (expiry !== undefined && expiry > now) return null;
+
+  const supabaseUrl = process.env.VITE_SUPABASE_URL;
+  const anonKey = process.env.VITE_SUPABASE_ANON_KEY;
+  if (!supabaseUrl || !anonKey) return json({ error: 'Sign-in check unavailable.' }, 503);
+
+  let res: Response;
+  try {
+    res = await fetch(`${supabaseUrl.replace(/\/+$/, '')}/auth/v1/user`, {
+      headers: { apikey: anonKey, Authorization: `Bearer ${token}` },
+      signal: AbortSignal.timeout(AUTH_TIMEOUT_MS),
+    });
+  } catch {
+    return json({ error: 'Sign-in check unavailable.' }, 503);
+  }
+
+  if (res.status === 401 || res.status === 403) return json({ error: 'Unauthorized.' }, 401);
+  if (!res.ok) return json({ error: 'Sign-in check unavailable.' }, 503);
+
+  if (verifiedTokens.size >= MAX_VERIFIED_TOKENS) verifiedTokens.clear();
+  verifiedTokens.set(token, now + VERIFIED_TOKEN_TTL_MS);
+  return null;
 }
 
 /**
@@ -154,6 +208,9 @@ export async function POST(req: Request): Promise<Response> {
     // back to the local pattern silently. Same reasoning as ADR 0011.
     return json({ error: 'Insights are not configured.' }, 404);
   }
+
+  const refused = await checkCaller(req);
+  if (refused) return refused;
 
   let body: unknown;
   try {

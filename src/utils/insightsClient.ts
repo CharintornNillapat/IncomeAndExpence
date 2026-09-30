@@ -1,5 +1,6 @@
 import type { InsightsResponse, SpendingSummary } from '../types';
 import { selectLocalPattern } from './spendingSummary';
+import { authorizationHeader } from '../lib/supabase';
 
 /**
  * Browser client for the monthly-insights proxy (ADR 0020).
@@ -93,7 +94,9 @@ export async function fetchInsight(
   try {
     const res = await fetch(INSIGHTS_ENDPOINT, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      // Signed in, the access token; a guest sends none (ADR 0032). A refused
+      // token is a 401, which falls to the local verdict below without latching.
+      headers: { 'Content-Type': 'application/json', ...(await authorizationHeader()) },
       // The summary and nothing else. See `SpendingSummary` for what is
       // deliberately absent; a test asserts this body carries no ledger text.
       body: JSON.stringify({ summary }),

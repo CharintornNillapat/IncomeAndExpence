@@ -1,4 +1,5 @@
 import type { ClassifyCandidate, ClassifyResponse, Category, TransactionType } from '../types';
+import { authorizationHeader } from '../lib/supabase';
 
 /**
  * Browser client for the Jev classification proxy at `/api/classify`.
@@ -163,7 +164,11 @@ export type ClassifyOutcome =
   | { kind: 'no-answer' }
   /** HTTP 429. Retryable after a wait. */
   | { kind: 'rate-limited' }
-  /** The endpoint is absent or has latched off. Every subsequent call is pointless. */
+  /**
+   * The endpoint is absent or has latched off, so every subsequent call is
+   * pointless - or it refused this caller's sign-in (401, ADR 0032), which no
+   * retry in this batch will fix. Only the 404 latches for the session.
+   */
   | { kind: 'unavailable' }
   /** Aborted, timed out, 5xx, malformed JSON, offline. Not worth retrying in a batch. */
   | { kind: 'failed' };
@@ -195,7 +200,8 @@ export async function classifyOnce(
   try {
     const res = await fetch(CLASSIFY_ENDPOINT, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      // Signed in, the access token; a guest sends none (ADR 0032).
+      headers: { 'Content-Type': 'application/json', ...(await authorizationHeader()) },
       body: JSON.stringify({ text: text.trim(), categories: candidates }),
       signal: combined,
     });
@@ -209,6 +215,10 @@ export async function classifyOnce(
 
     // Retryable, and the only status a batch should wait and re-attempt on.
     if (res.status === 429) return { kind: 'rate-limited' };
+
+    // The proxy refused this sign-in (ADR 0032). A batch stops; the session
+    // does not latch, because a refreshed token on the next call may pass.
+    if (res.status === 401) return { kind: 'unavailable' };
 
     if (!res.ok) return { kind: 'failed' };
 
