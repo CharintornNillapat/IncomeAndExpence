@@ -82,6 +82,20 @@ describe('L7: a transfer names its wallets and has no category', () => {
     expect(displayTitle(transfer, undefined)).toBe('Transfer');
     expect(secondaryLine(transfer, WALLETS)).toBe('Main → Cash');
   });
+
+  // Phase 58a (ADR 0031): the title is always "Transfer", so a note the user
+  // wrote would otherwise vanish from the row. It rides on the second line.
+  it('keeps a note the user wrote on the second line', () => {
+    const noted = tx({ type: 'TRANSFER', walletId: 'main', destinationWalletId: 'cash', description: 'Funds transfer' });
+    expect(secondaryLine(noted, WALLETS)).toBe('Main → Cash · Funds transfer');
+  });
+
+  it('adds nothing for an empty note or either default', () => {
+    for (const description of ['', '  ', 'Transaction', 'Transfer between wallets']) {
+      const plain = tx({ type: 'TRANSFER', walletId: 'main', destinationWalletId: 'cash', description });
+      expect(secondaryLine(plain, WALLETS)).toBe('Main → Cash');
+    }
+  });
 });
 
 describe('L6: an empty or default description falls back to the category', () => {

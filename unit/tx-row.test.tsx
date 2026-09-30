@@ -72,6 +72,22 @@ describe('TransactionRow', () => {
     expect(text).not.toContain('Uncategorized');
   });
 
+  // Phase 58a (ADR 0031): the Transactions page groups rows under a day
+  // header, but each row still carries its own ISO date for assistive
+  // technology and for `presets.spec.ts`, which filters rows by it.
+  it('carries its date as hidden text when asked to', () => {
+    const { container } = render(
+      <TransactionRow tx={tx({ type: 'EXPENSE', transactionDate: '2026-09-18' })} category={undefined} wallets={WALLETS} dateText="2026-09-18" />,
+    );
+    const date = [...container.querySelectorAll('.sr-only')].find((el) => el.textContent?.includes('2026-09-18'));
+    expect(date).toBeTruthy();
+    expect(container.textContent).toContain('2026-09-18');
+  });
+
+  it('prints no date unless asked to', () => {
+    expect(rowText(tx({ type: 'EXPENSE', transactionDate: '2026-09-18' }))).not.toContain('2026-09-18');
+  });
+
   it('signs a transfer by direction inside one wallet', () => {
     const transfer = tx({ type: 'TRANSFER', walletId: 'main', destinationWalletId: 'cash', amount: 500 });
     expect(rowText(transfer, 'cash')).toContain('+฿500.00');

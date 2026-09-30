@@ -38,10 +38,12 @@ export const TxTypeIcon: React.FC<TxTypeIconProps> = ({ type, amount, variant = 
   const Icon = variant === 'compact' ? meta.compactIcon : meta.icon;
   const tint = tintOverride ?? meta.tint;
 
+  // A <span>, not a <div>: since Phase 58a the tile sits inside a
+  // `TransactionRow` <button>, which may hold phrasing content only.
   return (
-    <div className={`${ICON_BOX_SIZE_CLASS[size]} flex items-center justify-center shrink-0 ${tint} ${className}`.trim()}>
+    <span aria-hidden="true" className={`${ICON_BOX_SIZE_CLASS[size]} flex items-center justify-center shrink-0 ${tint} ${className}`.trim()}>
       <Icon className={size === 'lg' ? 'w-4 h-4' : 'w-3.5 h-3.5'} />
-    </div>
+    </span>
   );
 };
 

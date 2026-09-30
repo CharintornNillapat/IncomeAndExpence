@@ -161,6 +161,28 @@ describe('OverflowMenu', () => {
     return { trigger, onArchive, onDelete };
   };
 
+  // Phase 58a (ADR 0031): the Transactions page's "Import / export" menu.
+  it('can draw its trigger as a text button with its own id, and returns focus to it', () => {
+    const onImport = vi.fn();
+    render(
+      <OverflowMenu
+        label="Import or export transactions"
+        triggerLabel="Import / export"
+        triggerId="tx-import-export-btn"
+        items={[{ id: 'tx-import-csv-btn', label: 'Import CSV', onSelect: onImport }]}
+      />,
+    );
+    const trigger = document.getElementById('tx-import-export-btn')!;
+    expect(trigger.tagName).toBe('BUTTON');
+    expect(trigger.textContent).toBe('Import / export');
+    expect(trigger.getAttribute('aria-haspopup')).toBe('menu');
+    fireEvent.click(trigger);
+    expect(screen.getByRole('menu').getAttribute('aria-label')).toBe('Import or export transactions');
+    fireEvent.keyDown(document.getElementById('tx-import-csv-btn')!, { key: 'Escape' });
+    expect(screen.queryByRole('menu')).toBeNull();
+    expect(document.activeElement).toBe(trigger);
+  });
+
   it('starts closed, as a named menu button', () => {
     const { trigger } = setup();
     expect(trigger.getAttribute('aria-haspopup')).toBe('menu');
