@@ -4,6 +4,64 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
+## Phase 63 - The identity colour migration (spec 5.1): T329-T337 (2026-10-02, commits `1f09894`, `cdda81d`, docs `DOCS63`)
+
+**Changed**
+- **One data-only migration,** `supabase/migrations/20261002_phase63_identity_colors.sql`, with its probe. It is applied to the live project only after the merge and the deploy, on the owner's word.
+- **Logic:** `utils/identityColorMigration.ts` moves each live shipped category and starter wallet still on its old colour onto spec 5.1's identity colour. The match is by name and old colour. A target another category already holds becomes the first free identity colour (L9). The SQL does the same in the cloud, plus spec 5.1's own rows (camel, กิจนิมนต์, and Cash, Main and Sub).
+- **Seeds:** guests and new accounts start on the new colours. The System pair is `#6B7385`.
+- **Hydration:** `pf_categories` and `pf_wallets` pass through the migration when they load. The Supabase load does not.
+- **Copy:**
+  - "Color" throughout: "Theme Color" and the "Colour" legend are gone;
+  - wallet swatches are named by colour, not hex;
+  - the swatch reads "Current color";
+  - a System category's rule chip uses the System grey.
+- **Fixed:**
+  - every shipped category and starter wallet wore a money colour;
+  - the owner's camel and กิจนิมนต์ each shared a colour with a shipped category (L9).
+- **Tests:**
+  - `unit/identity-color-migration.test.ts` (9);
+  - 3 hydration and seed tests in `categories-page`, 2 in `wallets-page` and 1 in `authenticated-ledger`, plus a new "no Current color for a shipped category" test;
+  - the Phase 62 fixtures moved to the new colours, and the "older colour kept on Save" test now uses a custom category;
+  - unit 562 -> 578 in 27 files. No spec edits.
+- **Docs:** ADR `0038`, `DESIGN.md`, `CLAUDE.md`, antislop audit 012.
+
+**Surprises**
+- **The live duplicates.** The owner's account holds each shipped category 4 times (38 live rows, 11 names). `20260920_dedupe_categories.sql` is in the repo but was never applied to the live project. Left alone by decision.
+- **The cap now arrives early.** With the shipped categories on the palette, L9 leaves a fresh account 5 free colours and the owner's account 3 (audit 012 finding 1).
+
+**Gate:**
+- **Lint:** clean. **Unit:** 578/578.
+- **Controls:** 6 caught. Each of these failed its test:
+  - the collision rule off;
+  - a picked colour overwritten;
+  - a deleted row migrated;
+  - the category hydration seam removed;
+  - the wallet hydration seam removed;
+  - the old cloud seed colour.
+- **Probe:** `PHASE 63 PROBE OK` inside `BEGIN ... ROLLBACK` against the live schema, and no fixture rows left behind. A read-only preview lists exactly the rows the migration will move:
+  - the owner's account: 38 category rows (4 × 9 shipped, camel, กิจนิมนต์) and 3 wallets;
+  - the second account: 9 category rows and 3 wallets.
+
+  No live Expense or Income category is already on an identity colour, so nothing will collide.
+- **Playwright (local):**
+  - **Run 1:** 398/402 (7.4 min), run while two worktree builds competed for the CPU. Each failure was a click waiting for an element to settle, or a Firefox graphics-process crash:
+    - Firefox: `account-and-mobile-nav.spec.ts` ×2 and `categories.spec.ts`;
+    - WebKit: `voice-input.spec.ts`.
+
+    Those files then passed 60/60 on Firefox and 24/24 on WebKit.
+  - **Run 2:** 401/402 (6.5 min) on an idle machine. WebKit `transaction-edit.spec.ts`: a row "not stable" before the click. The file then passed 15/15.
+- **Build** against `main` (`ba87338`), both with `.env`. `main`'s entry is 185,111 B, the same as production.
+  - **Entry:** +1,817 B: the migration module, and `identityPalette`, which it pulls into the entry.
+  - **All JS:** +1,167 B. **CSS:** unchanged.
+  - **Precache:** 59 to 58 entries.
+- **Walk-through** (Playwright's Chromium by script):
+  - **Viewports and seeds:** at 1280 light, with old-colour storage and fresh; at 390 light and dark, with old-colour storage.
+  - **No old colour painted** on the Dashboard, Categories or Wallets.
+  - **Categories:** Rose reads "Rose, used by Food & Dining", 7 swatches are struck, and Tan is offered first.
+  - **Wallets:** the tiles are Blue, Tan and Teal; the edit form's legend reads "Color", with swatches "Tan" to "Iris".
+  - **Everywhere:** no overflow, 0 controls under 44px, and no console errors.
+
 ## Phase 62 - The Categories page (spec 6.6): T314-T328 (2026-10-01, commits `58b5d75`, `f8c62a0`, `837d442`, docs `03a1311`)
 
 **Changed**

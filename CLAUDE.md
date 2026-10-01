@@ -33,7 +33,7 @@ FinLife Tracker is a full-stack personal finance and holistic lifestyle manageme
 │   ├── lib/             # Supabase client setup (supabase.ts)
 │   ├── selectors/       # Pure money rules (ADR 0028): ledger, timeRange, wallets, debts, display, adjustments, categories, pagination
 │   ├── utils/           # Pure helpers: currency, date, mathEvaluator, smartMatcher,
-│   │                    # expressInput, jevClassifier, zodSchemas, csvExchange, walletIcons, identityPalette
+│   │                    # expressInput, jevClassifier, zodSchemas, csvExchange, walletIcons, identityPalette, identityColorMigration
 │   ├── views/           # Route views lazy-loaded via React.lazy in App.tsx
 │   ├── App.tsx          # Root shell with gesture handlers and tab navigation
 │   ├── main.tsx         # Application entry point
@@ -271,7 +271,8 @@ The Wallets page is the **one** place a wallet is inspected, edited, adjusted, a
 ## Categories page: one colour each, a locked System group (ADR `0037`)
 - **The list is three groups by type** (`categoryGroups`): Expense, Income and System, where System is `isMovementCategory`, matched by type. A row is `li#category-row-{id}` holding one `button#edit-category-{id}`; a System row is not a button and names itself with `systemCategoryLabel`.
 - **L9 is enforced twice:** the colour grid disables a colour another live category uses, with a strike and the name ("Rose, used by Pets"), and `addCategory`/`updateCategory` refuse it from `categoriesRef`. `updateCategory` checks only when the colour changes, so a category already sharing a colour from before L9 can still be renamed.
-- **A stored colour outside the twelve is shown as a "Current colour" swatch** and kept on Save. Every shipped category is in that state until spec 5.1's migration (Phase 63); without it a Save would force a recolour.
+- **A stored colour outside the twelve is shown as a "Current color" swatch** and kept on Save; without it a Save would force a recolour. Since Phase 63 only a custom category picked before Phase 62 is in that state.
+- **Spec 5.1's colour migration (Phase 63, ADR `0038`) runs in two places that must move together:** `utils/identityColorMigration.ts` on what a device stores (the `pf_categories` and `pf_wallets` hydration, never the Supabase load) and `supabase/migrations/20261002_phase63_identity_colors.sql` in the cloud. A row moves only while it is live and still on its shipped colour, matched by name and old colour; a target another category holds becomes the first free identity colour (L9). The seeds start on the new colours.
 - **Delete only an unused custom category** (owner's decision). Delete sits in the edit form, disabled with "Used by N transactions and M rules"; a default has none. `categories.spec.ts` opens the row's form before any Delete assertion, so a count-0 check is never vacuous.
 - **One render path:** from `lg` the form switches between New and Edit in place; below it an edit opens in a `Modal` sheet (`useMediaQuery`, as on the Wallets page).
 - **The Smart rules tab is `SmartRulesPanel`**, unchanged in behaviour: `keywords.spec.ts` and `smart-rules.spec.ts` depend on `#category-subtab-rules`, `#new-keyword-input`, `#keyword-category-select`, `#save-keyword-rule-btn`, `#test-parser-input`, the `metric-*` testids and `rule-row-*`. Types read as words ("Groceries (Expense)").
@@ -366,6 +367,9 @@ Without it, `FinanceContext` falls back to the legacy non-atomic path (three sep
 - **Nothing in the app reads or writes `profiles`, and nothing should start writing it from the client.** `role` is changeable only by the service role now, which is what would let a future policy trust it.
 - Probe: `supabase/tests/20260930_phase58s.probe.sql`.
 
+### Phase 63 (ADR `0038`)
+`supabase/migrations/20261002_phase63_identity_colors.sql` is a **data-only**, idempotent migration: spec 5.1's colour moves for every live row still on its shipped colour, with the L9 collision rule. It is applied **after** the code that seeds the new colours is deployed, so no older seed lands after it; running it again catches a cached older client's seed. Probe: `supabase/tests/20261002_phase63.probe.sql`. Not yet applied to the live project.
+
 ### Atomic ledger writes (ADR `0023`)
 `supabase/migrations/20260927_ledger_rpcs.sql` (applied to the live project on 2026-09-27) moves every other signed-in ledger write into RPCs that lock the rows they touch, apply **relative** updates, and replay on the idempotency key:
 - `record_transaction` — `addTransaction` for every type **except TRANSFER** (it rejects TRANSFER; `transfer_funds` stays the one transfer implementation).
@@ -414,7 +418,7 @@ Two suites, with a hard boundary between them — see "Unit tests" below for why
 - **CI Mode** (Phase 55-CI): a `checks` job (lint, unit) gates one E2E job per browser (`--project=<browser>`, matrix, `fail-fast: false`), each with 2 workers and retries. Browser binaries are cached by lockfile hash; a hit still runs `install-deps`. Pushes and PRs that touch only `docs/`, `anti-slop/` or Markdown skip the workflow, and a newer push cancels an older run on the same ref.
 
 ## Unit tests: what the browser cannot reach
-`npm run test:unit` runs Vitest over **`unit/`** — 562 tests in 26 files, ~35 s (ADR `0021`, extended by `0022`, `0023`, `0024`, `0026`, `0027`, `0028`, `0029`, `0030`, `0031`, `0032`, `0033`, `0034`, `0035`, `0036` and `0037`; the reconnect tests' debounce windows and the sign-out tests' 400 ms writer waits are most of the growth from ~3 s). It exists because four phases in a row closed with a coverage hole for the same structural reason, not because E2E coverage was thin.
+`npm run test:unit` runs Vitest over **`unit/`** — 578 tests in 27 files, ~35 s (ADR `0021`, extended by `0022`, `0023`, `0024`, `0026`, `0027`, `0028`, `0029`, `0030`, `0031`, `0032`, `0033`, `0034`, `0035`, `0036`, `0037` and `0038`; the reconnect tests' debounce windows and the sign-out tests' 400 ms writer waits are most of the growth from ~3 s). It exists because four phases in a row closed with a coverage hole for the same structural reason, not because E2E coverage was thin.
 - **The directory is `unit/`, not `tests/unit/`, and that is load-bearing.** Two default globs collide. Vitest's default `include` is `**/*.{test,spec}.?(c|m)[jt]s?(x)`, which collects all 22 Playwright specs. Playwright's default `testMatch` is `**/*.@(spec|test).?(c|m)[jt]s?(x)` — note `@(spec|test)` — which collects `*.test.ts` as readily as `*.spec.ts`. So the boundary is pinned three times: a directory `testDir: './tests'` cannot see, an explicit `include` in `vitest.config.ts`, and an explicit `testMatch: '**/*.spec.ts'` in `playwright.config.ts`. The last is redundant today **on purpose** — it makes a future move of the unit tests under `tests/` read as the breaking change it is.
 - **`vitest.config.ts` is its own file, never a `test` key on `vite.config.ts`.** `vite build` does not read it, which makes zero production bundle impact structural rather than a matter of discipline.
 - **`environment: 'node'` is the default; the two DOM suites opt in per file** with a `// @vitest-environment jsdom` docblock. The pure-module suites never touch jsdom's `AbortSignal`, `fetch` or timer surfaces, which differ from Node's in ways that fail about the environment rather than the code.
@@ -528,6 +532,7 @@ Refer to `.env.example`:
 - Do NOT measure a bundle delta against a worktree build without the repo's `.env` copied in; `VITE_` values are inlined into the entry.
 - Do NOT let two live categories take the same colour (L9), and do NOT let a System category (Debt repayment, Balance adjustment) be edited or deleted; `addCategory`/`updateCategory` refuse both (ADR `0037`).
 - Do NOT make a System category row a button or print a category's raw type on the Categories page; use `systemCategoryLabel` and the group it sits in.
+- Do NOT remap colours on the Supabase load, and do NOT change one copy of spec 5.1's migration (`identityColorMigration.ts`, the Phase 63 SQL) without the other; a colour someone picked never moves (ADR `0038`).
 
 <!-- antislop:start -->
 ## antislop

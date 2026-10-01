@@ -1098,6 +1098,32 @@ The entry's growth is the ledger action itself, which lives with the other ledge
 
 **Intermittent local failures:** 6 in 1,071 full-suite runs (3 full runs). All were timeouts: a Firefox `goto`, a Firefox context close, and four WebKit clicks waiting for "stable". No assertion failed. See audit 005 finding 3 for the control runs.
 
+## Phase 63 (the identity colour migration) - delta against Phase 62
+
+`main` (`ba87338`, the Phase 62 merge) and the Phase 63 tree (`cdda81d`) were each built in a separate worktree with the repo's `.env` copied in. `main`'s entry measured 185,111 B, byte-identical to production. Gzip is `zlib` level 9.
+
+| Chunk | Phase 62 | Phase 63 | Delta |
+|---|---|---|---|
+| entry `index-*.js` | 185,111 B / 52,884 B gzip | 186,928 B / 53,513 B gzip | **+1,817 B raw / +629 B gzip** |
+| **all JS, summed** | 1,359,986 B | 1,361,153 B | **+1,167 B** |
+| `index-*.css` | 48,850 B / 9,492 B gzip | 48,850 B / 9,492 B gzip | 0 |
+| PWA precache | 59 entries, 1,649.32 KiB | 58 entries, 1,650.46 KiB | -1 entry, +1.14 KiB |
+
+Per chunk (raw bytes; every chunk not listed is byte-identical):
+
+| Chunk | Delta | Why |
+|---|---|---|
+| entry | +1,817 | `identityColorMigration` and the palette it imports, both now reached from `FinanceContext`. |
+| `identityPalette` | -484 (gone) | moved into the entry. |
+| `AddWalletModal`, `WalletsView`, `CategoriesView`, `DashboardView`, `walletFormStyles` | -46, -39, -35, -38, -9 | the palette import now resolves to the entry. |
+
+| Suite | Files | Tests | Runs | Wall clock |
+|---|---|---|---|---|
+| Playwright (local, 6 workers) | 28 | 134 | 402 | 7.4 / 6.5 m (two runs) |
+| Vitest (`unit/`) | 27 | 578 | 578 | ~36 s |
+
+**Local failures:** 5 in 804 runs, every one a click waiting for an element to settle or a browser-process crash. Four came in run 1, while two worktree builds competed for the CPU, and each file then passed on repeat. Run 2 had one, a WebKit row in `transaction-edit.spec.ts` (then 15/15).
+
 ## Phase 62 (the Categories page) - delta against Phase 61
 
 `main` (`192e333`, the Phase 61 merge) was built in a separate worktree with the repo's `.env` copied in, and the Phase 62 tree (`f8c62a0`) in the repo. `main`'s entry measured 182,550 B, byte-identical to production. Gzip is `zlib` level 9.
