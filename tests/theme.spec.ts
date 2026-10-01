@@ -50,7 +50,8 @@ test.describe('Navigation & Theme E2E Tests', () => {
     await expect(page.getByRole('heading', { name: 'Wallets', exact: true })).toBeVisible();
 
     await gotoTab(page, 'debts');
-    await expect(page.getByRole('heading', { name: /Debts & Loans/i })).toBeVisible();
+    // Spec 6.4 (Phase 60): the page's title is "Debt payoff".
+    await expect(page.getByRole('heading', { name: 'Debt payoff', exact: true })).toBeVisible();
 
     await gotoTab(page, 'diary');
     await expect(page.getByRole('heading', { name: /Daily Diary/i })).toBeVisible();
