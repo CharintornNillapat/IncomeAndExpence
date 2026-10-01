@@ -33,7 +33,7 @@ test.describe('Keyword auto-categorization rules', () => {
     await expect(categoryRow).toContainText('Food & Dining');
 
     const typeRow = page.locator('[data-testid="metric-inferred-type"]');
-    await expect(typeRow).toContainText('EXPENSE');
+    await expect(typeRow).toContainText('Expense');
 
     const descRow = page.locator('[data-testid="metric-cleaned-description"]');
     await expect(descRow).toContainText('coffee with friends');
@@ -43,7 +43,7 @@ test.describe('Keyword auto-categorization rules', () => {
     const uniqueKeyword = `zzzteste2e${Date.now().toString().slice(-6)}`;
 
     await page.locator('#new-keyword-input').fill(uniqueKeyword);
-    await page.locator('#keyword-category-select').selectOption({ label: 'Groceries (EXPENSE)' });
+    await page.locator('#keyword-category-select').selectOption({ label: 'Groceries (Expense)' });
     await page.locator('#save-keyword-rule-btn').click();
 
     const ruleRow = page.locator('tr[id^="rule-row-"]').filter({ hasText: uniqueKeyword });

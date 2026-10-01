@@ -141,8 +141,9 @@ export const Navbar: React.FC<NavbarProps> = React.memo(({ activeTab, setActiveT
                     : 'text-fg-secondary hover:text-fg hover:bg-surface-3'
                 }`}
               >
-                <Icon className="w-4 h-4 shrink-0 lg:hidden" />
-                <span className="sr-only lg:not-sr-only">{item.label}</span>
+                {/* Icon only below 1280: six labels overflow the bar at 1024 (audit 007 finding 1, ADR 0037). */}
+                <Icon className="w-4 h-4 shrink-0 xl:hidden" />
+                <span className="sr-only xl:not-sr-only">{item.label}</span>
               </button>
             );
           })}
