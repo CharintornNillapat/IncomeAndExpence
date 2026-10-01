@@ -62,17 +62,21 @@ test.describe('Soft-delete lifecycle', () => {
     await page.locator('#new-wallet-name').fill(walletName);
     await page.locator('#save-new-wallet-btn').click();
 
-    const card = page.locator('div[id^="wallet-entity-"]').filter({ hasText: walletName });
+    // Phase 59 (ADR 0034): each wallet is a row button in the list, and Delete
+    // lives in the selected wallet's "⋯" menu, so the row is selected first.
+    const card = page.locator('[id^="wallet-entity-"]').filter({ hasText: walletName });
     await expect(card).toBeVisible();
 
-    await card.locator('button[id^="delete-wallet-"]').click();
+    await card.click();
+    await page.locator('#wallet-detail-menu-btn').click();
+    await page.locator('button[id^="delete-wallet-"]').click();
     // T42: deletion now gates behind a confirmation dialog.
     await page.locator('#confirm-destructive-btn').click();
-    await expect(page.locator('div[id^="wallet-entity-"]').filter({ hasText: walletName })).toHaveCount(0);
+    await expect(page.locator('[id^="wallet-entity-"]').filter({ hasText: walletName })).toHaveCount(0);
 
     await page.reload();
     await gotoTab(page, 'wallets');
-    await expect(page.locator('div[id^="wallet-entity-"]').filter({ hasText: walletName })).toHaveCount(0);
+    await expect(page.locator('[id^="wallet-entity-"]').filter({ hasText: walletName })).toHaveCount(0);
   });
 
   test('debt: soft-delete removes it from the goals grid and survives a reload', async ({ page }) => {

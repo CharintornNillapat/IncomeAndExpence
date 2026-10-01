@@ -133,7 +133,8 @@ test.describe('ledger fixes a user can see (ADR 0024)', () => {
     await page.locator('#wallet-adjust-input').fill('2000');
     await page.locator('#wallet-adjust-save-btn').click();
 
-    await expect(page.locator('#modal-wallet-balance-wal-main-checking')).toHaveText('฿2,000.00');
+    // Phase 59 (ADR 0034): the card opens the Wallets page with this wallet selected.
+    await expect(page.locator('#wallet-detail-balance')).toHaveText('฿2,000.00');
   });
 
   test('a new wallet\'s opening balance is a ledger row (F7)', async ({ page }) => {

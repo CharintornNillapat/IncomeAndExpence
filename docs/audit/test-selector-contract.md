@@ -225,7 +225,7 @@ The Dashboard is the landing view, so it mounts in every run of every spec.
 | `[data-testid="metric-card-expense"]` | **Moved** from the retired `CashflowMetricsCards` onto the Cash flow card's Spending cell. It holds only the period's spending, now signed (`−฿1,000.00`), which still contains the `฿1,000.00` `date-boundary.spec.ts:94` looks for and not the `฿3,000.00` it rules out. `metric-card-income` and `metric-card-net` moved with it; no spec reads them. | `src/components/dashboard/CashFlowCard.tsx` |
 | `[data-testid="net-worth-card"]` | **New.** `theme.spec.ts:58` moved to it from the text "Total Money Across All Wallets", which the spec's Net worth card replaces. The assertion (the Dashboard renders after a theme switch) is unchanged. The phase's only spec edit. | `src/components/dashboard/NetWorthCard.tsx` |
 | `#hero-transfer-funds-btn`, `#hero-add-wallet-btn`, `#hero-manage-all-wallets-btn` | **Unchanged ids, still `<button>`s**, now the Wallets section's text links. Transfer still calls `onOpenTransfer()` with no wallet, so the form seeds Main Checking to Cash (`transfer-preview.spec.ts:39-40`). | `src/components/dashboard/WalletsSection.tsx` |
-| `#dashboard-wallet-card-{id}` | **Unchanged id**, now a `<button>` that opens the wallet popup (`account-and-mobile-nav.spec.ts:131` clicks its centre). The inner `wallet-quick-transfer-*` button is gone, so nothing inside competes for the click. | same |
+| `#dashboard-wallet-card-{id}` | **Unchanged id**, now a `<button>` that opens the wallet popup (`account-and-mobile-nav.spec.ts:131` clicks its centre; since Phase 59 it opens the Wallets page instead). The inner `wallet-quick-transfer-*` button is gone, so nothing inside competes for the click. | same |
 | `#time-filter-*` | **Unchanged ids.** Labels are now "Today / This week / Past 30 days / All time"; no spec reads them. | `src/views/DashboardView.tsx` |
 | `#dashboard-view-all-transactions-btn` | **Unchanged id**, now in Recent activity. | `src/components/dashboard/RecentActivityCard.tsx` |
 | `insights-*` | **Unchanged ids, testids and render conditions.** The card's title now names its months; no spec reads it. | `src/components/dashboard/SpendingInsightsCard.tsx` |
@@ -278,3 +278,26 @@ No existing spec was edited. `tests/transaction-edit.spec.ts` is new (3 tests).
 - **The panel now holds `<select>`s whose options name every wallet and category.** Strict `getByText('Cash Wallet')` or a category name, taken while a row is open, would meet an `<option>`. The note is an input's value, which `getByText` does not match.
 - **The Dashboard's Recent activity rows are buttons with ids** since this phase, replacing the "no id" note above. Their prefix is `dashboard-tx-`, so a page-wide `tx-row-` match straight after `gotoTab` still finds only the Transactions page's rows.
 - **The panel is inline from `lg` (1024px)**, not `xl`. Every spec runs at 1280px, so they still see the inline panel.
+
+## Changed in Phase 59 (ADR `0034`, the Wallets page)
+
+Four specs were edited, each in the code's own commit, by a locator or copy move that keeps its assertion. `tests/wallets-page.spec.ts` is new (3 tests). `wallets.spec.ts`, `wallet-forms.spec.ts` and `transaction-edit.spec.ts` passed unedited.
+
+| Selector | Now | Specs moved |
+|---|---|---|
+| `div[id^="wallet-entity-"]` → **`[id^="wallet-entity-"]`** | **Same id**, now on each wallet's row `<button>` in the list (`aria-pressed` when selected). It still holds `data-testid="wallet-balance-{id}"`, so `#wallet-entity-wal-cash` → `wallet-balance-wal-cash` reads as before. | `soft-delete` (3) |
+| `button[id^="delete-wallet-"]` | **Same id**, now an `OverflowMenu` item under `#wallet-detail-menu-btn` in the selected wallet's detail. It exists only while the menu is open. | `soft-delete` selects the row and opens the menu first |
+| `#modal-wallet-balance-{id}` → **`#wallet-detail-balance`** | The selected wallet's balance, money text only (`toHaveText` stays exact). | `account-and-mobile-nav` (1) |
+| `#wallet-adjust-btn-{id}`, `#wallet-adjust-input`, `#wallet-adjust-save-btn` | **Same ids**, moved from the popup to the detail's balance box. | none |
+| `#dashboard-wallet-card-{id}` | **Same id.** It now opens the Wallets page with that wallet selected instead of the popup. | none |
+| Heading `/Wallets & Accounts/i` → **`'Wallets'` (exact)** | The page title (spec 6.3). | `theme` (1) |
+| Text `Created: 2026-09-18` in `#wallet-entity-wal-main-checking` → **`created Sep 18, 2026` in `#wallet-detail-meta`** | The created date moved to the selected wallet's header. The negative half moved with it (`created Sep 17, 2026`). | `date-boundary` (2, after a click on the row) |
+| `#wallet-transfer-modal-btn`, `#wallet-add-modal-btn` | **Unchanged ids**, in the `PageHeader`. The Add button reads "Add wallet"; `wallets.spec.ts`'s `/Add Wallet/i` is case-insensitive and takes `.first()`, which is this button. | none |
+| **Retired with `WalletPopupModal`** | `#wallet-popup-modal`, `#wallet-popup-modal-title`, `#close-wallet-modal-btn`, `#tab-btn-overview`, `#tab-btn-txs`, `#modal-wallet-card-*`, `#modal-wallet-balance-*`, `#wallet-modal-view-all-tx-btn`. Only `#modal-wallet-balance-*` had a spec, moved above. | - |
+| New | `#wallet-list-add-btn`, `#wallet-archived-toggle`, `#wallet-archived-list`, `#wallet-archived-{id}`, `#wallet-unarchive-btn-{id}`, `#wallet-detail-title`, `#wallet-detail-meta`, `#wallet-detail-menu-btn`, `#archive-wallet-{id}`, `#wallet-edit-btn`, `#wallet-edit-form`, `#wallet-edit-name`, `#wallet-edit-type`, `#wallet-edit-save-btn`, `#wallet-edit-error`, `#wallet-transfer-out-btn`, `#wallet-view-all-tx-btn`, `#wallet-detail-close-btn`, `button[id^="wallet-tx-"]`, `#wallet-adjustment-pair-{wallet}-{date}` | `wallets-page` |
+
+### Hazards
+- **The detail is rendered once.** From `lg` it is inline; below that it is a `Modal` that opens only when a wallet is tapped. A full-page screenshot resizes the viewport to 1px wide, which flips `useMediaQuery` and can leave the sheet's exit animation stuck, so a check that takes one sees two copies. The walk-through uses viewport screenshots.
+- **From `lg` a wallet is always selected** (the first one by default), so its name appears twice: in its row and as `#wallet-detail-title`. A strict `getByText` on the **selected** wallet's name meets both. A new wallet is not auto-selected, which keeps `wallets.spec.ts:33` strict.
+- **The activity rows' prefix is `wallet-tx-`**, never `tx-row-`, so a page-wide `tx-row-` match after `gotoTab(page, 'transactions')` still finds only the Transactions page's rows.
+- **`#archive-wallet-*` and `#delete-wallet-*` exist only while the menu is open.** A spec asserting one is absent must open the menu first.

@@ -1,6 +1,7 @@
 import { useMemo, useCallback } from 'react';
 import { useFinanceState, useFinanceActions } from '../context/FinanceContext';
 import { Debt } from '../types';
+import { activeWallets as selectActiveWallets } from '../selectors/wallets';
 
 export const useDebts = () => {
   const {
@@ -18,11 +19,9 @@ export const useDebts = () => {
     return debts.filter((d) => !d.isDeleted);
   }, [debts]);
 
-  // Active (non-deleted) wallets, matching `useWallets`' convention - a
-  // soft-deleted wallet must never be selectable as a debt-repayment source.
-  const activeWallets = useMemo(() => {
-    return wallets.filter((w) => !w.isDeleted);
-  }, [wallets]);
+  // Active wallets, `useWallets`' own predicate - a soft-deleted or archived
+  // wallet must never be selectable as a debt-repayment source (Phase 59).
+  const activeWallets = useMemo(() => selectActiveWallets(wallets), [wallets]);
 
   // Feeds `debtMetrics.activeCount` below - not returned externally, no
   // consumer destructures it (T64).

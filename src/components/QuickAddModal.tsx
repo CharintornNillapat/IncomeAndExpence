@@ -4,6 +4,7 @@ import { TransactionForm } from './TransactionForm';
 import { Modal } from './Modal';
 import { useFinanceState, useFinanceActions } from '../context/FinanceContext';
 import { formatCurrencyAmount } from '../utils/currency';
+import { activeWallets as selectActiveWallets } from '../selectors/wallets';
 
 interface QuickAddModalProps {
   isOpen: boolean;
@@ -36,7 +37,8 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
   // Memoized so TransactionForm doesn't receive a new array identity on
   // every render of this component (e.g. while it's closed and unmounted
   // from AnimatePresence's perspective, or on unrelated context changes).
-  const activeWallets = useMemo(() => wallets.filter((w) => !w.isDeleted), [wallets]);
+  // An archived wallet is not offered for a new entry (Phase 59).
+  const activeWallets = useMemo(() => selectActiveWallets(wallets), [wallets]);
   const activeCategories = useMemo(() => categories.filter((c) => !c.isDeleted), [categories]);
 
   const handleSubmitTransaction = useCallback(

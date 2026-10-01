@@ -1097,3 +1097,37 @@ Per chunk (raw bytes; every other chunk, every vendor chunk included, is byte-id
 The entry's growth is the ledger action itself, which lives with the other ledger writes in `FinanceContext`, as ADR `0023`'s RPC callers do. The panel and the evaluator stay in the lazy `TransactionsView` chunk.
 
 **Intermittent local failures:** 6 in 1,071 full-suite runs (3 full runs). All were timeouts: a Firefox `goto`, a Firefox context close, and four WebKit clicks waiting for "stable". No assertion failed. See audit 005 finding 3 for the control runs.
+
+## Phase 59 (the Wallets page) — delta against Phase 58b
+
+`main` (`8725c11`, the Phase 58b merge) and the Phase 59 tree (`21dba28`) were each built with `npx vite build` in the repo, one after the other. Gzip is `zlib` level 9.
+
+| Chunk | Phase 58b | Phase 59 | Delta |
+|---|---|---|---|
+| entry `index-*.js` | 178,446 B / 51,004 B gzip | 180,025 B / 51,402 B gzip | **+1,579 B raw / +398 B gzip** |
+| **all JS, summed** | 1,344,269 B | 1,345,868 B | **+1,599 B** |
+| `index-*.css` | 48,450 B / 9,335 B gzip | 47,808 B / 9,291 B gzip | −642 B |
+| PWA precache | 55 entries, 1,633.53 KiB | 56 entries, 1,634.46 KiB | +1 entry, +0.93 KiB |
+
+Per chunk (raw bytes; every chunk not listed is byte-identical):
+
+| Chunk | Delta | Why |
+|---|---|---|
+| entry | +1,579 | `editWallet`, `setWalletArchived`, `WalletEditSchema` and the column filter in `FinanceContext`; `App.tsx`'s wallet hand-off. |
+| `WalletsView` | +10,889 | the page: `WalletList`, `WalletDetail`, the edit form and the moved Adjust editor. |
+| `DashboardView` | −13,068 | `WalletPopupModal` is gone; `ActivityFeed`, `TxCells` and `DayGroupHeader` left it for shared chunks. |
+| `TransactionsView` | −2,280 | `TxCells` and `DayGroupHeader` moved to shared chunks, now that two pages load them. |
+| new shared chunks | `ActivityFeed` 3,271, `DayGroupHeader` 3,374, `TxCells` 2,979, `OverflowMenu` 2,330 | Rollup splits what the Dashboard, Transactions and Wallets chunks now share. |
+| gone | `ledger` 3,164, `Money` 279, `useWallets` 230 | merged into the shared chunks above; `timeRange` −3,192 likewise. |
+| `vendor-icons` | −852 | the glyphs only the popup imported (`TrendingUp`, `TrendingDown`, `Layers`, `Receipt` among them) are no longer bundled. |
+| `walletIcons`, `walletFormStyles` | +221, +98 | now shared by the Dashboard and Wallets chunks; `walletTypeLabel`. |
+| others | −38 to +6 | Rollup's shared-name shuffle; no source change. |
+
+**CSS shrank 642 B**: the popup's classes went with it; the page reuses existing utilities apart from `text-[40px]`, `w-[52px]` and the 5/7 grid spans.
+
+| Suite | Files | Tests | Runs | Wall clock |
+|---|---|---|---|---|
+| Playwright (local, 4 workers) | 25 | 125 | 375 | 6.9 / 7.1 m (two runs) |
+| Vitest (`unit/`) | 23 | 494 (489 before audit 008's fixes) | 494 | ~33 s |
+
+**Intermittent local failures:** 1 in 1,500 full-suite runs (four full runs): a WebKit click waiting for "stable" on Add wallet's submit, in run 3. No assertion failed; the test passed 10 of 10 on repeat.

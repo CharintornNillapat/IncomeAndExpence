@@ -7,6 +7,7 @@ import {
   KeywordRule,
   Transaction,
   TransactionEdit,
+  WalletEdit,
   Debt,
   DiaryEntry,
   ImportRowValidation,
@@ -18,6 +19,7 @@ import { supabase, isSupabaseConfigured, onDataApiUnauthorized } from '../lib/su
 import {
   TransactionSchema,
   WalletSchema,
+  WalletEditSchema,
   DebtSchema,
   DiarySchema,
   KeywordMappingSchema,
@@ -125,6 +127,10 @@ export interface FinanceActionsContextType {
     idempotencyKey?: string
   ) => Promise<MutationResult>;
   deleteWallet: (id: string) => Promise<MutationResult>;
+  /** A wallet's name, type and colour (Phase 59, ADR 0034). Never its balance, which moves only through the ledger. */
+  editWallet: (id: string, details: WalletEdit) => Promise<MutationResult>;
+  /** Archives or unarchives a wallet. An archived wallet leaves net worth and the pickers; its rows stay. */
+  setWalletArchived: (id: string, archived: boolean) => Promise<MutationResult>;
 
   // Categories & Configurable Keyword Rules
   addCategory: (data: { name: string; type: TransactionType; color: string; icon?: string; description?: string }) => Promise<MutationResult>;
@@ -1533,9 +1539,14 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
   }, [isAuthenticated, currentUser.id, markLocalWrite, refreshFromCloud]);
 
   // Provider-internal helper (T64: not on the public actions context - its
-  // only caller is `deleteWallet` below). Snapshots for rollback and checks
-  // the Supabase result rather than discarding it (T66), matching
-  // `addTransaction`'s established error/rollback shape.
+  // callers are `deleteWallet`, `editWallet` and `setWalletArchived` below).
+  // Snapshots for rollback and checks the Supabase result rather than
+  // discarding it (T66), matching `addTransaction`'s established
+  // error/rollback shape.
+  //
+  // The row it sends carries only the columns `updates` names (Phase 59): a
+  // column it does not name is absent from the request, not sent as
+  // `undefined`, so an edit of a wallet's name can never carry a balance.
   const updateWallet = useCallback(async (id: string, updates: Partial<Wallet>): Promise<MutationResult> => {
     const previousWallets = walletsRef.current;
 
@@ -1550,20 +1561,19 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
 
     try {
       markLocalWrite(id);
-      const { error } = await supabase
-        .from('wallets')
-        .update({
-          name: updates.name,
-          type: updates.type,
-          currency: updates.currency,
-          color: updates.color,
-          icon: updates.icon,
-          is_archived: updates.isArchived,
-          is_deleted: updates.isDeleted,
-          balance: updates.balance,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', id);
+      const columns: Record<string, unknown> = {
+        name: updates.name,
+        type: updates.type,
+        currency: updates.currency,
+        color: updates.color,
+        icon: updates.icon,
+        is_archived: updates.isArchived,
+        is_deleted: updates.isDeleted,
+        balance: updates.balance,
+      };
+      const row: Record<string, unknown> = { updated_at: new Date().toISOString() };
+      for (const [column, value] of Object.entries(columns)) if (value !== undefined) row[column] = value;
+      const { error } = await supabase.from('wallets').update(row).eq('id', id);
       if (error) throw error;
       return { success: true };
     } catch (err: unknown) {
@@ -1583,6 +1593,27 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
 
   const deleteWallet = useCallback(async (id: string): Promise<MutationResult> => {
     return updateWallet(id, { isDeleted: true });
+  }, [updateWallet]);
+
+  // Phase 59 (ADR 0034): the Wallets page's Edit. Name, type and colour only;
+  // the icon follows the type, as `AddWalletForm` sets it. The current
+  // balance is read for the schema's credit-card rule and never written.
+  const editWallet = useCallback(async (id: string, details: WalletEdit): Promise<MutationResult> => {
+    const wallet = walletsRef.current.find((w) => w.id === id && !w.isDeleted);
+    if (!wallet) return { success: false, error: 'Wallet not found or has been deleted' };
+    const validation = WalletEditSchema.safeParse({ ...details, balance: Number(wallet.balance) });
+    if (!validation.success) {
+      return { success: false, error: formatZodIssues(validation.error) };
+    }
+    const { name, type, color } = validation.data;
+    return updateWallet(id, { name, type, color, icon: type.toLowerCase() });
+  }, [updateWallet]);
+
+  const setWalletArchived = useCallback(async (id: string, archived: boolean): Promise<MutationResult> => {
+    const wallet = walletsRef.current.find((w) => w.id === id && !w.isDeleted);
+    if (!wallet) return { success: false, error: 'Wallet not found or has been deleted' };
+    if (Boolean(wallet.isArchived) === archived) return { success: true };
+    return updateWallet(id, { isArchived: archived });
   }, [updateWallet]);
 
   // Categories CRUD (Phase 30)
@@ -3406,9 +3437,9 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
   // `addTransaction`, `softDeleteTransaction`, `restoreTransaction`,
   // `commitBulkImport`, and `upsertDiaryEntry` joined this half in T15.
   //
-  // `updateWallet` is deliberately absent from this object (T64): it has no
-  // external caller, only `deleteWallet` (below) uses it internally, so it
-  // stays a provider-local helper instead of public API surface.
+  // `updateWallet` is deliberately absent from this object (T64): callers get
+  // the narrow `deleteWallet`, `editWallet` and `setWalletArchived` instead,
+  // so no screen can send a wallet's balance as a column write.
   const actionsValue = useMemo(
     () => ({
       listMySessions,
@@ -3416,6 +3447,8 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       signOut,
       addWallet,
       deleteWallet,
+      editWallet,
+      setWalletArchived,
       addCategory,
       updateCategory,
       deleteCategory,
@@ -3444,6 +3477,8 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       signOut,
       addWallet,
       deleteWallet,
+      editWallet,
+      setWalletArchived,
       addCategory,
       updateCategory,
       deleteCategory,

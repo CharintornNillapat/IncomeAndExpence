@@ -143,6 +143,17 @@ export interface TransactionEdit {
   transactionDate: string;
 }
 
+/**
+ * What the Wallets page's Edit changes (Phase 59, ADR 0034). There is no
+ * balance: a balance moves only through the ledger (ADR 0023), and the Adjust
+ * balance editor writes an ADJUSTMENT row for it.
+ */
+export interface WalletEdit {
+  name: string;
+  type: WalletType;
+  color: string;
+}
+
 export interface Debt {
   id: string;
   userId: string;

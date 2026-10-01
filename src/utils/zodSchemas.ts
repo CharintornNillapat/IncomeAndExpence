@@ -71,6 +71,22 @@ export const WalletSchema = z.object({
   { message: 'Initial balance cannot be negative', path: ['initialBalance'] }
 );
 
+/**
+ * A wallet's own details (Phase 59, ADR 0034). There is no balance here: a
+ * balance moves only through the ledger. `balance` is the wallet's current
+ * one, read so a credit card in debt cannot become a type that may not hold
+ * a negative balance, the same rule as `WalletSchema`'s opening balance.
+ */
+export const WalletEditSchema = z.object({
+  name: z.string().trim().min(1, 'Wallet name is required').max(100),
+  type: z.enum(['CASH', 'BANK_ACCOUNT', 'CREDIT_CARD', 'E_WALLET', 'INVESTMENT', 'SAVINGS']),
+  color: z.string().optional(),
+  balance: z.number(),
+}).refine(
+  (data) => data.type === 'CREDIT_CARD' || data.balance >= 0,
+  { message: 'A wallet with a negative balance can only be a credit card', path: ['type'] }
+);
+
 export const DebtSchema = z.object({
   name: z.string().min(1, 'Debt title is required').max(100),
   totalAmount: z.number().positive('Total debt amount must be positive'),

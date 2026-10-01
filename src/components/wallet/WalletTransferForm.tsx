@@ -67,7 +67,7 @@ interface TransferWalletPanelProps {
 /**
  * One side of the transfer. Deliberately local to this file rather than a
  * shared primitive: the icon-badge + name + balance block exists in four other
- * places (`WalletsView`, the Dashboard's `WalletsSection`, `WalletPopupModal` twice) and
+ * places (`WalletList`, `WalletDetail`, the Dashboard's `WalletsSection`) and
  * they have already diverged on size and weight, so per ADR `0006` forcing
  * convergence would be a visual regression rather than a cleanup.
  *

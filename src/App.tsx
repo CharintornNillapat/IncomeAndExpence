@@ -86,14 +86,17 @@ const MainApp: React.FC = () => {
   const [hasOpenedAddWallet, setHasOpenedAddWallet] = useState<boolean>(false);
   const [isAccountOpen, setIsAccountOpen] = useState<boolean>(false);
   const [hasOpenedAccount, setHasOpenedAccount] = useState<boolean>(false);
-  // T40: seeds TransactionsView's wallet filter when the wallet popup's
-  // Activity preview hands off via "View all". Cleared by TransactionsView
+  // T40: seeds TransactionsView's wallet filter when a wallet's activity
+  // hands off via "View all" (the Wallets page since Phase 59). Cleared by TransactionsView
   // itself right after it reads the value, so a later, unrelated navigation
   // to the tab does not inherit a stale filter.
   const [transactionsWalletFilter, setTransactionsWalletFilter] = useState<string | undefined>(undefined);
   // Phase 58b: the same hand-off for one row - a Dashboard Recent activity row
   // opens on the Transactions page with its edit panel. Cleared the same way.
   const [transactionsSelectedTx, setTransactionsSelectedTx] = useState<string | undefined>(undefined);
+  // Phase 59 (ADR 0034): a Dashboard wallet row opens the Wallets page with
+  // that wallet selected. Cleared by WalletsView the same way.
+  const [walletsSelectedWallet, setWalletsSelectedWallet] = useState<string | undefined>(undefined);
 
   // PWA app shortcut "Quick Add Transaction" launches to `/?action=quick-add`.
   // Strip the query param immediately so it doesn't linger in the address bar
@@ -194,6 +197,14 @@ const MainApp: React.FC = () => {
     [handleTabChange]
   );
   const handleConsumeTransactionsSelectedTx = useCallback(() => setTransactionsSelectedTx(undefined), []);
+  const handleOpenWallet = useCallback(
+    (walletId?: string) => {
+      setWalletsSelectedWallet(walletId);
+      handleTabChange('wallets');
+    },
+    [handleTabChange]
+  );
+  const handleConsumeWalletsSelectedWallet = useCallback(() => setWalletsSelectedWallet(undefined), []);
 
   // TRANSFER and DEBT_REPAYMENT left TransactionForm's type toggle in ADR 0013,
   // so the form links out to their dedicated flows instead. These are the only
@@ -238,7 +249,7 @@ const MainApp: React.FC = () => {
             onNavigate={handleNavigate}
             onOpenTransfer={handleOpenTransfer}
             onOpenAddWallet={handleOpenAddWallet}
-            onOpenWalletTransactions={handleOpenWalletTransactions}
+            onOpenWallet={handleOpenWallet}
             onOpenTransaction={handleOpenTransaction}
           />
         );
@@ -254,7 +265,16 @@ const MainApp: React.FC = () => {
           />
         );
       case 'wallets':
-        return <WalletsView onOpenTransfer={handleOpenTransfer} onOpenAddWallet={handleOpenAddWallet} />;
+        return (
+          <WalletsView
+            onOpenTransfer={handleOpenTransfer}
+            onOpenAddWallet={handleOpenAddWallet}
+            onOpenWalletTransactions={handleOpenWalletTransactions}
+            onOpenTransaction={handleOpenTransaction}
+            initialSelectedWalletId={walletsSelectedWallet}
+            onConsumeInitialSelectedWallet={handleConsumeWalletsSelectedWallet}
+          />
+        );
       case 'debts':
         return <DebtsView />;
       case 'diary':
@@ -267,7 +287,7 @@ const MainApp: React.FC = () => {
             onNavigate={handleNavigate}
             onOpenTransfer={handleOpenTransfer}
             onOpenAddWallet={handleOpenAddWallet}
-            onOpenWalletTransactions={handleOpenWalletTransactions}
+            onOpenWallet={handleOpenWallet}
             onOpenTransaction={handleOpenTransaction}
           />
         );

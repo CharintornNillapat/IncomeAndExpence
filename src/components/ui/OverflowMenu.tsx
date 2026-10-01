@@ -95,7 +95,10 @@ export const OverflowMenu: React.FC<OverflowMenuProps> = ({ label, items, trigge
         focusItem(items.length - 1);
         break;
       case 'Escape':
+        // The menu's own Escape. Stopped here so a `Modal` around the menu
+        // (the Wallets page's sheet) does not close on it too (audit 008).
         event.preventDefault();
+        event.stopPropagation();
         close(true);
         break;
       case 'Tab':

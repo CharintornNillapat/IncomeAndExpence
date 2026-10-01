@@ -66,6 +66,20 @@ export const Modal: React.FC<ModalProps> = ({
   // dialog still gets a proper `aria-labelledby` link to it.
   const resolvedTitleId = titleId || (title ? `modal-title-${generatedTitleId}` : undefined);
 
+  // Audit 008 finding 1: closing a dialog or sheet used to drop keyboard
+  // focus to <body>, so a keyboard user started again from the top. The
+  // element that had focus when it opened (the wallet row, the button) gets
+  // it back when it closes, however it closes, if it is still on the page.
+  useEffect(() => {
+    if (!isOpen) return;
+    const opener = document.activeElement instanceof HTMLElement && document.activeElement !== document.body
+      ? document.activeElement
+      : null;
+    return () => {
+      if (opener?.isConnected) opener.focus({ preventScroll: true });
+    };
+  }, [isOpen]);
+
   // Escape-to-close was missing from every hand-rolled modal (none of them
   // wired a keydown listener); wiring it once here is a genuine gap fix.
   useEffect(() => {

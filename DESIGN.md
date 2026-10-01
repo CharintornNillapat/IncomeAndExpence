@@ -57,7 +57,7 @@ Each hue has a text token and a solid `-tint` background: `income`, `expense`, `
 Every text token passes 4.5:1 on every surface it can sit on, in both themes. Every hue passes on its own tint. `fg-muted` is the faintest text allowed: 5.80:1 on a dark card. Input edges and the focus outline reach 3:1 (WCAG 1.4.11); the outline is checked against every surface it can sit on, header and menu included. Run `node scripts/wcag-tokens.mjs` after changing any value; it reads `src/index.css` and exits 1 on a failure. `fg-disabled` is exempt, as WCAG exempts disabled controls.
 
 ### Identity colours (wallets and categories)
-Wallets and categories take their own colour from the muted identity palette in spec section 1. It avoids red, green, blue, cyan and amber, which carry money meaning. The migration of existing colours is a later phase (spec section 5.1).
+Wallets and categories take their own colour from the muted identity palette in spec section 1. It avoids red, green, blue, cyan and amber, which carry money meaning. Since Phase 59 (audit 008) the wallet colour picker, in Add wallet and in Edit, offers exactly those twelve colours. The migration of existing colours, the starter wallets' included, is a later phase (spec section 5.1).
 
 ---
 
@@ -185,6 +185,24 @@ One period for the whole page, chosen in the `PageHeader`. Every figure comes fr
 - **No trash button on a row.** Deleting happens in the panel.
 - **Dashboard hand-off:** a Recent activity row opens its row here with the panel open.
 
+### Wallets (spec 6.3, ADR 0034)
+- **Header:** `PageHeader` "Wallets" with "฿X across N wallets" (active wallets only), a secondary "Transfer" with the blue transfer icon, and the one primary button, "Add wallet".
+- **Layout:** master-detail from `lg`: 5/7 up to `xl`, then the spec's 4/8. Below `lg` the list stands alone, and a tapped wallet opens in a sheet. The choice is made in JavaScript, so the detail is never rendered twice.
+- **List:**
+  - one card holding the `AllocationBar`, then a row per wallet: a 40px tinted tile, the name (it wraps rather than truncating), the type and its share, and the balance;
+  - the selected row takes the soft violet with a 3px violet edge, as a selected transaction does;
+  - a dashed "Add wallet" ends the rows;
+  - archived wallets sit under a collapsed "Archived (N)" with Unarchive.
+- **Detail:**
+  - **Header:** a 52px tile, the name, and "Cash · created Oct 1, 2026". Edit (secondary) and a "⋯" menu with "Archive wallet" and "Delete wallet…" (red) sit on the right.
+  - **Balance box:** an inset with the balance at 40px (red when negative) and THB, plus "Transfer out" and "Adjust balance". The two buttons sit beside the figure from `xl` and under it below that.
+  - **Adjust balance** opens a one-field editor in the box. Its line says the difference is recorded as a balance adjustment.
+  - **Edit** opens a form under the header: name, type, colour swatches in 44px boxes, then "Save changes" and Cancel.
+  - **Activity:** "Recent activity in <wallet>" and "View all", then the wallet's 10 newest rows through `ActivityFeed`. A transfer is signed by its direction: `+` arriving, `−` leaving. A cancelling adjustment pair folds into one dashed row (L8).
+- **No trash button and no "Active Source" badge.** Delete and Archive live in the menu and confirm first. Delete says how many transactions stay and still count, and that the balance leaves the totals.
+- **Dashboard hand-off:** a Dashboard wallet row opens the page with that wallet selected. The wallet popup is gone.
+- **Closing the sheet returns focus to the wallet row that opened it**, as every `Modal` now does (audit 008).
+
 ### Sync indicator (header)
 Five states. The first is for guests; the other four are for a signed-in user, checked in this order.
 
@@ -222,7 +240,7 @@ Five states. The first is for guests; the other four are for a signed-in user, c
 |---|---|---|
 | `--border-control` `#252B38` on inputs | Inputs keep `line-input` `#5E7092`; `#252B38` is `line-control`, for secondary buttons only | `#252B38` is 1.26:1 on a card, under WCAG 1.4.11's 3:1 for an input's edge. A button's label identifies it; an input has only its edge. |
 | Header buttons and `IconButton` 40px | 44px | The app's 44px floor (section 4). The owner kept it for every control, header included (2026-09-28, ADR 0029). |
-| Editing row background `#1C1930` | `brand-soft` (`#1E1A33`) | Two near-identical violets would be two tokens for one meaning. |
+| Editing row background `#1C1930`; selected wallet `#1C1930` with edge `#4B3F86` | `brand-soft` (`#1E1A33`) with the 3px `focus` edge, for both | Two near-identical violets would be two tokens for one meaning, and a selected row looks the same on every page. |
 | Header title "FinLife" | "FinLife Tracker" | `theme.spec.ts` finds the heading by that name. |
 | Dark only | Dark and light | The owner kept the light theme (2026-09-28). Light values are derived per role and pass the same checks. |
 | "Display settings" icon button | The theme button keeps its own label ("Theme: Dark. Click to switch.") | Spec section 11: name a button for what it does. |
@@ -234,4 +252,6 @@ Five states. The first is for guests; the other four are for a signed-in user, c
 | "…uses the period on the right" | "…uses the selected period" | On a phone the control sits below the text. |
 | Edit panel: every row edits type, amount, wallets and category | A repayment or an adjustment edits only its note and date | Its money is tied to a debt's remainder or to a counted balance; changing it is a delete and a new entry (owner, 2026-09-28, ADR 0033). |
 | Edit panel: Category and Wallet side by side | Side by side from a 320px panel; stacked below that, as in the inline panel at `lg` | Two selects in under 320px cut their names off. |
+| Wallets: 4/12 and 8/12, one column below 1280 | Master-detail from `lg` (1024) at 5/7, the spec's 4/8 from `xl` | At 1024 a 4/12 list cut every wallet name off; the Transactions panel is inline from `lg` too (ADR 0033). |
+| Wallets: the balance box's buttons beside the 40px figure | Beside it from `xl`, under it below that | In the 5/7 detail and the sheet they wrapped into a column next to the number. |
 | A transfer row: "Transfer" over "Main → Cash" only | "Main → Cash · Funds transfer" when the transfer has a note of its own | The title is always "Transfer", so a note the user wrote would otherwise disappear. |

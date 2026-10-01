@@ -5,6 +5,8 @@ import { Button, buttonClass } from '../src/components/ui/Button';
 import { IconButton } from '../src/components/ui/IconButton';
 import { SegmentedControl } from '../src/components/ui/SegmentedControl';
 import { OverflowMenu } from '../src/components/ui/OverflowMenu';
+import { Modal } from '../src/components/Modal';
+import { useState } from 'react';
 
 /**
  * Phase 56 (ADR 0029, spec sections 4.4 to 4.6 and 7): the shared controls.
@@ -227,6 +229,30 @@ describe('OverflowMenu', () => {
     expect(document.activeElement).toBe(trigger);
   });
 
+  // Phase 59 (audit 008): the menu sits inside the Wallets page's bottom sheet,
+  // whose `Modal` closes on any Escape that reaches `document`.
+  it('keeps its Escape to itself, so a dialog around it stays open', () => {
+    const onDocumentEscape = vi.fn();
+    const listener = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onDocumentEscape();
+    };
+    document.addEventListener('keydown', listener);
+    try {
+      const { trigger } = setup();
+      fireEvent.click(trigger);
+      fireEvent.keyDown(screen.getAllByRole('menuitem')[0], { key: 'Escape' });
+      expect(screen.queryByRole('menu')).toBeNull();
+      expect(document.activeElement).toBe(trigger);
+      expect(onDocumentEscape).not.toHaveBeenCalled();
+
+      // A second Escape, from the closed trigger, is the dialog's again.
+      fireEvent.keyDown(trigger, { key: 'Escape' });
+      expect(onDocumentEscape).toHaveBeenCalledTimes(1);
+    } finally {
+      document.removeEventListener('keydown', listener);
+    }
+  });
+
   it('runs the chosen item once and closes', () => {
     const { trigger, onDelete, onArchive } = setup();
     fireEvent.click(trigger);
@@ -241,5 +267,58 @@ describe('OverflowMenu', () => {
     fireEvent.click(trigger);
     fireEvent.mouseDown(screen.getByText('Outside'));
     expect(screen.queryByRole('menu')).toBeNull();
+  });
+});
+
+// Audit 008 finding 1: a dialog or sheet gives focus back to what opened it.
+describe('Modal', () => {
+  function Harness({ removeOpener = false }: { removeOpener?: boolean }) {
+    const [open, setOpen] = useState(false);
+    const [gone, setGone] = useState(false);
+    return (
+      <div>
+        {!gone && (
+          <button type="button" onClick={() => setOpen(true)}>
+            Open details
+          </button>
+        )}
+        <Modal
+          isOpen={open}
+          onClose={() => {
+            if (removeOpener) setGone(true);
+            setOpen(false);
+          }}
+          title="Details"
+        >
+          <input aria-label="Name" />
+        </Modal>
+      </div>
+    );
+  }
+
+  it('returns focus to the element that opened it, however it closes', () => {
+    render(<Harness />);
+    const opener = screen.getByRole('button', { name: 'Open details' });
+    opener.focus();
+    fireEvent.click(opener);
+    screen.getByLabelText('Name').focus();
+
+    // The panel stays in the DOM through its exit animation; focus moves at once.
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(document.activeElement).toBe(opener);
+
+    fireEvent.click(opener);
+    screen.getByLabelText('Name').focus();
+    fireEvent.click(screen.getByRole('button', { name: 'Close modal' }));
+    expect(document.activeElement).toBe(opener);
+  });
+
+  it('leaves focus alone when the opener has left the page', () => {
+    render(<Harness removeOpener />);
+    const opener = screen.getByRole('button', { name: 'Open details' });
+    opener.focus();
+    fireEvent.click(opener);
+    expect(() => fireEvent.keyDown(document, { key: 'Escape' })).not.toThrow();
+    expect(screen.queryByRole('button', { name: 'Open details' })).toBeNull();
   });
 });
