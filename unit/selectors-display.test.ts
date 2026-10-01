@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { categoryLabel, systemCategoryLabel, isSystemMovementCategory, displayTitle, secondaryLine } from '../src/selectors/display';
 import { foldAdjustmentPairs, describeAdjustmentPair } from '../src/selectors/adjustments';
-import { usedColors } from '../src/selectors/categories';
+import { categoryGroups, categoryUsage, firstFreeColor, usedColors } from '../src/selectors/categories';
+import { IDENTITY_COLORS, isIdentityColor } from '../src/utils/identityPalette';
 import { buildLookupMap } from '../src/utils/mapUtils';
 import type { Category, Transaction, Wallet } from '../src/types';
 
@@ -163,5 +164,47 @@ describe('L9: a colour one category uses is not offered to another', () => {
 
   it('frees the colour of the category being edited', () => {
     expect(usedColors(CATEGORIES, 'cat-food').has('#e879a6')).toBe(false);
+  });
+});
+
+describe('the Categories page (Phase 62, spec 6.6)', () => {
+  it('starts a new category on the first colour nothing uses, or none when all twelve are taken', () => {
+    expect(firstFreeColor(IDENTITY_COLORS, usedColors(CATEGORIES))).toBe('#D9A066');
+    const taken = new Map(IDENTITY_COLORS.slice(0, 4).map((hex) => [hex.toLowerCase(), 'x']));
+    expect(firstFreeColor(IDENTITY_COLORS, taken)).toBe('#E879A6');
+    const all = new Map(IDENTITY_COLORS.map((hex) => [hex.toLowerCase(), 'x']));
+    expect(firstFreeColor(IDENTITY_COLORS, all)).toBeNull();
+  });
+
+  it('knows the twelve identity colours whatever their case', () => {
+    expect(IDENTITY_COLORS).toHaveLength(12);
+    expect(isIdentityColor('#e879a6')).toBe(true);
+    expect(isIdentityColor('#f87171')).toBe(false);
+  });
+
+  it('groups live categories into Expense, Income and System by type, each by name', () => {
+    const groups = categoryGroups([
+      ...CATEGORIES,
+      { id: 'b', name: 'Bonus', type: 'INCOME', icon: 'x', color: '#8FA8C8', isSystem: false, isDeleted: false },
+      { id: 'a', name: 'Allowance', type: 'INCOME', icon: 'x', color: '#D98FD0', isSystem: false, isDeleted: false },
+      { id: 'gone', name: 'Gone', type: 'EXPENSE', icon: 'x', color: '#C7B38A', isSystem: false, isDeleted: true },
+    ]);
+    expect(groups.expense.map((c) => c.id)).toEqual(['cat-food']);
+    expect(groups.income.map((c) => c.name)).toEqual(['Allowance', 'Bonus']);
+    // Matched by type: a uuid-named system row still lands in System.
+    expect(groups.system.map((c) => c.id).sort()).toEqual(['7f3a-debt', '9c1b-adjust']);
+  });
+
+  it('counts the live transactions and the rules that still use a category', () => {
+    const usage = categoryUsage(
+      'cat-food',
+      [
+        tx({ type: 'EXPENSE', categoryId: 'cat-food' }),
+        tx({ type: 'EXPENSE', categoryId: 'cat-food', isDeleted: true }),
+        tx({ type: 'EXPENSE', categoryId: 'other' }),
+      ],
+      [{ id: 'r1', keyword: 'coffee', categoryId: 'cat-food', createdAt: '' }]
+    );
+    expect(usage).toEqual({ transactions: 1, rules: 1 });
   });
 });
