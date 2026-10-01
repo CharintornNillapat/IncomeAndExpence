@@ -1,415 +1,199 @@
-import React, { useState, useMemo, useCallback } from 'react';
-import {
-  BookHeart,
-  Dumbbell,
-  Utensils,
-  Calendar,
-  Download,
-  Check,
-  ArrowUpRight,
-} from 'lucide-react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Download } from 'lucide-react';
 import { useFinanceState, useFinanceActions } from '../context/FinanceContext';
-import { useSubmitHandler } from '../hooks/useSubmitHandler';
 import { useTransientFlash } from '../hooks/useTransientFlash';
-import { DiaryEntryCard } from '../components/DiaryEntryCard';
-import { SectionHeader } from '../components/ui/SectionHeader';
-import { Card } from '../components/ui/Card';
-import { Badge } from '../components/ui/Badge';
-import { FoodQuality, Transaction } from '../types';
-import { formatCurrencyAmount } from '../utils/currency';
-import { todayIsoDate, daysAgoIsoDate, formatDayInfo } from '../utils/date';
-import { LABEL_CLASS } from '../utils/formStyles';
+import { DiaryEntryForm, DiaryEntryDraft } from '../components/diary/DiaryEntryForm';
+import { DiaryCalendar } from '../components/diary/DiaryCalendar';
+import { RecentEntries } from '../components/diary/RecentEntries';
+import { PageHeader } from '../components/ui/PageHeader';
 import { Button } from '../components/ui/Button';
+import { ConfirmDialog } from '../components/ui/ConfirmDialog';
+import { daysAgoIsoDate, formatDiaryHeading, formatWeekdayDate, monthKeyOf, todayIsoDate } from '../utils/date';
 import { exportDiaryToJson } from '../utils/diaryExport';
 import { buildLookupMap } from '../utils/mapUtils';
-import { isIncome, isSpending } from '../selectors/ledger';
+import { DaySpending, daySpending, diaryMonth } from '../selectors/diary';
 
-// Static (never depends on component state), so it lives outside the
-// component instead of being recreated - or even re-useMemo'd - every render.
-const MOOD_LABELS: Record<number, { label: string; emoji: string; color: string }> = {
-  1: { label: 'Exhausted / Stressed', emoji: '😫', color: 'text-expense bg-expense-tint border-expense-line' },
-  2: { label: 'Low Energy', emoji: '😕', color: 'text-expense bg-expense-tint border-expense-line' },
-  3: { label: 'Neutral / Balanced', emoji: '😐', color: 'text-pending bg-pending-tint border-pending-line' },
-  4: { label: 'Good & Focused', emoji: '😊', color: 'text-income bg-income-tint border-income-line' },
-  5: { label: 'Peak Flow / Great', emoji: '🤩', color: 'text-income bg-income-tint border-income-line' },
-};
+interface DiaryViewProps {
+  /** Opens the Transactions page filtered to one day (a recent entry's "N transactions", ADR 0036). */
+  onOpenDayTransactions?: (date: string) => void;
+}
 
-// Stable fallback for a day with no transactions, so days that fall back to
-// this identical object don't defeat memoization / DiaryEntryCard's React.memo.
-const EMPTY_DAY_DATA: { totalOutflow: number; totalIncome: number; transactions: Transaction[] } = {
-  totalOutflow: 0,
-  totalIncome: 0,
-  transactions: [],
-};
-
-export const DiaryView: React.FC = () => {
-  const { diaryEntries, transactions, wallets, categories } = useFinanceState();
+/**
+ * Spec 6.5 (Phase 61, ADR 0036): the Daily diary. The entry form on the left
+ * (7/12), the month calendar and the recent entries on the right (5/12),
+ * stacked below `lg`. The form always starts from the selected day's saved
+ * entry; spending figures are L1's (`daySpending`), computed here once.
+ */
+export const DiaryView: React.FC<DiaryViewProps> = ({ onOpenDayTransactions }) => {
+  const { diaryEntries, transactions, categories } = useFinanceState();
   const { upsertDiaryEntry, deleteDiaryEntry } = useFinanceActions();
 
-  const todayIso = todayIsoDate();
-  const yesterdayIso = daysAgoIsoDate(1);
-  const [selectedDate, setSelectedDate] = useState<string>(todayIso);
-  const [expandedDateId, setExpandedDateId] = useState<string | null>(null);
+  const today = todayIsoDate();
+  const yesterday = daysAgoIsoDate(1);
+  const [selectedDate, setSelectedDate] = useState<string>(today);
+  const [calendarMonth, setCalendarMonth] = useState<string>(monthKeyOf(today));
 
-  // Form State
-  const [mood, setMood] = useState<number>(5);
-  const [workout, setWorkout] = useState<boolean>(true);
-  const [workoutNote, setWorkoutNote] = useState<string>('Morning cardio & bodyweight exercises');
-  const [foodQuality, setFoodQuality] = useState<FoodQuality>('HEALTHY');
-  const [notes, setNotes] = useState<string>('');
-  const { value: saveSuccess, flash: flashSaveSuccess } = useTransientFlash(false, 2500);
-  const { error: saveError, handleSubmit: submitDiaryEntry } = useSubmitHandler({
-    defaultErrorMessage: 'Failed to save diary entry',
-    onSuccess: () => flashSaveSuccess(true),
-  });
-
-  // Map category and wallet helpers
   const categoryMap = useMemo(() => buildLookupMap(categories), [categories]);
-  const walletMap = useMemo(() => buildLookupMap(wallets), [wallets]);
 
-  // Aggregated daily transaction data by ISO date string (YYYY-MM-DD)
-  const dailyTransactionsMap = useMemo(() => {
-    const map: Record<string, { totalOutflow: number; totalIncome: number; transactions: typeof transactions }> = {};
-
-    transactions
-      .filter((t) => !t.isDeleted)
-      .forEach((t) => {
-        const dateKey = (t.transactionDate || '').slice(0, 10);
-        if (!dateKey) return;
-
-        if (!map[dateKey]) {
-          map[dateKey] = { totalOutflow: 0, totalIncome: 0, transactions: [] };
-        }
-
-        // Spec L1 (ADR 0028): a day's outflow is its spending. A debt repayment
-        // used to count here too, unlike the dashboard.
-        if (isSpending(t, categoryMap)) {
-          map[dateKey].totalOutflow += t.amount;
-        } else if (isIncome(t, categoryMap)) {
-          map[dateKey].totalIncome += t.amount;
-        }
-
-        map[dateKey].transactions.push(t);
-      });
-
-    return map;
-  }, [transactions, categoryMap]);
-
-  // Only confirms once the entry is actually persisted (onSuccess fires after
-  // upsertDiaryEntry resolves with success: true).
-  const handleSaveEntry = (e: React.FormEvent) =>
-    submitDiaryEntry(e, () =>
-      upsertDiaryEntry({
-        date: selectedDate,
-        mood,
-        workout,
-        workoutNote: workout ? workoutNote : undefined,
-        foodQuality,
-        notes: notes.trim() || undefined,
-      })
-    );
-
-  const loadEntryForDate = (dateStr: string) => {
-    setSelectedDate(dateStr);
-    const existing = diaryEntries.find((e) => e.date === dateStr && !e.isDeleted);
-    if (existing) {
-      setMood(existing.mood);
-      setWorkout(existing.workout);
-      setWorkoutNote(existing.workoutNote || '');
-      setFoodQuality(existing.foodQuality);
-      setNotes(existing.notes || '');
-    } else {
-      setMood(4);
-      setWorkout(false);
-      setWorkoutNote('');
-      setFoodQuality('AVERAGE');
-      setNotes('');
-    }
-  };
-
-  // Memoized so this filter+sort only re-runs when diaryEntries actually
-  // changes, not on every keystroke into the form's mood/workout/notes state.
-  const activeEntries = useMemo(
-    () => diaryEntries.filter((e) => !e.isDeleted).sort((a, b) => b.date.localeCompare(a.date)),
+  // Live entries, newest first.
+  const entries = useMemo(
+    () => diaryEntries.filter((e) => !e.isDeleted).sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0)),
     [diaryEntries]
   );
+  const selectedEntry = useMemo(() => entries.find((e) => e.date === selectedDate), [entries, selectedDate]);
 
-  const selectedDateData = dailyTransactionsMap[selectedDate] || EMPTY_DAY_DATA;
-  const selectedDayInfo = useMemo(
-    () => formatDayInfo(selectedDate, todayIso, yesterdayIso),
-    [selectedDate, todayIso, yesterdayIso]
+  // Each logged day's spending, plus the selected day's, on L1.
+  const spendingByDate = useMemo(() => {
+    const map = new Map<string, DaySpending>();
+    for (const entry of entries) map.set(entry.date, daySpending(transactions, entry.date, categoryMap));
+    return map;
+  }, [entries, transactions, categoryMap]);
+  const selectedSpending = useMemo(
+    () => spendingByDate.get(selectedDate) ?? daySpending(transactions, selectedDate, categoryMap),
+    [spendingByDate, selectedDate, transactions, categoryMap]
   );
-  const selectedDateOutflowCount = useMemo(
-    () => selectedDateData.transactions.filter((t) => isSpending(t, categoryMap)).length,
-    [selectedDateData, categoryMap]
+  const loggedDates = useMemo(() => diaryMonth(entries, calendarMonth), [entries, calendarMonth]);
+
+  const { value: savedMessage, flash: flashSaved, clear: clearSaved } = useTransientFlash<string | null>(null, 2500);
+
+  const changeDate = useCallback(
+    (date: string) => {
+      if (date > today) return;
+      if (date !== selectedDate) clearSaved();
+      setSelectedDate(date);
+      setCalendarMonth(monthKeyOf(date));
+    },
+    [today, selectedDate, clearSaved]
   );
 
-  // Precomputes everything each entry card needs - the day's formatted
-  // display info and its bucket of outflow transactions - once per
-  // diaryEntries/transactions change, not once per render. Previously
-  // `formatDayInfo` and an outflow `.filter()` ran fresh for every entry on
-  // every render, including on every keystroke in the notes/workout fields.
-  const enrichedEntries = useMemo(() => {
-    return activeEntries.map((entry) => {
-      const dayData = dailyTransactionsMap[entry.date] || EMPTY_DAY_DATA;
-      return {
-        entry,
-        dayInfo: formatDayInfo(entry.date, todayIso, yesterdayIso),
-        dayData,
-        outflowTxs: dayData.transactions.filter((t) => isSpending(t, categoryMap)),
-        moodInfo: MOOD_LABELS[entry.mood],
-      };
-    });
-  }, [activeEntries, dailyTransactionsMap, categoryMap, todayIso, yesterdayIso]);
+  const handleSave = useCallback((draft: DiaryEntryDraft) => upsertDiaryEntry(draft), [upsertDiaryEntry]);
+  const handleSaved = useCallback(
+    () => flashSaved(`Diary entry logged for ${formatDiaryHeading(selectedDate, today)}.`),
+    [flashSaved, selectedDate, today]
+  );
 
-  // Stable across renders (module-scope setter + context action only) so
-  // DiaryEntryCard's React.memo isn't defeated by a fresh closure per row.
-  const handleToggleExpand = useCallback((entryId: string) => {
-    setExpandedDateId((prev) => (prev === entryId ? null : entryId));
+  const handleEdit = useCallback(
+    (date: string) => {
+      changeDate(date);
+      // The form's heading takes focus once it shows the day (focusAfterRef below).
+      focusAfterRef.current = 'diary-form-heading';
+      setFocusTick((tick) => tick + 1);
+    },
+    [changeDate]
+  );
+
+  // Delete confirms first (owner's decision, ADR 0036). The dialog stores the
+  // id and resolves the entry at render.
+  const [entryToDeleteId, setEntryToDeleteId] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const entryToDelete = entryToDeleteId ? entries.find((e) => e.id === entryToDeleteId) ?? null : null;
+
+  // `Modal` returns focus to its opener, but a deleted entry takes its menu
+  // with it. Focus then goes to the next entry's menu, or the list's heading.
+  const focusAfterRef = useRef<string | null>(null);
+  const [focusTick, setFocusTick] = useState(0);
+  useEffect(() => {
+    const id = focusAfterRef.current;
+    if (!id || entryToDeleteId) return;
+    focusAfterRef.current = null;
+    document.getElementById(id)?.focus({ preventScroll: id === 'diary-form-heading' ? false : true });
+  }, [entryToDeleteId, entries, selectedDate, focusTick]);
+
+  const handleDelete = useCallback((id: string) => {
+    setDeleteError(null);
+    setEntryToDeleteId(id);
   }, []);
 
-  const handleDeleteEntry = useCallback(
-    (entryId: string) => {
-      deleteDiaryEntry(entryId);
-    },
-    [deleteDiaryEntry]
-  );
+  const handleCloseDelete = useCallback(() => {
+    setEntryToDeleteId(null);
+    setDeleteError(null);
+  }, []);
+
+  const handleConfirmDelete = useCallback(async () => {
+    if (!entryToDeleteId) return;
+    const index = entries.findIndex((e) => e.id === entryToDeleteId);
+    const next = entries[index + 1] ?? entries[index - 1];
+    setIsDeleting(true);
+    setDeleteError(null);
+    const result = await deleteDiaryEntry(entryToDeleteId);
+    setIsDeleting(false);
+    if (!result.success) {
+      setDeleteError(result.error || 'Failed to delete the entry');
+      return;
+    }
+    focusAfterRef.current = next ? `diary-menu-btn-${next.id}` : 'diary-recent-heading';
+    setEntryToDeleteId(null);
+  }, [entryToDeleteId, entries, deleteDiaryEntry]);
+
+  const handleOpenDayTransactions = useCallback((date: string) => onOpenDayTransactions?.(date), [onOpenDayTransactions]);
 
   return (
     <div className="space-y-6">
-      <SectionHeader
-        title="Daily Diary"
-        subtitle="Log your mood, workouts and meals, and see them beside that day's spending"
-        action={
+      <PageHeader
+        title="Daily diary"
+        description="Your mood, activity and meals, beside what each day cost"
+        actions={
           <Button
             id="export-diary-btn"
             variant="secondary"
             onClick={() => exportDiaryToJson(diaryEntries)}
-            icon={<Download className="w-3.5 h-3.5" />}
+            icon={<Download aria-hidden="true" className="w-4 h-4" />}
           >
-            <span>Export Diary (JSON)</span>
+            Export JSON
           </Button>
         }
       />
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-        {/* Left Column: Daily Logger Form (6 cols) */}
-        <Card padding="lg" className="lg:col-span-6 space-y-6">
-          <div className="flex items-center justify-between pb-4 border-b border-line">
-            <div className="flex items-center gap-2">
-              <BookHeart className="w-5 h-5 text-fg" />
-              <div>
-                <h3 className="text-sm font-bold text-fg">Daily Wellbeing Entry</h3>
-                <div className="flex items-center gap-1.5 mt-0.5">
-                  <span className="text-xs font-semibold text-fg-secondary">{selectedDayInfo.dayName}, {selectedDayInfo.fullDate}</span>
-                  {selectedDayInfo.badge && <Badge>{selectedDayInfo.badge}</Badge>}
-                </div>
-              </div>
-            </div>
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        <div className="lg:col-span-7">
+          <DiaryEntryForm
+            key={`${selectedDate}:${selectedEntry?.id ?? 'new'}`}
+            date={selectedDate}
+            today={today}
+            yesterday={yesterday}
+            entry={selectedEntry}
+            spending={selectedSpending}
+            onChangeDate={changeDate}
+            onSave={handleSave}
+            savedMessage={savedMessage}
+            onSaved={handleSaved}
+          />
+        </div>
 
-            <input
-              id="diary-date-picker"
-              type="date"
-              value={selectedDate}
-              onChange={(e) => loadEntryForDate(e.target.value)}
-              className="min-h-[44px] text-xs border border-line-input rounded-lg px-3 py-1.5 bg-surface-2 text-fg focus:outline-none focus:ring-2 focus:ring-focus cursor-pointer"
-            />
-          </div>
-
-          {/* Real-time Day Outflow & Inflow summary for selected date */}
-          <div className="bg-surface-2 rounded-lg p-3.5 border border-line flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-expense-tint text-expense flex items-center justify-center">
-                <ArrowUpRight className="w-4 h-4" />
-              </div>
-              <div>
-                <span className="text-[11px] font-semibold uppercase tracking-wider text-fg-secondary block">
-                  {selectedDayInfo.dayName} Outflow
-                </span>
-                <span className="text-xs text-fg-secondary font-medium">
-                  {selectedDateOutflowCount} outflow transaction(s)
-                </span>
-              </div>
-            </div>
-            <div className="text-right">
-              <span className={`text-base font-black ${selectedDateData.totalOutflow > 0 ? 'text-expense' : 'text-fg-secondary'}`}>
-                {formatCurrencyAmount(selectedDateData.totalOutflow)}
-              </span>
-              {selectedDateData.totalIncome > 0 && (
-                <span className="text-[11px] text-income block font-semibold">
-                  +{formatCurrencyAmount(selectedDateData.totalIncome)} in
-                </span>
-              )}
-            </div>
-          </div>
-
-          <form onSubmit={handleSaveEntry} className="space-y-5">
-            {/* 1. Mood Selector (1 to 5) */}
-            <div>
-              <label className="text-xs font-semibold text-fg-secondary block mb-2">
-                1. Daily Mood Rating (1 - 5)
-              </label>
-              <div className="grid grid-cols-5 gap-2">
-                {[1, 2, 3, 4, 5].map((level) => {
-                  const info = MOOD_LABELS[level];
-                  const isSelected = mood === level;
-                  return (
-                    <button
-                      key={level}
-                      id={`mood-btn-${level}`}
-                      type="button"
-                      onClick={() => setMood(level)}
-                      className={`flex flex-col items-center justify-center p-3 rounded-lg border transition-control duration-150 cursor-pointer ${
-                        isSelected
-                          ? 'border-brand-fill bg-brand-fill text-white'
-                          : 'border-line bg-surface-2 hover:bg-surface-3 text-fg-secondary'
-                      }`}
-                    >
-                      <span className="text-xl">{info.emoji}</span>
-                      <span className="text-[11px] font-bold mt-1">{level}★</span>
-                    </button>
-                  );
-                })}
-              </div>
-              <p className="text-xs font-medium text-fg-secondary mt-2 text-center">
-                Current Mood: <strong className="text-fg">{MOOD_LABELS[mood].label}</strong>
-              </p>
-            </div>
-
-            {/* 2. Workout Toggle & Note */}
-            <div className="bg-surface-2 p-4 rounded-lg border border-line space-y-3">
-              <div className="flex items-center justify-between">
-                <label htmlFor="diary-workout-checkbox" className="text-xs font-semibold text-fg flex items-center gap-2 cursor-pointer">
-                  <Dumbbell className="w-4 h-4 text-brand" />
-                  <span>Physical Workout / Exercise Completed?</span>
-                </label>
-                {/* A 16px box inside a 44px tap area: the wrapping span is the hit box, and a
-                    tap anywhere in it lands on the input itself. */}
-                <span className="relative w-11 h-11 -my-3 -mr-3 inline-flex items-center justify-center shrink-0">
-                  <input
-                    id="diary-workout-checkbox"
-                    type="checkbox"
-                    checked={workout}
-                    onChange={(e) => setWorkout(e.target.checked)}
-                    className="peer absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                  />
-                  <span
-                    aria-hidden="true"
-                    className="w-4 h-4 rounded-sm border border-line-input bg-surface-1 flex items-center justify-center peer-checked:bg-brand-fill peer-checked:border-brand-fill peer-focus-visible:ring-2 peer-focus-visible:ring-focus pointer-events-none"
-                  >
-                    {workout && <Check className="w-3 h-3 text-white" />}
-                  </span>
-                </span>
-              </div>
-
-              {workout && (
-                <input
-                  id="diary-workout-note"
-                  type="text"
-                  value={workoutNote}
-                  onChange={(e) => setWorkoutNote(e.target.value)}
-                  placeholder="e.g. 5km run, Pilates, Heavy leg day..."
-                  className="w-full min-h-[44px] text-xs rounded-lg border border-line-input px-3 py-2 bg-surface-2 text-fg placeholder:text-fg-muted focus:outline-none focus:ring-2 focus:ring-focus"
-                />
-              )}
-            </div>
-
-            {/* 3. Food Quality (Healthy, Average, Junk) */}
-            <div>
-              <label className="text-xs font-semibold text-fg-secondary block mb-2">
-                3. Nutrition & Food Quality
-              </label>
-              <div className="grid grid-cols-3 gap-3">
-                {(['HEALTHY', 'AVERAGE', 'JUNK'] as FoodQuality[]).map((fq) => (
-                  <button
-                    key={fq}
-                    id={`food-btn-${fq.toLowerCase()}`}
-                    type="button"
-                    onClick={() => setFoodQuality(fq)}
-                    className={`min-h-[44px] py-2.5 px-3 rounded-lg border text-xs font-semibold transition-control duration-150 flex items-center justify-center gap-1.5 cursor-pointer ${
-                      foodQuality === fq
-                        ? fq === 'HEALTHY'
-                          ? 'bg-income-tint text-income border-income'
-                          : fq === 'AVERAGE'
-                          ? 'bg-pending-tint text-pending border-pending'
-                          : 'bg-expense-tint text-expense border-expense'
-                        : 'border-line bg-surface-2 text-fg-secondary hover:bg-surface-3'
-                    }`}
-                  >
-                    <Utensils className="w-3.5 h-3.5" />
-                    <span>{fq === 'HEALTHY' ? 'Clean / Home' : fq === 'AVERAGE' ? 'Average' : 'Fast Food / Junk'}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* 4. Journal / Mindful Reflection */}
-            <div>
-              <label className={LABEL_CLASS}>
-                4. Daily Reflection Notes (Optional)
-              </label>
-              <textarea
-                id="diary-notes-textarea"
-                rows={3}
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                placeholder="What went well today? Any financial triggers or stress points?"
-                className="w-full text-xs rounded-lg border border-line-input bg-surface-2 p-3 text-fg placeholder:text-fg-muted focus:outline-none focus:ring-2 focus:ring-focus"
-              />
-            </div>
-
-            {/* Submit */}
-            <div>
-              <Button id="save-diary-entry-btn" type="submit" block icon={<Check className="w-4 h-4" />}>
-                <span>Save Diary Log for {selectedDayInfo.dayName} ({selectedDate})</span>
-              </Button>
-              {saveSuccess && (
-                <p className="text-center text-xs text-income font-semibold mt-2">
-                  ✓ Diary entry logged for {selectedDayInfo.dayName}!
-                </p>
-              )}
-              {saveError && (
-                <p className="text-center text-xs text-expense font-semibold mt-2">
-                  {saveError}
-                </p>
-              )}
-            </div>
-          </form>
-        </Card>
-
-        {/* Right Column: Historical Diary Logs & Spending Correlation (6 cols) */}
-        <Card padding="lg" className="lg:col-span-6 space-y-4">
-          <div className="flex items-center justify-between pb-3 border-b border-line">
-            <div className="flex items-center gap-2">
-              <Calendar className="w-4 h-4 text-fg-secondary" />
-              <h3 className="text-sm font-bold text-fg">Recent Diary Entries</h3>
-            </div>
-            <span className="text-xs text-fg-muted">{activeEntries.length} logged days</span>
-          </div>
-
-          <div className="space-y-3 max-h-[560px] overflow-y-auto pr-1">
-            {enrichedEntries.length === 0 ? (
-              <p className="text-xs text-fg-muted text-center py-10">No diary entries logged yet.</p>
-            ) : (
-              enrichedEntries.map(({ entry, dayInfo, dayData, outflowTxs, moodInfo }) => (
-                <DiaryEntryCard
-                  key={entry.id}
-                  entry={entry}
-                  dayInfo={dayInfo}
-                  dayData={dayData}
-                  outflowTxs={outflowTxs}
-                  moodInfo={moodInfo}
-                  isExpanded={expandedDateId === entry.id}
-                  onToggleExpand={handleToggleExpand}
-                  onDelete={handleDeleteEntry}
-                  categoryMap={categoryMap}
-                  walletMap={walletMap}
-                />
-              ))
-            )}
-          </div>
-        </Card>
+        <div className="lg:col-span-5 flex flex-col gap-6">
+          <DiaryCalendar
+            monthKey={calendarMonth}
+            onChangeMonth={setCalendarMonth}
+            today={today}
+            selectedDate={selectedDate}
+            loggedDates={loggedDates}
+            onSelectDay={changeDate}
+          />
+          <RecentEntries
+            entries={entries}
+            spendingByDate={spendingByDate}
+            today={today}
+            onEdit={handleEdit}
+            onDelete={handleDelete}
+            onOpenDayTransactions={handleOpenDayTransactions}
+          />
+        </div>
       </div>
+
+      <ConfirmDialog
+        isOpen={!!entryToDeleteId}
+        onClose={handleCloseDelete}
+        onConfirm={handleConfirmDelete}
+        isLoading={isDeleting}
+        error={deleteError}
+        title="Delete diary entry"
+        description={
+          entryToDelete
+            ? `Delete the entry for ${formatWeekdayDate(entryToDelete.date)}? Its mood, activity, meals and notes are removed. That day's transactions are not touched.`
+            : ''
+        }
+      />
     </div>
   );
 };

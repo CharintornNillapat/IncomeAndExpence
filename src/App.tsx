@@ -97,6 +97,9 @@ const MainApp: React.FC = () => {
   // Phase 59 (ADR 0034): a Dashboard wallet row opens the Wallets page with
   // that wallet selected. Cleared by WalletsView the same way.
   const [walletsSelectedWallet, setWalletsSelectedWallet] = useState<string | undefined>(undefined);
+  // Phase 61 (ADR 0036): a diary entry's "N transactions" opens the
+  // Transactions page filtered to that day. Cleared by TransactionsView.
+  const [transactionsDayFilter, setTransactionsDayFilter] = useState<string | undefined>(undefined);
 
   // PWA app shortcut "Quick Add Transaction" launches to `/?action=quick-add`.
   // Strip the query param immediately so it doesn't linger in the address bar
@@ -197,6 +200,14 @@ const MainApp: React.FC = () => {
     [handleTabChange]
   );
   const handleConsumeTransactionsSelectedTx = useCallback(() => setTransactionsSelectedTx(undefined), []);
+  const handleOpenDayTransactions = useCallback(
+    (date: string) => {
+      setTransactionsDayFilter(date);
+      handleTabChange('transactions');
+    },
+    [handleTabChange]
+  );
+  const handleConsumeTransactionsDayFilter = useCallback(() => setTransactionsDayFilter(undefined), []);
   const handleOpenWallet = useCallback(
     (walletId?: string) => {
       setWalletsSelectedWallet(walletId);
@@ -260,6 +271,8 @@ const MainApp: React.FC = () => {
             onConsumeInitialWalletFilter={handleConsumeTransactionsWalletFilter}
             initialSelectedTxId={transactionsSelectedTx}
             onConsumeInitialSelectedTx={handleConsumeTransactionsSelectedTx}
+            initialDayFilter={transactionsDayFilter}
+            onConsumeInitialDayFilter={handleConsumeTransactionsDayFilter}
             onOpenTransfer={handleOpenTransfer}
             onNavigateToDebts={handleNavigateToDebts}
           />
@@ -278,7 +291,7 @@ const MainApp: React.FC = () => {
       case 'debts':
         return <DebtsView />;
       case 'diary':
-        return <DiaryView />;
+        return <DiaryView onOpenDayTransactions={handleOpenDayTransactions} />;
       case 'categories':
         return <CategoriesView />;
       default:
