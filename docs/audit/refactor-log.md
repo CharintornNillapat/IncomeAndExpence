@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 61 - The Daily diary (spec 6.5): T299-T312 (2026-10-01, commits `e8a1f79`, `220e7db`, `d80fb5e`, docs `DOCS61`)
+## Phase 61 - The Daily diary (spec 6.5): T299-T312 (2026-10-01, commits `e8a1f79`, `220e7db`, `d80fb5e`, docs `cc9c310`)
 
 **Changed**
 - **No migration.**

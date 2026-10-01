@@ -1104,9 +1104,9 @@ Branch `phase-61-diary`, cut from `main` at `3f45e3b`. It also carries `ef1bdea`
 | T307 | Day hand-off: `transactionsDayFilter`, `initialDayFilter`, `#tx-day-filter` | `App.tsx`, `views/TransactionsView.tsx` | Med | Low | 0.4h | done | T305 | 220e7db | bounds that ignore the day failed | - |
 | T308 | Unit: `diary-page` (17), day filter (2) | `unit/` | High | Low | 1h | done | T299-T307 | 220e7db | 6 controls caught | unit 518 -> 537 |
 | T309 | `tests/diary-page.spec.ts` (3); `diary.spec.ts` and `theme.spec.ts` unedited | `tests/` | High | Low | 0.4h | done | T302-T307 | 220e7db | - | E2E 384 -> 393 runs |
-| T310 | Gate: lint, unit, WCAG, build, Playwright, walk-through; "Daily diary" in the nav (`d80fb5e`); the Phase 60 size figures corrected | - | - | - | 1h | done | all | d80fb5e, DOCS61 | lint, unit 537/537, WCAG, build; Playwright 392 then 393 of 393 (one Firefox page-open failure in run 1); walk-through clean | entry +525 B |
-| T311 | Antislop audit 010 (mode 2) | `anti-slop/audit-010-2026-10-01.md` | - | - | 0.5h | done; findings await the owner | T310 | DOCS61 | 6 findings (2 MEDIUM, 4 LOW), no new Hard Gate failure | - |
-| T312 | ADR `0036`, `DESIGN.md`, `CLAUDE.md`, selector contract, ledger, log, metrics; sha backfill; draft PR | docs | Low | Low | 1h | docs done; draft PR on the owner's word | all | DOCS61 | - | - |
+| T310 | Gate: lint, unit, WCAG, build, Playwright, walk-through; "Daily diary" in the nav (`d80fb5e`); the Phase 60 size figures corrected | - | - | - | 1h | done | all | d80fb5e, cc9c310 | lint, unit 537/537, WCAG, build; Playwright 392 then 393 of 393 (one Firefox page-open failure in run 1); walk-through clean | entry +525 B |
+| T311 | Antislop audit 010 (mode 2) | `anti-slop/audit-010-2026-10-01.md` | - | - | 0.5h | done; findings await the owner | T310 | cc9c310 | 6 findings (2 MEDIUM, 4 LOW), no new Hard Gate failure | - |
+| T312 | ADR `0036`, `DESIGN.md`, `CLAUDE.md`, selector contract, ledger, log, metrics; sha backfill; draft PR | docs | Low | Low | 1h | docs done; draft PR on the owner's word | all | cc9c310 | - | - |
 
 ## Phase 60 - FinLife redesign, step 4, fourth page (Debt payoff): T285-T298 (2026-10-01)
 
