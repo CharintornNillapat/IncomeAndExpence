@@ -57,7 +57,7 @@ Each hue has a text token and a solid `-tint` background: `income`, `expense`, `
 Every text token passes 4.5:1 on every surface it can sit on, in both themes. Every hue passes on its own tint. `fg-muted` is the faintest text allowed: 5.80:1 on a dark card. Input edges and the focus outline reach 3:1 (WCAG 1.4.11); the outline is checked against every surface it can sit on, header and menu included. Run `node scripts/wcag-tokens.mjs` after changing any value; it reads `src/index.css` and exits 1 on a failure. `fg-disabled` is exempt, as WCAG exempts disabled controls.
 
 ### Identity colours (wallets and categories)
-Wallets and categories take their own colour from the muted identity palette in spec section 1. It avoids red, green, blue, cyan and amber, which carry money meaning. The migration of existing colours is a later phase (spec section 5.1).
+Wallets and categories take their own colour from the muted identity palette in spec section 1. It avoids red, green, blue, cyan and amber, which carry money meaning. Since Phase 59 (audit 008) the wallet colour picker, in Add wallet and in Edit, offers exactly those twelve colours. The migration of existing colours, the starter wallets' included, is a later phase (spec section 5.1).
 
 ---
 
@@ -201,6 +201,7 @@ One period for the whole page, chosen in the `PageHeader`. Every figure comes fr
   - **Activity:** "Recent activity in <wallet>" and "View all", then the wallet's 10 newest rows through `ActivityFeed`. A transfer is signed by its direction: `+` arriving, `−` leaving. A cancelling adjustment pair folds into one dashed row (L8).
 - **No trash button and no "Active Source" badge.** Delete and Archive live in the menu and confirm first. Delete says how many transactions stay and still count, and that the balance leaves the totals.
 - **Dashboard hand-off:** a Dashboard wallet row opens the page with that wallet selected. The wallet popup is gone.
+- **Closing the sheet returns focus to the wallet row that opened it**, as every `Modal` now does (audit 008).
 
 ### Sync indicator (header)
 Five states. The first is for guests; the other four are for a signed-in user, checked in this order.

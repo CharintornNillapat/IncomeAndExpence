@@ -1081,7 +1081,7 @@ Approved explicitly by the user, planned and approved before any code was writte
 - **One negative control was redone** because the first attempt produced malformed TypeScript that the dev server still served — the tests failed, but possibly for the wrong reason.
 - **No flakes.** Phase 44's `wallets.spec.ts` webkit flake has now not reproduced across three consecutive phases; still watched rather than closed.
 
-## Phase 59 - FinLife redesign, step 4, third page (Wallets): T268-T282 (2026-10-01)
+## Phase 59 - FinLife redesign, step 4, third page (Wallets): T268-T284 (2026-10-01)
 
 ADR `0034`, amending `0008`. The plan was approved in plan mode; the owner's decisions:
 - a Dashboard wallet row hands off to the Wallets page with that wallet selected, and `WalletPopupModal` is deleted;
@@ -1108,6 +1108,8 @@ Branch `phase-59-wallets`, cut from `main` at `8725c11`. It also carries `ffd1b4
 | T280 | `tests/wallets-page.spec.ts` (3 guest tests) | `tests/` | High | Low | 0.3h | done | T272-T277 | 21dba28 | 2 controls each failed their test | E2E 366 -> 375 runs |
 | T281 | Gate: lint, unit, WCAG, build, Playwright twice, walk-through, antislop audit 008; audit 008's in-pass fix (Escape in the menu closed the sheet) | `ui/OverflowMenu.tsx`, `unit/ui-controls.test.tsx` | - | - | 1h | done | all | 77e33cf | 375/375 twice; the fix's test failed first; 90 menu-spec runs after it | unit 489 -> 490 |
 | T282 | ADR `0034`, `DESIGN.md`, `CLAUDE.md`, selector contract, ledger, log, metrics; sha backfill; draft PR | docs | Low | Low | 1h | docs and backfill done; draft PR on the owner's word, 2026-10-01 | all | 7c54dfe | - | - |
+| T283 | Audit 008 finding 2: the wallet colour picker offers spec section 1's twelve identity colours | `wallet/walletFormStyles.ts`, `unit/wallets-page.test.tsx` | Med | Low | 0.2h | done | the owner | 7f4b1a3 | a control with red put back failed its test | - |
+| T284 | Audit 008 finding 1: `Modal` returns focus to its opener when it closes | `Modal.tsx`, `unit/ui-controls.test.tsx`, `unit/wallets-page.test.tsx` | Med | Med | 0.3h | done | the owner | 7f4b1a3 | a control without the restore failed 2 tests | unit 490 -> 494 |
 
 **Notes on execution:**
 - **The walk-through found three layout problems, all fixed before the gate:** the balance box had no inner padding; at 1024 a 4/12 list cut every wallet name off; and the balance buttons wrapped into a column beside the figure.

@@ -1128,6 +1128,6 @@ Per chunk (raw bytes; every chunk not listed is byte-identical):
 | Suite | Files | Tests | Runs | Wall clock |
 |---|---|---|---|---|
 | Playwright (local, 4 workers) | 25 | 125 | 375 | 6.9 / 7.1 m (two runs) |
-| Vitest (`unit/`) | 23 | 490 (489 before the audit 008 fix) | 490 | ~33 s |
+| Vitest (`unit/`) | 23 | 494 (489 before audit 008's fixes) | 494 | ~33 s |
 
-**Intermittent local failures:** none in 750 full-suite runs (two full runs).
+**Intermittent local failures:** 1 in 1,500 full-suite runs (four full runs): a WebKit click waiting for "stable" on Add wallet's submit, in run 3. No assertion failed; the test passed 10 of 10 on repeat.

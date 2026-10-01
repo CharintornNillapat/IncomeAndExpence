@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 59 - The Wallets page (spec 6.3): T268-T282 (2026-10-01, commits `373c28b`, `21dba28`, `77e33cf`, docs `7c54dfe`)
+## Phase 59 - The Wallets page (spec 6.3): T268-T284 (2026-10-01, commits `373c28b`, `21dba28`, `77e33cf`, `7f4b1a3`, docs `7c54dfe`)
 
 **Changed**
 - **No migration.** `wallets.is_archived` already existed and was mapped.
@@ -20,7 +20,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
   - `ActivityFeed` extracted from `RecentActivityCard` and shared;
   - a Dashboard wallet row opens the page with that wallet selected, and `WalletPopupModal` is deleted with the compact icon set, the `sm` icon size and `tintOverride`.
 - **Tests:**
-  - `unit/wallets-page.test.tsx` (12), 3 selector tests and 3 signed-in tests: unit 471 -> 489 in 23 files, and the audit 008 fix's test: 490;
+  - `unit/wallets-page.test.tsx` (12), 3 selector tests and 3 signed-in tests: unit 471 -> 489 in 23 files, the audit 008 Escape fix's test (490), and the owner-approved findings 1 and 2 (494);
   - `tests/wallets-page.spec.ts` (3 guest tests): E2E 366 -> 375 runs;
   - four specs moved, by locator or copy: `soft-delete`, `account-and-mobile-nav`, `theme`, `date-boundary`.
 - **Docs:** ADR `0034` (amends `0008`), `DESIGN.md` (the page; two deviations added, one widened), `CLAUDE.md`, `test-selector-contract.md`, antislop audit 008.
@@ -33,9 +33,10 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 - **A Vite server left behind by a stopped shell answered on port 3000** during run 1. It served the current tree, and only docs changed during the run, so the run stands; the process was stopped before run 2.
 
 **Gate:**
-- **Lint:** clean. **Unit:** 489/489, then 490/490 with the audit 008 fix. **WCAG:** all pairs pass; no token changed.
+- **Audit 008, findings 1 and 2, fixed on the owner's word:** the wallet colour picker offers spec section 1's twelve identity colours, and every `Modal` returns focus to its opener when it closes. Each fix's test failed with the fix removed; the first draft of the sheet's focus test passed without it, because focus never left the row in jsdom, and now moves into the sheet first.
+- **Lint:** clean. **Unit:** 489/489, then 490/490 with the audit 008 Escape fix, then 494/494 with findings 1 and 2. **WCAG:** all pairs pass; no token changed.
 - **Mutations:** 5 caught (transfer direction dropped, the credit-card rule removed, the delete count including deleted rows, and the old `updateWallet` payload twice). The two new E2E controls (archived wallet still in Quick Add; the hand-off ignoring the wallet) each failed their test.
-- **Playwright (local, 4 workers):** run 1 375/375 (6.9 min), run 2 375/375 (7.1 min), no retries in either.
+- **Playwright (local, 4 workers):** run 1 375/375 (6.9 min), run 2 375/375 (7.1 min), no retries in either. After the audit 008 fixes: run 3 374/375 (7.5 min), where WebKit's `account-and-mobile-nav.spec.ts:140` timed out waiting for Add wallet's submit to be "stable", the known WebKit intermittent (audit 006 finding 3). That test and the Add wallet specs then passed 60/60 on WebKit (10 repeats each), and run 4 was 375/375 (6.5 min).
 - **Build:** entry +1,579 B (+398 B gzip), all JS +1,599 B, CSS −642 B; `DashboardView` −13,068 B with the popup gone, `WalletsView` +10,889 B. No vendor chunk grew.
 - **Walk-through** (Playwright's Chromium by script; the MCP server did not connect) at 1280 light, 1024 light, 900 dark, 390 light and dark: 0 controls under 44px, no page overflow, one detail per width.
 

@@ -82,7 +82,7 @@ The app now draws one transaction icon set everywhere (spec 4.9).
 - **The 4/8 split starts at `xl` (1280), as the spec says, but the page is master-detail from `lg` (1024), at 5/7.** At 1024 a 4/12 list truncated every wallet name. Spec 8 asks for one column from 768 to 1279. The Transactions page's inline panel set the `lg` precedent (ADR `0033`).
 - **The balance and its two buttons sit side by side only from `xl`.** Narrower (the 5/7 detail and the sheet), the buttons go under the figure; side by side they wrapped into a column.
 - **The selected row is `brand-soft` with the inset violet edge**, not the spec's `#1C1930` / `#4B3F86`. This is the same deviation DESIGN.md records for the Transactions panel.
-- **The wallet colours are still the old palette**, which includes a red; spec 5.1's colour migration is its own later phase.
+- **Existing wallets keep their old colours**, the starter wallets' included, until spec 5.1's migration. The picker itself offers only spec section 1's twelve identity colours since audit 008.
 
 ## Spec edits (locator and copy moves only, each in the code's own commit)
 - `soft-delete.spec.ts`:
@@ -102,5 +102,9 @@ The app now draws one transaction icon set everywhere (spec 4.9).
 - **One wallet-detail surface.** The Dashboard no longer mounts any wallet modal; `QuickAddModal`, `TransferFundsModal`, `AddWalletModal` and `AccountModal` remain the shell's lazy modals.
 - **Archived wallets can be brought back.** An archived wallet's balance is out of every total until it is unarchived; the archive dialog says so.
 - **Delete still keeps a wallet's rows in spending and income.** The dialog now says that plainly instead of "Its transaction history is kept".
+- **Audit 008, the owner's decisions (2026-10-01):**
+  - finding 2: `WALLET_COLOR_PALETTE` is spec section 1's twelve identity colours, so neither Add wallet nor Edit offers a red or a near-black;
+  - finding 1: `Modal` gives focus back to the element that had it when the dialog opened, however it closes, if that element is still on the page. This holds for every dialog and sheet in the app, not only this page's;
+  - findings 3 to 5 are accepted and watched.
 - **`OverflowMenu` stops its own Escape** (audit 008). This page is the first to put the menu inside a `Modal`, whose `document` listener closed the whole sheet on the menu's Escape.
 - **A full-page Playwright screenshot is not a safe way to check this page.** Chromium resizes the viewport to 1px wide during the capture, which flips `useMediaQuery`, and the sheet's exit animation can stick. A real resize across 1024 was checked and gives one copy each way. The walk-through uses viewport screenshots.
