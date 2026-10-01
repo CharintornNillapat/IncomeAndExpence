@@ -38,7 +38,7 @@ const NAV_ITEMS: NavItemConfig[] = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { id: 'transactions', label: 'Transactions', icon: ArrowLeftRight },
   { id: 'wallets', label: 'Wallets', icon: WalletIcon },
-  { id: 'debts', label: 'Debt Payoff', icon: TrendingDown },
+  { id: 'debts', label: 'Debt payoff', icon: TrendingDown },
   { id: 'diary', label: 'Daily Diary', icon: BookHeart },
   { id: 'categories', label: 'Categories', icon: Tags },
 ];

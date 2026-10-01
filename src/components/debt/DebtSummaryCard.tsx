@@ -55,8 +55,19 @@ export const DebtSummaryCard: React.FC<DebtSummaryCardProps> = ({ remaining, tot
             Needed per month to hit every due date
           </h2>
           <Money value={plan.totalRequired} className="text-2xl font-semibold tracking-tight" />
+          {/* Audit 009 finding 1: worded as the Dashboard's banner. A gap
+              against no surplus would only repeat the total. */}
           <p className="text-sm">
-            <Money value={plan.shortfall} className="font-semibold" /> more than you have left over each month
+            {plan.surplus > 0 ? (
+              <>
+                <Money value={plan.shortfall} className="font-semibold" /> more than the past 30 days&apos; surplus of{' '}
+                <Money value={plan.surplus} className="font-semibold" />
+              </>
+            ) : (
+              <>
+                The past 30 days left no surplus (<Money value={plan.surplus} className="font-semibold" />)
+              </>
+            )}
           </p>
         </div>
       ) : (

@@ -4,7 +4,7 @@ import { render, cleanup, fireEvent, screen, waitFor, within } from '@testing-li
 import { FinanceProvider } from '../src/context/FinanceContext';
 import { DebtsView } from '../src/views/DebtsView';
 import { DebtEditSchema } from '../src/utils/zodSchemas';
-import { formatCurrencyAmount } from '../src/utils/currency';
+import { formatCurrencyAmount, MINUS } from '../src/utils/currency';
 import { formatShortDate, shiftIsoDate, todayIsoDate } from '../src/utils/date';
 import { debtPlan, requiredMonthly } from '../src/selectors/debts';
 import type { Debt, Transaction } from '../src/types';
@@ -58,6 +58,10 @@ function income(amount: number): Transaction {
     createdAt: '2026-09-01T00:00:00.000Z',
     updatedAt: '2026-09-01T00:00:00.000Z',
   };
+}
+
+function spent(amount: number): Transaction {
+  return { ...income(amount), id: `seed-spent-${amount}`, categoryId: 'cat-food', type: 'EXPENSE', description: 'Dinner' };
 }
 
 function mount(options: { debts?: Debt[]; rows?: Transaction[] } = {}) {
@@ -181,17 +185,33 @@ describe('the summary', () => {
     expect(screen.getByTestId('debt-summary-paid').textContent).toBe(`Paid off20.0%${formatCurrencyAmount(3000)} repaid`);
   });
 
-  it('warns with the gap when the debts need more a month than the past 30 days left over', () => {
+  it('warns when the debts need more a month than the past 30 days left, which left nothing over', () => {
     mount({ debts: [big()] });
     const required = requiredMonthly(big(), TODAY)!;
     const box = screen.getByTestId('debt-summary-plan');
     expect(box.getAttribute('role')).toBe('note');
+    // Audit 009 finding 1: with no surplus, the gap would only repeat the total.
     expect(box.textContent).toBe(
-      `Needed per month to hit every due date${formatCurrencyAmount(required)}${formatCurrencyAmount(required)} more than you have left over each month`
+      `Needed per month to hit every due date${formatCurrencyAmount(required)}The past 30 days left no surplus (${formatCurrencyAmount(0)})`
     );
     // The debt that alone outruns the surplus shows its figures in the warning colour (L5).
     const card = byId('debt-card-big')!;
     expect(within(card).getByText(/^Due /).className).toContain('text-pending-body');
+  });
+
+  it('names a negative surplus with its sign', () => {
+    mount({ debts: [big()], rows: [spent(700)] });
+    expect(screen.getByTestId('debt-summary-plan').textContent).toContain(
+      `The past 30 days left no surplus (${MINUS}${formatCurrencyAmount(700)})`
+    );
+  });
+
+  it('states the gap against a surplus that is there but too small', () => {
+    mount({ debts: [big()], rows: [income(1000)] });
+    const required = requiredMonthly(big(), TODAY)!;
+    expect(screen.getByTestId('debt-summary-plan').textContent).toBe(
+      `Needed per month to hit every due date${formatCurrencyAmount(required)}${formatCurrencyAmount(required - 1000)} more than the past 30 days' surplus of ${formatCurrencyAmount(1000)}`
+    );
   });
 
   it('reads "On track" once the surplus covers the plan', () => {
