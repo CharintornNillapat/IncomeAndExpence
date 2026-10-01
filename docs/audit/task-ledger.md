@@ -1093,7 +1093,9 @@ ADR `0033`. The plan was approved in plan mode; the owner's decisions:
 - audit 006 findings 1 and 2 fixed here;
 - antislop mode 2 (audit 007).
 
-Branch `phase-58b-edit`. It also carries `280e70a`, the Phase 58s deploy record, which was not pushed.
+Branch `phase-58b-edit`, PR #6. It also carried `280e70a`, the Phase 58s deploy record, which had not been pushed.
+- Merged into `main` as `8725c11` with a merge commit, with the owner's go-ahead. Push run `36801738099` passed.
+- Vercel `dpl_Fmv9YXiWKQ5YrFPkcJeTiLABfos1` serves a build that matches the local one byte for byte, apart from line endings. A signed-out smoke test on production passed: a new row opened the edit panel, and an amount edit saved (see the refactor log).
 
 | # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
 |---|---|---|---|---|---|---|---|---|---|---|
@@ -1110,7 +1112,7 @@ Branch `phase-58b-edit`. It also carries `280e70a`, the Phase 58s deploy record,
 | T263 | Gate: lint, unit, WCAG, build, Playwright twice, MCP | - | - | - | 1h | done | all | 336c0ca (MCP fix) | 366/366 twice; MCP clean but for audit 007 finding 1 | see metrics |
 | T264 | ADR `0033`, `DESIGN.md`, `CLAUDE.md`, selector contract | docs | Low | Low | 1h | done | all | 5f19972 | - | - |
 | T265 | Ledger, log, metrics, antislop audit 007 | docs | Low | Low | 0.5h | done | all | 5f19972 | - | - |
-| T266 | sha backfill; PR on the owner's word | docs | Low | Low | 0.1h | backfill done (d699ae6); draft PR on the owner's word, 2026-10-01 | T265 | d699ae6 | - | - |
+| T266 | sha backfill; PR on the owner's word | docs | Low | Low | 0.1h | done: backfill (d699ae6); PR #6 merged as 8725c11 on the owner's word, 2026-10-01 | T265 | d699ae6 | push run 36801738099 passed; production matches the local build | - |
 | T267 | Audit 007 finding 2: a repayment's or adjustment's panel names its wallet, and a repayment its debt | `EditTransactionPanel.tsx`, `TransactionDrawer.tsx`, `TransactionsView.tsx`, `unit/transactions-page.test.tsx` | Low | Low | 0.2h | done | the owner | (this row's own commit) | a control that dropped the debt failed its test; 366/366 | unit 470 -> 471 |
 
 **Notes on execution:**

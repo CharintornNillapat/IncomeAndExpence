@@ -44,6 +44,18 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
   - An edit by formula moved Cash by exactly the difference; expense to transfer moved only Main Checking; a downward adjustment's note saved; the Dashboard hand-off opened the sheet at 390.
   - Found and fixed (`336c0ca`): the type control did not fill its tray.
 
+**CI and deploy:**
+- PR run `36782958269` on `9b01172`: success in 5 m 7 s. Unit 471/471 in 22 files, and 122/122 per browser.
+- Merged as PR #6 with a merge commit, `8725c11`, with the owner's go-ahead. Its tree is identical to `9b01172`. It also published `280e70a`, the Phase 58s deploy record.
+- Push run `36801738099` on `8725c11`: success in 4 m 25 s. Unit 471/471; 122/122 per browser, no retries.
+- Vercel `dpl_Fmv9YXiWKQ5YrFPkcJeTiLABfos1` Production `READY`. `income-and-expence-neon.vercel.app` serves `index-DGcrQLy7.js` at **178,446 B**.
+- **All 56 files of the local build were hashed against production.** 52 are byte-for-byte identical. The two SVGs and `robots.txt` differ only in line endings. `sw.js` has the same 55 precache URLs; only their order and the SVGs' revisions differ.
+- **Signed-out smoke test on production** (fresh headless Chromium, 1280px, no auth token):
+  - a ฿150 Quick Add expense, "Prod smoke 58b", landed on the Transactions page, whose header reads "Click any row to edit it";
+  - clicking its row opened the edit panel with the amount `150`, the type control, Save changes (disabled until a change) and Delete;
+  - an amount edit to `100` enabled Save, saved, and the row then read `−฿100.00`;
+  - no console errors.
+
 ## Phase 58s - Security: the AI proxies' callers and `public.profiles`: T245-T252 (2026-09-30, commits `ca5d465`...`7561cf1`)
 
 **Changed**
