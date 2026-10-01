@@ -40,6 +40,19 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 - **Build:** entry +1,579 B (+398 B gzip), all JS +1,599 B, CSS −642 B; `DashboardView` −13,068 B with the popup gone, `WalletsView` +10,889 B. No vendor chunk grew.
 - **Walk-through** (Playwright's Chromium by script; the MCP server did not connect) at 1280 light, 1024 light, 900 dark, 390 light and dark: 0 controls under 44px, no page overflow, one detail per width.
 
+**CI and deploy:**
+- PR run `36822921334` on `dd9150b`: success in 4 m 48 s. Unit 494/494 with no `.env` on the runner, and 125/125 per browser.
+- Merged as PR #7 with a merge commit, `f58f681`, with the owner's go-ahead. Its tree is identical to `dd9150b`. It also published `ffd1b4e`, the Phase 58b deploy record.
+- Push run `36823383454` on `f58f681`: success in 5 m 36 s. Unit 494/494; 125/125 per browser, no retries.
+- Vercel `dpl_ECj8qkmWJk7gTWNahBmujEqzwon9` Production `READY`. `income-and-expence-neon.vercel.app` serves `index-ChBFu4cC.js` at **180,247 B**. The audit 008 fixes added 222 B to the entry measured at `21dba28` (the focus return in `Modal`, which the entry loads).
+- **All 57 files of the local build were hashed against production.** 53 are byte-for-byte identical. The two SVGs and `robots.txt` differ only in line endings. `sw.js` has the same 56 precache URLs.
+- **Signed-out smoke test on production** (fresh headless Chromium, no auth token, no console errors):
+  - at 1280: a Dashboard wallet row (Cash) opened the Wallets page with Cash selected, under "฿7,650.00 across 3 wallets";
+  - the detail read "Cash · created Oct 1, 2026" and ฿150.00. Adjust balance to 100 gave ฿100.00;
+  - Edit offered 12 swatches and renamed the wallet;
+  - Archive left 2 wallets and "Archived (1)"; Unarchive brought it back, at ฿7,600.00 across 3 wallets;
+  - at 390: Enter on a wallet row opened its sheet, with no page overflow. Escape in the menu kept the sheet open; a second Escape closed it and returned focus to the row.
+
 ## Phase 58b - Editing a transaction (spec 6.2's edit panel): T253-T267 (2026-09-30, commits `dc166a0`...`5f19972`, and T267's own)
 
 **Changed**

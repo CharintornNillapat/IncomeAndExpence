@@ -1089,7 +1089,9 @@ ADR `0034`, amending `0008`. The plan was approved in plan mode; the owner's dec
 - Edit changes name, type and colour, never the balance;
 - antislop mode 2 (audit 008).
 
-Branch `phase-59-wallets`, cut from `main` at `8725c11`. It also carries `ffd1b4e`, the Phase 58b deploy record, which was not pushed.
+Branch `phase-59-wallets`, cut from `main` at `8725c11`, PR #7. It also carried `ffd1b4e`, the Phase 58b deploy record, which had not been pushed.
+- Merged into `main` as `f58f681` with a merge commit, with the owner's go-ahead, after audit 008's findings 1 and 2 were fixed (T283, T284). Push run `36823383454` passed.
+- Vercel `dpl_ECj8qkmWJk7gTWNahBmujEqzwon9` serves a build that matches the local one byte for byte, apart from line endings. A signed-out smoke test on production passed: the Dashboard hand-off, adjust, edit, archive and unarchive at 1280, and the sheet's Escape and focus return at 390 (see the refactor log).
 
 | # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
 |---|---|---|---|---|---|---|---|---|---|---|
