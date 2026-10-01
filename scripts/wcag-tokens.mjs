@@ -90,6 +90,8 @@ for (const [theme, v] of Object.entries(themes)) {
   check(theme, 'brand-text vs line-strong (mood meter)', c('brand-text'), c('line-strong'), 3);
   check(theme, 'brand-soft-text on brand-soft-bg', c('brand-soft-text'), c('brand-soft-bg'), 4.5);
   check(theme, 'selected-text on selected-bg', c('selected-text'), c('selected-bg'), 4.5);
+  // Phase 61: a logged day's number in the diary calendar.
+  check(theme, 'fg on logged-bg', c('fg'), c('logged-bg'), 4.5);
   for (const s of ['surface-1', 'surface-2']) {
     const tint = over(parse('rgba(139, 92, 246, 0.12)'), c(s));
     check(theme, `brand-text on brand-tint over ${s}`, c('brand-text'), tint, 4.5);

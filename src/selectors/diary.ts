@@ -1,5 +1,6 @@
 import { DiaryEntry, Transaction } from '../types';
-import { CategoryLookup, sumSpending } from './ledger';
+import { CategoryLookup, isSpending } from './ledger';
+import { roundToCents } from '../utils/money';
 import { TimeRange, inRange, rangeBounds } from './timeRange';
 
 export interface MoodDay {
@@ -9,6 +10,36 @@ export interface MoodDay {
   mood: number;
   /** That day's spending on the L1 definition. */
   spending: number;
+}
+
+export interface DaySpending {
+  /** The day's spending on the L1 definition. */
+  spending: number;
+  /** How many live rows make it up. */
+  count: number;
+}
+
+/**
+ * One local calendar day's spending (spec L1) and how many rows make it up:
+ * the diary form's "spent ฿X in N transactions" and each recent entry's
+ * figure. A transfer, a repayment or an adjustment is not spending.
+ */
+export function daySpending(txs: Transaction[], date: string, categories?: CategoryLookup): DaySpending {
+  let spending = 0;
+  let count = 0;
+  for (const tx of txs) {
+    if (tx.transactionDate.slice(0, 10) !== date || !isSpending(tx, categories)) continue;
+    spending += tx.amount;
+    count += 1;
+  }
+  return { spending: roundToCents(spending), count };
+}
+
+/** The live diary dates in one month (`YYYY-MM`), for spec 6.5's calendar. */
+export function diaryMonth(entries: DiaryEntry[], monthKey: string): Set<string> {
+  const dates = new Set<string>();
+  for (const entry of entries) if (!entry.isDeleted && entry.date.startsWith(`${monthKey}-`)) dates.add(entry.date);
+  return dates;
 }
 
 export interface MoodSpending {
@@ -42,10 +73,7 @@ export function moodSpendingDays(
   const days = logged.slice(0, MOOD_DAYS_SHOWN).map((entry) => ({
     date: entry.date,
     mood: entry.mood,
-    spending: sumSpending(
-      txs.filter((tx) => tx.transactionDate.slice(0, 10) === entry.date),
-      categories
-    ),
+    spending: daySpending(txs, entry.date, categories).spending,
   }));
 
   return { days, loggedCount: logged.length };
