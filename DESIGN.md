@@ -57,7 +57,7 @@ Each hue has a text token and a solid `-tint` background: `income`, `expense`, `
 Every text token passes 4.5:1 on every surface it can sit on, in both themes. Every hue passes on its own tint. `fg-muted` is the faintest text allowed: 5.80:1 on a dark card. Input edges and the focus outline reach 3:1 (WCAG 1.4.11); the outline is checked against every surface it can sit on, header and menu included. Run `node scripts/wcag-tokens.mjs` after changing any value; it reads `src/index.css` and exits 1 on a failure. `fg-disabled` is exempt, as WCAG exempts disabled controls.
 
 ### Identity colours (wallets and categories)
-Wallets and categories take their own colour from the muted identity palette in spec section 1. It avoids red, green, blue, cyan and amber, which carry money meaning. Since Phase 59 (audit 008) the wallet colour picker, in Add wallet and in Edit, offers exactly those twelve colours, and since Phase 62 the category picker offers the same twelve (`utils/identityPalette.ts`). Two categories never share one (L9): a used colour is disabled at 0.25 opacity and named "Rose, used by Pets". The migration of existing colours, the starter wallets' included, is a later phase (spec section 5.1).
+Wallets and categories take their own colour from the muted identity palette in spec section 1. It avoids red, green, blue, cyan and amber, which carry money meaning. Since Phase 59 (audit 008) the wallet colour picker, in Add wallet and in Edit, offers exactly those twelve colours, and since Phase 62 the category picker offers the same twelve (`utils/identityPalette.ts`). Two categories never share one (L9): a used colour is disabled, its fill at 0.25 under a diagonal strike, and named "Rose, used by Pets". The migration of existing colours, the starter wallets' included, is a later phase (spec section 5.1).
 
 ---
 
@@ -245,7 +245,7 @@ One period for the whole page, chosen in the `PageHeader`. Every figure comes fr
 
 ### Categories (spec 6.6, ADR 0037)
 - **Header:** `PageHeader` "Categories" with a Categories / Smart rules tablist on the right.
-- **Layout:** the list at 7/12 and the form at 5/12 from `lg`; below it the list, then the New form, and an edit opens in a sheet.
+- **Layout:** the list at 7/12 and the form at 5/12 from `lg`; below it the list, then the New form, and an edit opens in a sheet. Below `lg` the header also has a soft "Add category" that takes focus to the New form.
 - **The list:**
   - three groups, headed Expense (`expense`), Income (`income`) and System (muted), each with its count;
   - an Expense or Income row is one button: a 12px dot, the name, a neutral `Badge` ("Default", "Custom" or "Custom · in use") and a ›. The one in the form is `brand-soft`;
@@ -253,7 +253,7 @@ One period for the whole page, chosen in the `PageHeader`. Every figure comes fr
 - **The form:**
   - New: the Expense / Income `SegmentedControl`, Name, Description (with "Helps auto-categorization recognize what belongs here."), Color, and "Add category";
   - Edit: the type as text, the same fields, "Save changes" and Cancel, then Delete category (danger) under a rule. Delete is for an unused custom category; in use, it is disabled with "Used by N transactions and M rules"; a default says it can't be deleted.
-- **Color:** the twelve identity colours in six columns, a 28px swatch in a 44px button, the selected one ringed in `focus`. A colour another category uses is disabled at 0.25. A stored colour outside the twelve appears once more as "Current colour", selected, until spec 5.1's migration.
+- **Color:** the twelve identity colours in six columns, a 28px swatch in a 44px button, the selected one ringed in `focus`. A colour another category uses is disabled: its fill at 0.25 under a diagonal strike in `fg-secondary`, with a `line-strong` outline. A stored colour outside the twelve appears once more as "Current colour", selected, until spec 5.1's migration.
 - **Smart rules tab:** not redesigned (spec 11). Types read as words, headings in sentence case, no decorative heading icons.
 
 ### Sync indicator (header)

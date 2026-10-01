@@ -68,9 +68,9 @@ No migration.
     - "Save changes", and Cancel, which returns to New with focus on the row;
     - `#delete-category-{id}`, on a custom category only, disabled with "Used by 3 transactions and 1 rule, so it can't be deleted." when something uses it. A default reads "Default categories can't be deleted." instead.
 - **`ColorGrid`** shows the twelve colours in six columns, each a 28px swatch in a 44px button named by its colour:
-  - a colour in use is disabled at 0.25 opacity and named "Rose, used by Food & Dining";
+  - a colour in use is disabled, its fill at 0.25 opacity under a full-strength diagonal strike, and named "Rose, used by Food & Dining" in its label and tooltip. Opacity alone read as a paler colour, not an unavailable one (audit 011 finding 1);
   - **a category whose stored colour is not one of the twelve** shows it as an extra "Current colour" swatch, selected. Every shipped category is in that state until Phase 63, and without the swatch a Save would have to change its colour.
-- **Narrow widths:** one render path through `useMediaQuery('(min-width: 1024px)')`, as on the Wallets page (ADR `0034`). From `lg` the form switches mode in place; below it the New form stacks under the list and an edit opens in a `Modal` sheet.
+- **Narrow widths:** one render path through `useMediaQuery('(min-width: 1024px)')`, as on the Wallets page (ADR `0034`). From `lg` the form switches mode in place; below it the New form stacks under the list and an edit opens in a `Modal` sheet. Below `lg` the header also offers `#open-new-category-btn` "Add category", which focuses the New form's Name and scrolls it into view (audit 011 finding 2).
 - **Delete** confirms in a `ConfirmDialog`: "Delete "X"? It leaves your categories and every category picker. No transaction or rule uses it." It checks the result, keeps a failure in the dialog, and then moves focus to the list's heading.
 - **The Smart rules tab** moved unchanged in behaviour into `SmartRulesPanel`:
   - types read as words ("Groceries (Expense)", the sandbox's "Expense"), and the System categories by their L10 names;
@@ -101,7 +101,7 @@ These are locator or copy moves only:
 - **No raw type enum reaches the Categories page.**
 - **At 768 to 1279px the header shows icons only**, each named by `title` and its accessible name.
 - **Tests:**
-  - `unit/categories-page.test.tsx` (16);
+  - `unit/categories-page.test.tsx` (18, two of them for audit 011's fixes);
   - 4 selector tests in `selectors-display.test.ts`;
   - 3 signed-in guard tests in `authenticated-ledger.test.tsx`;
   - `tests/categories-page.spec.ts` (3 guest tests, nothing intercepted).

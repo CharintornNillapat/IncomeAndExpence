@@ -362,7 +362,7 @@ Two specs were edited, in the page's own commit, by a locator or copy move that 
 | `[data-testid="metric-inferred-type"]` `EXPENSE` → **`Expense`** | The sandbox's type, in words. | `keywords` (1) |
 | `#category-subtab-manage`, `#category-subtab-rules`, `#new-keyword-input`, `#save-keyword-rule-btn`, `#test-parser-input`, the other `metric-*` testids, `tr[id^="rule-row-"]` | **Unchanged.** The tab reads "Smart rules". | none |
 | `#nav-tab-*` | **Same ids**; the label is `sr-only` below 1280px and the icon shows instead. Name and `title` are unchanged. | none |
-| New | `#category-list-heading`, `#category-group-{expense,income,system}`, `#category-form-heading`, `#new-category-form`, `#edit-category-form`, `#new-category-color-{hex}`, `#edit-category-color-{hex}`, `#edit-category-color-current`, `#edit-category-cancel-btn` | `categories-page` |
+| New | `#category-list-heading`, `#category-group-{expense,income,system}`, `#category-form-heading`, `#new-category-form`, `#edit-category-form`, `#new-category-color-{hex}`, `#edit-category-color-{hex}`, `#edit-category-color-current`, `#edit-category-cancel-btn`, and below `lg` `#open-new-category-btn` | `categories-page` |
 
 ### Hazards
 - **`#delete-category-*` exists only in that category's edit form.** A spec asserting it is absent must open `#edit-category-{id}` first, or the check passes for the wrong reason.

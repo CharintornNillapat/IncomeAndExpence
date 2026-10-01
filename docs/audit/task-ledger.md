@@ -1081,7 +1081,7 @@ Approved explicitly by the user, planned and approved before any code was writte
 - **One negative control was redone** because the first attempt produced malformed TypeScript that the dev server still served — the tests failed, but possibly for the wrong reason.
 - **No flakes.** Phase 44's `wallets.spec.ts` webkit flake has now not reproduced across three consecutive phases; still watched rather than closed.
 
-## Phase 62 - FinLife redesign, step 4, sixth page (Categories): T314-T327 (2026-10-01)
+## Phase 62 - FinLife redesign, step 4, sixth page (Categories): T314-T328 (2026-10-01)
 
 ADR `0037`. The plan was approved in plan mode; the owner's decisions:
 - Delete only an unused category (no move-then-delete);
@@ -1105,8 +1105,9 @@ Branch `phase-62-categories`, cut from `main` at `192e333`. It also carries `435
 | T323 | Unit: `categories-page` (16) | `unit/` | High | Low | 1h | done | T314-T322 | f8c62a0 | 7 controls caught in all | unit 537 -> 560 |
 | T324 | Spec moves (`categories`, `keywords`); `tests/categories-page.spec.ts` (3) | `tests/` | High | Low | 0.4h | done | T316-T322 | f8c62a0 | - | E2E 393 -> 402 runs |
 | T325 | Gate: lint, unit, WCAG, build, Playwright twice, walk-through | - | - | - | 1h | done | all | 03a1311 | lint clean; unit 560/560; Playwright 401/402 twice (one intermittent per run, outside the phase) | entry +2,561 B |
-| T326 | Antislop audit 011 (mode 2) | `anti-slop/audit-011-2026-10-01.md` | - | - | 0.5h | done; findings await the owner | T325 | 03a1311 | 5 findings (2 MEDIUM, 3 LOW), no new Hard Gate failure | - |
-| T327 | ADR `0037`, `DESIGN.md`, `CLAUDE.md`, selector contract, ledger, log, metrics; sha backfill; draft PR | docs | Low | Low | 1h | docs done; draft PR on the owner's word | all | 03a1311 | - | - |
+| T326 | Antislop audit 011 (mode 2) | `anti-slop/audit-011-2026-10-01.md` | - | - | 0.5h | done; findings 1 and 2 fixed (T328), the rest accepted | T325 | 03a1311 | 5 findings (2 MEDIUM, 3 LOW), no new Hard Gate failure | - |
+| T327 | ADR `0037`, `DESIGN.md`, `CLAUDE.md`, selector contract, ledger, log, metrics; sha backfill; draft PR | docs | Low | Low | 1h | done; draft PR on the owner's word, 2026-10-01 | all | 03a1311 | - | - |
+| T328 | Audit 011 findings 1 and 2: a strike on used colours; "Add category" in the header below `lg` | `category/ColorGrid.tsx`, `views/CategoriesView.tsx`, `unit/categories-page.test.tsx` | Low | Low | 0.4h | done | the owner | 837d442 | a control for each failed its test; the category, rules, nav and wallet specs 117/117 on all three browsers | unit 560 -> 562 |
 
 ## Phase 61 - FinLife redesign, step 4, fifth page (Daily diary): T299-T313 (2026-10-01)
 

@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 62 - The Categories page (spec 6.6): T314-T327 (2026-10-01, commits `58b5d75`, `f8c62a0`, docs `03a1311`)
+## Phase 62 - The Categories page (spec 6.6): T314-T328 (2026-10-01, commits `58b5d75`, `f8c62a0`, `837d442`, docs `03a1311`)
 
 **Changed**
 - **No migration.**
@@ -62,6 +62,11 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
     - Escape on the delete dialog returns it to Delete, and a confirmed delete moves it to the list's heading.
   - **Delete and colours:** the in-use category's Delete is disabled with "Used by 1 transaction, so it can't be deleted.", and a deleted category frees its colour.
   - **390:** the sheet opens with no overflow, and Escape returns focus to the row.
+- **Audit 011, findings 1 and 2, fixed on the owner's word (T328):**
+  - a used colour carries a diagonal strike over its 0.25 fill;
+  - below `lg`, "Add category" in the header focuses the New form and scrolls to it.
+
+  Lint clean, unit 562/562, and a control for each failed its test. The category, rules, nav and wallet specs passed 117/117 on all three browsers. Checked in Chromium at 1280 and 390, light and dark: the strike shows in both themes; at 390 the button lands focus on Name with the field in view; no overflow, no control under 44px, no console errors.
 
 ## Phase 61 - The Daily diary (spec 6.5): T299-T313 (2026-10-01, commits `e8a1f79`, `220e7db`, `d80fb5e`, `7b68e67`, docs `cc9c310`)
 

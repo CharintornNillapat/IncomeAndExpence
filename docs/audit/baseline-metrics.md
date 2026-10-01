@@ -1123,7 +1123,7 @@ Per chunk (raw bytes; every chunk not listed is byte-identical or within ±40 B)
 | Suite | Files | Tests | Runs | Wall clock |
 |---|---|---|---|---|
 | Playwright (local, 6 workers) | 28 | 134 | 402 | 6.5 / 7.2 m (two runs) |
-| Vitest (`unit/`) | 26 | 560 | 560 | ~35 s |
+| Vitest (`unit/`) | 26 | 562 (560 before audit 011's fixes) | 562 | ~35 s |
 
 **Intermittent local failures:** 2 in 804 runs, one per run. WebKit `csv.spec.ts`: Import / export did not settle in time (then 10/10). Firefox `account-and-mobile-nav.spec.ts`: `page.goto` timed out before the app loaded.
 
