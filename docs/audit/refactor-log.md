@@ -56,6 +56,24 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
   Lint clean, unit 537/537, and a control for each failed its test. Playwright 392/393 (6.5 min): the one failure was Firefox in `account-and-mobile-nav.spec.ts` (F7, which opens Transactions with no day filter), the file of the known intermittent; that file then passed 60/60 on Firefox (5 repeats). Checked in Chromium at 1280 light and dark and 390 light: the white ring on today as the form's day, violet once another day is picked, "One day" then "All time" after the button, no overflow, no console errors.
 
+**CI and deploy:**
+- PR #9, run `36859636624` on `392ff07`: success in 5 m 14 s. Unit 537/537 with no `.env` on the runner, and 131/131 per browser, none flaky.
+- Merged as PR #9 with a merge commit, `192e333`, with the owner's go-ahead. Its tree is identical to `392ff07`. It also published `ef1bdea`, the Phase 60 deploy record.
+- Push run `36869396358` on `192e333`: success in 5 m 10 s. Unit 537/537; 131/131 per browser.
+- Vercel `dpl_HzVLx7VeGMkoAXwT54CHzchV3Csi` Production `READY`. `income-and-expence-neon.vercel.app` serves `index-pjGyqWmd.js` at **182,550 B**, the size measured at `d80fb5e`: the audit 010 fixes changed only the lazy chunks.
+- **All 58 files of a clean local build (with `.env`) were hashed against production.** 54 are byte-for-byte identical. The two SVGs and `robots.txt` differ only in line endings. `sw.js` has the same 57 precache URLs.
+- **Signed-out smoke test on production** (fresh headless Chromium, no auth token in storage, no console errors):
+  - at 1280:
+    - the header tab reads "Daily diary";
+    - after a ฿75 Quick Add, the form reads "Thursday, Oct 1" and "Today · spent ฿75.00 in 1 transaction so far";
+    - with no mood picked, Save is disabled with "Pick a mood to save.", › is disabled and the picker's `max` is today;
+    - today's calendar day is pressed, with the white ring (audit 010 finding 3);
+    - no emoji on the page;
+  - Save with mood 4 and a note: "Diary entry logged for Thursday, Oct 1.", a recent entry reading "Today · Thu, Oct 1 −฿75.00 Good · Rest day · Average meals · 1 transaction", and "1 day logged in October";
+  - "1 transaction" opened the Transactions page with "Only Thu, Oct 1" and the range select reading "One day" (audit 010 finding 1), showing the row; clearing it put the select back on "All time";
+  - Delete: the dialog says the day's transactions are not touched; Cancel kept the entry, confirm removed it, and the day still read ฿75.00 in 1 transaction;
+  - at 390 dark: the More sheet's item reads "Daily diary" and opens the page, with no page overflow and 0 controls under 44px.
+
 ## Phase 60 - The Debt payoff page (spec 6.4): T285-T298 (2026-10-01, commits `bcc8621`, `ebf7a14`, `d5a06c4`, docs `baae0e3`)
 
 **Changed**
