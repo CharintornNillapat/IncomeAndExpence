@@ -4,6 +4,61 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
+## Phase 60 - The Debt payoff page (spec 6.4): T285-T297 (2026-10-01, commits `bcc8621`, `ebf7a14`, docs DOCS_SHA)
+
+**Changed**
+- **No migration.** Every column existed; Edit is a plain update of `debts`.
+- **`FinanceContext`:** `editDebt` (name, borrowed total, interest, minimum payment, due date). `DebtEditSchema` refuses a borrowed total below what is still owed, read from `debtsRef` first. The update never sends `remaining_amount` or `is_settled`, and rolls back on a rejected write.
+- **`useDebts`:** `editDebt`, and `activeDebts` / `settledDebts` sorted by `sortByDueDate`. `metrics` is unchanged.
+- **UI:**
+  - `DebtsView` rebuilt:
+    - `PageHeader` "Debt payoff" with the count and "Add debt";
+    - `DebtSummaryCard`: Still owed, Paid off, and the L5 box or "On track";
+    - the active debts nearest due date first;
+    - an open "Paid off (N)";
+    - the caption that repayments are not spending.
+  - `DebtCard` replaces `DebtCardItem`:
+    - the APR or Interest-free tag, and the due tag ("~N months", amber on L5, "Overdue", "No due date");
+    - a ⋯ menu with Edit and Delete;
+    - the 28px remainder;
+    - Borrowed, Repaid and Needed / month;
+    - Make repayment and Mark as paid off.
+  - Mark as paid off confirms first and keeps a failure in the dialog; `settleDebt`'s result used to be discarded.
+  - `EditDebtModal` shows what is still owed as text, never as a field.
+  - When a dialog's opener is gone after it closes, focus goes to the card's ⋯ or to Add debt.
+- **Tests:**
+  - `unit/debts-page.test.tsx` (18) and 4 signed-in `editDebt` tests: unit 494 -> 516 in 24 files;
+  - `tests/debts-page.spec.ts` (3 guest tests): E2E 375 -> 384 runs;
+  - two specs moved, by locator or copy: `theme` (the heading) and `soft-delete` (open the menu before Delete). `debts.spec.ts` passed unedited.
+- **Docs:** ADR `0035`, `DESIGN.md` (the page, four deviations), `CLAUDE.md`, `test-selector-contract.md`, antislop audit 009.
+
+**Surprises**
+- **Three actions remove the control that opened their dialog**: a write-off, a repayment of the whole remainder, and a delete. `Modal`'s focus return (audit 008) then had nowhere to go, so focus fell to `<body>`. The page now moves focus to the debt's ⋯ menu, which a paid-off card keeps, or to Add debt. A unit test failed without it.
+- **`editDebt`'s clear-a-field rule had to match `mapDebtRow`**, which reads a `0` rate or minimum as absent. The optimistic state stores absent too, so a guest and a signed-in user see the same card after a reload.
+
+**Gate:**
+- **Lint:** clean. **Unit:** 516/516. **WCAG:** all pairs pass; no token changed.
+- **Controls:** 5 caught. Each of these failed its test:
+  - `editDebt` sending `remaining_amount`;
+  - the borrowed floor removed;
+  - Mark as paid off without the confirm;
+  - the sort removed;
+  - the focus hand-off removed.
+- **Playwright (local, 4 workers):**
+  - run 1 384/384 (6.0 min);
+  - run 2 383/384 (5.8 min): Firefox's `account-and-mobile-nav.spec.ts:65` timed out waiting for `#mobile-nav-more-btn`, whose failure snapshot shows the header and the Dashboard but no bottom nav;
+  - run 3 383/384 (5.8 min): Firefox's `:44` (More reaches diary) timed out clicking the item inside the open More sheet;
+  - run 4 384/384 (5.7 min);
+  - no retries in any run.
+
+  Both failures are in the same 390px block, on Firefox, under full-suite load, and neither is an assertion. Phase 60 changes nothing the mobile nav or the More sheet loads. The file passed 120/120 on Firefox (10 repeats), and the block 120/120 more (20 repeats, 4 workers). This is the known Firefox intermittent in that file (baseline metrics: a click on More after Phase 55a, and `:60` before), still watched, next to WebKit's `:140` (audit 006 finding 3).
+- The debt-related specs (34 tests) passed on Chromium before the full runs.
+- **Build:** entry +1,967 B (+615 B gzip), all JS +11,589 B, CSS +335 B; `DebtsView` +8,710 B. No vendor chunk changed.
+- **Walk-through** (Playwright's Chromium by script; the MCP server did not connect) at 1280 light, 1024 light, 900 dark, 390 light and dark, with five seeded debts (dated, long-named, overdue, undated, paid off):
+  - 0 controls under 44px, no page overflow, no console errors;
+  - the menu works by keyboard;
+  - focus returns after Edit, after an Escape out of Mark as paid off, and after confirming it.
+
 ## Phase 59 - The Wallets page (spec 6.3): T268-T284 (2026-10-01, commits `373c28b`, `21dba28`, `77e33cf`, `7f4b1a3`, docs `7c54dfe`)
 
 **Changed**

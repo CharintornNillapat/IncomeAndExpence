@@ -301,3 +301,23 @@ Four specs were edited, each in the code's own commit, by a locator or copy move
 - **From `lg` a wallet is always selected** (the first one by default), so its name appears twice: in its row and as `#wallet-detail-title`. A strict `getByText` on the **selected** wallet's name meets both. A new wallet is not auto-selected, which keeps `wallets.spec.ts:33` strict.
 - **The activity rows' prefix is `wallet-tx-`**, never `tx-row-`, so a page-wide `tx-row-` match after `gotoTab(page, 'transactions')` still finds only the Transactions page's rows.
 - **`#archive-wallet-*` and `#delete-wallet-*` exist only while the menu is open.** A spec asserting one is absent must open the menu first.
+
+## Changed in Phase 60 (ADR `0035`, the Debt payoff page)
+
+Two specs were edited, in the page's own commit, by a locator or copy move that keeps its assertion. `tests/debts-page.spec.ts` is new (3 tests). `debts.spec.ts`, `debt-repayment.spec.ts`, `transaction-edit.spec.ts` and `smart-rules.spec.ts` passed unedited.
+
+| Selector | Now | Specs moved |
+|---|---|---|
+| `div[id^="debt-card-"]` | **Same id**, on `DebtCard`'s root, in the "Active debts" section or under "Paid off (N)". A paid-off card still contains "100% Fully Settled!" and "✓ Debt Fully Settled". | none |
+| `button[id^="delete-debt-"]` | **Same id**, now an `OverflowMenu` item under the card's `#debt-menu-btn-{id}`. It exists only while the menu is open. | `soft-delete` opens the menu first |
+| `button[id^="settle-debt-"]` | **Same id**, now a visible "Mark as paid off" button that opens a confirmation; `#confirm-destructive-btn` writes the debt off. It is absent from a paid-off card, so `debts.spec.ts:63`'s count 0 still holds for the right reason. | none |
+| `button[id^="open-repay-modal-"]`, `#repay-*` | **Unchanged.** The repay modal is untouched. | none |
+| `#open-add-debt-btn`, `#new-debt-*`, `#save-new-debt-btn` | **Unchanged ids.** The buttons read "Add debt". | none |
+| Heading `/Debts & Loans/i` → **`'Debt payoff'` (exact)** | The page title (spec 6.4). | `theme` (1) |
+| Text `4.5% APR`, `20.0%`, `55.0%`, `฿4,500.00` in a debt card | **Kept**: the interest badge, "N% paid" and "Still owed". | none |
+| New | `#debt-menu-btn-{id}`, `#edit-debt-{id}`, `#edit-debt-form`, `#edit-debt-name`, `#edit-debt-total`, `#edit-debt-interest`, `#edit-debt-min-payment`, `#edit-debt-due-date`, `#save-edit-debt-btn`, `#edit-debt-error`, `#debts-caption`, `#debts-paid-off-heading`, the `data-testid`s `debt-summary-owed`, `debt-summary-paid`, `debt-summary-plan` | `debts-page` |
+
+### Hazards
+- **`#edit-debt-*` and `#delete-debt-*` exist only while the card's menu is open.** A spec asserting one is absent must open the menu first.
+- **A card's text includes "Still owed" and the summary's does too**, but the summary is outside every `div[id^="debt-card-"]`, so a card-scoped `toContainText` never meets it. A page-wide `getByText` on a ฿ amount can meet both.
+- **The Dashboard's Debt payoff card also has an `h2` "Debt payoff".** The page's title is the `h1`; a heading match right after `gotoTab(page, 'debts')` is safe because the Dashboard is not mounted, but a match from the Dashboard itself would find its `h2`.

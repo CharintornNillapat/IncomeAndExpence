@@ -1098,6 +1098,37 @@ The entry's growth is the ledger action itself, which lives with the other ledge
 
 **Intermittent local failures:** 6 in 1,071 full-suite runs (3 full runs). All were timeouts: a Firefox `goto`, a Firefox context close, and four WebKit clicks waiting for "stable". No assertion failed. See audit 005 finding 3 for the control runs.
 
+## Phase 60 (the Debt payoff page) — delta against Phase 59
+
+`main` (`f58f681`, the Phase 59 merge) was built with `npx vite build` in a separate worktree, and the Phase 60 tree (`ebf7a14`) in the repo. Gzip is `zlib` level 9.
+
+| Chunk | Phase 59 | Phase 60 | Delta |
+|---|---|---|---|
+| entry `index-*.js` | 180,058 B / 51,250 B gzip | 182,025 B / 51,865 B gzip | **+1,967 B raw / +615 B gzip** |
+| **all JS, summed** | 1,345,961 B | 1,357,550 B | **+11,589 B** |
+| `index-*.css` | 47,808 B / 9,291 B gzip | 48,143 B / 9,336 B gzip | +335 B |
+| PWA precache | 56 entries, 1,634.61 KiB | 60 entries, 1,646.20 KiB | +4 entries, +11.59 KiB |
+
+Per chunk (raw bytes; every chunk not listed is byte-identical):
+
+| Chunk | Delta | Why |
+|---|---|---|
+| entry | +1,967 | `editDebt` and `DebtEditSchema` in `FinanceContext` and `zodSchemas`. |
+| `DebtsView` | +8,710 | the page: `DebtSummaryCard`, `DebtCard`, `EditDebtModal`, the write-off dialog and the focus hand-off. |
+| `useDebts` | +1,094 | `editDebt`, and the sorted `activeDebts` / `settledDebts` (it now pulls in `sortByDueDate`). |
+| new shared chunks | `ledger` 1,314, `Money` 728, `useMediaQuery` 385, `Badge` 362 | Rollup splits what the Debts chunk now shares with the Dashboard, Transactions and Wallets chunks. |
+| `TxCells`, `DayGroupHeader`, `OverflowMenu`, `DashboardView`, `DiaryView` | −1,277, −559, −329, −796, −221 | the same modules moved into the shared chunks above. |
+| others | +5 to +108 | Rollup's shared-name shuffle; no source change. |
+
+**No vendor chunk changed.** CSS grew 335 B, for the container-query variants (`@sm:`, `@2xl:`) and `text-[28px]`.
+
+| Suite | Files | Tests | Runs | Wall clock |
+|---|---|---|---|---|
+| Playwright (local, 4 workers) | 26 | 128 | 384 | 6.0 / 5.8 / 5.8 / 5.7 m (four runs) |
+| Vitest (`unit/`) | 24 | 516 | 516 | ~33 s |
+
+**Intermittent local failures:** 2 in 1,536 full-suite runs (four full runs), both Firefox, both in `account-and-mobile-nav.spec.ts`'s 390px block, both a click waiting 15 s on the mobile nav (runs 2 and 3). No assertion failed. On Firefox the file then passed 120/120 (10 repeats) and the block 120/120 more (20 repeats, 4 workers), and run 4 was clean. Phase 60 changes nothing the mobile nav loads. This is the known Firefox intermittent in that file, seen after Phase 55a (a click on More) and earlier (`:60`).
+
 ## Phase 59 (the Wallets page) — delta against Phase 58b
 
 `main` (`8725c11`, the Phase 58b merge) and the Phase 59 tree (`21dba28`) were each built with `npx vite build` in the repo, one after the other. Gzip is `zlib` level 9.
