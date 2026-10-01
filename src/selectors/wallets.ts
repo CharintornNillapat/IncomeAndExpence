@@ -1,4 +1,4 @@
-import { Debt, Wallet } from '../types';
+import { Debt, Transaction, Wallet } from '../types';
 import { roundToCents } from '../utils/money';
 
 /**
@@ -12,6 +12,31 @@ export function isActiveWallet(wallet: Wallet): boolean {
 
 export function activeWallets(wallets: Wallet[]): Wallet[] {
   return wallets.filter(isActiveWallet);
+}
+
+/**
+ * Wallets that were archived and not deleted (Phase 59, ADR 0034), oldest
+ * first like the active list. They leave net worth and the pickers, and the
+ * Wallets page lists them under "Archived" to unarchive.
+ */
+export function archivedWallets(wallets: Wallet[]): Wallet[] {
+  return wallets.filter((wallet) => !wallet.isDeleted && wallet.isArchived);
+}
+
+/** Newest first: by calendar day, then by when the row was recorded. */
+export function byNewest(a: Transaction, b: Transaction): number {
+  if (a.transactionDate !== b.transactionDate) return a.transactionDate < b.transactionDate ? 1 : -1;
+  return a.createdAt < b.createdAt ? 1 : a.createdAt > b.createdAt ? -1 : 0;
+}
+
+/**
+ * Spec 6.3: one wallet's live rows, newest first - every row that moved its
+ * money, so a transfer appears in both its From and its To wallet.
+ */
+export function walletActivity(transactions: Transaction[], walletId: string): Transaction[] {
+  return transactions
+    .filter((tx) => !tx.isDeleted && (tx.walletId === walletId || tx.destinationWalletId === walletId))
+    .sort(byNewest);
 }
 
 /** The sum of every active wallet's balance. A credit card's negative balance counts. */

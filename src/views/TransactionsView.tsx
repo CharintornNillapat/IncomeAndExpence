@@ -26,6 +26,7 @@ import { formatRangeLabel, rangeBounds, TimeRange } from '../selectors/timeRange
 import { groupByDay, sumIncome, sumSpending } from '../selectors/ledger';
 import { PAGE_STEP, hasMoreRows, visibleRows } from '../selectors/pagination';
 import { displayTitle, systemCategoryLabel } from '../selectors/display';
+import { activeWallets, byNewest } from '../selectors/wallets';
 
 interface TransactionsViewProps {
   /** Pre-selects the wallet filter (T40: the wallet popup's Activity preview hands off here via "View all"). */
@@ -63,11 +64,6 @@ const FILTER_SELECT_CLASS =
   'flex-1 min-w-[8rem] sm:flex-none min-h-[44px] py-2 px-3 text-xs rounded-lg border border-line-input bg-surface-2 text-fg focus:outline-none focus:ring-2 focus:ring-focus transition-control';
 
 /** Newest day first; inside a day, the most recently recorded first. */
-function byNewest(a: Transaction, b: Transaction): number {
-  if (a.transactionDate !== b.transactionDate) return a.transactionDate < b.transactionDate ? 1 : -1;
-  return a.createdAt < b.createdAt ? 1 : a.createdAt > b.createdAt ? -1 : 0;
-}
-
 /**
  * Spec 6.2 (Phase 58a, ADR 0031): a filter row, one list grouped by day with
  * "Load 25 more" (L12), and a side panel for the selected row. Since Phase 58b
@@ -152,8 +148,9 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
   const walletMap = useMemo(() => buildLookupMap(wallets), [wallets]);
   const categoryMap = useMemo(() => buildLookupMap(categories), [categories]);
 
-  // Active-only slices for the Add Transaction modal (Memoized, T9)
-  const activeWalletsForForm = useMemo(() => wallets.filter((w) => !w.isDeleted), [wallets]);
+  // Active-only slices for the Add Transaction modal (Memoized, T9). An
+  // archived wallet is not offered for a new entry (Phase 59).
+  const activeWalletsForForm = useMemo(() => activeWallets(wallets), [wallets]);
   const activeCategoriesForForm = useMemo(() => categories.filter((c) => !c.isDeleted), [categories]);
 
   const sortedRows = useMemo(() => [...filteredTransactions].sort(byNewest), [filteredTransactions]);

@@ -1688,6 +1688,43 @@ describe('a signed-in wallet through create_wallet (F7, ADR 0024)', () => {
   });
 });
 
+describe('a signed-in wallet edit and archive (Phase 59, ADR 0034)', () => {
+  it('an edit sends the name, type, colour and icon, and no balance column at all', async () => {
+    const result = await actions().editWallet(CASH, { name: 'Pocket', type: 'SAVINGS', color: '#16a34a' });
+    expect(result.success).toBe(true);
+
+    const calls = writes('wallets', 'update');
+    expect(calls).toHaveLength(1);
+    expect(calls[0].filters).toContainEqual(['eq', 'id', CASH]);
+    expect(calls[0].payload).toMatchObject({ name: 'Pocket', type: 'SAVINGS', color: '#16a34a', icon: 'savings' });
+    // A balance moves only through the ledger (ADR 0023): not even `balance: undefined` is sent.
+    expect(calls[0].payload).not.toHaveProperty('balance');
+    expect(calls[0].payload).not.toHaveProperty('is_deleted');
+    await waitFor(() => expect(wallet(CASH)?.name).toBe('Pocket'));
+    expect(wallet(CASH)?.balance).toBe(CASH_OPENING);
+  });
+
+  it('archiving sends is_archived alone, and a rejected write puts the wallet back', async () => {
+    expect((await actions().setWalletArchived(CASH, true)).success).toBe(true);
+    const archive = writes('wallets', 'update')[0];
+    expect(archive.payload).toMatchObject({ is_archived: true });
+    expect(archive.payload).not.toHaveProperty('balance');
+    await waitFor(() => expect(wallet(CASH)?.isArchived).toBe(true));
+
+    fake.state.failures.set('wallets:update', { message: 'permission denied' });
+    const result = await actions().setWalletArchived(CASH, false);
+    expect(result).toEqual({ success: false, error: 'permission denied' });
+    await waitFor(() => expect(wallet(CASH)?.isArchived).toBe(true));
+  });
+
+  it('a rejected edit rolls the name back', async () => {
+    fake.state.failures.set('wallets:update', { message: 'permission denied' });
+    const result = await actions().editWallet(CASH, { name: 'Pocket', type: 'CASH', color: '#16a34a' });
+    expect(result.success).toBe(false);
+    await waitFor(() => expect(wallet(CASH)?.name).toBe('Cash'));
+  });
+});
+
 describe('a signed-in CSV repayment names its debt (F8, ADR 0024)', () => {
   beforeEach(() => installLedgerRpcs());
 

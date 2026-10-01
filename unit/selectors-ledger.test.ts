@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { isSpending, isIncome, sumSpending, sumIncome, spendingByCategory, groupByDay } from '../src/selectors/ledger';
 import { rangeBounds, inRange, filterByRange, formatRangeLabel } from '../src/selectors/timeRange';
-import { activeWallets, walletTotal, debtRemaining, netWorth } from '../src/selectors/wallets';
+import { activeWallets, archivedWallets, walletActivity, walletTotal, debtRemaining, netWorth } from '../src/selectors/wallets';
 import { PAGE_STEP, visibleRows, hasMoreRows } from '../src/selectors/pagination';
 import { shiftIsoDate } from '../src/utils/date';
 import { buildLookupMap } from '../src/utils/mapUtils';
@@ -223,6 +223,32 @@ describe('L3: net worth is wallets minus what is still owed', () => {
 
   it('is the wallet total when there is no debt', () => {
     expect(netWorth(WALLETS, [])).toBe(walletTotal(WALLETS));
+  });
+
+  it('lists the archived wallets apart, never a deleted one (Phase 59)', () => {
+    expect(archivedWallets(WALLETS).map((w) => w.id)).toEqual(['old']);
+  });
+});
+
+describe("spec 6.3: one wallet's activity (Phase 59)", () => {
+  it('takes every live row that moved the wallet, a transfer from either side, newest first', () => {
+    const spent = tx({ type: 'EXPENSE', amount: 10, walletId: 'cash', transactionDate: '2026-09-26' });
+    const sentOut = tx({ type: 'TRANSFER', amount: 20, walletId: 'cash', destinationWalletId: 'main', transactionDate: '2026-09-28' });
+    const cameIn = tx({ type: 'TRANSFER', amount: 30, walletId: 'main', destinationWalletId: 'cash', transactionDate: '2026-09-27' });
+    const elsewhere = tx({ type: 'EXPENSE', amount: 40, walletId: 'main', transactionDate: '2026-09-28' });
+    const deleted = tx({ type: 'EXPENSE', amount: 50, walletId: 'cash', isDeleted: true });
+
+    expect(walletActivity([spent, sentOut, cameIn, elsewhere, deleted], 'cash').map((t) => t.id)).toEqual([
+      sentOut.id,
+      cameIn.id,
+      spent.id,
+    ]);
+  });
+
+  it('orders rows of one day by when they were recorded, latest first', () => {
+    const early = tx({ type: 'EXPENSE', amount: 1, walletId: 'cash', createdAt: '2026-09-28T01:00:00.000Z' });
+    const late = tx({ type: 'EXPENSE', amount: 2, walletId: 'cash', createdAt: '2026-09-28T09:00:00.000Z' });
+    expect(walletActivity([early, late], 'cash').map((t) => t.id)).toEqual([late.id, early.id]);
   });
 });
 
