@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 59 - The Wallets page (spec 6.3): T268-T282 (2026-10-01, commits `373c28b`, `21dba28`, `77e33cf`)
+## Phase 59 - The Wallets page (spec 6.3): T268-T282 (2026-10-01, commits `373c28b`, `21dba28`, `77e33cf`, docs `7c54dfe`)
 
 **Changed**
 - **No migration.** `wallets.is_archived` already existed and was mapped.

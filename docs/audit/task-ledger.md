@@ -1107,7 +1107,7 @@ Branch `phase-59-wallets`, cut from `main` at `8725c11`. It also carries `ffd1b4
 | T279 | Spec moves: `soft-delete`, `account-and-mobile-nav`, `theme`, `date-boundary` | `tests/` | High | Med | 0.3h | done | T272-T277 | 21dba28 | locator/copy moves only | - |
 | T280 | `tests/wallets-page.spec.ts` (3 guest tests) | `tests/` | High | Low | 0.3h | done | T272-T277 | 21dba28 | 2 controls each failed their test | E2E 366 -> 375 runs |
 | T281 | Gate: lint, unit, WCAG, build, Playwright twice, walk-through, antislop audit 008; audit 008's in-pass fix (Escape in the menu closed the sheet) | `ui/OverflowMenu.tsx`, `unit/ui-controls.test.tsx` | - | - | 1h | done | all | 77e33cf | 375/375 twice; the fix's test failed first; 90 menu-spec runs after it | unit 489 -> 490 |
-| T282 | ADR `0034`, `DESIGN.md`, `CLAUDE.md`, selector contract, ledger, log, metrics; sha backfill; draft PR | docs | Low | Low | 1h | done | all | (docs commit) | - | - |
+| T282 | ADR `0034`, `DESIGN.md`, `CLAUDE.md`, selector contract, ledger, log, metrics; sha backfill; draft PR | docs | Low | Low | 1h | docs and backfill done; draft PR on the owner's word, 2026-10-01 | all | 7c54dfe | - | - |
 
 **Notes on execution:**
 - **The walk-through found three layout problems, all fixed before the gate:** the balance box had no inner padding; at 1024 a 4/12 list cut every wallet name off; and the balance buttons wrapped into a column beside the figure.
