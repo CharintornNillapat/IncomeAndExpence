@@ -33,6 +33,8 @@ import { APP_CURRENCY, formatCurrencyAmount } from '../utils/currency';
 import { roundToCents } from '../utils/money';
 import { todayIsoDate } from '../utils/date';
 import { walletTotal } from '../selectors/wallets';
+import { usedColors } from '../selectors/categories';
+import { isMovementCategory } from '../selectors/ledger';
 import { dedupeCategoriesByName, withDefaultDescriptions } from '../utils/categoryUtils';
 import { generateIdempotencyKey } from '../utils/ids';
 
@@ -1648,6 +1650,12 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     if (isDuplicate) {
       return { success: false, error: `A category named "${cleanedName}" already exists` };
     }
+    // L9 (ADR 0037): the picker disables a colour in use; this is the same rule
+    // at the write, so a stale form cannot hand two categories one colour.
+    const colorOwner = usedColors(categoriesRef.current).get(validation.data.color.toLowerCase());
+    if (colorOwner) {
+      return { success: false, error: `That colour is used by ${colorOwner}` };
+    }
 
     if (isAuthenticated) {
       const { data: inserted, error } = await supabase
@@ -1708,6 +1716,23 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
   // those historical records visually inconsistent with what they actually
   // were when recorded.
   const updateCategory = useCallback(async (id: string, updates: { name?: string; color?: string; icon?: string; description?: string }): Promise<MutationResult> => {
+    const current = categoriesRef.current.find((c) => c.id === id);
+    if (!current) {
+      return { success: false, error: 'Category not found' };
+    }
+    // L10 (ADR 0037): Debt repayment and Balance adjustment are locked. They are
+    // matched by type everywhere, and the page shows them under fixed names.
+    if (isMovementCategory(current)) {
+      return { success: false, error: "System categories can't be edited" };
+    }
+    // L9, only when the colour actually changes: a category still on a colour it
+    // shares from before L9 can be renamed without being made to pick a new one.
+    if (updates.color !== undefined && updates.color.toLowerCase() !== current.color.toLowerCase()) {
+      const colorOwner = usedColors(categoriesRef.current, id).get(updates.color.toLowerCase());
+      if (colorOwner) {
+        return { success: false, error: `That colour is used by ${colorOwner}` };
+      }
+    }
     let cleanedUpdates = updates;
     // This path does not run `CategorySchema` (it is a partial update, and the
     // schema requires name/type/color), so the 120-char bound is enforced here

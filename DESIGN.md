@@ -57,7 +57,7 @@ Each hue has a text token and a solid `-tint` background: `income`, `expense`, `
 Every text token passes 4.5:1 on every surface it can sit on, in both themes. Every hue passes on its own tint. `fg-muted` is the faintest text allowed: 5.80:1 on a dark card. Input edges and the focus outline reach 3:1 (WCAG 1.4.11); the outline is checked against every surface it can sit on, header and menu included. Run `node scripts/wcag-tokens.mjs` after changing any value; it reads `src/index.css` and exits 1 on a failure. `fg-disabled` is exempt, as WCAG exempts disabled controls.
 
 ### Identity colours (wallets and categories)
-Wallets and categories take their own colour from the muted identity palette in spec section 1. It avoids red, green, blue, cyan and amber, which carry money meaning. Since Phase 59 (audit 008) the wallet colour picker, in Add wallet and in Edit, offers exactly those twelve colours. The migration of existing colours, the starter wallets' included, is a later phase (spec section 5.1).
+Wallets and categories take their own colour from the muted identity palette in spec section 1. It avoids red, green, blue, cyan and amber, which carry money meaning. Since Phase 59 (audit 008) the wallet colour picker, in Add wallet and in Edit, offers exactly those twelve colours, and since Phase 62 the category picker offers the same twelve (`utils/identityPalette.ts`). Two categories never share one (L9): a used colour is disabled, its fill at 0.25 under a diagonal strike, and named "Rose, used by Pets". The migration of existing colours, the starter wallets' included, is a later phase (spec section 5.1).
 
 ---
 
@@ -112,6 +112,7 @@ Wallets and categories take their own colour from the muted identity palette in 
 ### Header (spec section 4.1)
 - One sticky row, 64px (56px under 768px), `header` background with a `line` bottom edge.
 - Logo, then the six tabs left-aligned. The active tab is `brand-soft` with `aria-current="page"`.
+- From 768 to 1279px each tab shows its icon only, named by `title` and its accessible name; the labels show from 1280. Six labels overflow the bar at 1024 (audit 007 finding 1, ADR 0037).
 - On the right: the sync status, the theme button, the account controls, and "Add entry".
 - No total balance in the header; the dashboard shows it.
 - Under 768px the tabs give way to the bottom nav.
@@ -242,6 +243,19 @@ One period for the whole page, chosen in the `PageHeader`. Every figure comes fr
   - Edit entry and Delete entry… (red) in the "⋯" menu. Delete confirms first.
 - **Transactions, filtered to a day:** a soft "Only Wed, Sep 30 ×" button in the filter row; it, or a range change, clears the day.
 
+### Categories (spec 6.6, ADR 0037)
+- **Header:** `PageHeader` "Categories" with a Categories / Smart rules tablist on the right.
+- **Layout:** the list at 7/12 and the form at 5/12 from `lg`; below it the list, then the New form, and an edit opens in a sheet. Below `lg` the header also has a soft "Add category" that takes focus to the New form.
+- **The list:**
+  - three groups, headed Expense (`expense`), Income (`income`) and System (muted), each with its count;
+  - an Expense or Income row is one button: a 12px dot, the name, a neutral `Badge` ("Default", "Custom" or "Custom · in use") and a ›. The one in the form is `brand-soft`;
+  - a System row is not a button: "Debt repayment" or "Balance adjustment", "Not counted as income or spending", a grey dot and a lock.
+- **The form:**
+  - New: the Expense / Income `SegmentedControl`, Name, Description (with "Helps auto-categorization recognize what belongs here."), Color, and "Add category";
+  - Edit: the type as text, the same fields, "Save changes" and Cancel, then Delete category (danger) under a rule. Delete is for an unused custom category; in use, it is disabled with "Used by N transactions and M rules"; a default says it can't be deleted.
+- **Color:** the twelve identity colours in six columns, a 28px swatch in a 44px button, the selected one ringed in `focus`. A colour another category uses is disabled: its fill at 0.25 under a diagonal strike in `fg-secondary`, with a `line-strong` outline. A stored colour outside the twelve appears once more as "Current colour", selected, until spec 5.1's migration.
+- **Smart rules tab:** not redesigned (spec 11). Types read as words, headings in sentence case, no decorative heading icons.
+
 ### Sync indicator (header)
 Five states. The first is for guests; the other four are for a signed-in user, checked in this order.
 
@@ -302,3 +316,7 @@ Five states. The first is for guests; the other four are for a signed-in user, c
 | Diary: a new day's mood unspecified | No mood picked, and Save waits for one | The owner's decision (2026-10-01, ADR 0036): a preset mood would be saved by an accidental tap. |
 | Diary: the recent entries' count unspecified | Ten at a time, with "Show N more" | A long diary would make the right column far taller than the form. |
 | Diary: the selected day unmarked in the calendar | The day in the form is in the brand fill | Otherwise the calendar does not show which day the form holds. |
+| Categories: the shipped categories on identity colours (5.1) | They keep their older colours, offered as "Current colour" | The owner's decision (2026-10-01, ADR 0037): the migration is its own phase. |
+| Categories: the edit form beside the list at every width | In place from `lg`; a sheet below it | Spec 8: forms open as bottom sheets on small screens. |
+| Categories: Delete, or move the items first | Delete for an unused custom category only | The owner's decision (2026-10-01, ADR 0037): no new bulk write. |
+| Header: six labelled tabs | Icons only from 768 to 1279px | The labels overflow the bar at 1024 (audit 007 finding 1). |

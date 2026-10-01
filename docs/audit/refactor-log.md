@@ -4,6 +4,70 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
+## Phase 62 - The Categories page (spec 6.6): T314-T328 (2026-10-01, commits `58b5d75`, `f8c62a0`, `837d442`, docs `03a1311`)
+
+**Changed**
+- **No migration.**
+- **Logic:**
+  - `utils/identityPalette.ts`, the twelve colours with names, now shared by wallets and categories;
+  - `categoryGroups`, `categoryUsage` and `firstFreeColor`;
+  - `addCategory` and `updateCategory` refuse a colour another live category uses (L9). `updateCategory` also refuses any edit to a System category (L10).
+- **UI:**
+  - `CategoriesView` rebuilt: `PageHeader` "Categories" with a tablist, then `CategoryList` (7/12) and `CategoryForm` (5/12);
+  - the colour grid offers the twelve identity colours, disables the used ones, and keeps an older colour as "Current colour";
+  - Delete applies to an unused custom category only and confirms first;
+  - below `lg`, the edit form opens in a sheet;
+  - the Smart rules tab moved into `SmartRulesPanel`, with types as words;
+  - header tab labels show from 1280px.
+- **Fixed:**
+  - two categories could share a colour;
+  - Debt Repayment and Balance Adjustment could be renamed and recoloured;
+  - each row printed its raw type (audit 004 finding 1);
+  - the header's tabs overflowed at 1024 (audit 007 finding 1).
+- **Tests:**
+  - `unit/categories-page.test.tsx` (16), 4 selector tests and 3 signed-in tests: unit 537 -> 560 in 26 files;
+  - `tests/categories-page.spec.ts` (3): E2E 393 -> 402 runs;
+  - spec moves in `categories.spec.ts` and `keywords.spec.ts` (ADR `0037`).
+- **Docs:** ADR `0037`, `DESIGN.md`, `CLAUDE.md`, `test-selector-contract.md`, antislop audit 011.
+
+**Surprises**
+- **The shipped categories all sit on colours outside the twelve.** Without the "Current colour" swatch, a rename would have forced a recolour of Food & Dining before spec 5.1's migration.
+- **`FinanceContext` now imports `selectors/ledger`**, so that module moved out of a shared lazy chunk into the entry (+1.7 kB there, -1.7 kB from `Money`).
+
+**Gate:**
+- **Lint:** clean. **Unit:** 560/560. **WCAG:** no token changed; the script passes.
+- **Controls:** 7 caught. Each of these failed its test:
+  - a shared colour accepted on add;
+  - a shared colour accepted on edit;
+  - a System category edit accepted;
+  - a raw type on the row;
+  - Delete enabled while in use;
+  - a used swatch that could be clicked;
+  - the older colour lost on Save.
+- **Playwright (local, 6 workers):**
+  - **Run 1:** 401/402 (6.5 min). WebKit `csv.spec.ts`: the Transactions page's Import / export button never settled before the click. The file then passed 10/10 on WebKit.
+  - **Run 2:** 401/402 (7.2 min). Firefox `account-and-mobile-nav.spec.ts`: `page.goto` timed out in `beforeEach`, before the app loaded, the known intermittent file.
+
+  Neither touches this phase's code.
+- **Build** against `main` (`192e333`), both with `.env`. `main`'s entry is 182,550 B, the same as production.
+  - **Entry:** +2,561 B (182,550 -> 185,111).
+  - **All JS:** +572 B.
+  - **CSS:** +166 B.
+  - **Chunks:** `CategoriesView` +2,217 B, `vendor-icons` -3,563 B (the icon picker's icons went).
+- **Walk-through** (Playwright's Chromium by script) at 1280 light, 1024 light, 900 dark, and 390 light and dark, with four custom categories (one in use, one long name, one in Thai):
+  - **At every width:** no page overflow, 0 controls under 44px, and no console errors.
+  - **Header:** the tab bar has no overflow at 1024 or 900, and shows labels at 1280.
+  - **Focus at 1280:**
+    - Enter on a row moves focus to the form's heading, and Cancel returns it to the row;
+    - Escape on the delete dialog returns it to Delete, and a confirmed delete moves it to the list's heading.
+  - **Delete and colours:** the in-use category's Delete is disabled with "Used by 1 transaction, so it can't be deleted.", and a deleted category frees its colour.
+  - **390:** the sheet opens with no overflow, and Escape returns focus to the row.
+- **Audit 011, findings 1 and 2, fixed on the owner's word (T328):**
+  - a used colour carries a diagonal strike over its 0.25 fill;
+  - below `lg`, "Add category" in the header focuses the New form and scrolls to it.
+
+  Lint clean, unit 562/562, and a control for each failed its test. The category, rules, nav and wallet specs passed 117/117 on all three browsers. Checked in Chromium at 1280 and 390, light and dark: the strike shows in both themes; at 390 the button lands focus on Name with the field in view; no overflow, no control under 44px, no console errors.
+
 ## Phase 61 - The Daily diary (spec 6.5): T299-T313 (2026-10-01, commits `e8a1f79`, `220e7db`, `d80fb5e`, `7b68e67`, docs `cc9c310`)
 
 **Changed**
@@ -55,6 +119,24 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
   - on the form's day, today's ring is white on the brand fill.
 
   Lint clean, unit 537/537, and a control for each failed its test. Playwright 392/393 (6.5 min): the one failure was Firefox in `account-and-mobile-nav.spec.ts` (F7, which opens Transactions with no day filter), the file of the known intermittent; that file then passed 60/60 on Firefox (5 repeats). Checked in Chromium at 1280 light and dark and 390 light: the white ring on today as the form's day, violet once another day is picked, "One day" then "All time" after the button, no overflow, no console errors.
+
+**CI and deploy:**
+- PR #9, run `36859636624` on `392ff07`: success in 5 m 14 s. Unit 537/537 with no `.env` on the runner, and 131/131 per browser, none flaky.
+- Merged as PR #9 with a merge commit, `192e333`, with the owner's go-ahead. Its tree is identical to `392ff07`. It also published `ef1bdea`, the Phase 60 deploy record.
+- Push run `36869396358` on `192e333`: success in 5 m 10 s. Unit 537/537; 131/131 per browser.
+- Vercel `dpl_HzVLx7VeGMkoAXwT54CHzchV3Csi` Production `READY`. `income-and-expence-neon.vercel.app` serves `index-pjGyqWmd.js` at **182,550 B**, the size measured at `d80fb5e`: the audit 010 fixes changed only the lazy chunks.
+- **All 58 files of a clean local build (with `.env`) were hashed against production.** 54 are byte-for-byte identical. The two SVGs and `robots.txt` differ only in line endings. `sw.js` has the same 57 precache URLs.
+- **Signed-out smoke test on production** (fresh headless Chromium, no auth token in storage, no console errors):
+  - at 1280:
+    - the header tab reads "Daily diary";
+    - after a ฿75 Quick Add, the form reads "Thursday, Oct 1" and "Today · spent ฿75.00 in 1 transaction so far";
+    - with no mood picked, Save is disabled with "Pick a mood to save.", › is disabled and the picker's `max` is today;
+    - today's calendar day is pressed, with the white ring (audit 010 finding 3);
+    - no emoji on the page;
+  - Save with mood 4 and a note: "Diary entry logged for Thursday, Oct 1.", a recent entry reading "Today · Thu, Oct 1 −฿75.00 Good · Rest day · Average meals · 1 transaction", and "1 day logged in October";
+  - "1 transaction" opened the Transactions page with "Only Thu, Oct 1" and the range select reading "One day" (audit 010 finding 1), showing the row; clearing it put the select back on "All time";
+  - Delete: the dialog says the day's transactions are not touched; Cancel kept the entry, confirm removed it, and the day still read ฿75.00 in 1 transaction;
+  - at 390 dark: the More sheet's item reads "Daily diary" and opens the page, with no page overflow and 0 controls under 44px.
 
 ## Phase 60 - The Debt payoff page (spec 6.4): T285-T298 (2026-10-01, commits `bcc8621`, `ebf7a14`, `d5a06c4`, docs `baae0e3`)
 

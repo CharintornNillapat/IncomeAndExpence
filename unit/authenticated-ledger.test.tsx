@@ -1771,6 +1771,40 @@ describe('a signed-in debt edit (Phase 60, ADR 0035)', () => {
   });
 });
 
+describe('a signed-in category edit (Phase 62, ADR 0037)', () => {
+  const byName = (name: string) => state().categories.find((c) => c.name === name)!;
+  const byType = (type: string) => state().categories.find((c) => c.type === type)!;
+
+  it('refuses a new category on a colour another one uses (L9), before any write', async () => {
+    const food = byName('Food & Dining');
+    const result = await actions().addCategory({ name: 'Pets', type: 'EXPENSE', color: food.color.toUpperCase() });
+    expect(result).toEqual({ success: false, error: 'That colour is used by Food & Dining' });
+    expect(writes('categories', 'insert')).toHaveLength(0);
+  });
+
+  it('refuses a recolour onto a used colour, but saves a rename that keeps its own', async () => {
+    const food = byName('Food & Dining');
+    const groceries = byName('Groceries');
+    const refused = await actions().updateCategory(groceries.id, { name: 'Groceries', color: food.color });
+    expect(refused).toEqual({ success: false, error: 'That colour is used by Food & Dining' });
+    expect(writes('categories', 'update')).toHaveLength(0);
+
+    const renamed = await actions().updateCategory(food.id, { name: 'Food', color: food.color });
+    expect(renamed.success).toBe(true);
+    expect(writes('categories', 'update')).toHaveLength(1);
+    await waitFor(() => expect(state().categories.find((c) => c.id === food.id)?.name).toBe('Food'));
+  });
+
+  it('refuses any edit to a System category (L10), matched by type, before any write', async () => {
+    for (const type of ['DEBT_REPAYMENT', 'ADJUSTMENT']) {
+      const system = byType(type);
+      const result = await actions().updateCategory(system.id, { name: 'Renamed' });
+      expect(result).toEqual({ success: false, error: "System categories can't be edited" });
+    }
+    expect(writes('categories', 'update')).toHaveLength(0);
+  });
+});
+
 describe('a signed-in CSV repayment names its debt (F8, ADR 0024)', () => {
   beforeEach(() => installLedgerRpcs());
 

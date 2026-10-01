@@ -1081,6 +1081,34 @@ Approved explicitly by the user, planned and approved before any code was writte
 - **One negative control was redone** because the first attempt produced malformed TypeScript that the dev server still served — the tests failed, but possibly for the wrong reason.
 - **No flakes.** Phase 44's `wallets.spec.ts` webkit flake has now not reproduced across three consecutive phases; still watched rather than closed.
 
+## Phase 62 - FinLife redesign, step 4, sixth page (Categories): T314-T328 (2026-10-01)
+
+ADR `0037`. The plan was approved in plan mode; the owner's decisions:
+- Delete only an unused category (no move-then-delete);
+- spec 5.1's colour migration is its own phase (Phase 63);
+- header tabs show icons only below 1280px (audit 007 finding 1);
+- antislop mode 2 (audit 011).
+
+Branch `phase-62-categories`, cut from `main` at `192e333`. It also carries `43524c4`, the Phase 61 deploy record, which had not been pushed. No migration.
+
+| # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
+|---|---|---|---|---|---|---|---|---|---|---|
+| T314 | One identity palette; `categoryGroups`, `categoryUsage`, `firstFreeColor` | `utils/identityPalette.ts`, `selectors/categories.ts`, `walletFormStyles.ts` | Med | Low | 0.4h | done | - | 58b5d75 | 4 selector tests | - |
+| T315 | L9 and L10 guards in `addCategory` / `updateCategory` | `context/FinanceContext.tsx` | High | Med | 0.5h | done | T314 | 58b5d75 | 3 signed-in tests; 3 controls failed | - |
+| T316 | `PageHeader` "Categories", Categories / Smart rules tablist | `views/CategoriesView.tsx` | Med | Low | 0.2h | done | - | f8c62a0 | - | - |
+| T317 | `CategoryList`: three groups, one button per row, locked System rows | `category/CategoryList.tsx` | Med | Low | 0.5h | done | T314 | f8c62a0 | a raw type on the row failed | - |
+| T318 | `CategoryForm` + `ColorGrid`: New / Edit, L9 grid, "Current colour" | `category/` | High | Med | 1h | done | T314-T315 | f8c62a0 | Delete-while-in-use, clickable used swatch and lost older colour controls failed | - |
+| T319 | Below `lg`: the edit form in a sheet | `views/CategoriesView.tsx` | Med | Low | 0.3h | done | T318 | f8c62a0 | - | - |
+| T320 | Delete: unused custom only, confirmed, result checked, focus to the list | `views/CategoriesView.tsx` | Med | Low | 0.3h | done | T318 | f8c62a0 | - | - |
+| T321 | Smart rules tab as `SmartRulesPanel`: types as words, no heading icons | `category/SmartRulesPanel.tsx` | Low | Low | 0.3h | done | - | f8c62a0 | - | - |
+| T322 | Header tab labels from `xl` (audit 007 finding 1) | `Navbar.tsx` | Med | Low | 0.1h | done | - | f8c62a0 | 1024: nav overflow 0 | - |
+| T323 | Unit: `categories-page` (16) | `unit/` | High | Low | 1h | done | T314-T322 | f8c62a0 | 7 controls caught in all | unit 537 -> 560 |
+| T324 | Spec moves (`categories`, `keywords`); `tests/categories-page.spec.ts` (3) | `tests/` | High | Low | 0.4h | done | T316-T322 | f8c62a0 | - | E2E 393 -> 402 runs |
+| T325 | Gate: lint, unit, WCAG, build, Playwright twice, walk-through | - | - | - | 1h | done | all | 03a1311 | lint clean; unit 560/560; Playwright 401/402 twice (one intermittent per run, outside the phase) | entry +2,561 B |
+| T326 | Antislop audit 011 (mode 2) | `anti-slop/audit-011-2026-10-01.md` | - | - | 0.5h | done; findings 1 and 2 fixed (T328), the rest accepted | T325 | 03a1311 | 5 findings (2 MEDIUM, 3 LOW), no new Hard Gate failure | - |
+| T327 | ADR `0037`, `DESIGN.md`, `CLAUDE.md`, selector contract, ledger, log, metrics; sha backfill; draft PR | docs | Low | Low | 1h | done; draft PR on the owner's word, 2026-10-01 | all | 03a1311 | - | - |
+| T328 | Audit 011 findings 1 and 2: a strike on used colours; "Add category" in the header below `lg` | `category/ColorGrid.tsx`, `views/CategoriesView.tsx`, `unit/categories-page.test.tsx` | Low | Low | 0.4h | done | the owner | 837d442 | a control for each failed its test; the category, rules, nav and wallet specs 117/117 on all three browsers | unit 560 -> 562 |
+
 ## Phase 61 - FinLife redesign, step 4, fifth page (Daily diary): T299-T313 (2026-10-01)
 
 ADR `0036`. The plan was approved in plan mode; the owner's decisions:
@@ -1090,6 +1118,7 @@ ADR `0036`. The plan was approved in plan mode; the owner's decisions:
 - antislop mode 2 (audit 010).
 
 Branch `phase-61-diary`, cut from `main` at `3f45e3b`. It also carries `ef1bdea`, the Phase 60 deploy record, which had not been pushed. No migration.
+- Merged into `main` as `192e333` with a merge commit, with the owner's go-ahead, after audit 010's findings 1 and 3 were fixed (T313). PR run `36859636624` and push run `36869396358` passed. Vercel `dpl_HzVLx7VeGMkoAXwT54CHzchV3Csi` is READY and serves the local build byte for byte.
 
 | # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
 |---|---|---|---|---|---|---|---|---|---|---|
