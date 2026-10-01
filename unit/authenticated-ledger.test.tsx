@@ -1725,6 +1725,52 @@ describe('a signed-in wallet edit and archive (Phase 59, ADR 0034)', () => {
   });
 });
 
+describe('a signed-in debt edit (Phase 60, ADR 0035)', () => {
+  const details = { name: 'Car Loan', totalAmount: 12000, interestRate: 3, minimumPayment: 300, dueDate: '2027-06-30' };
+
+  it('sends the edited columns only, never what is still owed or whether it is settled', async () => {
+    const result = await actions().editDebt(DEBT, details);
+    expect(result.success).toBe(true);
+
+    const calls = writes('debts', 'update');
+    expect(calls).toHaveLength(1);
+    expect(calls[0].filters).toContainEqual(['eq', 'id', DEBT]);
+    expect(calls[0].payload).toMatchObject({
+      name: 'Car Loan',
+      total_amount: 12000,
+      interest_rate: 3,
+      minimum_payment: 300,
+      due_date: '2027-06-30',
+    });
+    // A repayment that lands after this device loaded must survive the edit.
+    expect(calls[0].payload).not.toHaveProperty('remaining_amount');
+    expect(calls[0].payload).not.toHaveProperty('is_settled');
+    expect(calls[0].payload).not.toHaveProperty('is_deleted');
+    await waitFor(() => expect(debt()?.name).toBe('Car Loan'));
+    expect(debt()?.remainingAmount).toBe(DEBT_REMAINING);
+  });
+
+  it('clears an emptied rate, minimum and due date', async () => {
+    expect((await actions().editDebt(DEBT, { name: 'Student Loan', totalAmount: 10000 })).success).toBe(true);
+    expect(writes('debts', 'update')[0].payload).toMatchObject({ interest_rate: 0, minimum_payment: 0, due_date: null });
+    await waitFor(() => expect(debt()?.dueDate).toBeUndefined());
+  });
+
+  it('refuses a borrowed total below what is still owed, before any write', async () => {
+    const result = await actions().editDebt(DEBT, { ...details, totalAmount: DEBT_REMAINING - 1 });
+    expect(result).toEqual({ success: false, error: "Borrowed can't be less than what is still owed (฿4,500.00)" });
+    expect(writes('debts', 'update')).toHaveLength(0);
+  });
+
+  it('a rejected edit puts the debt back', async () => {
+    fake.state.failures.set('debts:update', { message: 'permission denied' });
+    const result = await actions().editDebt(DEBT, details);
+    expect(result).toEqual({ success: false, error: 'permission denied' });
+    await waitFor(() => expect(debt()?.name).toBe('Student Loan'));
+    expect(debt()?.totalAmount).toBe(10000);
+  });
+});
+
 describe('a signed-in CSV repayment names its debt (F8, ADR 0024)', () => {
   beforeEach(() => installLedgerRpcs());
 

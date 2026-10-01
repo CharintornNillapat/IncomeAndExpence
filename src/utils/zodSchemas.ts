@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { formatCurrencyAmount } from './currency';
 
 /**
  * Flattens a validation failure into one human-readable line.
@@ -94,6 +95,28 @@ export const DebtSchema = z.object({
   interestRate: z.number().min(0).max(100).optional(),
   minimumPayment: z.number().min(0).optional(),
   dueDate: z.string().optional(),
+});
+
+/**
+ * A debt's own details (Phase 60, ADR 0035), with `DebtSchema`'s bounds.
+ * `remainingAmount` is the debt's current remainder, read so Borrowed can
+ * never drop below what is still owed; it is checked, never written.
+ */
+export const DebtEditSchema = z.object({
+  name: z.string().trim().min(1, 'Debt title is required').max(100),
+  totalAmount: z.number().positive('Total debt amount must be positive').max(999999999.99, 'Amount too large'),
+  interestRate: z.number().min(0).max(100).optional(),
+  minimumPayment: z.number().min(0).optional(),
+  dueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be in YYYY-MM-DD format').optional(),
+  remainingAmount: z.number(),
+}).superRefine((data, ctx) => {
+  if (data.totalAmount < data.remainingAmount) {
+    ctx.addIssue({
+      code: 'custom',
+      message: `Borrowed can't be less than what is still owed (${formatCurrencyAmount(data.remainingAmount)})`,
+      path: ['totalAmount'],
+    });
+  }
 });
 
 export const DiarySchema = z.object({

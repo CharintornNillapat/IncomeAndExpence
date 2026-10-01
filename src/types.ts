@@ -154,6 +154,20 @@ export interface WalletEdit {
   color: string;
 }
 
+/**
+ * What the Debt payoff page's Edit changes (Phase 60, ADR 0035). There is no
+ * remaining balance and no settled flag: what is still owed moves only
+ * through repayments (and Mark as paid off), so an edit can never race one.
+ * An absent optional field clears it.
+ */
+export interface DebtEdit {
+  name: string;
+  totalAmount: number;
+  interestRate?: number;
+  minimumPayment?: number;
+  dueDate?: string;
+}
+
 export interface Debt {
   id: string;
   userId: string;

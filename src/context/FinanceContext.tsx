@@ -8,6 +8,7 @@ import {
   Transaction,
   TransactionEdit,
   WalletEdit,
+  DebtEdit,
   Debt,
   DiaryEntry,
   ImportRowValidation,
@@ -21,6 +22,7 @@ import {
   WalletSchema,
   WalletEditSchema,
   DebtSchema,
+  DebtEditSchema,
   DiarySchema,
   KeywordMappingSchema,
   CategorySchema,
@@ -191,6 +193,12 @@ export interface FinanceActionsContextType {
 
   // Debts
   addDebt: (debt: Omit<Debt, 'id' | 'userId' | 'createdAt' | 'updatedAt' | 'isSettled' | 'isDeleted'>) => Promise<MutationResult>;
+  /**
+   * A debt's name, borrowed total, interest, minimum payment and due date
+   * (Phase 60, ADR 0035). Never what is still owed or whether it is settled,
+   * which move only through repayments and Mark as paid off.
+   */
+  editDebt: (debtId: string, details: DebtEdit) => Promise<MutationResult>;
   settleDebt: (debtId: string) => Promise<MutationResult>;
   deleteDebt: (debtId: string) => Promise<MutationResult>;
 
@@ -3211,6 +3219,68 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     return { success: true };
   }, [isAuthenticated, currentUser.id, markLocalWrite]);
 
+  // Phase 60 (ADR 0035): the Debt payoff page's Edit. The debt is read from
+  // the ref before any state moves (ADR 0022), so the remainder the schema
+  // checks Borrowed against is the one on screen. The update names only the
+  // edited columns: `remaining_amount` and `is_settled` are never sent, so an
+  // edit cannot overwrite a repayment that landed after this device loaded.
+  const editDebt = useCallback(async (debtId: string, details: DebtEdit): Promise<MutationResult> => {
+    const debt = debtsRef.current.find((d) => d.id === debtId && !d.isDeleted);
+    if (!debt) return { success: false, error: 'Debt not found or has been deleted' };
+    const validation = DebtEditSchema.safeParse({ ...details, remainingAmount: Number(debt.remainingAmount) });
+    if (!validation.success) {
+      return { success: false, error: formatZodIssues(validation.error) };
+    }
+    const { name, totalAmount, interestRate, minimumPayment, dueDate } = validation.data;
+    // A zero rate or minimum reads back as absent (`mapDebtRow`), so it is
+    // stored that way here too.
+    const edited = {
+      name,
+      totalAmount,
+      interestRate: interestRate || undefined,
+      minimumPayment: minimumPayment || undefined,
+      dueDate: dueDate || undefined,
+    };
+
+    const previousDebts = debtsRef.current;
+    setDebts((prev) =>
+      prev.map((d) => (d.id === debtId ? { ...d, ...edited, updatedAt: new Date().toISOString() } : d))
+    );
+
+    if (!isAuthenticated) {
+      return { success: true };
+    }
+
+    try {
+      markLocalWrite(debtId);
+      const { error } = await supabase
+        .from('debts')
+        .update({
+          name: edited.name,
+          total_amount: edited.totalAmount,
+          interest_rate: edited.interestRate ?? 0,
+          minimum_payment: edited.minimumPayment ?? 0,
+          due_date: edited.dueDate ?? null,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', debtId);
+      if (error) throw error;
+      return { success: true };
+    } catch (err: unknown) {
+      console.error('[Edit Debt Failed]', err);
+      setDebts(previousDebts);
+      const postgrestErr = err as { message?: string; details?: string; hint?: string };
+      return {
+        success: false,
+        error:
+          postgrestErr?.message ||
+          postgrestErr?.details ||
+          postgrestErr?.hint ||
+          (err instanceof Error ? err.message : 'Failed to update debt'),
+      };
+    }
+  }, [isAuthenticated, markLocalWrite]);
+
   const settleDebt = useCallback(async (debtId: string): Promise<MutationResult> => {
     const previousDebts = debtsRef.current;
 
@@ -3464,6 +3534,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       updateTransaction,
       commitBulkImport,
       addDebt,
+      editDebt,
       settleDebt,
       deleteDebt,
       upsertDiaryEntry,
@@ -3494,6 +3565,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       updateTransaction,
       commitBulkImport,
       addDebt,
+      editDebt,
       settleDebt,
       deleteDebt,
       upsertDiaryEntry,

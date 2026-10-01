@@ -1,7 +1,8 @@
 import { useMemo, useCallback } from 'react';
 import { useFinanceState, useFinanceActions } from '../context/FinanceContext';
-import { Debt } from '../types';
+import { Debt, DebtEdit } from '../types';
 import { activeWallets as selectActiveWallets } from '../selectors/wallets';
+import { sortByDueDate } from '../selectors/debts';
 
 export const useDebts = () => {
   const {
@@ -10,12 +11,13 @@ export const useDebts = () => {
   } = useFinanceState();
   const {
     addDebt,
+    editDebt,
     settleDebt,
     deleteDebt,
   } = useFinanceActions();
 
-  // Active (non-deleted) debts
-  const activeDebts = useMemo(() => {
+  // Live (non-deleted) debts, settled or not, in store order.
+  const liveDebts = useMemo(() => {
     return debts.filter((d) => !d.isDeleted);
   }, [debts]);
 
@@ -23,16 +25,20 @@ export const useDebts = () => {
   // wallet must never be selectable as a debt-repayment source (Phase 59).
   const activeWallets = useMemo(() => selectActiveWallets(wallets), [wallets]);
 
-  // Feeds `debtMetrics.activeCount` below - not returned externally, no
-  // consumer destructures it (T64).
+  // Spec 6.4 (Phase 60): the Debt payoff page lists the debts still owed,
+  // nearest due date first, then the paid-off ones in the same order.
   const unsettledDebts = useMemo(() => {
-    return activeDebts.filter((d) => !d.isSettled);
-  }, [activeDebts]);
+    return sortByDueDate(liveDebts.filter((d) => !d.isSettled));
+  }, [liveDebts]);
+
+  const settledDebts = useMemo(() => {
+    return sortByDueDate(liveDebts.filter((d) => d.isSettled));
+  }, [liveDebts]);
 
   // Aggregated Debt Metrics
   const debtMetrics = useMemo(() => {
-    const totalTarget = activeDebts.reduce((sum, d) => sum + d.totalAmount, 0);
-    const remainingTarget = activeDebts.reduce((sum, d) => sum + (d.isSettled ? 0 : d.remainingAmount), 0);
+    const totalTarget = liveDebts.reduce((sum, d) => sum + d.totalAmount, 0);
+    const remainingTarget = liveDebts.reduce((sum, d) => sum + (d.isSettled ? 0 : d.remainingAmount), 0);
     const paidTarget = totalTarget - remainingTarget;
     // No debts tracked reads as 0% paid off, not 100%.
     const progressPercent = totalTarget > 0 ? (paidTarget / totalTarget) * 100 : 0;
@@ -44,7 +50,7 @@ export const useDebts = () => {
       progressPercent,
       activeCount: unsettledDebts.length,
     };
-  }, [activeDebts, unsettledDebts]);
+  }, [liveDebts, unsettledDebts]);
 
   // Stable action callbacks
   const handleAddDebt = useCallback(
@@ -52,6 +58,13 @@ export const useDebts = () => {
       return addDebt(debt);
     },
     [addDebt]
+  );
+
+  const handleEditDebt = useCallback(
+    (debtId: string, details: DebtEdit) => {
+      return editDebt(debtId, details);
+    },
+    [editDebt]
   );
 
   const handleSettleDebt = useCallback(
@@ -69,10 +82,16 @@ export const useDebts = () => {
   );
 
   return {
-    debts: activeDebts,
+    /** Every debt that is not deleted, settled or not, in store order. */
+    debts: liveDebts,
+    /** Still owed, nearest due date first (undated last). */
+    activeDebts: unsettledDebts,
+    /** Paid off, in the same order. */
+    settledDebts,
     wallets: activeWallets,
     metrics: debtMetrics,
     addDebt: handleAddDebt,
+    editDebt: handleEditDebt,
     settleDebt: handleSettleDebt,
     deleteDebt: handleDeleteDebt,
   };
