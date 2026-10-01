@@ -43,6 +43,8 @@ interface DashboardViewProps {
   onOpenAddWallet?: () => void;
   /** Navigates to TransactionsView pre-filtered by a wallet (T40 handoff from the wallet popup's Activity preview). */
   onOpenWalletTransactions?: (walletId: string) => void;
+  /** Opens one row on the Transactions page with its edit panel (Recent activity, Phase 58b). */
+  onOpenTransaction?: (txId: string) => void;
 }
 
 /**
@@ -55,6 +57,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onOpenTransfer,
   onOpenAddWallet,
   onOpenWalletTransactions,
+  onOpenTransaction,
 }) => {
   const { transactions, categories, diaryEntries, currentUser } = useFinanceState();
   // `wallets` here is already the active set; `allWallets` still includes
@@ -215,6 +218,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             categories={categoryMap}
             today={today}
             onViewAll={goTo('transactions')}
+            onOpenTransaction={onOpenTransaction}
           />
         </div>
         <div className="xl:col-span-4">

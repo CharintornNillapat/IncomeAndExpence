@@ -262,3 +262,19 @@ Seven specs use this page. Every edit below is a locator or step move that keeps
 - **The panel is rendered once.** At `xl` it is inline (`#tx-drawer`); below that it is a `Modal`. The choice comes from `useMediaQuery`, never from CSS, so `toHaveCount` and strict `getByText` never see two copies. The panel shows the row's note, so a text count taken while it is open includes it. No spec counts text with the panel open.
 - **The rows are buttons, so nothing clickable can sit inside one.** A new per-row action goes in the panel or in an `OverflowMenu` beside the list, never inside the row.
 - **A transfer row's note is in its second line** (`wallet-forms.spec.ts:38` reads "Funds transfer" there). The title is always "Transfer".
+
+## Changed in Phase 58b (ADR `0033`, editing a transaction)
+
+No existing spec was edited. `tests/transaction-edit.spec.ts` is new (3 tests).
+
+| Selector | Now | Specs |
+|---|---|---|
+| `button[id^="tx-delete-btn-"]` | **Same id**, now beside "Save changes" in `EditTransactionPanel` for a live row. | `soft-delete` unchanged |
+| `button[id^="tx-restore-btn-"]` | **Same id**, in the read-only panel a deleted row keeps. | `soft-delete` unchanged |
+| New | `button[id^="tx-save-btn-"]`, `#tx-edit-type-income/expense/transfer`, `#tx-edit-amount`, `#tx-edit-description`, `#tx-edit-category`, `#tx-edit-wallet`, `#tx-edit-from`, `#tx-edit-to`, `#tx-edit-date` | `transaction-edit` |
+| New, on the Dashboard | `button[id^="dashboard-tx-"]`: each Recent activity row, now a button that opens the row on the Transactions page. | none |
+
+### Hazards
+- **The panel now holds `<select>`s whose options name every wallet and category.** Strict `getByText('Cash Wallet')` or a category name, taken while a row is open, would meet an `<option>`. The note is an input's value, which `getByText` does not match.
+- **The Dashboard's Recent activity rows are buttons with ids** since this phase, replacing the "no id" note above. Their prefix is `dashboard-tx-`, so a page-wide `tx-row-` match straight after `gotoTab` still finds only the Transactions page's rows.
+- **The panel is inline from `lg` (1024px)**, not `xl`. Every spec runs at 1280px, so they still see the inline panel.

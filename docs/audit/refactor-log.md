@@ -4,6 +4,46 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
+## Phase 58b - Editing a transaction (spec 6.2's edit panel): T253-T267 (2026-09-30, commits `dc166a0`...`5f19972`, and T267's own)
+
+**Changed**
+- **Database, applied live on 2026-09-30:** `update_transaction` (`20260930_phase58b_update_transaction.sql`).
+  - It takes the full desired row, locks the row and every wallet on either side, and applies `_ledger_apply_effect(old, −1)` then `(new, +1)`.
+  - It is idempotent by state, with the replay check before the stale guard (`TRANSACTION_CHANGED`).
+  - A repayment or an adjustment keeps its money.
+- **`FinanceContext`:** `updateTransaction`, with `walletEffects` (term for term the SQL), `editRuleError` and `TransactionEdit`.
+  - Guest: local. Signed in: one RPC; the committed balances are adopted.
+  - There is no fallback when the function is missing. `TRANSACTION_CHANGED` and an unknown outcome roll back and re-read.
+- **UI:**
+  - `EditTransactionPanel` for a live row: type control, a 24px amount coloured by type that takes a formula, note, Category/Wallet or From/To, date, Save changes and Delete. A deleted row keeps read-only details and Restore.
+  - The panel is inline from `lg`, and the header reads "Click any row to edit it".
+  - The Dashboard's Recent activity rows are buttons (`dashboard-tx-`) that open their row through an `App.tsx` hand-off.
+  - The CSV import's sparkle icons are gone.
+  - T267 (audit 007 finding 2, on the owner's word): a repayment's or an adjustment's panel names its wallet, and a repayment's names its debt, read-only.
+- **Tests:**
+  - an `update_transaction` stand-in and 10 signed-in tests, 9 guest tests, and 8 page tests: unit 443 -> 470, and T267's test: 471;
+  - `tests/transaction-edit.spec.ts` (3 guest tests): E2E 357 -> 366 runs;
+  - the SQL probe.
+- **Docs:** ADR `0033`, `DESIGN.md` (the panel; two deviations added, one retired), `CLAUDE.md`, `test-selector-contract.md`, antislop audit 007.
+
+**Surprises**
+- **The probe caught a real bug on its first run.** The "amount above zero" check also covered adjustments, whose amounts are signed since ADR `0024`, so a note edit of a downward adjustment was refused.
+- **Three tests passed for the wrong reason before they were fixed:**
+  - the unknown-outcome test passed without the re-read, because a later reload also showed the committed row;
+  - the transfer test read an empty select as a wallet, because an empty select displays its first option; the select now shows "Choose a wallet" when nothing is chosen;
+  - the page's baseline test passed without the reset, because the saved edit already equals the row. A test with a newer row from outside now covers it.
+- **A proposed mutation was not a real bug.** Reading the ref after the optimistic write still gives the old version when nothing awaits in between. The real failure, sending the optimistic timestamp, broke 6 tests.
+
+**Gate:**
+- **SQL:** 58b probe OK before and after applying (md5 `fd45c13d…` both times), 3 negative controls diverged, and the 58s and 52 probes are OK after.
+- **Lint:** clean. **Unit:** 470/470. **WCAG:** all pairs pass; no token changed.
+- **Playwright (local, 4 workers):** 366/366 in both full runs (5.3 and 5.1 min), no retries. The new spec's wallet-write control failed 2 of its 3 tests.
+- **Build:** entry +3,970 B (the edit action in `FinanceContext`), all JS +10,424 B, CSS +492 B, no vendor chunk changed.
+- **MCP**, at 1280 light, 1024 light, 900 dark and 390 light and dark: 0 controls under 44px, no page overflow, and one clipped ring. That one is in the header's tab scroller at 1024px, which predates this phase (audit 007 finding 1).
+  - Inline from 1024 (list 624px, panel 304px, Category and Wallet stacked); a sheet at 900 and 390.
+  - An edit by formula moved Cash by exactly the difference; expense to transfer moved only Main Checking; a downward adjustment's note saved; the Dashboard hand-off opened the sheet at 390.
+  - Found and fixed (`336c0ca`): the type control did not fill its tray.
+
 ## Phase 58s - Security: the AI proxies' callers and `public.profiles`: T245-T252 (2026-09-30, commits `ca5d465`...`7561cf1`)
 
 **Changed**
@@ -29,6 +69,23 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 - **Lint:** clean. **Unit:** 443/443. Five mutations were each caught.
 - **Playwright (local, 4 workers):** run 1 was 356/357. WebKit `insights.spec.ts:66` timed out seeding a transaction (the Quick Add submit never became "stable"), before any insights request. The spec then passed 70/70 on WebKit in isolation. It is the known Quick Add intermittent. No spec was edited.
 - **Build:** entry +196 B, all JS +290 B, CSS unchanged (see the metrics). **WCAG:** no token changed.
+
+**CI and deploy:**
+- PR run `36711544772` on `7ab85a4`: success in 4 m 24 s. Unit 443/443 with no `.env` on the runner, and 119/119 per browser.
+- **Preview** (`dpl_9vBx7Hqc6gx5ouJs1fyyKyWAYsf9`, behind Vercel login, reached through a share link). The preview has no `VITE_SUPABASE_*` settings, by the owner's decision. Both endpoints answered:
+  - a guest with an invalid body: 400;
+  - `Authorization: Basic …`: 401;
+  - a bearer token: 503.
+- Merged as PR #5 with a merge commit, `acb969c`, with the owner's go-ahead. It also published `092e87c`, the Phase 58a deploy record.
+- Push run `36712827442` on `acb969c`: success in 4 m 36 s. Unit 443/443; 119/119 per browser, no retries.
+- Vercel `dpl_AD4WfDGUWor3G7fDCBjGyPEyTW8w` Production `READY`. `income-and-expence-neon.vercel.app` serves `index-Cm57dWV9.js` at **174,476 B**.
+- **All 56 files of the local build were hashed against production.** 52 are byte-for-byte identical, the two SVGs and `robots.txt` differ only in line endings, and `sw.js` has the same precache entries apart from the SVGs' revisions.
+- **Live checks on production**, both endpoints, none reaching TypeSafe:
+  - a guest with an invalid body: 400;
+  - a fake bearer token: 401;
+  - a fake JWT-shaped token: 401 (the auth server answers 403, which the proxy maps to 401);
+  - `Authorization: Basic …`: 401.
+- **The firewall rules are still pending.** The Vercel API still answers `404 Seawall Config not found`. The owner is creating the rules in the dashboard. A burst test (31 guest requests with invalid bodies, costing nothing) remains to be run once they exist.
 
 ## Phase 58a - FinLife redesign step 4, the Transactions page: T234-T244 (2026-09-30, commits `449ffe0`...`e65ccf5`)
 

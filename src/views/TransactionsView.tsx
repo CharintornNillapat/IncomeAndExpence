@@ -32,6 +32,10 @@ interface TransactionsViewProps {
   initialWalletFilter?: string;
   /** Called once, right after mount, when `initialWalletFilter` was set - lets the caller clear its own state so a later, unrelated navigation to this tab does not inherit a stale filter. */
   onConsumeInitialWalletFilter?: () => void;
+  /** Opens this row's panel on arrival (the Dashboard's Recent activity hands off here, Phase 58b). */
+  initialSelectedTxId?: string;
+  /** Called once, right after mount, when `initialSelectedTxId` was set, for the same reason as the wallet filter's. */
+  onConsumeInitialSelectedTx?: () => void;
   /** Opens the shell-level `TransferFundsModal` (ADR 0013: TRANSFER is no longer a type in the entry form). */
   onOpenTransfer?: () => void;
   /** Switches to the Debts tab, where repayments live. */
@@ -66,13 +70,15 @@ function byNewest(a: Transaction, b: Transaction): number {
 
 /**
  * Spec 6.2 (Phase 58a, ADR 0031): a filter row, one list grouped by day with
- * "Load 25 more" (L12), and a side panel for the selected row that holds
- * Delete and Restore. Editing a row arrives in Phase 58b. The CSV import lives
- * in `ImportCsvModal`, unchanged.
+ * "Load 25 more" (L12), and a side panel for the selected row. Since Phase 58b
+ * (ADR 0033) the panel edits a live row and restores a deleted one. The CSV
+ * import lives in `ImportCsvModal`.
  */
 export const TransactionsView: React.FC<TransactionsViewProps> = ({
   initialWalletFilter,
   onConsumeInitialWalletFilter,
+  initialSelectedTxId,
+  onConsumeInitialSelectedTx,
   onOpenTransfer,
   onNavigateToDebts,
 }) => {
@@ -94,6 +100,9 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
   useEffect(() => {
     if (initialWalletFilter) {
       onConsumeInitialWalletFilter?.();
+    }
+    if (initialSelectedTxId) {
+      onConsumeInitialSelectedTx?.();
     }
     // eslint-disable-next-line
   }, []);
@@ -118,6 +127,7 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
     addTransaction,
     deleteTransaction,
     restoreTransaction,
+    updateTransaction,
     showSoftDeleted,
     setShowSoftDeleted,
   } = useTransactions({
@@ -161,7 +171,7 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
 
   // The selected row. It closes when the row leaves the list, such as a
   // delete while "Show deleted" is off.
-  const [selectedTxId, setSelectedTxId] = useState<string | null>(null);
+  const [selectedTxId, setSelectedTxId] = useState<string | null>(initialSelectedTxId ?? null);
   const selectedTx = useMemo(
     () => (selectedTxId ? sortedRows.find((tx) => tx.id === selectedTxId) ?? null : null),
     [selectedTxId, sortedRows]
@@ -170,10 +180,11 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
     if (selectedTxId && !selectedTx) setSelectedTxId(null);
   }, [selectedTxId, selectedTx]);
 
-  // One render path by width, never two copies hidden by CSS (ADR 0031).
-  const isWide = useMediaQuery('(min-width: 1280px)');
+  // One render path by width, never two copies hidden by CSS (ADR 0031). Inline
+  // from `lg` since Phase 58b (audit 006 finding 2), where the list keeps about 620px.
+  const isWide = useMediaQuery('(min-width: 1024px)');
   const drawerTitleRef = useRef<HTMLHeadingElement>(null);
-  const lastSelectedRef = useRef<string | null>(null);
+  const lastSelectedRef = useRef<string | null>(initialSelectedTxId ?? null);
 
   const selectRow = useCallback((tx: Transaction) => {
     lastSelectedRef.current = tx.id;
@@ -193,11 +204,16 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
   }, [selectedTxId, isWide]);
 
   const selectedCategory = selectedTx?.categoryId ? categoryMap.get(selectedTx.categoryId) : undefined;
+  const selectedDebt = selectedTx?.debtId ? debts.find((d) => d.id === selectedTx.debtId) : undefined;
   const details = selectedTx && (
     <TransactionDetails
       tx={selectedTx}
       category={selectedCategory}
       wallets={walletMap}
+      walletList={wallets}
+      categoryList={categories}
+      debt={selectedDebt}
+      onSave={updateTransaction}
       onDelete={deleteTransaction}
       onRestore={restoreTransaction}
     />
@@ -264,7 +280,7 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Transactions"
-        description="Click any row to see it, or to delete or restore it"
+        description="Click any row to edit it"
         actions={
           <>
             <OverflowMenu
@@ -412,7 +428,7 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
         listCard
       )}
 
-      {/* Below `xl` the same panel opens as a bottom sheet. Rendered only there, so it never doubles the inline one. */}
+      {/* Below `lg` the same panel opens as a bottom sheet. Rendered only there, so it never doubles the inline one. */}
       <Modal
         isOpen={!!selectedTx && !isWide}
         onClose={closeDrawer}

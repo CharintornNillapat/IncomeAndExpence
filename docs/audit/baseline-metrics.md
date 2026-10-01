@@ -1063,4 +1063,37 @@ Per chunk (raw bytes; every other chunk is byte-identical):
 
 **Intermittent local failures:** run 1 was 356/357. The failure was WebKit `insights.spec.ts:66`, in its seeding step: the Quick Add submit button never became "stable", before any insights request was made. The whole insights spec then passed 70/70 on WebKit in isolation (`--repeat-each=10`). It is the Quick Add intermittent of audit 005 and 006 finding 3.
 
+## Phase 58b (editing a transaction) — delta against Phase 58s
+
+`main` (`280e70a`) and the Phase 58b tree were each built with `npx vite build` in the repo, one after the other. Gzip is `zlib` level 9.
+
+| Chunk | Phase 58s | Phase 58b | Delta |
+|---|---|---|---|
+| entry `index-*.js` | 174,476 B / 49,930 B gzip | 178,446 B / 51,000 B gzip | **+3,970 B raw / +1,070 B gzip** |
+| **all JS, summed** | 1,333,131 B | 1,343,555 B | **+10,424 B** |
+| `index-*.css` | 47,958 B / 9,299 B gzip | 48,450 B / 9,335 B gzip | +492 B |
+| PWA precache | 55 entries, 1,622.17 KiB | 55 entries, 1,632.83 KiB | +10.66 KiB |
+
+Per chunk (raw bytes; every other chunk, every vendor chunk included, is byte-identical):
+
+| Chunk | Delta | Why |
+|---|---|---|
+| entry | +3,970 | `updateTransaction`, `walletEffects`, `editRuleError` and their messages in `FinanceContext`, which the entry loads; and `App.tsx`'s row hand-off. The panel and the evaluator are not in it. |
+| `TransactionsView` | +6,329 | `EditTransactionPanel`. It uses `safeEvaluateMath`, whose `vendor-math` this chunk already loaded through `TransactionForm`, so no vendor chunk moved. |
+| `DashboardView` | +128 | the Recent activity rows' `onSelect` and ids |
+| `DiaryView`, `InlineMathInput`, `TransactionForm` | -5, +1, +1 | Rollup's shared-name shuffle; no source change |
+
+**CSS grew 492 B**: `@xs:grid-cols-2`, `focus-within:ring-*` for the amount box, and the panel's 24px amount.
+
+**T267** (audit 007 finding 2) added the read-only wallet and debt lines to the lazy `TransactionsView` chunk (34.62 kB, 10.90 kB gzip after it); the entry is unchanged at 178.45 kB, and the precache went from 1,632.83 to 1,633.53 KiB.
+
+| Suite | Files | Tests | Runs | Wall clock |
+|---|---|---|---|---|
+| Playwright (local, 4 workers) | 24 | 122 | 366 | 5.3 / 5.1 m (two runs) |
+| Vitest (`unit/`) | 22 | 471 (470 before T267) | 471 | ~33 s |
+
+**Intermittent local failures:** none in 732 full-suite runs.
+
+The entry's growth is the ledger action itself, which lives with the other ledger writes in `FinanceContext`, as ADR `0023`'s RPC callers do. The panel and the evaluator stay in the lazy `TransactionsView` chunk.
+
 **Intermittent local failures:** 6 in 1,071 full-suite runs (3 full runs). All were timeouts: a Firefox `goto`, a Firefox context close, and four WebKit clicks waiting for "stable". No assertion failed. See audit 005 finding 3 for the control runs.

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import type { Category, Transaction, Wallet } from '../../types';
+import type { Category, Debt, Transaction, TransactionEdit, Wallet } from '../../types';
 import { Button } from '../ui/Button';
+import { EditTransactionPanel } from './EditTransactionPanel';
 import { Chip } from '../ui/Chip';
 import { TxAmount } from './TxCells';
 import { txTypeMetaFor } from './txTypeMeta';
@@ -19,6 +20,12 @@ interface TransactionDetailsProps {
   category: Category | undefined;
   /** Every wallet, deleted ones included, so an old row still names its wallet. */
   wallets: ReadonlyMap<string, Wallet>;
+  /** The same wallets and every category, for the edit panel's selects. */
+  walletList: Wallet[];
+  categoryList: Category[];
+  /** The debt a repayment paid, if it still resolves. */
+  debt?: Debt;
+  onSave: (id: string, edit: TransactionEdit) => Promise<WriteResult>;
   onDelete: (id: string) => Promise<WriteResult>;
   onRestore: (id: string) => Promise<WriteResult>;
 }
@@ -31,17 +38,32 @@ const Field: React.FC<{ label: string; children: React.ReactNode }> = ({ label, 
 );
 
 /**
- * Spec 6.2's side panel for the selected row (Phase 58a, ADR 0031). It shows
- * the row and offers Delete, or Restore on a deleted row, which replace the
- * per-row trash button. Editing arrives in Phase 58b.
+ * Spec 6.2's side panel for the selected row (Phase 58a, ADR 0031). A live row
+ * opens `EditTransactionPanel` (Phase 58b, ADR 0033), which holds Save changes
+ * and Delete. A deleted row is shown read-only here with Restore, since a
+ * deleted row cannot be edited.
  *
- * The view decides where it sits: inline beside the list at `xl`, a bottom
+ * The view decides where it sits: inline beside the list from `lg`, a bottom
  * sheet below. It is rendered once either way.
  *
- * A failed delete or restore is shown here. Before this phase the table's
+ * A failed delete or restore is shown here. Before Phase 58a the table's
  * trash button discarded the `MutationResult`, so a failure showed nothing.
  */
-export const TransactionDetails: React.FC<TransactionDetailsProps> = ({ tx, category, wallets, onDelete, onRestore }) => {
+export const TransactionDetails: React.FC<TransactionDetailsProps> = (props) =>
+  props.tx.isDeleted ? (
+    <DeletedTransactionDetails {...props} />
+  ) : (
+    <EditTransactionPanel
+      tx={props.tx}
+      wallets={props.walletList}
+      categories={props.categoryList}
+      debt={props.debt}
+      onSave={props.onSave}
+      onDelete={props.onDelete}
+    />
+  );
+
+const DeletedTransactionDetails: React.FC<TransactionDetailsProps> = ({ tx, category, wallets, onRestore }) => {
   const [error, setError] = useState<string | null>(null);
   const [isWorking, setIsWorking] = useState(false);
 
@@ -70,7 +92,7 @@ export const TransactionDetails: React.FC<TransactionDetailsProps> = ({ tx, cate
       <div className="flex flex-col gap-1">
         <span className="text-xs font-semibold uppercase tracking-wider text-fg-secondary">{txTypeMetaFor(tx.type, tx.amount).label}</span>
         <TxAmount amount={tx.amount} type={tx.type} className="text-2xl" />
-        {tx.isDeleted && <span className="text-sm font-semibold text-expense">Deleted</span>}
+        <span className="text-sm font-semibold text-expense">Deleted</span>
       </div>
 
       <dl className="flex flex-col">
@@ -98,18 +120,12 @@ export const TransactionDetails: React.FC<TransactionDetailsProps> = ({ tx, cate
         </p>
       )}
 
-      {tx.isDeleted ? (
+      <div className="flex flex-col gap-2">
         <Button id={`tx-restore-btn-${tx.id}`} variant="soft" block disabled={isWorking} onClick={() => run(onRestore, 'Could not restore this transaction.')}>
           Restore
         </Button>
-      ) : (
-        <div className="flex flex-col gap-2">
-          <Button id={`tx-delete-btn-${tx.id}`} variant="danger" block disabled={isWorking} onClick={() => run(onDelete, 'Could not delete this transaction.')}>
-            Delete
-          </Button>
-          <p className="text-xs text-fg-muted">A deleted transaction can be restored from Show deleted. Deleting reverses its effect on the wallet.</p>
-        </div>
-      )}
+        <p className="text-xs text-fg-muted">Restore it to edit it. Restoring puts its effect back on the wallet.</p>
+      </div>
     </div>
   );
 };

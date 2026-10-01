@@ -122,6 +122,27 @@ export interface Transaction {
   updatedAt: string;
 }
 
+/**
+ * The full desired row of an edit (ADR 0033), as `updateTransaction` and the
+ * `update_transaction` RPC take it. Income, expense and transfer may change any
+ * of these among themselves; a debt repayment or an adjustment must send its
+ * type, amount, wallet and category back unchanged and edits only
+ * `description` and `transactionDate`.
+ */
+export interface TransactionEdit {
+  type: TransactionType;
+  amount: number;
+  /** The amount as typed (`100+50`); omitted when the amount was not typed anew. */
+  rawInput?: string;
+  walletId: string;
+  /** A transfer's To wallet; absent for every other type. */
+  destinationWalletId?: string;
+  /** Absent for a transfer, which never carries a category. */
+  categoryId?: string;
+  description: string;
+  transactionDate: string;
+}
+
 export interface Debt {
   id: string;
   userId: string;

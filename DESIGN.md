@@ -173,12 +173,17 @@ One period for the whole page, chosen in the `PageHeader`. Every figure comes fr
 | Mood & spending | 4/12 / full | Diary days in the period, a five-bar meter (no emoji) and that day's signed spending. |
 | Spending insights | full | ADR 0020's card, titled with its own months. |
 
-### Transactions (spec 6.2, ADR 0031)
-- **Header:** `PageHeader` "Transactions", an "Import / export" menu, and the one primary button, "Add transaction".
+### Transactions (spec 6.2, ADRs 0031 and 0033)
+- **Header:** `PageHeader` "Transactions" with "Click any row to edit it", an "Import / export" menu, and the one primary button, "Add transaction".
 - **Filter row:** search (grows to fill), date range, wallet, category, a type control (All / Income / Expense / Transfer), and Show deleted. On a phone the selects share their rows evenly.
 - **List:** one card, with a summary line at the top (the range, In, Out, and what is not counted). Below it, `DayGroupHeader`s and `TransactionRow` buttons, inset 8px so a row's focus ring has room, and "Load 25 more" at the foot.
-- **Panel:** the selected row's details, with Delete (danger) or Restore. It sits inline at 4/12 beside the list from `xl` and opens as a sheet or dialog below that. The choice is made in JavaScript, so it is never rendered twice. The selected row takes the soft violet with a 3px violet edge.
+- **Panel:** the selected row's edit panel. It sits inline at 4/12 beside the list from `lg` and opens as a sheet or dialog below that. The choice is made in JavaScript, so it is never rendered twice. The selected row takes the soft violet with a 3px violet edge.
+  - **For income, expense and transfer:** a type control, the amount at 24px in the type's colour (it takes a sum, like `100+50`), the note, Category and Wallet side by side when there is room (From and To for a transfer), the date, then "Save changes" (primary) beside "Delete" (danger).
+  - **For a repayment or an adjustment:** the money as text, its wallet (and a repayment's debt) as read-only lines, one line saying only the note and date can change, then the note and date fields.
+  - **Save changes is disabled until something changes.** The line above it says why when the edit is incomplete, and "Changes saved" after a save. A failure shows in the red banner.
+  - **For a deleted row:** its details, read-only, with Restore.
 - **No trash button on a row.** Deleting happens in the panel.
+- **Dashboard hand-off:** a Recent activity row opens its row here with the panel open.
 
 ### Sync indicator (header)
 Five states. The first is for guests; the other four are for a signed-in user, checked in this order.
@@ -227,5 +232,6 @@ Five states. The first is for guests; the other four are for a signed-in user, c
 | Spent-vs-left bar in red and green | One `ProgressBar` of the spent share on the neutral track | A green remainder would read as income; the caption states the share. |
 | Static "Good morning" | Greeting by the local hour | The page is open at every hour. |
 | "…uses the period on the right" | "…uses the selected period" | On a phone the control sits below the text. |
-| Transactions: "Click any row to edit it", and an edit panel | "Click any row to see it, or to delete or restore it", and a panel that shows the row | Editing needs a new ledger write, split into Phase 58b by the owner (ADR 0031). |
+| Edit panel: every row edits type, amount, wallets and category | A repayment or an adjustment edits only its note and date | Its money is tied to a debt's remainder or to a counted balance; changing it is a delete and a new entry (owner, 2026-09-28, ADR 0033). |
+| Edit panel: Category and Wallet side by side | Side by side from a 320px panel; stacked below that, as in the inline panel at `lg` | Two selects in under 320px cut their names off. |
 | A transfer row: "Transfer" over "Main → Cash" only | "Main → Cash · Funds transfer" when the transfer has a note of its own | The title is always "Transfer", so a note the user wrote would otherwise disappear. |

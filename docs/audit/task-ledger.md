@@ -1081,6 +1081,45 @@ Approved explicitly by the user, planned and approved before any code was writte
 - **One negative control was redone** because the first attempt produced malformed TypeScript that the dev server still served — the tests failed, but possibly for the wrong reason.
 - **No flakes.** Phase 44's `wallets.spec.ts` webkit flake has now not reproduced across three consecutive phases; still watched rather than closed.
 
+## Phase 58b - Editing a transaction (spec 6.2's edit panel): T253-T267 (2026-09-30)
+
+ADR `0033`. The plan was approved in plan mode; the owner's decisions:
+- a new `update_transaction` RPC, probe first, applied only on the owner's word;
+- income, expense and transfer edit everything; a repayment or an adjustment its note and date only;
+- a new `EditTransactionPanel`, not `TransactionForm`;
+- a stale edit is refused (`TRANSACTION_CHANGED`) and the page re-reads;
+- 3 guest E2E tests;
+- Dashboard Recent-activity rows open their row;
+- audit 006 findings 1 and 2 fixed here;
+- antislop mode 2 (audit 007).
+
+Branch `phase-58b-edit`. It also carries `280e70a`, the Phase 58s deploy record, which was not pushed.
+
+| # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
+|---|---|---|---|---|---|---|---|---|---|---|
+| T253 | `update_transaction` and its probe | `supabase/migrations/20260930_phase58b_update_transaction.sql`, `supabase/tests/20260930_phase58b.probe.sql` | High | High | 2h | done | - | dc166a0 | probe OK; it caught a real bug first (a signed adjustment's note edit refused); 3 negative controls diverged | - |
+| T254 | Apply live | live DB | High | Med | 0.3h | done | T253, the owner | - (applied 2026-09-30) | md5 matches; 58b, 58s and 52 probes OK | - |
+| T255 | `updateTransaction`, `walletEffects`, `editRuleError`; `TransactionEdit`; `useTransactions` | `FinanceContext.tsx`, `types.ts`, `hooks/useTransactions.ts` | High | High | 1.5h | done | T254 | c20b370 | see T256 | - |
+| T256 | Signed-in stand-in and 10 tests; 9 guest tests | `unit/authenticated-ledger.test.tsx`, `unit/ledger-guards.test.tsx` | High | Low | 1.5h | done | T255 | c20b370 | 7 mutations caught | unit 443 -> 462 |
+| T257 | `EditTransactionPanel`; `TransactionDetails` delegates for a live row | `transaction/EditTransactionPanel.tsx`, `transaction/TransactionDrawer.tsx` | High | Med | 2h | done | T255 | 235c1a0 | see T261 | - |
+| T258 | `TransactionsView`: "Click any row to edit it", inline from `lg`, save wiring | `TransactionsView.tsx` | Med | Low | 0.3h | done | T257 | 235c1a0 | - | - |
+| T259 | Dashboard hand-off | `App.tsx`, `DashboardView.tsx`, `RecentActivityCard.tsx`, `TransactionsView.tsx` | Med | Low | 0.5h | done | T258 | 235c1a0 | - | - |
+| T260 | `ImportCsvModal`: `Tags`, no badge icons | `ImportCsvModal.tsx` | Low | Low | 0.1h | done | - | 235c1a0 | - | - |
+| T261 | Page tests | `unit/transactions-page.test.tsx` | High | Low | 1h | done | T257-T259 | 235c1a0 | 4 mutations caught | unit 462 -> 470 |
+| T262 | `tests/transaction-edit.spec.ts` | `tests/` | High | Low | 0.5h | done | T258 | c685a7a | a wallet-write control failed 2 of 3 | E2E 357 -> 366 runs |
+| T263 | Gate: lint, unit, WCAG, build, Playwright twice, MCP | - | - | - | 1h | done | all | 336c0ca (MCP fix) | 366/366 twice; MCP clean but for audit 007 finding 1 | see metrics |
+| T264 | ADR `0033`, `DESIGN.md`, `CLAUDE.md`, selector contract | docs | Low | Low | 1h | done | all | 5f19972 | - | - |
+| T265 | Ledger, log, metrics, antislop audit 007 | docs | Low | Low | 0.5h | done | all | 5f19972 | - | - |
+| T266 | sha backfill; PR on the owner's word | docs | Low | Low | 0.1h | backfill done (d699ae6); draft PR on the owner's word, 2026-10-01 | T265 | d699ae6 | - | - |
+| T267 | Audit 007 finding 2: a repayment's or adjustment's panel names its wallet, and a repayment its debt | `EditTransactionPanel.tsx`, `TransactionDrawer.tsx`, `TransactionsView.tsx`, `unit/transactions-page.test.tsx` | Low | Low | 0.2h | done | the owner | (this row's own commit) | a control that dropped the debt failed its test; 366/366 | unit 470 -> 471 |
+
+**Notes on execution:**
+- **The probe earned its keep on its first run.** The amount check also covered adjustments, whose amounts are signed since ADR `0024`, so a note edit of a downward adjustment was refused. The money checks now apply to income, expense and transfer only, and probe step 10 pins the case.
+- **Two negative controls were wrong before they were right.**
+  - Reading the ref after the optimistic write was proposed as the stale-version bug, but nothing awaits between the two, so it still held the old version. The real failure, sending the optimistic timestamp, failed 6 tests.
+  - A test that read a transfer's To select passed with no wallet chosen, because an empty select displays its first option. The test now checks that Save is enabled, and the select shows "Choose a wallet" when nothing is chosen.
+- **The unknown-outcome test first passed without the re-read**, because a later reload also showed the committed row. It now counts reads the moment the call returns.
+
 ## Phase 58s - Security: who may spend TypeSafe credits, and who may write `public.profiles`: T245-T252 (2026-09-30)
 
 A security phase between 58a and 58b, from an outside review's two "critical" claims. ADR `0032`. Both claims were checked against the code, production and the live database first:
@@ -1092,7 +1131,10 @@ The owner's decisions:
 - remove client writes to `profiles` and sync it from `auth.users`, probe first, apply on the owner's word;
 - the owner re-saves `TYPESAFE_API_KEY` as "sensitive" and reviews TypeSafe's spend caps.
 
-Branch `phase-58s-security`. It also carries `092e87c`, the Phase 58a deploy record, which was not pushed.
+Branch `phase-58s-security`, draft PR #5. It also carried `092e87c`, the Phase 58a deploy record, which had not been pushed.
+- Merged into `main` as `acb969c` with the owner's go-ahead. Push run `36712827442` passed.
+- Vercel `dpl_AD4WfDGUWor3G7fDCBjGyPEyTW8w` serves a build that matches the local one byte for byte. Live checks on production passed: a fake token gets 401, and a guest's invalid body gets 400 (see the refactor log).
+- T246 stays open: the owner creates the firewall rules in the dashboard, then the burst test runs.
 
 | # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
 |---|---|---|---|---|---|---|---|---|---|---|

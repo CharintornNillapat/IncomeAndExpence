@@ -8,6 +8,7 @@ import {
   type FinanceActionsContextType,
   type FinanceStateContextType,
 } from '../src/context/FinanceContext';
+import type { TransactionEdit } from '../src/types';
 
 /**
  * Phase 44's coverage gap (ADR 0021).
@@ -409,6 +410,131 @@ describe('a signed ADJUSTMENT (ADR 0024)', () => {
     const result = await call(() => adjust(-50, { type: 'EXPENSE' }));
     expect(result.success).toBe(false);
     expect(wallet(WALLET_SAVINGS).balance).toBe(SAVINGS_OPENING);
+  });
+});
+
+describe('a guest edit (ADR 0033)', () => {
+  /*
+   * The same arithmetic as `update_transaction`, done locally: the new row's
+   * wallet effects minus the old row's. Each case starts from the fixture's
+   * Main ฿2,500 and Savings ฿5,000.
+   */
+  const MAIN_OPENING = 2500;
+
+  function editOf(txId: string, changes: Partial<TransactionEdit>): TransactionEdit {
+    const tx = state().transactions.find((t) => t.id === txId)!;
+    return {
+      type: tx.type,
+      amount: tx.amount,
+      rawInput: tx.rawInput,
+      walletId: tx.walletId,
+      destinationWalletId: tx.destinationWalletId,
+      categoryId: tx.categoryId,
+      description: tx.description,
+      transactionDate: tx.transactionDate,
+      ...changes,
+    };
+  }
+
+  const add = (overrides: RepayOverrides) =>
+    call(() =>
+      actions().addTransaction({
+        amount: 200,
+        type: 'EXPENSE',
+        walletId: WALLET_MAIN,
+        description: 'Groceries',
+        transactionDate: TODAY,
+        ...overrides,
+      })
+    );
+
+  const edit = (txId: string, changes: Partial<TransactionEdit>) =>
+    call(() => actions().updateTransaction(txId, editOf(txId, changes)));
+
+  const row = (txId: string) => state().transactions.find((t) => t.id === txId)!;
+
+  it("moves only the difference when an expense's amount changes", async () => {
+    const { txId } = await add({});
+    expect((await edit(txId!, { amount: 350, rawInput: '200+150' })).success).toBe(true);
+    expect(wallet(WALLET_MAIN).balance).toBe(MAIN_OPENING - 350);
+    expect(row(txId!)).toMatchObject({ amount: 350, rawInput: '200+150' });
+  });
+
+  it('gives the old wallet its money back and charges the new one', async () => {
+    const { txId } = await add({});
+    expect((await edit(txId!, { walletId: WALLET_SAVINGS })).success).toBe(true);
+    expect(wallet(WALLET_MAIN).balance).toBe(MAIN_OPENING);
+    expect(wallet(WALLET_SAVINGS).balance).toBe(SAVINGS_OPENING - 200);
+  });
+
+  it('turns an expense into a transfer', async () => {
+    const { txId } = await add({});
+    const result = await edit(txId!, { type: 'TRANSFER', destinationWalletId: WALLET_SAVINGS, categoryId: undefined });
+    expect(result.success).toBe(true);
+    expect(wallet(WALLET_MAIN).balance).toBe(MAIN_OPENING - 200);
+    expect(wallet(WALLET_SAVINGS).balance).toBe(SAVINGS_OPENING + 200);
+    expect(row(txId!)).toMatchObject({ type: 'TRANSFER', destinationWalletId: WALLET_SAVINGS });
+  });
+
+  it('turns a transfer into income, dropping its destination', async () => {
+    const { txId } = await add({ type: 'TRANSFER', amount: 300, destinationWalletId: WALLET_SAVINGS, description: 'Move' });
+    expect(wallet(WALLET_MAIN).balance).toBe(MAIN_OPENING - 300);
+    await tick();
+
+    const result = await edit(txId!, { type: 'INCOME', walletId: WALLET_SAVINGS, destinationWalletId: undefined });
+    expect(result.success).toBe(true);
+    expect(wallet(WALLET_MAIN).balance).toBe(MAIN_OPENING);
+    expect(wallet(WALLET_SAVINGS).balance).toBe(SAVINGS_OPENING + 300);
+    expect(row(txId!).destinationWalletId).toBeUndefined();
+  });
+
+  it("swaps a transfer's From and To", async () => {
+    const { txId } = await add({ type: 'TRANSFER', amount: 300, destinationWalletId: WALLET_SAVINGS, description: 'Move' });
+    await tick();
+
+    const result = await edit(txId!, { walletId: WALLET_SAVINGS, destinationWalletId: WALLET_MAIN });
+    expect(result.success).toBe(true);
+    expect(wallet(WALLET_MAIN).balance).toBe(MAIN_OPENING + 300);
+    expect(wallet(WALLET_SAVINGS).balance).toBe(SAVINGS_OPENING - 300);
+  });
+
+  it("edits a downward adjustment's note without refusing its negative amount", async () => {
+    const { txId } = await add({ type: 'ADJUSTMENT', amount: -1000, walletId: WALLET_SAVINGS, description: 'Manual balance adjustment' });
+    const result = await edit(txId!, { description: 'Counted the cash' });
+    expect(result).toEqual({ success: true });
+    expect(wallet(WALLET_SAVINGS).balance).toBe(SAVINGS_OPENING - 1000);
+    expect(row(txId!)).toMatchObject({ description: 'Counted the cash', amount: -1000 });
+  });
+
+  it("edits a repayment's note and date, and never its money", async () => {
+    const { txId } = await call(() => repay());
+    await tick();
+
+    expect((await edit(txId!, { description: 'September payment', transactionDate: '2026-09-14' })).success).toBe(true);
+    expect(row(txId!)).toMatchObject({ description: 'September payment', transactionDate: '2026-09-14' });
+
+    const refused = await edit(txId!, { amount: 1200 });
+    expect(refused).toEqual({ success: false, error: 'Only the note and date of a debt repayment or an adjustment can change' });
+    expect(wallet(WALLET_SAVINGS).balance).toBe(SAVINGS_OPENING - 1000);
+    expect(debt().remainingAmount).toBe(DEBT_REMAINING - 1000);
+  });
+
+  it('refuses a deleted row, a row turned into an adjustment, and a wallet that does not exist', async () => {
+    const { txId } = await add({});
+    await tick();
+
+    expect((await edit(txId!, { type: 'ADJUSTMENT' })).error).toBe('A transaction can only become income, an expense or a transfer');
+    expect((await edit(txId!, { walletId: 'wal-nowhere' })).error).toBe('Wallet not found or has been deleted');
+    await call(() => actions().softDeleteTransaction(txId!));
+    expect((await edit(txId!, { amount: 999 })).error).toBe('Restore this transaction before editing it');
+    expect(wallet(WALLET_MAIN).balance).toBe(MAIN_OPENING);
+  });
+
+  it('changes nothing for an edit that changes nothing', async () => {
+    const { txId } = await add({});
+    const before = row(txId!);
+    expect(await edit(txId!, {})).toEqual({ success: true });
+    expect(row(txId!)).toBe(before);
   });
 });
 

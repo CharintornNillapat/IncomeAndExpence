@@ -23,6 +23,7 @@ export const useTransactions = (options: UseTransactionsFilterOptions = {}) => {
     addTransaction,
     softDeleteTransaction,
     restoreTransaction,
+    updateTransaction,
     commitBulkImport,
     setShowSoftDeleted,
   } = useFinanceActions();
@@ -163,6 +164,7 @@ export const useTransactions = (options: UseTransactionsFilterOptions = {}) => {
     addTransaction: handleAdd,
     deleteTransaction: handleDelete,
     restoreTransaction: handleRestore,
+    updateTransaction,
     commitBulkImport,
   };
 };

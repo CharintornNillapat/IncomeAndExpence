@@ -10,7 +10,7 @@ import {
   type FinanceActionsContextType,
   type FinanceStateContextType,
 } from '../src/context/FinanceContext';
-import type { ImportRowValidation } from '../src/types';
+import type { ImportRowValidation, TransactionEdit } from '../src/types';
 import { formatCurrencyAmount } from '../src/utils/currency';
 import { AuthApiError, AuthRetryableFetchError, AuthSessionMissingError } from '@supabase/supabase-js';
 
@@ -544,6 +544,74 @@ function installLedgerRpcs() {
     tx.is_deleted = a.p_deleted;
     tx.updated_at = new Date().toISOString();
     return { data: { changed: true, transaction: { ...tx }, ...effect }, error: null };
+  });
+
+  // ADR 0033. Replay before the stale guard, the money of a repayment or an
+  // adjustment fixed, the old effect reversed and the new one applied, and the
+  // balance of every wallet on either side returned.
+  fake.state.rpcs.set('update_transaction', (a) => {
+    const tx = rows('transactions').find((t) => t.id === a.p_transaction_id);
+    if (!tx) return rpcError('P0002', 'Transaction not found');
+    if (tx.is_deleted) return rpcError('22023', 'Restore this transaction before editing it');
+
+    const amount = round2(Number(a.p_amount));
+    const fixedMoney = tx.type === 'DEBT_REPAYMENT' || tx.type === 'ADJUSTMENT';
+    if (
+      fixedMoney &&
+      (a.p_type !== tx.type ||
+        amount !== Number(tx.amount) ||
+        a.p_wallet_id !== tx.wallet_id ||
+        (a.p_destination_wallet_id ?? null) !== (tx.destination_wallet_id ?? null) ||
+        (a.p_category_id ?? null) !== (tx.category_id ?? null))
+    ) {
+      return rpcError('22023', 'Only the note and date of a debt repayment or an adjustment can change');
+    }
+    const rawInput = fixedMoney ? tx.raw_input : ((a.p_raw_input as string | null)?.trim() || null);
+
+    const walletIds = [tx.wallet_id, tx.destination_wallet_id, a.p_wallet_id, a.p_destination_wallet_id].filter(Boolean);
+    const balances = () =>
+      rows('wallets')
+        .filter((w) => walletIds.includes(w.id))
+        .map((w) => ({ id: w.id, balance: w.balance }));
+
+    const unchanged =
+      a.p_type === tx.type &&
+      amount === Number(tx.amount) &&
+      a.p_wallet_id === tx.wallet_id &&
+      (a.p_destination_wallet_id ?? null) === (tx.destination_wallet_id ?? null) &&
+      (a.p_category_id ?? null) === (tx.category_id ?? null) &&
+      a.p_description === tx.description &&
+      a.p_transaction_date === tx.transaction_date &&
+      (rawInput ?? null) === (tx.raw_input ?? null);
+    if (unchanged) return { data: { changed: false, transaction: { ...tx }, balances: balances() }, error: null };
+
+    if (a.p_expected_updated_at && a.p_expected_updated_at !== tx.updated_at) {
+      return rpcError('P0001', 'TRANSACTION_CHANGED');
+    }
+
+    const next = {
+      type: a.p_type,
+      amount,
+      wallet_id: a.p_wallet_id,
+      destination_wallet_id: a.p_destination_wallet_id ?? null,
+    };
+    const moneyChanged =
+      next.type !== tx.type ||
+      next.amount !== Number(tx.amount) ||
+      next.wallet_id !== tx.wallet_id ||
+      next.destination_wallet_id !== (tx.destination_wallet_id ?? null);
+    if (moneyChanged) {
+      applyEffect({ ...tx, debt_id: null }, -1);
+      applyEffect({ ...next, debt_id: null }, 1);
+    }
+    Object.assign(tx, next, {
+      category_id: a.p_category_id ?? null,
+      description: a.p_description,
+      transaction_date: a.p_transaction_date,
+      raw_input: rawInput,
+      updated_at: new Date(Date.parse(String(tx.updated_at)) + 1000).toISOString(),
+    });
+    return { data: { changed: true, transaction: { ...tx }, balances: balances() }, error: null };
   });
 
   fake.state.rpcs.set('import_transactions', (a) => {
@@ -1161,6 +1229,211 @@ describe('a signed-in delete and restore through set_transaction_deleted (ADR 00
     await waitFor(() => {
       expect(wallet()?.balance).toBe(WALLET_OPENING);
       expect(state().transactions.find((t) => t.id === spent.txId)?.isDeleted).toBe(true);
+    });
+  });
+});
+
+describe('a signed-in edit through update_transaction (ADR 0033)', () => {
+  beforeEach(() => installLedgerRpcs());
+
+  /** The row as the client holds it, and the edit that keeps everything but `changes`. */
+  function editOf(txId: string, changes: Partial<TransactionEdit>): TransactionEdit {
+    const tx = state().transactions.find((t) => t.id === txId)!;
+    return {
+      type: tx.type,
+      amount: tx.amount,
+      rawInput: tx.rawInput,
+      walletId: tx.walletId,
+      destinationWalletId: tx.destinationWalletId,
+      categoryId: tx.categoryId,
+      description: tx.description,
+      transactionDate: tx.transactionDate,
+      ...changes,
+    };
+  }
+
+  const reads = () => writes('transactions', 'select').length;
+
+  it('moves only the difference on an amount edit, in one RPC naming the version it edited', async () => {
+    const spent = await expense(200);
+    await landed(spent.txId);
+    const editedVersion = state().transactions.find((t) => t.id === spent.txId)!.updatedAt;
+    fake.state.calls = [];
+
+    const result = await actions().updateTransaction(spent.txId!, editOf(spent.txId!, { amount: 250, rawInput: '200+50' }));
+
+    expect(result).toEqual({ success: true });
+    const calls = writes('rpc:update_transaction', 'rpc');
+    expect(calls).toHaveLength(1);
+    expect(calls[0].payload).toMatchObject({
+      p_transaction_id: spent.txId,
+      p_expected_updated_at: editedVersion,
+      p_type: 'EXPENSE',
+      p_amount: 250,
+      p_wallet_id: WALLET,
+      p_destination_wallet_id: null,
+      p_raw_input: '200+50',
+    });
+    expect(writes('wallets', 'update')).toHaveLength(0);
+    expect(writes('transactions', 'update')).toHaveLength(0);
+    expect(serverWallet(WALLET).balance).toBe(WALLET_OPENING - 250);
+    await waitFor(() => {
+      expect(wallet()?.balance).toBe(WALLET_OPENING - 250);
+      expect(state().transactions.find((t) => t.id === spent.txId)?.amount).toBe(250);
+    });
+  });
+
+  it('adopts the balances the server committed, not its own guess', async () => {
+    const spent = await expense(200);
+    await landed(spent.txId);
+    // Another device moved the wallet after this one's expense landed.
+    fake.state.tables.wallets[0].balance = 9000;
+
+    const result = await actions().updateTransaction(spent.txId!, editOf(spent.txId!, { amount: 250 }));
+
+    expect(result.success).toBe(true);
+    // Reversed and reapplied relative to the 9,000 the server holds.
+    expect(serverWallet(WALLET).balance).toBe(8950);
+    await waitFor(() => expect(wallet()?.balance).toBe(8950));
+  });
+
+  it('gives the old wallet its money back and charges the new one', async () => {
+    const spent = await expense(200);
+    await landed(spent.txId);
+
+    const result = await actions().updateTransaction(spent.txId!, editOf(spent.txId!, { walletId: CASH }));
+
+    expect(result.success).toBe(true);
+    await waitFor(() => {
+      expect(wallet(WALLET)?.balance).toBe(WALLET_OPENING);
+      expect(wallet(CASH)?.balance).toBe(CASH_OPENING - 200);
+    });
+  });
+
+  it('turns an expense into a transfer: the expense is undone and the transfer moves the money', async () => {
+    const spent = await expense(200);
+    await landed(spent.txId);
+
+    const result = await actions().updateTransaction(
+      spent.txId!,
+      editOf(spent.txId!, { type: 'TRANSFER', destinationWalletId: CASH, categoryId: undefined })
+    );
+
+    expect(result.success).toBe(true);
+    expect(writes('rpc:update_transaction', 'rpc').at(-1)?.payload).toMatchObject({
+      p_type: 'TRANSFER',
+      p_destination_wallet_id: CASH,
+      p_category_id: null,
+    });
+    await waitFor(() => {
+      expect(wallet(WALLET)?.balance).toBe(WALLET_OPENING - 200);
+      expect(wallet(CASH)?.balance).toBe(CASH_OPENING + 200);
+    });
+  });
+
+  it("edits a repayment's note and date without moving its wallet or its debt", async () => {
+    const paid = await repay(1000);
+    await landed(paid.txId);
+
+    const result = await actions().updateTransaction(
+      paid.txId!,
+      editOf(paid.txId!, { description: 'September payment', transactionDate: '2026-09-25' })
+    );
+
+    expect(result.success).toBe(true);
+    expect(serverWallet(WALLET).balance).toBe(WALLET_OPENING - 1000);
+    expect(fake.state.tables.debts[0].remaining_amount).toBe(DEBT_REMAINING - 1000);
+    await waitFor(() => {
+      const row = state().transactions.find((t) => t.id === paid.txId);
+      expect(row?.description).toBe('September payment');
+      expect(row?.transactionDate).toBe('2026-09-25');
+      expect(wallet()?.balance).toBe(WALLET_OPENING - 1000);
+      expect(debt()?.remainingAmount).toBe(DEBT_REMAINING - 1000);
+    });
+  });
+
+  it("refuses a repayment's amount before asking the server", async () => {
+    const paid = await repay(1000);
+    await landed(paid.txId);
+    fake.state.calls = [];
+
+    const result = await actions().updateTransaction(paid.txId!, editOf(paid.txId!, { amount: 1200 }));
+
+    expect(result).toEqual({
+      success: false,
+      error: 'Only the note and date of a debt repayment or an adjustment can change',
+    });
+    expect(writes('rpc:update_transaction', 'rpc')).toHaveLength(0);
+  });
+
+  it('sends nothing for an edit that changes nothing', async () => {
+    const spent = await expense(200);
+    await landed(spent.txId);
+    fake.state.calls = [];
+
+    const result = await actions().updateTransaction(spent.txId!, editOf(spent.txId!, {}));
+
+    expect(result).toEqual({ success: true });
+    expect(writes('rpc:update_transaction', 'rpc')).toHaveLength(0);
+  });
+
+  it('has no fallback when the function is missing: it rolls back and says why', async () => {
+    const spent = await expense(200);
+    await landed(spent.txId);
+    // An unmigrated project: the RPC answers PGRST202.
+    fake.state.rpcs.delete('update_transaction');
+    fake.state.calls = [];
+
+    const result = await actions().updateTransaction(spent.txId!, editOf(spent.txId!, { amount: 250 }));
+
+    expect(result.success).toBe(false);
+    expect(result.error).toContain('latest database update');
+    expect(writes('wallets', 'update')).toHaveLength(0);
+    expect(writes('transactions', 'update')).toHaveLength(0);
+    await waitFor(() => {
+      expect(wallet()?.balance).toBe(WALLET_OPENING - 200);
+      expect(state().transactions.find((t) => t.id === spent.txId)?.amount).toBe(200);
+    });
+  });
+
+  it('rolls back and re-reads when another device changed the row first', async () => {
+    const spent = await expense(200);
+    await landed(spent.txId);
+    // Another device edited the row; this client still holds the old version.
+    const serverRow = fake.state.tables.transactions.find((t) => t.id === spent.txId)!;
+    serverRow.description = 'Groceries and milk';
+    serverRow.updated_at = '2026-09-26T12:00:00.000Z';
+    const readsBefore = reads();
+
+    const result = await actions().updateTransaction(spent.txId!, editOf(spent.txId!, { amount: 250 }));
+
+    expect(result).toEqual({
+      success: false,
+      error: 'This transaction changed on another device. Check it and try again.',
+    });
+    expect(serverWallet(WALLET).balance).toBe(WALLET_OPENING - 200);
+    expect(reads()).toBeGreaterThan(readsBefore);
+    await waitFor(() => {
+      expect(wallet()?.balance).toBe(WALLET_OPENING - 200);
+      expect(state().transactions.find((t) => t.id === spent.txId)?.description).toBe('Groceries and milk');
+    });
+  });
+
+  it('re-reads after an unknown outcome, and shows what committed', async () => {
+    const spent = await expense(200);
+    await landed(spent.txId);
+    fake.state.lostResponses.add('update_transaction');
+    const readsBefore = reads();
+
+    const result = await actions().updateTransaction(spent.txId!, editOf(spent.txId!, { amount: 250 }));
+    expect(result.success).toBe(false);
+    // The re-read is part of the call, not a later reload that happens to come.
+    expect(reads()).toBeGreaterThan(readsBefore);
+
+    expect(serverWallet(WALLET).balance).toBe(WALLET_OPENING - 250);
+    await waitFor(() => {
+      expect(wallet()?.balance).toBe(WALLET_OPENING - 250);
+      expect(state().transactions.find((t) => t.id === spent.txId)?.amount).toBe(250);
     });
   });
 });
