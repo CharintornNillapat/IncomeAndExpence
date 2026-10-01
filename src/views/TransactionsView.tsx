@@ -56,6 +56,9 @@ const RANGE_OPTIONS: { value: TimeRange; label: string }[] = [
   { value: 'MONTH', label: 'Past 30 days' },
 ];
 
+/** The range select's value while a diary day filter is on; never a `TimeRange`. */
+const DAY_FILTER_OPTION = 'DAY_FILTER';
+
 const TYPE_OPTIONS: { value: TypeFilter; label: string }[] = [
   { value: 'ALL', label: 'All' },
   { value: 'INCOME', label: 'Income' },
@@ -345,13 +348,19 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
         <select
           id="tx-filter-range"
           aria-label="Date range"
-          value={range}
+          value={dayFilter ? DAY_FILTER_OPTION : range}
           onChange={(e) => {
             setRange(e.target.value as TimeRange);
             setDayFilter(null);
           }}
           className={FILTER_SELECT_CLASS}
         >
+          {/* While a day from the diary is shown, the select says so rather than "All time" (audit 010 finding 1). */}
+          {dayFilter && (
+            <option value={DAY_FILTER_OPTION} disabled className={OPTION_CLASS}>
+              One day
+            </option>
+          )}
           {RANGE_OPTIONS.map((option) => (
             <option key={option.value} value={option.value} className={OPTION_CLASS}>
               {option.label}

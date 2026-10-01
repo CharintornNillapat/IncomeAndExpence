@@ -26,8 +26,11 @@ function dayClass(isSelected: boolean, isLogged: boolean, isToday: boolean, isFu
     : isLogged
       ? 'bg-logged text-fg font-semibold hover:bg-surface-3'
       : 'text-fg-secondary hover:bg-surface-3 hover:text-fg';
-  // Today's ring sits inside the box so it never clips against a neighbour.
-  return `${base} ${fill} cursor-pointer ${isToday ? 'ring-2 ring-inset ring-focus' : ''}`.trim();
+  // Today's ring sits inside the box so it never clips against a neighbour. On
+  // the form's day it is white, since a violet ring vanishes into the brand fill
+  // (audit 010 finding 3).
+  const ring = isToday ? (isSelected ? 'ring-2 ring-inset ring-white' : 'ring-2 ring-inset ring-focus') : '';
+  return `${base} ${fill} cursor-pointer ${ring}`.trim();
 }
 
 /**

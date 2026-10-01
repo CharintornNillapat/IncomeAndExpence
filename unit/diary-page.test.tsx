@@ -184,9 +184,20 @@ describe('the calendar', () => {
     const firstCell = monthGrid(monthKeyOf(TODAY))[0].findIndex((cell) => cell === firstOfMonth);
     expect(firstCell).toBe((new Date(Number(TODAY.slice(0, 4)), Number(TODAY.slice(5, 7)) - 1, 1).getDay() + 6) % 7);
 
+    // Today is the form's day on load, so its ring is white on the brand fill
+    // (audit 010 finding 3), and violet again once another day is picked.
     const todayBtn = byId(`diary-cal-day-${TODAY}`)!;
-    expect(todayBtn.className).toContain('ring-focus');
     expect(todayBtn.getAttribute('aria-pressed')).toBe('true');
+    expect(todayBtn.className).toContain('ring-white');
+    expect(todayBtn.className).not.toContain('ring-focus');
+    fireEvent.click(byId('diary-prev-day-btn')!);
+    const todayAgain = byId(`diary-cal-day-${TODAY}`);
+    if (todayAgain) {
+      expect(todayAgain.getAttribute('aria-pressed')).toBe('false');
+      expect(todayAgain.className).toContain('ring-focus');
+      expect(todayAgain.className).not.toContain('ring-white');
+    }
+    fireEvent.click(byId('diary-next-day-btn')!);
     if (monthKeyOf(logged) === monthKeyOf(TODAY)) {
       expect(byId(`diary-cal-day-${logged}`)!.className).toContain('bg-logged');
       expect(byId(`diary-cal-day-${logged}`)!.getAttribute('aria-label')).toMatch(/, logged$/);

@@ -334,10 +334,16 @@ describe("the Daily diary's day hand-off (Phase 61, ADR 0036)", () => {
     expect(rowButtons()).toHaveLength(1);
     const chip = document.getElementById('tx-day-filter')!;
     expect(chip.textContent).toMatch(/^Only [A-Z][a-z]{2}, [A-Z][a-z]{2} \d{1,2}$/);
+    // The range select agrees with the chip instead of saying "All time" (audit 010 finding 1).
+    const rangeSelect = document.getElementById('tx-filter-range') as HTMLSelectElement;
+    expect(rangeSelect.selectedOptions[0].textContent).toBe('One day');
+    expect(rangeSelect.selectedOptions[0].disabled).toBe(true);
 
     fireEvent.click(chip);
     expect(document.getElementById('tx-day-filter')).toBeNull();
     expect(rowButtons()).toHaveLength(2);
+    expect(rangeSelect.selectedOptions[0].textContent).toBe('All time');
+    expect([...rangeSelect.options].map((o) => o.textContent)).not.toContain('One day');
   });
 
   it('a range change drops the day filter', () => {
