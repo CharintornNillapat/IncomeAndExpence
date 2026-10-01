@@ -227,6 +227,30 @@ describe('OverflowMenu', () => {
     expect(document.activeElement).toBe(trigger);
   });
 
+  // Phase 59 (audit 008): the menu sits inside the Wallets page's bottom sheet,
+  // whose `Modal` closes on any Escape that reaches `document`.
+  it('keeps its Escape to itself, so a dialog around it stays open', () => {
+    const onDocumentEscape = vi.fn();
+    const listener = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onDocumentEscape();
+    };
+    document.addEventListener('keydown', listener);
+    try {
+      const { trigger } = setup();
+      fireEvent.click(trigger);
+      fireEvent.keyDown(screen.getAllByRole('menuitem')[0], { key: 'Escape' });
+      expect(screen.queryByRole('menu')).toBeNull();
+      expect(document.activeElement).toBe(trigger);
+      expect(onDocumentEscape).not.toHaveBeenCalled();
+
+      // A second Escape, from the closed trigger, is the dialog's again.
+      fireEvent.keyDown(trigger, { key: 'Escape' });
+      expect(onDocumentEscape).toHaveBeenCalledTimes(1);
+    } finally {
+      document.removeEventListener('keydown', listener);
+    }
+  });
+
   it('runs the chosen item once and closes', () => {
     const { trigger, onDelete, onArchive } = setup();
     fireEvent.click(trigger);
