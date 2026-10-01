@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 60 - The Debt payoff page (spec 6.4): T285-T297 (2026-10-01, commits `bcc8621`, `ebf7a14`, docs DOCS_SHA)
+## Phase 60 - The Debt payoff page (spec 6.4): T285-T297 (2026-10-01, commits `bcc8621`, `ebf7a14`, docs baae0e3)
 
 **Changed**
 - **No migration.** Every column existed; Edit is a plain update of `debts`.

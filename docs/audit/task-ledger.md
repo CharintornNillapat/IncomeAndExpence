@@ -1104,8 +1104,8 @@ Branch `phase-60-debts`, cut from `main` at `f58f681`. It also carries `a0cb2c1`
 | T293 | Spec moves: `theme` (heading), `soft-delete` (open the menu first) | `tests/` | High | Low | 0.1h | done | T289 | ebf7a14 | locator/copy moves only; `debts.spec.ts` unedited | - |
 | T294 | `tests/debts-page.spec.ts` (3 guest tests) | `tests/` | High | Low | 0.3h | done | T291 | ebf7a14 | - | E2E 375 -> 384 runs |
 | T295 | Gate: lint, unit, WCAG, build, Playwright (four full runs), walk-through | - | - | - | 1h | done | all | - | lint, unit 516/516, WCAG, build; Playwright 384, 383, 383, 384 (two Firefox mobile-nav timeouts, the known intermittent; 240/240 on targeted repeats); walk-through clean | build entry +1,967 B |
-| T296 | Antislop audit 009 (mode 2) | `anti-slop/audit-009-2026-10-01.md` | - | - | 0.5h | done; findings await the owner | T295 | DOCS_SHA | 6 findings (2 MEDIUM, 4 LOW), no new Hard Gate failure | - |
-| T297 | ADR `0035`, `DESIGN.md`, `CLAUDE.md`, selector contract, ledger, log, metrics; sha backfill; draft PR | docs | Low | Low | 1h | docs done; draft PR on the owner's word | all | DOCS_SHA | - | - |
+| T296 | Antislop audit 009 (mode 2) | `anti-slop/audit-009-2026-10-01.md` | - | - | 0.5h | done; findings await the owner | T295 | baae0e3 | 6 findings (2 MEDIUM, 4 LOW), no new Hard Gate failure | - |
+| T297 | ADR `0035`, `DESIGN.md`, `CLAUDE.md`, selector contract, ledger, log, metrics; sha backfill; draft PR | docs | Low | Low | 1h | docs done; draft PR on the owner's word | all | baae0e3 | - | - |
 
 ## Phase 59 - FinLife redesign, step 4, third page (Wallets): T268-T284 (2026-10-01)
 
