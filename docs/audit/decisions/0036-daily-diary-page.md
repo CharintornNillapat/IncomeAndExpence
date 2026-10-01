@@ -63,6 +63,7 @@ No migration.
 - **`DiaryCalendar`:**
   - the week starts on Monday;
   - a logged day sits on `bg-logged`, today has an inset `focus` ring, and a future day is disabled in `fg-disabled`;
+  - on the form's day today's ring is white, because a violet ring disappears into the brand fill (audit 010 finding 3);
   - the day in the form is `aria-pressed`, in the brand fill;
   - every day is a button named in full, for example "Wed, Sep 30, logged";
   - it has a legend and "N days logged in September". Its ‹ › change the month, and › is disabled on the current one.
@@ -74,6 +75,7 @@ No migration.
 - **The day hand-off:**
   - "N transactions" (`#diary-day-tx-link-{date}`) calls `App.tsx`'s `handleOpenDayTransactions`, shaped like the wallet-filter hand-off.
   - `TransactionsView` takes `initialDayFilter`. That day becomes the list's start and end date, the summary names it, and a soft `#tx-day-filter` button ("Only Wed, Sep 30 ×") clears it. A range change clears it too.
+  - While the day is shown, the range select reads "One day", a disabled option present only then, so it never claims "All time" beside the day's button (audit 010 finding 1).
   - `TimeRange` and the L2 selectors are untouched.
 
 ### Copy

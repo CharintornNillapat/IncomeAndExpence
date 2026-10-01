@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 61 - The Daily diary (spec 6.5): T299-T312 (2026-10-01, commits `e8a1f79`, `220e7db`, `d80fb5e`, docs `cc9c310`)
+## Phase 61 - The Daily diary (spec 6.5): T299-T313 (2026-10-01, commits `e8a1f79`, `220e7db`, `d80fb5e`, `7b68e67`, docs `cc9c310`)
 
 **Changed**
 - **No migration.**
@@ -50,6 +50,11 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
   - the next-day button is disabled on today;
   - an empty day waits for a mood;
   - the day hand-off lands on the filtered Transactions page.
+- **Audit 010, findings 1 and 3, fixed on the owner's word (T313):**
+  - under a day filter the Transactions range select reads "One day" instead of "All time";
+  - on the form's day, today's ring is white on the brand fill.
+
+  Lint clean, unit 537/537, and a control for each failed its test. Playwright 392/393 (6.5 min): the one failure was Firefox in `account-and-mobile-nav.spec.ts` (F7, which opens Transactions with no day filter), the file of the known intermittent; that file then passed 60/60 on Firefox (5 repeats). Checked in Chromium at 1280 light and dark and 390 light: the white ring on today as the form's day, violet once another day is picked, "One day" then "All time" after the button, no overflow, no console errors.
 
 ## Phase 60 - The Debt payoff page (spec 6.4): T285-T298 (2026-10-01, commits `bcc8621`, `ebf7a14`, `d5a06c4`, docs `baae0e3`)
 

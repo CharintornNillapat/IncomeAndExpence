@@ -231,7 +231,7 @@ One period for the whole page, chosen in the `PageHeader`. Every figure comes fr
   - **Notes**, then "Save entry". A day with no entry starts with no mood picked, and Save is disabled with "Pick a mood to save." under it.
 - **Calendar:**
   - Monday first, each day a 44px button named in full ("Wed, Sep 30, logged");
-  - a logged day is on `logged`, today has an inset `focus` ring, a future day is `fg-disabled` and disabled;
+  - a logged day is on `logged`, today has an inset `focus` ring (white when today is the form's day, on the brand fill), a future day is `fg-disabled` and disabled;
   - the day in the form is in the brand fill;
   - a legend and "N days logged in September", with ‹ › for the month (› disabled on the current one).
 - **Recent entries:**

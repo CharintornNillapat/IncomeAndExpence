@@ -264,7 +264,7 @@ The Wallets page is the **one** place a wallet is inspected, edited, adjusted, a
 - **Mood, Activity and Meals share one selected style** (`bg-selected text-on-selected border-focus`, `aria-pressed`). No emoji and no colour by meaning, anywhere on the page.
 - **A day's spending is `daySpending` (L1)**, never an inline filter; the Dashboard's `moodSpendingDays` uses it too.
 - **Delete confirms first and checks `deleteDiaryEntry`'s result.** Edit and Delete live in each entry's ⋯ menu.
-- **"N transactions" hands off a day** through `App.tsx`'s `transactionsDayFilter` to `TransactionsView`'s `initialDayFilter`, shown as `#tx-day-filter`. It overrides the range; `TimeRange` and L2 are untouched.
+- **"N transactions" hands off a day** through `App.tsx`'s `transactionsDayFilter` to `TransactionsView`'s `initialDayFilter`, shown as `#tx-day-filter`. It overrides the range, and the range select reads "One day" meanwhile; `TimeRange` and L2 are untouched.
 - **`diary.spec.ts` depends on** `#mood-btn-5`, `#diary-notes-textarea`, `#save-diary-entry-btn`, the text "Diary entry logged", `data-testid="diary-entry-notes"` and `#export-diary-btn`. Keep them.
 
 ## Smart rules: the form offers one, it never writes one unasked

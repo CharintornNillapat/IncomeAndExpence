@@ -1081,7 +1081,7 @@ Approved explicitly by the user, planned and approved before any code was writte
 - **One negative control was redone** because the first attempt produced malformed TypeScript that the dev server still served — the tests failed, but possibly for the wrong reason.
 - **No flakes.** Phase 44's `wallets.spec.ts` webkit flake has now not reproduced across three consecutive phases; still watched rather than closed.
 
-## Phase 61 - FinLife redesign, step 4, fifth page (Daily diary): T299-T312 (2026-10-01)
+## Phase 61 - FinLife redesign, step 4, fifth page (Daily diary): T299-T313 (2026-10-01)
 
 ADR `0036`. The plan was approved in plan mode; the owner's decisions:
 - Delete confirms first;
@@ -1105,8 +1105,9 @@ Branch `phase-61-diary`, cut from `main` at `3f45e3b`. It also carries `ef1bdea`
 | T308 | Unit: `diary-page` (17), day filter (2) | `unit/` | High | Low | 1h | done | T299-T307 | 220e7db | 6 controls caught | unit 518 -> 537 |
 | T309 | `tests/diary-page.spec.ts` (3); `diary.spec.ts` and `theme.spec.ts` unedited | `tests/` | High | Low | 0.4h | done | T302-T307 | 220e7db | - | E2E 384 -> 393 runs |
 | T310 | Gate: lint, unit, WCAG, build, Playwright, walk-through; "Daily diary" in the nav (`d80fb5e`); the Phase 60 size figures corrected | - | - | - | 1h | done | all | d80fb5e, cc9c310 | lint, unit 537/537, WCAG, build; Playwright 392 then 393 of 393 (one Firefox page-open failure in run 1); walk-through clean | entry +525 B |
-| T311 | Antislop audit 010 (mode 2) | `anti-slop/audit-010-2026-10-01.md` | - | - | 0.5h | done; findings await the owner | T310 | cc9c310 | 6 findings (2 MEDIUM, 4 LOW), no new Hard Gate failure | - |
-| T312 | ADR `0036`, `DESIGN.md`, `CLAUDE.md`, selector contract, ledger, log, metrics; sha backfill; draft PR | docs | Low | Low | 1h | docs done; draft PR on the owner's word | all | cc9c310 | - | - |
+| T311 | Antislop audit 010 (mode 2) | `anti-slop/audit-010-2026-10-01.md` | - | - | 0.5h | done; findings 1 and 3 fixed (T313), the rest accepted | T310 | cc9c310 | 6 findings (2 MEDIUM, 4 LOW), no new Hard Gate failure | - |
+| T312 | ADR `0036`, `DESIGN.md`, `CLAUDE.md`, selector contract, ledger, log, metrics; sha backfill; draft PR | docs | Low | Low | 1h | done; draft PR on the owner's word, 2026-10-01 | all | cc9c310 | - | - |
+| T313 | Audit 010 findings 1 and 3: the range select reads "One day" under a day filter; today's ring is white on the form's day | `views/TransactionsView.tsx`, `diary/DiaryCalendar.tsx`, `unit/transactions-page.test.tsx`, `unit/diary-page.test.tsx` | Low | Low | 0.3h | done | the owner | 7b68e67 | a control for each failed its test; Playwright 392/393 then the failing Firefox file 60/60 | - |
 
 ## Phase 60 - FinLife redesign, step 4, fourth page (Debt payoff): T285-T298 (2026-10-01)
 
