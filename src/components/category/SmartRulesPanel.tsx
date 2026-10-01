@@ -5,7 +5,7 @@ import { useSubmitHandler } from '../../hooks/useSubmitHandler';
 import { matchSmartDescription } from '../../utils/smartMatcher';
 import { formatCurrencyAmount } from '../../utils/currency';
 import { buildLookupMap } from '../../utils/mapUtils';
-import { isMovementCategory } from '../../selectors/ledger';
+import { isMovementCategory, SYSTEM_CATEGORY_COLOR } from '../../selectors/ledger';
 import { systemCategoryLabel } from '../../selectors/display';
 import { ERROR_BANNER_CLASS, LABEL_CLASS, OPTION_CLASS, inputClass, selectClass } from '../../utils/formStyles';
 import { Card } from '../ui/Card';
@@ -172,7 +172,10 @@ export const SmartRulesPanel: React.FC = () => {
                       <td className="py-3 px-4 font-semibold text-fg break-words">"{rule.keyword}"</td>
                       <td className="py-3 px-4">
                         {cat ? (
-                          <Chip label={isMovementCategory(cat) ? systemCategoryLabel(cat) : cat.name} color={cat.color} />
+                          <Chip
+                            label={isMovementCategory(cat) ? systemCategoryLabel(cat) : cat.name}
+                            color={isMovementCategory(cat) ? SYSTEM_CATEGORY_COLOR : cat.color}
+                          />
                         ) : (
                           <span className="text-fg-muted">Unknown</span>
                         )}

@@ -14,6 +14,7 @@ import { getWalletIcon } from '../../utils/walletIcons';
 import { APP_CURRENCY, APP_CURRENCY_SYMBOL } from '../../utils/currency';
 import { formatShortDate, toIsoDate } from '../../utils/date';
 import { ERROR_BANNER_CLASS, LABEL_CLASS, OPTION_CLASS, inputClass, selectClass } from '../../utils/formStyles';
+import { identityColorName } from '../../utils/identityPalette';
 import { WALLET_COLOR_PALETTE, WALLET_TYPE_OPTIONS, walletTypeLabel } from './walletFormStyles';
 
 interface WalletDetailProps {
@@ -206,7 +207,7 @@ export const WalletDetail: React.FC<WalletDetailProps> = ({
             </select>
           </div>
           <fieldset>
-            <legend className={`${LABEL_CLASS} mb-1.5`}>Colour</legend>
+            <legend className={`${LABEL_CLASS} mb-1.5`}>Color</legend>
             {/* A 28px swatch inside a 44px hit box, as in `AddWalletForm`. */}
             <div className="flex flex-wrap items-center gap-1">
               {WALLET_COLOR_PALETTE.map((color) => (
@@ -214,7 +215,7 @@ export const WalletDetail: React.FC<WalletDetailProps> = ({
                   key={color}
                   type="button"
                   onClick={() => setDraft((d) => ({ ...d, color }))}
-                  aria-label={`Colour ${color}`}
+                  aria-label={identityColorName(color)}
                   aria-pressed={draft.color === color}
                   className="w-11 h-11 inline-flex items-center justify-center rounded-full cursor-pointer"
                 >

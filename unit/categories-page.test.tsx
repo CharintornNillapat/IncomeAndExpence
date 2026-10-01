@@ -75,24 +75,38 @@ function mount(options: { extra?: Category[]; rows?: Transaction[] } = {}) {
   );
 }
 
-/** The nine shipped categories, as a fresh provider writes them. */
+/** The nine shipped categories, as a fresh provider writes them since spec 5.1's migration (ADR 0038). */
 function shippedCategories(): Category[] {
   return [
-    { id: 'cat-food', name: 'Food & Dining', type: 'EXPENSE', icon: 'utensils', color: '#f87171', isSystem: true, isDeleted: false },
-    { id: 'cat-groceries', name: 'Groceries', type: 'EXPENSE', icon: 'shopping-cart', color: '#fb923c', isSystem: true, isDeleted: false },
-    { id: 'cat-transport', name: 'Transport & Fuel', type: 'EXPENSE', icon: 'car', color: '#facc15', isSystem: true, isDeleted: false },
-    { id: 'cat-shopping', name: 'Shopping & Apparel', type: 'EXPENSE', icon: 'shopping-bag', color: '#a78bfa', isSystem: true, isDeleted: false },
-    { id: 'cat-housing', name: 'Housing & Utilities', type: 'EXPENSE', icon: 'home', color: '#38bdf8', isSystem: true, isDeleted: false },
-    { id: 'cat-salary', name: 'Primary Salary', type: 'INCOME', icon: 'briefcase', color: '#4ade80', isSystem: true, isDeleted: false },
-    { id: 'cat-freelance', name: 'Freelance & Side Gig', type: 'INCOME', icon: 'laptop', color: '#34d399', isSystem: true, isDeleted: false },
-    { id: 'cat-debt', name: 'Debt Repayment', type: 'DEBT_REPAYMENT', icon: 'credit-card', color: '#f43f5e', isSystem: true, isDeleted: false },
-    { id: 'cat-adjust', name: 'Balance Adjustment', type: 'ADJUSTMENT', icon: 'sliders', color: '#94a3b8', isSystem: true, isDeleted: false },
+    { id: 'cat-food', name: 'Food & Dining', type: 'EXPENSE', icon: 'utensils', color: '#E879A6', isSystem: true, isDeleted: false },
+    { id: 'cat-groceries', name: 'Groceries', type: 'EXPENSE', icon: 'shopping-cart', color: '#F59E6B', isSystem: true, isDeleted: false },
+    { id: 'cat-transport', name: 'Transport & Fuel', type: 'EXPENSE', icon: 'car', color: '#5CC8B8', isSystem: true, isDeleted: false },
+    { id: 'cat-shopping', name: 'Shopping & Apparel', type: 'EXPENSE', icon: 'shopping-bag', color: '#B69CF5', isSystem: true, isDeleted: false },
+    { id: 'cat-housing', name: 'Housing & Utilities', type: 'EXPENSE', icon: 'home', color: '#7DA2F0', isSystem: true, isDeleted: false },
+    { id: 'cat-salary', name: 'Primary Salary', type: 'INCOME', icon: 'briefcase', color: '#8FA8C8', isSystem: true, isDeleted: false },
+    { id: 'cat-freelance', name: 'Freelance & Side Gig', type: 'INCOME', icon: 'laptop', color: '#D98FD0', isSystem: true, isDeleted: false },
+    { id: 'cat-debt', name: 'Debt Repayment', type: 'DEBT_REPAYMENT', icon: 'credit-card', color: '#6B7385', isSystem: true, isDeleted: false },
+    { id: 'cat-adjust', name: 'Balance Adjustment', type: 'ADJUSTMENT', icon: 'sliders', color: '#6B7385', isSystem: true, isDeleted: false },
   ];
 }
 
+/** The same nine as a device stored them before Phase 63, on the colours they shipped with. */
+const OLD_COLORS: Record<string, string> = {
+  'cat-food': '#f87171', 'cat-groceries': '#fb923c', 'cat-transport': '#facc15', 'cat-shopping': '#a78bfa', 'cat-housing': '#38bdf8',
+  'cat-salary': '#4ade80', 'cat-freelance': '#34d399', 'cat-debt': '#f43f5e', 'cat-adjust': '#94a3b8',
+};
+const oldShippedCategories = (): Category[] => shippedCategories().map((c) => ({ ...c, color: OLD_COLORS[c.id] }));
+
+/** A hex colour as jsdom reports an inline `backgroundColor`. */
+const rgb = (hex: string) => {
+  const n = parseInt(hex.slice(1), 16);
+  return `rgb(${n >> 16}, ${(n >> 8) & 255}, ${n & 255})`;
+};
+
 const byId = (id: string) => document.getElementById(id);
 const swatch = (prefix: string, hex: string) => byId(`${prefix}-color-${hex.slice(1).toLowerCase()}`) as HTMLButtonElement;
-const ROSE = '#E879A6';
+/** Free on a fresh guest: the shipped nine take Rose, Peach, Periwinkle, Lavender, Aqua, Steel and Orchid. */
+const BLUE = '#6C8EEF';
 const RAW_ENUM = /\b(EXPENSE|INCOME|TRANSFER|DEBT_REPAYMENT|ADJUSTMENT)\b/;
 
 describe('the page', () => {
@@ -125,7 +139,7 @@ describe('the page', () => {
 
   it('tags each row Default, Custom or Custom · in use', () => {
     mount({
-      extra: [custom({ id: 'pets', name: 'Pets', color: ROSE }), custom({ id: 'gym', name: 'Gym', color: '#D9A066' })],
+      extra: [custom({ id: 'pets', name: 'Pets', color: BLUE }), custom({ id: 'gym', name: 'Gym', color: '#D9A066' })],
       rows: [tx({ categoryId: 'gym' })],
     });
     expect(byId('edit-category-cat-food')!.textContent).toContain('Default');
@@ -137,7 +151,7 @@ describe('the page', () => {
 describe('the form, from lg', () => {
   it('a row opens "Edit category" with its values, and Cancel returns to "New category"', async () => {
     wide();
-    mount({ extra: [custom({ id: 'pets', name: 'Pets', color: ROSE, description: 'Vet and food' })] });
+    mount({ extra: [custom({ id: 'pets', name: 'Pets', color: BLUE, description: 'Vet and food' })] });
     expect(byId('category-form-heading')!.textContent).toBe('New category');
 
     fireEvent.click(byId('edit-category-pets')!);
@@ -155,11 +169,11 @@ describe('the form, from lg', () => {
 
   it('L9: a colour in use is disabled and named, and the category being edited keeps its own', () => {
     wide();
-    mount({ extra: [custom({ id: 'pets', name: 'Pets', color: ROSE })] });
-    const used = swatch('new-category', ROSE);
+    mount({ extra: [custom({ id: 'pets', name: 'Pets', color: BLUE })] });
+    const used = swatch('new-category', BLUE);
     expect(used.disabled).toBe(true);
-    expect(used.getAttribute('aria-label')).toBe('Rose, used by Pets');
-    expect(used.getAttribute('title')).toBe('Rose, used by Pets');
+    expect(used.getAttribute('aria-label')).toBe('Blue, used by Pets');
+    expect(used.getAttribute('title')).toBe('Blue, used by Pets');
     // A strike marks it as unavailable, not just paler (audit 011 finding 1).
     expect(used.querySelector('[data-used-mark]')).not.toBeNull();
     expect(swatch('new-category', IDENTITY_PALETTE[0].hex).querySelector('[data-used-mark]')).toBeNull();
@@ -167,21 +181,31 @@ describe('the form, from lg', () => {
     expect(swatch('new-category', IDENTITY_PALETTE[0].hex).getAttribute('aria-pressed')).toBe('true');
 
     fireEvent.click(byId('edit-category-pets')!);
-    const own = swatch('edit-category', ROSE);
+    const own = swatch('edit-category', BLUE);
     expect(own.disabled).toBe(false);
     expect(own.getAttribute('aria-pressed')).toBe('true');
   });
 
-  it("keeps a shipped category's older colour when Save changes only its name", async () => {
+  it("keeps a custom category's pre-Phase-62 colour when Save changes only its name", async () => {
+    wide();
+    // Sky, from the old ten-colour picker: no migration touches a colour someone picked.
+    mount({ extra: [custom({ id: 'pets', name: 'Pets', color: '#0ea5e9' })] });
+    fireEvent.click(byId('edit-category-pets')!);
+    const current = byId('edit-category-color-current')!;
+    expect(current.getAttribute('aria-pressed')).toBe('true');
+    expect(current.getAttribute('title')).toBe('Current color');
+    fireEvent.change(byId('edit-category-name')!, { target: { value: 'Animals' } });
+    fireEvent.click(byId('edit-category-save-btn')!);
+    await waitFor(() => expect(byId('edit-category-pets')!.textContent).toContain('Animals'));
+    expect((byId('edit-category-pets')!.querySelector('span') as HTMLElement).style.backgroundColor).toBe(rgb('#0ea5e9'));
+  });
+
+  it('shows no "Current color" swatch for a shipped category, which ships on an identity colour', () => {
     wide();
     mount();
     fireEvent.click(byId('edit-category-cat-food')!);
-    const current = byId('edit-category-color-current')!;
-    expect(current.getAttribute('aria-pressed')).toBe('true');
-    fireEvent.change(byId('edit-category-name')!, { target: { value: 'Eating out' } });
-    fireEvent.click(byId('edit-category-save-btn')!);
-    await waitFor(() => expect(byId('edit-category-cat-food')!.textContent).toContain('Eating out'));
-    expect((byId('edit-category-cat-food')!.querySelector('span') as HTMLElement).style.backgroundColor).toBe('rgb(248, 113, 113)');
+    expect(byId('edit-category-color-current')).toBeNull();
+    expect(swatch('edit-category', '#E879A6').getAttribute('aria-pressed')).toBe('true');
   });
 
   it('adds an income category on a free colour, then starts the next one on Income and the next free colour', async () => {
@@ -219,7 +243,7 @@ describe('delete, from lg', () => {
 
   it('a custom category in use has Delete disabled, with what uses it', () => {
     wide();
-    mount({ extra: [custom({ id: 'gym', name: 'Gym', color: ROSE })], rows: [tx({ categoryId: 'gym' })] });
+    mount({ extra: [custom({ id: 'gym', name: 'Gym', color: BLUE })], rows: [tx({ categoryId: 'gym' })] });
     fireEvent.click(byId('edit-category-gym')!);
     expect((byId('delete-category-gym') as HTMLButtonElement).disabled).toBe(true);
     expect(document.body.textContent).toContain("Used by 1 transaction, so it can't be deleted.");
@@ -227,7 +251,7 @@ describe('delete, from lg', () => {
 
   it('an unused custom category is deleted after the confirm, and focus goes to the list', async () => {
     wide();
-    mount({ extra: [custom({ id: 'pets', name: 'Pets', color: ROSE })] });
+    mount({ extra: [custom({ id: 'pets', name: 'Pets', color: BLUE })] });
     fireEvent.click(byId('edit-category-pets')!);
     fireEvent.click(byId('delete-category-pets')!);
     const dialog = screen.getByRole('dialog', { name: 'Delete category' });
@@ -258,7 +282,7 @@ describe('below lg', () => {
   });
 
   it('a row opens the edit form in a sheet, and the new form stays on the page', () => {
-    mount({ extra: [custom({ id: 'pets', name: 'Pets', color: ROSE })] });
+    mount({ extra: [custom({ id: 'pets', name: 'Pets', color: BLUE })] });
     fireEvent.click(byId('edit-category-pets')!);
     const sheet = screen.getByRole('dialog', { name: 'Edit category' });
     expect((within(sheet).getByLabelText('Name') as HTMLInputElement).value).toBe('Pets');
@@ -268,8 +292,8 @@ describe('below lg', () => {
 
 describe('the guards behind the form (guest)', () => {
   it('refuse a used colour and any edit to a System category', async () => {
-    mount({ extra: [custom({ id: 'pets', name: 'Pets', color: ROSE })] });
-    expect(await actions!.addCategory({ name: 'Cats', type: 'EXPENSE', color: ROSE.toLowerCase() })).toEqual({
+    mount({ extra: [custom({ id: 'pets', name: 'Pets', color: BLUE })] });
+    expect(await actions!.addCategory({ name: 'Cats', type: 'EXPENSE', color: BLUE.toLowerCase() })).toEqual({
       success: false,
       error: 'That colour is used by Pets',
     });
@@ -304,5 +328,43 @@ describe('the header nav (audit 007 finding 1)', () => {
     expect(tab.querySelector('span')!.className).toBe('sr-only xl:not-sr-only');
     expect(tab.querySelector('svg')!.getAttribute('class')).toContain('xl:hidden');
     expect(tab.getAttribute('title')).toBe('Categories');
+  });
+});
+
+describe("spec 5.1's colour migration on this device (Phase 63, ADR 0038)", () => {
+  const dot = (id: string) => (byId(`edit-category-${id}`)!.querySelector('span') as HTMLElement).style.backgroundColor;
+  const systemDot = (id: string) => (byId(`category-row-${id}`)!.querySelector('span') as HTMLElement).style.backgroundColor;
+
+  it('loads the shipped categories a device stored on their old colours on the identity colours', () => {
+    localStorage.setItem('pf_categories', JSON.stringify(oldShippedCategories()));
+    mount();
+    expect(dot('cat-food')).toBe(rgb('#E879A6'));
+    expect(dot('cat-groceries')).toBe(rgb('#F59E6B'));
+    expect(dot('cat-transport')).toBe(rgb('#5CC8B8'));
+    expect(dot('cat-salary')).toBe(rgb('#8FA8C8'));
+    expect(dot('cat-freelance')).toBe(rgb('#D98FD0'));
+    expect(systemDot('cat-debt')).toBe(rgb('#6B7385'));
+  });
+
+  it('gives a shipped category the first free colour when its own is taken (L9), and leaves a picked colour alone', () => {
+    wide();
+    localStorage.setItem('pf_categories', JSON.stringify([
+      ...oldShippedCategories(),
+      custom({ id: 'pets', name: 'Pets', color: '#E879A6' }),
+      custom({ id: 'gym', name: 'Gym', color: '#0ea5e9' }),
+    ]));
+    mount();
+    expect(dot('cat-food')).toBe(rgb('#D9A066')); // Tan: Pets already holds Rose
+    expect(dot('pets')).toBe(rgb('#E879A6'));
+    expect(dot('gym')).toBe(rgb('#0ea5e9'));
+    expect(swatch('new-category', '#D9A066').getAttribute('aria-label')).toBe('Tan, used by Food & Dining');
+  });
+
+  it('starts a fresh guest on identity colours only, one each', () => {
+    mount();
+    const colors = shippedCategories().filter((c) => c.type === 'EXPENSE' || c.type === 'INCOME').map((c) => dot(c.id));
+    const identity = IDENTITY_PALETTE.map(({ hex }) => rgb(hex));
+    expect(colors.every((c) => identity.includes(c))).toBe(true);
+    expect(new Set(colors).size).toBe(colors.length);
   });
 });

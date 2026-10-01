@@ -260,6 +260,11 @@ describe('edit', () => {
 });
 
 describe('the colour choice (audit 008 finding 2)', () => {
+  const IDENTITY_NAMES = ['Tan', 'Blue', 'Teal', 'Peach', 'Rose', 'Periwinkle', 'Lavender', 'Aqua', 'Khaki', 'Steel', 'Orchid', 'Iris'];
+  const rgb = (hex: string) => {
+    const n = parseInt(hex.slice(1), 16);
+    return `rgb(${n >> 16}, ${(n >> 8) & 255}, ${n & 255})`;
+  };
   const IDENTITY = ['#D9A066', '#6C8EEF', '#4FB7A8', '#F59E6B', '#E879A6', '#7DA2F0', '#B69CF5', '#5CC8B8', '#C7B38A', '#8FA8C8', '#D98FD0', '#9C8CD9'];
 
   it("offers exactly spec section 1's twelve identity colours, and saves the one picked", async () => {
@@ -267,8 +272,10 @@ describe('the colour choice (audit 008 finding 2)', () => {
     mount();
     selectWallet('wal-cash');
     fireEvent.click(byId('wallet-edit-btn')!);
-    const swatches = [...byId('wallet-edit-form')!.querySelectorAll('button[aria-label^="Colour "]')];
-    expect(swatches.map((s) => s.getAttribute('aria-label')!.replace('Colour ', ''))).toEqual(IDENTITY);
+    // Each swatch is named by its colour (Phase 63), not by a hex code.
+    const swatches = [...byId('wallet-edit-form')!.querySelectorAll('fieldset button')];
+    expect(swatches.map((s) => s.getAttribute('aria-label'))).toEqual(IDENTITY_NAMES);
+    expect(swatches.map((s) => (s.querySelector('span') as HTMLElement).style.backgroundColor)).toEqual(IDENTITY.map(rgb));
 
     fireEvent.click(swatches[4]);
     expect(swatches[4].getAttribute('aria-pressed')).toBe('true');
@@ -320,5 +327,40 @@ describe('Adjust balance', () => {
     expect(byId('wallet-adjust-input')).toBeNull();
     const row = [...document.querySelectorAll('[id^="wallet-tx-"]')].find((b) => b.textContent?.includes('Manual balance adjustment'));
     expect(row!.textContent).toContain(`${MINUS}${formatCurrencyAmount(50)}`);
+  });
+});
+
+describe("spec 5.1's colour migration on this device (Phase 63, ADR 0038)", () => {
+  const tile = (id: string) => (byId(`wallet-entity-${id}`)!.querySelector('span[aria-hidden="true"]') as HTMLElement).style.color;
+  const rgb = (hex: string) => {
+    const n = parseInt(hex.slice(1), 16);
+    return `rgb(${n >> 16}, ${(n >> 8) & 255}, ${n & 255})`;
+  };
+
+  it('starts a fresh guest on blue, tan and teal', () => {
+    wide();
+    mount();
+    expect(tile('wal-main-checking')).toBe(rgb('#6C8EEF'));
+    expect(tile('wal-cash')).toBe(rgb('#D9A066'));
+    expect(tile('wal-savings')).toBe(rgb('#4FB7A8'));
+  });
+
+  it('moves starter wallets still on their old colours, and leaves any other colour alone', () => {
+    wide();
+    mount({
+      wallets: [
+        walletRow({ id: 'm', name: 'Main Checking', type: 'BANK_ACCOUNT', color: '#0284C7' }),
+        walletRow({ id: 'c', name: 'Cash Wallet', color: '#16a34a' }),
+        walletRow({ id: 's', name: 'Savings Reserve', type: 'SAVINGS', color: '#7c3aed' }),
+        // Same name, a colour picked by hand; and an old colour on a name that never shipped.
+        walletRow({ id: 'p', name: 'Cash Wallet ', color: '#E879A6' }),
+        walletRow({ id: 'o', name: 'Pocket', color: '#16a34a' }),
+      ],
+    });
+    expect(tile('m')).toBe(rgb('#6C8EEF'));
+    expect(tile('c')).toBe(rgb('#D9A066'));
+    expect(tile('s')).toBe(rgb('#4FB7A8'));
+    expect(tile('p')).toBe(rgb('#E879A6'));
+    expect(tile('o')).toBe(rgb('#16a34a'));
   });
 });

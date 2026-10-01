@@ -2208,3 +2208,29 @@ describe('a device signed out from another device (ADR 0024, amended)', () => {
     expect(fake.state.getUserCalls).toBe(before);
   });
 });
+
+describe("a new account's seed (Phase 63, ADR 0038)", () => {
+  it('writes the starter wallets and shipped categories on identity colours, the System pair grey', async () => {
+    cleanup();
+    localStorage.clear();
+    fake.state.tables.wallets = [];
+    fake.state.tables.categories = [];
+    render(
+      <FinanceProvider>
+        <Probe />
+      </FinanceProvider>
+    );
+    await waitFor(() => {
+      expect(fake.state.tables.wallets).toHaveLength(3);
+      expect(fake.state.tables.categories).toHaveLength(9);
+    });
+    const colorOf = (table: 'wallets' | 'categories', name: string) => fake.state.tables[table].find((r) => r.name === name)!.color;
+    expect(colorOf('wallets', 'Checking Account')).toBe('#6C8EEF');
+    expect(colorOf('wallets', 'Cash Wallet')).toBe('#D9A066');
+    expect(colorOf('wallets', 'Savings Reserve')).toBe('#4FB7A8');
+    expect(colorOf('categories', 'Food & Dining')).toBe('#E879A6');
+    expect(colorOf('categories', 'Freelance & Side Gig')).toBe('#D98FD0');
+    expect(colorOf('categories', 'Debt Repayment')).toBe('#6B7385');
+    expect(colorOf('categories', 'Balance Adjustment')).toBe('#6B7385');
+  });
+});

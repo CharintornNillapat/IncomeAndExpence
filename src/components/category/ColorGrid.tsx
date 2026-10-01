@@ -69,8 +69,8 @@ export const ColorGrid: React.FC<ColorGridProps> = ({ idPrefix, value, onChange,
             id={`${idPrefix}-color-current`}
             type="button"
             aria-pressed={value.toLowerCase() === currentColor.toLowerCase()}
-            aria-label="Current colour, from before the new palette"
-            title="Current colour"
+            aria-label="Current color, from before the new palette"
+            title="Current color"
             onClick={() => onChange(currentColor)}
             className="w-11 h-11 inline-flex items-center justify-center rounded-full cursor-pointer"
           >
@@ -80,7 +80,7 @@ export const ColorGrid: React.FC<ColorGridProps> = ({ idPrefix, value, onChange,
               style={{ backgroundColor: currentColor }}
             />
           </button>
-          Current colour, from before the new palette
+          Current color, from before the new palette
         </div>
       )}
     </div>
