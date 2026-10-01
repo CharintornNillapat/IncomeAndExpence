@@ -1089,7 +1089,9 @@ ADR `0035`. The plan was approved in plan mode; the owner's decisions:
 - paid-off debts go in an open "Paid off (N)" section below the active ones;
 - antislop mode 2 (audit 009).
 
-Branch `phase-60-debts`, cut from `main` at `f58f681`. It also carries `a0cb2c1`, the Phase 59 deploy record, which had not been pushed. No migration.
+Branch `phase-60-debts`, cut from `main` at `f58f681`, PR #8. It also carried `a0cb2c1`, the Phase 59 deploy record, which had not been pushed. No migration.
+- Merged into `main` as `3f45e3b` with a merge commit, with the owner's go-ahead, after audit 009's findings 1 and 3 were fixed (T298). PR run `36841191990` and push run `36843306528` passed.
+- Vercel `dpl_8BbKBF8sKiEzENRxe7zCC9V3bVXU` serves a build that matches the local one byte for byte, apart from line endings. A signed-out smoke test on production passed: the page, Edit's floor and save, Mark as paid off (Cancel, then confirm) at 1280, and the More sheet at 390 (see the refactor log).
 
 | # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
 |---|---|---|---|---|---|---|---|---|---|---|

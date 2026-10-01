@@ -55,6 +55,22 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 - The debt-related specs (34 tests) passed on Chromium before the full runs.
 - **Audit 009, findings 1 and 3, fixed on the owner's word (T298):** the L5 box's wording for a zero, negative or small surplus, and "Debt payoff" in the nav. Unit 518/518; a control with the old wording failed the zero and negative cases. The specs for the nav and the page then passed on all three browsers, except the Firefox mobile-nav intermittent once more (74/75).
 - **The intermittent was measured against `main`:** the mobile-nav block, 30 repeats on Firefox with 6 workers, failed 1 in 180 on this branch and 2 in 180 on `main` (`f58f681`), always on the More sheet opening or closing. It predates this phase.
+
+**CI and deploy:**
+- PR run `36841191990` on `a1227df`: success in 4 m 56 s. Unit 518/518 with no `.env` on the runner, and 128/128 per browser, none flaky.
+- Merged as PR #8 with a merge commit, `3f45e3b`, with the owner's go-ahead. Its tree is identical to `a1227df`. It also published `a0cb2c1`, the Phase 59 deploy record.
+- Push run `36843306528` on `3f45e3b`: success in 4 m 59 s. Unit 518/518; 128/128 per browser.
+- Vercel `dpl_8BbKBF8sKiEzENRxe7zCC9V3bVXU` Production `READY`. `income-and-expence-neon.vercel.app` serves `index-r22J_h5s.js` at **182,025 B**, the size measured at `ebf7a14`: the audit 009 fixes changed only the lazy chunks.
+- **All 61 files of a clean local build were hashed against production.** 57 are byte-for-byte identical. The two SVGs and `robots.txt` differ only in line endings. `sw.js` has the same 60 precache URLs.
+- **Signed-out smoke test on production** (fresh headless Chromium, no auth token in storage, no console errors):
+  - at 1280:
+    - the header tab reads "Debt payoff";
+    - the page reads "1 active debt · sorted by due date", and Still owed ฿4,500.00 of ฿10,000.00 borrowed;
+    - the L5 box reads "The past 30 days left no surplus (฿0.00)";
+    - Student Loan is tagged "4.5% APR" and "Due Dec 31, 2026 · ~1 month";
+  - Edit refused Borrowed ฿4,000 with "Borrowed can't be less than what is still owed (฿4,500.00)", then renamed the debt with what is still owed unchanged;
+  - Mark as paid off: Cancel left the debt active; confirm moved it to "Paid off (1)" with "✓ Debt Fully Settled" and focus on its ⋯. The wallets still read ฿7,650.00 across 3 wallets;
+  - at 390: the More sheet's item reads "Debt payoff" and opens the page, with no page overflow and 0 controls under 44px.
 - **Build:** entry +1,967 B (+615 B gzip), all JS +11,589 B, CSS +335 B; `DebtsView` +8,710 B. No vendor chunk changed.
 - **Walk-through** (Playwright's Chromium by script; the MCP server did not connect) at 1280 light, 1024 light, 900 dark, 390 light and dark, with five seeded debts (dated, long-named, overdue, undated, paid off):
   - 0 controls under 44px, no page overflow, no console errors;
