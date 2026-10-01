@@ -94,6 +94,48 @@ export function formatMonthName(monthKey: string): string {
   return localDate(`${monthKey}-01`).toLocaleDateString('en-US', { month: 'long' });
 }
 
+/** A local calendar date's month key: `2026-09-28` -> `2026-09`. */
+export function monthKeyOf(iso: string): string {
+  return iso.slice(0, 7);
+}
+
+/** A month key (`YYYY-MM`) moved by `months`, which may be negative. */
+export function shiftMonth(monthKey: string, months: number): string {
+  const [year, month] = monthKey.split('-').map(Number);
+  const index = year * 12 + (month - 1) + months;
+  return `${Math.floor(index / 12)}-${String((index % 12) + 1).padStart(2, '0')}`;
+}
+
+/**
+ * Spec 6.5's month calendar: the month's days as weeks that start on Monday,
+ * each day a local `YYYY-MM-DD`, with `null` before the 1st and after the
+ * last day so every week has seven cells. Built from local calendar parts.
+ */
+export function monthGrid(monthKey: string): Array<Array<string | null>> {
+  const [year, month] = monthKey.split('-').map(Number);
+  const daysInMonth = new Date(year, month, 0).getDate();
+  // getDay(): Sunday 0 ... Saturday 6. Monday-first puts Sunday last.
+  const lead = (new Date(year, month - 1, 1).getDay() + 6) % 7;
+  const cells: Array<string | null> = Array.from({ length: lead }, () => null);
+  for (let day = 1; day <= daysInMonth; day++) cells.push(`${monthKey}-${String(day).padStart(2, '0')}`);
+  while (cells.length % 7 !== 0) cells.push(null);
+  const weeks: Array<Array<string | null>> = [];
+  for (let i = 0; i < cells.length; i += 7) weeks.push(cells.slice(i, i + 7));
+  return weeks;
+}
+
+/** The diary form's heading (spec 6.5): "Monday, Sep 28", with the year only when it is not `today`'s. */
+export function formatDiaryHeading(iso: string, today: string): string {
+  const options: Intl.DateTimeFormatOptions = { weekday: 'long', month: 'short', day: 'numeric' };
+  if (iso.slice(0, 4) !== today.slice(0, 4)) options.year = 'numeric';
+  return localDate(iso).toLocaleDateString('en-US', options);
+}
+
+/** A calendar month key (`YYYY-MM`) with its year: "September 2026". */
+export function formatMonthYear(monthKey: string): string {
+  return localDate(`${monthKey}-01`).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+}
+
 /** The Dashboard's greeting for a local hour (0 to 23): morning from 5, afternoon from 12, evening from 18. */
 export function greetingFor(hour: number): string {
   if (hour >= 5 && hour < 12) return 'Good morning';

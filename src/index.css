@@ -136,6 +136,8 @@
   --brand-soft-text: #5B21B6;
   --selected-bg: #EDE9FE;
   --selected-text: #4C1D95;
+  /* Spec 6.5: a logged day in the diary calendar (#3B2F73 in dark). */
+  --logged-bg: #DDD6FE;
   --income-text: #047857;
   --income-bg: #ECFDF5;
   --expense-text: #BE123C;
@@ -175,6 +177,7 @@
   --brand-soft-text: #D4C4FF;
   --selected-bg: #251E45;
   --selected-text: #FFFFFF;
+  --logged-bg: #3B2F73;
   --income-text: #34D399;
   --income-bg: #0F2A21;
   --expense-text: #F87171;
@@ -214,6 +217,7 @@
   --color-brand-soft-text: var(--brand-soft-text);
   --color-selected: var(--selected-bg);
   --color-on-selected: var(--selected-text);
+  --color-logged: var(--logged-bg);
   --color-income: var(--income-text);
   --color-income-tint: var(--income-bg);
   --color-expense: var(--expense-text);

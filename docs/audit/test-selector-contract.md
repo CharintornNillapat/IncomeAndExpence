@@ -321,3 +321,25 @@ Two specs were edited, in the page's own commit, by a locator or copy move that 
 - **`#edit-debt-*` and `#delete-debt-*` exist only while the card's menu is open.** A spec asserting one is absent must open the menu first.
 - **A card's text includes "Still owed" and the summary's does too**, but the summary is outside every `div[id^="debt-card-"]`, so a card-scoped `toContainText` never meets it. A page-wide `getByText` on a ฿ amount can meet both.
 - **The Dashboard's Debt payoff card also has an `h2` "Debt payoff".** The page's title is the `h1`; a heading match right after `gotoTab(page, 'debts')` is safe because the Dashboard is not mounted, but a match from the Dashboard itself would find its `h2`.
+
+## Changed in Phase 61 (ADR `0036`, the Daily diary)
+
+No spec was edited. `diary.spec.ts` and `theme.spec.ts` passed unedited, and `tests/diary-page.spec.ts` is new (3 tests).
+
+| Selector | Now | Specs moved |
+|---|---|---|
+| `#mood-btn-1..5` | **Same ids**, each now a number over its word, with `aria-pressed`. No emoji. | none |
+| `#diary-notes-textarea`, `#save-diary-entry-btn`, `#export-diary-btn` | **Same ids.** The buttons read "Save entry" (disabled until a mood is picked) and "Export JSON". | none |
+| Text `/Diary entry logged/i` | **Kept**: "Diary entry logged for Thursday, Oct 1." in `#diary-save-status`. | none |
+| `[data-testid="diary-entry-notes"]` | **Same testid**, the note inside a recent entry's inset (no quotes). | none |
+| Heading `/Daily Diary/i` | The page's `h1` now reads "Daily diary"; the match is case-insensitive. | none |
+| `div#diary-card-{id}` → **`li#diary-card-{id}`** | **Same id**, now a list item in Recent entries. | none |
+| `#diary-date-picker` | **Same id**, now visually hidden behind "Pick date" (`#diary-pick-date-btn`), with `max` = today. | none |
+| **Retired** | `#diary-workout-checkbox` (now `#activity-btn-rest` / `#activity-btn-workout`), the expander and its "item(s)" button, `DiaryEntryCard`. No spec used them. | - |
+| New | `#diary-form-heading`, `#diary-day-spending`, `#diary-prev-day-btn`, `#diary-next-day-btn`, `#diary-pick-date-btn`, `#activity-btn-rest`, `#activity-btn-workout`, `#diary-workout-note`, `#food-btn-healthy|average|junk` (ids kept from before), `#diary-save-status`, `#diary-calendar-heading`, `#diary-cal-prev-month-btn`, `#diary-cal-next-month-btn`, `#diary-cal-day-{iso}`, `#diary-calendar-count`, `#diary-recent-heading`, `#diary-menu-btn-{id}`, `#edit-diary-{id}`, `#delete-diary-{id}`, `#diary-day-tx-link-{date}`, `#diary-show-more-btn`, and on the Transactions page `#tx-day-filter` | `diary-page` |
+
+### Hazards
+- **The form remounts for each day and entry** (it is keyed by both). A spec or test that holds a locator handle to a form control across a day change gets the old element: look it up again.
+- **`#edit-diary-*` and `#delete-diary-*` exist only while the entry's menu is open.**
+- **Dates are local calendar days.** A spec that needs "yesterday" reads it in the page (`page.evaluate`) rather than in Node, so it is the browser's own day.
+- **A future calendar day is a disabled button**, so a click on it waits and fails rather than doing nothing.

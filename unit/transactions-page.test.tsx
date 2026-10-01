@@ -312,3 +312,49 @@ describe("the Dashboard's Recent activity rows open their row (Phase 58b)", () =
     expect(onOpenTransaction).toHaveBeenCalledWith(t.id);
   });
 });
+
+describe("the Daily diary's day hand-off (Phase 61, ADR 0036)", () => {
+  it('shows that one day only, says so in a chip, and the chip or a range change clears it', () => {
+    const day = shiftIsoDate(todayIsoDate(), -3);
+    localStorage.setItem(
+      'pf_transactions',
+      JSON.stringify([
+        tx({ type: 'EXPENSE', amount: 40, categoryId: 'cat-food', description: 'On the day', transactionDate: day }),
+        tx({ type: 'EXPENSE', amount: 60, categoryId: 'cat-food', description: 'Another day', transactionDate: shiftIsoDate(day, -1) }),
+      ])
+    );
+    const consume = vi.fn();
+    render(
+      <FinanceProvider>
+        <TransactionsView initialDayFilter={day} onConsumeInitialDayFilter={consume} />
+      </FinanceProvider>
+    );
+    expect(consume).toHaveBeenCalledTimes(1);
+    expect(rowButtons().map((b) => b.textContent).join(' ')).toContain('On the day');
+    expect(rowButtons()).toHaveLength(1);
+    const chip = document.getElementById('tx-day-filter')!;
+    expect(chip.textContent).toMatch(/^Only [A-Z][a-z]{2}, [A-Z][a-z]{2} \d{1,2}$/);
+    // The range select agrees with the chip instead of saying "All time" (audit 010 finding 1).
+    const rangeSelect = document.getElementById('tx-filter-range') as HTMLSelectElement;
+    expect(rangeSelect.selectedOptions[0].textContent).toBe('One day');
+    expect(rangeSelect.selectedOptions[0].disabled).toBe(true);
+
+    fireEvent.click(chip);
+    expect(document.getElementById('tx-day-filter')).toBeNull();
+    expect(rowButtons()).toHaveLength(2);
+    expect(rangeSelect.selectedOptions[0].textContent).toBe('All time');
+    expect([...rangeSelect.options].map((o) => o.textContent)).not.toContain('One day');
+  });
+
+  it('a range change drops the day filter', () => {
+    const day = shiftIsoDate(todayIsoDate(), -3);
+    localStorage.setItem('pf_transactions', JSON.stringify([tx({ type: 'EXPENSE', amount: 40, categoryId: 'cat-food', transactionDate: day })]));
+    render(
+      <FinanceProvider>
+        <TransactionsView initialDayFilter={day} />
+      </FinanceProvider>
+    );
+    fireEvent.change(document.getElementById('tx-filter-range')!, { target: { value: 'ALL' } });
+    expect(document.getElementById('tx-day-filter')).toBeNull();
+  });
+});

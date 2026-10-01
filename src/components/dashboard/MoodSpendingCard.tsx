@@ -4,6 +4,7 @@ import { Button } from '../ui/Button';
 import { Money } from '../ui/Money';
 import { MOOD_DAYS_SHOWN, MoodSpending } from '../../selectors/diary';
 import { formatWeekdayDate } from '../../utils/date';
+import { MoodMeter } from '../diary/MoodMeter';
 
 interface MoodSpendingCardProps {
   mood: MoodSpending;
@@ -12,17 +13,6 @@ interface MoodSpendingCardProps {
   todayLogged: boolean;
   onOpenDiary: () => void;
 }
-
-const MOOD_STEPS = [1, 2, 3, 4, 5];
-
-/** Five bars, filled up to the day's mood. No emoji (spec 6.1); the label carries the number. */
-const MoodMeter: React.FC<{ mood: number }> = ({ mood }) => (
-  <span role="img" aria-label={`Mood ${mood} of 5`} className="flex gap-[3px]">
-    {MOOD_STEPS.map((step) => (
-      <span key={step} className={`w-3.5 h-1.5 rounded-full ${step <= mood ? 'bg-brand' : 'bg-line-strong'}`} />
-    ))}
-  </span>
-);
 
 function prompt(loggedCount: number): string | null {
   if (loggedCount >= MOOD_DAYS_SHOWN) return null;
@@ -41,7 +31,7 @@ export const MoodSpendingCard: React.FC<MoodSpendingCardProps> = ({ mood, today,
     <Card className="h-full flex flex-col gap-4">
       <div>
         <h2 className="text-base font-semibold text-fg">Mood &amp; spending</h2>
-        <p className="text-sm text-fg-muted mt-0.5">From your Daily Diary</p>
+        <p className="text-sm text-fg-muted mt-0.5">From your daily diary</p>
       </div>
 
       {mood.days.length > 0 && (

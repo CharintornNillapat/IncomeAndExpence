@@ -149,7 +149,7 @@ Build a screen from these, not from a re-typed class string.
 
 Exceptions that keep their own markup, each for a reason:
 - Inside another control: the dismiss crosses in `CategorySuggestionChip`, `SaveRuleChip` and the preset chips, the note field's microphone, and the calculator keys.
-- Selection grids: the colour and icon pickers, the diary's mood and meal buttons. Their selected style is the page phase's.
+- Selection grids: the colour and icon pickers, and the diary's mood, activity and meal buttons, which share one selected style since Phase 61 (`selected`, a `focus` border, `on-selected`).
 - Text links: "View all", "Download sample", the form's shortcut row. On the Dashboard they are `dashboard/DashboardLink`, a `<button>` drawn as a link with a 44px hit box.
 - The mobile centre Quick Add and the transfer swap button. Each is a single, round shape.
 
@@ -219,6 +219,29 @@ One period for the whole page, chosen in the `PageHeader`. Every figure comes fr
 - **Edit** is a dialog: title, Borrowed, interest, minimum and due date. What is still owed is shown beside Borrowed as text, never as a field, and Borrowed can't go below it.
 - **Focus:** after a write-off or a repayment that clears the debt, focus goes to the card's "⋯"; after a delete, to "Add debt". Every other dialog returns focus to its opener.
 
+### Daily diary (spec 6.5, ADR 0036)
+- **Header:** `PageHeader` "Daily diary" with a secondary "Export JSON", the one export of the diary.
+- **Layout:** the form at 7/12 and, beside it at 5/12, the calendar over the recent entries, from `lg`; stacked below that.
+- **Form:**
+  - **Header:** "Thursday, Oct 1" and "Today · spent ฿X in N transactions so far" (L1 spending only), with ‹, "Pick date" and ›. The › is disabled on today, and the picker stops at today.
+  - **Mood:** five 44px buttons, each a number over its word: Very low, Low, Neutral, Good, Great.
+  - **Activity:** Rest day / Workout; Workout shows a one-line note.
+  - **Meals:** Clean / home, Average, Fast food / junk.
+  - **One selected style for all three:** `selected` background, a `focus` border, `on-selected` text, bold. No colour by meaning, and no emoji anywhere on the page.
+  - **Notes**, then "Save entry". A day with no entry starts with no mood picked, and Save is disabled with "Pick a mood to save." under it.
+- **Calendar:**
+  - Monday first, each day a 44px button named in full ("Wed, Sep 30, logged");
+  - a logged day is on `logged`, today has an inset `focus` ring (white when today is the form's day, on the brand fill), a future day is `fg-disabled` and disabled;
+  - the day in the form is in the brand fill;
+  - a legend and "N days logged in September", with ‹ › for the month (› disabled on the current one).
+- **Recent entries:**
+  - newest first, ten at a time;
+  - each has the day (spec 4.10's label), its spending in red (signed), a five-bar `MoodMeter`, and "Good · Workout · Clean / home meals · 2 transactions";
+  - "2 transactions" is a link that opens the Transactions page on that day;
+  - the workout note, then the note in an inset;
+  - Edit entry and Delete entry… (red) in the "⋯" menu. Delete confirms first.
+- **Transactions, filtered to a day:** a soft "Only Wed, Sep 30 ×" button in the filter row; it, or a range change, clears the day.
+
 ### Sync indicator (header)
 Five states. The first is for guests; the other four are for a signed-in user, checked in this order.
 
@@ -275,3 +298,7 @@ Five states. The first is for guests; the other four are for a signed-in user, c
 | Debt payoff: Borrowed, Repaid and Needed / month as three boxes | Three boxes from a 24rem card, label-and-figure rows below | Three ฿ figures in a narrow card would wrap or be cut off. |
 | Debt payoff: no section for paid-off debts | An open "Paid off (N)" section below the active ones | The owner's decision (2026-10-01, ADR 0035): a paid-off debt between the active ones hid the order by due date. |
 | Debt payoff: the due tag for a dated debt only | "Overdue · due <date>" in red, and "No due date" | Both cases exist in the ledger and need a tag of their own. |
+| Diary: the form beside the calendar and list | Beside them from `lg`; stacked below | Spec 8: one column below 1024. |
+| Diary: a new day's mood unspecified | No mood picked, and Save waits for one | The owner's decision (2026-10-01, ADR 0036): a preset mood would be saved by an accidental tap. |
+| Diary: the recent entries' count unspecified | Ten at a time, with "Show N more" | A long diary would make the right column far taller than the form. |
+| Diary: the selected day unmarked in the calendar | The day in the form is in the brand fill | Otherwise the calendar does not show which day the form holds. |

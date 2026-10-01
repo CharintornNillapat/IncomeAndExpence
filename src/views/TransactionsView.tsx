@@ -4,7 +4,7 @@ import { useFinanceState } from '../context/FinanceContext';
 import { useTransactions } from '../hooks/useTransactions';
 import { useMediaQuery } from '../hooks/useMediaQuery';
 import { Transaction, TransactionType } from '../types';
-import { todayIsoDate } from '../utils/date';
+import { formatShortDate, formatWeekdayDate, todayIsoDate } from '../utils/date';
 import { exportTransactionsToCsv } from '../utils/csvExchange';
 import { buildLookupMap } from '../utils/mapUtils';
 import { OPTION_CLASS } from '../utils/formStyles';
@@ -37,6 +37,10 @@ interface TransactionsViewProps {
   initialSelectedTxId?: string;
   /** Called once, right after mount, when `initialSelectedTxId` was set, for the same reason as the wallet filter's. */
   onConsumeInitialSelectedTx?: () => void;
+  /** Shows one local calendar day only (the Daily diary's "N transactions" hands off here, Phase 61). */
+  initialDayFilter?: string;
+  /** Called once, right after mount, when `initialDayFilter` was set, for the same reason as the wallet filter's. */
+  onConsumeInitialDayFilter?: () => void;
   /** Opens the shell-level `TransferFundsModal` (ADR 0013: TRANSFER is no longer a type in the entry form). */
   onOpenTransfer?: () => void;
   /** Switches to the Debts tab, where repayments live. */
@@ -51,6 +55,9 @@ const RANGE_OPTIONS: { value: TimeRange; label: string }[] = [
   { value: 'WEEK', label: 'This week' },
   { value: 'MONTH', label: 'Past 30 days' },
 ];
+
+/** The range select's value while a diary day filter is on; never a `TimeRange`. */
+const DAY_FILTER_OPTION = 'DAY_FILTER';
 
 const TYPE_OPTIONS: { value: TypeFilter; label: string }[] = [
   { value: 'ALL', label: 'All' },
@@ -75,6 +82,8 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
   onConsumeInitialWalletFilter,
   initialSelectedTxId,
   onConsumeInitialSelectedTx,
+  initialDayFilter,
+  onConsumeInitialDayFilter,
   onOpenTransfer,
   onNavigateToDebts,
 }) => {
@@ -87,6 +96,9 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>('ALL');
   const [selectedType, setSelectedType] = useState<TypeFilter>('ALL');
   const [range, setRange] = useState<TimeRange>('ALL');
+  // Phase 61 (ADR 0036): one day, handed off from the Daily diary. It
+  // overrides the range until it is cleared or the range is changed.
+  const [dayFilter, setDayFilter] = useState<string | null>(initialDayFilter ?? null);
 
   // This view remounts fresh on every navigation to the tab (App.tsx keys the
   // active view by `activeTab`, so switching away and back unmounts it), so
@@ -100,6 +112,9 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
     if (initialSelectedTxId) {
       onConsumeInitialSelectedTx?.();
     }
+    if (initialDayFilter) {
+      onConsumeInitialDayFilter?.();
+    }
     // eslint-disable-next-line
   }, []);
 
@@ -112,7 +127,10 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
   }, [searchTerm]);
 
   const today = todayIsoDate();
-  const bounds = useMemo(() => rangeBounds(range, today), [range, today]);
+  const bounds = useMemo(
+    () => (dayFilter ? { start: dayFilter, end: dayFilter } : rangeBounds(range, today)),
+    [dayFilter, range, today]
+  );
 
   // Filtering, soft-delete visibility and the write actions all come from the
   // domain hook; 'ALL' is the view's sentinel for "no filter", which the hook
@@ -139,7 +157,7 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
   const [shownCount, setShownCount] = useState<number>(PAGE_STEP);
   useEffect(() => {
     setShownCount(PAGE_STEP);
-  }, [debouncedSearchTerm, selectedWalletId, selectedCategoryId, selectedType, range, showSoftDeleted]);
+  }, [debouncedSearchTerm, selectedWalletId, selectedCategoryId, selectedType, range, dayFilter, showSoftDeleted]);
 
   // Modal States
   const [isAddModalOpen, setIsAddModalOpen] = useState<boolean>(false);
@@ -220,7 +238,7 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
     <Card padding="none">
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 px-5 py-4 border-b border-line">
         <p className="flex flex-wrap items-baseline gap-x-4 gap-y-1 text-sm">
-          <span className="font-semibold text-fg">{formatRangeLabel(range, today)}</span>
+          <span className="font-semibold text-fg">{dayFilter ? formatShortDate(dayFilter) : formatRangeLabel(range, today)}</span>
           <span className="text-fg-secondary">
             In <Money value={totalIn} showPlus className="font-semibold text-income" />
           </span>
@@ -330,16 +348,37 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
         <select
           id="tx-filter-range"
           aria-label="Date range"
-          value={range}
-          onChange={(e) => setRange(e.target.value as TimeRange)}
+          value={dayFilter ? DAY_FILTER_OPTION : range}
+          onChange={(e) => {
+            setRange(e.target.value as TimeRange);
+            setDayFilter(null);
+          }}
           className={FILTER_SELECT_CLASS}
         >
+          {/* While a day from the diary is shown, the select says so rather than "All time" (audit 010 finding 1). */}
+          {dayFilter && (
+            <option value={DAY_FILTER_OPTION} disabled className={OPTION_CLASS}>
+              One day
+            </option>
+          )}
           {RANGE_OPTIONS.map((option) => (
             <option key={option.value} value={option.value} className={OPTION_CLASS}>
               {option.label}
             </option>
           ))}
         </select>
+
+        {dayFilter && (
+          <Button
+            id="tx-day-filter"
+            variant="soft"
+            onClick={() => setDayFilter(null)}
+            aria-label={`Clear the day filter: ${formatWeekdayDate(dayFilter)}`}
+          >
+            Only {formatWeekdayDate(dayFilter)}
+            <X aria-hidden="true" className="w-3.5 h-3.5" />
+          </Button>
+        )}
 
         <select
           id="tx-filter-wallet"
