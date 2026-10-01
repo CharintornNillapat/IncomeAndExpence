@@ -142,6 +142,23 @@ describe('one render path per width', () => {
   });
 });
 
+describe('closing the sheet (audit 008 finding 1)', () => {
+  it('gives focus back to the wallet row that opened it', () => {
+    mount();
+    const row = byId('wallet-entity-wal-cash')!;
+    row.focus();
+    fireEvent.click(row);
+    expect(screen.getByRole('dialog', { name: 'Cash Wallet' })).toBeTruthy();
+    // A keyboard user moves into the sheet before closing it.
+    byId('wallet-edit-btn')!.focus();
+    expect(document.activeElement).toBe(byId('wallet-edit-btn'));
+
+    // The sheet stays in the DOM through its exit animation; focus moves at once.
+    fireEvent.click(byId('wallet-detail-close-btn')!);
+    expect(document.activeElement).toBe(byId('wallet-entity-wal-cash'));
+  });
+});
+
 describe('the Dashboard hand-off', () => {
   it('selects the named wallet and consumes it once', () => {
     wide();
@@ -239,6 +256,27 @@ describe('edit', () => {
     await waitFor(() => expect(byId('wallet-edit-error')!.textContent).toContain('A wallet with a negative balance can only be a credit card'));
     expect(byId('wallet-edit-form')).toBeTruthy();
     expect(byId('wallet-detail-meta')!.textContent).toMatch(/^Credit Card · /);
+  });
+});
+
+describe('the colour choice (audit 008 finding 2)', () => {
+  const IDENTITY = ['#D9A066', '#6C8EEF', '#4FB7A8', '#F59E6B', '#E879A6', '#7DA2F0', '#B69CF5', '#5CC8B8', '#C7B38A', '#8FA8C8', '#D98FD0', '#9C8CD9'];
+
+  it("offers exactly spec section 1's twelve identity colours, and saves the one picked", async () => {
+    wide();
+    mount();
+    selectWallet('wal-cash');
+    fireEvent.click(byId('wallet-edit-btn')!);
+    const swatches = [...byId('wallet-edit-form')!.querySelectorAll('button[aria-label^="Colour "]')];
+    expect(swatches.map((s) => s.getAttribute('aria-label')!.replace('Colour ', ''))).toEqual(IDENTITY);
+
+    fireEvent.click(swatches[4]);
+    expect(swatches[4].getAttribute('aria-pressed')).toBe('true');
+    fireEvent.click(byId('wallet-edit-save-btn')!);
+    await waitFor(() => expect(byId('wallet-edit-form')).toBeNull());
+    // The selected row's tile now carries the new colour.
+    const tile = byId('wallet-entity-wal-cash')!.querySelector('span[aria-hidden="true"]') as HTMLElement;
+    expect(tile.style.color).toBe('rgb(232, 121, 166)');
   });
 });
 
