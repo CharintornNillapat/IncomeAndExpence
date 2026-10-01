@@ -27,12 +27,15 @@ test.describe('Local-calendar date boundary correctness (UTC+7)', () => {
     // `DEFAULT_STARTER_WALLETS` stamps `createdAt: new Date().toISOString()`
     // at module-eval time (first page load), so the seeded "Main Checking"
     // wallet's `createdAt` is exactly the pinned instant above.
+    // Phase 59 (ADR 0034): the created date moved from the wallet's card to
+    // the selected wallet's header, written "created Sep 18, 2026".
     await gotoTab(page, 'wallets');
-    const card = page.locator('#wallet-entity-wal-main-checking');
-    await expect(card).toBeVisible();
+    await page.locator('#wallet-entity-wal-main-checking').click();
+    const meta = page.locator('#wallet-detail-meta');
+    await expect(meta).toBeVisible();
 
-    await expect(card).toContainText('Created: 2026-09-18');
-    await expect(card).not.toContainText('Created: 2026-09-17');
+    await expect(meta).toContainText('created Sep 18, 2026');
+    await expect(meta).not.toContainText('created Sep 17, 2026');
   });
 
   test("dashboard 'This Week' filter includes a transaction dated exactly 7 local days ago", async ({ page }) => {

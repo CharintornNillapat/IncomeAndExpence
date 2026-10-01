@@ -1,93 +1,244 @@
-import React, { useMemo, useState, useCallback } from 'react';
-import {
-  Plus,
-  ArrowLeftRight,
-  Trash2,
-  Wallet as WalletIcon,
-} from 'lucide-react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { ArrowLeftRight, Plus, Wallet as WalletIcon } from 'lucide-react';
 import { useFinanceState, useFinanceActions } from '../context/FinanceContext';
-import { Money } from '../components/ui/Money';
+import { useWallets } from '../hooks/useWallets';
+import { useMediaQuery } from '../hooks/useMediaQuery';
+import { Modal } from '../components/Modal';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
-import { SectionHeader } from '../components/ui/SectionHeader';
+import { PageHeader } from '../components/ui/PageHeader';
 import { Card } from '../components/ui/Card';
 import { EmptyState } from '../components/ui/EmptyState';
 import { Button } from '../components/ui/Button';
-import { IconButton } from '../components/ui/IconButton';
-import { Wallet } from '../types';
-import { APP_CURRENCY } from '../utils/currency';
-import { getWalletIcon } from '../utils/walletIcons';
-import { toIsoDate } from '../utils/date';
+import { WalletList } from '../components/wallet/WalletList';
+import { WalletDetail } from '../components/wallet/WalletDetail';
+import type { Wallet, WalletEdit } from '../types';
+import { formatCurrencyAmount } from '../utils/currency';
+import { todayIsoDate } from '../utils/date';
+import { buildLookupMap } from '../utils/mapUtils';
+import { archivedWallets, walletActivity, walletShares, walletTotal } from '../selectors/wallets';
+import { foldAdjustmentPairs } from '../selectors/adjustments';
+import { groupByDay } from '../selectors/ledger';
+
+/** Spec 6.3: how much of a wallet's activity its detail shows before "View all". */
+const RECENT_ITEMS = 10;
 
 interface WalletsViewProps {
-  /** Opens the shared, shell-level TransferFundsModal (owned by App.tsx, T41) - this view no longer mounts its own copy. */
-  onOpenTransfer?: () => void;
-  /** Opens the shared, shell-level AddWalletModal (owned by App.tsx, T41) - this view no longer mounts its own copy. */
+  /**
+   * Opens the shared, shell-level TransferFundsModal (owned by App.tsx, T41),
+   * optionally with this wallet as the source. The header's Transfer passes
+   * no wallet; a click event must never reach it as one.
+   */
+  onOpenTransfer?: (walletId?: string) => void;
+  /** Opens the shared, shell-level AddWalletModal (owned by App.tsx, T41). */
   onOpenAddWallet?: () => void;
+  /** Opens the Transactions page filtered to one wallet ("View all"). */
+  onOpenWalletTransactions?: (walletId: string) => void;
+  /** Opens one row on the Transactions page with its edit panel. */
+  onOpenTransaction?: (txId: string) => void;
+  /** A wallet to select on arrival: the Dashboard's wallet rows hand off here (Phase 59). */
+  initialSelectedWalletId?: string;
+  /** Called once, right after mount, when `initialSelectedWalletId` was set, as the Transactions page does with its own. */
+  onConsumeInitialSelectedWallet?: () => void;
 }
 
-export const WalletsView: React.FC<WalletsViewProps> = ({ onOpenTransfer, onOpenAddWallet }) => {
-  const { wallets } = useFinanceState();
-  const { deleteWallet } = useFinanceActions();
+type PendingAction = { kind: 'delete' | 'archive'; wallet: Wallet };
 
-  // T42: wallet deletion had no confirmation at all (a real bug, not a
-  // stylistic gap) - `walletToDelete` gates it behind `ConfirmDialog`.
-  const [walletToDelete, setWalletToDelete] = useState<Wallet | null>(null);
-  const [isDeletingWallet, setIsDeletingWallet] = useState<boolean>(false);
-  const [deleteWalletError, setDeleteWalletError] = useState<string | null>(null);
+/**
+ * Spec 6.3 (Phase 59, ADR 0034): a master-detail page. The list (4/12) holds
+ * the AllocationBar and a row per wallet; the detail (8/12) shows the
+ * selected wallet. Below `lg` the list stands alone and a tapped wallet opens
+ * in a bottom sheet - one render path, never two copies hidden by CSS (the
+ * specs count hidden elements).
+ *
+ * It replaces both the old card grid and the Dashboard's `WalletPopupModal`:
+ * this page is the one place a wallet is inspected, edited, adjusted,
+ * archived or deleted.
+ */
+export const WalletsView: React.FC<WalletsViewProps> = ({
+  onOpenTransfer,
+  onOpenAddWallet,
+  onOpenWalletTransactions,
+  onOpenTransaction,
+  initialSelectedWalletId,
+  onConsumeInitialSelectedWallet,
+}) => {
+  const { transactions, categories } = useFinanceState();
+  const { addTransaction, deleteWallet, editWallet, setWalletArchived } = useFinanceActions();
+  const { wallets, allWallets } = useWallets();
+  const isWide = useMediaQuery('(min-width: 1024px)');
 
-  const activeWallets = useMemo(() => wallets.filter((w) => !w.isDeleted), [wallets]);
+  const [selectedId, setSelectedId] = useState<string | undefined>(initialSelectedWalletId);
+  const [pending, setPending] = useState<PendingAction | null>(null);
+  const [isConfirming, setIsConfirming] = useState(false);
+  const [confirmError, setConfirmError] = useState<string | null>(null);
+  const [unarchivingId, setUnarchivingId] = useState<string | null>(null);
 
-  const handleOpenDeleteWallet = useCallback((wallet: Wallet) => {
-    setDeleteWalletError(null);
-    setWalletToDelete(wallet);
+  useEffect(() => {
+    if (initialSelectedWalletId) onConsumeInitialSelectedWallet?.();
+    // eslint-disable-next-line
   }, []);
 
-  const handleCloseDeleteWallet = useCallback(() => {
-    setWalletToDelete(null);
-    setDeleteWalletError(null);
+  const today = todayIsoDate();
+  const walletMap = useMemo(() => buildLookupMap(allWallets), [allWallets]);
+  const categoryMap = useMemo(() => buildLookupMap(categories), [categories]);
+  const archived = useMemo(() => archivedWallets(allWallets), [allWallets]);
+  const shares = useMemo(() => walletShares(wallets), [wallets]);
+  const total = walletTotal(wallets);
+
+  // From `lg` a wallet is always selected (the first one by default); below
+  // it, only a tapped one, which opens the sheet. A selection that is no
+  // longer active (deleted, archived) falls back the same way.
+  const chosen = wallets.find((w) => w.id === selectedId);
+  const selected = chosen ?? (isWide ? wallets[0] : undefined);
+
+  const { items, dayNets } = useMemo(() => {
+    if (!selected) return { items: [], dayNets: new Map<string, number>() };
+    const rows = walletActivity(transactions, selected.id);
+    return {
+      items: foldAdjustmentPairs(rows).slice(0, RECENT_ITEMS),
+      dayNets: new Map(groupByDay(rows, categoryMap).map((day) => [day.date, day.net])),
+    };
+  }, [transactions, selected, categoryMap]);
+
+  const handleAdjustBalance = useCallback(
+    async (walletId: string, newBalance: number) => {
+      const target = wallets.find((w) => w.id === walletId);
+      if (!target) return { success: false, error: 'Wallet not found or has been deleted' };
+      const diff = newBalance - Number(target.balance);
+      if (diff === 0) return { success: true };
+      // The signed difference (ADR 0024): every ledger path treats an
+      // ADJUSTMENT as `balance + amount`, so lowering a balance must be negative.
+      return addTransaction({
+        amount: diff,
+        description: `Manual balance adjustment (${diff >= 0 ? '+' : '-'}${formatCurrencyAmount(Math.abs(diff))})`,
+        walletId: target.id,
+        type: 'ADJUSTMENT',
+        transactionDate: todayIsoDate(),
+      });
+    },
+    [wallets, addTransaction]
+  );
+
+  const handleEdit = useCallback((walletId: string, details: WalletEdit) => editWallet(walletId, details), [editWallet]);
+
+  const requestAction = useCallback((kind: PendingAction['kind']) => (wallet: Wallet) => {
+    setConfirmError(null);
+    setPending({ kind, wallet });
   }, []);
 
-  // Rejected write keeps the dialog open with the reason shown, instead of
-  // closing as if nothing happened - the same MutationResult convention every
-  // write form in this app follows.
-  const handleConfirmDeleteWallet = useCallback(async () => {
-    if (!walletToDelete) return;
-    setIsDeletingWallet(true);
-    setDeleteWalletError(null);
-    const result = await deleteWallet(walletToDelete.id);
-    setIsDeletingWallet(false);
+  const closeConfirm = useCallback(() => {
+    setPending(null);
+    setConfirmError(null);
+  }, []);
+
+  // A rejected write keeps the dialog open with the reason shown - the same
+  // MutationResult convention every write form in this app follows.
+  const confirmPending = useCallback(async () => {
+    if (!pending) return;
+    setIsConfirming(true);
+    setConfirmError(null);
+    const result =
+      pending.kind === 'delete' ? await deleteWallet(pending.wallet.id) : await setWalletArchived(pending.wallet.id, true);
+    setIsConfirming(false);
     if (!result.success) {
-      setDeleteWalletError(result.error || 'Failed to delete wallet');
+      setConfirmError(result.error || `Failed to ${pending.kind} the wallet`);
       return;
     }
-    setWalletToDelete(null);
-  }, [walletToDelete, deleteWallet]);
+    setPending(null);
+    // The selection falls back to the first wallet from `lg`, and closes the sheet below it.
+    setSelectedId(undefined);
+  }, [pending, deleteWallet, setWalletArchived]);
+
+  const handleUnarchive = useCallback(
+    async (walletId: string) => {
+      setUnarchivingId(walletId);
+      await setWalletArchived(walletId, false);
+      setUnarchivingId(null);
+    },
+    [setWalletArchived]
+  );
+
+  const pendingRowCount = useMemo(
+    () => (pending ? walletActivity(transactions, pending.wallet.id).length : 0),
+    [pending, transactions]
+  );
+
+  const confirmCopy = (() => {
+    if (!pending) return { title: '', description: '', confirmText: '' };
+    const { wallet } = pending;
+    const rows = pendingRowCount === 1 ? '1 transaction' : `${pendingRowCount} transactions`;
+    const money = formatCurrencyAmount(Number(wallet.balance));
+    if (pending.kind === 'delete') {
+      return {
+        title: 'Delete wallet',
+        description: `Delete "${wallet.name}"? Its ${rows} stay in your history and still count toward spending and income. Its ${money} balance leaves your wallet total and net worth.`,
+        confirmText: 'Delete wallet',
+      };
+    }
+    return {
+      title: 'Archive wallet',
+      description: `Archive "${wallet.name}"? It leaves your wallet list, the wallet pickers and net worth, along with its ${money} balance. Its ${rows} stay in your history. You can unarchive it from the Archived list.`,
+      confirmText: 'Archive wallet',
+    };
+  })();
+
+  const detail = (wallet: Wallet, inSheet: boolean) => (
+    <WalletDetail
+      wallet={wallet}
+      items={items}
+      dayNets={dayNets}
+      wallets={walletMap}
+      categories={categoryMap}
+      today={today}
+      inSheet={inSheet}
+      onTransferOut={(walletId) => onOpenTransfer?.(walletId)}
+      onAdjustBalance={handleAdjustBalance}
+      onEdit={handleEdit}
+      onRequestArchive={requestAction('archive')}
+      onRequestDelete={requestAction('delete')}
+      onViewAllTransactions={(walletId) => onOpenWalletTransactions?.(walletId)}
+      onOpenTransaction={(txId) => onOpenTransaction?.(txId)}
+    />
+  );
+
+  const list = (
+    <WalletList
+      wallets={wallets}
+      archived={archived}
+      shares={shares}
+      selectedId={selected?.id}
+      onSelect={setSelectedId}
+      onAddWallet={() => onOpenAddWallet?.()}
+      onUnarchive={handleUnarchive}
+      unarchivingId={unarchivingId}
+    />
+  );
+
+  const walletCount = wallets.length === 1 ? '1 wallet' : `${wallets.length} wallets`;
 
   return (
     <div className="space-y-6">
-      <SectionHeader
-        title="Wallets & Accounts"
-        subtitle="Manage your accounts, balances, and transfers"
-        action={
-          <div className="flex items-center gap-2 sm:gap-3">
+      <PageHeader
+        title="Wallets"
+        description={`${formatCurrencyAmount(total)} across ${walletCount}`}
+        actions={
+          <>
             <Button
               id="wallet-transfer-modal-btn"
               variant="secondary"
               onClick={() => onOpenTransfer?.()}
-              icon={<ArrowLeftRight className="w-3.5 h-3.5 text-transfer" />}
+              icon={<ArrowLeftRight aria-hidden="true" className="w-3.5 h-3.5 text-transfer" />}
             >
-              <span>Transfer</span>
+              Transfer
             </Button>
-
-            <Button id="wallet-add-modal-btn" onClick={() => onOpenAddWallet?.()} icon={<Plus className="w-4 h-4" />}>
-              <span>Add Wallet</span>
+            <Button id="wallet-add-modal-btn" onClick={() => onOpenAddWallet?.()} icon={<Plus aria-hidden="true" className="w-4 h-4" />}>
+              Add wallet
             </Button>
-          </div>
+          </>
         }
       />
 
-      {/* Wallets Cards Grid */}
-      {activeWallets.length === 0 ? (
+      {wallets.length === 0 && archived.length === 0 ? (
         <Card>
           <EmptyState
             icon={WalletIcon}
@@ -95,97 +246,45 @@ export const WalletsView: React.FC<WalletsViewProps> = ({ onOpenTransfer, onOpen
             subtitle="Add a wallet to start tracking balances, transfers, and transactions"
           />
         </Card>
+      ) : isWide ? (
+        <div className="grid grid-cols-12 gap-4 items-start">
+          {/* Spec 6.3's 4/8 from `xl`; 5/7 between `lg` and `xl`, where a 4/12 list truncated every name. */}
+          <div className="col-span-5 xl:col-span-4">{list}</div>
+          <div className="col-span-7 xl:col-span-8">
+            {selected ? (
+              detail(selected, false)
+            ) : (
+              <Card>
+                <EmptyState icon={WalletIcon} title="No active wallets" subtitle="Unarchive a wallet or add one to see its details." />
+              </Card>
+            )}
+          </div>
+        </div>
       ) : (
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-        {activeWallets.map((wallet) => {
-          const Icon = getWalletIcon(wallet.type);
-          return (
-            <div
-              key={wallet.id}
-              id={`wallet-entity-${wallet.id}`}
-              className="bg-surface-1 rounded-xl border border-line p-5 hover:border-brand transition-control duration-150 flex flex-col justify-between"
-            >
-              <div>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div
-                      className="w-10 h-10 rounded-lg flex items-center justify-center text-white"
-                      style={{ backgroundColor: wallet.color }}
-                    >
-                      <Icon className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <h3 className="text-sm font-bold text-fg">{wallet.name}</h3>
-                      <span className="text-[11px] font-medium text-fg-muted capitalize">
-                        {wallet.type.replace('_', ' ').toLowerCase()}
-                      </span>
-                    </div>
-                  </div>
-
-                  <IconButton
-                    id={`delete-wallet-${wallet.id}`}
-                    label="Delete wallet"
-                    tone="danger"
-                    onClick={() => handleOpenDeleteWallet(wallet)}
-                    className="-mr-2"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </IconButton>
-                </div>
-
-                <div className="mt-6">
-                  <span className="text-xs font-semibold uppercase tracking-wider text-fg-muted block">
-                    Current Balance
-                  </span>
-                  <div className="flex items-baseline gap-2 mt-1">
-                    <div data-testid={`wallet-balance-${wallet.id}`} className="text-2xl font-bold text-fg">
-                      <Money value={wallet.balance} />
-                    </div>
-                    <span className="text-xs font-semibold text-fg-secondary">{APP_CURRENCY}</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="pt-4 mt-4 border-t border-line flex items-center justify-between text-[11px] text-fg-muted">
-                {/* `createdAt` is a full ISO instant; slicing its first 10 characters
-                    would read the UTC calendar date, which at UTC+7 shows the wrong
-                    day for anything created 00:00-06:59 local. `toIsoDate` reads the
-                    `Date`'s local calendar components instead. */}
-                <span>Created: {toIsoDate(new Date(wallet.createdAt))}</span>
-                <span className="inline-flex items-center gap-1 text-income font-medium">
-                  <span className="w-1.5 h-1.5 rounded-full bg-income-fill" /> Active Source
-                </span>
-              </div>
-            </div>
-          );
-        })}
-      </div>
+        list
       )}
 
-      {/*
-        T41: the Add Wallet and Transfer Funds modals used to be rendered
-        here, locally. They now live at shell level (App.tsx) as
-        `AddWalletModal`/`TransferFundsModal` - self-subscribing components
-        mounted once, exactly like `QuickAddModal` - so the *same* modal
-        instance (and the same ids: #new-wallet-name, #transfer-source-wallet,
-        etc.) is reachable from this view's header buttons above AND from
-        DashboardView's hero/wallet-card triggers, which live in a different
-        view and could never open a modal only WalletsView mounted locally.
-      */}
+      {/* Below `lg` the detail opens as a bottom sheet. Rendered only there, so it never doubles the inline one. */}
+      <Modal
+        isOpen={!isWide && !!selected}
+        onClose={() => setSelectedId(undefined)}
+        title={selected?.name ?? ''}
+        closeButtonId="wallet-detail-close-btn"
+        maxWidthClassName="max-w-lg"
+      >
+        {!isWide && selected && detail(selected, true)}
+      </Modal>
 
-      {/* Delete Wallet Confirmation (T42) */}
       <ConfirmDialog
-        isOpen={!!walletToDelete}
-        onClose={handleCloseDeleteWallet}
-        onConfirm={handleConfirmDeleteWallet}
-        isLoading={isDeletingWallet}
-        error={deleteWalletError}
-        title="Delete Wallet"
-        description={
-          walletToDelete
-            ? `Delete "${walletToDelete.name}"? Its transaction history is kept, but the wallet itself will no longer appear in your active accounts.`
-            : ''
-        }
+        isOpen={!!pending}
+        onClose={closeConfirm}
+        onConfirm={confirmPending}
+        isLoading={isConfirming}
+        error={confirmError}
+        isDestructive={pending?.kind === 'delete'}
+        title={confirmCopy.title}
+        description={confirmCopy.description}
+        confirmText={confirmCopy.confirmText}
       />
     </div>
   );

@@ -25,3 +25,8 @@ export const WALLET_TYPE_OPTIONS: ReadonlyArray<{ value: string; label: string }
   { value: 'INVESTMENT', label: 'Investment' },
   { value: 'E_WALLET', label: 'E-Wallet' },
 ];
+
+/** A wallet type's display label ("Bank Account"), never the raw enum (spec L10's rule, applied to wallets). */
+export function walletTypeLabel(type: string): string {
+  return WALLET_TYPE_OPTIONS.find((option) => option.value === type)?.label ?? 'Wallet';
+}

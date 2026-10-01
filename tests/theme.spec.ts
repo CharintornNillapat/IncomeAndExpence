@@ -46,7 +46,8 @@ test.describe('Navigation & Theme E2E Tests', () => {
 
   test('should navigate between tabs via desktop navbar and verify view loading', async ({ page }) => {
     await gotoTab(page, 'wallets');
-    await expect(page.getByRole('heading', { name: /Wallets & Accounts/i })).toBeVisible();
+    // Spec 6.3 (Phase 59): the page's title is "Wallets".
+    await expect(page.getByRole('heading', { name: 'Wallets', exact: true })).toBeVisible();
 
     await gotoTab(page, 'debts');
     await expect(page.getByRole('heading', { name: /Debts & Loans/i })).toBeVisible();

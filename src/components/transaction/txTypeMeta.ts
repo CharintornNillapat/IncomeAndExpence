@@ -1,4 +1,4 @@
-import { ArrowDownLeft, ArrowUpRight, ArrowLeftRight, Landmark, Minus, Plus, TrendingUp, TrendingDown } from 'lucide-react';
+import { ArrowDownLeft, ArrowUpRight, ArrowLeftRight, Landmark, Minus, Plus } from 'lucide-react';
 import { Transaction, TransactionType } from '../../types';
 import { MINUS } from '../../utils/currency';
 
@@ -7,8 +7,6 @@ export interface TxTypeMeta {
   label: string;
   /** Full-size badge icon: the spec's one set, ↙ income, ↗ expense, ⇄ transfer, +/− adjustment (section 4.9). */
   icon: React.FC<{ className?: string }>;
-  /** Compact icon for space-constrained surfaces (e.g. `WalletPopupModal`'s activity list) - binary Trending{Up,Down}, matching that surface's existing ternary exactly. */
-  compactIcon: React.FC<{ className?: string }>;
   /** Badge background + text classes, one token pair per meaning. */
   tint: string;
   /** Amount prefix: '+' for money in, the shared `MINUS` (U+2212) for money out, '' for a transfer seen from outside either wallet. */
@@ -28,14 +26,13 @@ export interface TxTypeMeta {
  * neither takes the income or expense colour. That reverses Phase 53b's
  * "upward adjustment is green" rule, by the owner's decision.
  *
- * `WalletPopupModal` still uses `compactIcon`; its page phase moves it onto
- * `TransactionRow`, as Phase 57 did for the Dashboard's recent activity.
+ * Phase 59 retired the wallet popup's compact Trending{Up,Down} icons with the
+ * popup itself, so every surface draws these icons (spec 4.9).
  */
 export const TX_TYPE_META: Record<TransactionType, TxTypeMeta> = {
   INCOME: {
     label: 'Income',
     icon: ArrowDownLeft,
-    compactIcon: TrendingUp,
     tint: 'bg-income-tint text-income',
     sign: '+',
     text: 'text-income',
@@ -43,7 +40,6 @@ export const TX_TYPE_META: Record<TransactionType, TxTypeMeta> = {
   EXPENSE: {
     label: 'Expense',
     icon: ArrowUpRight,
-    compactIcon: TrendingDown,
     tint: 'bg-expense-tint text-expense',
     sign: MINUS,
     text: 'text-expense',
@@ -51,7 +47,6 @@ export const TX_TYPE_META: Record<TransactionType, TxTypeMeta> = {
   TRANSFER: {
     label: 'Transfer',
     icon: ArrowLeftRight,
-    compactIcon: ArrowLeftRight,
     tint: 'bg-transfer-tint text-transfer',
     sign: '',
     text: 'text-transfer',
@@ -59,7 +54,6 @@ export const TX_TYPE_META: Record<TransactionType, TxTypeMeta> = {
   DEBT_REPAYMENT: {
     label: 'Debt Repayment',
     icon: Landmark,
-    compactIcon: TrendingDown,
     tint: 'bg-adjust-tint text-adjust',
     sign: MINUS,
     text: 'text-adjust',
@@ -67,7 +61,6 @@ export const TX_TYPE_META: Record<TransactionType, TxTypeMeta> = {
   ADJUSTMENT: {
     label: 'Adjustment',
     icon: Minus,
-    compactIcon: TrendingDown,
     tint: 'bg-adjust-tint text-adjust',
     sign: MINUS,
     text: 'text-adjust',
@@ -78,7 +71,6 @@ export const TX_TYPE_META: Record<TransactionType, TxTypeMeta> = {
 const ADJUSTMENT_UP: TxTypeMeta = {
   ...TX_TYPE_META.ADJUSTMENT,
   icon: Plus,
-  compactIcon: TrendingUp,
   sign: '+',
 };
 

@@ -17,9 +17,9 @@ import { WALLET_COLOR_PALETTE, WALLET_TYPE_OPTIONS } from './walletFormStyles';
 
 /**
  * Element ids are supplied by the caller rather than derived from a prefix:
- * `WalletsView` and `WalletPopupModal` already ship different, non-parallel ids
- * (`new-wallet-init-balance` vs `modal-new-wallet-balance`), and the Playwright
- * specs target the view's ids directly.
+ * `WalletsView` and the since-retired `WalletPopupModal` shipped different,
+ * non-parallel ids (`new-wallet-init-balance` vs `modal-new-wallet-balance`),
+ * and the Playwright specs target the view's ids directly.
  */
 export interface AddWalletFormIds {
   name: string;

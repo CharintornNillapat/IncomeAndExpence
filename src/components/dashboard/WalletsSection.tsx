@@ -6,7 +6,7 @@ import { Money } from '../ui/Money';
 import { AllocationBar } from '../ui/AllocationBar';
 import { EmptyState } from '../ui/EmptyState';
 import { getWalletIcon } from '../../utils/walletIcons';
-import { WALLET_TYPE_OPTIONS } from '../wallet/walletFormStyles';
+import { walletTypeLabel } from '../wallet/walletFormStyles';
 import { DashboardLink } from './DashboardLink';
 
 interface WalletsSectionProps {
@@ -20,10 +20,6 @@ interface WalletsSectionProps {
   onOpenWallet: (walletId: string) => void;
 }
 
-function typeLabel(type: Wallet['type']): string {
-  return WALLET_TYPE_OPTIONS.find((option) => option.value === type)?.label ?? 'Wallet';
-}
-
 /**
  * Spec 6.1 item 4: a plain heading with its links, then one card holding the
  * AllocationBar and a row per wallet. It replaces the carded wallet grid, its
@@ -32,7 +28,8 @@ function typeLabel(type: Wallet['type']): string {
  * The links keep the old hero's ids (`#hero-transfer-funds-btn`,
  * `#hero-add-wallet-btn`, `#hero-manage-all-wallets-btn`), and each row keeps
  * `#dashboard-wallet-card-{id}`: the Playwright suite drives all four. Each
- * row is now a real `<button>` that opens the wallet's popup.
+ * row is now a real `<button>`. Since Phase 59 it opens the Wallets page
+ * with that wallet selected (ADR 0034); "Manage wallets" opens the page.
  */
 export const WalletsSection: React.FC<WalletsSectionProps> = ({
   wallets,
@@ -105,7 +102,7 @@ export const WalletsSection: React.FC<WalletsSectionProps> = ({
                     <span className="block text-sm font-semibold text-fg truncate">{wallet.name}</span>
                     {/* Wraps rather than truncates, so the share survives a narrow row. */}
                     <span className="block text-xs text-fg-muted">
-                      {typeLabel(wallet.type)}
+                      {walletTypeLabel(wallet.type)}
                       {share !== undefined && ` · ${share.toFixed(1)}%`}
                     </span>
                   </span>
