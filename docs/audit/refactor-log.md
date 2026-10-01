@@ -4,6 +4,53 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
+## Phase 61 - The Daily diary (spec 6.5): T299-T312 (2026-10-01, commits `e8a1f79`, `220e7db`, `d80fb5e`, docs `DOCS61`)
+
+**Changed**
+- **No migration.**
+- **Logic:**
+  - `daySpending` and `diaryMonth`;
+  - `monthGrid`, `shiftMonth`, `monthKeyOf`, `formatMonthYear` and `formatDiaryHeading`;
+  - the diary labels and the shared `MoodMeter`;
+  - a `logged` token.
+- **UI:**
+  - `DiaryView` rebuilt: `PageHeader` "Daily diary" with Export JSON, then `DiaryEntryForm`, `DiaryCalendar` and `RecentEntries` / `DiaryEntryRow` (replacing `DiaryEntryCard`);
+  - one selected style for Mood, Activity and Meals, and no emoji;
+  - Delete confirms first;
+  - "N transactions" opens the Transactions page on that day (`initialDayFilter`, `#tx-day-filter`);
+  - "Daily diary" in the nav and on the Dashboard card.
+- **Fixed:** the form now starts from the selected day's saved entry. Before, it opened on mood 5, a workout and a pre-typed note, so "Edit today's entry" showed made-up values and one Save overwrote today. A future day can no longer be logged.
+- **Tests:**
+  - `unit/diary-page.test.tsx` (17) and 2 day-filter tests: unit 518 -> 537 in 25 files;
+  - `tests/diary-page.spec.ts` (3): E2E 384 -> 393 runs;
+  - no spec edited.
+- **Docs:** ADR `0036`, `DESIGN.md` (the page and four deviations), `CLAUDE.md`, `test-selector-contract.md`, antislop audit 010.
+
+**Surprises**
+- **A form keyed per day remounts on every day change**, so a test that kept a handle to the next-day button checked a detached element. The tests now look controls up again after a change; the selector contract records it.
+- **`role="grid"` was the wrong role for the calendar.** It promises arrow-key navigation the calendar does not have. Each day is a plain button named in full instead.
+- **Phase 60's recorded bundle delta was 189 B too large.** `main` had been built in a worktree without the git-ignored `.env`, whose `VITE_SUPABASE_*` values are inlined into the entry. Rebuilt with `.env`, `main`'s entry matches production byte for byte. The Phase 60 figures are corrected (+1,778 B, not +1,967 B), and the method is now in `CLAUDE.md`.
+
+**Gate:**
+- **Lint:** clean. **Unit:** 537/537. **WCAG:** all pairs pass, including the new `fg` on `logged-bg`.
+- **Controls:** 6 caught. Each of these failed its test:
+  - the form ignoring the saved entry;
+  - Save enabled with no mood;
+  - Delete without the confirm;
+  - a Sunday-first grid;
+  - a clickable future day;
+  - bounds that ignore the day filter.
+- **Playwright (local, 4 workers):** run 1 392/393 (6.1 min), run 2 393/393 (5.5 min), no retries. Run 1's one failure was Firefox failing to open a page (`browserContext.newPage` timed out with a Juggler protocol error) in `account-and-mobile-nav.spec.ts`'s `beforeEach`, before the app loaded. That is the same file as the known Firefox intermittent (Phase 60); run 2 was clean.
+- **Build** against `main` (`3f45e3b`), both with `.env`: entry +525 B (182,025 -> 182,550), all JS +628 B, CSS +256 B. `vendor-icons` -614 B (the old diary's icons went), `MoodMeter` a new 1,564 B shared chunk, and `DiaryView` +16 B.
+- **Walk-through** (Playwright's Chromium by script; the MCP server did not connect) at 1280 light, 1024 light, 900 dark, 390 light and dark:
+  - 0 controls under 44px, no page overflow, no console errors;
+  - today's entry is in the form on load;
+  - focus returns from every dialog and the menu;
+  - Enter on a calendar day loads it;
+  - the next-day button is disabled on today;
+  - an empty day waits for a mood;
+  - the day hand-off lands on the filtered Transactions page.
+
 ## Phase 60 - The Debt payoff page (spec 6.4): T285-T298 (2026-10-01, commits `bcc8621`, `ebf7a14`, `d5a06c4`, docs `baae0e3`)
 
 **Changed**
@@ -71,7 +118,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
   - Edit refused Borrowed ฿4,000 with "Borrowed can't be less than what is still owed (฿4,500.00)", then renamed the debt with what is still owed unchanged;
   - Mark as paid off: Cancel left the debt active; confirm moved it to "Paid off (1)" with "✓ Debt Fully Settled" and focus on its ⋯. The wallets still read ฿7,650.00 across 3 wallets;
   - at 390: the More sheet's item reads "Debt payoff" and opens the page, with no page overflow and 0 controls under 44px.
-- **Build:** entry +1,967 B (+615 B gzip), all JS +11,589 B, CSS +335 B; `DebtsView` +8,710 B. No vendor chunk changed.
+- **Build:** entry +1,778 B (+399 B gzip), all JS +11,400 B, CSS +335 B; `DebtsView` +8,710 B. No vendor chunk changed. (First recorded as +1,967 B: corrected in Phase 61, see the baseline metrics.)
 - **Walk-through** (Playwright's Chromium by script; the MCP server did not connect) at 1280 light, 1024 light, 900 dark, 390 light and dark, with five seeded debts (dated, long-named, overdue, undated, paid off):
   - 0 controls under 44px, no page overflow, no console errors;
   - the menu works by keyboard;

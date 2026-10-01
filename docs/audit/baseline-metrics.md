@@ -1098,22 +1098,55 @@ The entry's growth is the ledger action itself, which lives with the other ledge
 
 **Intermittent local failures:** 6 in 1,071 full-suite runs (3 full runs). All were timeouts: a Firefox `goto`, a Firefox context close, and four WebKit clicks waiting for "stable". No assertion failed. See audit 005 finding 3 for the control runs.
 
-## Phase 60 (the Debt payoff page) — delta against Phase 59
+## Phase 61 (the Daily diary) - delta against Phase 60
 
-`main` (`f58f681`, the Phase 59 merge) was built with `npx vite build` in a separate worktree, and the Phase 60 tree (`ebf7a14`) in the repo. Gzip is `zlib` level 9.
+`main` (`3f45e3b`, the Phase 60 merge) was built in a separate worktree **with the repo's `.env` copied in**, and the Phase 61 tree (`d80fb5e`) in the repo. `main`'s entry then measured 182,025 B, byte-identical to production. Gzip is `zlib` level 9.
 
-| Chunk | Phase 59 | Phase 60 | Delta |
+| Chunk | Phase 60 | Phase 61 | Delta |
 |---|---|---|---|
-| entry `index-*.js` | 180,058 B / 51,250 B gzip | 182,025 B / 51,865 B gzip | **+1,967 B raw / +615 B gzip** |
-| **all JS, summed** | 1,345,961 B | 1,357,550 B | **+11,589 B** |
-| `index-*.css` | 47,808 B / 9,291 B gzip | 48,143 B / 9,336 B gzip | +335 B |
-| PWA precache | 56 entries, 1,634.61 KiB | 60 entries, 1,646.20 KiB | +4 entries, +11.59 KiB |
+| entry `index-*.js` | 182,025 B / 51,869 B gzip | 182,550 B / 51,998 B gzip | **+525 B raw / +129 B gzip** |
+| **all JS, summed** | 1,357,773 B | 1,358,401 B | **+628 B** |
+| `index-*.css` | 48,143 B / 9,336 B gzip | 48,399 B / 9,406 B gzip | +256 B |
+| PWA precache | 60 entries, 1,646.47 KiB | 57 entries, 1,647.28 KiB | -3 entries, +0.81 KiB |
 
 Per chunk (raw bytes; every chunk not listed is byte-identical):
 
 | Chunk | Delta | Why |
 |---|---|---|
-| entry | +1,967 | `editDebt` and `DebtEditSchema` in `FinanceContext` and `zodSchemas`. |
+| entry | +525 | the day hand-off in `App.tsx`; `monthGrid` and the other date helpers. |
+| `DiaryView` | +16 | the page's new components replace the old form and `DiaryEntryCard` at almost the same size. |
+| new `MoodMeter` | 1,564 | `MoodMeter` and the diary labels, shared by the Dashboard and the diary. |
+| `Money`, `DayGroupHeader` | +1,272, +1,493 | Rollup regrouped the shared chunks: `ledger` (1,314), `TxCells` (1,702), `Badge` (362) and `SectionHeader` (441) are gone, merged into these. |
+| `DashboardView` | -542 | `MoodMeter` moved out. |
+| `TransactionsView` | +284 | the day filter and its button. |
+| `vendor-icons` | -614 | the old diary's icons (`BookHeart`, `Dumbbell`, `Utensils`, `Receipt` and others) are no longer imported. |
+| others | -64 to +284 | Rollup's shared-name shuffle. |
+
+| Suite | Files | Tests | Runs | Wall clock |
+|---|---|---|---|---|
+| Playwright (local, 4 workers) | 27 | 131 | 393 | 6.1 / 5.5 m (two runs) |
+
+**Intermittent local failures:** 1 in 786 runs: Firefox could not open a page in `account-and-mobile-nav.spec.ts`'s `beforeEach` (a browser protocol error), in run 1.
+| Vitest (`unit/`) | 25 | 537 | 537 | ~34 s |
+
+## Phase 60 (the Debt payoff page) — delta against Phase 59
+
+`main` (`f58f681`, the Phase 59 merge) was built with `npx vite build` in a separate worktree, and the Phase 60 tree (`ebf7a14`) in the repo. Gzip is `zlib` level 9.
+
+**Corrected in Phase 61.** The first figures came from a worktree without the git-ignored `.env`, whose `VITE_SUPABASE_*` values are inlined into the entry, so `main`'s entry measured 189 B short (180,058 B) and the deltas came out that much too large (+1,967 B entry, +11,589 B all JS). Rebuilt with `.env` on both sides, `f58f681`'s entry is 180,247 B, the size production served for Phase 59, and `ebf7a14`'s is 182,025 B, the size production serves now.
+
+| Chunk | Phase 59 | Phase 60 | Delta |
+|---|---|---|---|
+| entry `index-*.js` | 180,247 B / 51,466 B gzip | 182,025 B / 51,865 B gzip | **+1,778 B raw / +399 B gzip** |
+| **all JS, summed** | 1,346,150 B | 1,357,550 B | **+11,400 B** |
+| `index-*.css` | 47,808 B / 9,291 B gzip | 48,143 B / 9,336 B gzip | +335 B |
+| PWA precache | 56 entries, 1,634.79 KiB | 60 entries, 1,646.25 KiB | +4 entries, +11.46 KiB |
+
+Per chunk (raw bytes; every chunk not listed is byte-identical):
+
+| Chunk | Delta | Why |
+|---|---|---|
+| entry | +1,778 | `editDebt` and `DebtEditSchema` in `FinanceContext` and `zodSchemas`. |
 | `DebtsView` | +8,710 | the page: `DebtSummaryCard`, `DebtCard`, `EditDebtModal`, the write-off dialog and the focus hand-off. |
 | `useDebts` | +1,094 | `editDebt`, and the sorted `activeDebts` / `settledDebts` (it now pulls in `sortByDueDate`). |
 | new shared chunks | `ledger` 1,314, `Money` 728, `useMediaQuery` 385, `Badge` 362 | Rollup splits what the Debts chunk now shares with the Dashboard, Transactions and Wallets chunks. |

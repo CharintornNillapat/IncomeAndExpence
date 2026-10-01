@@ -1081,6 +1081,33 @@ Approved explicitly by the user, planned and approved before any code was writte
 - **One negative control was redone** because the first attempt produced malformed TypeScript that the dev server still served — the tests failed, but possibly for the wrong reason.
 - **No flakes.** Phase 44's `wallets.spec.ts` webkit flake has now not reproduced across three consecutive phases; still watched rather than closed.
 
+## Phase 61 - FinLife redesign, step 4, fifth page (Daily diary): T299-T312 (2026-10-01)
+
+ADR `0036`. The plan was approved in plan mode; the owner's decisions:
+- Delete confirms first;
+- a day with no entry starts with no mood, and Save waits for one;
+- "N transactions" opens the Transactions page filtered to that day, in place of the expander;
+- antislop mode 2 (audit 010).
+
+Branch `phase-61-diary`, cut from `main` at `3f45e3b`. It also carries `ef1bdea`, the Phase 60 deploy record, which had not been pushed. No migration.
+
+| # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
+|---|---|---|---|---|---|---|---|---|---|---|
+| T299 | `daySpending` (L1), `diaryMonth`; `moodSpendingDays` uses `daySpending` | `selectors/diary.ts` | Med | Low | 0.3h | done | - | e8a1f79 | `unit/dashboard.test.tsx` unedited | - |
+| T300 | `monthGrid` (Monday first), `shiftMonth`, `monthKeyOf`, `formatMonthYear`, `formatDiaryHeading` | `utils/date.ts` | Med | Low | 0.3h | done | - | e8a1f79 | a Sunday-first control failed 2 tests | - |
+| T301 | Diary labels, shared `MoodMeter`, the `logged` token | `components/diary/`, `MoodSpendingCard.tsx`, `index.css`, `wcag-tokens.mjs` | Med | Low | 0.3h | done | - | e8a1f79 | WCAG: `fg` on `logged-bg` 12.86 / 9.49 | - |
+| T302 | `PageHeader` "Daily diary", Export JSON, 7/5 layout | `views/DiaryView.tsx` | Med | Low | 0.2h | done | T299-T301 | 220e7db | - | - |
+| T303 | `DiaryEntryForm`: starts from the day's entry (keyed), no-mood default, previous / Pick date / next, one selected style | `diary/DiaryEntryForm.tsx` | High | Med | 1h | done | T302 | 220e7db | controls (no load, Save without a mood) each failed | - |
+| T304 | `DiaryCalendar`: Monday first, logged / today / future, a click loads the day | `diary/DiaryCalendar.tsx` | Med | Low | 0.6h | done | T300 | 220e7db | a clickable future day failed its test | - |
+| T305 | `RecentEntries` / `DiaryEntryRow` (replace `DiaryEntryCard`) | `diary/`, `DiaryEntryCard.tsx` (deleted) | Med | Low | 0.6h | done | T301 | 220e7db | - | - |
+| T306 | Delete confirms and checks the result; focus to the next entry | `views/DiaryView.tsx` | Med | Low | 0.3h | done | T305 | 220e7db | a delete without the confirm failed | - |
+| T307 | Day hand-off: `transactionsDayFilter`, `initialDayFilter`, `#tx-day-filter` | `App.tsx`, `views/TransactionsView.tsx` | Med | Low | 0.4h | done | T305 | 220e7db | bounds that ignore the day failed | - |
+| T308 | Unit: `diary-page` (17), day filter (2) | `unit/` | High | Low | 1h | done | T299-T307 | 220e7db | 6 controls caught | unit 518 -> 537 |
+| T309 | `tests/diary-page.spec.ts` (3); `diary.spec.ts` and `theme.spec.ts` unedited | `tests/` | High | Low | 0.4h | done | T302-T307 | 220e7db | - | E2E 384 -> 393 runs |
+| T310 | Gate: lint, unit, WCAG, build, Playwright, walk-through; "Daily diary" in the nav (`d80fb5e`); the Phase 60 size figures corrected | - | - | - | 1h | done | all | d80fb5e, DOCS61 | lint, unit 537/537, WCAG, build; Playwright 392 then 393 of 393 (one Firefox page-open failure in run 1); walk-through clean | entry +525 B |
+| T311 | Antislop audit 010 (mode 2) | `anti-slop/audit-010-2026-10-01.md` | - | - | 0.5h | done; findings await the owner | T310 | DOCS61 | 6 findings (2 MEDIUM, 4 LOW), no new Hard Gate failure | - |
+| T312 | ADR `0036`, `DESIGN.md`, `CLAUDE.md`, selector contract, ledger, log, metrics; sha backfill; draft PR | docs | Low | Low | 1h | docs done; draft PR on the owner's word | all | DOCS61 | - | - |
+
 ## Phase 60 - FinLife redesign, step 4, fourth page (Debt payoff): T285-T298 (2026-10-01)
 
 ADR `0035`. The plan was approved in plan mode; the owner's decisions:
@@ -1105,7 +1132,7 @@ Branch `phase-60-debts`, cut from `main` at `f58f681`, PR #8. It also carried `a
 | T292 | Unit: `debts-page` (18), signed-in `editDebt` (4) | `unit/` | High | Low | 1h | done | T285-T291 | bcc8621, ebf7a14 | 5 controls caught | unit 494 -> 516 |
 | T293 | Spec moves: `theme` (heading), `soft-delete` (open the menu first) | `tests/` | High | Low | 0.1h | done | T289 | ebf7a14 | locator/copy moves only; `debts.spec.ts` unedited | - |
 | T294 | `tests/debts-page.spec.ts` (3 guest tests) | `tests/` | High | Low | 0.3h | done | T291 | ebf7a14 | - | E2E 375 -> 384 runs |
-| T295 | Gate: lint, unit, WCAG, build, Playwright (four full runs), walk-through | - | - | - | 1h | done | all | - | lint, unit 516/516, WCAG, build; Playwright 384, 383, 383, 384 (two Firefox mobile-nav timeouts, the known intermittent; 240/240 on targeted repeats); walk-through clean | build entry +1,967 B |
+| T295 | Gate: lint, unit, WCAG, build, Playwright (four full runs), walk-through | - | - | - | 1h | done | all | - | lint, unit 516/516, WCAG, build; Playwright 384, 383, 383, 384 (two Firefox mobile-nav timeouts, the known intermittent; 240/240 on targeted repeats); walk-through clean | build entry +1,778 B |
 | T296 | Antislop audit 009 (mode 2) | `anti-slop/audit-009-2026-10-01.md` | - | - | 0.5h | done; findings 1 and 3 fixed (T298), the rest accepted | T295 | baae0e3 | 6 findings (2 MEDIUM, 4 LOW), no new Hard Gate failure | - |
 | T297 | ADR `0035`, `DESIGN.md`, `CLAUDE.md`, selector contract, ledger, log, metrics; sha backfill; draft PR | docs | Low | Low | 1h | done; draft PR on the owner's word, 2026-10-01 | all | baae0e3 | - | - |
 | T298 | Audit 009 findings 1 and 3: the L5 box's wording for a zero, negative or small surplus; "Debt payoff" in the nav | `debt/DebtSummaryCard.tsx`, `Navbar.tsx`, `MobileBottomNav.tsx`, `unit/debts-page.test.tsx` | Low | Low | 0.3h | done | the owner | d5a06c4 | a control with the old wording failed 2 tests; the Firefox intermittent measured on `main` (2/180) and here (1/180) | unit 516 -> 518 |
