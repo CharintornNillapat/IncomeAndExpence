@@ -1104,9 +1104,9 @@ Branch `phase-62-categories`, cut from `main` at `192e333`. It also carries `435
 | T322 | Header tab labels from `xl` (audit 007 finding 1) | `Navbar.tsx` | Med | Low | 0.1h | done | - | f8c62a0 | 1024: nav overflow 0 | - |
 | T323 | Unit: `categories-page` (16) | `unit/` | High | Low | 1h | done | T314-T322 | f8c62a0 | 7 controls caught in all | unit 537 -> 560 |
 | T324 | Spec moves (`categories`, `keywords`); `tests/categories-page.spec.ts` (3) | `tests/` | High | Low | 0.4h | done | T316-T322 | f8c62a0 | - | E2E 393 -> 402 runs |
-| T325 | Gate: lint, unit, WCAG, build, Playwright twice, walk-through | - | - | - | 1h | done | all | DOCS62 | lint clean; unit 560/560; Playwright 401/402 twice (one intermittent per run, outside the phase) | entry +2,561 B |
-| T326 | Antislop audit 011 (mode 2) | `anti-slop/audit-011-2026-10-01.md` | - | - | 0.5h | done; findings await the owner | T325 | DOCS62 | 5 findings (2 MEDIUM, 3 LOW), no new Hard Gate failure | - |
-| T327 | ADR `0037`, `DESIGN.md`, `CLAUDE.md`, selector contract, ledger, log, metrics; sha backfill; draft PR | docs | Low | Low | 1h | docs done; draft PR on the owner's word | all | DOCS62 | - | - |
+| T325 | Gate: lint, unit, WCAG, build, Playwright twice, walk-through | - | - | - | 1h | done | all | 03a1311 | lint clean; unit 560/560; Playwright 401/402 twice (one intermittent per run, outside the phase) | entry +2,561 B |
+| T326 | Antislop audit 011 (mode 2) | `anti-slop/audit-011-2026-10-01.md` | - | - | 0.5h | done; findings await the owner | T325 | 03a1311 | 5 findings (2 MEDIUM, 3 LOW), no new Hard Gate failure | - |
+| T327 | ADR `0037`, `DESIGN.md`, `CLAUDE.md`, selector contract, ledger, log, metrics; sha backfill; draft PR | docs | Low | Low | 1h | docs done; draft PR on the owner's word | all | 03a1311 | - | - |
 
 ## Phase 61 - FinLife redesign, step 4, fifth page (Daily diary): T299-T313 (2026-10-01)
 

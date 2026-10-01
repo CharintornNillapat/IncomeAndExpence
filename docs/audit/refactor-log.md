@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 62 - The Categories page (spec 6.6): T314-T327 (2026-10-01, commits `58b5d75`, `f8c62a0`, docs `DOCS62`)
+## Phase 62 - The Categories page (spec 6.6): T314-T327 (2026-10-01, commits `58b5d75`, `f8c62a0`, docs `03a1311`)
 
 **Changed**
 - **No migration.**
