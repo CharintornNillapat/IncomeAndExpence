@@ -31,7 +31,7 @@ export const MoodSpendingCard: React.FC<MoodSpendingCardProps> = ({ mood, today,
     <Card className="h-full flex flex-col gap-4">
       <div>
         <h2 className="text-base font-semibold text-fg">Mood &amp; spending</h2>
-        <p className="text-sm text-fg-muted mt-0.5">From your Daily Diary</p>
+        <p className="text-sm text-fg-muted mt-0.5">From your daily diary</p>
       </div>
 
       {mood.days.length > 0 && (

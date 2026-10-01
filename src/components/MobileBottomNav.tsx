@@ -44,7 +44,7 @@ const PRIMARY_RIGHT: NavItemConfig[] = [
 ];
 const MORE_ITEMS: NavItemConfig[] = [
   { id: 'debts', label: 'Debt payoff', shortLabel: 'Debts', icon: TrendingDown },
-  { id: 'diary', label: 'Daily Diary', shortLabel: 'Diary', icon: BookHeart },
+  { id: 'diary', label: 'Daily diary', shortLabel: 'Diary', icon: BookHeart },
   { id: 'categories', label: 'Categories', shortLabel: 'Categories', icon: Tags },
 ];
 const MORE_TAB_IDS = new Set<ActiveTab>(MORE_ITEMS.map((i) => i.id));
