@@ -159,6 +159,10 @@ describe('the form, from lg', () => {
     const used = swatch('new-category', ROSE);
     expect(used.disabled).toBe(true);
     expect(used.getAttribute('aria-label')).toBe('Rose, used by Pets');
+    expect(used.getAttribute('title')).toBe('Rose, used by Pets');
+    // A strike marks it as unavailable, not just paler (audit 011 finding 1).
+    expect(used.querySelector('[data-used-mark]')).not.toBeNull();
+    expect(swatch('new-category', IDENTITY_PALETTE[0].hex).querySelector('[data-used-mark]')).toBeNull();
     // A new category starts on the first free colour.
     expect(swatch('new-category', IDENTITY_PALETTE[0].hex).getAttribute('aria-pressed')).toBe('true');
 
@@ -236,6 +240,23 @@ describe('delete, from lg', () => {
 });
 
 describe('below lg', () => {
+  it('offers "Add category" in the header, which takes focus to the New form (audit 011 finding 2)', () => {
+    mount();
+    const open = byId('open-new-category-btn')!;
+    expect(open.textContent).toBe('Add category');
+    fireEvent.click(open);
+    expect(document.activeElement?.id).toBe('new-category-name');
+    // Not on the Smart rules tab, where there is no form to go to.
+    fireEvent.click(byId('category-subtab-rules')!);
+    expect(byId('open-new-category-btn')).toBeNull();
+  });
+
+  it('does not offer it from lg, where the form sits beside the list', () => {
+    wide();
+    mount();
+    expect(byId('open-new-category-btn')).toBeNull();
+  });
+
   it('a row opens the edit form in a sheet, and the new form stays on the page', () => {
     mount({ extra: [custom({ id: 'pets', name: 'Pets', color: ROSE })] });
     fireEvent.click(byId('edit-category-pets')!);

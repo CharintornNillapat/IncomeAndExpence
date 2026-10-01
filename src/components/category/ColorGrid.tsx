@@ -23,9 +23,11 @@ function swatchClass(isSelected: boolean): string {
 
 /**
  * Spec 6.6 and L9: the twelve identity colours in six columns. A colour another
- * category uses is disabled at 0.25 opacity and named ("Rose, used by Food &
- * Dining"). Each swatch is 28px inside a 44px button; the selected one takes the
- * focus-coloured ring, not a scale.
+ * category uses is disabled, its fill at 0.25 opacity under a full-strength
+ * diagonal strike, and named ("Rose, used by Food & Dining") in its label and
+ * tooltip. Opacity alone made a used colour read as a paler colour rather than
+ * an unavailable one (audit 011 finding 1). Each swatch is 28px inside a 44px
+ * button; the selected one takes the focus-coloured ring, not a scale.
  */
 export const ColorGrid: React.FC<ColorGridProps> = ({ idPrefix, value, onChange, used, currentColor, labelId }) => {
   const showCurrent = currentColor !== undefined && !isIdentityColor(currentColor);
@@ -46,10 +48,17 @@ export const ColorGrid: React.FC<ColorGridProps> = ({ idPrefix, value, onChange,
               title={owner ? `${name}, used by ${owner}` : name}
               onClick={() => onChange(hex)}
               className={`w-11 h-11 inline-flex items-center justify-center rounded-full ${
-                owner ? 'opacity-25 cursor-not-allowed' : 'cursor-pointer'
+                owner ? 'cursor-not-allowed' : 'cursor-pointer'
               }`}
             >
-              <span aria-hidden="true" className={swatchClass(isSelected)} style={{ backgroundColor: hex }} />
+              {owner ? (
+                <span aria-hidden="true" data-used-mark className="relative w-7 h-7 rounded-full border border-line-strong">
+                  <span className="absolute inset-0 rounded-full opacity-25" style={{ backgroundColor: hex }} />
+                  <span className="absolute left-1/2 top-1/2 w-8 h-0.5 -translate-x-1/2 -translate-y-1/2 -rotate-45 rounded-full bg-fg-secondary" />
+                </span>
+              ) : (
+                <span aria-hidden="true" className={swatchClass(isSelected)} style={{ backgroundColor: hex }} />
+              )}
             </button>
           );
         })}

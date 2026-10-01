@@ -1,9 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Plus } from 'lucide-react';
 import { useFinanceActions, useFinanceState } from '../context/FinanceContext';
 import { useMediaQuery } from '../hooks/useMediaQuery';
 import { Category } from '../types';
 import { categoryGroups, categoryUsage, usedColors } from '../selectors/categories';
 import { PageHeader } from '../components/ui/PageHeader';
+import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { SegmentedControl } from '../components/ui/SegmentedControl';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
@@ -119,6 +121,17 @@ export const CategoriesView: React.FC = () => {
     setFocusTick((tick) => tick + 1);
   }, [toDelete, deleteCategory]);
 
+  // Below `lg` the New form sits under the whole list, so the header offers a
+  // way to it (audit 011 finding 2): focus its Name field and bring it into
+  // view, smoothly unless the viewer asked for reduced motion.
+  const goToNewForm = useCallback(() => {
+    const field = document.getElementById('new-category-name');
+    if (!field) return;
+    field.focus({ preventScroll: true });
+    const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
+    field.scrollIntoView?.({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'center' });
+  }, []);
+
   const form = (category: Category | null, showHeading: boolean) => (
     <CategoryForm
       key={category ? category.id : `new-${newFormKey}`}
@@ -148,18 +161,25 @@ export const CategoriesView: React.FC = () => {
         title="Categories"
         description="Group your spending and income, and teach auto-categorization what belongs where"
         actions={
-          <SegmentedControl<CategorySubTab>
-            size="sm"
-            mode="tabs"
-            ariaLabel="Categories and smart rules"
-            value={subTab}
-            onChange={setSubTab}
-            className="flex"
-            options={[
-              { value: 'MANAGE', id: 'category-subtab-manage', label: 'Categories' },
-              { value: 'RULES', id: 'category-subtab-rules', label: 'Smart rules' },
-            ]}
-          />
+          <>
+            {!isWide && subTab === 'MANAGE' && (
+              <Button id="open-new-category-btn" variant="soft" icon={<Plus aria-hidden="true" className="w-4 h-4" />} onClick={goToNewForm}>
+                Add category
+              </Button>
+            )}
+            <SegmentedControl<CategorySubTab>
+              size="sm"
+              mode="tabs"
+              ariaLabel="Categories and smart rules"
+              value={subTab}
+              onChange={setSubTab}
+              className="flex"
+              options={[
+                { value: 'MANAGE', id: 'category-subtab-manage', label: 'Categories' },
+                { value: 'RULES', id: 'category-subtab-rules', label: 'Smart rules' },
+              ]}
+            />
+          </>
         }
       />
 
