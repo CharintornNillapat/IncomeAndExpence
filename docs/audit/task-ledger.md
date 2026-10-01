@@ -1081,6 +1081,39 @@ Approved explicitly by the user, planned and approved before any code was writte
 - **One negative control was redone** because the first attempt produced malformed TypeScript that the dev server still served — the tests failed, but possibly for the wrong reason.
 - **No flakes.** Phase 44's `wallets.spec.ts` webkit flake has now not reproduced across three consecutive phases; still watched rather than closed.
 
+## Phase 59 - FinLife redesign, step 4, third page (Wallets): T268-T282 (2026-10-01)
+
+ADR `0034`, amending `0008`. The plan was approved in plan mode; the owner's decisions:
+- a Dashboard wallet row hands off to the Wallets page with that wallet selected, and `WalletPopupModal` is deleted;
+- archive **and** unarchive, with archived wallets under a collapsed "Archived (N)";
+- Edit changes name, type and colour, never the balance;
+- antislop mode 2 (audit 008).
+
+Branch `phase-59-wallets`, cut from `main` at `8725c11`. It also carries `ffd1b4e`, the Phase 58b deploy record, which was not pushed.
+
+| # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
+|---|---|---|---|---|---|---|---|---|---|---|
+| T268 | `editWallet` + `WalletEditSchema` (no balance; a wallet in debt stays a credit card); `updateWallet` sends only named columns | `FinanceContext.tsx`, `zodSchemas.ts`, `types.ts` | High | Med | 0.5h | done | - | 373c28b | a control restoring the old payload failed 2 signed-in tests | - |
+| T269 | `setWalletArchived` | `FinanceContext.tsx` | Med | Low | 0.2h | done | T268 | 373c28b | see T278 | - |
+| T270 | `walletActivity`, `archivedWallets`, shared `byNewest` | `selectors/wallets.ts`, `TransactionsView.tsx` | Med | Low | 0.3h | done | - | 373c28b | 3 selector tests | - |
+| T271 | New-entry pickers offer active wallets only | `QuickAddModal.tsx`, `TransactionsView.tsx`, `hooks/useDebts.ts` | Med | Low | 0.2h | done | T269 | 373c28b | a control restoring the old filter failed the archive spec | - |
+| T272 | `WalletsView`: `PageHeader`, master-detail from `lg` (5/7, then 4/8 at `xl`), sheet below | `views/WalletsView.tsx` | High | Med | 1h | done | T268-T271 | 21dba28 | - | - |
+| T273 | `WalletList`: AllocationBar, row buttons, dashed Add wallet, Archived group | `wallet/WalletList.tsx`, `walletFormStyles.ts` | High | Low | 0.5h | done | T272 | 21dba28 | - | - |
+| T274 | `WalletDetail`: header + menu, balance box, Adjust editor (moved), Edit form, activity | `wallet/WalletDetail.tsx` | High | Med | 1.5h | done | T272 | 21dba28 | - | - |
+| T275 | `ActivityFeed` extracted from `RecentActivityCard` | `transaction/ActivityFeed.tsx`, `dashboard/RecentActivityCard.tsx` | Med | Med | 0.3h | done | - | 21dba28 | `unit/dashboard.test.tsx` unedited, 17/17 | - |
+| T276 | Dashboard hand-off through `App.tsx` | `App.tsx`, `DashboardView.tsx`, `WalletsSection.tsx` | Med | Low | 0.3h | done | T272 | 21dba28 | - | - |
+| T277 | Delete `WalletPopupModal` and its compact icons, `sm` size, `tintOverride` | `WalletPopupModal.tsx` (deleted), `TxCells.tsx`, `txTypeMeta.ts` | Med | Low | 0.2h | done | T276 | 21dba28 | - | - |
+| T278 | Unit: `wallets-page` (12), selectors (3), signed-in (3) | `unit/` | High | Low | 1h | done | T268-T277 | 373c28b, 21dba28 | 5 mutations caught | unit 471 -> 489 |
+| T279 | Spec moves: `soft-delete`, `account-and-mobile-nav`, `theme`, `date-boundary` | `tests/` | High | Med | 0.3h | done | T272-T277 | 21dba28 | locator/copy moves only | - |
+| T280 | `tests/wallets-page.spec.ts` (3 guest tests) | `tests/` | High | Low | 0.3h | done | T272-T277 | 21dba28 | 2 controls each failed their test | E2E 366 -> 375 runs |
+| T281 | Gate: lint, unit, WCAG, build, Playwright twice, walk-through, antislop audit 008; audit 008's in-pass fix (Escape in the menu closed the sheet) | `ui/OverflowMenu.tsx`, `unit/ui-controls.test.tsx` | - | - | 1h | done | all | 77e33cf | 375/375 twice; the fix's test failed first; 90 menu-spec runs after it | unit 489 -> 490 |
+| T282 | ADR `0034`, `DESIGN.md`, `CLAUDE.md`, selector contract, ledger, log, metrics; sha backfill; draft PR | docs | Low | Low | 1h | done | all | (docs commit) | - | - |
+
+**Notes on execution:**
+- **The walk-through found three layout problems, all fixed before the gate:** the balance box had no inner padding; at 1024 a 4/12 list cut every wallet name off; and the balance buttons wrapped into a column beside the figure.
+- **A full-page screenshot reported a doubled detail that a user never sees.** Chromium resizes the viewport to 1px wide for the capture, which flips `useMediaQuery` and leaves the sheet's exit animation stuck. A real resize across 1024 gives one copy each way. Recorded in `CLAUDE.md` and the selector contract.
+- **`updateWallet` had always sent `balance: undefined`.** `JSON.stringify` dropped it, so nothing was wrong on the wire, but nothing stopped a caller from sending one. It now sends only the columns it is given, and a signed-in test pins the absence.
+
 ## Phase 58b - Editing a transaction (spec 6.2's edit panel): T253-T267 (2026-09-30)
 
 ADR `0033`. The plan was approved in plan mode; the owner's decisions:

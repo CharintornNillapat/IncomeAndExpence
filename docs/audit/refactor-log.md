@@ -4,6 +4,41 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
+## Phase 59 - The Wallets page (spec 6.3): T268-T282 (2026-10-01, commits `373c28b`, `21dba28`, `77e33cf`)
+
+**Changed**
+- **No migration.** `wallets.is_archived` already existed and was mapped.
+- **`FinanceContext`:**
+  - `editWallet` (name, type, colour; `WalletEditSchema` keeps a wallet in debt a credit card);
+  - `setWalletArchived`;
+  - `updateWallet` sends only the columns it is given (it used to send `balance: undefined` on every call).
+- **Selectors:** `walletActivity`, `archivedWallets`, and `byNewest` moved out of `TransactionsView`.
+- **Pickers:** Quick Add, the Transactions Add form and the repay modal offer active wallets only.
+- **UI:**
+  - `WalletsView` rebuilt as master-detail: `PageHeader` "฿X across N wallets", `WalletList` (AllocationBar, row buttons, dashed Add wallet, "Archived (N)") and `WalletDetail` (header with Edit and a menu with Archive and Delete…, the 40px balance with Transfer out and Adjust balance, and the wallet's activity);
+  - from `lg` at 5/7, 4/8 from `xl`; below `lg` a tapped wallet opens in a sheet;
+  - `ActivityFeed` extracted from `RecentActivityCard` and shared;
+  - a Dashboard wallet row opens the page with that wallet selected, and `WalletPopupModal` is deleted with the compact icon set, the `sm` icon size and `tintOverride`.
+- **Tests:**
+  - `unit/wallets-page.test.tsx` (12), 3 selector tests and 3 signed-in tests: unit 471 -> 489 in 23 files, and the audit 008 fix's test: 490;
+  - `tests/wallets-page.spec.ts` (3 guest tests): E2E 366 -> 375 runs;
+  - four specs moved, by locator or copy: `soft-delete`, `account-and-mobile-nav`, `theme`, `date-boundary`.
+- **Docs:** ADR `0034` (amends `0008`), `DESIGN.md` (the page; two deviations added, one widened), `CLAUDE.md`, `test-selector-contract.md`, antislop audit 008.
+
+**Surprises**
+- **The walk-through's first doubled detail was the screenshot, not the page.** A full-page capture in Chromium sets the viewport to 1px wide, which flips `useMediaQuery`, opens the narrow layout's sheet, and leaves the sheet's exit animation stuck. A real resize across 1024 gives one copy each way.
+- **Three real layout faults showed only in the browser:** the balance box had no inner padding (`Inset` leaves padding to the caller); at 1024 a 4/12 list cut every wallet name off; and the balance buttons wrapped into a column beside the figure.
+- **Commit 1 first swallowed the popup's deletion**, staged by an earlier `git rm`, which would have left that commit unbuildable. It was redone before anything was pushed, and checked to type-check on its own.
+- **Audit 008 found Escape in the "⋯" menu closing the whole sheet** at 390px. This phase is the first to put an `OverflowMenu` inside a `Modal`, whose `document` listener also took the menu's Escape. The menu now stops its own Escape; a unit test failed before the fix. After it, lint, unit 490/490 and the 90 runs of every spec that opens a menu passed on all three browsers.
+- **A Vite server left behind by a stopped shell answered on port 3000** during run 1. It served the current tree, and only docs changed during the run, so the run stands; the process was stopped before run 2.
+
+**Gate:**
+- **Lint:** clean. **Unit:** 489/489, then 490/490 with the audit 008 fix. **WCAG:** all pairs pass; no token changed.
+- **Mutations:** 5 caught (transfer direction dropped, the credit-card rule removed, the delete count including deleted rows, and the old `updateWallet` payload twice). The two new E2E controls (archived wallet still in Quick Add; the hand-off ignoring the wallet) each failed their test.
+- **Playwright (local, 4 workers):** run 1 375/375 (6.9 min), run 2 375/375 (7.1 min), no retries in either.
+- **Build:** entry +1,579 B (+398 B gzip), all JS +1,599 B, CSS −642 B; `DashboardView` −13,068 B with the popup gone, `WalletsView` +10,889 B. No vendor chunk grew.
+- **Walk-through** (Playwright's Chromium by script; the MCP server did not connect) at 1280 light, 1024 light, 900 dark, 390 light and dark: 0 controls under 44px, no page overflow, one detail per width.
+
 ## Phase 58b - Editing a transaction (spec 6.2's edit panel): T253-T267 (2026-09-30, commits `dc166a0`...`5f19972`, and T267's own)
 
 **Changed**
