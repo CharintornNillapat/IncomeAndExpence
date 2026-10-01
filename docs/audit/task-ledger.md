@@ -1090,6 +1090,7 @@ ADR `0037`. The plan was approved in plan mode; the owner's decisions:
 - antislop mode 2 (audit 011).
 
 Branch `phase-62-categories`, cut from `main` at `192e333`. It also carries `43524c4`, the Phase 61 deploy record, which had not been pushed. No migration.
+- Merged into `main` as `ba87338` with a merge commit, with the owner's go-ahead, after audit 011's findings 1 and 2 were fixed (T328). PR run `36876112983` and push run `36881986291` passed. Vercel `dpl_BXMooK9LkRpXEe5c85WzPbp6zo9z` is READY and serves the local build byte for byte.
 
 | # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
 |---|---|---|---|---|---|---|---|---|---|---|

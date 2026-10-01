@@ -68,6 +68,24 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
   Lint clean, unit 562/562, and a control for each failed its test. The category, rules, nav and wallet specs passed 117/117 on all three browsers. Checked in Chromium at 1280 and 390, light and dark: the strike shows in both themes; at 390 the button lands focus on Name with the field in view; no overflow, no control under 44px, no console errors.
 
+**CI and deploy:**
+- PR #10, run `36876112983` on `428fe82`: success. Unit 562/562 with no `.env` on the runner, and 134/134 per browser, none flaky. The run took 23 min from creation to completion, against about 5 for the last two PRs; its jobs took 2.4 to 3.3 min each, so the extra time was not spent in the tests.
+- Merged as PR #10 with a merge commit, `ba87338`, with the owner's go-ahead. Its tree is identical to `428fe82`. It also published `43524c4`, the Phase 61 deploy record.
+- Push run `36881986291` on `ba87338`: success, with the WebKit job re-run once (attempt 2) after its first attempt was cancelled in the apt step. Unit 562/562; 134/134 per browser.
+- **The slow runs were the runner's apt mirror, not the suite.** `playwright install-deps` fetches WebKit's and Firefox's system packages from `azure.archive.ubuntu.com` on every run, even on a browser-cache hit. On PR #10 that step took 19 min for WebKit. On the push run it took 5.5 min for Firefox, and WebKit's was still downloading at about 10 s a package when the job hit its 30-minute limit and was cancelled, before any test ran. Re-running only that job, the step took 40 s and the tests 2.7 min. The test steps themselves took 2.0 to 3.3 min throughout.
+- Vercel `dpl_BXMooK9LkRpXEe5c85WzPbp6zo9z` Production `READY`. `income-and-expence-neon.vercel.app` serves `index-Bs-bFJlh.js` at **185,111 B**, the size measured in the gate.
+- **All 60 files of a clean local build (with `.env`) were hashed against production.** 55 are byte-for-byte identical. The two SVGs, `robots.txt` and `index.html` differ only in line endings: the worktree checked `index.html` out with CRLF, and once every `\r` is removed it matches. `sw.js` has the same 59 precache URLs.
+- **Signed-out smoke test on production** (fresh headless Chromium, no auth token in storage, no console errors):
+  - at 1280:
+    - the header tab reads "Categories", and the page has the tabs Categories and Smart rules;
+    - the groups read "Expense · 5", "Income · 2" and "System · 2"; the System rows are not buttons, each with a lock and "Not counted as income or spending"; no raw type on either tab;
+    - a new Income category "Smoke tips" took Tan, the first free colour, and read "Custom". Tan then showed disabled, struck through and named "Tan, used by Smoke tips";
+    - Food & Dining's edit form had no Delete and said "Default categories can't be deleted."; focus went to the form's heading, and Cancel returned it to the row;
+    - Delete on "Smoke tips" confirmed first; Cancel kept it, confirm removed it, focus went to the list's heading and Tan was free again;
+    - the Smart rules picker reads "Groceries (Expense)", and the System ones by name alone;
+  - at 1024: the header tabs are icons only, named "Categories", with no overflow in the tab bar or the page; "Add category" is absent;
+  - at 390, light and dark: the More sheet's item reads "Categories". "Add category" scrolled 658px and focused Name in view; a saved category struck its colour; a tapped row opened the "Edit category" sheet with Delete enabled; Escape returned focus to the row. No page overflow and 0 controls under 44px, on the page or in the sheet.
+
 ## Phase 61 - The Daily diary (spec 6.5): T299-T313 (2026-10-01, commits `e8a1f79`, `220e7db`, `d80fb5e`, `7b68e67`, docs `cc9c310`)
 
 **Changed**
