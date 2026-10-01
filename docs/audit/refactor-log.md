@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 63 - The identity colour migration (spec 5.1): T329-T337 (2026-10-02, commits `1f09894`, `cdda81d`, docs `DOCS63`)
+## Phase 63 - The identity colour migration (spec 5.1): T329-T337 (2026-10-02, commits `1f09894`, `cdda81d`, docs `ce9731b`)
 
 **Changed**
 - **One data-only migration,** `supabase/migrations/20261002_phase63_identity_colors.sql`, with its probe. It is applied to the live project only after the merge and the deploy, on the owner's word.

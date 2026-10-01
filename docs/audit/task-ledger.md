@@ -1099,9 +1099,9 @@ Branch `phase-63-category-colours`, cut from `main` at `ba87338`. It also carrie
 | T332 | "Color" throughout, swatches named by colour, "Current color"; System chip colour in the rules table | `wallet/`, `category/`, `identityPalette.ts` | Low | Low | 0.3h | done | - | `1f09894` | - | - |
 | T333 | The SQL migration and its probe | `supabase/` | High | Med | 1h | done; not applied | T329 | `cdda81d` | `PHASE 63 PROBE OK` on the live schema | - |
 | T334 | Unit: `identity-color-migration` (9), page and seed tests (7), 3 fixtures moved | `unit/` | High | Low | 0.7h | done | T329-T332 | `1f09894` | 6 controls caught in all | unit 562 -> 578 |
-| T335 | Gate: lint, unit, build, Playwright twice, walk-through | - | - | - | 1h | done | all | DOCS63 | GATE63 | entry +1,817 B |
-| T336 | Antislop audit 012 (mode 2) | `anti-slop/audit-012-2026-10-02.md` | - | - | 0.4h | done; findings await the owner | T335 | DOCS63 | AUDIT63 | - |
-| T337 | ADR `0038`, `DESIGN.md`, `CLAUDE.md`, ledger, log, metrics; sha backfill; draft PR | docs | Low | Low | 0.6h | docs done; draft PR on the owner's word | all | DOCS63 | - | - |
+| T335 | Gate: lint, unit, build, Playwright twice, walk-through | - | - | - | 1h | done | all | ce9731b | lint clean; unit 578/578; Playwright 398/402 then 401/402 (click-settling timeouts only, each file green on repeat); probe OK | entry +1,817 B |
+| T336 | Antislop audit 012 (mode 2) | `anti-slop/audit-012-2026-10-02.md` | - | - | 0.4h | done; findings await the owner | T335 | ce9731b | 4 findings (1 MEDIUM, 3 LOW), no new Hard Gate failure | - |
+| T337 | ADR `0038`, `DESIGN.md`, `CLAUDE.md`, ledger, log, metrics; sha backfill; draft PR | docs | Low | Low | 0.6h | docs done; draft PR on the owner's word | all | ce9731b | - | - |
 
 ## Phase 62 - FinLife redesign, step 4, sixth page (Categories): T314-T328 (2026-10-01)
 
