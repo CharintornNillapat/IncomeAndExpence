@@ -43,7 +43,7 @@ const PRIMARY_RIGHT: NavItemConfig[] = [
   { id: 'wallets', label: 'Wallets', shortLabel: 'Wallets', icon: WalletIcon },
 ];
 const MORE_ITEMS: NavItemConfig[] = [
-  { id: 'debts', label: 'Debt Payoff', shortLabel: 'Debts', icon: TrendingDown },
+  { id: 'debts', label: 'Debt payoff', shortLabel: 'Debts', icon: TrendingDown },
   { id: 'diary', label: 'Daily Diary', shortLabel: 'Diary', icon: BookHeart },
   { id: 'categories', label: 'Categories', shortLabel: 'Categories', icon: Tags },
 ];

@@ -203,6 +203,22 @@ One period for the whole page, chosen in the `PageHeader`. Every figure comes fr
 - **Dashboard hand-off:** a Dashboard wallet row opens the page with that wallet selected. The wallet popup is gone.
 - **Closing the sheet returns focus to the wallet row that opened it**, as every `Modal` now does (audit 008).
 
+### Debt payoff (spec 6.4, ADR 0035)
+- **Header:** `PageHeader` "Debt payoff" with "N active debts · sorted by due date" and the one primary button, "Add debt".
+- **Summary:** one card, three columns once it is 42rem wide, stacked below that:
+  - Still owed, in red, "of ฿X borrowed";
+  - Paid off, as a percentage, with a `ProgressBar` and "฿X repaid" in green;
+  - when L5 fires, an amber note box with "Needed per month to hit every due date", the total and the gap; otherwise an inset "On track" with the monthly figure.
+- **Cards:** two columns from `md`, the active debts nearest due date first (overdue at the top, undated last).
+  - **Header:** the name, then the interest tag ("4.5% APR" or "Interest-free") and the due tag. "Due <date> · ~N months" is amber when the debt alone needs more a month than the surplus (L5). An overdue debt reads "Overdue · due <date>" in red; an undated one, "No due date". A "⋯" menu holds "Edit debt" and "Delete debt…" (red).
+  - **Body:** "Still owed" at 28px in red, then "N% paid" beside a `ProgressBar`, then three insets: Borrowed, Repaid (green) and Needed / month (amber with the same L5 condition). The insets become label-and-figure rows when the card is under 24rem.
+  - **Actions:** "Make repayment" (primary) and "Mark as paid off" (secondary, ✓), side by side when there is room.
+- **Paid off (N):** a plain heading and the paid-off cards, open, below the active ones. They keep "100% Fully Settled!" and "✓ Debt Fully Settled", and only their menu.
+- **Caption:** "Debt repayments move money out of a wallet but aren't counted as spending."
+- **Mark as paid off confirms first**, in a dialog that is not styled as destructive. It says it records no payment and moves no money. A failure stays in the dialog.
+- **Edit** is a dialog: title, Borrowed, interest, minimum and due date. What is still owed is shown beside Borrowed as text, never as a field, and Borrowed can't go below it.
+- **Focus:** after a write-off or a repayment that clears the debt, focus goes to the card's "⋯"; after a delete, to "Add debt". Every other dialog returns focus to its opener.
+
 ### Sync indicator (header)
 Five states. The first is for guests; the other four are for a signed-in user, checked in this order.
 
@@ -255,3 +271,7 @@ Five states. The first is for guests; the other four are for a signed-in user, c
 | Wallets: 4/12 and 8/12, one column below 1280 | Master-detail from `lg` (1024) at 5/7, the spec's 4/8 from `xl` | At 1024 a 4/12 list cut every wallet name off; the Transactions panel is inline from `lg` too (ADR 0033). |
 | Wallets: the balance box's buttons beside the 40px figure | Beside it from `xl`, under it below that | In the 5/7 detail and the sheet they wrapped into a column next to the number. |
 | A transfer row: "Transfer" over "Main → Cash" only | "Main → Cash · Funds transfer" when the transfer has a note of its own | The title is always "Transfer", so a note the user wrote would otherwise disappear. |
+| Debt payoff: three summary columns | Three from a 42rem card, stacked below | At 390 and from 768 to 900 the three figures would not fit side by side. |
+| Debt payoff: Borrowed, Repaid and Needed / month as three boxes | Three boxes from a 24rem card, label-and-figure rows below | Three ฿ figures in a narrow card would wrap or be cut off. |
+| Debt payoff: no section for paid-off debts | An open "Paid off (N)" section below the active ones | The owner's decision (2026-10-01, ADR 0035): a paid-off debt between the active ones hid the order by due date. |
+| Debt payoff: the due tag for a dated debt only | "Overdue · due <date>" in red, and "No due date" | Both cases exist in the ledger and need a tag of their own. |

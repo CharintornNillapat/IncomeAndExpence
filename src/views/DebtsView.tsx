@@ -1,38 +1,56 @@
-import React, { useState, useCallback } from 'react';
-import {
-  Plus,
-  Landmark,
-} from 'lucide-react';
+import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
+import { Plus, Landmark } from 'lucide-react';
 import { useDebts } from '../hooks/useDebts';
 import { useSubmitHandler } from '../hooks/useSubmitHandler';
 import { useFinanceState, useFinanceActions } from '../context/FinanceContext';
-import { APP_CURRENCY_SYMBOL } from '../utils/currency';
+import { APP_CURRENCY_SYMBOL, formatCurrencyAmount } from '../utils/currency';
+import { todayIsoDate } from '../utils/date';
+import { buildLookupMap } from '../utils/mapUtils';
+import { debtPlan, monthlySurplus, DebtPlanItem } from '../selectors/debts';
 import { Debt } from '../types';
-import { DebtCardItem } from '../components/DebtCardItem';
+import { DebtCard } from '../components/debt/DebtCard';
+import { DebtSummaryCard } from '../components/debt/DebtSummaryCard';
+import { EditDebtModal } from '../components/debt/EditDebtModal';
 import { TransactionForm } from '../components/TransactionForm';
 import { Modal } from '../components/Modal';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
-import { SectionHeader } from '../components/ui/SectionHeader';
+import { PageHeader } from '../components/ui/PageHeader';
 import { Card } from '../components/ui/Card';
 import { EmptyState } from '../components/ui/EmptyState';
 import { LABEL_CLASS, inputClass, ERROR_BANNER_CLASS } from '../utils/formStyles';
 import { Button } from '../components/ui/Button';
 
+/**
+ * Spec 6.4 (Phase 60, ADR 0035): the Debt payoff page. A summary of what is
+ * still owed, paid off and needed a month (L4, L5), then the active debts
+ * nearest due date first, then the paid-off ones. Every figure comes from
+ * `useDebts().metrics` or `src/selectors/` (ADR 0028), computed here once.
+ */
 export const DebtsView: React.FC = () => {
-  const { debts, wallets, addDebt, settleDebt, deleteDebt } = useDebts();
-  const { categories } = useFinanceState();
+  const { debts, activeDebts, settledDebts, wallets, metrics, addDebt, editDebt, settleDebt, deleteDebt } = useDebts();
+  const { categories, transactions } = useFinanceState();
   const { addTransaction } = useFinanceActions();
+
+  const today = todayIsoDate();
+  const categoryMap = useMemo(() => buildLookupMap(categories), [categories]);
+  // L4 and L5: the surplus is the past 30 days, as on the Dashboard.
+  const plan = useMemo(
+    () => debtPlan(debts, today, monthlySurplus(transactions, today, categoryMap)),
+    [debts, today, transactions, categoryMap]
+  );
+  const planItems = useMemo(() => new Map<string, DebtPlanItem>(plan.items.map((item) => [item.debt.id, item])), [plan]);
 
   const [isAddDebtOpen, setIsAddDebtOpen] = useState<boolean>(false);
   const [repayDebtTarget, setRepayDebtTarget] = useState<Debt | null>(null);
-  // T42: debt deletion had no confirmation - gate it behind `ConfirmDialog`.
-  // T73: stores only the id, not the `Debt` object, so `handleDelete` below
-  // never needs to close over the `debts` array - the target is resolved at
-  // render time instead, keeping `handleDelete`'s identity stable across
-  // every debt-array change and preserving `DebtCardItem`'s `React.memo`.
+  // The dialogs store ids, resolved at render, so the card callbacks below
+  // never close over `debts` and keep `DebtCard`'s `React.memo` (T73).
+  const [editDebtId, setEditDebtId] = useState<string | null>(null);
   const [debtToDeleteId, setDebtToDeleteId] = useState<string | null>(null);
   const [isDeletingDebt, setIsDeletingDebt] = useState<boolean>(false);
   const [deleteDebtError, setDeleteDebtError] = useState<string | null>(null);
+  const [debtToSettleId, setDebtToSettleId] = useState<string | null>(null);
+  const [isSettlingDebt, setIsSettlingDebt] = useState<boolean>(false);
+  const [settleDebtError, setSettleDebtError] = useState<string | null>(null);
 
   // New Debt Form State
   const [debtName, setDebtName] = useState<string>('');
@@ -42,13 +60,49 @@ export const DebtsView: React.FC = () => {
   const [minimumPayment, setMinimumPayment] = useState<number>(200);
   const [dueDate, setDueDate] = useState<string>('2026-12-31');
 
-  // Resolved at render time from the id above, rather than stored directly -
-  // see the state declaration's comment for why.
-  const debtToDelete = debtToDeleteId ? debts.find((d) => d.id === debtToDeleteId) ?? null : null;
+  const findDebt = (id: string | null) => (id ? debts.find((d) => d.id === id) ?? null : null);
+  const debtToDelete = findDebt(debtToDeleteId);
+  const debtToSettle = findDebt(debtToSettleId);
+  const debtToEdit = findDebt(editDebtId);
+
+  // `Modal` gives focus back to the control that opened it, but Mark as paid
+  // off, a settling repayment and Delete each remove that control. Focus then
+  // goes to the debt's ⋯ menu, which a paid-off card keeps, or to Add debt.
+  const focusAfterCloseRef = useRef<string | null>(null);
+  useEffect(() => {
+    const id = focusAfterCloseRef.current;
+    if (!id || debtToSettleId || debtToDeleteId || repayDebtTarget) return;
+    focusAfterCloseRef.current = null;
+    document.getElementById(id)?.focus({ preventScroll: true });
+  }, [debtToSettleId, debtToDeleteId, repayDebtTarget, debts]);
 
   const handleSettle = useCallback((id: string) => {
-    settleDebt(id);
-  }, [settleDebt]);
+    setSettleDebtError(null);
+    setDebtToSettleId(id);
+  }, []);
+
+  const handleCloseSettle = useCallback(() => {
+    setDebtToSettleId(null);
+    setSettleDebtError(null);
+  }, []);
+
+  // A rejected write keeps the dialog open with the reason (MutationResult).
+  const handleConfirmSettle = useCallback(async () => {
+    if (!debtToSettleId) return;
+    setIsSettlingDebt(true);
+    setSettleDebtError(null);
+    const result = await settleDebt(debtToSettleId);
+    setIsSettlingDebt(false);
+    if (!result.success) {
+      setSettleDebtError(result.error || 'Failed to mark the debt as paid off');
+      return;
+    }
+    focusAfterCloseRef.current = `debt-menu-btn-${debtToSettleId}`;
+    setDebtToSettleId(null);
+  }, [debtToSettleId, settleDebt]);
+
+  const handleEdit = useCallback((id: string) => setEditDebtId(id), []);
+  const handleCloseEdit = useCallback(() => setEditDebtId(null), []);
 
   const handleDelete = useCallback((id: string) => {
     setDeleteDebtError(null);
@@ -60,9 +114,6 @@ export const DebtsView: React.FC = () => {
     setDeleteDebtError(null);
   }, []);
 
-  // Rejected write keeps the dialog open with the reason shown, instead of
-  // closing as if nothing happened - the same MutationResult convention every
-  // write form in this app follows.
   const handleConfirmDeleteDebt = useCallback(async () => {
     if (!debtToDeleteId) return;
     setIsDeletingDebt(true);
@@ -73,6 +124,7 @@ export const DebtsView: React.FC = () => {
       setDeleteDebtError(result.error || 'Failed to delete debt');
       return;
     }
+    focusAfterCloseRef.current = 'open-add-debt-btn';
     setDebtToDeleteId(null);
   }, [debtToDeleteId, deleteDebt]);
 
@@ -102,12 +154,9 @@ export const DebtsView: React.FC = () => {
     );
 
   // T38: routes through the same generic addTransaction path every other
-  // TransactionForm consumer uses, rather than the useDebts().repayDebt /
-  // repayDebtAtomic wrapper the hand-rolled form used to call. addTransaction
-  // itself decrements the target debt's remainingAmount (and auto-settles it
-  // at zero) whenever type is DEBT_REPAYMENT and a debtId is present -
-  // repayDebtAtomic was only ever a thin pre-fill of category/description
-  // around that same call, so nothing is lost by calling it directly.
+  // TransactionForm consumer uses. addTransaction itself decrements the
+  // target debt's remainingAmount (and auto-settles it at zero) whenever type
+  // is DEBT_REPAYMENT and a debtId is present.
   const handleRepaySubmit = useCallback(
     async (data: Parameters<React.ComponentProps<typeof TransactionForm>['onSubmitTransaction']>[0]) => {
       const res = await addTransaction({
@@ -115,26 +164,47 @@ export const DebtsView: React.FC = () => {
         transactionDate: data.date,
       });
       if (res && res.success) {
+        // A payment of the whole remainder settles the debt, which takes its
+        // Make repayment button away.
+        if (repayDebtTarget && data.amount >= repayDebtTarget.remainingAmount) {
+          focusAfterCloseRef.current = `debt-menu-btn-${repayDebtTarget.id}`;
+        }
         setRepayDebtTarget(null);
       }
       return res;
     },
-    [addTransaction]
+    [addTransaction, repayDebtTarget]
+  );
+
+  const activeCount = activeDebts.length;
+  const renderCard = (debt: Debt) => (
+    <DebtCard
+      key={debt.id}
+      debt={debt}
+      planItem={planItems.get(debt.id)}
+      onOpenRepay={handleOpenRepay}
+      onSettle={handleSettle}
+      onEdit={handleEdit}
+      onDelete={handleDelete}
+    />
   );
 
   return (
     <div className="space-y-6">
-      <SectionHeader
-        title="Debts & Loans"
-        subtitle="Track payoff goals and make repayments from your wallets"
-        action={
-          <Button id="open-add-debt-btn" onClick={() => setIsAddDebtOpen(true)} icon={<Plus className="w-4 h-4" />}>
-            <span>Add Debt</span>
+      <PageHeader
+        title="Debt payoff"
+        description={
+          activeCount === 0
+            ? 'No active debts'
+            : `${activeCount} active ${activeCount === 1 ? 'debt' : 'debts'} · sorted by due date`
+        }
+        actions={
+          <Button id="open-add-debt-btn" onClick={() => setIsAddDebtOpen(true)} icon={<Plus aria-hidden="true" className="w-4 h-4" />}>
+            Add debt
           </Button>
         }
       />
 
-      {/* Debt Targets Cards Grid */}
       {debts.length === 0 ? (
         <Card>
           <EmptyState
@@ -144,30 +214,49 @@ export const DebtsView: React.FC = () => {
           />
         </Card>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          {debts.map((debt) => (
-            <DebtCardItem
-              key={debt.id}
-              debt={debt}
-              onSettle={handleSettle}
-              onDelete={handleDelete}
-              onOpenRepay={handleOpenRepay}
-            />
-          ))}
-        </div>
+        <>
+          <DebtSummaryCard
+            remaining={metrics.remainingTarget}
+            total={metrics.totalTarget}
+            paid={metrics.paidTarget}
+            progressPercent={metrics.progressPercent}
+            plan={plan}
+          />
+
+          {activeCount === 0 ? (
+            <p className="text-sm text-fg-muted">Every debt is paid off.</p>
+          ) : (
+            <section aria-label="Active debts" className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              {activeDebts.map(renderCard)}
+            </section>
+          )}
+
+          {settledDebts.length > 0 && (
+            <section aria-labelledby="debts-paid-off-heading" className="space-y-4">
+              <h2 id="debts-paid-off-heading" className="text-base font-semibold text-fg">
+                Paid off ({settledDebts.length})
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">{settledDebts.map(renderCard)}</div>
+            </section>
+          )}
+
+          <p id="debts-caption" className="text-xs text-fg-muted">
+            Debt repayments move money out of a wallet but aren't counted as spending.
+          </p>
+        </>
       )}
 
       {/* Add Debt Modal / Responsive Mobile Bottom Sheet */}
       <Modal
         isOpen={isAddDebtOpen}
         onClose={() => setIsAddDebtOpen(false)}
-        title="Add Debt"
+        title="Add debt"
         bodyClassName="space-y-4 sm:space-y-5"
       >
         <form onSubmit={handleCreateDebt} className="space-y-4">
           <div>
-            <label className={LABEL_CLASS}>
-              Debt Title *
+            <label htmlFor="new-debt-name" className={LABEL_CLASS}>
+              Debt title *
             </label>
             <input
               id="new-debt-name"
@@ -182,8 +271,8 @@ export const DebtsView: React.FC = () => {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <div>
-              <label className={LABEL_CLASS}>
-                Total Amount ({APP_CURRENCY_SYMBOL}) *
+              <label htmlFor="new-debt-total" className={LABEL_CLASS}>
+                Total amount ({APP_CURRENCY_SYMBOL}) *
               </label>
               <input
                 id="new-debt-total"
@@ -202,7 +291,7 @@ export const DebtsView: React.FC = () => {
             </div>
 
             <div>
-              <label className={LABEL_CLASS}>
+              <label htmlFor="new-debt-remaining" className={LABEL_CLASS}>
                 Remaining ({APP_CURRENCY_SYMBOL})
               </label>
               <input
@@ -219,8 +308,8 @@ export const DebtsView: React.FC = () => {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <div>
-              <label className={LABEL_CLASS}>
-                Interest Rate (% APR)
+              <label htmlFor="new-debt-interest" className={LABEL_CLASS}>
+                Interest rate (% APR)
               </label>
               <input
                 id="new-debt-interest"
@@ -234,8 +323,8 @@ export const DebtsView: React.FC = () => {
             </div>
 
             <div>
-              <label className={LABEL_CLASS}>
-                Min Monthly ({APP_CURRENCY_SYMBOL})
+              <label htmlFor="new-debt-min-payment" className={LABEL_CLASS}>
+                Min monthly ({APP_CURRENCY_SYMBOL})
               </label>
               <input
                 id="new-debt-min-payment"
@@ -250,8 +339,8 @@ export const DebtsView: React.FC = () => {
           </div>
 
           <div>
-            <label className={LABEL_CLASS}>
-              Target Payoff Date
+            <label htmlFor="new-debt-due-date" className={LABEL_CLASS}>
+              Target payoff date
             </label>
             <input
               id="new-debt-due-date"
@@ -270,7 +359,7 @@ export const DebtsView: React.FC = () => {
             )}
 
             <Button id="save-new-debt-btn" type="submit" size="lg" block>
-              Add Debt
+              Add debt
             </Button>
           </div>
         </form>
@@ -298,6 +387,25 @@ export const DebtsView: React.FC = () => {
         )}
       </Modal>
 
+      <EditDebtModal debt={debtToEdit} onClose={handleCloseEdit} onSave={editDebt} />
+
+      {/* Mark as paid off writes the debt off: no payment, no wallet moves (ADR 0016, 0035). */}
+      <ConfirmDialog
+        isOpen={!!debtToSettleId}
+        onClose={handleCloseSettle}
+        onConfirm={handleConfirmSettle}
+        isLoading={isSettlingDebt}
+        error={settleDebtError}
+        isDestructive={false}
+        title="Mark as paid off"
+        confirmText="Mark as paid off"
+        description={
+          debtToSettle
+            ? `Mark "${debtToSettle.name}" as paid off? This sets what is still owed (${formatCurrencyAmount(debtToSettle.remainingAmount)}) to zero without recording a payment or moving money. To pay from a wallet, use Make repayment.`
+            : ''
+        }
+      />
+
       {/* Delete Debt Confirmation (T42) */}
       <ConfirmDialog
         isOpen={!!debtToDeleteId}
@@ -305,10 +413,10 @@ export const DebtsView: React.FC = () => {
         onConfirm={handleConfirmDeleteDebt}
         isLoading={isDeletingDebt}
         error={deleteDebtError}
-        title="Delete Debt"
+        title="Delete debt"
         description={
           debtToDelete
-            ? `Delete "${debtToDelete.name}"? This removes it from your payoff goals; its repayment transactions are kept.`
+            ? `Delete "${debtToDelete.name}"? It leaves your payoff goals. Its repayment transactions stay in your history.`
             : ''
         }
       />

@@ -90,6 +90,8 @@ test.describe('Soft-delete lifecycle', () => {
     const card = page.locator('div[id^="debt-card-"]').filter({ hasText: debtName });
     await expect(card).toBeVisible();
 
+    // Phase 60 (spec 6.4): Delete lives in the card's ⋯ menu.
+    await card.locator('button[id^="debt-menu-btn-"]').click();
     await card.locator('button[id^="delete-debt-"]').click();
     // T42: deletion now gates behind a confirmation dialog.
     await page.locator('#confirm-destructive-btn').click();

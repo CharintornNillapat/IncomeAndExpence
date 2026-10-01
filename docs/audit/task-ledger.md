@@ -1081,6 +1081,33 @@ Approved explicitly by the user, planned and approved before any code was writte
 - **One negative control was redone** because the first attempt produced malformed TypeScript that the dev server still served — the tests failed, but possibly for the wrong reason.
 - **No flakes.** Phase 44's `wallets.spec.ts` webkit flake has now not reproduced across three consecutive phases; still watched rather than closed.
 
+## Phase 60 - FinLife redesign, step 4, fourth page (Debt payoff): T285-T298 (2026-10-01)
+
+ADR `0035`. The plan was approved in plan mode; the owner's decisions:
+- Edit changes the name, interest rate, minimum payment, due date and the borrowed total, which can never go below what is still owed; what is still owed is never edited;
+- Mark as paid off confirms first, in a non-destructive dialog that says no money moves;
+- paid-off debts go in an open "Paid off (N)" section below the active ones;
+- antislop mode 2 (audit 009).
+
+Branch `phase-60-debts`, cut from `main` at `f58f681`. It also carries `a0cb2c1`, the Phase 59 deploy record, which had not been pushed. No migration.
+
+| # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
+|---|---|---|---|---|---|---|---|---|---|---|
+| T285 | `editDebt` + `DebtEditSchema` (Borrowed never below what is owed); the update never sends `remaining_amount` or `is_settled` | `FinanceContext.tsx`, `zodSchemas.ts`, `types.ts` | High | Med | 0.5h | done | - | bcc8621 | a control sending `remaining_amount` and one without the floor each failed a signed-in test | - |
+| T286 | `useDebts`: `editDebt`, `activeDebts` / `settledDebts` sorted by `sortByDueDate` | `hooks/useDebts.ts` | Med | Low | 0.2h | done | T285 | bcc8621 | a control without the sort failed the order test | - |
+| T287 | `PageHeader` "Debt payoff", "N active debts · sorted by due date", "Add debt" | `views/DebtsView.tsx` | Med | Low | 0.2h | done | T286 | ebf7a14 | - | - |
+| T288 | `DebtSummaryCard`: Still owed, Paid off, the L5 box or "On track" | `debt/DebtSummaryCard.tsx` | High | Low | 0.5h | done | T287 | ebf7a14 | - | - |
+| T289 | `DebtCard` (replaces `DebtCardItem`): tags, ⋯ menu, 28px remainder, three boxes, two actions | `debt/DebtCard.tsx`, `DebtCardItem.tsx` (deleted) | High | Med | 1h | done | T287 | ebf7a14 | - | - |
+| T290 | Layout: summary, active grid, "Paid off (N)", caption | `views/DebtsView.tsx` | Med | Low | 0.3h | done | T288, T289 | ebf7a14 | - | - |
+| T291 | Dialogs: Mark as paid off confirms; `EditDebtModal`; Delete from the menu; focus when the opener is gone | `views/DebtsView.tsx`, `debt/EditDebtModal.tsx` | High | Med | 0.7h | done | T290 | ebf7a14 | controls skipping the confirm and dropping the focus hand-off each failed | - |
+| T292 | Unit: `debts-page` (18), signed-in `editDebt` (4) | `unit/` | High | Low | 1h | done | T285-T291 | bcc8621, ebf7a14 | 5 controls caught | unit 494 -> 516 |
+| T293 | Spec moves: `theme` (heading), `soft-delete` (open the menu first) | `tests/` | High | Low | 0.1h | done | T289 | ebf7a14 | locator/copy moves only; `debts.spec.ts` unedited | - |
+| T294 | `tests/debts-page.spec.ts` (3 guest tests) | `tests/` | High | Low | 0.3h | done | T291 | ebf7a14 | - | E2E 375 -> 384 runs |
+| T295 | Gate: lint, unit, WCAG, build, Playwright (four full runs), walk-through | - | - | - | 1h | done | all | - | lint, unit 516/516, WCAG, build; Playwright 384, 383, 383, 384 (two Firefox mobile-nav timeouts, the known intermittent; 240/240 on targeted repeats); walk-through clean | build entry +1,967 B |
+| T296 | Antislop audit 009 (mode 2) | `anti-slop/audit-009-2026-10-01.md` | - | - | 0.5h | done; findings 1 and 3 fixed (T298), the rest accepted | T295 | baae0e3 | 6 findings (2 MEDIUM, 4 LOW), no new Hard Gate failure | - |
+| T297 | ADR `0035`, `DESIGN.md`, `CLAUDE.md`, selector contract, ledger, log, metrics; sha backfill; draft PR | docs | Low | Low | 1h | done; draft PR on the owner's word, 2026-10-01 | all | baae0e3 | - | - |
+| T298 | Audit 009 findings 1 and 3: the L5 box's wording for a zero, negative or small surplus; "Debt payoff" in the nav | `debt/DebtSummaryCard.tsx`, `Navbar.tsx`, `MobileBottomNav.tsx`, `unit/debts-page.test.tsx` | Low | Low | 0.3h | done | the owner | d5a06c4 | a control with the old wording failed 2 tests; the Firefox intermittent measured on `main` (2/180) and here (1/180) | unit 516 -> 518 |
+
 ## Phase 59 - FinLife redesign, step 4, third page (Wallets): T268-T284 (2026-10-01)
 
 ADR `0034`, amending `0008`. The plan was approved in plan mode; the owner's decisions:
@@ -1089,7 +1116,9 @@ ADR `0034`, amending `0008`. The plan was approved in plan mode; the owner's dec
 - Edit changes name, type and colour, never the balance;
 - antislop mode 2 (audit 008).
 
-Branch `phase-59-wallets`, cut from `main` at `8725c11`. It also carries `ffd1b4e`, the Phase 58b deploy record, which was not pushed.
+Branch `phase-59-wallets`, cut from `main` at `8725c11`, PR #7. It also carried `ffd1b4e`, the Phase 58b deploy record, which had not been pushed.
+- Merged into `main` as `f58f681` with a merge commit, with the owner's go-ahead, after audit 008's findings 1 and 2 were fixed (T283, T284). Push run `36823383454` passed.
+- Vercel `dpl_ECj8qkmWJk7gTWNahBmujEqzwon9` serves a build that matches the local one byte for byte, apart from line endings. A signed-out smoke test on production passed: the Dashboard hand-off, adjust, edit, archive and unarchive at 1280, and the sheet's Escape and focus return at 390 (see the refactor log).
 
 | # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
 |---|---|---|---|---|---|---|---|---|---|---|

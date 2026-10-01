@@ -513,7 +513,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
    */
   const isOverpaying = repayTargetDebt !== null && overpayment > 0;
 
-  // Mirrors `DebtCardItem`'s formula with its `isSettled ? 0 : remaining`
+  // Mirrors `DebtCard`'s formula with its `isSettled ? 0 : remaining`
   // branch collapsed - `projectedRemaining` is already the post-payment
   // figure, and a settled debt is zero by construction.
   const projectedPercent =

@@ -4,6 +4,63 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
+## Phase 60 - The Debt payoff page (spec 6.4): T285-T298 (2026-10-01, commits `bcc8621`, `ebf7a14`, `d5a06c4`, docs `baae0e3`)
+
+**Changed**
+- **No migration.** Every column existed; Edit is a plain update of `debts`.
+- **`FinanceContext`:** `editDebt` (name, borrowed total, interest, minimum payment, due date). `DebtEditSchema` refuses a borrowed total below what is still owed, read from `debtsRef` first. The update never sends `remaining_amount` or `is_settled`, and rolls back on a rejected write.
+- **`useDebts`:** `editDebt`, and `activeDebts` / `settledDebts` sorted by `sortByDueDate`. `metrics` is unchanged.
+- **UI:**
+  - `DebtsView` rebuilt:
+    - `PageHeader` "Debt payoff" with the count and "Add debt";
+    - `DebtSummaryCard`: Still owed, Paid off, and the L5 box or "On track";
+    - the active debts nearest due date first;
+    - an open "Paid off (N)";
+    - the caption that repayments are not spending.
+  - `DebtCard` replaces `DebtCardItem`:
+    - the APR or Interest-free tag, and the due tag ("~N months", amber on L5, "Overdue", "No due date");
+    - a ⋯ menu with Edit and Delete;
+    - the 28px remainder;
+    - Borrowed, Repaid and Needed / month;
+    - Make repayment and Mark as paid off.
+  - Mark as paid off confirms first and keeps a failure in the dialog; `settleDebt`'s result used to be discarded.
+  - `EditDebtModal` shows what is still owed as text, never as a field.
+  - When a dialog's opener is gone after it closes, focus goes to the card's ⋯ or to Add debt.
+- **Tests:**
+  - `unit/debts-page.test.tsx` (18) and 4 signed-in `editDebt` tests: unit 494 -> 516 in 24 files;
+  - `tests/debts-page.spec.ts` (3 guest tests): E2E 375 -> 384 runs;
+  - two specs moved, by locator or copy: `theme` (the heading) and `soft-delete` (open the menu before Delete). `debts.spec.ts` passed unedited.
+- **Docs:** ADR `0035`, `DESIGN.md` (the page, four deviations), `CLAUDE.md`, `test-selector-contract.md`, antislop audit 009.
+
+**Surprises**
+- **Three actions remove the control that opened their dialog**: a write-off, a repayment of the whole remainder, and a delete. `Modal`'s focus return (audit 008) then had nowhere to go, so focus fell to `<body>`. The page now moves focus to the debt's ⋯ menu, which a paid-off card keeps, or to Add debt. A unit test failed without it.
+- **`editDebt`'s clear-a-field rule had to match `mapDebtRow`**, which reads a `0` rate or minimum as absent. The optimistic state stores absent too, so a guest and a signed-in user see the same card after a reload.
+
+**Gate:**
+- **Lint:** clean. **Unit:** 516/516. **WCAG:** all pairs pass; no token changed.
+- **Controls:** 5 caught. Each of these failed its test:
+  - `editDebt` sending `remaining_amount`;
+  - the borrowed floor removed;
+  - Mark as paid off without the confirm;
+  - the sort removed;
+  - the focus hand-off removed.
+- **Playwright (local, 4 workers):**
+  - run 1 384/384 (6.0 min);
+  - run 2 383/384 (5.8 min): Firefox's `account-and-mobile-nav.spec.ts:65` timed out waiting for `#mobile-nav-more-btn`, whose failure snapshot shows the header and the Dashboard but no bottom nav;
+  - run 3 383/384 (5.8 min): Firefox's `:44` (More reaches diary) timed out clicking the item inside the open More sheet;
+  - run 4 384/384 (5.7 min);
+  - no retries in any run.
+
+  Both failures are in the same 390px block, on Firefox, under full-suite load, and neither is an assertion. Phase 60 changes nothing the mobile nav or the More sheet loads. The file passed 120/120 on Firefox (10 repeats), and the block 120/120 more (20 repeats, 4 workers). This is the known Firefox intermittent in that file (baseline metrics: a click on More after Phase 55a, and `:60` before), still watched, next to WebKit's `:140` (audit 006 finding 3).
+- The debt-related specs (34 tests) passed on Chromium before the full runs.
+- **Audit 009, findings 1 and 3, fixed on the owner's word (T298):** the L5 box's wording for a zero, negative or small surplus, and "Debt payoff" in the nav. Unit 518/518; a control with the old wording failed the zero and negative cases. The specs for the nav and the page then passed on all three browsers, except the Firefox mobile-nav intermittent once more (74/75).
+- **The intermittent was measured against `main`:** the mobile-nav block, 30 repeats on Firefox with 6 workers, failed 1 in 180 on this branch and 2 in 180 on `main` (`f58f681`), always on the More sheet opening or closing. It predates this phase.
+- **Build:** entry +1,967 B (+615 B gzip), all JS +11,589 B, CSS +335 B; `DebtsView` +8,710 B. No vendor chunk changed.
+- **Walk-through** (Playwright's Chromium by script; the MCP server did not connect) at 1280 light, 1024 light, 900 dark, 390 light and dark, with five seeded debts (dated, long-named, overdue, undated, paid off):
+  - 0 controls under 44px, no page overflow, no console errors;
+  - the menu works by keyboard;
+  - focus returns after Edit, after an Escape out of Mark as paid off, and after confirming it.
+
 ## Phase 59 - The Wallets page (spec 6.3): T268-T284 (2026-10-01, commits `373c28b`, `21dba28`, `77e33cf`, `7f4b1a3`, docs `7c54dfe`)
 
 **Changed**
@@ -39,6 +96,19 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 - **Playwright (local, 4 workers):** run 1 375/375 (6.9 min), run 2 375/375 (7.1 min), no retries in either. After the audit 008 fixes: run 3 374/375 (7.5 min), where WebKit's `account-and-mobile-nav.spec.ts:140` timed out waiting for Add wallet's submit to be "stable", the known WebKit intermittent (audit 006 finding 3). That test and the Add wallet specs then passed 60/60 on WebKit (10 repeats each), and run 4 was 375/375 (6.5 min).
 - **Build:** entry +1,579 B (+398 B gzip), all JS +1,599 B, CSS −642 B; `DashboardView` −13,068 B with the popup gone, `WalletsView` +10,889 B. No vendor chunk grew.
 - **Walk-through** (Playwright's Chromium by script; the MCP server did not connect) at 1280 light, 1024 light, 900 dark, 390 light and dark: 0 controls under 44px, no page overflow, one detail per width.
+
+**CI and deploy:**
+- PR run `36822921334` on `dd9150b`: success in 4 m 48 s. Unit 494/494 with no `.env` on the runner, and 125/125 per browser.
+- Merged as PR #7 with a merge commit, `f58f681`, with the owner's go-ahead. Its tree is identical to `dd9150b`. It also published `ffd1b4e`, the Phase 58b deploy record.
+- Push run `36823383454` on `f58f681`: success in 5 m 36 s. Unit 494/494; 125/125 per browser, no retries.
+- Vercel `dpl_ECj8qkmWJk7gTWNahBmujEqzwon9` Production `READY`. `income-and-expence-neon.vercel.app` serves `index-ChBFu4cC.js` at **180,247 B**. The audit 008 fixes added 222 B to the entry measured at `21dba28` (the focus return in `Modal`, which the entry loads).
+- **All 57 files of the local build were hashed against production.** 53 are byte-for-byte identical. The two SVGs and `robots.txt` differ only in line endings. `sw.js` has the same 56 precache URLs.
+- **Signed-out smoke test on production** (fresh headless Chromium, no auth token, no console errors):
+  - at 1280: a Dashboard wallet row (Cash) opened the Wallets page with Cash selected, under "฿7,650.00 across 3 wallets";
+  - the detail read "Cash · created Oct 1, 2026" and ฿150.00. Adjust balance to 100 gave ฿100.00;
+  - Edit offered 12 swatches and renamed the wallet;
+  - Archive left 2 wallets and "Archived (1)"; Unarchive brought it back, at ฿7,600.00 across 3 wallets;
+  - at 390: Enter on a wallet row opened its sheet, with no page overflow. Escape in the menu kept the sheet open; a second Escape closed it and returned focus to the row.
 
 ## Phase 58b - Editing a transaction (spec 6.2's edit panel): T253-T267 (2026-09-30, commits `dc166a0`...`5f19972`, and T267's own)
 
