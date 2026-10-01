@@ -112,3 +112,7 @@ It now returns `editDebt`, plus `activeDebts` (unsettled) and `settledDebts`, ea
   - Mark as paid off without the confirm;
   - the sort removed;
   - the focus hand-off removed.
+- **Audit 009, the owner's decisions (2026-10-01):**
+  - finding 1: the L5 box words a zero or negative surplus as the Dashboard's banner does ("The past 30 days left no surplus (฿Y)"), and a small positive one as "฿X more than the past 30 days' surplus of ฿Y";
+  - finding 3: the header and mobile More tab read "Debt payoff";
+  - findings 2, 4, 5 and 6 are accepted and watched.

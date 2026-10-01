@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 60 - The Debt payoff page (spec 6.4): T285-T297 (2026-10-01, commits `bcc8621`, `ebf7a14`, docs baae0e3)
+## Phase 60 - The Debt payoff page (spec 6.4): T285-T298 (2026-10-01, commits `bcc8621`, `ebf7a14`, `d5a06c4`, docs `baae0e3`)
 
 **Changed**
 - **No migration.** Every column existed; Edit is a plain update of `debts`.
@@ -53,6 +53,8 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
   Both failures are in the same 390px block, on Firefox, under full-suite load, and neither is an assertion. Phase 60 changes nothing the mobile nav or the More sheet loads. The file passed 120/120 on Firefox (10 repeats), and the block 120/120 more (20 repeats, 4 workers). This is the known Firefox intermittent in that file (baseline metrics: a click on More after Phase 55a, and `:60` before), still watched, next to WebKit's `:140` (audit 006 finding 3).
 - The debt-related specs (34 tests) passed on Chromium before the full runs.
+- **Audit 009, findings 1 and 3, fixed on the owner's word (T298):** the L5 box's wording for a zero, negative or small surplus, and "Debt payoff" in the nav. Unit 518/518; a control with the old wording failed the zero and negative cases. The specs for the nav and the page then passed on all three browsers, except the Firefox mobile-nav intermittent once more (74/75).
+- **The intermittent was measured against `main`:** the mobile-nav block, 30 repeats on Firefox with 6 workers, failed 1 in 180 on this branch and 2 in 180 on `main` (`f58f681`), always on the More sheet opening or closing. It predates this phase.
 - **Build:** entry +1,967 B (+615 B gzip), all JS +11,589 B, CSS +335 B; `DebtsView` +8,710 B. No vendor chunk changed.
 - **Walk-through** (Playwright's Chromium by script; the MCP server did not connect) at 1280 light, 1024 light, 900 dark, 390 light and dark, with five seeded debts (dated, long-named, overdue, undated, paid off):
   - 0 controls under 44px, no page overflow, no console errors;

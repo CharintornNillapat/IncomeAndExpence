@@ -1081,7 +1081,7 @@ Approved explicitly by the user, planned and approved before any code was writte
 - **One negative control was redone** because the first attempt produced malformed TypeScript that the dev server still served — the tests failed, but possibly for the wrong reason.
 - **No flakes.** Phase 44's `wallets.spec.ts` webkit flake has now not reproduced across three consecutive phases; still watched rather than closed.
 
-## Phase 60 - FinLife redesign, step 4, fourth page (Debt payoff): T285-T297 (2026-10-01)
+## Phase 60 - FinLife redesign, step 4, fourth page (Debt payoff): T285-T298 (2026-10-01)
 
 ADR `0035`. The plan was approved in plan mode; the owner's decisions:
 - Edit changes the name, interest rate, minimum payment, due date and the borrowed total, which can never go below what is still owed; what is still owed is never edited;
@@ -1104,8 +1104,9 @@ Branch `phase-60-debts`, cut from `main` at `f58f681`. It also carries `a0cb2c1`
 | T293 | Spec moves: `theme` (heading), `soft-delete` (open the menu first) | `tests/` | High | Low | 0.1h | done | T289 | ebf7a14 | locator/copy moves only; `debts.spec.ts` unedited | - |
 | T294 | `tests/debts-page.spec.ts` (3 guest tests) | `tests/` | High | Low | 0.3h | done | T291 | ebf7a14 | - | E2E 375 -> 384 runs |
 | T295 | Gate: lint, unit, WCAG, build, Playwright (four full runs), walk-through | - | - | - | 1h | done | all | - | lint, unit 516/516, WCAG, build; Playwright 384, 383, 383, 384 (two Firefox mobile-nav timeouts, the known intermittent; 240/240 on targeted repeats); walk-through clean | build entry +1,967 B |
-| T296 | Antislop audit 009 (mode 2) | `anti-slop/audit-009-2026-10-01.md` | - | - | 0.5h | done; findings await the owner | T295 | baae0e3 | 6 findings (2 MEDIUM, 4 LOW), no new Hard Gate failure | - |
-| T297 | ADR `0035`, `DESIGN.md`, `CLAUDE.md`, selector contract, ledger, log, metrics; sha backfill; draft PR | docs | Low | Low | 1h | docs done; draft PR on the owner's word | all | baae0e3 | - | - |
+| T296 | Antislop audit 009 (mode 2) | `anti-slop/audit-009-2026-10-01.md` | - | - | 0.5h | done; findings 1 and 3 fixed (T298), the rest accepted | T295 | baae0e3 | 6 findings (2 MEDIUM, 4 LOW), no new Hard Gate failure | - |
+| T297 | ADR `0035`, `DESIGN.md`, `CLAUDE.md`, selector contract, ledger, log, metrics; sha backfill; draft PR | docs | Low | Low | 1h | done; draft PR on the owner's word, 2026-10-01 | all | baae0e3 | - | - |
+| T298 | Audit 009 findings 1 and 3: the L5 box's wording for a zero, negative or small surplus; "Debt payoff" in the nav | `debt/DebtSummaryCard.tsx`, `Navbar.tsx`, `MobileBottomNav.tsx`, `unit/debts-page.test.tsx` | Low | Low | 0.3h | done | the owner | d5a06c4 | a control with the old wording failed 2 tests; the Firefox intermittent measured on `main` (2/180) and here (1/180) | unit 516 -> 518 |
 
 ## Phase 59 - FinLife redesign, step 4, third page (Wallets): T268-T284 (2026-10-01)
 

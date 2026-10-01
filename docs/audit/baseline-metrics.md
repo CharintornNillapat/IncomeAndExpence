@@ -1125,9 +1125,9 @@ Per chunk (raw bytes; every chunk not listed is byte-identical):
 | Suite | Files | Tests | Runs | Wall clock |
 |---|---|---|---|---|
 | Playwright (local, 4 workers) | 26 | 128 | 384 | 6.0 / 5.8 / 5.8 / 5.7 m (four runs) |
-| Vitest (`unit/`) | 24 | 516 | 516 | ~33 s |
+| Vitest (`unit/`) | 24 | 518 (516 before audit 009's fixes) | 518 | ~33 s |
 
-**Intermittent local failures:** 2 in 1,536 full-suite runs (four full runs), both Firefox, both in `account-and-mobile-nav.spec.ts`'s 390px block, both a click waiting 15 s on the mobile nav (runs 2 and 3). No assertion failed. On Firefox the file then passed 120/120 (10 repeats) and the block 120/120 more (20 repeats, 4 workers), and run 4 was clean. Phase 60 changes nothing the mobile nav loads. This is the known Firefox intermittent in that file, seen after Phase 55a (a click on More) and earlier (`:60`).
+**Intermittent local failures:** 2 in 1,536 full-suite runs (four full runs), both Firefox, both in `account-and-mobile-nav.spec.ts`'s 390px block, both a click waiting 15 s on the mobile nav (runs 2 and 3). No assertion failed. On Firefox the file then passed 120/120 (10 repeats) and the block 120/120 more (20 repeats, 4 workers), and run 4 was clean. Phase 60 changes nothing the mobile nav loads. This is the known Firefox intermittent in that file, seen after Phase 55a (a click on More) and earlier (`:60`). Measured on both trees with the block repeated 30 times on Firefox, 6 workers: 1 failure in 180 on this branch, 2 in 180 on `main`.
 
 ## Phase 59 (the Wallets page) — delta against Phase 58b
 
