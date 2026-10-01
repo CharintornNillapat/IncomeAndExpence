@@ -343,3 +343,29 @@ No spec was edited. `diary.spec.ts` and `theme.spec.ts` passed unedited, and `te
 - **`#edit-diary-*` and `#delete-diary-*` exist only while the entry's menu is open.**
 - **Dates are local calendar days.** A spec that needs "yesterday" reads it in the page (`page.evaluate`) rather than in Node, so it is the browser's own day.
 - **A future calendar day is a disabled button**, so a click on it waits and fails rather than doing nothing.
+
+## Changed in Phase 62 (ADR `0037`, the Categories page)
+
+Two specs were edited, in the page's own commit, by a locator or copy move that keeps its assertion. `tests/categories-page.spec.ts` is new (3 tests). `smart-rules.spec.ts` and `account-and-mobile-nav.spec.ts` passed unedited.
+
+| Selector | Now | Specs moved |
+|---|---|---|
+| `[id^="category-row-"]` | **Same id**, now an `li` in `#category-group-expense`, `-income` or `-system`. An Expense or Income row holds one button; a System row holds none. | none |
+| `#edit-category-{id}` | **Same id**, now the row's own full-width button. It opens the category in the form (from `lg`) or a sheet (below it). | none |
+| `#delete-category-{id}` | **Same id**, now in the edit form, for a custom category only, disabled while it is in use. It exists only while that category's form is open. | `categories` opens `#edit-category-{id}` first (3 tests) |
+| `#new-category-type` `<select>` | **Retired.** The type is a `SegmentedControl`: `#new-category-type-expense`, `#new-category-type-income`. | `categories` (5) |
+| Row text `INCOME` | **Retired** (no raw enum, L10). The type is the group: `#category-group-income`. | `categories` (1) |
+| Dialog `'Delete Category'` → **`'Delete category'`** | The `ConfirmDialog` title. | `categories` (2) |
+| Button `'Close modal'` (edit) → **`#edit-category-cancel-btn`** | The edit form's Cancel; there is no edit modal from `lg`. | `categories` (1) |
+| `#new-category-name`, `#new-category-description`, `#save-category-btn`, `#edit-category-name`, `#edit-category-description`, `#edit-category-save-btn` | **Same ids.** The buttons read "Add category" and "Save changes". | none |
+| `#keyword-category-select` option `Groceries (EXPENSE)` → **`Groceries (Expense)`** | Types read as words; a System category reads by its L10 name alone. | `keywords` (1) |
+| `[data-testid="metric-inferred-type"]` `EXPENSE` → **`Expense`** | The sandbox's type, in words. | `keywords` (1) |
+| `#category-subtab-manage`, `#category-subtab-rules`, `#new-keyword-input`, `#save-keyword-rule-btn`, `#test-parser-input`, the other `metric-*` testids, `tr[id^="rule-row-"]` | **Unchanged.** The tab reads "Smart rules". | none |
+| `#nav-tab-*` | **Same ids**; the label is `sr-only` below 1280px and the icon shows instead. Name and `title` are unchanged. | none |
+| New | `#category-list-heading`, `#category-group-{expense,income,system}`, `#category-form-heading`, `#new-category-form`, `#edit-category-form`, `#new-category-color-{hex}`, `#edit-category-color-{hex}`, `#edit-category-color-current`, `#edit-category-cancel-btn` | `categories-page` |
+
+### Hazards
+- **`#delete-category-*` exists only in that category's edit form.** A spec asserting it is absent must open `#edit-category-{id}` first, or the check passes for the wrong reason.
+- **A new form remounts after each add**, starting on the next free colour, so a handle to a swatch held across an add points at the old element.
+- **A swatch's id is its hex without `#`, lower-cased** (`#new-category-color-e879a6`). A used one is a disabled button, so a click waits and fails.
+- **Below `lg` the edit form is in a sheet** while the New form stays on the page, so `#new-category-*` and `#edit-category-*` can both be in the DOM.

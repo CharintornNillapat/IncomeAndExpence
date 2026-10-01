@@ -4,6 +4,65 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
+## Phase 62 - The Categories page (spec 6.6): T314-T327 (2026-10-01, commits `58b5d75`, `f8c62a0`, docs `DOCS62`)
+
+**Changed**
+- **No migration.**
+- **Logic:**
+  - `utils/identityPalette.ts`, the twelve colours with names, now shared by wallets and categories;
+  - `categoryGroups`, `categoryUsage` and `firstFreeColor`;
+  - `addCategory` and `updateCategory` refuse a colour another live category uses (L9). `updateCategory` also refuses any edit to a System category (L10).
+- **UI:**
+  - `CategoriesView` rebuilt: `PageHeader` "Categories" with a tablist, then `CategoryList` (7/12) and `CategoryForm` (5/12);
+  - the colour grid offers the twelve identity colours, disables the used ones, and keeps an older colour as "Current colour";
+  - Delete applies to an unused custom category only and confirms first;
+  - below `lg`, the edit form opens in a sheet;
+  - the Smart rules tab moved into `SmartRulesPanel`, with types as words;
+  - header tab labels show from 1280px.
+- **Fixed:**
+  - two categories could share a colour;
+  - Debt Repayment and Balance Adjustment could be renamed and recoloured;
+  - each row printed its raw type (audit 004 finding 1);
+  - the header's tabs overflowed at 1024 (audit 007 finding 1).
+- **Tests:**
+  - `unit/categories-page.test.tsx` (16), 4 selector tests and 3 signed-in tests: unit 537 -> 560 in 26 files;
+  - `tests/categories-page.spec.ts` (3): E2E 393 -> 402 runs;
+  - spec moves in `categories.spec.ts` and `keywords.spec.ts` (ADR `0037`).
+- **Docs:** ADR `0037`, `DESIGN.md`, `CLAUDE.md`, `test-selector-contract.md`, antislop audit 011.
+
+**Surprises**
+- **The shipped categories all sit on colours outside the twelve.** Without the "Current colour" swatch, a rename would have forced a recolour of Food & Dining before spec 5.1's migration.
+- **`FinanceContext` now imports `selectors/ledger`**, so that module moved out of a shared lazy chunk into the entry (+1.7 kB there, -1.7 kB from `Money`).
+
+**Gate:**
+- **Lint:** clean. **Unit:** 560/560. **WCAG:** no token changed; the script passes.
+- **Controls:** 7 caught. Each of these failed its test:
+  - a shared colour accepted on add;
+  - a shared colour accepted on edit;
+  - a System category edit accepted;
+  - a raw type on the row;
+  - Delete enabled while in use;
+  - a used swatch that could be clicked;
+  - the older colour lost on Save.
+- **Playwright (local, 6 workers):**
+  - **Run 1:** 401/402 (6.5 min). WebKit `csv.spec.ts`: the Transactions page's Import / export button never settled before the click. The file then passed 10/10 on WebKit.
+  - **Run 2:** 401/402 (7.2 min). Firefox `account-and-mobile-nav.spec.ts`: `page.goto` timed out in `beforeEach`, before the app loaded, the known intermittent file.
+
+  Neither touches this phase's code.
+- **Build** against `main` (`192e333`), both with `.env`. `main`'s entry is 182,550 B, the same as production.
+  - **Entry:** +2,561 B (182,550 -> 185,111).
+  - **All JS:** +572 B.
+  - **CSS:** +166 B.
+  - **Chunks:** `CategoriesView` +2,217 B, `vendor-icons` -3,563 B (the icon picker's icons went).
+- **Walk-through** (Playwright's Chromium by script) at 1280 light, 1024 light, 900 dark, and 390 light and dark, with four custom categories (one in use, one long name, one in Thai):
+  - **At every width:** no page overflow, 0 controls under 44px, and no console errors.
+  - **Header:** the tab bar has no overflow at 1024 or 900, and shows labels at 1280.
+  - **Focus at 1280:**
+    - Enter on a row moves focus to the form's heading, and Cancel returns it to the row;
+    - Escape on the delete dialog returns it to Delete, and a confirmed delete moves it to the list's heading.
+  - **Delete and colours:** the in-use category's Delete is disabled with "Used by 1 transaction, so it can't be deleted.", and a deleted category frees its colour.
+  - **390:** the sheet opens with no overflow, and Escape returns focus to the row.
+
 ## Phase 61 - The Daily diary (spec 6.5): T299-T313 (2026-10-01, commits `e8a1f79`, `220e7db`, `d80fb5e`, `7b68e67`, docs `cc9c310`)
 
 **Changed**

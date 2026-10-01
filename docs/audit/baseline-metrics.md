@@ -1098,6 +1098,35 @@ The entry's growth is the ledger action itself, which lives with the other ledge
 
 **Intermittent local failures:** 6 in 1,071 full-suite runs (3 full runs). All were timeouts: a Firefox `goto`, a Firefox context close, and four WebKit clicks waiting for "stable". No assertion failed. See audit 005 finding 3 for the control runs.
 
+## Phase 62 (the Categories page) - delta against Phase 61
+
+`main` (`192e333`, the Phase 61 merge) was built in a separate worktree with the repo's `.env` copied in, and the Phase 62 tree (`f8c62a0`) in the repo. `main`'s entry measured 182,550 B, byte-identical to production. Gzip is `zlib` level 9.
+
+| Chunk | Phase 61 | Phase 62 | Delta |
+|---|---|---|---|
+| entry `index-*.js` | 182,550 B / 51,996 B gzip | 185,111 B / 52,891 B gzip | **+2,561 B raw / +895 B gzip** |
+| **all JS, summed** | 1,358,531 B | 1,359,103 B | **+572 B** |
+| `index-*.css` | 48,446 B / 9,415 B gzip | 48,612 B / 9,443 B gzip | +166 B |
+| PWA precache | 57 entries, 1,647.50 KiB | 59 entries, 1,648.17 KiB | +2 entries, +0.67 KiB |
+
+Per chunk (raw bytes; every chunk not listed is byte-identical or within ±40 B):
+
+| Chunk | Delta | Why |
+|---|---|---|
+| entry | +2,561 | the L9/L10 guards, and `selectors/ledger` (about 1.7 kB), which `FinanceContext` now imports and which therefore left the shared `Money` chunk. |
+| `Money` | -1,721 | `selectors/ledger` moved into the entry. |
+| `CategoriesView` | +2,217 | the list, the form, the colour grid and the Smart rules panel. |
+| `vendor-icons` | -3,563 | the icon picker's eleven icons and the old row icons are no longer imported. |
+| `Card`, `Chip`, new `Badge`, new `identityPalette` | +449, +919, 362, 484 | Rollup regrouped the shared chunks for the page's new imports. |
+| `DayGroupHeader`, `DebtsView` | -854, -255 | the same regrouping. |
+
+| Suite | Files | Tests | Runs | Wall clock |
+|---|---|---|---|---|
+| Playwright (local, 6 workers) | 28 | 134 | 402 | 6.5 / 7.2 m (two runs) |
+| Vitest (`unit/`) | 26 | 560 | 560 | ~35 s |
+
+**Intermittent local failures:** 2 in 804 runs, one per run. WebKit `csv.spec.ts`: Import / export did not settle in time (then 10/10). Firefox `account-and-mobile-nav.spec.ts`: `page.goto` timed out before the app loaded.
+
 ## Phase 61 (the Daily diary) - delta against Phase 60
 
 `main` (`3f45e3b`, the Phase 60 merge) was built in a separate worktree **with the repo's `.env` copied in**, and the Phase 61 tree (`d80fb5e`) in the repo. `main`'s entry then measured 182,025 B, byte-identical to production. Gzip is `zlib` level 9.
@@ -1125,9 +1154,9 @@ Per chunk (raw bytes; every chunk not listed is byte-identical):
 | Suite | Files | Tests | Runs | Wall clock |
 |---|---|---|---|---|
 | Playwright (local, 4 workers) | 27 | 131 | 393 | 6.1 / 5.5 m (two runs) |
+| Vitest (`unit/`) | 25 | 537 | 537 | ~34 s |
 
 **Intermittent local failures:** 1 in 786 runs: Firefox could not open a page in `account-and-mobile-nav.spec.ts`'s `beforeEach` (a browser protocol error), in run 1.
-| Vitest (`unit/`) | 25 | 537 | 537 | ~34 s |
 
 ## Phase 60 (the Debt payoff page) — delta against Phase 59
 
