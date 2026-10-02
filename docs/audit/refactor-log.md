@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 66 - UI polish: T363-T369 (2026-10-02, branch `phase-66-ui-polish`, not yet committed)
+## Phase 66 - UI polish: T363-T370 (2026-10-02, commit `1eecc8c`, merge `7e2daa9`)
 
 ADR `0042`. Closes the gap Phase 65's release check left open (the update toast covers the More sheet) and audit 013's two remaining Low findings, 6 and 7, with antislop applied during the work.
 
@@ -48,6 +48,16 @@ ADR `0042`. Closes the gap Phase 65's release check left open (the update toast 
   - after: each row hits itself and Debt payoff opens; the toast's centre lands in the dialog at 390 and on its scrim at 1280; with no dialog the toast still hits itself, and all five nav buttons hit themselves.
 - **Touch probe** (`touch65.cjs --toast`, 390 touch and 1280, light and dark): 0 controls under 44px in Quick Add, the Transactions Add dialog and the repay modal, beyond the documented exceptions. **Smoke** (`smoke65.cjs` on the preview): 192/192.
 - **Bundle:** entry `index-*.js` 186,724 B (local build with `.env`), the same size as Phase 65. `TransactionForm` 25,486 B and `InlineMathInput` 5,983 B, both smaller.
+
+**Release:**
+- PR #15 merged into `main` as `7e2daa9` with a merge commit. PR run `37002162580` and push run `37003395179` passed: unit 596/596, and 139/139 on each browser with no flaky test reported. That is CI's first run of the second webServer (port 3100, `--mode pwa-dev`).
+- Vercel `dpl_8vuPfAZLQkzY3dpuuXUSbXarHomX` Production `READY`. `income-and-expence-neon.vercel.app` serves `index-CQEk-vtd.js` at **186,724 B**, the size measured locally.
+- **All 59 files of a local build of `7e2daa9` (with `.env`) were hashed against production.** 55 are byte-for-byte identical. The two PWA SVGs and `robots.txt` differ only in line endings (the CRLF checkout); `sw.js` differs only in those two SVGs' precache revisions and lists the same 58 precache URLs.
+- **Layering probe on production** (`layers66.cjs`, the real offline-ready toast, `elementFromPoint`):
+  - At 390 the five nav buttons hit themselves. With More open, Debt payoff, Daily diary and Categories each overlap the toast's box and each hits its own row, and a real click on Debt payoff opens the page. The toast's centre lands on the Daily diary row. With the Transactions Add dialog open, the toast's centre lands inside the dialog.
+  - At 1280, with no dialog the toast hits itself; with Quick Add, the Transactions Add dialog or Account open, its centre lands on the dialog's scrim.
+- **Signed-out smoke on production**, fresh context, 1280, 1024 and 390, light and dark: 252/252 checks. All six views open with no NaN, no sparkle icon and no horizontal scroll. "No money in your wallets yet" shows once on the Dashboard and once on the Wallets page. Quick Add has one heading, with no "Log an expense or income" and no "Supports inline arithmetic" or "Supports formulas" line. Outside the submit button the result `฿30.00` shows once, in the "Calculated" badge; the submit button echoes it as a confirmation ("Record Transaction ฿30.00"), which audit 013 finding 7 did not name. "Use result" turns `120/4` into `30`, and the label reads "Operators:". No console errors.
+- My first smoke run scored the submit button's echo as a second result (12 failed checks). The checks were rescoped to the finding, not the app changed.
 
 ## Phase 65 - Audit 013 fixes: T354-T362 (2026-10-02, audit `2474185`, commit `d2d1e70`, merge `517aee8`)
 

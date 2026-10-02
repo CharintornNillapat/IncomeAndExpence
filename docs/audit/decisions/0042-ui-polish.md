@@ -1,6 +1,6 @@
 # 0042: The update toast sits under every sheet, an empty wallet bar says why, and Quick Add says each thing once
 
-**Status:** Accepted, not yet released. Branch `phase-66-ui-polish`, cut from `main` at `1036ee0`; not committed, pending the owner's review of the diff and the test results.
+**Status:** Accepted and released. Commit `1eecc8c`, merged into `main` as `7e2daa9` (PR #15); Vercel `dpl_8vuPfAZLQkzY3dpuuXUSbXarHomX` is READY in production.
 - **Closes** the release check's open gap from Phase 65 (the toast covers the mobile More sheet's rows), and audit 013 findings 6 (the ฿0 allocation track has no caption) and 7 (Quick Add repeats its title, the formula result and the formula help).
 - **Amends** ADR `0041`'s "Unchanged: `z-50`" line: the toast is `z-45` now.
 - **Keeps** Quick Add's two template lists, by the owner's decision (see Consequences).
