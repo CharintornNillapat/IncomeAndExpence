@@ -1,6 +1,6 @@
 # 0041: The update toast clears the phone nav, the entry form's targets reach 44px, and the Transactions page knows a first run
 
-**Status:** Accepted, not yet released. Branch `phase-65-audit-013-fixes` (its first commit, `2474185`, records audit 013); the phase's work is uncommitted.
+**Status:** Accepted and released. Audit 013 is `2474185`, the phase is `d2d1e70`, merged into `main` as `517aee8` (PR #14); Vercel `dpl_9LooVHCjGCdG5tjVPRgpC4CkrT2k` is READY in production. The release check found the toast still covering the mobile More sheet's rows; that is recorded as open in the refactor log.
 - **Closes** audit 013 findings 1 and 2 (R-03), 3 (R-04, audit 005 finding 1), 4 (R-27), 5 (R-19) and 8 (copy, the dead `animate-in` class).
 - **Leaves open** audit 013 findings 6 (the ฿0 allocation track has no caption) and 7 (Quick Add repeats its title, the formula result and the formula help), by the owner's decision.
 - **Amends** ADR `0011`'s and `0013`'s badges and chips: only their icon changes, never when they show.

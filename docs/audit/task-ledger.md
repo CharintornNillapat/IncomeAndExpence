@@ -1081,20 +1081,21 @@ Approved explicitly by the user, planned and approved before any code was writte
 - **One negative control was redone** because the first attempt produced malformed TypeScript that the dev server still served — the tests failed, but possibly for the wrong reason.
 - **No flakes.** Phase 44's `wallets.spec.ts` webkit flake has now not reproduced across three consecutive phases; still watched rather than closed.
 
-## Phase 65 - audit 013 fixes: T354-T361 (2026-10-02)
+## Phase 65 - audit 013 fixes: T354-T362 (2026-10-02)
 
-ADR `0041`. Branch `phase-65-audit-013-fixes`, cut from `main` at `025e303`; its first commit (`2474185`) records audit 013 itself, and the phase's work is uncommitted. The owner picked findings 1, 2, 3, 4, 5 and 8, with antislop applied during the work; **findings 6 and 7 stay open**.
+ADR `0041`. Branch `phase-65-audit-013-fixes`, cut from `main` at `025e303`; its first commit (`2474185`) records audit 013 itself, and the phase's work is `d2d1e70`. Merged as `517aee8` (PR #14); PR run `36986445549` and push run `36989305255` passed; Vercel `dpl_9LooVHCjGCdG5tjVPRgpC4CkrT2k` is READY and serves the local build byte for byte. The owner picked findings 1, 2, 3, 4, 5 and 8, with antislop applied during the work; **findings 6 and 7 stay open**.
 
 | # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
 |---|---|---|---|---|---|---|---|---|---|---|
-| T354 | ADR `0041`, written before the code | `docs/audit/decisions/` | Low | Low | 0.4h | done | T353 | uncommitted | - | - |
-| T355 | `ReloadPrompt` above the phone nav (finding 1): `calc(5rem + env(safe-area-inset-bottom, 0.5rem))` below `md`, `bottom-5` from it | `components/ReloadPrompt.tsx` | High | Low | 0.3h | done | T354 | uncommitted | toast 680-824 over all five nav buttons -> 620-764, 14px above Quick Add, every nav centre hits its button | - |
-| T356 | Toast: no idle spin, no dead `animate-in`, plain copy (findings 5 and 8) | `components/ReloadPrompt.tsx` | Med | Low | 0.2h | done | T354 | uncommitted | probe: no animation on the toast or its icons | entry -76 B |
-| T357 | 44px targets in the entry form (finding 2, and the extras the probe found) | `TransactionForm.tsx`, `InlineMathInput.tsx`, `QuickAddModal.tsx`, `transaction/SaveRuleChip.tsx`, `transaction/CategorySuggestionChip.tsx` | High | Med | 1h | done | T354 | uncommitted | probe under-44: 11/9/7 -> 0/0/0; outline on the pill | - |
-| T358 | Sparkles replaced: `Calculator`, `Tags` (x2), `CheckCircle2` (finding 3) | the same files | Med | Low | 0.2h | done | T354 | uncommitted | `Sparkles` not imported in `src/` | - |
-| T359 | Transactions first-run empty state (finding 4) | `views/TransactionsView.tsx` | Med | Low | 0.3h | done | T354 | uncommitted | 4 unit tests; 3 fail on the old view | - |
-| T360 | Tests: unit `transactions-page` +4, E2E `transaction.spec.ts` +1; touch and toast probe (scratchpad) | `unit/`, `tests/` | Med | Low | 0.6h | done | T355-T359 | uncommitted | lint clean; unit 592/592; Playwright 408/408 on the third full run (chromium, firefox, webkit, 136 each; 6.6 m). The first two runs each lost WebKit clicks to the known 'waiting for stable' timeout on controls this phase did not touch (run 1: the Wallets adjust button and the Import CSV menu item, 406/408; run 2: Add debt, 407/408); each spec passed 20/20 and 3/3 on its own re-run | unit 588 -> 592; E2E 135 -> 136 tests, 405 -> 408 runs |
-| T361 | `CLAUDE.md`, refactor log, this ledger, baseline metrics | docs | Low | Low | 0.4h | done | all | uncommitted | - | - |
+| T354 | ADR `0041`, written before the code | `docs/audit/decisions/` | Low | Low | 0.4h | done | T353 | `d2d1e70` | - | - |
+| T355 | `ReloadPrompt` above the phone nav (finding 1): `calc(5rem + env(safe-area-inset-bottom, 0.5rem))` below `md`, `bottom-5` from it | `components/ReloadPrompt.tsx` | High | Low | 0.3h | done | T354 | `d2d1e70` | toast 680-824 over all five nav buttons -> 620-764, 14px above Quick Add, every nav centre hits its button | - |
+| T356 | Toast: no idle spin, no dead `animate-in`, plain copy (findings 5 and 8) | `components/ReloadPrompt.tsx` | Med | Low | 0.2h | done | T354 | `d2d1e70` | probe: no animation on the toast or its icons | entry -76 B |
+| T357 | 44px targets in the entry form (finding 2, and the extras the probe found) | `TransactionForm.tsx`, `InlineMathInput.tsx`, `QuickAddModal.tsx`, `transaction/SaveRuleChip.tsx`, `transaction/CategorySuggestionChip.tsx` | High | Med | 1h | done | T354 | `d2d1e70` | probe under-44: 11/9/7 -> 0/0/0; outline on the pill | - |
+| T358 | Sparkles replaced: `Calculator`, `Tags` (x2), `CheckCircle2` (finding 3) | the same files | Med | Low | 0.2h | done | T354 | `d2d1e70` | `Sparkles` not imported in `src/` | - |
+| T359 | Transactions first-run empty state (finding 4) | `views/TransactionsView.tsx` | Med | Low | 0.3h | done | T354 | `d2d1e70` | 4 unit tests; 3 fail on the old view | - |
+| T360 | Tests: unit `transactions-page` +4, E2E `transaction.spec.ts` +1; touch and toast probe (scratchpad) | `unit/`, `tests/` | Med | Low | 0.6h | done | T355-T359 | `d2d1e70` | lint clean; unit 592/592; Playwright 408/408 on the third full run (chromium, firefox, webkit, 136 each; 6.6 m). The first two runs each lost WebKit clicks to the known 'waiting for stable' timeout on controls this phase did not touch (run 1: the Wallets adjust button and the Import CSV menu item, 406/408; run 2: Add debt, 407/408); each spec passed 20/20 and 3/3 on its own re-run | unit 588 -> 592; E2E 135 -> 136 tests, 405 -> 408 runs |
+| T361 | `CLAUDE.md`, refactor log, this ledger, baseline metrics | docs | Low | Low | 0.4h | done | all | `d2d1e70` | - | - |
+| T362 | Release: PR #14 merged, production byte check, signed-out smoke and probe on production, sha backfill | - | - | - | 0.4h | done | all | `517aee8` | 55 of 59 files identical, the rest line endings only; smoke 192/192 across six views at 1280, 1024 and 390, light and dark; probe 0 controls under 44px; the toast clears every nav button at 390 but covers the More sheet's rows (open, see the refactor log) | - |
 
 ## Audit 013 - antislop verification pass after Phase 54: T353 (2026-10-02)
 

@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 65 - Audit 013 fixes: T354-T361 (2026-10-02, uncommitted on `phase-65-audit-013-fixes`)
+## Phase 65 - Audit 013 fixes: T354-T362 (2026-10-02, audit `2474185`, commit `d2d1e70`, merge `517aee8`)
 
 ADR `0041`. The owner picked audit 013 findings 1, 2, 3, 4, 5 and 8, with antislop applied during the work. Findings 6 and 7 stay open.
 
@@ -49,7 +49,19 @@ ADR `0041`. The owner picked audit 013 findings 1, 2, 3, 4, 5 and 8, with antisl
   - No spin and no animation in either theme.
 - **Bundle:** entry `index-*.js` 186,724 B (local build with `.env`), 76 B under Phase 54's 186,800 B.
 
-**Open:** audit 013 findings 6 (the ฿0 allocation track has no caption) and 7 (Quick Add repeats its title, the formula result and the formula help, and lists templates twice).
+**Release:**
+- PR #14 merged into `main` as `517aee8` with a merge commit. PR run `36986445549` and push run `36989305255` passed (unit 592/592, 136/136 per browser).
+- Vercel `dpl_9LooVHCjGCdG5tjVPRgpC4CkrT2k` Production `READY`. `income-and-expence-neon.vercel.app` serves `index-CAVEJbPg.js` at **186,724 B**, the size measured locally.
+- **All 59 files of a local build of `517aee8` (with `.env`) were hashed against production.** 55 are byte-for-byte identical. The two PWA SVGs and `robots.txt` differ only in line endings (the CRLF checkout); `sw.js` differs only in those two SVGs' precache revisions and lists the same 58 precache URLs.
+- **Signed-out smoke test on production**, fresh context, 1280, 1024 and 390, light and dark: 192/192 checks. All six views open; Transactions shows "No transactions yet"; no NaN, Infinity or `undefined`; no `lucide-sparkles` icon on any view or in Quick Add with a formula typed; no horizontal scroll; no console errors.
+- **The touch and toast probe on production** (390 with touch, 1280; light and dark): 0 controls under 44px in Quick Add, the Transactions Add modal and the repay modal, beyond the documented exceptions. The real offline-ready toast renders "Ready to use offline" at y 620-764 at 390 (CSS bottom 80px), with no animation and no spinning icon; it overlaps none of the five nav buttons, and each button's centre hits that button. At 1280 it stays at `bottom: 20px`.
+
+**Found in the release check:**
+- **The toast still covers the More sheet at phone width.** With the toast showing and More open at 390, the sheet's Debt payoff, Daily diary and Categories rows (y 594-762) sit under the toast, and a tap at each row's centre lands on the toast until it is dismissed; Account & Security, below it, is clear. Both the sheet and the toast are `z-50` and the toast comes later in the DOM. Before Phase 65 the toast (y 680-824) covered the sheet's lower rows instead, so this is a gap the phase did not close rather than a new regression; the phase's probe checked the nav, not the sheet. Quick Add's sheet is unaffected (it draws over the toast).
+
+**Open:**
+- Audit 013 findings 6 (the ฿0 allocation track has no caption) and 7 (Quick Add repeats its title, the formula result and the formula help, and lists templates twice).
+- The toast over the More sheet, above.
 
 ---
 
