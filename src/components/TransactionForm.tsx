@@ -629,19 +629,17 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
       onSubmit={handleSubmit}
       className="bg-surface-1 rounded-xl border border-line p-4 sm:p-6 space-y-5 transition-control"
     >
-      {!lockType && (
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-line pb-4">
-        <div>
-          <h2 className="text-base sm:text-lg font-bold text-fg">Record Transaction</h2>
-          <p className="text-xs text-fg-secondary">Log an expense or income</p>
-        </div>
+      {/* Transaction Type Segmented Toggle with mobile touch targets.
+          EXPENSE/INCOME only (ADR 0013) - transfers belong to
+          `TransferFundsModal` and repayments to `DebtsView`, both linked
+          from the shortcut row at the bottom of this form.
 
-        {/* Transaction Type Segmented Toggle with mobile touch targets.
-            EXPENSE/INCOME only (ADR 0013) - transfers belong to
-            `TransferFundsModal` and repayments to `DebtsView`, both linked
-            from the shortcut row at the bottom of this form. */}
+          No heading of its own (ADR 0042, audit 013 finding 7): every caller
+          renders this form inside a titled Modal, so a "Record Transaction"
+          heading here only repeated the dialog's title. */}
+      {!lockType && (
         <SegmentedControl<TransactionType>
-          className="grid grid-cols-2 sm:flex w-full sm:w-auto"
+          className="grid grid-cols-2 w-full"
           ariaLabel="Transaction type"
           value={type}
           onChange={(t) => {
@@ -654,7 +652,6 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
             label: t.charAt(0) + t.slice(1).toLowerCase(),
           }))}
         />
-      </div>
       )}
 
       {/* Quick templates: reuses a saved preset (name/amount/description/category/wallet)

@@ -42,9 +42,13 @@ export const ReloadPrompt: React.FC = React.memo(() => {
     // the safe-area inset, and the centre Quick Add's top is 66px up, so 5rem
     // over the nav's own inset expression leaves a 14px gap. From `md` the nav
     // is hidden and the toast keeps its corner. No entrance animation (ADR 0026).
+    //
+    // z-45 (ADR 0042): above the header and the bottom nav (z-40) and the page,
+    // below every Modal (z-50). At z-50 it tied with the More sheet and every
+    // view-level dialog and won on DOM order, covering their rows.
     <aside
       aria-label="App update notification"
-      className="fixed bottom-[calc(5rem+env(safe-area-inset-bottom,0.5rem))] md:bottom-5 right-5 z-50 max-w-sm w-[calc(100vw-2.5rem)] bg-surface-1 text-fg rounded-lg p-4 shadow-modal border border-line"
+      className="fixed bottom-[calc(5rem+env(safe-area-inset-bottom,0.5rem))] md:bottom-5 right-5 z-45 max-w-sm w-[calc(100vw-2.5rem)] bg-surface-1 text-fg rounded-lg p-4 shadow-modal border border-line"
     >
       <div className="flex items-start gap-3">
         <div className="p-2 rounded-lg bg-brand-tint text-brand shrink-0">

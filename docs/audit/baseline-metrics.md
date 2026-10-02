@@ -1098,6 +1098,27 @@ The entry's growth is the ledger action itself, which lives with the other ledge
 
 **Intermittent local failures:** 6 in 1,071 full-suite runs (3 full runs). All were timeouts: a Firefox `goto`, a Firefox context close, and four WebKit clicks waiting for "stable". No assertion failed. See audit 005 finding 3 for the control runs.
 
+## Phase 66 (UI polish) - delta against Phase 65
+
+A local build of the Phase 66 tree with the repo's `.env`, against Phase 65's recorded local build and a build of `main` (`1036ee0`) made at the start of this phase. Gzip is level 9.
+
+| Chunk | Phase 65 | Phase 66 | Delta |
+|---|---|---|---|
+| entry `index-*.js` | 186,724 B | 186,724 B / 53,346 B gzip | **0 B** (`ReloadPrompt`'s `z-50` -> `z-45` is the same length) |
+| `TransactionForm-*.js` | 25.85 kB | 25,486 B | about -360 B (the form's heading is gone) |
+| `InlineMathInput-*.js` | 6.44 kB | 5,983 B | about -460 B (the help line, the (i) and the `Info` import are gone) |
+
+| Suite | Files | Tests | Runs | Wall clock |
+|---|---|---|---|---|
+| Playwright (local, 6 workers) | 29 | 139 | 417 | 6.0 / 6.2 m (two runs) |
+| Vitest (`unit/`) | 27 | 596 | 596 | ~37 s |
+
+E2E +3 tests: `toast-layering.spec.ts` (new: the More sheet over the real toast at 390, a dialog over it at 1280) and `transaction.spec.ts` (Quick Add's one title, one result, one help). Unit +4: `ui-display` 1, `dashboard` 1, `wallets-page` 2. `npm test` now starts a second dev server (`vite --mode pwa-dev`, port 3100) for the toast spec.
+
+**Local failures:** none in 834 runs (2 full runs).
+
+**Touch targets** (scratchpad probe, 390×844 and 1280×800, light and dark): still 0 under 44px in Quick Add, the Transactions Add dialog and the repay modal, excluding the documented calculator keys, microphone and shortcut links.
+
 ## Phase 65 (audit 013 fixes) - delta against Phase 54
 
 A local build of the Phase 65 tree with the repo's `.env`, against Phase 54's recorded local build. No other chunk was compared.

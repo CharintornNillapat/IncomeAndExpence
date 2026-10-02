@@ -79,11 +79,26 @@ export default defineConfig({
     },
   ],
 
-  /* Run local dev server before starting the tests */
-  webServer: {
-    command: 'npm run dev',
-    url: 'http://localhost:3000',
-    reuseExistingServer: !process.env.CI,
-    timeout: 120 * 1000,
-  },
+  /* Run local dev servers before starting the tests */
+  webServer: [
+    {
+      command: 'npm run dev',
+      url: 'http://localhost:3000',
+      reuseExistingServer: !process.env.CI,
+      timeout: 120 * 1000,
+    },
+    {
+      /*
+       * Phase 66 (ADR 0042): the same app with vite-plugin-pwa's development
+       * service worker, so the real PWA toast appears. Only
+       * `toast-layering.spec.ts` uses it (its own `baseURL`); every other spec
+       * stays on port 3000, where no service worker registers and no toast
+       * can sit over a control.
+       */
+      command: 'npx vite --port=3100 --strictPort --mode pwa-dev',
+      url: 'http://localhost:3100',
+      reuseExistingServer: !process.env.CI,
+      timeout: 120 * 1000,
+    },
+  ],
 });

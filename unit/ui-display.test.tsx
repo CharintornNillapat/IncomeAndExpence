@@ -90,6 +90,22 @@ describe('AllocationBar', () => {
     expect(container.querySelectorAll('[data-segment]')).toHaveLength(0);
     expect(screen.getByRole('img', { name: 'Wallet allocation: nothing to show' })).toBeTruthy();
   });
+
+  // Phase 66 (ADR 0042, audit 013 finding 6): an empty track never stands alone.
+  it('captions an empty bar when given an empty caption, and only then', () => {
+    const empty = [{ id: 'a', label: 'A', value: 0, color: '#fff' }, { id: 'b', label: 'B', value: -40, color: '#000' }];
+    const { rerender } = render(<AllocationBar segments={empty} label="Wallet allocation" emptyCaption="No money in your wallets yet" />);
+    const caption = screen.getByText('No money in your wallets yet');
+    expect(caption.tagName).toBe('P');
+    expect(caption.className).toContain('text-fg-muted');
+    expect(caption.className).toContain('text-xs');
+
+    rerender(<AllocationBar segments={segments} label="Wallet allocation" emptyCaption="No money in your wallets yet" />);
+    expect(screen.queryByText('No money in your wallets yet')).toBeNull();
+
+    rerender(<AllocationBar segments={empty} label="Wallet allocation" />);
+    expect(screen.queryByText('No money in your wallets yet')).toBeNull();
+  });
 });
 
 describe('WarningBanner', () => {

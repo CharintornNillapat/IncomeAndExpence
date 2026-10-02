@@ -132,10 +132,39 @@ test.describe('Core Transaction Flow E2E Tests', () => {
     await amountInput.fill('120 + 30 * 2');
 
     // The inline math preview should compute 180.00. Target the "Calculated:" badge
-    // specifically - the value also renders in the apply-calculation button and the
-    // submit button, so a bare text match resolves to three elements.
+    // specifically - the value also renders in the submit button, so a bare text
+    // match resolves to more than one element.
     const calculatedBadge = modal.locator('span', { hasText: /Calculated:/i });
     await expect(calculatedBadge).toBeVisible();
     await expect(calculatedBadge).toContainText('180.00');
+  });
+
+  // Phase 66 (ADR 0042, audit 013 finding 7): Quick Add says each thing once.
+  test('Quick Add shows one title, the formula result once and formula help once', async ({ page }) => {
+    await page.locator('#navbar-quick-add-btn').click();
+    const modal = page.getByRole('dialog', { name: /Quick Record Transaction/i });
+    await expect(modal).toBeVisible();
+
+    // One heading: the dialog's own. The form inside it adds none.
+    await expect(modal.getByRole('heading')).toHaveCount(1);
+    await expect(modal.getByRole('heading', { name: 'Quick Record Transaction' })).toBeVisible();
+    await expect(modal.getByText('Log an expense or income')).toHaveCount(0);
+
+    // Formula help is the placeholder only.
+    const amountInput = modal.locator('input[name="amount_expression"]');
+    await expect(amountInput).toHaveAttribute('placeholder', /500\+500/);
+    await expect(modal.getByText(/Supports inline arithmetic/i)).toHaveCount(0);
+    await expect(modal.getByLabel(/Supports formulas/i)).toHaveCount(0);
+
+    // The result shows in the badge; the apply button names its action.
+    await amountInput.fill('120/4');
+    await expect(modal.locator('span', { hasText: /Calculated:/i })).toContainText('฿30.00');
+    // The submit button still carries the amount it will record; the result
+    // itself is not repeated on the apply button.
+    const useResult = modal.getByRole('button', { name: 'Use result' });
+    await expect(useResult).toBeVisible();
+    await expect(useResult).not.toContainText('฿');
+    await useResult.click();
+    await expect(amountInput).toHaveValue('30');
   });
 });

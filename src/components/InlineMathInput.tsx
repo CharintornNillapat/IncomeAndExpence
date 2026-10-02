@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useId } from 'react';
-import { Calculator, Check, AlertCircle, Info } from 'lucide-react';
+import { Calculator, Check, AlertCircle } from 'lucide-react';
 import { safeEvaluateMath } from '../utils/mathEvaluator';
 import { APP_CURRENCY_SYMBOL } from '../utils/currency';
 import { LABEL_TEXT_CLASS } from '../utils/formStyles';
@@ -189,13 +189,6 @@ export const InlineMathInput: React.FC<InlineMathInputProps> = ({
         <div className="flex items-center justify-between">
           <label htmlFor={inputId} className={LABEL_TEXT_CLASS}>
             {label} {required && <span className="text-expense">*</span>}
-            <span
-              className="inline-flex align-middle ml-1.5 text-fg-muted hover:text-fg-secondary cursor-help"
-              title="Supports formulas: 120/2 + 50"
-              aria-label="Supports formulas: 120/2 + 50"
-            >
-              <Info className="w-3.5 h-3.5" />
-            </span>
           </label>
           {hasCalculation && evaluatedAmount !== null && (
             <span className="inline-flex items-center gap-1 text-xs font-medium text-brand bg-brand-tint px-2 py-0.5 rounded-sm border border-brand-line">
@@ -247,12 +240,15 @@ export const InlineMathInput: React.FC<InlineMathInputProps> = ({
               id={`${inputId}-apply-btn`}
               type="button"
               onClick={handleApplyResult}
-              title="Click to replace expression with calculated sum"
+              title="Replace the formula with its result"
               className="group inline-flex items-center min-h-[44px] cursor-pointer focus-visible:outline-none"
             >
+              {/* The result itself is in the "Calculated" badge above the
+                  field; this button names its action rather than repeating the
+                  figure (ADR 0042, audit 013 finding 7). */}
               <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-semibold text-fg-secondary bg-surface-1 group-hover:bg-surface-3 rounded-lg transition-control border border-line group-focus-visible:outline-2 group-focus-visible:outline-focus group-focus-visible:outline-offset-2">
                 <Check className="w-3 h-3 text-income" />
-                <span>{currencyPrefix}{formattedResult}</span>
+                <span className="whitespace-nowrap">Use result</span>
               </span>
             </button>
           ) : evaluatedAmount !== null ? (
@@ -269,21 +265,21 @@ export const InlineMathInput: React.FC<InlineMathInputProps> = ({
 
         {/* Quick math operator buttons & error reporting */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs px-1">
-          {errorMessage ? (
+          {/* Formula help lives once, in the placeholder: the operator keys
+              beside it already show what a formula can use, so the old
+              "Supports inline arithmetic" line and the hover-only (i) were
+              the second and third copies (ADR 0042, audit 013 finding 7). */}
+          {errorMessage && (
             <p id={`${inputId}-error`} className="flex items-center gap-1.5 text-expense font-medium py-0.5">
               <AlertCircle className="w-4 h-4 shrink-0" />
               <span>{errorMessage}</span>
             </p>
-          ) : (
-            <span className="text-fg-secondary text-[11px] sm:text-xs">
-              Supports inline arithmetic: <code className="bg-surface-2 text-fg-secondary px-1.5 py-0.5 rounded-sm text-[11px] font-mono border border-line">+ - * / ()</code>
-            </span>
           )}
 
           {/* Quick Operator Shortcuts with mobile-friendly touch targets */}
           {!disabled && (
-            <div className="flex items-center gap-1.5 self-end sm:self-auto">
-              <span className="text-[11px] text-fg-muted font-medium sm:hidden mr-1">Quick operators:</span>
+            <div className="flex items-center gap-1.5 self-end sm:self-auto sm:ml-auto">
+              <span className="text-[11px] text-fg-muted font-medium whitespace-nowrap sm:hidden mr-1">Operators:</span>
               {['+', '-', '*', '/', '(', ')'].map((op) => (
                 <button
                   key={op}

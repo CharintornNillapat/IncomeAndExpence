@@ -4,6 +4,51 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
+## Phase 66 - UI polish: T363-T369 (2026-10-02, branch `phase-66-ui-polish`, not yet committed)
+
+ADR `0042`. Closes the gap Phase 65's release check left open (the update toast covers the More sheet) and audit 013's two remaining Low findings, 6 and 7, with antislop applied during the work.
+
+**Changed**
+- **The update toast sits under every sheet and dialog** (`ReloadPrompt.tsx`, `z-50` -> `z-45`).
+  - `Modal` is `z-50` and not portalled, so a tie was settled by DOM order. The toast drew over the More sheet, `AuthModal` and every view-level dialog (all rendered before it) and under the four shell modals (rendered after).
+  - The layer order is now page content, then the header and bottom nav at 40, the toast at 45, every `Modal` at 50. Its Phase 65 position is unchanged.
+- **An empty wallet bar says why** (audit 013 finding 6). `AllocationBar` takes an optional `emptyCaption`; the Dashboard's Wallets card and the Wallets page's list pass "No money in your wallets yet", shown under the bar in `text-xs text-fg-muted` only when no wallet has a positive balance, like the Cash flow card's "Nothing earned or spent in this period".
+- **Quick Add says each thing once** (audit 013 finding 7).
+  - **Title:** `TransactionForm`'s own "Record Transaction" / "Log an expense or income" heading is gone; every caller already titles its `Modal`. The type toggle opens the form, full width. The Transactions page's Add dialog loses the same repeat.
+  - **Result:** the "Calculated: ฿30.00" badge keeps the figure; the apply button reads "✓ Use result" instead of "✓ ฿30.00".
+  - **Help:** the placeholder is the only formula hint. The "Supports inline arithmetic: + - * / ()" line and the hover-only ⓘ ("Supports formulas: 120/2 + 50") are removed. The mobile-only "Quick operators:" label, which wrapped at 390, reads "Operators:".
+  - The transfer form shares `InlineMathInput` and gets the same help and apply button.
+  - Every id, name and test id the specs use is unchanged, as are `userTouchedRef` and the seed logic.
+- **The toast is tested against the real thing.** `vite.config.ts` turns on vite-plugin-pwa's `devOptions` only in `--mode pwa-dev`; Playwright's second `webServer` runs that on port 3100, and `tests/toast-layering.spec.ts` uses it. `npm run dev` and the build are unchanged. `dev-dist/` (written in that mode) is gitignored.
+- **Tests:**
+  - unit, +4: `ui-display` (the caption, 1), `dashboard` (the Wallets card at ฿0, 1), `wallets-page` (fresh guest and a positive balance, 2); 592 -> 596;
+  - E2E, +3: `toast-layering.spec.ts` (the More sheet at 390, a dialog at 1280) and `transaction.spec.ts` (Quick Add's one title, one result, one help); 136 -> 139 tests, 408 -> 417 runs.
+- **Docs:** ADR `0042`, `CLAUDE.md` (the layer order, the caption, the form's structure, the second webServer, two Do NOT lines, counts), this log, the ledger and baseline metrics.
+
+**Resolved**
+- **The toast over the More sheet** (Phase 65 release check).
+- **Audit 013 finding 6** (the ฿0 allocation track has no caption).
+- **Audit 013 finding 7** (Quick Add repeats its title, the formula result and the formula help).
+- Audit 013 has no open finding of its own left; finding 3's sparkles closed in Phase 65.
+
+**Found**
+- **The toast also covered the Transactions page's Add dialog**, at 390 and at 1280. The release check had probed only the More sheet. Every dialog rendered inside `<main>` had the same tie; `z-45` fixes all of them at once.
+- **The release check's premise held:** Quick Add drew over the toast only because it renders later in the DOM, at the same `z-50`. There was no portal and no higher layer to copy, so matching "that pattern" meant giving the toast a lower layer than `Modal`, not raising anything.
+- **An honest E2E path exists.** vite-plugin-pwa's development service worker produces the real offline-ready toast in chromium, firefox and webkit under a dev server. Nothing is injected and no request is intercepted.
+
+**Still open**
+- **Quick Add lists templates twice**: its own list logs a template at once, and the form's chips prefill the form. `presets.spec.ts` asserts both inside Quick Add (`:46`, `:70`, `:97`), so removing either was a behaviour and spec decision. **The owner kept both** (2026-10-02): one logs in one tap, the other prefills the form (ADR `0042`).
+
+**Gate:**
+- Lint clean. Unit 596/596.
+- Playwright: 417/417 on both full runs (chromium, firefox, webkit, 139 each; 6.0 m, then 6.2 m after `suppressWarnings`). No flake.
+- **Negative controls:** `ReloadPrompt` back at `z-50` fails both `toast-layering.spec.ts` tests on chromium ("debts row is unobstructed": `toast` for `own`; the desktop dialog: `own` for `dialog`), and passes 2/2 restored. `emptyCaption` removed from `WalletList` fails the fresh-guest caption test, 2/2 restored.
+- **Layering probe** (scratchpad `layers66.cjs`, `vite preview`, the real offline-ready toast at y 620 to 764 at 390, `elementFromPoint` at each centre):
+  - before: the More sheet's Debt payoff, Daily diary and Categories rows hit the toast and a click on Debt payoff timed out; the Transactions Add dialog left the toast on top at 390 and 1280;
+  - after: each row hits itself and Debt payoff opens; the toast's centre lands in the dialog at 390 and on its scrim at 1280; with no dialog the toast still hits itself, and all five nav buttons hit themselves.
+- **Touch probe** (`touch65.cjs --toast`, 390 touch and 1280, light and dark): 0 controls under 44px in Quick Add, the Transactions Add dialog and the repay modal, beyond the documented exceptions. **Smoke** (`smoke65.cjs` on the preview): 192/192.
+- **Bundle:** entry `index-*.js` 186,724 B (local build with `.env`), the same size as Phase 65. `TransactionForm` 25,486 B and `InlineMathInput` 5,983 B, both smaller.
+
 ## Phase 65 - Audit 013 fixes: T354-T362 (2026-10-02, audit `2474185`, commit `d2d1e70`, merge `517aee8`)
 
 ADR `0041`. The owner picked audit 013 findings 1, 2, 3, 4, 5 and 8, with antislop applied during the work. Findings 6 and 7 stay open.
