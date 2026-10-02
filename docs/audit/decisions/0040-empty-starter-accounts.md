@@ -1,6 +1,6 @@
 # 0040: A new account starts with empty wallets and no debt
 
-**Status:** Accepted. The client change and the tests are on branch `phase-54-empty-starters`. The migration passed its probe and was applied to the live project on 2026-10-02 (version `20261002061331`).
+**Status:** Accepted and released. Commit `052b6c4`, merged into `main` as `0882695` (PR #13); Vercel `dpl_GSmZYYCtL4NU7UUsvDCojGEXRCWK` is READY in production. The migration passed its probe and was applied to the live project on 2026-10-02 (version `20261002061331`).
 - **Amends** ADR `0024` (F7): the starter wallets no longer need an exemption from opening-balance rows.
 - **Amends** ADR `0021`: the unit fixture is now `unit/fixtures/guestLedger.ts`, not the provider's own defaults.
 - **Amends** ADR `0039`: `seed_starter_account()` seeds its three wallets at 0.00.

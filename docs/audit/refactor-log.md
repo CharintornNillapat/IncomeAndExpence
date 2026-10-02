@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 54 - Empty starters (audit 001 finding 6): T346-T352 (2026-10-02)
+## Phase 54 - Empty starters (audit 001 finding 6): T346-T352 (2026-10-02, commit `052b6c4`, merge `0882695`)
 
 **Changed**
 - **Guest defaults** (`FinanceContext.tsx`): the three starter wallets open at ฿0.00 (ids, names, types, colours, icons and order unchanged). `DEFAULT_STARTER_DEBTS` is gone; the `pf_debts` fallback and `resetToGuestState` use `[]`. The F7 comment no longer claims an exemption.
@@ -27,7 +27,12 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
   - `transfer-preview.spec.ts` without its `seedLedger` line: 6 of 7 failed on chromium (the seventh reads only wallet ids). Restored: 7/7.
   - The two new unit tests against the old `FinanceContext.tsx`: both failed. Restored.
 - **Bundle:** entry `index-*.js` 186,800 B (local build with `.env`), 267 B under Phase 64's recorded 187,067 B: the starter debt literal is gone.
-- **Not done yet:** the probe, the Phase 64 probe re-run, applying the migration, the PR and the sha backfill.
+
+**Release:**
+- PR #13 merged into `main` as `0882695` with a merge commit. PR run `36972693611` and push run `36976892201` passed (unit 588/588, 135/135 per browser).
+- Vercel `dpl_GSmZYYCtL4NU7UUsvDCojGEXRCWK` Production `READY`. `income-and-expence-neon.vercel.app` serves `index-DiQhSBnL.js` at **186,800 B**, the size measured locally.
+- **All 59 files of a local build of `0882695` (with `.env`) were hashed against production.** 55 are byte-for-byte identical. The two PWA SVGs and `robots.txt` differ only in line endings (the CRLF checkout). `sw.js` differs only in those two SVGs' precache revisions, for the same reason, and lists the same 58 precache URLs.
+- **Signed-out smoke test on production** at 1280, 1024 and 390, light and dark, in a fresh context, run twice: the Dashboard shows net worth ฿0.00, three ฿0.00 wallets and "No active debts."; the Wallets page reads "฿0.00 across 3 wallets"; the Debt payoff page shows "No debts tracked yet". No NaN, no old sample figure, no horizontal scroll, no console errors.
 
 ---
 

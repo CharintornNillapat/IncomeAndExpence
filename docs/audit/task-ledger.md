@@ -1089,17 +1089,17 @@ ADR `0040`. The phase reserved since Phase 55 for audit 001 finding 6. The owner
 - new accounts only: stored guest ledgers and accounts already seeded keep their balances;
 - the names stay as they are ("Main Checking" on the client, "Checking Account" on the server).
 
-Branch `phase-54-empty-starters`, cut from `main` at `e044ba0`. **One migration**, `20261003_phase54_zero_starter_seed.sql`, applied to the live project on 2026-10-02 (`20261002061331`); the client does not depend on it. **Resolves R-17, R-38 and C-5** (FAIL, known and deferred, in audits 002 to 012), pending the next antislop audit's confirmation.
+Branch `phase-54-empty-starters`, cut from `main` at `e044ba0`, merged as `0882695` (PR #13; Vercel `dpl_GSmZYYCtL4NU7UUsvDCojGEXRCWK` READY, byte-checked, signed-out smoke OK). **One migration**, `20261003_phase54_zero_starter_seed.sql`, applied to the live project on 2026-10-02 (`20261002061331`); the client does not depend on it. **Resolves R-17, R-38 and C-5** (FAIL, known and deferred, in audits 002 to 012), pending the next antislop audit's confirmation.
 
 | # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
 |---|---|---|---|---|---|---|---|---|---|---|
-| T346 | ADR `0040`; amendment notes in ADR `0024` (F7) and `0021` (unit fixture) | `docs/audit/decisions/` | Low | Low | 0.4h | done | - | - | - | - |
-| T347 | Guest starters at ฿0.00, `DEFAULT_STARTER_DEBTS` removed, F7 comment rewritten | `context/FinanceContext.tsx` | High | Low | 0.2h | done | T346 | - | 2 unit tests fail on the old file | entry -267 B |
-| T348 | `seed_starter_account()` at 0.00 from the md5-matched Phase 64 body, grants restated; its probe | `supabase/migrations/`, `supabase/tests/` | High | Low | 0.4h | done; applied `20261002061331` | T346 | - | deployed body md5 `06b826c0...` = the Phase 64 file before; Phase 54 probe OK; Phase 64 probe seed and grant sections OK on the new body (the dedupe sections were not re-run: they touch every account and do not involve this function); after apply the live body md5 `90c93706...` = the file | - |
-| T349 | E2E fixtures (`SAMPLE_WALLETS`, `SAMPLE_STUDENT_LOAN`, `seedLedger`, write-once), seven specs seeded, a fresh-guest regression test | `tests/` | High | Med | 0.8h | done | T347 | - | 405/405; control: 6 of 7 failed unseeded | E2E 134 -> 135 tests |
-| T350 | Unit fixture `guestLedger.ts`; five suites seeded; two new tests | `unit/` | High | Low | 0.5h | done | T347 | - | 588/588 | unit 586 -> 588 |
-| T351 | `CLAUDE.md`, refactor log, this ledger, baseline metrics | docs | Low | Low | 0.4h | done | all | - | - | - |
-| T352 | Probe and Phase 64 probe re-run, apply on the owner's word, PR, sha backfill | - | - | - | 0.5h | probes and apply done; PR open; sha backfill pending | all | - | - | - |
+| T346 | ADR `0040`; amendment notes in ADR `0024` (F7) and `0021` (unit fixture) | `docs/audit/decisions/` | Low | Low | 0.4h | done | - | `052b6c4` | - | - |
+| T347 | Guest starters at ฿0.00, `DEFAULT_STARTER_DEBTS` removed, F7 comment rewritten | `context/FinanceContext.tsx` | High | Low | 0.2h | done | T346 | `052b6c4` | 2 unit tests fail on the old file | entry -267 B |
+| T348 | `seed_starter_account()` at 0.00 from the md5-matched Phase 64 body, grants restated; its probe | `supabase/migrations/`, `supabase/tests/` | High | Low | 0.4h | done; applied `20261002061331` | T346 | `052b6c4` | deployed body md5 `06b826c0...` = the Phase 64 file before; Phase 54 probe OK; Phase 64 probe seed and grant sections OK on the new body (the dedupe sections were not re-run: they touch every account and do not involve this function); after apply the live body md5 `90c93706...` = the file | - |
+| T349 | E2E fixtures (`SAMPLE_WALLETS`, `SAMPLE_STUDENT_LOAN`, `seedLedger`, write-once), seven specs seeded, a fresh-guest regression test | `tests/` | High | Med | 0.8h | done | T347 | `052b6c4` | 405/405; control: 6 of 7 failed unseeded | E2E 134 -> 135 tests |
+| T350 | Unit fixture `guestLedger.ts`; five suites seeded; two new tests | `unit/` | High | Low | 0.5h | done | T347 | `052b6c4` | 588/588 | unit 586 -> 588 |
+| T351 | `CLAUDE.md`, refactor log, this ledger, baseline metrics | docs | Low | Low | 0.4h | done | all | `052b6c4` | - | - |
+| T352 | Probe and Phase 64 probe re-run, apply on the owner's word, PR, sha backfill | - | - | - | 0.5h | done; PR #13 merged | all | `0882695` | - | - |
 
 ## Phase 64 - the re-seeding guard and the duplicate cleanup: T339-T345 (2026-10-02)
 
