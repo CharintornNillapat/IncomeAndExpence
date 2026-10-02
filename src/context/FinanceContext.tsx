@@ -33,9 +33,11 @@ import { APP_CURRENCY, formatCurrencyAmount } from '../utils/currency';
 import { roundToCents } from '../utils/money';
 import { todayIsoDate } from '../utils/date';
 import { walletTotal } from '../selectors/wallets';
-import { usedColors } from '../selectors/categories';
-import { isMovementCategory } from '../selectors/ledger';
+import { paletteExhausted, usedColors } from '../selectors/categories';
+import { IDENTITY_COLORS } from '../utils/identityPalette';
+import { isMovementCategory, SYSTEM_CATEGORY_COLOR } from '../selectors/ledger';
 import { dedupeCategoriesByName, withDefaultDescriptions } from '../utils/categoryUtils';
+import { migrateCategoryColors, migrateWalletColors } from '../utils/identityColorMigration';
 import { generateIdempotencyKey } from '../utils/ids';
 
 /**
@@ -497,15 +499,15 @@ const DEFAULT_USER: User = {
  * Categories hub shows the field for every category.
  */
 const DEFAULT_SYSTEM_CATEGORIES: Category[] = [
-  { id: 'cat-food', name: 'Food & Dining', type: 'EXPENSE', icon: 'utensils', color: '#f87171', description: 'Eating out, restaurants, street food, cafes, coffee, snacks, bars and food delivery.', isSystem: true, isDeleted: false },
-  { id: 'cat-groceries', name: 'Groceries', type: 'EXPENSE', icon: 'shopping-cart', color: '#fb923c', description: 'Supermarket, market and convenience-store runs for food and household supplies cooked or used at home.', isSystem: true, isDeleted: false },
-  { id: 'cat-transport', name: 'Transport & Fuel', type: 'EXPENSE', icon: 'car', color: '#facc15', description: 'Petrol, taxis, ride-hailing, trains, buses, parking, tolls and vehicle servicing.', isSystem: true, isDeleted: false },
-  { id: 'cat-shopping', name: 'Shopping & Apparel', type: 'EXPENSE', icon: 'shopping-bag', color: '#a78bfa', description: 'Clothes, shoes, electronics, gadgets, homeware, gifts and other one-off personal purchases.', isSystem: true, isDeleted: false },
-  { id: 'cat-housing', name: 'Housing & Utilities', type: 'EXPENSE', icon: 'home', color: '#38bdf8', description: 'Rent, electricity, water, internet and phone bills, insurance, and recurring subscriptions like Netflix or Spotify.', isSystem: true, isDeleted: false },
-  { id: 'cat-salary', name: 'Primary Salary', type: 'INCOME', icon: 'briefcase', color: '#4ade80', description: 'Regular wages, monthly salary, payroll and bonuses from a main employer.', isSystem: true, isDeleted: false },
-  { id: 'cat-freelance', name: 'Freelance & Side Gig', type: 'INCOME', icon: 'laptop', color: '#34d399', description: 'Client work, commissions, side-project earnings, tips, refunds and money received outside a regular salary.', isSystem: true, isDeleted: false },
-  { id: 'cat-debt', name: 'Debt Repayment', type: 'DEBT_REPAYMENT', icon: 'credit-card', color: '#f43f5e', description: 'Payments made against a tracked loan or credit-card balance.', isSystem: true, isDeleted: false },
-  { id: 'cat-adjust', name: 'Balance Adjustment', type: 'ADJUSTMENT', icon: 'sliders', color: '#94a3b8', description: 'Manual corrections that reconcile a wallet balance to its real-world value.', isSystem: true, isDeleted: false },
+  { id: 'cat-food', name: 'Food & Dining', type: 'EXPENSE', icon: 'utensils', color: '#E879A6', description: 'Eating out, restaurants, street food, cafes, coffee, snacks, bars and food delivery.', isSystem: true, isDeleted: false },
+  { id: 'cat-groceries', name: 'Groceries', type: 'EXPENSE', icon: 'shopping-cart', color: '#F59E6B', description: 'Supermarket, market and convenience-store runs for food and household supplies cooked or used at home.', isSystem: true, isDeleted: false },
+  { id: 'cat-transport', name: 'Transport & Fuel', type: 'EXPENSE', icon: 'car', color: '#5CC8B8', description: 'Petrol, taxis, ride-hailing, trains, buses, parking, tolls and vehicle servicing.', isSystem: true, isDeleted: false },
+  { id: 'cat-shopping', name: 'Shopping & Apparel', type: 'EXPENSE', icon: 'shopping-bag', color: '#B69CF5', description: 'Clothes, shoes, electronics, gadgets, homeware, gifts and other one-off personal purchases.', isSystem: true, isDeleted: false },
+  { id: 'cat-housing', name: 'Housing & Utilities', type: 'EXPENSE', icon: 'home', color: '#7DA2F0', description: 'Rent, electricity, water, internet and phone bills, insurance, and recurring subscriptions like Netflix or Spotify.', isSystem: true, isDeleted: false },
+  { id: 'cat-salary', name: 'Primary Salary', type: 'INCOME', icon: 'briefcase', color: '#8FA8C8', description: 'Regular wages, monthly salary, payroll and bonuses from a main employer.', isSystem: true, isDeleted: false },
+  { id: 'cat-freelance', name: 'Freelance & Side Gig', type: 'INCOME', icon: 'laptop', color: '#D98FD0', description: 'Client work, commissions, side-project earnings, tips, refunds and money received outside a regular salary.', isSystem: true, isDeleted: false },
+  { id: 'cat-debt', name: 'Debt Repayment', type: 'DEBT_REPAYMENT', icon: 'credit-card', color: SYSTEM_CATEGORY_COLOR, description: 'Payments made against a tracked loan or credit-card balance.', isSystem: true, isDeleted: false },
+  { id: 'cat-adjust', name: 'Balance Adjustment', type: 'ADJUSTMENT', icon: 'sliders', color: SYSTEM_CATEGORY_COLOR, description: 'Manual corrections that reconcile a wallet balance to its real-world value.', isSystem: true, isDeleted: false },
 ];
 
 const DEFAULT_STARTER_WALLETS: Wallet[] = [
@@ -516,7 +518,7 @@ const DEFAULT_STARTER_WALLETS: Wallet[] = [
     type: 'BANK_ACCOUNT',
     currency: APP_CURRENCY,
     balance: 2500.0,
-    color: '#0284c7',
+    color: '#6C8EEF',
     icon: 'landmark',
     isArchived: false,
     isDeleted: false,
@@ -530,7 +532,7 @@ const DEFAULT_STARTER_WALLETS: Wallet[] = [
     type: 'CASH',
     currency: APP_CURRENCY,
     balance: 150.0,
-    color: '#16a34a',
+    color: '#D9A066',
     icon: 'banknote',
     isArchived: false,
     isDeleted: false,
@@ -544,7 +546,7 @@ const DEFAULT_STARTER_WALLETS: Wallet[] = [
     type: 'SAVINGS',
     currency: APP_CURRENCY,
     balance: 5000.0,
-    color: '#7c3aed',
+    color: '#4FB7A8',
     icon: 'piggy-bank',
     isArchived: false,
     isDeleted: false,
@@ -583,11 +585,15 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
   const [syncError, setSyncError] = useState<string | null>(null);
 
-  const [wallets, setWallets] = useState<Wallet[]>(() => safeGetLocalStorage('pf_wallets', DEFAULT_STARTER_WALLETS));
+  // Spec 5.1's colour migration (ADR 0038) runs on what this device stores;
+  // the cloud's rows move by SQL, never by a remap on the Supabase load.
+  const [wallets, setWallets] = useState<Wallet[]>(() => migrateWalletColors(safeGetLocalStorage('pf_wallets', DEFAULT_STARTER_WALLETS)));
   const [categories, setCategories] = useState<Category[]>(() =>
-    withDefaultDescriptions(
-      dedupeCategoriesByName(safeGetLocalStorage('pf_categories', DEFAULT_SYSTEM_CATEGORIES)),
-      DEFAULT_SYSTEM_CATEGORIES
+    migrateCategoryColors(
+      withDefaultDescriptions(
+        dedupeCategoriesByName(safeGetLocalStorage('pf_categories', DEFAULT_SYSTEM_CATEGORIES)),
+        DEFAULT_SYSTEM_CATEGORIES
+      )
     )
   );
   const [keywordRules, setKeywordRules] = useState<KeywordRule[]>(() => safeGetLocalStorage('pf_keywords', DEFAULT_KEYWORD_RULES));
@@ -907,7 +913,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
             type: 'BANK_ACCOUNT',
             currency: APP_CURRENCY,
             balance: 2500.0,
-            color: '#0284c7',
+            color: '#6C8EEF',
             icon: 'landmark',
           },
           {
@@ -916,7 +922,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
             type: 'CASH',
             currency: APP_CURRENCY,
             balance: 150.0,
-            color: '#16a34a',
+            color: '#D9A066',
             icon: 'banknote',
           },
           {
@@ -925,7 +931,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
             type: 'SAVINGS',
             currency: APP_CURRENCY,
             balance: 8000.0,
-            color: '#7c3aed',
+            color: '#4FB7A8',
             icon: 'piggy-bank',
           },
         ])
@@ -1651,9 +1657,11 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       return { success: false, error: `A category named "${cleanedName}" already exists` };
     }
     // L9 (ADR 0037): the picker disables a colour in use; this is the same rule
-    // at the write, so a stale form cannot hand two categories one colour.
-    const colorOwner = usedColors(categoriesRef.current).get(validation.data.color.toLowerCase());
-    if (colorOwner) {
+    // at the write, so a stale form cannot hand two categories one colour. Once
+    // all twelve are taken, colours may repeat (audit 012 finding 1).
+    const usedNow = usedColors(categoriesRef.current);
+    const colorOwner = usedNow.get(validation.data.color.toLowerCase());
+    if (colorOwner && !paletteExhausted(IDENTITY_COLORS, usedNow)) {
       return { success: false, error: `That colour is used by ${colorOwner}` };
     }
 
@@ -1728,8 +1736,9 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     // L9, only when the colour actually changes: a category still on a colour it
     // shares from before L9 can be renamed without being made to pick a new one.
     if (updates.color !== undefined && updates.color.toLowerCase() !== current.color.toLowerCase()) {
-      const colorOwner = usedColors(categoriesRef.current, id).get(updates.color.toLowerCase());
-      if (colorOwner) {
+      const usedByOthers = usedColors(categoriesRef.current, id);
+      const colorOwner = usedByOthers.get(updates.color.toLowerCase());
+      if (colorOwner && !paletteExhausted(IDENTITY_COLORS, usedByOthers)) {
         return { success: false, error: `That colour is used by ${colorOwner}` };
       }
     }

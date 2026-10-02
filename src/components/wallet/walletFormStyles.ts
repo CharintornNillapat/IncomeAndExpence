@@ -10,8 +10,9 @@ export type { FieldTone } from '../../utils/formStyles';
 /**
  * The colours offered when creating or editing a wallet: spec section 1's
  * twelve muted identity colours (audit 008 finding 2), the same twelve the
- * Categories page offers (`identityPalette.ts`). Wallets that already hold an
- * older colour keep it until spec 5.1's migration.
+ * Categories page offers (`identityPalette.ts`). The starter wallets moved onto
+ * them in spec 5.1's migration (ADR 0038); a wallet on any other colour keeps it,
+ * since Save sends the colour unchanged until another is picked.
  */
 export const WALLET_COLOR_PALETTE = IDENTITY_COLORS;
 

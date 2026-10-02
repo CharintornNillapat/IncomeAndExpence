@@ -3,7 +3,8 @@ import { Plus } from 'lucide-react';
 import { useFinanceActions, useFinanceState } from '../context/FinanceContext';
 import { useMediaQuery } from '../hooks/useMediaQuery';
 import { Category } from '../types';
-import { categoryGroups, categoryUsage, usedColors } from '../selectors/categories';
+import { categoryGroups, categoryUsage, nextColor, usedColors } from '../selectors/categories';
+import { IDENTITY_COLORS } from '../utils/identityPalette';
 import { PageHeader } from '../components/ui/PageHeader';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
@@ -51,6 +52,7 @@ export const CategoriesView: React.FC = () => {
   }, [transactions, keywordRules]);
 
   const used = useMemo(() => usedColors(categories, editing?.id), [categories, editing]);
+  const startColor = useMemo(() => nextColor(IDENTITY_COLORS, categories), [categories]);
   const usage = useMemo(
     () => (editing ? categoryUsage(editing.id, transactions, keywordRules) : undefined),
     [editing, transactions, keywordRules]
@@ -137,6 +139,7 @@ export const CategoriesView: React.FC = () => {
       key={category ? category.id : `new-${newFormKey}`}
       editing={category}
       used={used}
+      startColor={startColor}
       usage={usage}
       initialType={newType}
       showHeading={showHeading}

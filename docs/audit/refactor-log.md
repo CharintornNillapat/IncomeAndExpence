@@ -4,6 +4,69 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
+## Phase 63 - The identity colour migration (spec 5.1): T329-T337 (2026-10-02, commits `1f09894`, `cdda81d`, docs `ce9731b`)
+
+**Changed**
+- **One data-only migration,** `supabase/migrations/20261002_phase63_identity_colors.sql`, with its probe. It is applied to the live project only after the merge and the deploy, on the owner's word.
+- **Logic:** `utils/identityColorMigration.ts` moves each live shipped category and starter wallet still on its old colour onto spec 5.1's identity colour. The match is by name and old colour. A target another category already holds becomes the first free identity colour (L9). The SQL does the same in the cloud, plus spec 5.1's own rows (camel, กิจนิมนต์, and Cash, Main and Sub).
+- **Seeds:** guests and new accounts start on the new colours. The System pair is `#6B7385`.
+- **Hydration:** `pf_categories` and `pf_wallets` pass through the migration when they load. The Supabase load does not.
+- **Copy:**
+  - "Color" throughout: "Theme Color" and the "Colour" legend are gone;
+  - wallet swatches are named by colour, not hex;
+  - the swatch reads "Current color";
+  - a System category's rule chip uses the System grey.
+- **Fixed:**
+  - every shipped category and starter wallet wore a money colour;
+  - the owner's camel and กิจนิมนต์ each shared a colour with a shipped category (L9).
+- **Tests:**
+  - `unit/identity-color-migration.test.ts` (9);
+  - 3 hydration and seed tests in `categories-page`, 2 in `wallets-page` and 1 in `authenticated-ledger`, plus a new "no Current color for a shipped category" test;
+  - the Phase 62 fixtures moved to the new colours, and the "older colour kept on Save" test now uses a custom category;
+  - unit 562 -> 578 in 27 files. No spec edits.
+- **Docs:** ADR `0038`, `DESIGN.md`, `CLAUDE.md`, antislop audit 012.
+
+**Surprises**
+- **The live duplicates.** The owner's account holds each shipped category 4 times (38 live rows, 11 names). `20260920_dedupe_categories.sql` is in the repo but was never applied to the live project. Left alone by decision.
+- **The cap now arrives early.** With the shipped categories on the palette, L9 leaves a fresh account 5 free colours and the owner's account 3 (audit 012 finding 1).
+
+**Gate:**
+- **Lint:** clean. **Unit:** 578/578.
+- **Controls:** 6 caught. Each of these failed its test:
+  - the collision rule off;
+  - a picked colour overwritten;
+  - a deleted row migrated;
+  - the category hydration seam removed;
+  - the wallet hydration seam removed;
+  - the old cloud seed colour.
+- **Probe:** `PHASE 63 PROBE OK` inside `BEGIN ... ROLLBACK` against the live schema, and no fixture rows left behind. A read-only preview lists exactly the rows the migration will move:
+  - the owner's account: 38 category rows (4 × 9 shipped, camel, กิจนิมนต์) and 3 wallets;
+  - the second account: 9 category rows and 3 wallets.
+
+  No live Expense or Income category is already on an identity colour, so nothing will collide.
+- **Playwright (local):**
+  - **Run 1:** 398/402 (7.4 min), run while two worktree builds competed for the CPU. Each failure was a click waiting for an element to settle, or a Firefox graphics-process crash:
+    - Firefox: `account-and-mobile-nav.spec.ts` ×2 and `categories.spec.ts`;
+    - WebKit: `voice-input.spec.ts`.
+
+    Those files then passed 60/60 on Firefox and 24/24 on WebKit.
+  - **Run 2:** 401/402 (6.5 min) on an idle machine. WebKit `transaction-edit.spec.ts`: a row "not stable" before the click. The file then passed 15/15.
+- **Build** against `main` (`ba87338`), both with `.env`. `main`'s entry is 185,111 B, the same as production.
+  - **Entry:** +1,817 B: the migration module, and `identityPalette`, which it pulls into the entry.
+  - **All JS:** +1,167 B. **CSS:** unchanged.
+  - **Precache:** 59 to 58 entries.
+- **Walk-through** (Playwright's Chromium by script):
+  - **Viewports and seeds:** at 1280 light, with old-colour storage and fresh; at 390 light and dark, with old-colour storage.
+  - **No old colour painted** on the Dashboard, Categories or Wallets.
+  - **Categories:** Rose reads "Rose, used by Food & Dining", 7 swatches are struck, and Tan is offered first.
+  - **Wallets:** the tiles are Blue, Tan and Teal; the edit form's legend reads "Color", with swatches "Tan" to "Iris".
+  - **Everywhere:** no overflow, 0 controls under 44px, and no console errors.
+- **Audit 012, findings 1 and 4, fixed on the owner's word (T338):**
+  - past twelve, colours repeat: `paletteExhausted` enables every swatch ("Rose, also used by Food & Dining") and lets both guards accept a repeat; `nextColor` (replacing `firstFreeColor`) starts a new category on the first free colour, else the least-shared;
+  - "Current color, from before the new palette" became "Custom color".
+
+  Lint clean, unit 583/583 (5 new tests), and four controls each failed their test: the add guard's exemption removed, the update guard's exemption removed, the grid blocking every used colour, and no least-shared cycling.
+
 ## Phase 62 - The Categories page (spec 6.6): T314-T328 (2026-10-01, commits `58b5d75`, `f8c62a0`, `837d442`, docs `03a1311`)
 
 **Changed**
@@ -67,6 +130,24 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
   - below `lg`, "Add category" in the header focuses the New form and scrolls to it.
 
   Lint clean, unit 562/562, and a control for each failed its test. The category, rules, nav and wallet specs passed 117/117 on all three browsers. Checked in Chromium at 1280 and 390, light and dark: the strike shows in both themes; at 390 the button lands focus on Name with the field in view; no overflow, no control under 44px, no console errors.
+
+**CI and deploy:**
+- PR #10, run `36876112983` on `428fe82`: success. Unit 562/562 with no `.env` on the runner, and 134/134 per browser, none flaky. The run took 23 min from creation to completion, against about 5 for the last two PRs; its jobs took 2.4 to 3.3 min each, so the extra time was not spent in the tests.
+- Merged as PR #10 with a merge commit, `ba87338`, with the owner's go-ahead. Its tree is identical to `428fe82`. It also published `43524c4`, the Phase 61 deploy record.
+- Push run `36881986291` on `ba87338`: success, with the WebKit job re-run once (attempt 2) after its first attempt was cancelled in the apt step. Unit 562/562; 134/134 per browser.
+- **The slow runs were the runner's apt mirror, not the suite.** `playwright install-deps` fetches WebKit's and Firefox's system packages from `azure.archive.ubuntu.com` on every run, even on a browser-cache hit. On PR #10 that step took 19 min for WebKit. On the push run it took 5.5 min for Firefox, and WebKit's was still downloading at about 10 s a package when the job hit its 30-minute limit and was cancelled, before any test ran. Re-running only that job, the step took 40 s and the tests 2.7 min. The test steps themselves took 2.0 to 3.3 min throughout.
+- Vercel `dpl_BXMooK9LkRpXEe5c85WzPbp6zo9z` Production `READY`. `income-and-expence-neon.vercel.app` serves `index-Bs-bFJlh.js` at **185,111 B**, the size measured in the gate.
+- **All 60 files of a clean local build (with `.env`) were hashed against production.** 55 are byte-for-byte identical. The two SVGs, `robots.txt` and `index.html` differ only in line endings: the worktree checked `index.html` out with CRLF, and once every `\r` is removed it matches. `sw.js` has the same 59 precache URLs.
+- **Signed-out smoke test on production** (fresh headless Chromium, no auth token in storage, no console errors):
+  - at 1280:
+    - the header tab reads "Categories", and the page has the tabs Categories and Smart rules;
+    - the groups read "Expense · 5", "Income · 2" and "System · 2"; the System rows are not buttons, each with a lock and "Not counted as income or spending"; no raw type on either tab;
+    - a new Income category "Smoke tips" took Tan, the first free colour, and read "Custom". Tan then showed disabled, struck through and named "Tan, used by Smoke tips";
+    - Food & Dining's edit form had no Delete and said "Default categories can't be deleted."; focus went to the form's heading, and Cancel returned it to the row;
+    - Delete on "Smoke tips" confirmed first; Cancel kept it, confirm removed it, focus went to the list's heading and Tan was free again;
+    - the Smart rules picker reads "Groceries (Expense)", and the System ones by name alone;
+  - at 1024: the header tabs are icons only, named "Categories", with no overflow in the tab bar or the page; "Add category" is absent;
+  - at 390, light and dark: the More sheet's item reads "Categories". "Add category" scrolled 658px and focused Name in view; a saved category struck its colour; a tapped row opened the "Edit category" sheet with Delete enabled; Escape returned focus to the row. No page overflow and 0 controls under 44px, on the page or in the sheet.
 
 ## Phase 61 - The Daily diary (spec 6.5): T299-T313 (2026-10-01, commits `e8a1f79`, `220e7db`, `d80fb5e`, `7b68e67`, docs `cc9c310`)
 

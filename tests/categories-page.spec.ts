@@ -3,9 +3,9 @@ import { gotoTab } from './helpers';
 
 /**
  * The Categories page (Phase 62, spec 6.6, ADR 0037), as a guest. A fresh
- * context has the nine shipped categories, whose colours predate the identity
- * palette (spec 5.1's migration is Phase 63), so every one of the twelve
- * swatches starts free. Nothing is intercepted.
+ * context has the nine shipped categories, on Rose, Peach, Periwinkle,
+ * Lavender, Aqua, Steel and Orchid since spec 5.1's migration (Phase 63), so
+ * Tan and then Blue are the first free swatches. Nothing is intercepted.
  */
 test.describe('The Categories page', () => {
   test.beforeEach(async ({ page }) => {

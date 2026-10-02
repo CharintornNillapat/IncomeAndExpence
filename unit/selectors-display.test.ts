@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { categoryLabel, systemCategoryLabel, isSystemMovementCategory, displayTitle, secondaryLine } from '../src/selectors/display';
 import { foldAdjustmentPairs, describeAdjustmentPair } from '../src/selectors/adjustments';
-import { categoryGroups, categoryUsage, firstFreeColor, usedColors } from '../src/selectors/categories';
+import { categoryGroups, categoryUsage, nextColor, paletteExhausted, usedColors } from '../src/selectors/categories';
 import { IDENTITY_COLORS, isIdentityColor } from '../src/utils/identityPalette';
 import { buildLookupMap } from '../src/utils/mapUtils';
 import type { Category, Transaction, Wallet } from '../src/types';
@@ -168,12 +168,28 @@ describe('L9: a colour one category uses is not offered to another', () => {
 });
 
 describe('the Categories page (Phase 62, spec 6.6)', () => {
-  it('starts a new category on the first colour nothing uses, or none when all twelve are taken', () => {
-    expect(firstFreeColor(IDENTITY_COLORS, usedColors(CATEGORIES))).toBe('#D9A066');
-    const taken = new Map(IDENTITY_COLORS.slice(0, 4).map((hex) => [hex.toLowerCase(), 'x']));
-    expect(firstFreeColor(IDENTITY_COLORS, taken)).toBe('#E879A6');
-    const all = new Map(IDENTITY_COLORS.map((hex) => [hex.toLowerCase(), 'x']));
-    expect(firstFreeColor(IDENTITY_COLORS, all)).toBeNull();
+  const on = (colors: ReadonlyArray<string>): Category[] =>
+    colors.map((color, i) => ({ id: `k${i}`, name: `K${i}`, type: 'EXPENSE', icon: 'x', color, isSystem: false, isDeleted: false }));
+
+  it('starts a new category on the first colour nothing uses', () => {
+    expect(nextColor(IDENTITY_COLORS, CATEGORIES)).toBe('#D9A066');
+    expect(nextColor(IDENTITY_COLORS, on(IDENTITY_COLORS.slice(0, 4)))).toBe('#E879A6');
+  });
+
+  it('once all twelve are taken, cycles to the least-shared colour, earliest on a tie (audit 012 finding 1)', () => {
+    expect(nextColor(IDENTITY_COLORS, on(IDENTITY_COLORS))).toBe('#D9A066');
+    // Tan and Blue twice each (one written in lower case), so Teal is next.
+    expect(nextColor(IDENTITY_COLORS, on([...IDENTITY_COLORS, '#d9a066', '#6C8EEF']))).toBe('#4FB7A8');
+    // A deleted category frees its share.
+    const withDeleted = [...on([...IDENTITY_COLORS, '#D9A066']), { ...on(['#6C8EEF'])[0], id: 'gone', isDeleted: true }];
+    expect(nextColor(IDENTITY_COLORS, withDeleted)).toBe('#6C8EEF');
+  });
+
+  it('says when all twelve are taken, which is when colours may repeat', () => {
+    expect(paletteExhausted(IDENTITY_COLORS, usedColors(on(IDENTITY_COLORS.slice(0, 11))))).toBe(false);
+    expect(paletteExhausted(IDENTITY_COLORS, usedColors(on(IDENTITY_COLORS)))).toBe(true);
+    // A colour outside the twelve does not count toward it.
+    expect(paletteExhausted(IDENTITY_COLORS, usedColors(on([...IDENTITY_COLORS.slice(0, 11), '#0ea5e9'])))).toBe(false);
   });
 
   it('knows the twelve identity colours whatever their case', () => {

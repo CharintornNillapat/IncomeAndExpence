@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Category } from '../../types';
 import type { MutationResult } from '../../context/FinanceContext';
 import { useSubmitHandler } from '../../hooks/useSubmitHandler';
-import { CategoryUsage, firstFreeColor } from '../../selectors/categories';
+import { CategoryUsage, paletteExhausted } from '../../selectors/categories';
 import { IDENTITY_COLORS } from '../../utils/identityPalette';
 import { ERROR_BANNER_CLASS, LABEL_CLASS, inputClass } from '../../utils/formStyles';
 import { Button } from '../ui/Button';
@@ -28,6 +28,8 @@ interface CategoryFormProps {
   editing: Category | null;
   /** `usedColors(categories, editing?.id)`. */
   used: Map<string, string>;
+  /** `nextColor(...)`: where a new category starts, a repeat once all twelve are taken. */
+  startColor: string;
   /** What still points at `editing`, for its Delete. */
   usage?: CategoryUsage;
   /** The type a new form starts on, so several incomes in a row keep Income. */
@@ -50,6 +52,7 @@ interface CategoryFormProps {
 export const CategoryForm: React.FC<CategoryFormProps> = ({
   editing,
   used,
+  startColor,
   usage,
   initialType = 'EXPENSE',
   showHeading = true,
@@ -65,14 +68,15 @@ export const CategoryForm: React.FC<CategoryFormProps> = ({
   const [type, setType] = useState<CreatableCategoryType>(initialType);
   const [name, setName] = useState(editing?.name ?? '');
   const [description, setDescription] = useState(editing?.description ?? '');
-  const [color, setColor] = useState(editing?.color ?? firstFreeColor(IDENTITY_COLORS, used) ?? '');
+  const [color, setColor] = useState(editing?.color ?? startColor);
 
   const { error, isSubmitting, handleSubmit } = useSubmitHandler({
     defaultErrorMessage: isEdit ? 'Failed to update category' : 'Failed to create category',
     onSuccess: () => (editing ? onSaved(editing.id) : onAdded(type)),
   });
 
-  const noFreeColor = !isEdit && color === '';
+  // Past twelve, colours repeat rather than blocking a new category (audit 012 finding 1).
+  const sharing = paletteExhausted(IDENTITY_COLORS, used);
   const inUse = usage ? usage.transactions + usage.rules > 0 : false;
 
   return (
@@ -156,7 +160,11 @@ export const CategoryForm: React.FC<CategoryFormProps> = ({
           used={used}
           currentColor={editing?.color}
         />
-        {noFreeColor && <p className="mt-1 text-xs text-fg-secondary">All 12 colors are in use, so a new category has none left.</p>}
+        {sharing && (
+          <p id={`${prefix}-color-sharing`} className="mt-1 text-xs text-fg-secondary">
+            All 12 colors are in use, so this category will share one with another.
+          </p>
+        )}
       </div>
 
       {error && <div className={ERROR_BANNER_CLASS}>{error}</div>}
@@ -196,7 +204,7 @@ export const CategoryForm: React.FC<CategoryFormProps> = ({
           </div>
         </div>
       ) : (
-        <Button id="save-category-btn" type="submit" size="lg" block disabled={isSubmitting || noFreeColor}>
+        <Button id="save-category-btn" type="submit" size="lg" block disabled={isSubmitting}>
           Add category
         </Button>
       )}

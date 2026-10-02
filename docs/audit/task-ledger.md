@@ -1081,6 +1081,29 @@ Approved explicitly by the user, planned and approved before any code was writte
 - **One negative control was redone** because the first attempt produced malformed TypeScript that the dev server still served — the tests failed, but possibly for the wrong reason.
 - **No flakes.** Phase 44's `wallets.spec.ts` webkit flake has now not reproduced across three consecutive phases; still watched rather than closed.
 
+## Phase 63 - FinLife redesign, step 5 (spec 5.1's colour migration): T329-T337 (2026-10-02)
+
+ADR `0038`. The plan was approved in plan mode; the owner's decisions:
+- any row in any account still on its shipped colour moves, plus spec 5.1's named rows, and a colour someone picked stays;
+- the live duplicate category rows are recoloured, not removed (their cleanup stays open);
+- a target colour already held by another category becomes the first free identity colour (L9);
+- antislop mode 2 (audit 012).
+
+Branch `phase-63-category-colours`, cut from `main` at `ba87338`. It also carries `ee53206`, the Phase 62 deploy record, which had not been pushed. **One data-only migration**, `20261002_phase63_identity_colors.sql`, applied after the merge and deploy, on the owner's word.
+
+| # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
+|---|---|---|---|---|---|---|---|---|---|---|
+| T329 | `migrateCategoryColors` / `migrateWalletColors`: the 5.1 table and the L9 collision rule | `utils/identityColorMigration.ts` | High | Med | 0.5h | done | - | `1f09894` | 9 unit tests; 3 controls failed | - |
+| T330 | Seeds on identity colours (guest and new account) | `context/FinanceContext.tsx` | Med | Low | 0.2h | done | T329 | `1f09894` | signed-in seed test; its control failed | - |
+| T331 | The `pf_categories` / `pf_wallets` hydration applies the migration (never the Supabase load) | `context/FinanceContext.tsx` | High | Low | 0.2h | done | T329 | `1f09894` | 2 seam controls failed | - |
+| T332 | "Color" throughout, swatches named by colour, "Current color"; System chip colour in the rules table | `wallet/`, `category/`, `identityPalette.ts` | Low | Low | 0.3h | done | - | `1f09894` | - | - |
+| T333 | The SQL migration and its probe | `supabase/` | High | Med | 1h | done; not applied | T329 | `cdda81d` | `PHASE 63 PROBE OK` on the live schema | - |
+| T334 | Unit: `identity-color-migration` (9), page and seed tests (7), 3 fixtures moved | `unit/` | High | Low | 0.7h | done | T329-T332 | `1f09894` | 6 controls caught in all | unit 562 -> 578 |
+| T335 | Gate: lint, unit, build, Playwright twice, walk-through | - | - | - | 1h | done | all | ce9731b | lint clean; unit 578/578; Playwright 398/402 then 401/402 (click-settling timeouts only, each file green on repeat); probe OK | entry +1,817 B |
+| T336 | Antislop audit 012 (mode 2) | `anti-slop/audit-012-2026-10-02.md` | - | - | 0.4h | done; findings await the owner | T335 | ce9731b | 4 findings (1 MEDIUM, 3 LOW), no new Hard Gate failure | - |
+| T337 | ADR `0038`, `DESIGN.md`, `CLAUDE.md`, ledger, log, metrics; sha backfill; draft PR | docs | Low | Low | 0.6h | docs done; draft PR on the owner's word | all | ce9731b | - | - |
+| T338 | Audit 012 findings 1 and 4: colours repeat past twelve (`paletteExhausted`, `nextColor`, both guards); "Custom color" | `selectors/categories.ts`, `category/`, `CategoriesView.tsx`, `FinanceContext.tsx` | High | Low | 0.6h | done | T336 | 7b4e61a | unit 578 -> 583; 4 controls failed | - |
+
 ## Phase 62 - FinLife redesign, step 4, sixth page (Categories): T314-T328 (2026-10-01)
 
 ADR `0037`. The plan was approved in plan mode; the owner's decisions:
@@ -1090,6 +1113,7 @@ ADR `0037`. The plan was approved in plan mode; the owner's decisions:
 - antislop mode 2 (audit 011).
 
 Branch `phase-62-categories`, cut from `main` at `192e333`. It also carries `43524c4`, the Phase 61 deploy record, which had not been pushed. No migration.
+- Merged into `main` as `ba87338` with a merge commit, with the owner's go-ahead, after audit 011's findings 1 and 2 were fixed (T328). PR run `36876112983` and push run `36881986291` passed. Vercel `dpl_BXMooK9LkRpXEe5c85WzPbp6zo9z` is READY and serves the local build byte for byte.
 
 | # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
 |---|---|---|---|---|---|---|---|---|---|---|

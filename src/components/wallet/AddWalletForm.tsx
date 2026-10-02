@@ -13,6 +13,7 @@ import {
   selectClass,
 } from '../../utils/formStyles';
 import { Button } from '../ui/Button';
+import { identityColorName } from '../../utils/identityPalette';
 import { WALLET_COLOR_PALETTE, WALLET_TYPE_OPTIONS } from './walletFormStyles';
 
 /**
@@ -146,7 +147,7 @@ export const AddWalletForm: React.FC<AddWalletFormProps> = ({
       </div>
 
       <div>
-        <label className={`${LABEL_CLASS} mb-1.5`}>Theme Color</label>
+        <label className={`${LABEL_CLASS} mb-1.5`}>Color</label>
         {/* A 28px swatch inside a 44px hit box; the selected one takes the focus ring, not a scale. */}
         <div className="flex flex-wrap items-center gap-1">
           {WALLET_COLOR_PALETTE.map((c) => (
@@ -154,7 +155,7 @@ export const AddWalletForm: React.FC<AddWalletFormProps> = ({
               key={c}
               type="button"
               onClick={() => setWalletColor(c)}
-              aria-label={`Colour ${c}`}
+              aria-label={identityColorName(c)}
               aria-pressed={walletColor === c}
               className="w-11 h-11 inline-flex items-center justify-center rounded-full cursor-pointer"
             >

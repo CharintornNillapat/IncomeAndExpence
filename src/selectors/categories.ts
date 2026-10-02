@@ -18,9 +18,32 @@ export function usedColors(categories: Category[], exceptId?: string): Map<strin
   return used;
 }
 
-/** The first colour of `palette` that `used` (from `usedColors`) does not hold, or `null` when all are taken. */
-export function firstFreeColor(palette: ReadonlyArray<string>, used: Map<string, string>): string | null {
-  return palette.find((hex) => !used.has(hex.toLowerCase())) ?? null;
+/**
+ * Whether every colour of `palette` is in `used`. From that point L9 lets
+ * colours repeat, so a 13th category can still be added (audit 012 finding 1):
+ * the picker enables every swatch and the write guards stop refusing.
+ */
+export function paletteExhausted(palette: ReadonlyArray<string>, used: Map<string, string>): boolean {
+  return palette.every((hex) => used.has(hex.toLowerCase()));
+}
+
+/**
+ * The colour a new category starts on: the first free one, or, once all are
+ * taken, the one the fewest live categories share, earliest in the palette on a
+ * tie. Colours then cycle evenly instead of piling onto the first.
+ */
+export function nextColor(palette: ReadonlyArray<string>, categories: Category[]): string {
+  const counts = new Map<string, number>();
+  for (const category of categories) {
+    if (category.isDeleted) continue;
+    const key = category.color.toLowerCase();
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
+  let best = palette[0];
+  for (const hex of palette) {
+    if ((counts.get(hex.toLowerCase()) ?? 0) < (counts.get(best.toLowerCase()) ?? 0)) best = hex;
+  }
+  return best;
 }
 
 export interface CategoryGroups {
