@@ -1098,6 +1098,27 @@ The entry's growth is the ledger action itself, which lives with the other ledge
 
 **Intermittent local failures:** 6 in 1,071 full-suite runs (3 full runs). All were timeouts: a Firefox `goto`, a Firefox context close, and four WebKit clicks waiting for "stable". No assertion failed. See audit 005 finding 3 for the control runs.
 
+## Phase 67 (Modal focus trap) - delta against Phase 66
+
+A local build of `main` (`6354c08`) and of the Phase 67 tree, both with the repo's `.env`, made in the repo one after the other. Gzip is level 9.
+
+| Chunk | Phase 66 | Phase 67 | Delta |
+|---|---|---|---|
+| entry `index-*.js` | 186,724 B / 53,346 B gzip | 188,651 B / 54,246 B gzip | **+1,927 B raw / +900 B gzip** (`Modal` is in the entry: the open-time focus, the Tab trap, the reachability filter and the dialog stack) |
+| `index-*.css` | - | 48,810 B | no new rule: `focus-visible:outline-none` was already used by three controls |
+| PWA precache | 58 entries, 1,650.04 KiB | 58 entries, 1,651.92 KiB | +1.88 KiB |
+
+| Suite | Files | Tests | Runs | Wall clock |
+|---|---|---|---|---|
+| Playwright (local, 6 workers) | 29 | 141 | 423 | 7.4 / 6.8 m (two runs) |
+| Vitest (`unit/`) | 28 | 615 | 615 | ~39 s |
+
+E2E +2 tests, both in `account-and-mobile-nav.spec.ts` (Quick Add by keyboard at 1280, a Transactions row by keyboard at 390). Unit +19, all in the new `modal-focus.test.tsx`.
+
+**Intermittent local failures:** 3 in 846 full-suite runs (2 full runs), all in run 1, all timeouts: a Firefox `page.goto` and two WebKit clicks waiting for "stable". No assertion failed; both specs then passed 48/48 alone and run 2 was clean.
+
+**Acceptance probe** (scratchpad `accept10.cjs`, `vite preview`): 369/372 -> 372/372.
+
 ## Phase 66 (UI polish) - delta against Phase 65
 
 A local build of the Phase 66 tree with the repo's `.env`, against Phase 65's recorded local build and a build of `main` (`1036ee0`) made at the start of this phase. Gzip is level 9.

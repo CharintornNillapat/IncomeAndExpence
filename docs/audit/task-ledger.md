@@ -1081,6 +1081,27 @@ Approved explicitly by the user, planned and approved before any code was writte
 - **One negative control was redone** because the first attempt produced malformed TypeScript that the dev server still served — the tests failed, but possibly for the wrong reason.
 - **No flakes.** Phase 44's `wallets.spec.ts` webkit flake has now not reproduced across three consecutive phases; still watched rather than closed.
 
+## Phase 67 - Modal focus trap: T371-T379 (2026-10-02)
+
+ADR `0043`. Branch `phase-67-modal-focus-trap`, cut from `main` at `6354c08`. **Not committed**: the owner reviews `git diff --stat` and the test summary first, so the Commit column is empty until then. Closes spec section 10 item 12's keyboard half and records the section 10 acceptance check, with antislop applied during the work.
+
+| # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
+|---|---|---|---|---|---|---|---|---|---|---|
+| T371 | ADR `0043`, written before the code | `docs/audit/decisions/` | Low | Low | 0.3h | done | T370 | - | - | - |
+| T372 | Focus on open: the first reachable control, unless focus is already inside; the panel (`tabIndex={-1}`, outline off) when there is none | `components/Modal.tsx` | High | Low | 0.3h | done | T371 | - | probe "dialog takes focus" FAIL -> PASS at 1280 and 390; the 390 row sheet takes focus | entry +1,927 B with T373-T374 |
+| T373 | Tab trap: capture-phase listener, wrap at both ends, focus brought back, reachability read at key-press time from markup and style | `components/Modal.tsx` | High | Med | 0.5h | done | T372 | - | `modalfocus.cjs`: every stop inside at 1280 and 390; the More sheet wraps instead of reaching `BODY` | - |
+| T374 | Only the top dialog answers: a stack of open dialogs; Escape marks the event handled; a control belongs to its nearest dialog | `components/Modal.tsx` | Med | Med | 0.3h | done | T373 | - | a confirmation over the Wallets sheet traps and closes alone in chromium, firefox and webkit | - |
+| T375 | Unit `modal-focus.test.tsx` (19) and negative controls for every guard | `unit/` | Med | Low | 0.5h | done | T372-T374 | - | 615/615; every guard removed alone fails at least one test, `:disabled` with the selector's `:not([disabled])` | unit 596 -> 615, 27 -> 28 files |
+| T376 | E2E: Quick Add by keyboard at 1280, a Transactions row at 390; negative controls on chromium | `tests/account-and-mobile-nav.spec.ts` | Med | Low | 0.4h | done | T372-T374 | - | 12/12 over two repeats; `main`'s `Modal` fails both; no Tab listener fails the Quick Add walk | E2E 139 -> 141 tests, 417 -> 423 runs |
+| T377 | Gate: lint, unit, two full Playwright runs; probes before and after on `vite preview`; bundle | - | - | - | 0.6h | done | T375-T376 | - | run 1 420/423 (three timeouts, no assertion; the specs 48/48 alone), run 2 423/423; `accept10.cjs` 369 -> 372/372; `nested67.cjs` 22/22 x 3 browsers | entry 186,724 -> 188,651 B |
+| T378 | Spec section 10 acceptance record: 13 items, status and evidence, Thai quote and English gloss | `docs/audit/spec-acceptance-2026-10-02.md` | Med | Low | 0.5h | done | T377 | - | 13/13 PASS after Phase 67 | - |
+| T379 | `CLAUDE.md` (Modal focus, two Do NOT lines, counts), refactor log, this ledger, baseline metrics | docs | Low | Low | 0.3h | done | all | - | - | - |
+
+**Notes on execution:**
+- **The first E2E version failed for a locator reason, not the app.** On the date input's calendar-picker stop Playwright's `:focus` matches nothing (closed user-agent shadow root) while `document.activeElement` is the input inside the dialog. Diagnosed from the failure snapshot and a standalone trace before the check changed.
+- **Escape closed every open dialog at once** before this phase (no top-of-stack check). Fixed by T374; recorded in ADR `0043` as an amendment.
+- **No `src/` or `tests/` file was edited while Playwright ran**; only `docs/` and `CLAUDE.md`.
+
 ## Phase 66 - UI polish: T363-T370 (2026-10-02)
 
 ADR `0042`. Branch `phase-66-ui-polish`, cut from `main` at `1036ee0`; the phase is `1eecc8c`, merged as `7e2daa9` (PR #15). PR run `37002162580` and push run `37003395179` passed; Vercel `dpl_8vuPfAZLQkzY3dpuuXUSbXarHomX` is READY and serves the local build byte for byte. Closes Phase 65's open toast/More sheet gap and audit 013 findings 6 and 7, with antislop applied during the work.
