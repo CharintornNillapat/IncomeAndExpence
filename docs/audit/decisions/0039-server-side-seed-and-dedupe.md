@@ -1,6 +1,6 @@
 # 0039: The server seeds a new account, once; duplicate categories are soft-deleted
 
-**Status:** Accepted and released. The probe passed; the seed function is applied (`20261002041331`); the client is deployed (`b65b437`); the dedupe ran on 2026-10-02 in the SQL editor, which removed the 27 copies instead of soft-deleting them (see Consequences).
+**Status:** Accepted and released. The probe passed; the seed function is applied (`20261002041331`); the client is deployed (`b65b437`); the dedupe ran on 2026-10-02 in the SQL editor, which removed the 27 copies instead of soft-deleting them; the owner accepted that on 2026-10-02 (see Consequences).
 - **Amends** Phase 30's `isSeedingRef` guard: it no longer guards inserts, only one tab's calls.
 - **Follows** `20260920_dedupe_categories.sql`, which cleaned up the duplicates that existed on 2026-09-19.
 
@@ -93,7 +93,7 @@ Data only, idempotent, one DO block:
 ## Consequences
 - **One copy of the starter set now lives in SQL** beside the guest defaults in `FinanceContext.tsx`. A change to either must change both.
 - **The deleted wallets stay.** That is 24 in all, 18 of them starter copies, and 7 of the 24 are referenced by transactions. They are invisible in the app.
-- **What the dedupe run did:** the 27 duplicate rows were **removed, not marked deleted**: afterwards the table holds 20 category rows, all live, where before it held 47 and none deleted. `20261002_phase64_dedupe_categories.sql` only sets `is_deleted`, so it cannot lower the row count; the run was most likely `20260920_dedupe_categories.sql`, which re-points the same way and then physically deletes the copies. Every money fingerprint is unchanged and nothing references the removed rows. Accepting that or restoring the rows is the owner's open decision.
+- **What the dedupe run did:** the 27 duplicate rows were **removed, not marked deleted**: afterwards the table holds 20 category rows, all live, where before it held 47 and none deleted. `20261002_phase64_dedupe_categories.sql` only sets `is_deleted`, so it cannot lower the row count; the run was most likely `20260920_dedupe_categories.sql`, which re-points the same way and then physically deletes the copies. Every money fingerprint is unchanged and nothing references the removed rows. **Accepted and closed by the owner (2026-10-02):** the permanent removal stands. The rows were seeding duplicates that nothing referenced, the same kind the 2026-09-19 cleanup removed, so no restore from backup is planned.
 - **Order of release:**
   1. apply the seed function;
   2. deploy the client;
