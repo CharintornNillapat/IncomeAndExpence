@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
-import { Plus, Search, X, Check } from 'lucide-react';
+import { Plus, Search, X, Check, ArrowLeftRight } from 'lucide-react';
 import { useFinanceState } from '../context/FinanceContext';
 import { useTransactions } from '../hooks/useTransactions';
 import { useMediaQuery } from '../hooks/useMediaQuery';
@@ -172,6 +172,9 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
   const activeCategoriesForForm = useMemo(() => categories.filter((c) => !c.isDeleted), [categories]);
 
   const sortedRows = useMemo(() => [...filteredTransactions].sort(byNewest), [filteredTransactions]);
+  // ADR 0041: with no live row at all, the empty list is a first run, whatever
+  // the filters say. Otherwise an empty list is the filters' doing.
+  const hasLiveTransactions = useMemo(() => rawTransactions.some((t) => !t.isDeleted), [rawTransactions]);
   const shownRows = useMemo(() => visibleRows(sortedRows, shownCount), [sortedRows, shownCount]);
   const shownDays = useMemo(() => groupByDay(shownRows, categoryMap), [shownRows, categoryMap]);
   // L11: a day's net counts every filtered row of that day, not only the ones loaded so far.
@@ -250,7 +253,17 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
       </div>
 
       {sortedRows.length === 0 ? (
-        <EmptyState icon={Search} title="No transactions match your current filters." />
+        hasLiveTransactions ? (
+          <EmptyState icon={Search} title="No transactions match your current filters." />
+        ) : (
+          // "Above" holds at every width: the page header's buttons sit on the
+          // title's row from `sm` and under it below, both above this list.
+          <EmptyState
+            icon={ArrowLeftRight}
+            title="No transactions yet"
+            subtitle="Add your first one with Add transaction above, or import a CSV from Import / export."
+          />
+        )
       ) : (
         // Inset by 8px, like the Dashboard's Recent activity: each row's 2px
         // focus outline, 2px out, then has room inside the card.

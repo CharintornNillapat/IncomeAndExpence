@@ -4,6 +4,83 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
+## Phase 65 - Audit 013 fixes: T354-T361 (2026-10-02, uncommitted on `phase-65-audit-013-fixes`)
+
+ADR `0041`. The owner picked audit 013 findings 1, 2, 3, 4, 5 and 8, with antislop applied during the work. Findings 6 and 7 stay open.
+
+**Changed**
+- **The PWA toast clears the phone nav** (finding 1, `ReloadPrompt.tsx`).
+  - Below `md` it sits at `calc(5rem + env(safe-area-inset-bottom, 0.5rem))`, measured against the real nav: 65px plus the inset, with the centre Quick Add's top 66px up.
+  - From `md` it keeps `bottom-5`. The eager mount and the service-worker logic are untouched.
+- **Its idle spin and dead `animate-in` classes are gone, and its copy is plain** (findings 5 and 8):
+  - "App Ready for Offline Use" / "All assets and cached data are saved for fast offline access." became "Ready to use offline" / "FinLife is saved on this device, so it opens without a connection.";
+  - "New Update Available" / "A newer version of FinLife is available. Reload to update." / "Update Now" became "A new version is ready" / "Reload to start using it." / "Reload".
+- **Every control in the entry form is 44px** (finding 2), in Quick Add, the Transactions Add modal and the repay modal:
+  - the note, date and template-name fields are `min-h-[44px]`, and the amount input fills its frame;
+  - the template checkbox's label is 44px;
+  - the template and payoff chips (a new local `QuickChip`), the apply button and the chips' Save rule / Apply are 44px boxes around their unchanged pill, with the outline moved onto the pill;
+  - the chips' dismiss crosses are `IconButton`s, and Quick Add's own template list has 44px buttons.
+  - Every id, name and test id the specs use is on the same element.
+- **The four sparkles are gone** (finding 3, open since audit 005): `Calculator` on "Calculated", `Tags` on "Auto-categorized" and the suggestion chip, and `CheckCircle2` on the settle note. `Sparkles` is no longer imported in `src/`.
+- **The Transactions page tells a first run from a filtered list** (finding 4).
+  - With no live transaction it says "No transactions yet" and "Add your first one with Add transaction above, or import a CSV from Import / export." under the Transactions icon, whatever the filters.
+  - Otherwise it keeps "No transactions match your current filters.".
+- **Tests:**
+  - unit, 4 in `transactions-page` (588 -> 592);
+  - E2E, a fresh guest sees the first-run state in `transaction.spec.ts` (135 -> 136 tests, 405 -> 408 runs).
+- **Docs:** ADR `0041`, `CLAUDE.md` (the toast, the empty state, the form's hit boxes, three Do NOT lines, counts), this log, the ledger and baseline metrics.
+
+**Found**
+- **The form had more small targets than the audit listed.** With a template and a debt seeded, the probe found 11 controls under 44px in Quick Add, 9 in the Transactions Add modal and 7 in the repay modal. The extras were the template chips, Quick Add's own template list (16px rows), the payoff chips, the save-rule chip's buttons and the template-name field. All of them now measure 44px or more.
+- **Quick Add lists templates twice**, in its own list and as the form's chips. That is more of finding 7's duplication, so it is left open with it.
+- **The owner's first-run definition ("no live transactions at all") covers a ledger of deleted rows only.** The page shows the first-run copy there until Show deleted lists them. The ADR's first draft said otherwise; the test caught the mismatch and the ADR was corrected.
+
+**Gate:**
+- Lint clean. Unit 592/592.
+- Playwright: 408/408 on the third full run (chromium, firefox, webkit, 136 each; 6.6 m). The first two runs each lost WebKit clicks to the known 'waiting for stable' timeout on controls this phase did not touch (run 1: the Wallets adjust button and the Import CSV menu item, 406/408; run 2: Add debt, 407/408); each spec passed 20/20 and 3/3 on its own re-run.
+- **Negative control:** the four new unit tests against the old `TransactionsView.tsx`: three failed (the fourth guards the unchanged filtered copy and passes on both). Restored: 21/21.
+- **Browser probe** (scratchpad `touch65.cjs`; 390×844 touch and 1280×800, light and dark):
+  - controls under 44px went from 11 / 9 / 7 (Quick Add / Add / repay) to 0 / 0 / 0, with the calculator keys, the microphone and the shortcut links listed as exempt;
+  - the suggestion chip, behind a locally fulfilled `/api/classify`, measures Apply 52×44 and dismiss 44×44;
+  - keyboard focus on a chip draws the 2px violet outline on the pill, and none on the box.
+- **Toast** (the real offline-ready toast, after the service worker installed):
+  - on production before: y 680 to 824 at 390, over all five nav buttons, and `elementFromPoint` at every button's centre returned the toast;
+  - on a local `vite preview` build after: y 620 to 764, 14px above Quick Add's top (778), no overlap, and every centre hit its button. 1280 unchanged at `bottom: 20px`.
+  - No spin and no animation in either theme.
+- **Bundle:** entry `index-*.js` 186,724 B (local build with `.env`), 76 B under Phase 54's 186,800 B.
+
+**Open:** audit 013 findings 6 (the ฿0 allocation track has no caption) and 7 (Quick Add repeats its title, the formula result and the formula help, and lists templates twice).
+
+---
+
+## Audit 013 - Antislop verification pass after Phase 54: T353 (2026-10-02, no code change)
+
+Not a shipped phase: an audit only, recorded here because it closes what Phase 54 left "pending the next antislop audit's confirmation".
+
+**Confirmed**
+- **R-17, R-38 and C-5 pass**, after failing (known, deferred) in audits 002 to 012:
+  - **A new guest on production:** in all six runs (1280, 1024 and 390, light and dark, signed out) every wallet reads ฿0.00, there is no debt, the Transactions page is empty, and no view printed NaN, Infinity or "−฿0.00". `localStorage` held no `pf_*` key after load.
+  - **Sign-out:** the "resets to the empty starters" unit test passes; unit 588/588.
+  - **A new sign-up:** the live `seed_starter_account()` writes `0.00` and no debt. Its body md5 `90c93706f16713721c7509c871651f9b` matches the file, and the Phase 54 probe printed `PHASE 54 PROBE OK` inside `begin ... rollback`, with 0 fixture rows left afterwards.
+
+**Found** (`anti-slop/audit-013-2026-10-02.md`; nothing changed, findings await the owner)
+- **HIGH:**
+  - On a phone, the PWA update toast (`ReloadPrompt`, `z-50`) covers all five bottom-nav buttons (`z-40`) on a first visit until dismissed.
+  - Five targets in the shared entry form are under 44px. The worst is "Save as a quick template" at 16px tall; the others are the amount input, the apply button, and the note and date fields.
+- **MEDIUM:**
+  - The four sparkle icons from audit 005, now all in the shared form (`TransactionsView` itself has none since Phase 62).
+  - The first-run Transactions empty state says "No transactions match your current filters." when no filter is set.
+  - The update toast spins an icon while it waits for the user.
+- **LOW:**
+  - The empty ฿0 wallet bar is a 1.18:1 track with no caption.
+  - Quick Add repeats its title, the formula result and the formula help.
+  - The toast's Title Case wording, and a dead `animate-in` class.
+- **Both HIGH findings predate Phase 54.** Phase 54 itself adds no failure.
+
+**Checked:** code sweeps of `src/` (0 em dashes, 0 raw palette classes, 0 `transition-colors`, 0 `dark:` twins on tokens); `wcag-tokens.mjs` and antislop's `contrast-check.py`; a focus walk (2px violet outline on every stop); lint clean. E2E was not re-run: no code changed since Phase 54's 405/405.
+
+---
+
 ## Phase 54 - Empty starters (audit 001 finding 6): T346-T352 (2026-10-02, commit `052b6c4`, merge `0882695`)
 
 **Changed**

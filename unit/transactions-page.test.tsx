@@ -120,6 +120,46 @@ describe('L12: 25 rows at a time', () => {
   });
 });
 
+describe('an empty list says why it is empty (Phase 65, ADR 0041)', () => {
+  const FIRST_RUN = 'No transactions yet';
+  const FIRST_RUN_HELP = 'Add your first one with Add transaction above, or import a CSV from Import / export.';
+  const FILTERED = 'No transactions match your current filters.';
+
+  it('a ledger with no transaction is a first run, not a filtered list', () => {
+    mount([]);
+    expect(screen.getByText(FIRST_RUN)).toBeTruthy();
+    expect(screen.getByText(FIRST_RUN_HELP)).toBeTruthy();
+    expect(screen.queryByText(FILTERED)).toBeNull();
+  });
+
+  it('a first run wins over a filter the user sets', () => {
+    mount([]);
+    fireEvent.click(document.getElementById('tx-filter-type-income')!);
+    fireEvent.change(document.getElementById('tx-filter-range')!, { target: { value: 'DAY' } });
+    expect(screen.getByText(FIRST_RUN)).toBeTruthy();
+    expect(screen.queryByText(FILTERED)).toBeNull();
+  });
+
+  it('a filter that hides every row keeps the filtered copy', () => {
+    mount([tx({ type: 'EXPENSE', amount: 80, categoryId: 'cat-food' })]);
+    expect(rowButtons()).toHaveLength(1);
+    fireEvent.click(document.getElementById('tx-filter-type-income')!);
+    expect(rowButtons()).toHaveLength(0);
+    expect(screen.getByText(FILTERED)).toBeTruthy();
+    expect(screen.queryByText(FIRST_RUN)).toBeNull();
+  });
+
+  it('only deleted rows count as no transaction: the first-run copy, until Show deleted lists them', () => {
+    mount([tx({ type: 'EXPENSE', amount: 80, categoryId: 'cat-food', isDeleted: true })]);
+    expect(rowButtons()).toHaveLength(0);
+    expect(screen.getByText(FIRST_RUN)).toBeTruthy();
+    expect(screen.queryByText(FILTERED)).toBeNull();
+    fireEvent.click(screen.getByLabelText('Show deleted'));
+    expect(rowButtons()).toHaveLength(1);
+    expect(screen.queryByText(FIRST_RUN)).toBeNull();
+  });
+});
+
 describe('the selected row\'s panel holds Delete and Restore', () => {
   it('deletes through the panel, hides the row, and restores it from Show deleted', async () => {
     mount([tx({ type: 'EXPENSE', amount: 150, categoryId: 'cat-food', description: 'Panel target' })]);

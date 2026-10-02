@@ -1098,6 +1098,25 @@ The entry's growth is the ledger action itself, which lives with the other ledge
 
 **Intermittent local failures:** 6 in 1,071 full-suite runs (3 full runs). All were timeouts: a Firefox `goto`, a Firefox context close, and four WebKit clicks waiting for "stable". No assertion failed. See audit 005 finding 3 for the control runs.
 
+## Phase 65 (audit 013 fixes) - delta against Phase 54
+
+A local build of the Phase 65 tree with the repo's `.env`, against Phase 54's recorded local build. No other chunk was compared.
+
+| Chunk | Phase 54 | Phase 65 | Delta |
+|---|---|---|---|
+| entry `index-*.js` | 186,800 B | 186,724 B | **-76 B** (`ReloadPrompt`'s shorter copy and classes; the form's changes are in lazy chunks) |
+
+| Suite | Files | Tests | Runs | Wall clock |
+|---|---|---|---|---|
+| Playwright (local) | 28 | 136 | 408 | 6.6 m (third run; runs 1 and 2: 406 and 407 of 408, WebKit 'stable' click timeouts) |
+| Vitest (`unit/`) | 27 | 592 | 592 | one run |
+
+E2E +1 test (`transaction.spec.ts`: a fresh guest sees the first-run empty state). Unit +4 (`transactions-page`: first run, first run under a filter, a filter that hides every row, deleted rows only).
+
+**Local failures:** 3 in 1,224 runs (3 full runs), all WebKit clicks timing out while "waiting for element to be visible, enabled and stable", on controls this phase did not touch: the Wallets adjust button and the Import CSV menu item (run 1), Add debt (run 2). No assertion failed; each spec passed on its own re-run, and run 3 passed 408/408.
+
+**Touch targets** (scratchpad probe, 390×844 and 1280×800, light and dark): controls under 44px in Quick Add / the Transactions Add modal / the repay modal, 11 / 9 / 7 -> 0 / 0 / 0, excluding the documented calculator keys, microphone and shortcut links.
+
 ## Phase 54 (empty starters) - delta against Phase 64
 
 A local build of the Phase 54 tree with the repo's `.env`, against Phase 64's recorded production entry. No other chunk was compared.

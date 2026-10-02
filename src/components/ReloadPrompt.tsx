@@ -38,14 +38,18 @@ export const ReloadPrompt: React.FC = React.memo(() => {
   }
 
   return (
+    // Below `md` it sits above the bottom nav (ADR 0041): the nav is 65px plus
+    // the safe-area inset, and the centre Quick Add's top is 66px up, so 5rem
+    // over the nav's own inset expression leaves a 14px gap. From `md` the nav
+    // is hidden and the toast keeps its corner. No entrance animation (ADR 0026).
     <aside
       aria-label="App update notification"
-      className="fixed bottom-5 right-5 z-50 max-w-sm w-[calc(100vw-2.5rem)] bg-surface-1 text-fg rounded-lg p-4 shadow-modal border border-line animate-in fade-in slide-in-from-bottom-5 duration-200"
+      className="fixed bottom-[calc(5rem+env(safe-area-inset-bottom,0.5rem))] md:bottom-5 right-5 z-50 max-w-sm w-[calc(100vw-2.5rem)] bg-surface-1 text-fg rounded-lg p-4 shadow-modal border border-line"
     >
       <div className="flex items-start gap-3">
         <div className="p-2 rounded-lg bg-brand-tint text-brand shrink-0">
           {needRefresh ? (
-            <RefreshCw className="w-5 h-5 animate-spin" style={{ animationDuration: '3s' }} />
+            <RefreshCw className="w-5 h-5" />
           ) : (
             <CheckCircle2 className="w-5 h-5 text-income" />
           )}
@@ -53,18 +57,18 @@ export const ReloadPrompt: React.FC = React.memo(() => {
 
         <div className="flex-1 min-w-0">
           <h4 className="text-xs font-bold text-fg">
-            {needRefresh ? 'New Update Available' : 'App Ready for Offline Use'}
+            {needRefresh ? 'A new version is ready' : 'Ready to use offline'}
           </h4>
           <p className="text-[11px] text-fg-secondary mt-0.5 leading-relaxed">
             {needRefresh
-              ? 'A newer version of FinLife is available. Reload to update.'
-              : 'All assets and cached data are saved for fast offline access.'}
+              ? 'Reload to start using it.'
+              : 'FinLife is saved on this device, so it opens without a connection.'}
           </p>
 
           <div className="flex items-center gap-2 mt-3">
             {needRefresh && (
               <Button id="pwa-reload-button" onClick={() => updateServiceWorker(true)}>
-                Update Now
+                Reload
               </Button>
             )}
             <Button id="pwa-dismiss-button" variant="secondary" onClick={close}>

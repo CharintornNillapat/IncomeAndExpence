@@ -1,6 +1,6 @@
 import React, { useState, useId } from 'react';
 import { AnimatePresence } from 'framer-motion';
-import { Sparkles, ArrowRight, AlertCircle, Mic } from 'lucide-react';
+import { ArrowRight, AlertCircle, Mic, Tags, CheckCircle2 } from 'lucide-react';
 import { InlineMathInput } from './InlineMathInput';
 import { Wallet, Category, TransactionType, Preset } from '../types';
 import { useFinanceState, useFinanceActions } from '../context/FinanceContext';
@@ -74,8 +74,24 @@ interface TransactionFormProps {
  * tint of `InlineMathInput`'s quick-amount chips: those *add to* what is
  * already typed, these *replace* it with a target figure.
  */
-const QUICK_CHIP_CLASS =
-  'inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-full bg-surface-2 hover:bg-surface-3 text-fg-secondary border border-line transition-control cursor-pointer';
+const QUICK_CHIP_PILL_CLASS =
+  'inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-full bg-surface-2 group-hover:bg-surface-3 text-fg-secondary border border-line transition-control group-focus-visible:outline-2 group-focus-visible:outline-focus group-focus-visible:outline-offset-2';
+
+/**
+ * A quick chip's 44px hit box around its pill (DESIGN.md section 4, ADR 0041).
+ * The box is invisible, so the focus outline moves onto the pill, as the
+ * navbar's sync badge does. The id stays on the button, where the specs click.
+ */
+const QuickChip: React.FC<{ id: string; onClick: () => void; children: React.ReactNode }> = ({ id, onClick, children }) => (
+  <button
+    type="button"
+    id={id}
+    onClick={onClick}
+    className="group inline-flex items-center min-h-[44px] cursor-pointer focus-visible:outline-none"
+  >
+    <span className={QUICK_CHIP_PILL_CLASS}>{children}</span>
+  </button>
+);
 
 /*
  * Bounds on a keyword this form will offer to save as a rule (ADR 0017).
@@ -646,20 +662,18 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
           locked-type form (e.g. the debt repay modal), which has no business letting a
           template silently override its fixed type. */}
       {!lockType && presets.length > 0 && (
-        <div className="flex flex-wrap items-center gap-1.5">
+        <div className="flex flex-wrap items-center gap-x-1.5">
           <span className="text-[11px] font-semibold text-fg-muted uppercase tracking-wide mr-0.5">
             Templates
           </span>
           {presets.map((preset) => (
-            <button
+            <QuickChip
               key={preset.id}
-              type="button"
               id={`${formId}-preset-chip-${preset.id}`}
               onClick={() => handleApplyPreset(preset)}
-              className={QUICK_CHIP_CLASS}
             >
               {preset.name}
-            </button>
+            </QuickChip>
           ))}
         </div>
       )}
@@ -687,7 +701,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
                 ? 'e.g., Monthly student loan payment 4000'
                 : 'e.g. ข้าวมันไก่ 60, bts 45, or ค่าไฟ 1200'
             }
-            className={`w-full text-sm rounded-lg border border-line-input bg-surface-2 py-2.5 pl-3.5 text-fg placeholder:text-fg-muted focus:outline-none focus:ring-2 focus:ring-focus transition-control ${
+            className={`w-full min-h-[44px] text-sm rounded-lg border border-line-input bg-surface-2 py-2.5 pl-3.5 text-fg placeholder:text-fg-muted focus:outline-none focus:ring-2 focus:ring-focus transition-control ${
               isVoiceSupported ? 'pr-11' : 'pr-3.5'
             }`}
           />
@@ -787,35 +801,20 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
               so `#repay-amount-math` remains the single control
               `tests/debts.spec.ts` fills. */}
           {remainingDebt > 0 && (
-          <div className="flex flex-wrap items-center gap-1.5">
+          <div className="flex flex-wrap items-center gap-x-1.5">
             <span className="text-[11px] font-semibold text-fg-muted uppercase tracking-wide mr-0.5">
               Quick payoff
             </span>
-            <button
-              type="button"
-              id={`${idBase}-payoff-full`}
-              onClick={() => seedPayoffAmount(remainingDebt)}
-              className={QUICK_CHIP_CLASS}
-            >
+            <QuickChip id={`${idBase}-payoff-full`} onClick={() => seedPayoffAmount(remainingDebt)}>
               Pay in full <strong>{formatCurrencyAmount(remainingDebt)}</strong>
-            </button>
-            <button
-              type="button"
-              id={`${idBase}-payoff-half`}
-              onClick={() => seedPayoffAmount(roundToCents(remainingDebt / 2))}
-              className={QUICK_CHIP_CLASS}
-            >
+            </QuickChip>
+            <QuickChip id={`${idBase}-payoff-half`} onClick={() => seedPayoffAmount(roundToCents(remainingDebt / 2))}>
               50% <strong>{formatCurrencyAmount(roundToCents(remainingDebt / 2))}</strong>
-            </button>
+            </QuickChip>
             {showMinimumChip && (
-              <button
-                type="button"
-                id={`${idBase}-payoff-minimum`}
-                onClick={() => seedPayoffAmount(minimumDue)}
-                className={QUICK_CHIP_CLASS}
-              >
+              <QuickChip id={`${idBase}-payoff-minimum`} onClick={() => seedPayoffAmount(minimumDue)}>
                 Minimum due <strong>{formatCurrencyAmount(minimumDue)}</strong>
-              </button>
+              </QuickChip>
             )}
           </div>
           )}
@@ -888,7 +887,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
               data-testid={`${idBase}-settle-note`}
               className="flex items-center gap-1.5 text-[11px] font-medium rounded-lg border border-income-line bg-income-tint text-income px-2.5 py-2"
             >
-              <Sparkles className="w-3.5 h-3.5 shrink-0" />
+              <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
               <span>This payment settles the debt in full.</span>
             </p>
           ) : null}
@@ -950,7 +949,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
                     on screen, so overriding it is a single click. */}
                 {autoMatchedCategory && (
                   <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-brand bg-brand-tint px-2 py-0.5 rounded-sm border border-brand-line">
-                    <Sparkles className="w-3 h-3 text-brand" />
+                    <Tags className="w-3 h-3 text-brand" />
                     Auto-categorized: <strong>{autoMatchedCategory}</strong>
                   </span>
                 )}
@@ -1021,7 +1020,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
             type="date"
             value={date}
             onChange={(e) => setDate(e.target.value)}
-            className="w-full text-sm rounded-lg border border-line-input px-3.5 py-2.5 bg-surface-2 text-fg focus:outline-none focus:ring-2 focus:ring-focus [color-scheme:light] dark:[color-scheme:dark] transition-control"
+            className="w-full min-h-[44px] text-sm rounded-lg border border-line-input px-3.5 py-2.5 bg-surface-2 text-fg focus:outline-none focus:ring-2 focus:ring-focus [color-scheme:light] dark:[color-scheme:dark] transition-control"
           />
         </div>
       </div>
@@ -1029,10 +1028,12 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
       {/* Save-as-template: only offered for EXPENSE/INCOME (the two types `Preset`
           supports - see types.ts) on a form that isn't locked to one fixed type. */}
       {!lockType && (type === 'EXPENSE' || type === 'INCOME') && (
-        <div className="flex flex-col gap-2 rounded-lg border border-line bg-surface-2 p-3">
+        // The label is the checkbox's 44px hit box (DESIGN.md section 4, ADR
+        // 0041); the box keeps 12px under the name field when it is open.
+        <div className={`flex flex-col gap-1 rounded-lg border border-line bg-surface-2 px-3 pt-1 ${saveAsTemplate || templateSaveError ? 'pb-3' : 'pb-1'}`}>
           <label
             htmlFor={`${formId}-save-template-checkbox`}
-            className="flex items-center gap-2 text-xs font-medium text-fg-secondary cursor-pointer"
+            className="flex items-center gap-2 min-h-[44px] text-xs font-medium text-fg-secondary cursor-pointer"
           >
             <input
               id={`${formId}-save-template-checkbox`}
@@ -1053,7 +1054,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
               value={templateName}
               onChange={(e) => setTemplateName(e.target.value)}
               placeholder="Template name, e.g. Morning Coffee"
-              className="w-full text-sm rounded-lg border border-line-input bg-surface-2 px-3.5 py-2.5 text-fg placeholder:text-fg-muted focus:outline-none focus:ring-2 focus:ring-focus transition-control"
+              className="w-full min-h-[44px] text-sm rounded-lg border border-line-input bg-surface-2 px-3.5 py-2.5 text-fg placeholder:text-fg-muted focus:outline-none focus:ring-2 focus:ring-focus transition-control"
             />
           )}
           {templateSaveError && (
