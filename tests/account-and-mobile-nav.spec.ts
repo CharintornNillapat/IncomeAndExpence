@@ -152,3 +152,67 @@ test.describe('ledger fixes a user can see (ADR 0024)', () => {
     await expect(row).toContainText('฿900.00');
   });
 });
+
+// Phase 67 (ADR 0043, spec section 10 item 12): a dialog opened from the
+// keyboard takes focus, keeps Tab inside itself, and gives focus back when it
+// closes. The wrap logic itself is pinned in `unit/modal-focus.test.tsx`; this
+// is the browser's own Tab running through a real form.
+test.describe('dialogs by keyboard (ADR 0043)', () => {
+  test('Quick Add takes focus, keeps Tab inside, and gives it back on Escape', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await page.goto('/');
+    const opener = page.locator('#navbar-quick-add-btn');
+    await opener.focus();
+    await page.keyboard.press('Enter');
+
+    const dialog = page.getByRole('dialog', { name: /Quick Record Transaction/i });
+    await expect(dialog).toBeVisible();
+    // The form is its own lazy chunk; wait for it so every Tab stop exists.
+    await expect(dialog.locator('input[id$="-desc"]')).toBeVisible();
+    const close = dialog.locator('#close-quick-record-modal-btn');
+    await expect(close).toBeFocused();
+    // Read document.activeElement rather than a ':focus' locator: on the date
+    // field's calendar-picker stop focus is inside the input's closed
+    // user-agent shadow root, where ':focus' matches nothing.
+    const focusInDialog = () =>
+      page.evaluate(() => !!document.activeElement?.closest('[role="dialog"]'));
+
+    // Shift+Tab from the first control wraps to the last, and Tab wraps back.
+    await page.keyboard.press('Shift+Tab');
+    await expect.poll(focusInDialog).toBe(true);
+    await expect(close).not.toBeFocused();
+    await page.keyboard.press('Tab');
+    await expect(close).toBeFocused();
+
+    // More presses than the form has stops, so the walk passes the end at least once.
+    for (let i = 0; i < 40; i++) {
+      await page.keyboard.press('Tab');
+      await expect.poll(focusInDialog).toBe(true);
+    }
+
+    await page.keyboard.press('Escape');
+    await expect(dialog).not.toBeVisible();
+    await expect(opener).toBeFocused();
+  });
+
+  test('at phone width a transaction row opened with Enter puts focus in its sheet', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await page.goto('/');
+    await addQuickTransaction(page, 'E2E Keyboard Row');
+    await gotoTab(page, 'transactions');
+    await page.setViewportSize(PHONE);
+
+    const row = page.locator('button[id^="tx-row-"]').filter({ hasText: 'E2E Keyboard Row' });
+    await expect(row).toBeVisible();
+    await row.focus();
+    await page.keyboard.press('Enter');
+
+    const sheet = page.getByRole('dialog');
+    await expect(sheet).toBeVisible();
+    await expect(sheet.locator('#tx-drawer-close-btn')).toBeFocused();
+
+    await page.keyboard.press('Escape');
+    await expect(sheet).not.toBeVisible();
+    await expect(row).toBeFocused();
+  });
+});

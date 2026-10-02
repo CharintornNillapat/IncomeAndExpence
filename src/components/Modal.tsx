@@ -1,7 +1,53 @@
-import React, { useEffect, useId } from 'react';
+import React, { useEffect, useId, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X } from 'lucide-react';
 import { IconButton } from './ui/IconButton';
+
+// Phase 67 (ADR 0043, spec section 10 item 12): what a keyboard can reach
+// inside a dialog. Read at keydown time, so a field that appears later counts.
+const FOCUSABLE_SELECTOR = [
+  'a[href]',
+  'area[href]',
+  'button:not([disabled])',
+  'input:not([disabled]):not([type="hidden"])',
+  'select:not([disabled])',
+  'textarea:not([disabled])',
+  'iframe',
+  'audio[controls]',
+  'video[controls]',
+  '[contenteditable]:not([contenteditable="false"])',
+  '[tabindex]',
+].join(',');
+
+// Hidden by markup or style, not by size: jsdom has no layout, and a check on
+// layout alone would let the unit suite pass on a rule the browser applies
+// differently. `display` does not inherit, so every ancestor up to the panel
+// is read; `visibility` does, so the element's own value is enough.
+function isReachable(el: HTMLElement, panel: HTMLElement): boolean {
+  const tabindex = el.getAttribute('tabindex');
+  if (tabindex !== null && Number(tabindex) < 0) return false;
+  if (el.matches(':disabled') || el.closest('[inert]')) return false;
+  const own = getComputedStyle(el);
+  if (own.visibility === 'hidden' || own.visibility === 'collapse') return false;
+  for (let node: HTMLElement | null = el; node && node !== panel.parentElement; node = node.parentElement) {
+    if (node.hidden || getComputedStyle(node).display === 'none') return false;
+  }
+  return true;
+}
+
+// A dialog rendered inside this one (AccountModal's confirmations) owns its
+// own controls, including while it plays its exit tween after closing.
+function focusableIn(panel: HTMLElement): HTMLElement[] {
+  return Array.from(panel.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)).filter(
+    (el) => el.closest('[role="dialog"]') === panel && isReachable(el, panel),
+  );
+}
+
+// Open dialogs, oldest first. A ConfirmDialog opens over the Wallets and
+// Categories sheets (as a sibling) and inside AccountModal (as a child); only
+// the last one opened answers Tab and Escape, so a confirmation never closes
+// or traps the sheet under it.
+const openDialogs: object[] = [];
 
 export interface ModalProps {
   isOpen: boolean;
@@ -80,12 +126,83 @@ export const Modal: React.FC<ModalProps> = ({
     };
   }, [isOpen]);
 
+  const panelRef = useRef<HTMLDivElement>(null);
+  const stackToken = useRef({});
+  const isTopDialog = () => openDialogs[openDialogs.length - 1] === stackToken.current;
+
+  // Phase 67 (ADR 0043): focus goes into the dialog when it opens. Declared
+  // after the return-focus effect, so that one has already recorded the opener.
+  // The panel is in the DOM from the first frame of its entrance tween. A
+  // field that focused itself (autoFocus, or a child's own effect, which runs
+  // first) keeps focus.
+  useEffect(() => {
+    if (!isOpen) return;
+    const token = stackToken.current;
+    openDialogs.push(token);
+    const panel = panelRef.current;
+    if (panel && !panel.contains(document.activeElement)) {
+      (focusableIn(panel)[0] ?? panel).focus({ preventScroll: true });
+    }
+    return () => {
+      const index = openDialogs.lastIndexOf(token);
+      if (index !== -1) openDialogs.splice(index, 1);
+    };
+  }, [isOpen]);
+
+  // Phase 67 (ADR 0043): Tab and Shift+Tab stay inside the top dialog. Capture
+  // phase, so the focused element is read before any handler inside the panel
+  // runs: OverflowMenu closes on Tab and unmounts the item that had focus.
+  // Between the first and last control the browser moves focus itself; only
+  // the two ends and a focus that has left the panel are steered here.
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleTab = (e: KeyboardEvent) => {
+      if (e.key !== 'Tab' || e.defaultPrevented || !isTopDialog()) return;
+      const panel = panelRef.current;
+      if (!panel) return;
+      const items = focusableIn(panel);
+      const active = document.activeElement;
+      if (items.length === 0) {
+        e.preventDefault();
+        panel.focus({ preventScroll: true });
+        return;
+      }
+      const first = items[0];
+      const last = items[items.length - 1];
+      const go = (el: HTMLElement) => {
+        e.preventDefault();
+        el.focus();
+      };
+      if (!(active instanceof HTMLElement) || active === panel || !panel.contains(active)) {
+        go(e.shiftKey ? last : first);
+        return;
+      }
+      if (items.includes(active)) {
+        if (e.shiftKey && active === first) go(last);
+        else if (!e.shiftKey && active === last) go(first);
+        return;
+      }
+      // Focus sits on something Tab cannot reach (a menu item, a heading with
+      // tabIndex -1): wrap only if nothing reachable lies beyond it.
+      const following = items.some((el) => active.compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING);
+      const preceding = items.some((el) => active.compareDocumentPosition(el) & Node.DOCUMENT_POSITION_PRECEDING);
+      if (!e.shiftKey && !following) go(first);
+      else if (e.shiftKey && !preceding) go(last);
+    };
+    document.addEventListener('keydown', handleTab, true);
+    return () => document.removeEventListener('keydown', handleTab, true);
+  }, [isOpen]);
+
   // Escape-to-close was missing from every hand-rolled modal (none of them
   // wired a keydown listener); wiring it once here is a genuine gap fix.
+  // Only the top dialog answers, and it marks the event handled, so the sheet
+  // under a confirmation stays open whichever listener the browser calls first.
   useEffect(() => {
     if (!isOpen) return;
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
+      if (e.key !== 'Escape' || e.defaultPrevented || !isTopDialog()) return;
+      e.preventDefault();
+      onClose();
     };
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
@@ -104,7 +221,14 @@ export const Modal: React.FC<ModalProps> = ({
             if (closeOnBackdropClick && e.target === e.currentTarget) onClose();
           }}
         >
+          {/* tabIndex -1: the fallback focus target when a dialog holds no
+              control (ADR 0043). The panel is a container, not a control, so
+              the global :focus-visible outline is turned off on it alone; it
+              would otherwise ring the whole dialog, and the dialog is already
+              the only thing on screen above the scrim. */}
           <motion.div
+            ref={panelRef}
+            tabIndex={-1}
             id={panelId}
             role="dialog"
             aria-modal="true"
@@ -114,7 +238,7 @@ export const Modal: React.FC<ModalProps> = ({
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 24, opacity: 0 }}
             transition={{ duration: 0.2, ease: 'easeOut' }}
-            className={`bg-surface-1 rounded-t-xl sm:rounded-lg w-full ${maxWidthClassName} max-h-[92vh] sm:max-h-[90vh] flex flex-col shadow-modal border border-line overflow-hidden ${panelClassName}`}
+            className={`bg-surface-1 rounded-t-xl sm:rounded-lg w-full ${maxWidthClassName} max-h-[92vh] sm:max-h-[90vh] flex flex-col shadow-modal border border-line overflow-hidden focus-visible:outline-none ${panelClassName}`}
           >
             {showMobileHandle && (
               <div className="sm:hidden pt-3 pb-1 flex justify-center cursor-pointer shrink-0" onClick={onClose}>

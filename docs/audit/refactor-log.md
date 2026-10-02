@@ -4,7 +4,39 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 66 - UI polish: T363-T370 (2026-10-02, commit `1eecc8c`, merge `7e2daa9`)
+## Phase 67 - Modal focus trap: T371-T379 (2026-10-02, not yet committed)
+
+ADR `0043`. Closes spec section 10 item 12's keyboard half: focus did not enter a dialog, and Tab walked the page behind the scrim. Antislop (core and `antislop-human`) applied during the work. Also writes the spec section 10 acceptance record.
+
+**Changed**
+- **A dialog takes focus when it opens** (`Modal.tsx`). An effect declared after audit 008's return-focus effect (so the opener is already recorded) focuses the first reachable control in the panel, which is the header's close button in every dialog today. Focus already inside the panel (an `autoFocus` field, a child's own effect) stays. A dialog with no control focuses the panel, which now has `tabIndex={-1}` and `focus-visible:outline-none` (a container, not a control; the comment says why).
+- **Tab stays inside.** One capture-phase `keydown` listener on `document`: Tab on the last control goes to the first, Shift+Tab on the first to the last, focus outside the panel is brought back, and focus on something Tab cannot reach (a menu item) wraps only when nothing reachable lies beyond it. In between, the browser moves focus. Capture, because OverflowMenu's Tab handler unmounts the focused item.
+- **"Reachable" is read at key-press time** from markup and computed style, never layout: no negative `tabindex`, nothing `:disabled` or under `[inert]`, no `hidden` or `display: none` up to the panel, no `visibility: hidden`, and the control's nearest `[role="dialog"]` must be this panel.
+- **Only the top dialog answers Tab and Escape.** A module-level stack, in opening order. A `ConfirmDialog` over the Wallets or Categories sheet (siblings) or inside `AccountModal` (a child) traps alone; Escape closes it alone and focus goes back inside the sheet. Escape also marks the event handled, so listener order does not matter. Before, one Escape closed the confirmation and the sheet under it.
+- **Unchanged:** Escape-to-close and the return of focus, and their order on close; OverflowMenu's own Escape (it never reaches `document`); the 1280 Transactions drawer (an `aside`, not a `Modal`); every `Modal` caller.
+- **Tests:**
+  - unit, +19: `unit/modal-focus.test.tsx` (jsdom): focus on open, `autoFocus` kept, a no-control dialog, both wraps, seven unreachable kinds each alone at the end, a middle Tab left to the browser, focus brought back, a late control, Escape and return, OverflowMenu inside a dialog, a confirmation beside and inside a sheet; 596 -> 615, 27 -> 28 files;
+  - E2E, +2, in `account-and-mobile-nav.spec.ts`: Quick Add by keyboard at 1280 (focus in, Shift+Tab wraps, 40 Tabs stay in, Escape returns), and a Transactions row by keyboard at 390 (focus on its sheet, Escape returns to the row); 139 -> 141 tests, 417 -> 423 runs. No request intercepted.
+- **Docs:** ADR `0043`; `docs/audit/spec-acceptance-2026-10-02.md` (all 13 section 10 items with status and evidence); `CLAUDE.md` (Modal's focus behaviour, two Do NOT lines, counts); this log; the ledger; baseline metrics.
+
+**Resolved**
+- **Spec section 10 item 12, keyboard:** the acceptance probe's three failures ("item12 dialog takes focus" at 1280 and 390, "item12 transaction row opens by keyboard and moves focus to its panel" at 390). Section 10 now passes 13 of 13.
+- **A confirmation's Escape closed the sheet under it** (found here; see Found).
+
+**Found**
+- **Escape closed every open dialog at once.** Each `Modal` listened on `document` and none checked whether it was on top, so Escape on the Wallets sheet's Archive confirmation closed the sheet too. Nobody had reported it; the stack fixes it as a side effect of the trap's "top only" rule.
+- **Playwright's `:focus` locator misses the date input's calendar-picker stop.** Focus is inside the input's closed user-agent shadow root there; `document.activeElement` is the input, but `dialog.locator(':focus')` resolves to nothing. The first E2E version failed on exactly that stop in chromium with the trap working (the snapshot showed the date field `[active]` inside the dialog). The check reads `document.activeElement`.
+- **The selector's `:not([disabled])` and the `:disabled` filter cover each other**, so removing either alone fails nothing. Both stay: `:disabled` also catches a control inside a disabled `fieldset`, which the selector cannot.
+
+**Still open**
+- **Screen readers.** `aria-modal="true"` is all that keeps a virtual cursor out of the page behind a dialog; nothing makes it inert, and that would need the portal ADR `0042` declined. Not tested with a screen reader. Low.
+
+**Gate:**
+- Lint clean. Unit 615/615.
+- Playwright: full run 1 420/423 (7.4 m). Three timeouts, no assertion failed: a Firefox `page.goto` (`account-and-mobile-nav.spec.ts:108`) and two WebKit clicks waiting for "stable" on buttons this phase does not touch (`:134`, `toast-layering.spec.ts:82`). Both specs alone: 48/48. Full run 2: **423/423** (6.8 m).
+- **Negative controls:** removing the open-time focus fails 5 unit tests; the Tab listener 7; the top-of-stack check 2 (both nested); the own-dialog filter 1; the reachability filter 3; the "already inside" skip 1; the negative-`tabindex` check 1 ("skips a tabIndex -1 field"); `:disabled` with the selector's `:not([disabled])` 2. E2E on chromium: `main`'s `Modal.tsx` fails both new tests at the focus-on-open assertion; without only the Tab listener the Quick Add test fails at the first Shift+Tab.
+- **Probes** on a `vite preview` build: `accept10.cjs` 369/372 -> **372/372** (item 12 11/14 -> 14/14); `modalfocus.cjs` from every stop outside at 1280, two outside at 390 and `BODY` after the More sheet, to all six inside and the More sheet wrapping; `nested67.cjs` 22/22 in chromium, firefox and webkit, light and dark (the confirmation over the Wallets sheet, the Categories sheet, no ring on a mouse open).
+- **Bundle:** entry `index-*.js` 186,724 -> **188,651 B (+1,927 B)**, 54,246 B gzip (+900 B). No new CSS rule.
 
 ADR `0042`. Closes the gap Phase 65's release check left open (the update toast covers the More sheet) and audit 013's two remaining Low findings, 6 and 7, with antislop applied during the work.
 
