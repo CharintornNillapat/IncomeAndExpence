@@ -1090,6 +1090,7 @@ ADR `0038`. The plan was approved in plan mode; the owner's decisions:
 - antislop mode 2 (audit 012).
 
 Branch `phase-63-category-colours`, cut from `main` at `ba87338`. It also carries `ee53206`, the Phase 62 deploy record, which had not been pushed. **One data-only migration**, `20261002_phase63_identity_colors.sql`, applied after the merge and deploy, on the owner's word.
+- Merged into `main` as `9c35489` with a merge commit, with the owner's go-ahead, after audit 012's findings 1 and 4 were fixed (T338). PR run `36945015504` and push run `36948152458` passed. Vercel `dpl_7RFMfczepXDoeJNdpGkvTcPpABe7` is READY and serves the local build byte for byte. The migration was applied to the live project on 2026-10-02 (version `20261002013725`): 47 category rows and 6 wallets moved, and nothing is left to move or collides.
 
 | # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
 |---|---|---|---|---|---|---|---|---|---|---|
@@ -1097,7 +1098,7 @@ Branch `phase-63-category-colours`, cut from `main` at `ba87338`. It also carrie
 | T330 | Seeds on identity colours (guest and new account) | `context/FinanceContext.tsx` | Med | Low | 0.2h | done | T329 | `1f09894` | signed-in seed test; its control failed | - |
 | T331 | The `pf_categories` / `pf_wallets` hydration applies the migration (never the Supabase load) | `context/FinanceContext.tsx` | High | Low | 0.2h | done | T329 | `1f09894` | 2 seam controls failed | - |
 | T332 | "Color" throughout, swatches named by colour, "Current color"; System chip colour in the rules table | `wallet/`, `category/`, `identityPalette.ts` | Low | Low | 0.3h | done | - | `1f09894` | - | - |
-| T333 | The SQL migration and its probe | `supabase/` | High | Med | 1h | done; not applied | T329 | `cdda81d` | `PHASE 63 PROBE OK` on the live schema | - |
+| T333 | The SQL migration and its probe | `supabase/` | High | Med | 1h | done; applied 2026-10-02 (`20261002013725`) | T329 | `cdda81d` | `PHASE 63 PROBE OK` on the live schema | - |
 | T334 | Unit: `identity-color-migration` (9), page and seed tests (7), 3 fixtures moved | `unit/` | High | Low | 0.7h | done | T329-T332 | `1f09894` | 6 controls caught in all | unit 562 -> 578 |
 | T335 | Gate: lint, unit, build, Playwright twice, walk-through | - | - | - | 1h | done | all | ce9731b | lint clean; unit 578/578; Playwright 398/402 then 401/402 (click-settling timeouts only, each file green on repeat); probe OK | entry +1,817 B |
 | T336 | Antislop audit 012 (mode 2) | `anti-slop/audit-012-2026-10-02.md` | - | - | 0.4h | done; findings await the owner | T335 | ce9731b | 4 findings (1 MEDIUM, 3 LOW), no new Hard Gate failure | - |

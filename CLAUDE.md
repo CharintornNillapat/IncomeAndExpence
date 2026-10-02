@@ -369,7 +369,7 @@ Without it, `FinanceContext` falls back to the legacy non-atomic path (three sep
 - Probe: `supabase/tests/20260930_phase58s.probe.sql`.
 
 ### Phase 63 (ADR `0038`)
-`supabase/migrations/20261002_phase63_identity_colors.sql` is a **data-only**, idempotent migration: spec 5.1's colour moves for every live row still on its shipped colour, with the L9 collision rule. It is applied **after** the code that seeds the new colours is deployed, so no older seed lands after it; running it again catches a cached older client's seed. Probe: `supabase/tests/20261002_phase63.probe.sql`. Not yet applied to the live project.
+`supabase/migrations/20261002_phase63_identity_colors.sql` is a **data-only**, idempotent migration: spec 5.1's colour moves for every live row still on its shipped colour, with the L9 collision rule. It is applied **after** the code that seeds the new colours is deployed, so no older seed lands after it; running it again catches a cached older client's seed. Probe: `supabase/tests/20261002_phase63.probe.sql`. Applied to the live project on 2026-10-02 (version `20261002013725`): 47 category rows and 6 wallets moved.
 
 ### Atomic ledger writes (ADR `0023`)
 `supabase/migrations/20260927_ledger_rpcs.sql` (applied to the live project on 2026-09-27) moves every other signed-in ledger write into RPCs that lock the rows they touch, apply **relative** updates, and replay on the idempotency key:

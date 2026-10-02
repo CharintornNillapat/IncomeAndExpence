@@ -18,7 +18,7 @@ Phase 62 gave the colour pickers spec section 1's twelve identity colours and ap
   - The owner's: 38 live category rows for 11 names, each shipped category 4 times from the pre-Phase-30 seeding race; and the wallets Cash `#ef4444`, Main `#16a34a` and Sub `#0284c7`.
   - A second: the untouched starter set, with no transactions.
 - **Every category row was still on its shipped colour.** No live Expense or Income category was on an identity colour, so nothing would collide.
-- **The duplicates:** `20260920_dedupe_categories.sql` is in the repo, yet these duplicates are still live, so that migration was evidently never applied to this project.
+- **The duplicates:** The dedupe migration (`dedupe_categories`, version `20260919224758`) did run on 2026-09-19, but the account was seeded with all nine categories three more times afterwards (2026-09-20 12:05, 2026-09-22 09:57 and 10:56 UTC), alongside six deleted copies of each starter wallet. The likely cause is `loadSupabaseData` re-seeding whenever a signed-in account loads with no live wallets (corrected after the deploy; this line first said the dedupe migration was never applied).
 
 **The owner's decisions (2026-10-02):**
 - **Scope:** any row, in any account, still on its shipped colour moves, plus spec 5.1's named rows. A colour someone picked stays.
@@ -100,5 +100,6 @@ None. `categories-page.spec.ts` still finds Tan free and then Blue, because the 
 - **The shipped categories now sit on identity colours,** each a different one. ADR 0037's "Current colour" swatch for them, and `DESIGN.md`'s deviation row for it, are gone.
 - **Two copies of the migration rules,** in TypeScript and SQL, must change together. The unit tests and the probe pin the same cases.
 - **Still open:**
-  - The live duplicate category rows (27 in the owner's account), and `20260920_dedupe_categories.sql` never having been applied there. Cleaning them up is its own decision.
+  - The live duplicate category rows (27 in the owner's account), and the re-seed that made them after the dedupe migration ran. Cleaning them up, and stopping the re-seed, is its own decision.
+  - **Applied:** the migration went to the live project on 2026-10-02 (version `20261002013725`): 47 category rows and 6 wallets moved, and nothing is left to move or collides.
   - Wallets have no uniqueness rule, so two wallets can still share a colour.

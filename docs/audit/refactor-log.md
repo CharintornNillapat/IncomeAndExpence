@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 63 - The identity colour migration (spec 5.1): T329-T337 (2026-10-02, commits `1f09894`, `cdda81d`, docs `ce9731b`)
+## Phase 63 - The identity colour migration (spec 5.1): T329-T338 (2026-10-02, commits `1f09894`, `cdda81d`, `7b4e61a`, docs `ce9731b`, `09ac0fb`)
 
 **Changed**
 - **One data-only migration,** `supabase/migrations/20261002_phase63_identity_colors.sql`, with its probe. It is applied to the live project only after the merge and the deploy, on the owner's word.
@@ -27,7 +27,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 - **Docs:** ADR `0038`, `DESIGN.md`, `CLAUDE.md`, antislop audit 012.
 
 **Surprises**
-- **The live duplicates.** The owner's account holds each shipped category 4 times (38 live rows, 11 names). `20260920_dedupe_categories.sql` is in the repo but was never applied to the live project. Left alone by decision.
+- **The live duplicates.** The owner's account holds each shipped category 4 times (38 live rows, 11 names). Corrected after the deploy: the dedupe migration (`dedupe_categories`, version `20260919224758`) did run on 2026-09-19, but the account was seeded with all nine categories three more times afterwards (2026-09-20 12:05, 2026-09-22 09:57 and 10:56 UTC), alongside six deleted copies of each starter wallet. The likely cause is `loadSupabaseData` re-seeding whenever a signed-in account loads with no live wallets. Left alone by decision.
 - **The cap now arrives early.** With the shipped categories on the palette, L9 leaves a fresh account 5 free colours and the owner's account 3 (audit 012 finding 1).
 
 **Gate:**
@@ -66,6 +66,31 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
   - "Current color, from before the new palette" became "Custom color".
 
   Lint clean, unit 583/583 (5 new tests), and four controls each failed their test: the add guard's exemption removed, the update guard's exemption removed, the grid blocking every used colour, and no least-shared cycling.
+
+**CI, deploy and migration:**
+- PR #11, run `36945015504` on `09ac0fb`: success in 6 m 18 s. Unit 583/583 with no `.env` on the runner, and 134/134 per browser, none flaky.
+- Merged as PR #11 with a merge commit, `9c35489`, with the owner's go-ahead. Its tree is identical to `09ac0fb`. It also published `ee53206`, the Phase 62 deploy record.
+- Push run `36948152458` on `9c35489`: success in 4 m 28 s. Unit 583/583; 134/134 per browser.
+- Vercel `dpl_7RFMfczepXDoeJNdpGkvTcPpABe7` Production `READY`. `income-and-expence-neon.vercel.app` serves `index-CLpGjZYS.js` at **187,191 B**: the gate's 186,928 B plus the audit 012 fixes (+263 B).
+- **All 59 files of a clean local build (with `.env`) were hashed against production.** 54 are byte-for-byte identical. `index.html`, the two SVGs and `robots.txt` differ only in line endings (the worktree checks them out with CRLF; with every `\r` removed they match). `sw.js` has the same 58 precache URLs.
+- **Signed-out smoke test on production** (fresh headless Chromium, no auth token in storage, no console errors):
+  - at 1280, 1024 and 390, each light and dark:
+    - no old colour painted on the Dashboard, Categories or Wallets;
+    - seven swatches struck, "Rose, used by Food & Dining", Tan offered first, and no "Custom color" swatch;
+    - the starter wallets Blue, Tan and Teal; at 1280 and 1024 the edit form's legend reads "Color", with swatches "Tan" to "Iris";
+    - no page overflow, and at 390 "Add category" focuses Name.
+  - One reading at 1280 light found 2 controls under 44px; three fresh contexts, measured at once and after 500 ms, found none, so it was a reading taken mid-render.
+  - **A device storing the old colours** (1280 light): Food & Dining Rose, Groceries Peach, Primary Salary Steel, and the wallets Blue and Tan, on load.
+  - **All twelve colours in use** (1280 light and 390 dark):
+    - Add stays enabled and no swatch is disabled;
+    - the sharing line shows, and Rose reads "Rose, also used by Fill 4";
+    - a thirteenth category was added on Tan, and the next one started on Blue.
+- **The migration, applied to the live project on the owner's word** (2026-10-02, `apply_migration`, recorded as version `20261002013725 phase63_identity_colors`):
+  - **The preview before:** exactly 47 category rows (38 in the owner's account, 9 in the second) and 6 wallets (Cash, Main and Sub; Checking Account, Cash Wallet and Savings Reserve), with no live Expense or Income category already on an identity colour.
+  - **After:** 0 category rows and 0 wallets left on an old colour, and 0 pairs of different-named live Expense or Income categories sharing a colour in any account.
+  - **The owner's account now reads:** Food & Dining Rose, Groceries Peach, Housing & Utilities Periwinkle, Shopping & Apparel Lavender, Transport & Fuel Aqua, camel Khaki, Primary Salary Steel, Freelance & Side Gig Orchid, กิจนิมนต์ Iris, the System pair `#6B7385`, and the wallets Cash Tan, Main Blue and Sub Teal.
+  - **The second account** matches the shipped set, with Checking Account Blue, Cash Wallet Tan and Savings Reserve Teal.
+- **Correction:** ADR 0038, audit 012 and this entry first said `20260920_dedupe_categories.sql` was never applied. The migration history shows it was (`20260919224758`); the dedupe migration (`dedupe_categories`, version `20260919224758`) did run on 2026-09-19, but the account was seeded with all nine categories three more times afterwards (2026-09-20 12:05, 2026-09-22 09:57 and 10:56 UTC), alongside six deleted copies of each starter wallet. The likely cause is `loadSupabaseData` re-seeding whenever a signed-in account loads with no live wallets. That re-seed is recorded as open, not fixed here.
 
 ## Phase 62 - The Categories page (spec 6.6): T314-T328 (2026-10-01, commits `58b5d75`, `f8c62a0`, `837d442`, docs `03a1311`)
 
