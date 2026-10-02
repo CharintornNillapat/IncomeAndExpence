@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 67 - Modal focus trap: T371-T379 (2026-10-02, not yet committed)
+## Phase 67 - Modal focus trap: T371-T380 (2026-10-02, commit `5234613`, merge `d2f735e`; test fix `7f0c738`, merge `3dd9068`)
 
 ADR `0043`. Closes spec section 10 item 12's keyboard half: focus did not enter a dialog, and Tab walked the page behind the scrim. Antislop (core and `antislop-human`) applied during the work. Also writes the spec section 10 acceptance record.
 
@@ -37,6 +37,23 @@ ADR `0043`. Closes spec section 10 item 12's keyboard half: focus did not enter 
 - **Negative controls:** removing the open-time focus fails 5 unit tests; the Tab listener 7; the top-of-stack check 2 (both nested); the own-dialog filter 1; the reachability filter 3; the "already inside" skip 1; the negative-`tabindex` check 1 ("skips a tabIndex -1 field"); `:disabled` with the selector's `:not([disabled])` 2. E2E on chromium: `main`'s `Modal.tsx` fails both new tests at the focus-on-open assertion; without only the Tab listener the Quick Add test fails at the first Shift+Tab.
 - **Probes** on a `vite preview` build: `accept10.cjs` 369/372 -> **372/372** (item 12 11/14 -> 14/14); `modalfocus.cjs` from every stop outside at 1280, two outside at 390 and `BODY` after the More sheet, to all six inside and the More sheet wrapping; `nested67.cjs` 22/22 in chromium, firefox and webkit, light and dark (the confirmation over the Wallets sheet, the Categories sheet, no ring on a mouse open).
 - **Bundle:** entry `index-*.js` 186,724 -> **188,651 B (+1,927 B)**, 54,246 B gzip (+900 B). No new CSS rule.
+
+**Release:**
+- PR #16 merged into `main` as `d2f735e` with a merge commit; its tree is identical to `5234613`. PR run `37027020930` passed: unit 615/615, and 141/141 on each browser.
+- **Push run `37070456315` on `d2f735e` failed**: 4 of 615 unit tests in `unit/diary-page.test.tsx`, so the three browser jobs were skipped. The cause was in the test, not the app:
+  - it set `TZ=Asia/Bangkok` in a `beforeAll` but computed `const TODAY = todayIsoDate()` when the file loaded, before that hook ran;
+  - on a UTC runner between 17:00 and 23:59 UTC (00:00 to 06:59 in Bangkok) that `TODAY` was the day before the app's. The run started at 22:04 UTC; PR #16's run, at 15:26 UTC, fell outside the window;
+  - the file had not changed since Phase 61 (`7b68e67`), so it had failed in that window every night since. `TZ=UTC` reproduced the 4 failures locally.
+- **PR #17** (`7f0c738`, merged as `3dd9068`) sets the zone at the top of the file and restores it in `afterAll`; one file, 6 lines each way. PR run `37074761332`, at 22:53 UTC inside the failing window, and push run `37075229294` on `3dd9068` passed: unit 615/615, and 141/141 on each of chromium, firefox and webkit.
+- Vercel `dpl_9uk8JX9RkeU4fgUF9HT5as6PA54T` Production `READY` for `d2f735e`. `income-and-expence-neon.vercel.app` serves `index-BFWd6EeO.js` at **188,651 B**, the size measured locally. PR #17's `dpl_5ZWq4FYsiSGmvLwfyWkqPDSZ9H61` is `READY` and serves the same entry (no `src/` change).
+- **All 59 files of a clean local build of `d2f735e` (with `.env`) were hashed against production.** 54 are byte-for-byte identical. `index.html`, the two SVGs and `robots.txt` differ only in line endings (the worktree's CRLF checkout). `sw.js` is the same size, 4,706 B, with the same 58 precache URLs; only those three files' revisions differ.
+- **Probes on production:**
+  - `accept10.cjs`: **372/372**, all 13 section 10 items, at 1280, 1024 and 390, light and dark;
+  - `modalfocus.cjs`: after opening Quick Add by keyboard at 1280 and 390, and the More sheet at 390, every Tab stop is inside the dialog, and the More sheet wraps from its last item;
+  - `nested67.cjs`: 22/22 in chromium, firefox and webkit (the confirmation over the Wallets sheet traps and closes alone; the Categories sheet keeps Tab).
+- **Spec sections 9 and 10 are closed.** Section 9's last step ("ตรวจงาน: ไล่ checklist ในหัวข้อ 10") is this check, and section 10 passes 13 of 13 on production. Still open, low: a screen reader's virtual cursor (ADR `0043`).
+
+## Phase 66 - UI polish: T363-T370 (2026-10-02, commit `1eecc8c`, merge `7e2daa9`)
 
 ADR `0042`. Closes the gap Phase 65's release check left open (the update toast covers the More sheet) and audit 013's two remaining Low findings, 6 and 7, with antislop applied during the work.
 

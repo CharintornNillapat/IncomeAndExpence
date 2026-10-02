@@ -1,6 +1,6 @@
 # 0043: A dialog takes focus when it opens and keeps Tab until it closes
 
-**Status:** Accepted. Implemented on branch `phase-67-modal-focus-trap` (cut from `main` at `6354c08`), not yet committed: the owner reviews the diff and the test summary first.
+**Status:** Accepted and released. Commit `5234613`, merged into `main` as `d2f735e` (PR #16); Vercel `dpl_9uk8JX9RkeU4fgUF9HT5as6PA54T` is READY in production, where the section 10 probe passes 372/372. `main`'s CI went green with PR #17 (`3dd9068`, push run `37075229294`), which fixed a time zone flaw in an unrelated diary test.
 - **Closes** spec section 10 item 12's keyboard half ("ใช้งานด้วยคีย์บอร์ดได้ครบ"): the acceptance probe's three remaining failures, "item12 dialog takes focus" at 1280 and 390, and "item12 transaction row opens by keyboard and moves focus to its panel" at 390.
 - **Keeps** audit 008 finding 1's return of focus to the opener, and OverflowMenu's own Escape (ADR `0029`).
 - **Amends** `Modal`'s Escape (T22): with one dialog open over another, Escape closes only the top one. Before, every open `Modal` closed on the same key press.

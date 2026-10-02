@@ -1119,6 +1119,8 @@ E2E +2 tests, both in `account-and-mobile-nav.spec.ts` (Quick Add by keyboard at
 
 **Acceptance probe** (scratchpad `accept10.cjs`, `vite preview`): 369/372 -> 372/372.
 
+**Production** (`d2f735e`, Vercel `dpl_9uk8JX9RkeU4fgUF9HT5as6PA54T`): `index-BFWd6EeO.js` at 188,651 B, the size measured locally; 54 of 59 files byte for byte, the rest line endings only. The section 10 probe passes 372/372 there. CI (push run `37075229294`, after PR #17's test fix): unit 615/615, 141/141 per browser.
+
 ## Phase 66 (UI polish) - delta against Phase 65
 
 A local build of the Phase 66 tree with the repo's `.env`, against Phase 65's recorded local build and a build of `main` (`1036ee0`) made at the start of this phase. Gzip is level 9.

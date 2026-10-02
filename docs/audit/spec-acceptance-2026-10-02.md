@@ -154,6 +154,7 @@ This records the redesign spec's acceptance checklist (`docs/design/finlife-rede
   - In chromium, firefox and webkit, light and dark (scratchpad `nested67.cjs`, 22/22 each): a confirmation over the 390 Wallets sheet keeps Tab among its own buttons and Escape closes it alone; the Categories edit sheet keeps 30 Tabs inside; a dialog opened with the mouse draws no ring until the keyboard is used.
   - Pinned by `unit/modal-focus.test.tsx` (19 tests, each guard shown load-bearing by a negative control) and two keyboard checks in `tests/account-and-mobile-nav.spec.ts`.
   - Open, low: nothing beyond `aria-modal` keeps a screen reader's virtual cursor out of the page behind a dialog; not tested with a screen reader (ADR `0043`).
+- **2026-10-03, on production:** Phase 67 released as `d2f735e` (PR #16, Vercel `dpl_9uk8JX9RkeU4fgUF9HT5as6PA54T`). The same probe there: item 12 **14/14** and the run **372/372**; `modalfocus.cjs` every stop inside at 1280 and 390, the More sheet wrapping; `nested67.cjs` 22/22 in chromium, firefox and webkit.
 
 ### 13. Build and existing tests
 > build และ test ที่มีอยู่เดิมยังผ่านทั้งหมด
@@ -168,3 +169,10 @@ This records the redesign spec's acceptance checklist (`docs/design/finlife-rede
 
 - **44 px hit boxes:** 0 interactive elements under 44 px on all six views at 1280, 1024 and 390, outside `DESIGN.md`'s documented exceptions (the calculator keys, the note field's microphone, the form's shortcut links, inline text links).
 - **Responsive:** no horizontal scroll on any view at 1280, 1024 or 390.
+
+## Closing note (2026-10-03)
+
+- **Section 10: 13 of 13 pass on production**, after Phase 67's release (`d2f735e`, Vercel `dpl_9uk8JX9RkeU4fgUF9HT5as6PA54T`): `accept10.cjs` 372/372 at 1280, 1024 and 390, light and dark.
+- **Item 13 on CI:** push run `37075229294` on `3dd9068`: unit 615/615, Playwright 141/141 on each of chromium, firefox and webkit. The run before it (`37070456315`, on `d2f735e`) failed 4 unit tests from a time zone flaw in `unit/diary-page.test.tsx`, not in the app; PR #17 fixed the test.
+- **Section 9 is complete.** Its six steps are done: the foundation and the L1 to L13 selectors (Phase 55), the shared components (56),the six pages in the spec's order (57 to 62), the colour migration of 5.1 (63), and this check (step 6).
+- **Still open, low:** a screen reader's virtual cursor behind a dialog (ADR `0043`).
