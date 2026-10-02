@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, it, expect, beforeAll, afterAll, afterEach, vi } from 'vitest';
+import { describe, it, expect, afterAll, afterEach, vi } from 'vitest';
 import { render, cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { FinanceProvider } from '../src/context/FinanceContext';
 import { DiaryView } from '../src/views/DiaryView';
@@ -13,11 +13,11 @@ import type { DiaryEntry, Transaction } from '../src/types';
  * `FinanceProvider` in guest mode and seeded through localStorage. A fresh
  * guest has no diary entries and no transactions.
  */
-let originalTz: string | undefined;
-beforeAll(() => {
-  originalTz = process.env.TZ;
-  process.env.TZ = 'Asia/Bangkok';
-});
+// The zone is set when this file loads, not in a beforeAll: TODAY below is
+// computed at load, and on a UTC runner between 17:00 and 23:59 UTC it was the
+// previous day while the app, under test in Bangkok time, was already on the next.
+const originalTz = process.env.TZ;
+process.env.TZ = 'Asia/Bangkok';
 afterAll(() => {
   process.env.TZ = originalTz;
 });
