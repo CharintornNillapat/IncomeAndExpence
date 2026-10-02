@@ -393,6 +393,9 @@ function isMissingRpcError(err: { code?: string; message?: string } | null): boo
   return (err.message || '').toLowerCase().includes('could not find the function');
 }
 
+/** What `seed_starter_account()` decided for an empty wallet read (ADR 0039). */
+type SeedOutcome = 'seeded' | 'not-new' | 'busy' | 'failed';
+
 // Shape returned by `update_transaction` (ADR 0033): the row, and the balance of
 // every wallet on either side of the edit.
 interface UpdateTransactionResult {
@@ -822,8 +825,9 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
   // seed's insert lands, and each concurrent call would independently see
   // "empty" and insert its own full set of starter wallets/categories - the
   // root cause of "each default category appearing 2-3 times" in every
-  // category picker. This ref makes the insert step itself race-proof
-  // regardless of how many times it's triggered.
+  // category picker. This ref stops one tab calling `seed_starter_account()`
+  // twice at once; the function's own per-account lock covers every other
+  // caller (ADR 0039).
   const isSeedingRef = useRef(false);
 
   // T69: bumped once per successful `loadSupabaseData` commit. `addTransaction`
@@ -898,71 +902,37 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     lastCloudLoadAtRef.current = 0;
   }, []);
 
-  // Seed initial starter account on Supabase if new user
-  const seedInitialUserAccount = useCallback(async (userId: string) => {
-    if (isSeedingRef.current) return;
+  // ADR 0039: the server decides whether an account is new. An empty wallet
+  // read is not evidence: row-level security answers a read made without a
+  // valid session with zero rows and no error, and seeding on that alone
+  // seeded one account five extra times. `seed_starter_account()` refuses a
+  // call with no session, seeds only an account that has never had a wallet or
+  // category row (deleted ones included), and serialises concurrent calls. A
+  // missing function seeds nothing: there is no client-side fallback.
+  //   'seeded'   - it seeded, and the reload it ran has the new rows;
+  //   'not-new'  - the account was seeded before; carry on loading;
+  //   'busy'     - a seed is already running in this tab, which will reload;
+  //   'failed'   - no answer worth trusting; keep what is on screen.
+  const seedInitialUserAccount = useCallback(async (userId: string): Promise<SeedOutcome> => {
+    if (isSeedingRef.current) return 'busy';
     isSeedingRef.current = true;
     try {
-      // 1. Create starter wallets
-      await supabase
-        .from('wallets')
-        .insert([
-          {
-            user_id: userId,
-            name: 'Checking Account',
-            type: 'BANK_ACCOUNT',
-            currency: APP_CURRENCY,
-            balance: 2500.0,
-            color: '#6C8EEF',
-            icon: 'landmark',
-          },
-          {
-            user_id: userId,
-            name: 'Cash Wallet',
-            type: 'CASH',
-            currency: APP_CURRENCY,
-            balance: 150.0,
-            color: '#D9A066',
-            icon: 'banknote',
-          },
-          {
-            user_id: userId,
-            name: 'Savings Reserve',
-            type: 'SAVINGS',
-            currency: APP_CURRENCY,
-            balance: 8000.0,
-            color: '#4FB7A8',
-            icon: 'piggy-bank',
-          },
-        ])
-        .select();
-
-      // 2. Insert standard categories for user.
-      //
-      // `description` is deliberately NOT written here. Leaving the column NULL
-      // keeps the shipped default live: `withDefaultDescriptions` supplies the
-      // current wording on every load, so improving a default's criteria text
-      // reaches existing accounts on their next reload instead of being frozen
-      // at whatever shipped the day they signed up. The column only ever holds
-      // a description the user typed themselves. See ADR 0012.
-      await supabase
-        .from('categories')
-        .insert(
-          DEFAULT_SYSTEM_CATEGORIES.map((c) => ({
-            user_id: userId,
-            name: c.name,
-            type: c.type,
-            icon: c.icon,
-            color: c.color,
-            is_system: true,
-          }))
-        )
-        .select();
-
-      // Refresh data
+      const { data, error } = await supabase.rpc('seed_starter_account');
+      if (error) {
+        console.error(
+          isMissingRpcError(error)
+            ? '[Seed] seed_starter_account is missing; the database needs the Phase 64 migration'
+            : '[Seed Error]',
+          error
+        );
+        return 'failed';
+      }
+      if ((data as { seeded?: boolean } | null)?.seeded !== true) return 'not-new';
       await loadSupabaseDataRef.current?.(userId);
+      return 'seeded';
     } catch (err) {
       console.error('[Seed Error]', err);
+      return 'failed';
     } finally {
       isSeedingRef.current = false;
     }
@@ -988,13 +958,18 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       if (wErr) failedReads.push('wallets');
       if (!wErr && wData) {
         const mappedWallets: Wallet[] = wData.map(mapWalletRow);
-        setWallets(mappedWallets);
 
-        // Auto-seed default wallet if account is completely empty
+        // An empty read may be a new account or a read without a session; only
+        // the server can tell (ADR 0039). Nothing is applied until it has.
         if (mappedWallets.length === 0) {
-          await seedInitialUserAccount(userId);
-          return;
+          const outcome = await seedInitialUserAccount(userId);
+          if (outcome === 'seeded' || outcome === 'busy' || signedOutMeanwhile()) return;
+          if (outcome === 'failed') {
+            setSyncError('Could not read wallets');
+            return;
+          }
         }
+        setWallets(mappedWallets);
       }
 
       // 2. Categories
