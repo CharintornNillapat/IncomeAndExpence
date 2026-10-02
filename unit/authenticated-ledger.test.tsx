@@ -2227,28 +2227,84 @@ describe('a device signed out from another device (ADR 0024, amended)', () => {
   });
 });
 
-describe("a new account's seed (Phase 63, ADR 0038)", () => {
-  it('writes the starter wallets and shipped categories on identity colours, the System pair grey', async () => {
+describe("a new account's seed, through seed_starter_account (Phase 64, ADR 0039)", () => {
+  const created = '2026-10-02T00:00:00.000Z';
+  const mine = (table: string) => rows(table).filter((r) => r.user_id === fake.USER_ID);
+  const seedCalls = () => fake.state.calls.filter((c) => c.table === 'rpc:seed_starter_account');
+  /** Proves an absence only (no second call, no loop): longer than the 400 ms reload debounce. */
+  const quietPeriod = () => new Promise<void>((resolve) => setTimeout(resolve, 600));
+  const noClientInserts = () => {
+    expect(writes('wallets', 'insert')).toHaveLength(0);
+    expect(writes('categories', 'insert')).toHaveLength(0);
+  };
+
+  /**
+   * A JS stand-in for the function's contract: it seeds only an account with
+   * no wallet or category row, deleted or not. The SQL itself (the session
+   * check, the lock, the starter rows) is proven by the Phase 64 probe.
+   */
+  function installSeedRpc() {
+    fake.state.rpcs.set('seed_starter_account', () => {
+      if (mine('wallets').length > 0 || mine('categories').length > 0) return { data: { seeded: false }, error: null };
+      rows('wallets').push({ id: 'seeded-wallet', user_id: fake.USER_ID, name: 'Checking Account', type: 'BANK_ACCOUNT', balance: 2500, color: '#6C8EEF', is_archived: false, is_deleted: false, created_at: created, updated_at: created });
+      rows('categories').push({ id: 'seeded-category', user_id: fake.USER_ID, name: 'Food & Dining', type: 'EXPENSE', color: '#E879A6', is_system: true, is_deleted: false, created_at: created });
+      return { data: { seeded: true }, error: null };
+    });
+  }
+
+  /** Remounts on an account whose wallet read comes back empty. */
+  function remountEmpty(setup: () => void) {
     cleanup();
     localStorage.clear();
     fake.state.tables.wallets = [];
     fake.state.tables.categories = [];
+    setup();
+    fake.state.calls = [];
     render(
       <FinanceProvider>
         <Probe />
       </FinanceProvider>
     );
-    await waitFor(() => {
-      expect(fake.state.tables.wallets).toHaveLength(3);
-      expect(fake.state.tables.categories).toHaveLength(9);
+  }
+
+  it('seeds a new account through the function, never with its own inserts', async () => {
+    remountEmpty(installSeedRpc);
+    await waitFor(() => expect(state().wallets.map((w) => w.name)).toEqual(['Checking Account']));
+    expect(state().categories.some((c) => c.name === 'Food & Dining')).toBe(true);
+    expect(seedCalls()).toHaveLength(1);
+    noClientInserts();
+  });
+
+  it('a call refused for having no session seeds nothing, and reports the read as failed', async () => {
+    remountEmpty(() => fake.state.failures.set('rpc:seed_starter_account', { message: 'Sign in required', code: '28000' }));
+    await waitFor(() => expect(state().syncError).toBe('Could not read wallets'));
+    await quietPeriod();
+    expect(seedCalls()).toHaveLength(1);
+    expect(state().isSyncing).toBe(false);
+    noClientInserts();
+  });
+
+  it('a missing function seeds nothing: there is no fallback to client inserts', async () => {
+    remountEmpty(() => {});
+    await waitFor(() => expect(state().syncError).toBe('Could not read wallets'));
+    await quietPeriod();
+    expect(seedCalls()).toHaveLength(1);
+    noClientInserts();
+  });
+
+  it('an account seeded before is not seeded again, and the load finishes instead of looping', async () => {
+    remountEmpty(() => {
+      installSeedRpc();
+      // Only a deleted category is left: no live wallet, but not a new account.
+      rows('categories').push({ id: 'old-category', user_id: fake.USER_ID, name: 'Old', type: 'EXPENSE', color: '#D9A066', is_system: false, is_deleted: true, created_at: created });
     });
-    const colorOf = (table: 'wallets' | 'categories', name: string) => fake.state.tables[table].find((r) => r.name === name)!.color;
-    expect(colorOf('wallets', 'Checking Account')).toBe('#6C8EEF');
-    expect(colorOf('wallets', 'Cash Wallet')).toBe('#D9A066');
-    expect(colorOf('wallets', 'Savings Reserve')).toBe('#4FB7A8');
-    expect(colorOf('categories', 'Food & Dining')).toBe('#E879A6');
-    expect(colorOf('categories', 'Freelance & Side Gig')).toBe('#D98FD0');
-    expect(colorOf('categories', 'Debt Repayment')).toBe('#6B7385');
-    expect(colorOf('categories', 'Balance Adjustment')).toBe('#6B7385');
+    await waitFor(() => expect(seedCalls()).toHaveLength(1));
+    await quietPeriod();
+    expect(seedCalls()).toHaveLength(1);
+    expect(state().isSyncing).toBe(false);
+    expect(state().syncError).toBeNull();
+    expect(state().wallets).toHaveLength(0);
+    expect(mine('wallets')).toHaveLength(0);
+    noClientInserts();
   });
 });

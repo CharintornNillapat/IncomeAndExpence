@@ -4,6 +4,48 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
+## Phase 64 - The re-seeding guard and the duplicate cleanup: T339-T345 (2026-10-02, commits `c17019a`, docs `031d824`; in progress)
+
+**Changed**
+- **`seed_starter_account()`** (applied to the live project on 2026-10-02 as `20261002041331`): the server decides whether an account is new.
+  - It refuses a call with no session (`28000`).
+  - It seeds only an account that has never had a wallet or category row, deleted ones included.
+  - It serialises calls with a per-account advisory lock, and inserts the starter set in one transaction.
+- **The client:** `seedInitialUserAccount` calls it and never inserts.
+  - **Failed** (no session, missing function, any error): the load stops without applying the empty read and sets "Could not read wallets".
+  - **Not new:** the load carries on.
+  - **Seeded:** the reload has the rows.
+- **The dedupe** (migration, not applied yet): within an account, the earliest live category of each name wins.
+  - Transactions (with `updated_at` bumped) and keyword rules on the other copies are re-pointed to it.
+  - The copies are soft-deleted.
+- **Tests:** four signed-in tests of the seed contract replace Phase 63's direct-insert seed test. Unit 583 -> 586.
+- **Docs:** ADR `0039`, and `CLAUDE.md`, with its new "Do NOT seed from the client" rule.
+
+**Found**
+- **The owner's account was seeded five times after 2026-09-01,** although it always had live wallets.
+  - The wallet query has not changed since 2026-09-01, and it counts deleted rows, so its read must have come back empty with no error.
+  - Both tables' policies cover `authenticated` only, so a read without a valid session gets zero rows, not an error.
+  - The earlier dedupe (`dedupe_categories`, `20260919224758`) did run; the three seeds after it made today's 27 duplicates.
+- **The live preview** (read-only):
+  - **Categories:** the owner's account goes from 38 live to 11 (27 marked deleted); the second account is unchanged at 9.
+  - **Re-pointed:** 17 transactions (14 live, 3 deleted) and 0 rules.
+  - **Kept:** the 08-31 originals, plus camel and กิจนิมนต์.
+  - **No money moves:** the re-pointed rows' ฿9,547.89 stays as it is.
+
+**Gate so far:**
+- Lint clean; unit 586/586.
+- **Controls:** 3 caught. Each of these failed its test:
+  - the empty read applied after a failed seed;
+  - "already seeded" treated as a failure;
+  - a client insert on the error path.
+- **The probe** (`20261002_phase64.probe.sql`): the session's SQL tool was declined three times, so the owner ran it in the Supabase SQL editor against the live schema, inside `BEGIN ... ROLLBACK`: `PHASE 64 PROBE OK`.
+- **The seed function, applied** (`apply_migration`, recorded as `20261002041331 phase64_seed_starter_account`):
+  - security definer, `search_path=public, pg_temp`;
+  - EXECUTE for `authenticated` and `service_role`, not `anon`;
+  - live data untouched: 47 live categories and 30 wallets, as before.
+
+  The dedupe is not applied: it waits for the merge and the deploy.
+
 ## Phase 63 - The identity colour migration (spec 5.1): T329-T338 (2026-10-02, commits `1f09894`, `cdda81d`, `7b4e61a`, docs `ce9731b`, `09ac0fb`)
 
 **Changed**

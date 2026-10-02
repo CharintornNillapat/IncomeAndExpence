@@ -1081,6 +1081,26 @@ Approved explicitly by the user, planned and approved before any code was writte
 - **One negative control was redone** because the first attempt produced malformed TypeScript that the dev server still served — the tests failed, but possibly for the wrong reason.
 - **No flakes.** Phase 44's `wallets.spec.ts` webkit flake has now not reproduced across three consecutive phases; still watched rather than closed.
 
+## Phase 64 - the re-seeding guard and the duplicate cleanup: T339-T345 (2026-10-02)
+
+ADR `0039`. The owner's decisions:
+- a server-side seed function, with no client fallback;
+- duplicate categories soft-deleted, with their transactions and rules re-pointed to the earliest copy;
+- the 24 deleted wallets kept;
+- no antislop audit (no UI change).
+
+Branch `phase-64-seed-guard`, cut from `main` at `77b0cdb`. **Two migrations:** `20261002_phase64_seed_starter_account.sql`, applied before the client deploys, and `20261002_phase64_dedupe_categories.sql`, applied after. Both wait for the owner's word, the probe first.
+
+| # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
+|---|---|---|---|---|---|---|---|---|---|---|
+| T339 | `seed_starter_account()`: no session refused, once only (deleted rows count), advisory lock, one transaction | `supabase/migrations/` | High | Med | 0.5h | applied 2026-10-02 (`20261002041331`) | - | `c17019a` | probe OK; security definer, `authenticated` yes, `anon` no | - |
+| T340 | The client calls it; four outcomes; a failed seed keeps the screen and sets `syncError`; no client inserts | `context/FinanceContext.tsx` | High | Med | 0.5h | done | T339 | `c17019a` | 4 unit tests; 3 controls failed | - |
+| T341 | Dedupe: re-point transactions and rules to the earliest copy, `updated_at` bumped, losers soft-deleted | `supabase/migrations/` | High | Med | 0.4h | written; not applied | - | `c17019a` | live preview: 38 -> 11, 17 transactions, 0 rules | - |
+| T342 | The probe for both | `supabase/tests/` | High | Low | 0.6h | done; the owner ran it in the SQL editor: `PHASE 64 PROBE OK` | T339, T341 | `c17019a` | - | - |
+| T343 | Unit: the seed contract, replacing Phase 63's direct-insert seed test | `unit/authenticated-ledger.test.tsx` | High | Low | 0.4h | done | T340 | `c17019a` | unit 583 -> 586 | - |
+| T344 | ADR `0039`, `CLAUDE.md` ("Do NOT seed from the client"), ledger, log | docs | Low | Low | 0.4h | done | all | `031d824` | - | - |
+| T345 | Gate (lint, unit, Playwright, build), sha backfill, draft PR; apply the migrations in order on the owner's word | - | - | - | 1h | lint and unit done; the rest waits | all | - | lint clean; unit 586/586 | - |
+
 ## Phase 63 - FinLife redesign, step 5 (spec 5.1's colour migration): T329-T337 (2026-10-02)
 
 ADR `0038`. The plan was approved in plan mode; the owner's decisions:
