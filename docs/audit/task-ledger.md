@@ -1081,6 +1081,20 @@ Approved explicitly by the user, planned and approved before any code was writte
 - **One negative control was redone** because the first attempt produced malformed TypeScript that the dev server still served — the tests failed, but possibly for the wrong reason.
 - **No flakes.** Phase 44's `wallets.spec.ts` webkit flake has now not reproduced across three consecutive phases; still watched rather than closed.
 
+## Phase 66 - UI polish: T363-T369 (2026-10-02)
+
+ADR `0042`. Branch `phase-66-ui-polish`, cut from `main` at `1036ee0`. Not committed: the owner reviews the diff and the test results first. Closes Phase 65's open toast/More sheet gap and audit 013 findings 6 and 7, with antislop applied during the work.
+
+| # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
+|---|---|---|---|---|---|---|---|---|---|---|
+| T363 | ADR `0042`, written before the code | `docs/audit/decisions/` | Low | Low | 0.3h | done | T362 | - | - | - |
+| T364 | `ReloadPrompt` `z-50` -> `z-45`: above the header and nav (40), under every `Modal` (50) | `components/ReloadPrompt.tsx` | High | Low | 0.2h | done | T363 | - | probe at 390: Debt payoff, Daily diary, Categories rows hit the toast -> hit themselves; the Transactions Add dialog covers the toast at 390 and 1280 | - |
+| T365 | `AllocationBar` `emptyCaption`; "No money in your wallets yet" on the Dashboard Wallets card and the Wallets page list (finding 6) | `components/ui/AllocationBar.tsx`, `dashboard/WalletsSection.tsx`, `wallet/WalletList.tsx` | Low | Low | 0.3h | done | T363 | - | shown once per page at ฿0, absent with a positive balance | - |
+| T366 | Quick Add says each thing once (finding 7): no form heading; "Use result" instead of the repeated figure; placeholder as the only formula help; "Operators:" fits at 390 | `TransactionForm.tsx`, `InlineMathInput.tsx` | Low | Low | 0.4h | done | T363 | - | one heading in Quick Add; all spec ids unchanged | `TransactionForm` 25.85 -> 25.49 kB, `InlineMathInput` 6.44 -> 5.98 kB |
+| T367 | A real toast under test: `devOptions` in `--mode pwa-dev`, a second Playwright `webServer` on 3100, `dev-dist/` gitignored, `toast-layering.spec.ts` | `vite.config.ts`, `playwright.config.ts`, `.gitignore`, `tests/` | Med | Low | 0.6h | done | T364 | - | the real offline-ready toast appears in chromium, firefox and webkit; no injection, no interception | - |
+| T368 | Tests: unit `ui-display` +1, `dashboard` +1, `wallets-page` +2; E2E `toast-layering` +2, `transaction` +1; negative controls; layering, touch and smoke probes (scratchpad) | `unit/`, `tests/` | Med | Low | 0.6h | done | T364-T367 | - | lint clean; unit 596/596; Playwright 417/417 on both full runs (139 per browser; 6.0 m, 6.2 m), no flake. Negative controls: `z-50` fails both layering tests, no `emptyCaption` fails the fresh-guest caption test. Touch probe 0 under 44px; smoke 192/192 | unit 592 -> 596; E2E 136 -> 139 tests, 408 -> 417 runs, 28 -> 29 files |
+| T369 | `CLAUDE.md` (layer order, caption, form structure, second webServer, two Do NOT lines, counts), refactor log, this ledger, baseline metrics | docs | Low | Low | 0.4h | done | all | - | - | entry unchanged at 186,724 B |
+
 ## Phase 65 - audit 013 fixes: T354-T362 (2026-10-02)
 
 ADR `0041`. Branch `phase-65-audit-013-fixes`, cut from `main` at `025e303`; its first commit (`2474185`) records audit 013 itself, and the phase's work is `d2d1e70`. Merged as `517aee8` (PR #14); PR run `36986445549` and push run `36989305255` passed; Vercel `dpl_9LooVHCjGCdG5tjVPRgpC4CkrT2k` is READY and serves the local build byte for byte. The owner picked findings 1, 2, 3, 4, 5 and 8, with antislop applied during the work; **findings 6 and 7 stay open**.

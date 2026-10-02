@@ -71,6 +71,7 @@ export const WalletsSection: React.FC<WalletsSectionProps> = ({
         <>
           <AllocationBar
             label="Share of money by wallet"
+            emptyCaption="No money in your wallets yet"
             segments={wallets.map((wallet) => ({
               id: wallet.id,
               label: wallet.name,

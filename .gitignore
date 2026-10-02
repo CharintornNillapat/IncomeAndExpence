@@ -6,6 +6,8 @@ node_modules/
 # Production & Build Outputs
 dist/
 dist-ssr/
+# vite-plugin-pwa's development service worker (`vite --mode pwa-dev`, ADR 0042)
+dev-dist/
 build/
 out/
 *.local

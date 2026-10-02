@@ -117,6 +117,20 @@ describe('the page header', () => {
   });
 });
 
+// Phase 66 (ADR 0042, audit 013 finding 6).
+describe('the allocation bar at ฿0', () => {
+  it('says the wallets hold no money for a fresh guest', () => {
+    mount();
+    expect(screen.getAllByText('No money in your wallets yet')).toHaveLength(1);
+  });
+
+  it('says nothing once one wallet has a positive balance', () => {
+    mount({ wallets: [walletRow({ id: 'a', name: 'Kept', balance: 100 }), walletRow({ id: 'b', name: 'Card', type: 'CREDIT_CARD', balance: -50 })] });
+    expect(screen.getByRole('img', { name: 'Share of money by wallet: Kept 100.0%' })).toBeTruthy();
+    expect(screen.queryByText('No money in your wallets yet')).toBeNull();
+  });
+});
+
 describe('one render path per width', () => {
   it('from lg, selects the first wallet and shows it inline, with no sheet', () => {
     wide();

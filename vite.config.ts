@@ -3,13 +3,20 @@ import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
-export default defineConfig(() => {
+export default defineConfig(({ mode }) => {
   return {
     plugins: [
       react(),
       tailwindcss(),
       VitePWA({
         registerType: 'autoUpdate',
+        // ADR 0042: `vite --mode pwa-dev` registers the plugin's development
+        // service worker, so the real offline-ready toast (ReloadPrompt) shows
+        // under a dev server. Playwright's second webServer runs it for
+        // `toast-layering.spec.ts`; `npm run dev` and `vite build` never set
+        // this mode, so neither changes. `suppressWarnings` silences workbox's
+        // "glob patterns match no files": a dev server has no build to precache.
+        devOptions: { enabled: mode === 'pwa-dev', suppressWarnings: true },
         includeAssets: ['pwa-192x192.png', 'pwa-512x512.png'],
         manifest: {
           name: 'FinLife Tracker',

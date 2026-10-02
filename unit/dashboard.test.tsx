@@ -316,5 +316,23 @@ describe('Wallets section', () => {
     fireEvent.click(row);
     expect(onOpen).toHaveBeenCalledWith('main');
     expect(screen.getByRole('img', { name: /Share of money by wallet: Cash 86\.7%/ })).toBeTruthy();
+    expect(screen.queryByText('No money in your wallets yet')).toBeNull();
+  });
+
+  // Phase 66 (ADR 0042, audit 013 finding 6): a new account's wallets are all
+  // at ฿0, and the empty bar says so once.
+  it('captions the empty bar when no wallet holds money, once', () => {
+    const empty = WALLET_LIST.map((w) => ({ ...w, balance: 0 }));
+    render(
+      <WalletsSection
+        wallets={empty}
+        shares={walletShares(empty)}
+        onTransfer={() => {}}
+        onAddWallet={() => {}}
+        onManageWallets={() => {}}
+        onOpenWallet={() => {}}
+      />
+    );
+    expect(screen.getAllByText('No money in your wallets yet')).toHaveLength(1);
   });
 });
