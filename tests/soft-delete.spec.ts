@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { gotoTab, addQuickTransaction } from './helpers';
+import { gotoTab, addQuickTransaction, seedLedger, SAMPLE_WALLETS, SAMPLE_STUDENT_LOAN } from './helpers';
 
 /**
  * Every delete in this app is a soft delete (`isDeleted: true`), never a row
@@ -11,9 +11,15 @@ import { gotoTab, addQuickTransaction } from './helpers';
  * debts have no such toggle, so their omission is instead verified to
  * survive a reload - proving the flag was actually persisted, not just held
  * in the current render's filtered array.
+ *
+ * The balance and debt invariants below need money and a debt to move, which a
+ * fresh context no longer has (ADR 0040), so every test starts from the sample
+ * wallets and the sample Student Loan. The tests that create their own wallet
+ * or debt are unaffected by them.
  */
 test.describe('Soft-delete lifecycle', () => {
   test.beforeEach(async ({ page }) => {
+    await seedLedger(page, { wallets: SAMPLE_WALLETS, debts: [SAMPLE_STUDENT_LOAN] });
     await page.goto('/');
   });
 
@@ -105,7 +111,7 @@ test.describe('Soft-delete lifecycle', () => {
   test('transaction soft-delete and restore reverses and reapplies its exact effect on wallet balance', async ({ page }) => {
     const marker = `E2E Balance Invariant ${Date.now().toString().slice(-6)}`;
 
-    // Seeded default wallets are Main Checking (฿2,500), Cash Wallet (฿150),
+    // The sample wallets are Main Checking (฿2,500), Cash Wallet (฿150),
     // Savings Reserve (฿5,000) - `addQuickTransaction` selects the 2nd
     // <option> in the Quick Add wallet select whenever more than one wallet
     // exists, which is Cash Wallet (`wal-cash`). Asserting against this one
@@ -161,7 +167,7 @@ test.describe('Soft-delete lifecycle', () => {
   test('debt repayment soft-delete and restore reverses and reapplies the debt reduction', async ({ page }) => {
     await gotoTab(page, 'debts');
 
-    // The seeded Student Loan: ฿4,500 remaining of a ฿10,000 target, so
+    // The sample Student Loan: ฿4,500 remaining of a ฿10,000 target, so
     // 55.0% paid off before anything in this test happens.
     const card = page.locator('div[id^="debt-card-"]').filter({ hasText: 'Student Loan' });
     await expect(card).toBeVisible();

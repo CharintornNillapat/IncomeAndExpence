@@ -9,6 +9,7 @@ import { buildLookupMap } from '../src/utils/mapUtils';
 import { formatCurrencyAmount, MINUS } from '../src/utils/currency';
 import { shiftIsoDate, todayIsoDate } from '../src/utils/date';
 import type { Transaction, Wallet } from '../src/types';
+import { seedGuestLedger, SAMPLE_STUDENT_LOAN } from './fixtures/guestLedger';
 
 /**
  * Phase 58a (ADR 0031, spec 6.2): the Transactions page, mounted inside the
@@ -211,6 +212,8 @@ describe('the panel edits a live row (Phase 58b, ADR 0033)', () => {
   });
 
   it("offers only a repayment's note and date", async () => {
+    // A fresh guest has no debt since ADR 0040, so the one it names is seeded.
+    seedGuestLedger({ debts: [SAMPLE_STUDENT_LOAN] });
     mount([tx({ type: 'DEBT_REPAYMENT', amount: 300, categoryId: 'cat-debt', debtId: 'debt-starter-01', description: 'Loan pay' })]);
     fireEvent.click(rowButtons()[0]);
     const dialog = await screen.findByRole('dialog');

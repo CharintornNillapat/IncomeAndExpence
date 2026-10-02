@@ -6,11 +6,13 @@ import { WalletsView } from '../src/views/WalletsView';
 import { formatCurrencyAmount, MINUS } from '../src/utils/currency';
 import { todayIsoDate } from '../src/utils/date';
 import type { Transaction, Wallet } from '../src/types';
+import { SAMPLE_WALLETS } from './fixtures/guestLedger';
 
 /**
  * Phase 59 (ADR 0034, spec 6.3): the Wallets page, mounted inside the real
  * `FinanceProvider` in guest mode, seeded through localStorage the way a
- * returning guest's ledger is. A fresh guest has the three starter wallets:
+ * returning guest's ledger is. A fresh guest has the three starter wallets at
+ * ฿0.00 (ADR 0040); the tests that read balances seed `SAMPLE_WALLETS`:
  * Main Checking ฿2,500, Cash Wallet ฿150 and Savings Reserve ฿5,000.
  *
  * jsdom has no `matchMedia`, which `useMediaQuery` reads as narrow. The wide
@@ -96,7 +98,7 @@ const openMenu = () => fireEvent.click(byId('wallet-detail-menu-btn')!);
 
 describe('the page header', () => {
   it('is titled "Wallets" and totals the active wallets', () => {
-    mount();
+    mount({ wallets: SAMPLE_WALLETS });
     expect(screen.getByRole('heading', { level: 1, name: 'Wallets' })).toBeTruthy();
     expect(screen.getByText(`${formatCurrencyAmount(7650)} across 3 wallets`)).toBeTruthy();
   });
@@ -186,6 +188,7 @@ describe('delete', () => {
   it("says what happens to the wallet's transactions and balance, then falls back to the first wallet", async () => {
     wide();
     mount({
+      wallets: SAMPLE_WALLETS,
       rows: [
         tx({ type: 'EXPENSE', amount: 10, categoryId: 'cat-food' }),
         tx({ type: 'TRANSFER', amount: 5, walletId: 'wal-main-checking', destinationWalletId: 'wal-cash' }),
@@ -209,7 +212,7 @@ describe('delete', () => {
 describe('archive and unarchive', () => {
   it('moves a wallet out of the list and the total into "Archived", and back', async () => {
     wide();
-    mount();
+    mount({ wallets: SAMPLE_WALLETS });
     selectWallet('wal-cash');
     openMenu();
     fireEvent.click(byId('archive-wallet-wal-cash')!);
@@ -233,7 +236,7 @@ describe('archive and unarchive', () => {
 describe('edit', () => {
   it('renames the wallet and closes the form', async () => {
     wide();
-    mount();
+    mount({ wallets: SAMPLE_WALLETS });
     selectWallet('wal-cash');
     fireEvent.click(byId('wallet-edit-btn')!);
     fireEvent.change(byId('wallet-edit-name')!, { target: { value: 'Pocket money' } });
@@ -317,7 +320,7 @@ describe("the wallet's own activity", () => {
 describe('Adjust balance', () => {
   it('writes the signed difference as an adjustment, which lowers the balance', async () => {
     wide();
-    mount();
+    mount({ wallets: SAMPLE_WALLETS });
     selectWallet('wal-cash');
     fireEvent.click(byId('wallet-adjust-btn-wal-cash')!);
     fireEvent.change(byId('wallet-adjust-input')!, { target: { value: '100' } });

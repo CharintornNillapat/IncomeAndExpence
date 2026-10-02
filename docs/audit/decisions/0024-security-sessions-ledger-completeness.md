@@ -112,6 +112,7 @@ A provider-internal `resetToGuestState()` runs on an explicit sign-out **and** o
 - **Guest** — the wallet is created with its opening balance and one local ADJUSTMENT row of the same signed amount; no row for zero.
 - **Missing function** — the old insert, then the opening row, now checked and compensated.
 - **Starter wallets are exempt, by decision.** The guest `DEFAULT_STARTER_WALLETS` and the signed-in `seedInitialUserAccount` wallets are demo fixtures the app provides, not money a user entered, and a fresh context with no transactions is what `tests/helpers.ts` and the suite rely on. The exemption is recorded in the helper's comment and here.
+  - **Amended by ADR `0040`:** the starter wallets open at ฿0.00, so they write no opening row under the rule as written, and the exemption no longer has anything to exempt.
 
 ## Decision: a CSV repayment names its debt (F8)
 

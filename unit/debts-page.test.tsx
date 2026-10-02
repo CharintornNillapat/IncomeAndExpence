@@ -8,11 +8,13 @@ import { formatCurrencyAmount, MINUS } from '../src/utils/currency';
 import { formatShortDate, shiftIsoDate, todayIsoDate } from '../src/utils/date';
 import { debtPlan, requiredMonthly } from '../src/selectors/debts';
 import type { Debt, Transaction } from '../src/types';
+import { SAMPLE_STUDENT_LOAN } from './fixtures/guestLedger';
 
 /**
  * Phase 60 (ADR 0035, spec 6.4): the Debt payoff page, mounted inside the real
  * `FinanceProvider` in guest mode and seeded through localStorage. A fresh
- * guest has one debt: Student Loan, ฿4,500 of ฿10,000 still owed, 4.5% APR,
+ * guest has no debt (ADR 0040); the tests that read one seed
+ * `SAMPLE_STUDENT_LOAN`: Student Loan, ฿4,500 of ฿10,000 still owed, 4.5% APR,
  * due 2026-12-31.
  */
 let originalTz: string | undefined;
@@ -82,7 +84,7 @@ const openMenu = (id: string) => fireEvent.click(byId(`debt-menu-btn-${id}`)!);
 
 describe('the page header', () => {
   it('is titled "Debt payoff" and counts the active debts', () => {
-    mount();
+    mount({ debts: [SAMPLE_STUDENT_LOAN] });
     expect(screen.getByRole('heading', { level: 1, name: 'Debt payoff' })).toBeTruthy();
     expect(screen.getByText('1 active debt · sorted by due date')).toBeTruthy();
     expect(byId('open-add-debt-btn')!.textContent).toBe('Add debt');
@@ -153,7 +155,7 @@ describe('a debt card', () => {
   });
 
   it('shows what is still owed, the share paid, and Borrowed, Repaid and Needed / month', () => {
-    mount();
+    mount({ debts: [SAMPLE_STUDENT_LOAN] });
     const card = byId('debt-card-debt-starter-01')!;
     expect(card.textContent).toContain(`Still owed${formatCurrencyAmount(4500)}`);
     expect(card.textContent).toContain('55.0% paid');
@@ -224,7 +226,7 @@ describe('the summary', () => {
   });
 
   it('says repayments are not spending', () => {
-    mount();
+    mount({ debts: [SAMPLE_STUDENT_LOAN] });
     expect(byId('debts-caption')!.textContent).toBe("Debt repayments move money out of a wallet but aren't counted as spending.");
   });
 });

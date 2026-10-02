@@ -1915,6 +1915,19 @@ describe('sign-out leaves nothing behind (F5, ADR 0024)', () => {
     expect(fake.state.signOuts).toEqual(['local']);
   });
 
+  it('resets to the empty starters: three wallets at ฿0.00 and no debt (ADR 0040)', async () => {
+    await withAccountData();
+    await actions().signOut();
+
+    await waitFor(() => {
+      expect(state().isAuthenticated).toBe(false);
+      expect(state().wallets.map((w) => w.id)).toEqual(['wal-main-checking', 'wal-cash', 'wal-savings']);
+    });
+    expect(state().wallets.every((w) => w.balance === 0)).toBe(true);
+    expect(state().debts).toEqual([]);
+    expect(state().transactions).toHaveLength(0);
+  });
+
   it('leaves no trace of the account in localStorage, templates included', async () => {
     await withAccountData();
     await actions().signOut();
@@ -2246,7 +2259,7 @@ describe("a new account's seed, through seed_starter_account (Phase 64, ADR 0039
   function installSeedRpc() {
     fake.state.rpcs.set('seed_starter_account', () => {
       if (mine('wallets').length > 0 || mine('categories').length > 0) return { data: { seeded: false }, error: null };
-      rows('wallets').push({ id: 'seeded-wallet', user_id: fake.USER_ID, name: 'Checking Account', type: 'BANK_ACCOUNT', balance: 2500, color: '#6C8EEF', is_archived: false, is_deleted: false, created_at: created, updated_at: created });
+      rows('wallets').push({ id: 'seeded-wallet', user_id: fake.USER_ID, name: 'Checking Account', type: 'BANK_ACCOUNT', balance: 0, color: '#6C8EEF', is_archived: false, is_deleted: false, created_at: created, updated_at: created });
       rows('categories').push({ id: 'seeded-category', user_id: fake.USER_ID, name: 'Food & Dining', type: 'EXPENSE', color: '#E879A6', is_system: true, is_deleted: false, created_at: created });
       return { data: { seeded: true }, error: null };
     });

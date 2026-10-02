@@ -9,6 +9,7 @@ import {
   type FinanceStateContextType,
 } from '../src/context/FinanceContext';
 import type { TransactionEdit } from '../src/types';
+import { seedGuestLedger, SAMPLE_WALLETS, SAMPLE_STUDENT_LOAN } from './fixtures/guestLedger';
 
 /**
  * Phase 44's coverage gap (ADR 0021).
@@ -39,7 +40,11 @@ import type { TransactionEdit } from '../src/types';
  * WebSocket.
  */
 
-/** The seeded fixture the provider falls back to with an empty localStorage. */
+/**
+ * The sample rows seeded before each mount (`unit/fixtures/guestLedger.ts`).
+ * They were the provider's own guest defaults until ADR 0040 opened the
+ * starters at ฿0.00 with no debt.
+ */
 const WALLET_MAIN = 'wal-main-checking'; // ฿2,500.00
 const WALLET_SAVINGS = 'wal-savings'; // ฿5,000.00
 const DEBT = 'debt-starter-01'; // Student Loan, ฿4,500.00 of ฿10,000.00
@@ -93,6 +98,7 @@ function repay(overrides: RepayOverrides = {}) {
 beforeEach(() => {
   latest = null;
   localStorage.clear();
+  seedGuestLedger({ wallets: SAMPLE_WALLETS, debts: [SAMPLE_STUDENT_LOAN] });
   render(
     <FinanceProvider>
       <Probe />
@@ -106,7 +112,7 @@ afterEach(() => {
 });
 
 describe('the fixture', () => {
-  it('seeds the starter wallets and the starter debt', () => {
+  it('hydrates the sample wallets and the sample debt', () => {
     expect(wallet(WALLET_MAIN).balance).toBe(2500);
     expect(wallet(WALLET_SAVINGS).balance).toBe(SAVINGS_OPENING);
     expect(debt()).toMatchObject({
@@ -115,6 +121,22 @@ describe('the fixture', () => {
       remainingAmount: DEBT_REMAINING,
       isSettled: false,
     });
+    expect(state().transactions).toHaveLength(0);
+  });
+
+  it('an unseeded fresh provider has three wallets at 0 and no debt (ADR 0040)', () => {
+    cleanup();
+    latest = null;
+    localStorage.clear();
+    render(
+      <FinanceProvider>
+        <Probe />
+      </FinanceProvider>
+    );
+
+    expect(state().wallets.map((w) => w.id)).toEqual(['wal-main-checking', 'wal-cash', 'wal-savings']);
+    expect(state().wallets.every((w) => w.balance === 0)).toBe(true);
+    expect(state().debts).toEqual([]);
     expect(state().transactions).toHaveLength(0);
   });
 });

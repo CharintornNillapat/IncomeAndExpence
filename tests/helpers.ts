@@ -1,4 +1,5 @@
 import { expect, type Page } from '@playwright/test';
+import type { Debt, Wallet } from '../src/types';
 
 /**
  * Navigates to a top-level tab and waits for its view to finish mounting.
@@ -32,16 +33,114 @@ export async function gotoTab(page: Page, tabId: string): Promise<void> {
   await expect(page.locator('#view-loading-fallback')).toHaveCount(0);
 }
 
+const SEED_STAMP = new Date().toISOString();
+
+/**
+ * The guest starter wallets as they were before Phase 54 (ADR 0040): same ids,
+ * names, order and colours, holding ฿7,650 in all. The app now opens them at
+ * ฿0.00, so a spec that needs money in them seeds this through `seedLedger`.
+ */
+export const SAMPLE_WALLETS: Wallet[] = [
+  {
+    id: 'wal-main-checking',
+    userId: 'usr-guest-01',
+    name: 'Main Checking',
+    type: 'BANK_ACCOUNT',
+    currency: 'THB',
+    balance: 2500,
+    color: '#6C8EEF',
+    icon: 'landmark',
+    isArchived: false,
+    isDeleted: false,
+    createdAt: SEED_STAMP,
+    updatedAt: SEED_STAMP,
+  },
+  {
+    id: 'wal-cash',
+    userId: 'usr-guest-01',
+    name: 'Cash Wallet',
+    type: 'CASH',
+    currency: 'THB',
+    balance: 150,
+    color: '#D9A066',
+    icon: 'banknote',
+    isArchived: false,
+    isDeleted: false,
+    createdAt: SEED_STAMP,
+    updatedAt: SEED_STAMP,
+  },
+  {
+    id: 'wal-savings',
+    userId: 'usr-guest-01',
+    name: 'Savings Reserve',
+    type: 'SAVINGS',
+    currency: 'THB',
+    balance: 5000,
+    color: '#4FB7A8',
+    icon: 'piggy-bank',
+    isArchived: false,
+    isDeleted: false,
+    createdAt: SEED_STAMP,
+    updatedAt: SEED_STAMP,
+  },
+];
+
+/**
+ * The starter debt the app seeded before Phase 54 (ADR 0040): ฿4,500 left of
+ * ฿10,000. A fresh context now has no debt, so a spec that repays, settles or
+ * edits one seeds this through `seedLedger`.
+ */
+export const SAMPLE_STUDENT_LOAN: Debt = {
+  id: 'debt-starter-01',
+  userId: 'usr-guest-01',
+  name: 'Student Loan',
+  totalAmount: 10000,
+  remainingAmount: 4500,
+  interestRate: 4.5,
+  minimumPayment: 250,
+  dueDate: '2026-12-31',
+  isSettled: false,
+  isDeleted: false,
+  createdAt: SEED_STAMP,
+  updatedAt: SEED_STAMP,
+};
+
+/**
+ * Seeds the guest ledger before the app first loads. **Call it before
+ * `page.goto`**: it registers an init script, which runs ahead of the page's
+ * own scripts on every navigation of this page.
+ *
+ * It writes only once per context, behind the `pf_seeded` marker, so a
+ * `page.reload()` keeps whatever the test saved instead of re-seeding over it.
+ * A slice left out keeps the app's own default (three ฿0.00 wallets, no debt).
+ */
+export async function seedLedger(
+  page: Page,
+  { wallets, debts }: { wallets?: Wallet[]; debts?: Debt[] }
+): Promise<void> {
+  await page.addInitScript(
+    ({ wallets, debts }) => {
+      if (localStorage.getItem('pf_seeded') !== null) return;
+      if (wallets) localStorage.setItem('pf_wallets', JSON.stringify(wallets));
+      if (debts) localStorage.setItem('pf_debts', JSON.stringify(debts));
+      localStorage.setItem('pf_seeded', '1');
+    },
+    { wallets: wallets ?? null, debts: debts ?? null }
+  );
+}
+
 /**
  * Records a transaction through the navbar Quick Add modal.
  *
- * A fresh browser context seeds wallets and debts but no transactions, so any
- * test that needs a populated ledger has to create one first.
+ * A fresh browser context has three ฿0.00 wallets, no debts and no
+ * transactions (ADR 0040), so any test that needs a populated ledger has to
+ * create one first, and a test that needs money or a debt seeds it with
+ * `seedLedger` before `goto`.
  *
- * That stays true after F7 (ADR 0024) on purpose: a wallet the USER creates
- * opens with an ADJUSTMENT "Opening balance" row, but the seeded starter
- * wallets are fixtures and carry none. A spec that creates a wallet with a
- * non-zero starting balance therefore also creates one transaction.
+ * F7 (ADR 0024): a wallet the USER creates with a non-zero starting balance
+ * opens with an ADJUSTMENT "Opening balance" row, so a spec that creates one
+ * also creates one transaction. The starter wallets open at ฿0.00 and carry
+ * none.
  */
 export async function addQuickTransaction(
   page: Page,

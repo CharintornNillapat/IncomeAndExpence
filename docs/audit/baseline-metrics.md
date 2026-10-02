@@ -1098,6 +1098,23 @@ The entry's growth is the ledger action itself, which lives with the other ledge
 
 **Intermittent local failures:** 6 in 1,071 full-suite runs (3 full runs). All were timeouts: a Firefox `goto`, a Firefox context close, and four WebKit clicks waiting for "stable". No assertion failed. See audit 005 finding 3 for the control runs.
 
+## Phase 54 (empty starters) - delta against Phase 64
+
+A local build of the Phase 54 tree with the repo's `.env`, against Phase 64's recorded production entry. No other chunk was compared.
+
+| Chunk | Phase 64 | Phase 54 | Delta |
+|---|---|---|---|
+| entry `index-*.js` | 187,067 B | 186,800 B | **-267 B** (the starter debt literal and three non-zero balances) |
+
+| Suite | Files | Tests | Runs | Wall clock |
+|---|---|---|---|---|
+| Playwright (local, 6 workers) | 28 | 135 | 405 | 6.9 m (one run) |
+| Vitest (`unit/`) | 27 | 588 | 588 | ~83 s (one run, alongside other work) |
+
+E2E +1 test (`wallets-page.spec.ts`: a fresh guest starts with three ฿0.00 wallets and no debt). Unit +2 (`ledger-guards`, `authenticated-ledger`). `unit/fixtures/guestLedger.ts` is not collected (`include` is `unit/**/*.test.{ts,tsx}`).
+
+**Local failures:** none in 405 runs.
+
 ## Phase 63 (the identity colour migration) - delta against Phase 62
 
 `main` (`ba87338`, the Phase 62 merge) and the Phase 63 tree (`cdda81d`) were each built in a separate worktree with the repo's `.env` copied in. `main`'s entry measured 185,111 B, byte-identical to production. Gzip is `zlib` level 9.

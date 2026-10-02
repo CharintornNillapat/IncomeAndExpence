@@ -4,6 +4,33 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
+## Phase 54 - Empty starters (audit 001 finding 6): T346-T352 (2026-10-02)
+
+**Changed**
+- **Guest defaults** (`FinanceContext.tsx`): the three starter wallets open at ฿0.00 (ids, names, types, colours, icons and order unchanged). `DEFAULT_STARTER_DEBTS` is gone; the `pf_debts` fallback and `resetToGuestState` use `[]`. The F7 comment no longer claims an exemption.
+- **`seed_starter_account()`** (`20261003_phase54_zero_starter_seed.sql`, **applied to the live project on 2026-10-02, version `20261002061331`**): the Phase 64 body with its three balances at `0.00`, grants stated again. Probe `20261003_phase54.probe.sql` passed first, then the Phase 64 probe's seed and grant sections on the new body; its dedupe sections were not re-run, since they touch every account and do not involve this function. The live body's md5 matches the file (`90c93706...`).
+- **New accounts only**, by the owner's decision: stored `pf_wallets` / `pf_debts` and accounts already seeded keep their balances.
+- **E2E fixtures:** `tests/helpers.ts` gains `SAMPLE_WALLETS`, `SAMPLE_STUDENT_LOAN` and `seedLedger(page, { wallets?, debts? })`, an init script that writes once behind `pf_seeded`. Seven specs seed in their `beforeEach`: `soft-delete`, `transaction-edit`, `transfer-preview`, `wallets-page`, `debts-page`, `account-and-mobile-nav` ("ledger fixes") and `smart-rules`. Their assertions are unchanged.
+- **Unit fixtures:** `unit/fixtures/guestLedger.ts` (`seedGuestLedger`). `ledger-guards` seeds both in `beforeEach`; `transactions-page`, `wallets-page` and `debts-page` seed the tests that read a balance or the debt; `authenticated-ledger`'s seed stand-in now writes a ฿0 wallet.
+- **Tests added:** E2E "a fresh guest starts with three ฿0.00 wallets and no debt" (134 -> 135 tests, 402 -> 405 runs); unit "an unseeded fresh provider has three wallets at 0 and no debt" and "resets to the empty starters" after sign-out (586 -> 588).
+- **Docs:** ADR `0040`; amendment notes in ADR `0024` (F7) and `0021` (the unit fixture); `CLAUDE.md`.
+
+**Found**
+- **The deployed `seed_starter_account` matched the Phase 64 file** md5 for md5 (`06b826c0448ee752dbfbf9f7548813d8`, 1,731 characters of body; read-only `pg_proc` query), so the new body starts from the file.
+- **Four specs beyond the plan's list name the old starters** (`csv-classify`, `date-boundary`, `debt-repayment`, `insights`). None needed a change: they use the wallet names or ids, which stay, or create their own debt.
+- **Nothing else in `src/` needed a change.** The empty paths (a ฿0 allocation bar, no debt plan, the Debt payoff empty state, a transfer from ฿0) were already handled.
+
+**Gate:**
+- Lint clean. Unit 588/588.
+- Playwright 405/405 locally (chromium, firefox, webkit; 6.9 m), first run, no flakes.
+- **Controls:**
+  - `transfer-preview.spec.ts` without its `seedLedger` line: 6 of 7 failed on chromium (the seventh reads only wallet ids). Restored: 7/7.
+  - The two new unit tests against the old `FinanceContext.tsx`: both failed. Restored.
+- **Bundle:** entry `index-*.js` 186,800 B (local build with `.env`), 267 B under Phase 64's recorded 187,067 B: the starter debt literal is gone.
+- **Not done yet:** the probe, the Phase 64 probe re-run, applying the migration, the PR and the sha backfill.
+
+---
+
 ## Phase 64 - The re-seeding guard and the duplicate cleanup: T339-T345 (2026-10-02, commits `c17019a`, docs `031d824`)
 
 **Changed**
