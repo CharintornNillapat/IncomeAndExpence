@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useId } from 'react';
-import { Calculator, Check, AlertCircle, Sparkles, Info } from 'lucide-react';
+import { Calculator, Check, AlertCircle, Info } from 'lucide-react';
 import { safeEvaluateMath } from '../utils/mathEvaluator';
 import { APP_CURRENCY_SYMBOL } from '../utils/currency';
 import { LABEL_TEXT_CLASS } from '../utils/formStyles';
@@ -199,16 +199,18 @@ export const InlineMathInput: React.FC<InlineMathInputProps> = ({
           </label>
           {hasCalculation && evaluatedAmount !== null && (
             <span className="inline-flex items-center gap-1 text-xs font-medium text-brand bg-brand-tint px-2 py-0.5 rounded-sm border border-brand-line">
-              <Sparkles className="w-3 h-3 text-brand" />
+              <Calculator className="w-3 h-3 text-brand" />
               Calculated: {currencyPrefix}{formattedResult}
             </span>
           )}
         </div>
       )}
 
-      {/* Main Input Control Container */}
+      {/* Main Input Control Container. No vertical padding: the input itself is
+          the frame's full 44px height, so a tap anywhere on it lands on the
+          input (ADR 0041). */}
       <div
-        className={`relative flex items-center rounded-lg border px-3 py-2.5 transition-all ${
+        className={`relative flex items-center rounded-lg border px-3 transition-all ${
           errorMessage
             ? 'border-expense ring-2 ring-expense-line'
             : isFocused
@@ -232,21 +234,26 @@ export const InlineMathInput: React.FC<InlineMathInputProps> = ({
           disabled={disabled}
           autoComplete="off"
           spellCheck="false"
-          className="w-full text-base font-semibold text-fg placeholder:text-fg-muted placeholder:font-normal focus:outline-none bg-transparent"
+          className="w-full min-h-[44px] text-base font-semibold text-fg placeholder:text-fg-muted placeholder:font-normal focus:outline-none bg-transparent"
         />
 
         {/* Right Status / Action Preview */}
         <div className="flex items-center gap-1.5 ml-2">
           {hasCalculation && evaluatedAmount !== null ? (
+            // A 44px box around the drawn pill (DESIGN.md section 4). The box
+            // is invisible, so the focus outline moves onto the pill, as the
+            // navbar's sync badge does.
             <button
               id={`${inputId}-apply-btn`}
               type="button"
               onClick={handleApplyResult}
               title="Click to replace expression with calculated sum"
-              className="inline-flex items-center gap-1 px-2 py-1 text-xs font-semibold text-fg-secondary bg-surface-1 hover:bg-surface-3 rounded-lg transition-control border border-line cursor-pointer"
+              className="group inline-flex items-center min-h-[44px] cursor-pointer focus-visible:outline-none"
             >
-              <Check className="w-3 h-3 text-income" />
-              <span>{currencyPrefix}{formattedResult}</span>
+              <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-semibold text-fg-secondary bg-surface-1 group-hover:bg-surface-3 rounded-lg transition-control border border-line group-focus-visible:outline-2 group-focus-visible:outline-focus group-focus-visible:outline-offset-2">
+                <Check className="w-3 h-3 text-income" />
+                <span>{currencyPrefix}{formattedResult}</span>
+              </span>
             </button>
           ) : evaluatedAmount !== null ? (
             <div className="p-1 text-income">

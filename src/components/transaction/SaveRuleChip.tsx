@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion';
 import { Check, Tag, X } from 'lucide-react';
+import { IconButton } from '../ui/IconButton';
 
 export type SaveRuleStatus = 'idle' | 'saving' | 'saved';
 
@@ -81,25 +82,28 @@ export function SaveRuleChip({
               authenticated one is a Supabase round-trip and `addKeywordRule`
               has no dedupe - so a double-tap would write two identical rules.
             */}
+            {/* 44px boxes around the drawn controls (DESIGN.md section 4, ADR
+                0041), as in `CategorySuggestionChip`. */}
             <button
               type="button"
               id={`${idPrefix}-save-rule-btn`}
               onClick={onSave}
               disabled={status === 'saving'}
-              className="shrink-0 cursor-pointer rounded-sm bg-brand-fill px-2.5 py-1 text-xs font-semibold text-white transition-control hover:bg-brand-fill-hover disabled:cursor-not-allowed disabled:opacity-50"
+              className="group shrink-0 inline-flex items-center min-h-[44px] -my-2.5 cursor-pointer focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {status === 'saving' ? 'Saving...' : 'Save rule'}
+              <span className="rounded-sm bg-brand-fill px-2.5 py-1 text-xs font-semibold text-white transition-control group-hover:bg-brand-fill-hover group-focus-visible:outline-2 group-focus-visible:outline-focus group-focus-visible:outline-offset-2">
+                {status === 'saving' ? 'Saving...' : 'Save rule'}
+              </span>
             </button>
 
-            <button
-              type="button"
+            <IconButton
               id={`${idPrefix}-save-rule-dismiss`}
               onClick={onDismiss}
-              aria-label="Dismiss rule suggestion"
-              className="shrink-0 cursor-pointer rounded-sm p-1 text-fg-muted transition-control hover:text-fg"
+              label="Dismiss rule suggestion"
+              className="-my-2.5 -mr-2"
             >
               <X className="h-3.5 w-3.5" />
-            </button>
+            </IconButton>
           </>
         )}
       </div>

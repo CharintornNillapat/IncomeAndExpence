@@ -109,6 +109,19 @@ test.describe('Core Transaction Flow E2E Tests', () => {
     await expect(row).toBeVisible();
   });
 
+  // Phase 65 (ADR 0041): a fresh context has no transactions, so its empty
+  // list is a first run, not a list the filters emptied.
+  test('a fresh guest sees a first-run empty state, not the filtered one', async ({ page }) => {
+    await gotoTab(page, 'transactions');
+    await expect(page.getByText('No transactions yet')).toBeVisible();
+    await expect(page.getByText(/No transactions match your current filters/i)).toHaveCount(0);
+
+    // A filter does not change that: nothing is recorded yet.
+    await page.locator('#tx-filter-type-income').click();
+    await expect(page.getByText('No transactions yet')).toBeVisible();
+    await expect(page.getByText(/No transactions match your current filters/i)).toHaveCount(0);
+  });
+
   test('should evaluate inline math expressions correctly in amount field', async ({ page }) => {
     await page.locator('#navbar-quick-add-btn').click();
 

@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion';
-import { Sparkles, X } from 'lucide-react';
+import { Tags, X } from 'lucide-react';
+import { IconButton } from '../ui/IconButton';
 import type { JevSuggestion } from '../../utils/jevClassifier';
 
 interface CategorySuggestionChipProps {
@@ -37,30 +38,34 @@ export function CategorySuggestionChip({
       data-testid="tx-category-suggestion"
       className="mt-2 flex items-center gap-2 rounded-lg border border-line bg-surface-2 px-3 py-2"
     >
-      <Sparkles className="h-3.5 w-3.5 shrink-0 text-fg-muted" />
+      <Tags className="h-3.5 w-3.5 shrink-0 text-fg-muted" />
 
       <span className="min-w-0 flex-1 truncate text-xs text-fg-secondary">
         Looks like <strong className="font-semibold text-fg">{suggestion.categoryName}</strong>
       </span>
 
+      {/* 44px boxes around the drawn controls (DESIGN.md section 4, ADR 0041).
+          The negative margins keep the chip from growing; Apply's box is
+          invisible, so its focus outline moves onto the pill. */}
       <button
         type="button"
         id={`${idPrefix}-suggestion-apply`}
         onClick={onApply}
-        className="shrink-0 cursor-pointer rounded-sm bg-brand-fill px-2.5 py-1 text-xs font-semibold text-white transition-control hover:bg-brand-fill-hover"
+        className="group shrink-0 inline-flex items-center min-h-[44px] -my-2.5 cursor-pointer focus-visible:outline-none"
       >
-        Apply
+        <span className="rounded-sm bg-brand-fill px-2.5 py-1 text-xs font-semibold text-white transition-control group-hover:bg-brand-fill-hover group-focus-visible:outline-2 group-focus-visible:outline-focus group-focus-visible:outline-offset-2">
+          Apply
+        </span>
       </button>
 
-      <button
-        type="button"
+      <IconButton
         id={`${idPrefix}-suggestion-dismiss`}
         onClick={onDismiss}
-        aria-label="Dismiss category suggestion"
-        className="shrink-0 cursor-pointer rounded-sm p-1 text-fg-muted transition-control hover:text-fg"
+        label="Dismiss category suggestion"
+        className="-my-2.5 -mr-2"
       >
         <X className="h-3.5 w-3.5" />
-      </button>
+      </IconButton>
     </motion.div>
   );
 }

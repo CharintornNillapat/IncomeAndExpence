@@ -100,16 +100,19 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
           </span>
           <div className="flex flex-wrap gap-2">
             {presets.map((preset) => (
+              // Both buttons are 44px tall and the cross a 44px square
+              // (DESIGN.md section 4, ADR 0041). Two buttons share one pill,
+              // so the pill grows instead of hiding the boxes.
               <span
                 key={preset.id}
                 id={`quickadd-preset-chip-${preset.id}`}
-                className="inline-flex items-center gap-1.5 pl-3 pr-1.5 py-1.5 text-xs font-medium rounded-full bg-brand-tint text-brand border border-brand-line"
+                className="inline-flex items-center text-xs font-medium rounded-full bg-brand-tint text-brand border border-brand-line"
               >
                 <button
                   type="button"
                   id={`quickadd-preset-apply-${preset.id}`}
                   onClick={() => handleApplyPreset(preset.id)}
-                  className="cursor-pointer"
+                  className="min-h-[44px] pl-3.5 pr-1 rounded-l-full cursor-pointer"
                 >
                   {preset.name} · {formatCurrencyAmount(preset.amount)}
                 </button>
@@ -118,7 +121,7 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
                   id={`quickadd-preset-delete-${preset.id}`}
                   onClick={() => handleDeletePreset(preset.id)}
                   aria-label={`Delete ${preset.name} template`}
-                  className="p-0.5 rounded-full hover:bg-brand-tint cursor-pointer"
+                  className="inline-flex items-center justify-center min-h-[44px] min-w-[44px] rounded-full hover:bg-brand-tint cursor-pointer"
                 >
                   <X className="w-3 h-3" />
                 </button>
