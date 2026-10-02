@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { gotoTab, addQuickTransaction } from './helpers';
+import { gotoTab, addQuickTransaction, seedLedger, SAMPLE_WALLETS } from './helpers';
 
 /**
  * Phase 52 (ADR 0024) end to end: the five-slot mobile nav and its More sheet,
@@ -122,11 +122,13 @@ test.describe('the guest-data notice at sign-in (F5 policy)', () => {
 
 test.describe('ledger fixes a user can see (ADR 0024)', () => {
   test.beforeEach(async ({ page }) => {
+    // The starters open at ฿0.00 (ADR 0040); lowering a balance needs one to lower.
+    await seedLedger(page, { wallets: SAMPLE_WALLETS });
     await page.goto('/');
   });
 
   test('lowering a balance in the wallet editor lowers it', async ({ page }) => {
-    // The starter checking account opens at ฿2,500.00. The editor used to
+    // The sample checking account holds ฿2,500.00. The editor used to
     // write |diff| as a credit, so setting ฿2,000 produced ฿3,000.
     await page.locator('#dashboard-wallet-card-wal-main-checking').click();
     await page.locator('#wallet-adjust-btn-wal-main-checking').click();

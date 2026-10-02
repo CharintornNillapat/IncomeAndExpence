@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { gotoTab, addQuickTransaction } from './helpers';
+import { gotoTab, addQuickTransaction, seedLedger, SAMPLE_WALLETS, SAMPLE_STUDENT_LOAN } from './helpers';
 
 /**
  * Editing a transaction (Phase 58b, ADR 0033), as a guest. Each edit must move
@@ -8,13 +8,16 @@ import { gotoTab, addQuickTransaction } from './helpers';
  * `unit/authenticated-ledger.test.tsx` and the SQL probe; no spec signs in.
  *
  * `addQuickTransaction` records a ฿150 EXPENSE against the Quick Add select's
- * second wallet, the seeded Cash Wallet (`wal-cash`, ฿150), so the balance
- * checks below read that one wallet's own card.
+ * second wallet, the sample Cash Wallet (`wal-cash`, ฿150), so the balance
+ * checks below read that one wallet's own card. A fresh context opens its
+ * wallets at ฿0.00 and has no debt (ADR 0040), so each test seeds the sample
+ * wallets and the sample Student Loan first.
  *
  * Nothing is intercepted.
  */
 test.describe('Editing a transaction', () => {
   test.beforeEach(async ({ page }) => {
+    await seedLedger(page, { wallets: SAMPLE_WALLETS, debts: [SAMPLE_STUDENT_LOAN] });
     await page.goto('/');
   });
 

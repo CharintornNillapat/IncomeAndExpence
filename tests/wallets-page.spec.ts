@@ -1,15 +1,32 @@
 import { test, expect } from '@playwright/test';
-import { gotoTab } from './helpers';
+import { gotoTab, seedLedger, SAMPLE_WALLETS } from './helpers';
 
 /**
  * The Wallets page (Phase 59, spec 6.3, ADR 0034), as a guest. A fresh context
- * has the three starter wallets: Main Checking ฿2,500, Cash Wallet ฿150 and
- * Savings Reserve ฿5,000, so ฿7,650.00 across 3 wallets.
+ * has the three starter wallets at ฿0.00 and no debt (ADR 0040), which the
+ * first test pins. The page tests then seed the sample wallets: Main Checking
+ * ฿2,500, Cash Wallet ฿150 and Savings Reserve ฿5,000, so ฿7,650.00 across
+ * 3 wallets.
  *
  * Nothing is intercepted.
  */
+test('a fresh guest starts with three ฿0.00 wallets and no debt (ADR 0040)', async ({ page }) => {
+  await page.goto('/');
+  await gotoTab(page, 'wallets');
+
+  await expect(page.getByText('฿0.00 across 3 wallets')).toBeVisible();
+  for (const id of ['wal-main-checking', 'wal-cash', 'wal-savings']) {
+    await expect(page.getByTestId(`wallet-balance-${id}`)).toHaveText('฿0.00');
+  }
+
+  await gotoTab(page, 'debts');
+  await expect(page.getByText('No debts tracked yet')).toBeVisible();
+  await expect(page.locator('div[id^="debt-card-"]')).toHaveCount(0);
+});
+
 test.describe('The Wallets page', () => {
   test.beforeEach(async ({ page }) => {
+    await seedLedger(page, { wallets: SAMPLE_WALLETS });
     await page.goto('/');
   });
 

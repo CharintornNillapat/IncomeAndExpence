@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
-import { gotoTab } from './helpers';
+import { gotoTab, seedLedger, SAMPLE_STUDENT_LOAN } from './helpers';
 
 /**
  * One-click smart-rule capture from the transaction form (ADR 0017).
@@ -42,6 +42,9 @@ async function noteAndOverride(page: Page, note = MERCHANT_NOTE, categoryId = GR
 
 test.describe('Smart rule capture from the transaction form', () => {
   test.beforeEach(async ({ page }) => {
+    // The locked-repay case needs a debt to repay, and a fresh context has
+    // none since ADR 0040. It changes nothing the other cases read.
+    await seedLedger(page, { debts: [SAMPLE_STUDENT_LOAN] });
     await page.goto('/');
   });
 

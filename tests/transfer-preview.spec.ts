@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
+import { seedLedger, SAMPLE_WALLETS } from './helpers';
 
 /**
  * Visual transfer layout and live balance preview (ADR 0014).
@@ -8,8 +9,9 @@ import { test, expect, type Page } from '@playwright/test';
  * the wallet `<select>`s were kept as real, visible form controls rather than
  * replaced with cards. This spec covers only what the redesign added.
  *
- * Seeded wallets (FinanceContext's defaults): Main Checking ฿2,500.00,
- * Cash Wallet ฿150.00, Savings Reserve ฿5,000.00. The form seeds its source to
+ * Each test seeds the sample wallets (`SAMPLE_WALLETS`; the app's own starters
+ * open at ฿0.00 since ADR 0040): Main Checking ฿2,500.00, Cash Wallet ฿150.00,
+ * Savings Reserve ฿5,000.00. The form seeds its source to
  * wallets[0] (Main Checking) and its destination to the first wallet that is
  * not the source (Cash Wallet).
  */
@@ -28,6 +30,7 @@ async function openTransfer(page: Page) {
 
 test.describe('Transfer balance preview', () => {
   test.beforeEach(async ({ page }) => {
+    await seedLedger(page, { wallets: SAMPLE_WALLETS });
     await page.goto('/');
   });
 

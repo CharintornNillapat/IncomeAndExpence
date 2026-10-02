@@ -1,10 +1,11 @@
 import { test, expect, Page } from '@playwright/test';
-import { gotoTab } from './helpers';
+import { gotoTab, seedLedger, SAMPLE_WALLETS, SAMPLE_STUDENT_LOAN } from './helpers';
 
 /**
  * The Debt payoff page (Phase 60, spec 6.4, ADR 0035), as a guest. A fresh
- * context has one debt, Student Loan: ฿4,500.00 of ฿10,000.00 still owed,
- * due 2026-12-31. The starter wallets hold ฿7,650.00 across 3 wallets.
+ * context has no debt and ฿0.00 wallets (ADR 0040), so each test seeds the
+ * sample Student Loan (฿4,500.00 of ฿10,000.00 still owed, due 2026-12-31) and
+ * the sample wallets, which hold ฿7,650.00 across 3 wallets.
  *
  * Nothing is intercepted.
  */
@@ -20,6 +21,7 @@ async function addDebt(page: Page, name: string, dueDate: string) {
 
 test.describe('The Debt payoff page', () => {
   test.beforeEach(async ({ page }) => {
+    await seedLedger(page, { wallets: SAMPLE_WALLETS, debts: [SAMPLE_STUDENT_LOAN] });
     await page.goto('/');
     await gotoTab(page, 'debts');
   });

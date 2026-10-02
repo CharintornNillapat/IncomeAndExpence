@@ -513,6 +513,9 @@ const DEFAULT_SYSTEM_CATEGORIES: Category[] = [
   { id: 'cat-adjust', name: 'Balance Adjustment', type: 'ADJUSTMENT', icon: 'sliders', color: SYSTEM_CATEGORY_COLOR, description: 'Manual corrections that reconcile a wallet balance to its real-world value.', isSystem: true, isDeleted: false },
 ];
 
+// Phase 54 (ADR 0040): the starter wallets open at 0, so the app shows no money
+// nobody entered and an opening writes no ledger row. The signed-in copy is
+// `seed_starter_account()`; change both together (ADR 0039).
 const DEFAULT_STARTER_WALLETS: Wallet[] = [
   {
     id: 'wal-main-checking',
@@ -520,7 +523,7 @@ const DEFAULT_STARTER_WALLETS: Wallet[] = [
     name: 'Main Checking',
     type: 'BANK_ACCOUNT',
     currency: APP_CURRENCY,
-    balance: 2500.0,
+    balance: 0,
     color: '#6C8EEF',
     icon: 'landmark',
     isArchived: false,
@@ -534,7 +537,7 @@ const DEFAULT_STARTER_WALLETS: Wallet[] = [
     name: 'Cash Wallet',
     type: 'CASH',
     currency: APP_CURRENCY,
-    balance: 150.0,
+    balance: 0,
     color: '#D9A066',
     icon: 'banknote',
     isArchived: false,
@@ -548,7 +551,7 @@ const DEFAULT_STARTER_WALLETS: Wallet[] = [
     name: 'Savings Reserve',
     type: 'SAVINGS',
     currency: APP_CURRENCY,
-    balance: 5000.0,
+    balance: 0,
     color: '#4FB7A8',
     icon: 'piggy-bank',
     isArchived: false,
@@ -563,23 +566,6 @@ const DEFAULT_KEYWORD_RULES: KeywordRule[] = [
   { id: 'kw-2', userId: 'usr-guest-01', keyword: 'groceries', categoryId: 'cat-groceries', createdAt: new Date().toISOString() },
   { id: 'kw-3', userId: 'usr-guest-01', keyword: 'fuel', categoryId: 'cat-transport', createdAt: new Date().toISOString() },
   { id: 'kw-4', userId: 'usr-guest-01', keyword: 'salary', categoryId: 'cat-salary', createdAt: new Date().toISOString() },
-];
-
-const DEFAULT_STARTER_DEBTS: Debt[] = [
-  {
-    id: 'debt-starter-01',
-    userId: 'usr-guest-01',
-    name: 'Student Loan',
-    totalAmount: 10000,
-    remainingAmount: 4500,
-    interestRate: 4.5,
-    minimumPayment: 250,
-    dueDate: '2026-12-31',
-    isSettled: false,
-    isDeleted: false,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
 ];
 
 export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
@@ -606,7 +592,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
   // authenticated. A template is a personal shortcut, not shared ledger data.
   const [presets, setPresets] = useState<Preset[]>(() => safeGetLocalStorage('pf_presets', []));
   const [transactions, setTransactions] = useState<Transaction[]>(() => safeGetLocalStorage('pf_transactions', []));
-  const [debts, setDebts] = useState<Debt[]>(() => safeGetLocalStorage('pf_debts', DEFAULT_STARTER_DEBTS));
+  const [debts, setDebts] = useState<Debt[]>(() => safeGetLocalStorage<Debt[]>('pf_debts', []));
   const [diaryEntries, setDiaryEntries] = useState<DiaryEntry[]>(() => safeGetLocalStorage('pf_diary', []));
 
   const [showSoftDeleted, setShowSoftDeleted] = useState<boolean>(false);
@@ -894,7 +880,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     setKeywordRules(DEFAULT_KEYWORD_RULES);
     setPresets([]);
     setTransactions([]);
-    setDebts(DEFAULT_STARTER_DEBTS);
+    setDebts([]);
     setDiaryEntries([]);
 
     recentLocalWriteIds.current.clear();
@@ -1390,8 +1376,8 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
 
     // F7 (ADR 0024): a user-created wallet's opening balance is a ledger row -
     // an ADJUSTMENT of the signed amount, so a credit card opening in debt
-    // gets a negative one. Zero writes no row. The starter wallets are exempt
-    // by decision: they are fixtures, not money the user entered.
+    // gets a negative one. Zero writes no row. The starter wallets open at 0
+    // (ADR 0040), so they write no opening row either and need no exemption.
     const opening = roundToCents(initialBalance);
     const openingDate = todayIsoDate();
 

@@ -70,6 +70,8 @@ A pure function extracted from the middle of that sequence can be perfectly corr
 
 The provider is completely inert under test: the auth effect returns early on `!isSupabaseConfigured` and the realtime channel on `!isAuthenticated`, so with no `VITE_SUPABASE_*` variables there is no network call and no WebSocket. The seeded `debt-starter-01` (฿4,500 remaining) and the starter wallets are the fixture.
 
+**Amended by ADR `0040`:** the provider's defaults are now three ฿0.00 wallets and no debt, so the fixture is explicit. `unit/fixtures/guestLedger.ts` holds the same rows (`debt-starter-01` and the three wallets, same ids and amounts), and `ledger-guards.test.tsx` writes them to localStorage in its `beforeEach`, before the provider mounts.
+
 ## This phase changes no file under `src/` or `api/`
 
 Every symbol the tests need is already exported: `FinanceProvider`/`useFinanceState`/`useFinanceActions`, `classifyBatch`, `__resetClassifierState` (already annotated "exported for tests only"), `buildSpendingSummary`/`selectLocalPattern`/`renderInsight`, and `useSpeechRecognition` itself — whose `isSupported` and `error` are the public reads of the private `detectSupport` and `toSpeechError`.
