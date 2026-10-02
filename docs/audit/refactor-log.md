@@ -4,6 +4,34 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
+## Audit 013 - Antislop verification pass after Phase 54: T353 (2026-10-02, no code change)
+
+Not a shipped phase: an audit only, recorded here because it closes what Phase 54 left "pending the next antislop audit's confirmation".
+
+**Confirmed**
+- **R-17, R-38 and C-5 pass**, after failing (known, deferred) in audits 002 to 012:
+  - **A new guest on production:** in all six runs (1280, 1024 and 390, light and dark, signed out) every wallet reads ฿0.00, there is no debt, the Transactions page is empty, and no view printed NaN, Infinity or "−฿0.00". `localStorage` held no `pf_*` key after load.
+  - **Sign-out:** the "resets to the empty starters" unit test passes; unit 588/588.
+  - **A new sign-up:** the live `seed_starter_account()` writes `0.00` and no debt. Its body md5 `90c93706f16713721c7509c871651f9b` matches the file, and the Phase 54 probe printed `PHASE 54 PROBE OK` inside `begin ... rollback`, with 0 fixture rows left afterwards.
+
+**Found** (`anti-slop/audit-013-2026-10-02.md`; nothing changed, findings await the owner)
+- **HIGH:**
+  - On a phone, the PWA update toast (`ReloadPrompt`, `z-50`) covers all five bottom-nav buttons (`z-40`) on a first visit until dismissed.
+  - Five targets in the shared entry form are under 44px. The worst is "Save as a quick template" at 16px tall; the others are the amount input, the apply button, and the note and date fields.
+- **MEDIUM:**
+  - The four sparkle icons from audit 005, now all in the shared form (`TransactionsView` itself has none since Phase 62).
+  - The first-run Transactions empty state says "No transactions match your current filters." when no filter is set.
+  - The update toast spins an icon while it waits for the user.
+- **LOW:**
+  - The empty ฿0 wallet bar is a 1.18:1 track with no caption.
+  - Quick Add repeats its title, the formula result and the formula help.
+  - The toast's Title Case wording, and a dead `animate-in` class.
+- **Both HIGH findings predate Phase 54.** Phase 54 itself adds no failure.
+
+**Checked:** code sweeps of `src/` (0 em dashes, 0 raw palette classes, 0 `transition-colors`, 0 `dark:` twins on tokens); `wcag-tokens.mjs` and antislop's `contrast-check.py`; a focus walk (2px violet outline on every stop); lint clean. E2E was not re-run: no code changed since Phase 54's 405/405.
+
+---
+
 ## Phase 54 - Empty starters (audit 001 finding 6): T346-T352 (2026-10-02, commit `052b6c4`, merge `0882695`)
 
 **Changed**

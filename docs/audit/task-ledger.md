@@ -1081,6 +1081,14 @@ Approved explicitly by the user, planned and approved before any code was writte
 - **One negative control was redone** because the first attempt produced malformed TypeScript that the dev server still served — the tests failed, but possibly for the wrong reason.
 - **No flakes.** Phase 44's `wallets.spec.ts` webkit flake has now not reproduced across three consecutive phases; still watched rather than closed.
 
+## Audit 013 - antislop verification pass after Phase 54: T353 (2026-10-02)
+
+A mode 2 audit with no phase of its own and no code change. It confirms what Phase 54 left pending: **R-17, R-38 and C-5 now pass** on all three paths (a new guest on production, sign-out, a new sign-up through `seed_starter_account()`), and it re-audits all six views and the shared entry form. "Obsidian Slate" and "R-39/R-40", named in the request, do not exist; the audit uses the real token system and R-01 to R-38 plus C-1 to C-5.
+
+| # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
+|---|---|---|---|---|---|---|---|---|---|---|
+| T353 | Antislop audit 013 (mode 2): R-17/R-38/C-5 verification, all six views at 1280/1024/390 in light and dark, on production | `anti-slop/audit-013-2026-10-02.md` | - | - | 1.5h | done; findings await the owner | T352 | - | 8 findings (2 HIGH, 3 MEDIUM, 3 LOW; finding 3 is audit 005's known sparkles); R-17, R-38 and C-5 confirmed PASS; unit 588/588; lint clean; Phase 54 probe OK inside `begin ... rollback` (0 fixture rows left); live body md5 `90c93706...` = the file | - |
+
 ## Phase 54 - empty starters (audit 001 finding 6): T346-T352 (2026-10-02)
 
 ADR `0040`. The phase reserved since Phase 55 for audit 001 finding 6. The owner's decisions:
