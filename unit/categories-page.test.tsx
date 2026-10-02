@@ -193,7 +193,8 @@ describe('the form, from lg', () => {
     fireEvent.click(byId('edit-category-pets')!);
     const current = byId('edit-category-color-current')!;
     expect(current.getAttribute('aria-pressed')).toBe('true');
-    expect(current.getAttribute('title')).toBe('Current color');
+    expect(current.getAttribute('title')).toBe('Custom color');
+    expect(current.getAttribute('aria-label')).toBe('Custom color');
     fireEvent.change(byId('edit-category-name')!, { target: { value: 'Animals' } });
     fireEvent.click(byId('edit-category-save-btn')!);
     await waitFor(() => expect(byId('edit-category-pets')!.textContent).toContain('Animals'));
@@ -224,11 +225,36 @@ describe('the form, from lg', () => {
     expect(swatch('new-category', IDENTITY_PALETTE[1].hex).getAttribute('aria-pressed')).toBe('true');
   });
 
-  it('disables Add once all twelve colours are in use', () => {
+  it('once all twelve colours are in use, lets them repeat: Add stays on and cycles to the least-shared one (audit 012 finding 1)', async () => {
+    wide();
+    // With the shipped seven, Rose to Orchid are each used twice, and Tan, Blue, Teal, Khaki and Iris once.
+    mount({ extra: IDENTITY_PALETTE.map(({ hex }, i) => custom({ id: `c${i}`, name: `Custom ${i}`, color: hex })) });
+    expect((byId('save-category-btn') as HTMLButtonElement).disabled).toBe(false);
+    expect(byId('new-category-color-sharing')!.textContent).toBe('All 12 colors are in use, so this category will share one with another.');
+    const rose = swatch('new-category', '#E879A6');
+    expect(rose.disabled).toBe(false);
+    expect(rose.getAttribute('aria-label')).toBe('Rose, also used by Food & Dining');
+    expect(rose.querySelector('[data-used-mark]')).toBeNull();
+    expect(swatch('new-category', '#D9A066').getAttribute('aria-pressed')).toBe('true');
+
+    fireEvent.change(byId('new-category-name')!, { target: { value: 'Thirteenth' } });
+    fireEvent.click(byId('save-category-btn')!);
+    await waitFor(() => expect(byId('category-group-expense')!.textContent).toContain('Thirteenth'));
+    // Tan is now shared twice, so the next new category starts on Blue.
+    await waitFor(() => expect(swatch('new-category', '#6C8EEF').getAttribute('aria-pressed')).toBe('true'));
+  });
+
+  it('lets an edit pick a used colour once all twelve are taken', async () => {
     wide();
     mount({ extra: IDENTITY_PALETTE.map(({ hex }, i) => custom({ id: `c${i}`, name: `Custom ${i}`, color: hex })) });
-    expect((byId('save-category-btn') as HTMLButtonElement).disabled).toBe(true);
-    expect(document.body.textContent).toContain('All 12 colors are in use');
+    // Custom 4 shares Rose with Food & Dining, so even without it all twelve stay taken.
+    fireEvent.click(byId('edit-category-c4')!);
+    const tan = swatch('edit-category', '#D9A066');
+    expect(tan.disabled).toBe(false);
+    expect(tan.getAttribute('aria-label')).toBe('Tan, also used by Custom 0');
+    fireEvent.click(tan);
+    fireEvent.click(byId('edit-category-save-btn')!);
+    await waitFor(() => expect((byId('edit-category-c4')!.querySelector('span') as HTMLElement).style.backgroundColor).toBe(rgb('#D9A066')));
   });
 });
 
@@ -302,6 +328,16 @@ describe('the guards behind the form (guest)', () => {
       error: "System categories can't be edited",
     });
     expect(byId('category-row-cat-debt')!.textContent).toContain('Debt repayment');
+  });
+
+  it('accept a repeated colour once all twelve are taken, and still refuse one before that', async () => {
+    mount({ extra: IDENTITY_PALETTE.slice(0, 11).map(({ hex }, i) => custom({ id: `c${i}`, name: `Custom ${i}`, color: hex })) });
+    // Iris is still free, so Rose is refused.
+    expect((await actions!.addCategory({ name: 'Early', type: 'EXPENSE', color: '#E879A6' })).success).toBe(false);
+    expect((await actions!.addCategory({ name: 'Last free', type: 'EXPENSE', color: '#9C8CD9' })).success).toBe(true);
+    // Let it land, as a person's next tap would, before the guard reads it.
+    await waitFor(() => expect(byId('category-group-expense')!.textContent).toContain('Last free'));
+    expect((await actions!.addCategory({ name: 'Repeat', type: 'EXPENSE', color: '#E879A6' })).success).toBe(true);
   });
 });
 

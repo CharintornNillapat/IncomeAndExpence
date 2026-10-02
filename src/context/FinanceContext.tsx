@@ -33,7 +33,8 @@ import { APP_CURRENCY, formatCurrencyAmount } from '../utils/currency';
 import { roundToCents } from '../utils/money';
 import { todayIsoDate } from '../utils/date';
 import { walletTotal } from '../selectors/wallets';
-import { usedColors } from '../selectors/categories';
+import { paletteExhausted, usedColors } from '../selectors/categories';
+import { IDENTITY_COLORS } from '../utils/identityPalette';
 import { isMovementCategory, SYSTEM_CATEGORY_COLOR } from '../selectors/ledger';
 import { dedupeCategoriesByName, withDefaultDescriptions } from '../utils/categoryUtils';
 import { migrateCategoryColors, migrateWalletColors } from '../utils/identityColorMigration';
@@ -1656,9 +1657,11 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       return { success: false, error: `A category named "${cleanedName}" already exists` };
     }
     // L9 (ADR 0037): the picker disables a colour in use; this is the same rule
-    // at the write, so a stale form cannot hand two categories one colour.
-    const colorOwner = usedColors(categoriesRef.current).get(validation.data.color.toLowerCase());
-    if (colorOwner) {
+    // at the write, so a stale form cannot hand two categories one colour. Once
+    // all twelve are taken, colours may repeat (audit 012 finding 1).
+    const usedNow = usedColors(categoriesRef.current);
+    const colorOwner = usedNow.get(validation.data.color.toLowerCase());
+    if (colorOwner && !paletteExhausted(IDENTITY_COLORS, usedNow)) {
       return { success: false, error: `That colour is used by ${colorOwner}` };
     }
 
@@ -1733,8 +1736,9 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     // L9, only when the colour actually changes: a category still on a colour it
     // shares from before L9 can be renamed without being made to pick a new one.
     if (updates.color !== undefined && updates.color.toLowerCase() !== current.color.toLowerCase()) {
-      const colorOwner = usedColors(categoriesRef.current, id).get(updates.color.toLowerCase());
-      if (colorOwner) {
+      const usedByOthers = usedColors(categoriesRef.current, id);
+      const colorOwner = usedByOthers.get(updates.color.toLowerCase());
+      if (colorOwner && !paletteExhausted(IDENTITY_COLORS, usedByOthers)) {
         return { success: false, error: `That colour is used by ${colorOwner}` };
       }
     }

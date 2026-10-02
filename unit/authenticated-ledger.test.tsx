@@ -1795,6 +1795,24 @@ describe('a signed-in category edit (Phase 62, ADR 0037)', () => {
     await waitFor(() => expect(state().categories.find((c) => c.id === food.id)?.name).toBe('Food'));
   });
 
+  it('accepts a repeated colour once all twelve are taken (audit 012 finding 1)', async () => {
+    const palette = ['#D9A066', '#6C8EEF', '#4FB7A8', '#F59E6B', '#E879A6', '#7DA2F0', '#B69CF5', '#5CC8B8', '#C7B38A', '#8FA8C8', '#D98FD0', '#9C8CD9'];
+    const taken = new Set(state().categories.filter((c) => !c.isDeleted).map((c) => c.color.toLowerCase()));
+    for (const [i, color] of palette.filter((hex) => !taken.has(hex.toLowerCase())).entries()) {
+      expect((await actions().addCategory({ name: `Fill ${i}`, type: 'EXPENSE', color })).success).toBe(true);
+    }
+    // Every fill has landed, as it would have by a person's next tap.
+    await waitFor(() => {
+      const now = new Set(state().categories.filter((c) => !c.isDeleted).map((c) => c.color.toLowerCase()));
+      expect(palette.every((hex) => now.has(hex.toLowerCase()))).toBe(true);
+    });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    const food = byName('Food & Dining');
+    const repeat = await actions().addCategory({ name: 'Pets', type: 'EXPENSE', color: food.color });
+    expect(repeat.success).toBe(true);
+    await waitFor(() => expect(state().categories.some((c) => c.name === 'Pets' && c.color === food.color)).toBe(true));
+  });
+
   it('refuses any edit to a System category (L10), matched by type, before any write', async () => {
     for (const type of ['DEBT_REPAYMENT', 'ADJUSTMENT']) {
       const system = byType(type);
