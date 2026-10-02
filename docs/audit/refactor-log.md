@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 64 - The re-seeding guard and the duplicate cleanup: T339-T345 (2026-10-02, in progress)
+## Phase 64 - The re-seeding guard and the duplicate cleanup: T339-T345 (2026-10-02, commits `c17019a`, docs `031d824`; in progress)
 
 **Changed**
 - **`seed_starter_account()`** (applied to the live project on 2026-10-02 as `20261002041331`): the server decides whether an account is new.

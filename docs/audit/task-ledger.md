@@ -1093,12 +1093,12 @@ Branch `phase-64-seed-guard`, cut from `main` at `77b0cdb`. **Two migrations:** 
 
 | # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
 |---|---|---|---|---|---|---|---|---|---|---|
-| T339 | `seed_starter_account()`: no session refused, once only (deleted rows count), advisory lock, one transaction | `supabase/migrations/` | High | Med | 0.5h | applied 2026-10-02 (`20261002041331`) | - | - | probe OK; security definer, `authenticated` yes, `anon` no | - |
-| T340 | The client calls it; four outcomes; a failed seed keeps the screen and sets `syncError`; no client inserts | `context/FinanceContext.tsx` | High | Med | 0.5h | done | T339 | - | 4 unit tests; 3 controls failed | - |
-| T341 | Dedupe: re-point transactions and rules to the earliest copy, `updated_at` bumped, losers soft-deleted | `supabase/migrations/` | High | Med | 0.4h | written; not applied | - | - | live preview: 38 -> 11, 17 transactions, 0 rules | - |
-| T342 | The probe for both | `supabase/tests/` | High | Low | 0.6h | done; the owner ran it in the SQL editor: `PHASE 64 PROBE OK` | T339, T341 | - | - | - |
-| T343 | Unit: the seed contract, replacing Phase 63's direct-insert seed test | `unit/authenticated-ledger.test.tsx` | High | Low | 0.4h | done | T340 | - | unit 583 -> 586 | - |
-| T344 | ADR `0039`, `CLAUDE.md` ("Do NOT seed from the client"), ledger, log | docs | Low | Low | 0.4h | done | all | - | - | - |
+| T339 | `seed_starter_account()`: no session refused, once only (deleted rows count), advisory lock, one transaction | `supabase/migrations/` | High | Med | 0.5h | applied 2026-10-02 (`20261002041331`) | - | `c17019a` | probe OK; security definer, `authenticated` yes, `anon` no | - |
+| T340 | The client calls it; four outcomes; a failed seed keeps the screen and sets `syncError`; no client inserts | `context/FinanceContext.tsx` | High | Med | 0.5h | done | T339 | `c17019a` | 4 unit tests; 3 controls failed | - |
+| T341 | Dedupe: re-point transactions and rules to the earliest copy, `updated_at` bumped, losers soft-deleted | `supabase/migrations/` | High | Med | 0.4h | written; not applied | - | `c17019a` | live preview: 38 -> 11, 17 transactions, 0 rules | - |
+| T342 | The probe for both | `supabase/tests/` | High | Low | 0.6h | done; the owner ran it in the SQL editor: `PHASE 64 PROBE OK` | T339, T341 | `c17019a` | - | - |
+| T343 | Unit: the seed contract, replacing Phase 63's direct-insert seed test | `unit/authenticated-ledger.test.tsx` | High | Low | 0.4h | done | T340 | `c17019a` | unit 583 -> 586 | - |
+| T344 | ADR `0039`, `CLAUDE.md` ("Do NOT seed from the client"), ledger, log | docs | Low | Low | 0.4h | done | all | `031d824` | - | - |
 | T345 | Gate (lint, unit, Playwright, build), sha backfill, draft PR; apply the migrations in order on the owner's word | - | - | - | 1h | lint and unit done; the rest waits | all | - | lint clean; unit 586/586 | - |
 
 ## Phase 63 - FinLife redesign, step 5 (spec 5.1's colour migration): T329-T337 (2026-10-02)
