@@ -61,6 +61,11 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
   - **Categories:** Rose reads "Rose, used by Food & Dining", 7 swatches are struck, and Tan is offered first.
   - **Wallets:** the tiles are Blue, Tan and Teal; the edit form's legend reads "Color", with swatches "Tan" to "Iris".
   - **Everywhere:** no overflow, 0 controls under 44px, and no console errors.
+- **Audit 012, findings 1 and 4, fixed on the owner's word (T338):**
+  - past twelve, colours repeat: `paletteExhausted` enables every swatch ("Rose, also used by Food & Dining") and lets both guards accept a repeat; `nextColor` (replacing `firstFreeColor`) starts a new category on the first free colour, else the least-shared;
+  - "Current color, from before the new palette" became "Custom color".
+
+  Lint clean, unit 583/583 (5 new tests), and four controls each failed their test: the add guard's exemption removed, the update guard's exemption removed, the grid blocking every used colour, and no least-shared cycling.
 
 ## Phase 62 - The Categories page (spec 6.6): T314-T328 (2026-10-01, commits `58b5d75`, `f8c62a0`, `837d442`, docs `03a1311`)
 

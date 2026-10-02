@@ -1102,6 +1102,7 @@ Branch `phase-63-category-colours`, cut from `main` at `ba87338`. It also carrie
 | T335 | Gate: lint, unit, build, Playwright twice, walk-through | - | - | - | 1h | done | all | ce9731b | lint clean; unit 578/578; Playwright 398/402 then 401/402 (click-settling timeouts only, each file green on repeat); probe OK | entry +1,817 B |
 | T336 | Antislop audit 012 (mode 2) | `anti-slop/audit-012-2026-10-02.md` | - | - | 0.4h | done; findings await the owner | T335 | ce9731b | 4 findings (1 MEDIUM, 3 LOW), no new Hard Gate failure | - |
 | T337 | ADR `0038`, `DESIGN.md`, `CLAUDE.md`, ledger, log, metrics; sha backfill; draft PR | docs | Low | Low | 0.6h | docs done; draft PR on the owner's word | all | ce9731b | - | - |
+| T338 | Audit 012 findings 1 and 4: colours repeat past twelve (`paletteExhausted`, `nextColor`, both guards); "Custom color" | `selectors/categories.ts`, `category/`, `CategoriesView.tsx`, `FinanceContext.tsx` | High | Low | 0.6h | done | T336 | 7b4e61a | unit 578 -> 583; 4 controls failed | - |
 
 ## Phase 62 - FinLife redesign, step 4, sixth page (Categories): T314-T328 (2026-10-01)
 

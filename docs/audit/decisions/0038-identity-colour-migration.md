@@ -80,8 +80,18 @@ The rows marked *SQL only* are spec 5.1's rows from one account. They live in th
 ### Copy
 - **One spelling:** the UI says "Color", as the Categories form already did. "Theme Color" in Add wallet and the "Colour" legend in the wallet edit form become "Color".
 - **Named swatches:** a wallet swatch is named by its colour ("Tan", from `identityColorName`) instead of "Colour #D9A066".
-- **"Current color":** the swatch stays, for a custom category still on a colour picked before Phase 62.
+- **"Custom color":** the swatch stays, for a custom category still on a colour picked before Phase 62. It read "Current color, from before the new palette" until audit 012 finding 4: "the new palette" means nothing to someone who never saw the old one.
 - **The rules table:** a System category's chip uses `SYSTEM_CATEGORY_COLOR`, as `TransactionRow` does.
+
+### Past twelve, colours repeat (audit 012 finding 1, the owner's decision)
+With the shipped categories on the palette, L9 left a fresh account 5 free colours and the owner's account 3, and then disabled Add. The owner chose repeats over a cap:
+- `paletteExhausted(palette, used)` is true once every identity colour is in use. From then on:
+  - the grid enables every swatch, without the strike, named "Rose, also used by Food & Dining";
+  - the form says "All 12 colors are in use, so this category will share one with another.";
+  - `addCategory` and `updateCategory` accept a colour another category holds. Before that point they refuse it as before.
+- `nextColor(palette, categories)` replaces `firstFreeColor`: the first free colour, else the one the fewest live categories share, earliest on a tie, so repeats spread evenly.
+- An edit counts its own category out: a category that is the only one on a colour frees it, so its form is not "exhausted" unless the other categories cover all twelve.
+- The migration keeps its own rule (the old colour stays when none is free). With the twelve now able to repeat, that case only arises for an account that already had twelve custom colours, and its category can still be recoloured by hand.
 
 ## Spec edits
 None. `categories-page.spec.ts` still finds Tan free and then Blue, because the shipped categories take Rose, Peach, Periwinkle, Lavender, Aqua, Steel and Orchid.
