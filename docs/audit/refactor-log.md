@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 64 - The re-seeding guard and the duplicate cleanup: T339-T345 (2026-10-02, commits `c17019a`, docs `031d824`; in progress)
+## Phase 64 - The re-seeding guard and the duplicate cleanup: T339-T345 (2026-10-02, commits `c17019a`, docs `031d824`)
 
 **Changed**
 - **`seed_starter_account()`** (applied to the live project on 2026-10-02 as `20261002041331`): the server decides whether an account is new.
@@ -45,6 +45,31 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
   - live data untouched: 47 live categories and 30 wallets, as before.
 
   The dedupe is not applied: it waits for the merge and the deploy.
+
+**CI, deploy and migration:**
+- PR #12, run `36963695971` on `426da8d`: success in 5 m 15 s. Unit 586/586, and 134/134 per browser, none flaky.
+- Merged as PR #12 with a merge commit, `b65b437`, with the owner's go-ahead. Its tree is identical to `426da8d`.
+- Push run `36964231528` on `b65b437`: success in 6 m 7 s. Unit 586/586; 134/134 per browser.
+- Vercel `dpl_HFtfaZbUWFXnvC8UmVC148NZtUt5` Production `READY`. `income-and-expence-neon.vercel.app` serves `index-Bjc9t25e.js` at **187,067 B**, 124 B under Phase 63: the client's two seed inserts are gone.
+- **All 59 files of a clean local build (with `.env`) were hashed against production.** 54 are byte-for-byte identical. `index.html`, the two SVGs and `robots.txt` differ only in line endings (the worktree's CRLF checkout). `sw.js` has the same 58 precache URLs.
+- **Signed-out smoke test on production** (fresh headless Chromium, no auth token in storage, no console errors):
+  - at 1280, 1024 and 390, each light and dark:
+    - no old colour painted;
+    - seven swatches struck, and Tan offered first;
+    - the wallet tiles Blue, Tan and Teal;
+    - no page overflow.
+  - The old-colour device moved on load. With all twelve colours taken, Add stayed enabled, and a thirteenth category started on Tan, the next on Blue.
+  - At 1280 the Categories page twice measured 2 controls under 44px. Seven further fresh measurements on the same path, at once and after 800 ms, light and dark, found none, so these are readings taken before the page settled.
+- **The dedupe, run by the owner in the Supabase SQL editor** (2026-10-02 04:43:07 UTC). The session's `apply_migration` call was declined, so it is not recorded in the migration history.
+  - **Before:** a read-only snapshot gave:
+    - 17 transactions to re-point (฿9,547.89), a fingerprint of where each should land (`da85070f…`) and 27 categories to retire;
+    - fingerprints of every transaction's money fields (97 rows, `82288abf…`), every wallet balance (`0ddf6c0a…`) and every debt (`ece36239…`).
+  - **After:**
+    - the same 17 transactions (found as the one batch with the migration's `updated_at`) total ฿9,547.89 and land exactly as fingerprinted (`da85070f…`), all on live categories;
+    - all three money fingerprints are unchanged;
+    - 20 live categories (the owner's account 11, the second 9), no name with more than one live row, and the dedupe's preview finds 0 rows left;
+    - no rule or transaction points at a deleted category.
+  - **Not as planned:** the 27 duplicate rows were **removed, not marked deleted**: afterwards the table holds 20 category rows, all live, where before it held 47 and none deleted. `20261002_phase64_dedupe_categories.sql` only sets `is_deleted`, so it cannot lower the row count; the run was most likely `20260920_dedupe_categories.sql`, which re-points the same way and then physically deletes the copies. Nothing references the removed rows (every transaction and rule was moved first), and they carried only a name and a colour, so no ledger history is lost. The owner's decision was a soft delete; accepting the removal or restoring the rows from a backup is open.
 
 ## Phase 63 - The identity colour migration (spec 5.1): T329-T338 (2026-10-02, commits `1f09894`, `cdda81d`, `7b4e61a`, docs `ce9731b`, `09ac0fb`)
 

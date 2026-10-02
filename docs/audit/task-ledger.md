@@ -1090,16 +1090,17 @@ ADR `0039`. The owner's decisions:
 - no antislop audit (no UI change).
 
 Branch `phase-64-seed-guard`, cut from `main` at `77b0cdb`. **Two migrations:** `20261002_phase64_seed_starter_account.sql`, applied before the client deploys, and `20261002_phase64_dedupe_categories.sql`, applied after. Both wait for the owner's word, the probe first.
+- Merged into `main` as `b65b437` with a merge commit, with the owner's go-ahead. PR run `36963695971` and push run `36964231528` passed. Vercel `dpl_HFtfaZbUWFXnvC8UmVC148NZtUt5` is READY and serves the local build byte for byte. The dedupe was run by the owner in the Supabase SQL editor (not recorded in the migration history); every money fingerprint is unchanged, but the 27 duplicate rows were **removed, not marked deleted**: afterwards the table holds 20 category rows, all live, where before it held 47 and none deleted. `20261002_phase64_dedupe_categories.sql` only sets `is_deleted`, so it cannot lower the row count; the run was most likely `20260920_dedupe_categories.sql`, which re-points the same way and then physically deletes the copies. Whether to accept that or restore the rows is open.
 
 | # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
 |---|---|---|---|---|---|---|---|---|---|---|
 | T339 | `seed_starter_account()`: no session refused, once only (deleted rows count), advisory lock, one transaction | `supabase/migrations/` | High | Med | 0.5h | applied 2026-10-02 (`20261002041331`) | - | `c17019a` | probe OK; security definer, `authenticated` yes, `anon` no | - |
 | T340 | The client calls it; four outcomes; a failed seed keeps the screen and sets `syncError`; no client inserts | `context/FinanceContext.tsx` | High | Med | 0.5h | done | T339 | `c17019a` | 4 unit tests; 3 controls failed | - |
-| T341 | Dedupe: re-point transactions and rules to the earliest copy, `updated_at` bumped, losers soft-deleted | `supabase/migrations/` | High | Med | 0.4h | written; not applied | - | `c17019a` | live preview: 38 -> 11, 17 transactions, 0 rules | - |
+| T341 | Dedupe: re-point transactions and rules to the earliest copy, `updated_at` bumped, losers soft-deleted | `supabase/migrations/` | High | Med | 0.4h | run 2026-10-02 in the SQL editor; the copies were removed, not soft-deleted (see above) | - | `c17019a` | live preview: 38 -> 11, 17 transactions, 0 rules | - |
 | T342 | The probe for both | `supabase/tests/` | High | Low | 0.6h | done; the owner ran it in the SQL editor: `PHASE 64 PROBE OK` | T339, T341 | `c17019a` | - | - |
 | T343 | Unit: the seed contract, replacing Phase 63's direct-insert seed test | `unit/authenticated-ledger.test.tsx` | High | Low | 0.4h | done | T340 | `c17019a` | unit 583 -> 586 | - |
 | T344 | ADR `0039`, `CLAUDE.md` ("Do NOT seed from the client"), ledger, log | docs | Low | Low | 0.4h | done | all | `031d824` | - | - |
-| T345 | Gate (lint, unit, Playwright, build), sha backfill, draft PR; apply the migrations in order on the owner's word | - | - | - | 1h | lint and unit done; the rest waits | all | - | lint clean; unit 586/586 | - |
+| T345 | Gate (lint, unit, Playwright, build), sha backfill, draft PR; apply the migrations in order on the owner's word | - | - | - | 1h | done | all | - | lint clean; unit 586/586; PR and push CI 134/134 per browser; probe OK | entry -124 B |
 
 ## Phase 63 - FinLife redesign, step 5 (spec 5.1's colour migration): T329-T337 (2026-10-02)
 
