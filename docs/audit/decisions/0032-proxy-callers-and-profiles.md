@@ -1,6 +1,6 @@
 # 0032 — Who may spend TypeSafe credits, and who may write `public.profiles`
 
-**Status:** Accepted.
+**Status:** Accepted. **Amended by ADR `0046`** (2026-10-03): only the guest firewall rule exists; the all-callers 120/min rule was not created (Hobby plan, one rate-limit rule).
 - **Amends** ADR `0011` and `0020`: the two `/api/*` proxies now check their caller, and the Vercel firewall limits guests.
 - **Amends** ADR `0024`: `public.profiles` takes no client writes, and a trigger keeps it in step with `auth.users`.
 - **Phase:** 58s, a security phase run between 58a and 58b.
