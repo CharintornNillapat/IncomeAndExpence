@@ -1098,6 +1098,19 @@ The entry's growth is the ledger action itself, which lives with the other ledge
 
 **Intermittent local failures:** 6 in 1,071 full-suite runs (3 full runs). All were timeouts: a Firefox `goto`, a Firefox context close, and four WebKit clicks waiting for "stable". No assertion failed. See audit 005 finding 3 for the control runs.
 
+## Phase 75 (the functions' region) - before the change
+
+No `src/` file changed, so the client bundle is unchanged (not rebuilt). Unit 725/725; Playwright 432/432 in 6.7 m.
+
+**Guest `POST {}` to `/api/classify` on production, `iad1`** (this machine in Thailand, 2026-10-03 23:33 UTC):
+
+| Request | `x-vercel-id` | `Server-Timing` | Wall time |
+|---|---|---|---|
+| 1 to 5 | `sin1::iad1` | `total` 0.6 to 4.8 ms | 0.603 to 1.288 s |
+| 6 to 10 | `sin1::iad1` | `total` 0.5 to 0.8 ms | 0.364 to 0.376 s |
+
+**Signed in, `iad1`:** one sample so far (ADR `0050`): `quota;dur=614.5, ai;dur=134.3, total;dur=750.2`, `auth` cached.
+
 ## Phase 74 (the AI proxies time their steps) - delta against Phase 73
 
 Only `api/`, `unit/` and docs changed; no `src/` file did, so the client bundle is unchanged (not rebuilt).

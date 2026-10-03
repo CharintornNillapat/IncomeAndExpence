@@ -43,7 +43,8 @@ FinLife Tracker is a full-stack personal finance and holistic lifestyle manageme
 ├── index.html           # Anti-FOUC theme bootstrap and PWA meta tags
 ├── playwright.config.ts # Playwright multi-browser test configuration
 ├── vite.config.ts       # Vite config (PWA manifest, Tailwind plugin, HMR switch)
-└── tsconfig.json        # TypeScript configuration (strict unused-locals/params, no path aliases)
+├── tsconfig.json        # TypeScript configuration (strict unused-locals/params, no path aliases)
+└── vercel.json          # One key: the functions' region, icn1 (ADR 0051)
 ```
 
 ## Common Commands
@@ -248,6 +249,7 @@ Two layers, in a fixed order. Do not reverse them and do not collapse them into 
   - A guest is never counted here; the firewall rule below does that. `AI_REQUESTS_PER_MINUTE` and `checkQuota` are duplicated in both files, like `checkCaller`.
 - **Every proxy response carries `Server-Timing`** (ADR `0050`): `auth` (the `/auth/v1/user` check, or `dur=0.0;desc="cached"`), `quota`, `ai` (TypeSafe until its headers) and `total`, in milliseconds, in the order they finished. A step that did not run is absent, never zero. `POST` is a wrapper that times `handle()` and sets the header on whatever it returns, so a new `return` needs nothing; a new step needs a name in both files' `Timings` type and a test. The edge's firewall 429 carries none.
   - Released in `e69425f` (PR #24, Vercel `dpl_2J9Asnb3kofhqt3RyPRYMRRvCWS9`). **The functions run in `iad1` (Washington, D.C.) and the database in Seoul,** so on production the count is most of a signed-in request: `quota;dur=614.5` of `total;dur=750.2`, against `ai;dur=134.3`.
+  - **Since Phase 75 the functions run in `icn1` (Seoul)**, beside the database: `vercel.json`'s only key is `regions: ["icn1"]`, the default for every function (ADR `0051`). It stays only if the before-and-after `Server-Timing` measurement on production says so; to revert, delete `vercel.json` or set `iad1`. Nothing local can see a region: previews have no Supabase settings and sit behind Vercel's login, so measure on production.
 - **Guests are limited by the Vercel firewall, not by code** (ADR `0032`, amended by `0046`): one rule, "AI proxy: guests 30/min per IP", on `/api/classify` and `/api/insights` when there is no `Authorization` header, a fixed 60 s window, 429 past 30. The two paths share the count. The token check alone protects nothing against a caller who sends no header, so this rule is the guest protection.
   - **There is no all-callers firewall rule.** ADR `0032`'s 120 a minute for everyone was not created: the Hobby plan allows one rate-limit rule. Signed-in callers are limited per account in code instead (ADR `0049`, above).
   - **The rule lives in the Vercel dashboard, not the repo,** and the API cannot read it (`404 Seawall Config not found`, by slug and by team id). To check it, send 31 guest `POST {}` to `/api/classify` within a minute: `{}` gets 400 before any TypeSafe call, so it costs nothing, and request 31 must get 429 (`X-Vercel-Mitigated: deny`).
@@ -594,6 +596,7 @@ Refer to `.env.example`:
 - Do NOT route editing through `TransactionForm`; `EditTransactionPanel` is the edit surface.
 - Do NOT let an `/api/*` proxy call TypeSafe before `checkCaller` has passed, or treat an unanswered token check as accepted; it is 503 (ADR `0032`).
 - Do NOT send an `Authorization` header from a guest, and do NOT latch the classifier or insights off on a 401; only a 404 latches.
+- Do NOT add a key to `vercel.json`, a second region or a per-function region without measuring `Server-Timing` on production before and after (ADR `0051`); the functions' two Supabase calls are why they sit in `icn1`.
 - Do NOT put an id, a token, an account or request content in a `Server-Timing` description; the header reaches every caller (ADR `0050`).
 - Do NOT count AI requests in a proxy's memory, cache the count with the token, or let a request through when the count could not be had; it is `consume_ai_quota()` on every signed-in request, and no answer is 503 (ADR `0049`).
 - Do NOT send a wallet's `balance` through `updateWallet`/`editWallet`; a balance moves only through a ledger row (ADR `0034`).

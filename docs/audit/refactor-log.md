@@ -4,6 +4,24 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
+## Phase 75 - The functions run beside the database: T421-T426 (2026-10-04, draft PR; not measured yet)
+
+ADR `0051`. ADR `0050` showed the per-account count taking 614.5 of a signed-in request's 750.2 ms, because the functions ran in `iad1` (Washington, D.C.) and the database is in Seoul.
+
+**Changed**
+- **`vercel.json`**, new, with one key: `regions: ["icn1"]`, the default region for every function. Framework detection, the functions and the static build are as before.
+- **`api/classify.ts`'s header comment** says what `vercel.json` sets instead of saying there is none.
+- **Docs:** ADR `0051`; `CLAUDE.md` (the structure, the proxy notes, a Do NOT line); the ledger; this log; baseline metrics.
+
+**Found**
+- **Previews cannot measure this:** `VITE_SUPABASE_*` are production-only, and previews sit behind Vercel's login. The measurement is on production, before and after.
+
+**Still open**
+- **T425 and T426:** the owner's signed-in samples on `iad1` before the merge, and the same on `icn1` after; keep or revert by ADR `0051`'s rule.
+
+**Gate:**
+- Lint clean. Unit 725/725 in 29 files. E2E: 432/432 in 6.7 m.
+
 ## Phase 74 - The AI proxies time their steps: T415-T420 (2026-10-03, commit `7651728`, docs `193f0df`, merge `e69425f`)
 
 ADR `0050`. ADR `0049` could not separate the count's cost from TypeSafe's in a signed-in request's time, and the runtime logs were empty.
