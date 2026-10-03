@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 74 - The AI proxies time their steps: T415-T420 (2026-10-03, draft PR)
+## Phase 74 - The AI proxies time their steps: T415-T420 (2026-10-03, commit `7651728`, docs `193f0df`, merge `e69425f`)
 
 ADR `0050`. ADR `0049` could not separate the count's cost from TypeSafe's in a signed-in request's time, and the runtime logs were empty.
 
@@ -17,8 +17,16 @@ ADR `0050`. ADR `0049` could not separate the count's cost from TypeSafe's in a 
 **Found**
 - **The header is public,** so its descriptions are fixed words: only `cached` exists.
 
+**Release:**
+- PR #24 marked ready and merged into `main` as `e69425f`; Vercel `dpl_2J9Asnb3kofhqt3RyPRYMRRvCWS9` READY.
+- **Signed in** (the owner's browser, DevTools, a note no keyword rule matches): `auth;dur=0.0;desc="cached", quota;dur=614.5, ai;dur=134.3, total;dur=750.2`. The count is 82% of the handler's time and more than four times TypeSafe's. One sample, on a token already verified on that instance.
+- **Guest** (`POST {}` from this machine, three requests): `400` with `Server-Timing: total;dur=1.1`, `0.5`, `0.4`, and no `auth`, `quota` or `ai`, as designed. The function itself takes about a millisecond; the rest of the ~0.41 s a guest sees is network.
+
+**Found**
+- **Why the count is slow: the functions run far from the database.** The deployment's functions are in `iad1` (Washington, D.C.; `x-vercel-id: sin1::iad1::...`, so a request from Thailand enters at Singapore and runs in the US), and the Supabase project is in `ap-northeast-2` (Seoul). Postgres runs `consume_ai_quota()` in about 8 ms, so nearly all of the 614.5 ms is the trip from Washington to Seoul and back, with a new connection's TLS handshake when the instance has none open. A signed-in request whose token is not cached pays the same trip a second time for `auth`.
+
 **Still open**
-- **T420:** read the header on production after the merge and record the count's cost.
+- **The functions' region.** Running them near Seoul would cut the count and the uncached `auth` to a few milliseconds, and move TypeSafe's call across the Pacific instead; not measured.
 
 **Gate:**
 - Lint clean. Unit 725/725 in 29 files; the proxy file 115/115 five runs in a row.

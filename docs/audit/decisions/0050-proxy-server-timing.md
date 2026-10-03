@@ -1,6 +1,6 @@
 # 0050: The AI proxies time their steps in a Server-Timing header
 
-**Status:** Accepted. Implemented on branch `phase-74-server-timing`, draft PR. Not merged yet.
+**Status:** Accepted and released. Commit `7651728` (docs `193f0df`, hash backfill `1695d06`), merged into `main` as `e69425f` (PR #24). Vercel `dpl_2J9Asnb3kofhqt3RyPRYMRRvCWS9` is READY in production.
 - **Answers** ADR `0049`'s open measurement: the time `consume_ai_quota()` adds to a signed-in request.
 - **Changes no behaviour:** every status, body and existing header is as before.
 
@@ -68,6 +68,12 @@
 
 - **E2E:** no change. Every spec answers `/api/*` itself, so the proxies never run in Playwright; the suite is the regression check that nothing else moved.
 - **Gate:** lint clean; unit 725/725 in 29 files; Playwright 431/432 in 7.4 m; the one failure was Firefox timing out loading the dev server's page (`page.goto`, 30 s) in `jev-classify.spec.ts:209`'s setup, before the test body ran and in a spec that never reaches the proxies; that spec then passed 27/27 on Firefox (`--repeat-each=3`).
+
+## On production after the merge
+
+- **Signed in** (the owner's browser, DevTools, a note no keyword rule matches): `auth;dur=0.0;desc="cached", quota;dur=614.5, ai;dur=134.3, total;dur=750.2`. The count is 82% of the handler's time and more than four times TypeSafe's. One sample, on a token already verified on that instance.
+- **Guest** (`POST {}` from this machine, three requests): `400` with `Server-Timing: total;dur=1.1`, `0.5`, `0.4`, and no `auth`, `quota` or `ai`, as designed. The function itself takes about a millisecond; the rest of the ~0.41 s a guest sees is network.
+- **Why the count is slow: the functions run far from the database.** The deployment's functions are in `iad1` (Washington, D.C.; `x-vercel-id: sin1::iad1::...`, so a request from Thailand enters at Singapore and runs in the US), and the Supabase project is in `ap-northeast-2` (Seoul). Postgres runs `consume_ai_quota()` in about 8 ms, so nearly all of the 614.5 ms is the trip from Washington to Seoul and back, with a new connection's TLS handshake when the instance has none open. A signed-in request whose token is not cached pays the same trip a second time for `auth`.
 
 ## Consequences
 

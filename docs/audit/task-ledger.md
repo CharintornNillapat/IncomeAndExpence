@@ -1083,7 +1083,7 @@ Approved explicitly by the user, planned and approved before any code was writte
 
 ## Phase 74 - The AI proxies time their steps: T415-T420 (2026-10-03)
 
-ADR `0050`, answering ADR `0049`'s open measurement. Branch `phase-74-server-timing`, cut from `main` at `11d3844`; commit `7651728` (docs `193f0df`); draft PR. No migration, no client change.
+ADR `0050`, answering ADR `0049`'s open measurement. Branch `phase-74-server-timing`, cut from `main` at `11d3844`; commit `7651728` (docs `193f0df`, hash backfill `1695d06`), merged into `main` as `e69425f` (PR #24); Vercel `dpl_2J9Asnb3kofhqt3RyPRYMRRvCWS9` READY. No migration, no client change.
 
 | # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
 |---|---|---|---|---|---|---|---|---|---|---|
@@ -1092,12 +1092,13 @@ ADR `0050`, answering ADR `0049`'s open measurement. Branch `phase-74-server-tim
 | T417 | Unit +18 in `proxy-contract.test.ts` with delayed stubs; seven mutations; five runs in a row | `unit/` | Med | Low | 0.4h | done | T416 | `7651728` | 115/115 five times; every mutation caught | unit 707 -> 725 |
 | T418 | Gate: lint, unit, Playwright in full | - | Low | Low | 0.2h | done | T417 | - | lint clean; unit 725/725; Playwright 431/432 (a Firefox `page.goto` timeout on the dev server; 27/27 on repeat) | - |
 | T419 | `CLAUDE.md`, ADR `0049`'s pointer, this ledger, the refactor log, baseline metrics | `docs/`, `CLAUDE.md` | Low | Low | 0.2h | done | T418 | `193f0df` | - | - |
-| T420 | After the merge: read the header on production, guest and signed in, and record the quota's cost | production | Low | Low | 0.2h | todo | the merge | - | - | - |
+| T420 | After the merge: read the header on production, guest and signed in, and record the quota's cost | production | Low | Low | 0.2h | done | the merge | - | signed in: `quota` 614.5 of `total` 750.2 ms, `ai` 134.3; guest: `total` only | - |
 
 **Notes on execution:**
 - **Why a header:** ADR `0049`'s signed-in timings (697 and 886 ms) included TypeSafe, and Vercel's runtime logs returned nothing, so the count's own cost could not be separated. `Server-Timing` shows each step in DevTools with no client change.
 - **One wrapper, not one header per `return`:** `POST` times `handle()` and sets the header on the response it gets back, so every exit carries it, including the ones the caller check and the count return early.
 - **The tests time real delays** (20, 30 and 40 ms stubs) rather than mocking `performance.now()`, with 5 ms of timer slack; the file passed five runs in a row.
+- **Live:** **Signed in** (the owner's browser, DevTools, a note no keyword rule matches): `auth;dur=0.0;desc="cached", quota;dur=614.5, ai;dur=134.3, total;dur=750.2`. The count is 82% of the handler's time and more than four times TypeSafe's. One sample, on a token already verified on that instance. **Why the count is slow: the functions run far from the database.** The deployment's functions are in `iad1` (Washington, D.C.; `x-vercel-id: sin1::iad1::...`, so a request from Thailand enters at Singapore and runs in the US), and the Supabase project is in `ap-northeast-2` (Seoul). Postgres runs `consume_ai_quota()` in about 8 ms, so nearly all of the 614.5 ms is the trip from Washington to Seoul and back, with a new connection's TLS handshake when the instance has none open. A signed-in request whose token is not cached pays the same trip a second time for `auth`.
 - **No `src/` or `tests/` file was edited during a Playwright run.**
 
 ## Phase 73 - Signed-in callers limited per account: T407-T414 (2026-10-03)

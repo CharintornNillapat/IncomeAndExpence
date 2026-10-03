@@ -1107,6 +1107,13 @@ Only `api/`, `unit/` and docs changed; no `src/` file did, so the client bundle 
 | Playwright (local) | 29 | 144 | 432 | 431/432 in 7.4 m; the one failure was Firefox timing out loading the dev server's page (`page.goto`, 30 s) in `jev-classify.spec.ts:209`'s setup, before the test body ran and in a spec that never reaches the proxies; that spec then passed 27/27 on Firefox (`--repeat-each=3`) |
 | Vitest (`unit/`) | 29 | 725 | 725 | 725/725, ~39 s |
 
+**Production** (`e69425f`, Vercel `dpl_2J9Asnb3kofhqt3RyPRYMRRvCWS9`, functions in `iad1`, database in `ap-northeast-2`):
+
+| `/api/classify` request | Status | `Server-Timing` |
+|---|---|---|
+| signed in, a note no keyword rule matches (the owner's DevTools, one request) | 200 | `auth;dur=0.0;desc="cached", quota;dur=614.5, ai;dur=134.3, total;dur=750.2` |
+| guest `POST {}` (this machine, three requests) | 400 | `total;dur=1.1`, `0.5`, `0.4` |
+
 ## Phase 73 (signed-in callers limited per account) - delta against Phase 72
 
 Only `api/`, `unit/`, `tests/`, `supabase/` and docs changed; no `src/` file did, so the client bundle is unchanged (not rebuilt).
