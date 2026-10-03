@@ -1083,15 +1083,15 @@ Approved explicitly by the user, planned and approved before any code was writte
 
 ## Phase 74 - The AI proxies time their steps: T415-T420 (2026-10-03)
 
-ADR `0050`, answering ADR `0049`'s open measurement. Branch `phase-74-server-timing`, cut from `main` at `11d3844`; draft PR. No migration, no client change.
+ADR `0050`, answering ADR `0049`'s open measurement. Branch `phase-74-server-timing`, cut from `main` at `11d3844`; commit `7651728` (docs `193f0df`); draft PR. No migration, no client change.
 
 | # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
 |---|---|---|---|---|---|---|---|---|---|---|
-| T415 | ADR `0050`: the steps, what the header exposes, why not logs | `docs/audit/decisions/` | Low | Low | 0.3h | done | - | - | - | - |
-| T416 | `timed()` and `serverTimingHeader()`; `POST` wraps `handle()` and sets `Server-Timing` on every response; `auth` (or `cached`), `quota`, `ai`, `total` | `api/classify.ts`, `api/insights.ts` | Med | Low | 0.4h | done | T415 | - | both copies identical (`diff`) | - |
-| T417 | Unit +18 in `proxy-contract.test.ts` with delayed stubs; seven mutations; five runs in a row | `unit/` | Med | Low | 0.4h | done | T416 | - | 115/115 five times; every mutation caught | unit 707 -> 725 |
+| T415 | ADR `0050`: the steps, what the header exposes, why not logs | `docs/audit/decisions/` | Low | Low | 0.3h | done | - | `193f0df` | - | - |
+| T416 | `timed()` and `serverTimingHeader()`; `POST` wraps `handle()` and sets `Server-Timing` on every response; `auth` (or `cached`), `quota`, `ai`, `total` | `api/classify.ts`, `api/insights.ts` | Med | Low | 0.4h | done | T415 | `7651728` | both copies identical (`diff`) | - |
+| T417 | Unit +18 in `proxy-contract.test.ts` with delayed stubs; seven mutations; five runs in a row | `unit/` | Med | Low | 0.4h | done | T416 | `7651728` | 115/115 five times; every mutation caught | unit 707 -> 725 |
 | T418 | Gate: lint, unit, Playwright in full | - | Low | Low | 0.2h | done | T417 | - | lint clean; unit 725/725; Playwright 431/432 (a Firefox `page.goto` timeout on the dev server; 27/27 on repeat) | - |
-| T419 | `CLAUDE.md`, ADR `0049`'s pointer, this ledger, the refactor log, baseline metrics | `docs/`, `CLAUDE.md` | Low | Low | 0.2h | done | T418 | - | - | - |
+| T419 | `CLAUDE.md`, ADR `0049`'s pointer, this ledger, the refactor log, baseline metrics | `docs/`, `CLAUDE.md` | Low | Low | 0.2h | done | T418 | `193f0df` | - | - |
 | T420 | After the merge: read the header on production, guest and signed in, and record the quota's cost | production | Low | Low | 0.2h | todo | the merge | - | - | - |
 
 **Notes on execution:**
