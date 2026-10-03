@@ -1,6 +1,6 @@
 # 0024 — Real sessions, sign-out hygiene, directed adjustments and a ledger that explains every balance
 
-**Status:** Accepted. **Amends** ADR `0023` (the ledger RPCs accept a signed ADJUSTMENT amount; `import_transactions` gains a per-row debt), ADR `0019` (the CSV gains a Debt column), and ADR `0008`/`0010` (an `AccountModal` joins the shell-level lazy modals; the Security tab leaves the tab bar). **Closes** the post-Phase-49 review's F5, F7 and F8.
+**Status:** Accepted. **Amends** ADR `0023` (the ledger RPCs accept a signed ADJUSTMENT amount; `import_transactions` gains a per-row debt), ADR `0019` (the CSV gains a Debt column), and ADR `0008`/`0010` (an `AccountModal` joins the shell-level lazy modals; the Security tab leaves the tab bar). **Closes** the post-Phase-49 review's F5, F7 and F8. **Amended by** ADR `0048` (2026-10-03): the 3 production rows below are repaired, by intent rather than by the script here, which would have over-corrected one wallet by ฿920.00.
 **Date:** 2026-09-28
 
 ## Context
@@ -80,6 +80,8 @@ commit;
 ```
 
 Row ids are deliberately not recorded here; the predicate in step 1 finds them.
+
+**Repaired on 2026-10-03 (ADR `0048`).** The second of the two rows on one wallet was the owner re-correcting the first by hand, the case this section warns about, so it was soft-deleted instead of flipped; the other two were flipped. Step 1 now finds 0 rows.
 
 ## Decision: sessions come from `auth.sessions`, revocation from the official API
 

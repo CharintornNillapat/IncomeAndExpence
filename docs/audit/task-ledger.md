@@ -1081,6 +1081,25 @@ Approved explicitly by the user, planned and approved before any code was writte
 - **One negative control was redone** because the first attempt produced malformed TypeScript that the dev server still served — the tests failed, but possibly for the wrong reason.
 - **No flakes.** Phase 44's `wallets.spec.ts` webkit flake has now not reproduced across three consecutive phases; still watched rather than closed.
 
+## Phase 72 - The three pre-0024 ADJUSTMENT rows, repaired: T402-T406 (2026-10-03)
+
+ADR `0048`, amending ADR `0024`. Data only, on the live project (`rmpnzlcufeioxmgoocpt`), on the owner's word after a read-only report; no code, migration or test changes. Branch `phase-72-adjustment-repair`, cut from `main` at `18a883f`; docs `8e687de`.
+
+| # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
+|---|---|---|---|---|---|---|---|---|---|---|
+| T402 | Read-only inspection: ADR `0024`'s step-1 predicate, every row on the two wallets, constraints and triggers on `transactions`/`wallets`, the migration history | live DB (read) | Med | Low | 0.4h | done | - | - | 3 rows, all on soft-deleted wallets; "main"'s rows reproduce its ฿5,011.77; no CHECK on `amount`, no triggers | - |
+| T403 | Decide the repair by intent: flip 2, soft-delete the re-correction, move the wallets −1,840.00 and −0.06 | `docs/audit/decisions/` | Med | Low | 0.3h | done | T402 | - | owner chose option 1 of 3 | - |
+| T404 | Dry run inside `BEGIN ... ROLLBACK`, ending in an unconditional raise | live DB | High | Low | 0.1h | done | T403 | - | counts 1, 1, 2, 1; "main" ledger = stored = ฿3,171.77; "Sub" ฿4,728.93 | - |
+| T405 | Apply with the same assertions as a guard, `COMMIT`, read back | live DB | High | Med | 0.1h | done | T404 | - | committed 14:01:03 UTC; step-1 predicate finds 0 rows; live wallets unchanged | "main" ฿5,011.77 -> ฿3,171.77, "Sub" ฿4,728.99 -> ฿4,728.93 (both deleted wallets) |
+| T406 | ADR `0048`, ADR `0024`'s status and section, `CLAUDE.md`, this ledger, the refactor log | `docs/`, `CLAUDE.md` | Low | Low | 0.4h | done | T405 | `8e687de` | - | - |
+
+**Notes on execution:**
+- **ADR `0024`'s script was not run as written.** "main"'s two rows (−460 then −920, 23 s apart) both aimed at ฿3,171.77; the second was the owner re-correcting the first. Flipping both lands on ฿2,251.77.
+- **No figure on screen changed.** Both wallets were already soft-deleted, so net worth leaves them out, and ADJUSTMENT is never spending or income. What changed on screen is the three rows' sign in the Transactions list.
+- **Every write was guarded on the values read** (`balance = 5011.77`, `amount = 920`, ...), so a row or wallet that moved between the report and the run would have changed nothing.
+- **Still open:** "Sub" `058d890e`'s rows sum to ฿6,972.72 against a stored ฿4,728.93 (a ฿2,243.79 gap, unchanged by this phase, close to its own "+$2243.82" row of 2026-08-31). Deleted wallet, no figure reads it; recorded in ADR `0048`, not repaired.
+- **No baseline-metrics entry:** nothing in the build or the suites changed.
+
 ## Phase 71 - The page behind a dialog is inert: T396-T401 (2026-10-03)
 
 ADR `0047`, closing ADR `0043`'s open item. Branch `phase-71-modal-inert-bg`, cut from `main` at `d3e624b`; commit `f0ff403` (docs `65a26a1`, antislop pass `b2832a7`), merged into `main` as `3b9abec` (PR #21). PR runs `37124844842` and `37126194733` and push run `37126532803` on `3b9abec` passed: the Node globals guard, both type-checks, unit 672/672 in 29 files, and 142/142 on each of chromium, firefox and webkit. Vercel `dpl_5VQ4CZchLxdFrkPFpfM4cgmDjSRU` is READY in production and serves `index-C0jaDWkz.js` at 189,481 B, the local build: 55 of 59 files identical, the two icons and `robots.txt` line endings only, `sw.js` only those icons' revisions. The request was `inert` (or `aria-hidden`) on `#root`; `Modal` renders inside `#root`, so that would disable the open dialog too, and the dialog's siblings are marked instead (ADR `0047`).
