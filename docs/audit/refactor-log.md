@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 72 - The three pre-0024 ADJUSTMENT rows, repaired: T402-T406 (2026-10-03, data only, applied 14:01:03 UTC)
+## Phase 72 - The three pre-0024 ADJUSTMENT rows, repaired: T402-T406 (2026-10-03, data only, applied 14:01:03 UTC, docs `8e687de`)
 
 ADR `0048`, amending ADR `0024`. ADR `0024` fixed the balance editor that credited every downward adjustment, and left three production rows to the owner with a repair query.
 

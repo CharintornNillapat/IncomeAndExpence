@@ -1083,7 +1083,7 @@ Approved explicitly by the user, planned and approved before any code was writte
 
 ## Phase 72 - The three pre-0024 ADJUSTMENT rows, repaired: T402-T406 (2026-10-03)
 
-ADR `0048`, amending ADR `0024`. Data only, on the live project (`rmpnzlcufeioxmgoocpt`), on the owner's word after a read-only report; no code, migration or test changes. Branch `phase-72-adjustment-repair`, cut from `main` at `18a883f`.
+ADR `0048`, amending ADR `0024`. Data only, on the live project (`rmpnzlcufeioxmgoocpt`), on the owner's word after a read-only report; no code, migration or test changes. Branch `phase-72-adjustment-repair`, cut from `main` at `18a883f`; docs `8e687de`.
 
 | # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
 |---|---|---|---|---|---|---|---|---|---|---|
@@ -1091,7 +1091,7 @@ ADR `0048`, amending ADR `0024`. Data only, on the live project (`rmpnzlcufeioxm
 | T403 | Decide the repair by intent: flip 2, soft-delete the re-correction, move the wallets −1,840.00 and −0.06 | `docs/audit/decisions/` | Med | Low | 0.3h | done | T402 | - | owner chose option 1 of 3 | - |
 | T404 | Dry run inside `BEGIN ... ROLLBACK`, ending in an unconditional raise | live DB | High | Low | 0.1h | done | T403 | - | counts 1, 1, 2, 1; "main" ledger = stored = ฿3,171.77; "Sub" ฿4,728.93 | - |
 | T405 | Apply with the same assertions as a guard, `COMMIT`, read back | live DB | High | Med | 0.1h | done | T404 | - | committed 14:01:03 UTC; step-1 predicate finds 0 rows; live wallets unchanged | "main" ฿5,011.77 -> ฿3,171.77, "Sub" ฿4,728.99 -> ฿4,728.93 (both deleted wallets) |
-| T406 | ADR `0048`, ADR `0024`'s status and section, `CLAUDE.md`, this ledger, the refactor log | `docs/`, `CLAUDE.md` | Low | Low | 0.4h | done | T405 | - | - | - |
+| T406 | ADR `0048`, ADR `0024`'s status and section, `CLAUDE.md`, this ledger, the refactor log | `docs/`, `CLAUDE.md` | Low | Low | 0.4h | done | T405 | `8e687de` | - | - |
 
 **Notes on execution:**
 - **ADR `0024`'s script was not run as written.** "main"'s two rows (−460 then −920, 23 s apart) both aimed at ฿3,171.77; the second was the owner re-correcting the first. Flipping both lands on ฿2,251.77.
