@@ -1114,8 +1114,9 @@ Only `api/`, `unit/`, `tests/`, `supabase/` and docs changed; no `src/` file did
 | guest `POST {}`, requests 1 to 30 | 400 | 0.414 s |
 | guest `POST {}`, requests 31 and 32 | 429 (edge) | 0.137 s |
 | `POST {}` with a refused token | 401 | 1.18 s (one request, cold) |
+| signed in, a note no keyword rule matches (the owner's browser, DevTools) | 200 | 697 ms, 886 ms (two requests; a full classification, TypeSafe included) |
 
-`consume_ai_quota()` in Postgres: about 0.13 ms a call (121 calls, 15.5 ms). The round trip it adds from the function to `ap-northeast-2` is not measured: the runtime logs were empty.
+`consume_ai_quota()` in Postgres: about 0.13 ms a call in the probe (121 calls, 15.5 ms); 8.4 ms mean, 31 ms at most, over the first 5 Data API calls on production. The signed-in rows are not comparable with the guest rows: those stop at 400 before TypeSafe. The round trip the count adds from the function to `ap-northeast-2` is not measured on its own.
 
 ## Phase 71 (the page behind a dialog is inert) - delta against Phase 70
 
