@@ -1096,7 +1096,7 @@ ADR `0047`, closing ADR `0043`'s open item. Branch `phase-71-modal-inert-bg`, cu
 
 **Notes on execution:**
 - **Not `#root`.** Every dialog renders inside it (ADR `0042`: no portal), and `inert`/`aria-hidden` cover the whole subtree. As a mutation it fails 19 of 25 unit tests.
-- **The return-focus order was a real trap.** React runs audit 008's return-focus cleanup before the stack cleanup; with `inert` still on, `focus()` on the opener does nothing in a browser. jsdom does not enforce `inert`, so the new tests patch `focus()` to refuse inert elements; without that, the trap would pass unnoticed.
+- **The return-focus cleanup had to change.** React runs audit 008's return-focus cleanup before the stack cleanup; with `inert` still on, `focus()` on the opener does nothing in a browser. jsdom does not enforce `inert`, so the new tests patch `focus()` to refuse inert elements; without that, the trap would pass unnoticed.
 - **The WebKit timeouts are this machine's, not this change:** two full runs lost one WebKit click each to "waiting for ... stable", before any dialog opened, and two WebKit runs with `main`'s `Modal.tsx` lost one each the same way.
 - **No `src/` or `tests/` file was edited during a Playwright run**; the swaps to `main`'s `Modal.tsx` were between runs and restored after (`cmp`).
 

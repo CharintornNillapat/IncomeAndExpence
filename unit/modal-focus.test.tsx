@@ -304,8 +304,8 @@ describe('Modal over another Modal', () => {
 
 // Phase 71 (ADR 0047): while a dialog is open everything outside it is inert,
 // so a screen reader's virtual cursor cannot leave it. jsdom stores the
-// attribute but does not apply it, so focus() is made to refuse an inert
-// element here, as a browser does: that is what makes the order of the
+// attribute but does not apply it, so these tests make focus() refuse an
+// inert element, as a browser does: that is what makes the order of the
 // cleanup (release the background, then give focus back) testable.
 describe('Modal background is inert while a dialog is open', () => {
   const realFocus = HTMLElement.prototype.focus;

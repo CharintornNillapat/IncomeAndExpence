@@ -9,7 +9,7 @@
 ## Context
 
 - **What a screen reader could do.** ADR `0043` keeps Tab inside an open dialog, but a screen reader's virtual cursor does not move by Tab. With `aria-modal="true"` alone, some screen reader and browser pairs still let it read and activate the page behind the scrim: the header, the nav, the view under the dialog.
-- **`inert` is the platform's answer.** An inert element and everything under it cannot take focus or pointer input, and is left out of the accessibility tree. It is supported in every engine the suite runs (Chromium, Firefox, WebKit).
+- **`inert` closes that gap.** An inert element and everything under it cannot take focus or pointer input, and is left out of the accessibility tree. It is supported in every engine the suite runs (Chromium, Firefox, WebKit).
 - **The request was to put `inert` (or `aria-hidden`) on `#root`. That cannot work here.**
   - `Modal` is not portalled (ADR `0042`), so every dialog renders inside `#root`.
   - Both `inert` and `aria-hidden` apply to the whole subtree, and a descendant cannot opt back out. Marking `#root` disables the open dialog along with the page.
