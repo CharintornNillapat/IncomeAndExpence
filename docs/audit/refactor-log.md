@@ -4,6 +4,27 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
+## Phase 74 - The AI proxies time their steps: T415-T420 (2026-10-03, draft PR)
+
+ADR `0050`. ADR `0049` could not separate the count's cost from TypeSafe's in a signed-in request's time, and the runtime logs were empty.
+
+**Changed**
+- **Both proxies send `Server-Timing` on every response:** `auth` (or `dur=0.0;desc="cached"` for a token verified in the last minute), `quota`, `ai` (TypeSafe until its headers) and `total`, in milliseconds. A step that did not run is absent.
+- **`POST` wraps `handle()`:** it times the handler and sets the header on whatever comes back. `timed()` records in a `finally`, so a step that throws is still timed. `checkCaller` takes the request's `Timings`.
+- **Tests:** unit +18 (`proxy-contract.test.ts`, 97 -> 115; 707 -> 725). E2E unchanged.
+- **Docs:** ADR `0050`; a pointer in ADR `0049`; `CLAUDE.md` (the proxy notes, a Do NOT line, counts); the ledger; this log; baseline metrics.
+
+**Found**
+- **The header is public,** so its descriptions are fixed words: only `cached` exists.
+
+**Still open**
+- **T420:** read the header on production after the merge and record the count's cost.
+
+**Gate:**
+- Lint clean. Unit 725/725 in 29 files; the proxy file 115/115 five runs in a row.
+- **Mutations** (`api/classify.ts`): the header not set 9 failed; `ai` not timed 3; a cached token not recorded 1; `quota` timed for guests 2; no `finally` 1; `total` started after the handler 1; the count timed as `auth` 5.
+- **E2E:** 431/432 in 7.4 m; the one failure was Firefox timing out loading the dev server's page (`page.goto`, 30 s) in `jev-classify.spec.ts:209`'s setup, before the test body ran and in a spec that never reaches the proxies; that spec then passed 27/27 on Firefox (`--repeat-each=3`).
+
 ## Phase 73 - Signed-in callers limited per account: T407-T414 (2026-10-03, commit `9d85241`, docs `8815063`, merge `ec9cabb`; migration applied in the SQL editor)
 
 ADR `0049`. The firewall's one rule (ADR `0046`) limits guests; a signed-in caller sends an `Authorization` header, which that rule never matches, so one account could spend TypeSafe credits without bound.
