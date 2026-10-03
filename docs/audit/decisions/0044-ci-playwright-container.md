@@ -1,6 +1,6 @@
 # 0044: The browser jobs run in Playwright's container image, so CI installs no OS packages
 
-**Status:** Accepted. Implemented on branch `phase-68-ci-apt-optimization` (commit `3b8a180`, draft PR #18); PR run `37087564638` passed on four attempts. Not merged yet.
+**Status:** Accepted and released. Commit `3b8a180` (docs `147753d`), merged into `main` as `33eebde` (PR #18). PR run `37087564638` passed on four attempts, then `37089300857`, then push run `37091502761` on `main`. Vercel `dpl_GDc711VKqjfDjxXq2u8mgXahNaFQ` is READY in production and serves the same entry as before, `index-BFWd6EeO.js` at 188,651 B: no app file changed.
 - **Amends** Phase 55's CI setup (T199 and T200, no ADR of its own): the browser cache keyed by the lockfile and the `install-deps` step on a cache hit are gone.
 - **Keeps** the `checks` job, the one-job-per-browser matrix with `fail-fast: false`, 2 workers with retries, the 30 minute limit, `concurrency` and `paths-ignore` (T199, T201, T202).
 
@@ -29,6 +29,7 @@
 ## Verification
 
 - **PR run `37087564638`, four attempts, all green:** unit 615/615 and 141/141 on each of chromium, firefox and webkit every time, none flaky. That covers the second webServer (port 3100, `--mode pwa-dev`, its service worker and `dev-dist/`) as uid 1001.
+- **After the merge:** Push run `37091502761` on `33eebde` passed: unit 615/615, and 141/141 on each of chromium, firefox and webkit in the container (jobs 199 / 234 / 248 s, setup 40 to 54 s, image pull 26 to 42 s, the whole run 303 s). Over all 18 container jobs (the four attempts, `37089300857` and the push run) setup took 40 to 54 s and the image pull 24 to 42 s.
 - **The version check** run locally both ways: equal versions pass; `1.64.0` against the installed 1.63.0 exits 1 with the message.
 - **Timing** (scratchpad `cijobs.py`: setup is job start to the test step; tests is the test step):
 

@@ -1107,6 +1107,7 @@ No app change, so no bundle delta. Measured with scratchpad `cijobs.py` from the
 | Before: the 40 runs from 2026-09-28 to 2026-10-02 | 117 | 43 s / 1,171 s | 156 s | 204 s / 1,328 s |
 | Before: the same 141-test suite (`37027020930`, `37074761332`, `37075229294`) | 9 | 39 s / 663 s | 172 s | 219 s / 871 s |
 | After: `37087564638`, attempts 1 to 4 | 12 | 44 s / **52 s** | 176 s | 222 s / **265 s** |
+| After: `37089300857` (docs push) and `37091502761` (`main`, `33eebde`) | 6 | 43.5 s / 54 s | 176.5 s | 226.5 s / 248 s |
 
 | Browser, after (4 attempts) | job | tests | same suite before, tests |
 |---|---|---|---|
@@ -1114,7 +1115,7 @@ No app change, so no bundle delta. Measured with scratchpad `cijobs.py` from the
 | firefox | 215-239 s | 166-191 s | 172-193 s |
 | webkit | 211-265 s | 155-214 s | 169-205 s |
 
-- **Inside setup:** the image pull ("Initialize containers") 24 to 39 s; `npm ci` 6 to 13 s; checkout and `setup-node` 1 to 3 s.
+- **Inside setup:** the image pull ("Initialize containers") 24 to 39 s over the four attempts, 24 to 42 s over all 18 jobs; `npm ci` 6 to 13 s; checkout and `setup-node` 1 to 3 s.
 - **Before, `install-deps` alone:** median 23 s over 117 steps, with 336, 647 and 1,155 s outliers.
 - **Whole runs** (first job start to last job end): 323 / 308 / 324 / 271 s, against 284 and 326 s (normal days, same suite) and 924 s (PR #16, slow mirror).
 

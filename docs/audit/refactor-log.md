@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 68 - CI in Playwright's container image: T381-T385 (2026-10-03, commit `3b8a180`, draft PR #18, not merged)
+## Phase 68 - CI in Playwright's container image: T381-T385 (2026-10-03, commit `3b8a180`, docs `147753d`, merge `33eebde`)
 
 ADR `0044`. The browser jobs installed their OS packages from the Ubuntu mirror on every run, which took a median 23 s and, three times in two days, 5.6 to 19.3 minutes. They now run in Playwright's own image, which already has them.
 
@@ -34,6 +34,12 @@ ADR `0044`. The browser jobs installed their OS packages from the Ubuntu mirror 
   - job: median 222 s, max 265 s; before, max 1,328 s (117 jobs) and 871 s (same suite);
   - whole runs: 323, 308, 324 and 271 s, against 284 and 326 s for normal days of the same suite and 924 s for PR #16's run on the slow mirror.
 - **Negative control:** the version check, run locally with `1.64.0` against the installed 1.63.0, exits 1 with the message; with `1.63.0` it passes.
+
+**Release:**
+- PR #18 marked ready and merged into `main` as `33eebde` with a merge commit. The docs push ran the PR workflow once more (`37089300857`), green, because a PR run filters on the whole PR diff, which includes the workflow.
+- Push run `37091502761` on `33eebde` passed: unit 615/615, and 141/141 on each of chromium, firefox and webkit in the container (jobs 199 / 234 / 248 s, setup 40 to 54 s, image pull 26 to 42 s, the whole run 303 s).
+- Vercel `dpl_GDc711VKqjfDjxXq2u8mgXahNaFQ` is READY in production and serves the same entry as before, `index-BFWd6EeO.js` at 188,651 B: no app file changed.
+- **All 18 container jobs:** setup 40 to 54 s, image pull 24 to 42 s, none failed or flaky.
 
 ## Phase 67 - Modal focus trap: T371-T380 (2026-10-02, commit `5234613`, merge `d2f735e`; test fix `7f0c738`, merge `3dd9068`)
 
