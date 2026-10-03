@@ -1081,6 +1081,23 @@ Approved explicitly by the user, planned and approved before any code was writte
 - **One negative control was redone** because the first attempt produced malformed TypeScript that the dev server still served — the tests failed, but possibly for the wrong reason.
 - **No flakes.** Phase 44's `wallets.spec.ts` webkit flake has now not reproduced across three consecutive phases; still watched rather than closed.
 
+## Phase 68 - CI in Playwright's container image: T381-T385 (2026-10-03)
+
+ADR `0044`. Branch `phase-68-ci-apt-optimization`, cut from `main` at `1ce499f`; the workflow change is `3b8a180`, draft PR #18. PR run `37087564638` passed on four attempts. Not merged. Removes the apt step whose slow mirror took up to 19 minutes, the backlog item chosen after Phase 67.
+
+| # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
+|---|---|---|---|---|---|---|---|---|---|---|
+| T381 | Baseline: setup, test step and job time for the last 40 runs (117 E2E jobs), and the slow `install-deps` logs | - | Med | Low | 0.3h | done | - | - | setup median 43 s, max 1,171 s; install-deps median 23 s, 3 runs at 5.6 / 10.8 / 19.3 min | - |
+| T382 | E2E jobs in `mcr.microsoft.com/playwright:v1.63.0-noble` as `--user 1001`; the browser cache and both install steps removed | `.github/workflows/playwright.yml` | High | Med | 0.3h | done | T381 | `3b8a180` | 141/141 per browser on 4 attempts, none flaky, the port 3100 server included | setup max 1,171 s -> 52 s |
+| T383 | The image version once, as `matrix.playwright`; a step fails with both versions named when the lockfile installs another | same | Med | Low | 0.2h | done | T382 | `3b8a180` | locally: 1.63.0 passes, 1.64.0 exits 1 with the message | - |
+| T384 | Measure: 4 attempts of PR run `37087564638` against the 40-run and the same-suite baselines | - | Med | Low | 0.3h | done | T382 | - | setup 40-52 s; tests unchanged against the 141-test suite | job median 219 -> 222 s, max 871 -> 265 s |
+| T385 | ADR `0044`, `CLAUDE.md` (CI, the two-edit Playwright update, a Do NOT line), refactor log, this ledger, baseline metrics | docs | Low | Low | 0.4h | done | T384 | - | - | - |
+
+**Notes on execution:**
+- **No `src/` or `tests/` change.** The four attempts are re-runs of one commit, so they measure the runner and the image, not the code.
+- **The test step only looked slower.** Against all 40 runs its median rose 156 -> 176 s, but the suite grew from 119 to 141 tests in that window. Against the three runs of the same 141-test suite it is unchanged (172 -> 176 s).
+- **A typical run is not faster:** setup's median is about 5 s longer, since the image pull (24 to 39 s) replaces a cache restore and a 23 s apt run. The gain is that the worst setup in 12 jobs was 52 s.
+
 ## Phase 67 - Modal focus trap: T371-T380 (2026-10-02)
 
 ADR `0043`. Branch `phase-67-modal-focus-trap`, cut from `main` at `6354c08`; the phase is `5234613`, merged as `d2f735e` (PR #16). PR run `37027020930` passed; push run `37070456315` failed on a test time zone flaw (T380), fixed by PR #17 (`7f0c738`, merged as `3dd9068`), whose PR run `37074761332` and push run `37075229294` passed. Vercel `dpl_9uk8JX9RkeU4fgUF9HT5as6PA54T` is READY and serves the local build byte for byte. Closes spec section 10 item 12's keyboard half and records the section 10 acceptance check, with antislop applied during the work.
