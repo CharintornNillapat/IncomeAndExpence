@@ -58,6 +58,19 @@ jobs:
       fail-fast: false
       matrix:
         project: [ chromium, firefox, webkit ]
+        # The one place the container's Playwright version is written. It must
+        # equal the version package-lock.json installs: the image carries the
+        # browsers for that release only (checked below).
+        playwright: [ '1.63.0' ]
+    # Playwright's image ships the three browsers and every OS package they
+    # need, so no job runs apt (ADR 0044): install-deps took a median 23 s but
+    # up to 19 min on a slow Ubuntu mirror. --user 1001 is the runner's own
+    # user, as Playwright's CI guide does: the checkout stays writable and
+    # $HOME belongs to whoever runs Firefox, which refuses a $HOME owned by
+    # someone else.
+    container:
+      image: mcr.microsoft.com/playwright:v${{ matrix.playwright }}-noble
+      options: --user 1001
 
     steps:
       - name: Checkout repository
@@ -72,23 +85,15 @@ jobs:
       - name: Install project dependencies
         run: npm ci
 
-      # The browser binaries are keyed by the lockfile, which pins the
-      # Playwright version. The OS packages they need are not cached, so a hit
-      # still runs install-deps (Phase 55, T200).
-      - name: Cache Playwright browser
-        id: browser-cache
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/ms-playwright
-          key: ${{ runner.os }}-playwright-${{ matrix.project }}-${{ hashFiles('package-lock.json') }}
-
-      - name: Install Playwright browser with OS dependencies
-        if: steps.browser-cache.outputs.cache-hit != 'true'
-        run: npx playwright install --with-deps ${{ matrix.project }}
-
-      - name: Install OS dependencies for the cached browser
-        if: steps.browser-cache.outputs.cache-hit == 'true'
-        run: npx playwright install-deps ${{ matrix.project }}
+      # A lockfile bump without a new image would fail every test with a
+      # missing browser executable; this names the cause instead.
+      - name: Check the image matches the installed Playwright
+        run: |
+          installed=$(node -p "require('@playwright/test/package.json').version")
+          if [ "$installed" != "${{ matrix.playwright }}" ]; then
+            echo "::error::package-lock.json installs Playwright $installed, but the container is v${{ matrix.playwright }}. Change matrix.playwright in this file to $installed."
+            exit 1
+          fi
 
       - name: Run Playwright E2E tests
         run: npx playwright test --project=${{ matrix.project }}

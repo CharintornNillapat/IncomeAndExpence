@@ -449,7 +449,10 @@ Two suites, with a hard boundary between them — see "Unit tests" below for why
 - **No fixed waits**: never use `page.waitForTimeout()` for debounces or async writes; assert on the resulting UI state so Playwright retries. Never guard a step with `if (await locator.isVisible())` — it does not retry and silently skips the assertion.
 - **Timeouts**: `playwright.config.ts` sets generous expect/action timeouts for Firefox, which is slowest to paint a lazy view chunk under the Vite dev server. These bound failures only and do not slow passing runs. `colorScheme` is pinned to `light` so the `system` theme resolves deterministically.
 - **Execution**: `npm test`, or `npx playwright test tests/<file>.spec.ts --project=chromium`.
-- **CI Mode** (Phase 55-CI): a `checks` job (lint, unit) gates one E2E job per browser (`--project=<browser>`, matrix, `fail-fast: false`), each with 2 workers and retries. Browser binaries are cached by lockfile hash; a hit still runs `install-deps`. Pushes and PRs that touch only `docs/`, `anti-slop/` or Markdown skip the workflow, and a newer push cancels an older run on the same ref.
+- **CI Mode** (Phase 55-CI): a `checks` job (lint, unit) gates one E2E job per browser (`--project=<browser>`, matrix, `fail-fast: false`), each with 2 workers and retries. Pushes and PRs that touch only `docs/`, `anti-slop/` or Markdown skip the workflow, and a newer push cancels an older run on the same ref.
+  - **The browser jobs run in Playwright's container image** (Phase 68, ADR `0044`), `mcr.microsoft.com/playwright:v<version>-noble`, as `--user 1001`. The image carries the browsers and their OS packages, so no job runs apt: `install-deps` took a median 23 s but up to 19 min on a slow Ubuntu mirror.
+  - **Updating Playwright is two edits:** `package-lock.json` and `matrix.playwright` in `.github/workflows/playwright.yml`. A step before the tests fails with both versions named when they differ; the image has the browsers for its own release only.
+  - `--user 1001` is the runner's user: the checkout stays writable and Firefox gets a `$HOME` it owns. Do not switch to root without setting `HOME: /root`.
 
 ## Unit tests: what the browser cannot reach
 `npm run test:unit` runs Vitest over **`unit/`** — 615 tests in 28 files, ~39 s (ADR `0021`, extended by `0022`, `0023`, `0024`, `0026`, `0027`, `0028`, `0029`, `0030`, `0031`, `0032`, `0033`, `0034`, `0035`, `0036`, `0037`, `0038`, `0039`, `0040`, `0041`, `0042` and `0043`; the reconnect tests' debounce windows and the sign-out tests' 400 ms writer waits are most of the growth from ~3 s). It exists because four phases in a row closed with a coverage hole for the same structural reason, not because E2E coverage was thin.
@@ -515,6 +518,7 @@ Refer to `.env.example`:
 - Do NOT let `classifyDescription()` throw, and do NOT give the classifier a code path that can reject.
 - Do NOT accept Jev question wording (`instructions`/`criteria`/`model`/`state`/`questions`) from the client in `api/classify.ts`.
 - Do NOT add a `VITE_`-prefixed TypeSafe key, or call `api.typesafe.ai` from browser code — it is CORS-blocked regardless.
+- Do NOT bump `@playwright/test` without changing `matrix.playwright` in the workflow to the same version, and do NOT bring back `install-deps` or a browser cache in CI; the container carries both (ADR `0044`).
 - Do NOT put unit tests under `tests/`, and do NOT remove either collection pin (`include` in `vitest.config.ts`, `testMatch` in `playwright.config.ts`) — each runner's default glob collects the other's files. See ADR `0021`.
 - Do NOT move Vitest config onto `vite.config.ts`; a separate `vitest.config.ts` is what keeps the test toolchain structurally unable to reach the production build.
 - Do NOT export a symbol from `src/` solely to make it unit-testable — drive it through the public surface, as `speech-support.test.tsx` does with `detectSupport`.

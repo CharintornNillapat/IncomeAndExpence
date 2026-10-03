@@ -4,6 +4,37 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
+## Phase 68 - CI in Playwright's container image: T381-T385 (2026-10-03, commit `3b8a180`, draft PR #18, not merged)
+
+ADR `0044`. The browser jobs installed their OS packages from the Ubuntu mirror on every run, which took a median 23 s and, three times in two days, 5.6 to 19.3 minutes. They now run in Playwright's own image, which already has them.
+
+**Changed**
+- **The `e2e` job has a `container:`**, `mcr.microsoft.com/playwright:v1.63.0-noble`, run as `--user 1001` (the runner's user, as Playwright's CI guide does). The image carries the three browsers and their OS packages.
+- **Removed:** `Cache Playwright browser`, `Install Playwright browser with OS dependencies` and `Install OS dependencies for the cached browser`.
+- **The version is written once**, as `matrix.playwright: [ '1.63.0' ]`, and a new step fails with both versions named when `package-lock.json` installs a different `@playwright/test`.
+- **Unchanged:** the `checks` job, Node 22 through `setup-node` with its npm cache, the matrix with `fail-fast: false`, 2 workers and retries, the 30 minute limit, `concurrency`, `paths-ignore` and the report upload.
+- **Docs:** ADR `0044`; `CLAUDE.md` (the CI note, how to update Playwright, a Do NOT line); this log; the ledger; baseline metrics.
+
+**Resolved**
+- **The apt mirror spikes.** The worst setup in the 12 container jobs was 52 s; before, 3 of 117 jobs spent 5.6, 10.8 and 19.3 minutes in `install-deps`, and the worst job used 22 of its 30 minutes.
+
+**Found**
+- **The slow step was the mirror, not Playwright.** The 19.3 minute log (`36876112983`, webkit) shows `azure.archive.ubuntu.com` pausing 28 to 175 s between font and codec downloads.
+- **Firefox and `$HOME`.** Playwright's guide runs the container as `--user 1001`, not root. `$HOME` (`/github/home`) is then owned by the user running Firefox, so the `HOME: /root` workaround for root is not needed.
+- **Comparing against all 40 runs overstates the test step.** The suite grew from 119 to 141 tests across them; only the same-suite runs are a fair comparison.
+
+**Still open**
+- **The image pull's tail is unknown.** 12 pulls from `mcr.microsoft.com` took 24 to 39 s. If one ever runs long, it shows in "Initialize containers".
+
+**Gate:**
+- PR run `37087564638`, four attempts, all green: unit 615/615, Playwright 141/141 on each of chromium, firefox and webkit every time, none flaky.
+- **Timing** (scratchpad `cijobs.py`):
+  - setup (job start to the test step): 40 to 52 s, median 44 s; before, median 43 s and max 1,171 s over 117 jobs, max 663 s over the 9 jobs of the same suite;
+  - test step: median 176 s, against 172 s for the same suite;
+  - job: median 222 s, max 265 s; before, max 1,328 s (117 jobs) and 871 s (same suite);
+  - whole runs: 323, 308, 324 and 271 s, against 284 and 326 s for normal days of the same suite and 924 s for PR #16's run on the slow mirror.
+- **Negative control:** the version check, run locally with `1.64.0` against the installed 1.63.0, exits 1 with the message; with `1.63.0` it passes.
+
 ## Phase 67 - Modal focus trap: T371-T380 (2026-10-02, commit `5234613`, merge `d2f735e`; test fix `7f0c738`, merge `3dd9068`)
 
 ADR `0043`. Closes spec section 10 item 12's keyboard half: focus did not enter a dialog, and Tab walked the page behind the scrim. Antislop (core and `antislop-human`) applied during the work. Also writes the spec section 10 acceptance record.

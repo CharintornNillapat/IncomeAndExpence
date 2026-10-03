@@ -1098,6 +1098,26 @@ The entry's growth is the ledger action itself, which lives with the other ledge
 
 **Intermittent local failures:** 6 in 1,071 full-suite runs (3 full runs). All were timeouts: a Firefox `goto`, a Firefox context close, and four WebKit clicks waiting for "stable". No assertion failed. See audit 005 finding 3 for the control runs.
 
+## Phase 68 (CI in Playwright's container image) - CI timing against Phase 67
+
+No app change, so no bundle delta. Measured with scratchpad `cijobs.py` from the GitHub API. Setup is job start to the start of the test step; tests is the test step.
+
+| E2E jobs | n | setup median / max | tests median | job median / max |
+|---|---|---|---|---|
+| Before: the 40 runs from 2026-09-28 to 2026-10-02 | 117 | 43 s / 1,171 s | 156 s | 204 s / 1,328 s |
+| Before: the same 141-test suite (`37027020930`, `37074761332`, `37075229294`) | 9 | 39 s / 663 s | 172 s | 219 s / 871 s |
+| After: `37087564638`, attempts 1 to 4 | 12 | 44 s / **52 s** | 176 s | 222 s / **265 s** |
+
+| Browser, after (4 attempts) | job | tests | same suite before, tests |
+|---|---|---|---|
+| chromium | 177-195 s | 130-143 s | 127-145 s |
+| firefox | 215-239 s | 166-191 s | 172-193 s |
+| webkit | 211-265 s | 155-214 s | 169-205 s |
+
+- **Inside setup:** the image pull ("Initialize containers") 24 to 39 s; `npm ci` 6 to 13 s; checkout and `setup-node` 1 to 3 s.
+- **Before, `install-deps` alone:** median 23 s over 117 steps, with 336, 647 and 1,155 s outliers.
+- **Whole runs** (first job start to last job end): 323 / 308 / 324 / 271 s, against 284 and 326 s (normal days, same suite) and 924 s (PR #16, slow mirror).
+
 ## Phase 67 (Modal focus trap) - delta against Phase 66
 
 A local build of `main` (`6354c08`) and of the Phase 67 tree, both with the repo's `.env`, made in the repo one after the other. Gzip is level 9.
