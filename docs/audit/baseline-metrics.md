@@ -1098,6 +1098,15 @@ The entry's growth is the ledger action itself, which lives with the other ledge
 
 **Intermittent local failures:** 6 in 1,071 full-suite runs (3 full runs). All were timeouts: a Firefox `goto`, a Firefox context close, and four WebKit clicks waiting for "stable". No assertion failed. See audit 005 finding 3 for the control runs.
 
+## Phase 70 (the guest rate limit) - the AI proxies on production
+
+No code change, so no bundle, unit or E2E delta. Measured from this machine against `income-and-expence-neon.vercel.app` with `POST {}` (no TypeSafe call).
+
+| Guest requests to `/api/classify` | Before the rule (05:25 UTC) | After (10:03:55 UTC) |
+|---|---|---|
+| 40 sequential | 40 x 400 in 20 s | 30 x 400, then 10 x 429, in 17 s |
+| Time per response | - | 400 (the function): 0.36-1.1 s; 429 (the edge): 0.12-0.14 s |
+
 ## Phase 69 (Node globals guard) - against Phase 68
 
 No `src/` change, so no bundle delta.

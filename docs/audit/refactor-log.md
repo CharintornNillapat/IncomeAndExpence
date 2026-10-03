@@ -4,6 +4,43 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
+## Phase 70 - The guest rate limit on the AI proxies: T391-T395 (2026-10-03, docs only; the rule is in the Vercel dashboard)
+
+ADR `0046`, amending `0032`. Since Phase 58s a guest could call `/api/classify` and `/api/insights`, and so spend TypeSafe credits, without limit: the firewall rules ADR `0032` planned could not be created through the API. The owner created the guest rule in the dashboard, and it is verified here against production.
+
+**Changed**
+- **One firewall rule, live in production** (created and published by the owner): "AI proxy: guests 30/min per IP". Path `/api/classify` or `/api/insights`, no `authorization` header, fixed 60 s window, 30 per IP, then 429.
+- **ADR `0032`'s second rule (all callers, 120 a minute) is not created:** the Hobby plan allows one rate-limit rule, and the guest rule is the one that guards an open path.
+- **No code change.** The client already reads 429 as "no suggestion" (live typing) and as one backoff (CSV); only a 404 switches the classifier off.
+- **Docs:** ADR `0046`; ADR `0032`'s status; `CLAUDE.md` (the guest-limit note: one rule, no all-callers cap, how to check it); this log; the ledger (T246 closed); baseline metrics.
+
+**Resolved**
+- **T246** (Phase 58s): guests are limited to 30 requests a minute per IP across both endpoints.
+
+**Found**
+- **The API cannot reach this project's firewall at all.** GET, PUT and PATCH answer `404 Seawall Config not found`, by slug and by team id, even after the owner enabled the firewall and published a rule. PUT is documented to create a configuration, so it is not "none exists yet". The rule can be read and changed in the dashboard only, and checked from outside.
+- **A denied request never reaches the function:** the 429s came back in 0.12 to 0.14 s, against 0.36 to 1.1 s for the 400s the function produced, with `X-Vercel-Mitigated: deny`.
+- **One rule means one counter for both paths:** a guest's classify and insights requests share the 30.
+
+**Still open**
+- **A signed-in account has no firewall cap.** Sign-up is open and a valid token passes `checkCaller`; the dropped 120/min rule was the only bound. Options (ADR `0046`): the Pro plan, or a per-user count in the proxies.
+- **The insights card's 429 path was not seen on production** (no request from a fresh guest); it shares the offline renderer with every other failure.
+
+**Gate:**
+- **Before the rule** (05:25 UTC): 40 guest `POST {}` to `/api/classify` in 20 s, all 400.
+- **After** (10:03:55 to 10:04:12 UTC, scratchpad `burst70-b.log`), each request `POST {}` with no `Authorization` header:
+  - `/api/classify` x 40, sequential: **1 to 30 -> 400, 31 to 40 -> 429**;
+  - `/api/insights` x 1: **429** (the same window and counter);
+  - `/api/classify` with `Authorization: Basic x`: **401** (the rule does not apply; the proxy refuses the header);
+  - after 65 s: **400** (the window rolled over).
+- **The app while limited** (`runner/fallback70.mjs`, chromium 1280, fresh guest, this machine's window used up first): **13/13**:
+  - "Netflix subscription" -> `/api/classify` 429; no chip, no badge, category unchanged;
+  - "Spotify family plan" -> asks again, 429 (not latched);
+  - the entry saves;
+  - "coffee 45" -> "Auto-categorized: Food & Dining", ฿45, no classifier request;
+  - no page error; the only console errors are the two 429 resource loads.
+- **TypeSafe credits spent: none.**
+
 ## Phase 69 - Node globals guard for src/: T386-T390 (2026-10-03, commit `626a629`, docs `656195b`, merge `89b27a6`)
 
 ADR `0045`. `src/` runs in the browser, but `tsc` lets Node into it: `@types/papaparse` references Node's types, so `process.env` or `Buffer` in `src/` type-checks and throws at run time. A dependency-free script now refuses them as the first step of `npm run lint`.

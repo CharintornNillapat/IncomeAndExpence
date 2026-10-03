@@ -1081,6 +1081,24 @@ Approved explicitly by the user, planned and approved before any code was writte
 - **One negative control was redone** because the first attempt produced malformed TypeScript that the dev server still served — the tests failed, but possibly for the wrong reason.
 - **No flakes.** Phase 44's `wallets.spec.ts` webkit flake has now not reproduced across three consecutive phases; still watched rather than closed.
 
+## Phase 70 - The guest rate limit on the AI proxies: T391-T395 (2026-10-03)
+
+ADR `0046`, amending `0032`. Branch `phase-70-firewall-rate-limit`, cut from `main` at `cb7f063`. Docs only: the rule itself is in the Vercel dashboard, created and published by the owner. Closes T246 (Phase 58s), open since 2026-09-30.
+
+| # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
+|---|---|---|---|---|---|---|---|---|---|---|
+| T391 | Read and write the firewall through the API | - | High | Low | 0.2h | **blocked** | Vercel | - | GET, PUT and PATCH answer `404 Seawall Config not found` by slug and team id, before and after the owner's rule was published | - |
+| T392 | The guest rule, in the dashboard (owner): `/api/classify` or `/api/insights`, no `authorization` header, fixed 60 s, 30 per IP, 429. The 120/min all-callers rule dropped: Hobby allows one rate-limit rule | Vercel dashboard | High | Low | - | done (owner) | T391 | - | before: 40 guest requests, all 400 | guests: unlimited -> 30 a minute per IP |
+| T393 | Burst test against production, empty bodies (no TypeSafe cost) | - | High | Low | 0.3h | done | T392 | - | 1-30 -> 400, 31-40 -> 429; insights 429 (shared count); with a header 401; after 65 s 400 | 429 answered in 0.12-0.14 s at the edge |
+| T394 | The app on production while limited (`fallback70.mjs`) | - | High | Low | 0.4h | done | T393 | - | 13/13: a rule miss gets 429 and shows nothing; not latched; entry saves; "coffee 45" categorised with no request; no page error | - |
+| T395 | ADR `0046`, ADR `0032`'s status, `CLAUDE.md`, refactor log, this ledger, baseline metrics | docs | Low | Low | 0.4h | done | T394 | - | - | - |
+
+**Notes on execution:**
+- **T246 is closed by T392 and T393,** with one rule instead of two (ADR `0046`).
+- **Nothing spent TypeSafe credits.** Every burst request had an empty body, which the proxy refuses with 400 before calling TypeSafe; the two notes typed in the browser were answered by the firewall's 429.
+- **Not exercised live:** the insights card made no request for a fresh guest, so its 429 path on production was not seen; it resolves to the same offline summary as every other failure (ADR `0020`).
+- **Still open:** a signed-in account has no firewall cap (ADR `0046`, Consequences).
+
 ## Phase 69 - Node globals guard for src/: T386-T390 (2026-10-03)
 
 ADR `0045`. Branch `phase-69-node-globals-guard`, cut from `main` at `3eba3d4`; the phase is `626a629` (docs `656195b`), merged as `89b27a6` (PR #19). PR run `37093195340` and push run `37098175414` on `89b27a6` passed: the guard (`node-globals: 121 files in src, no Node globals.`), both type-checks, unit 666/666 in 29 files, and 141/141 on each of chromium, firefox and webkit. Vercel `dpl_3k2JGRYxSAtiJfQc63zrvPdWh6AB` is READY in production and serves the same entry, `index-BFWd6EeO.js` at 188,651 B: no app file changed. Closes the open item `CLAUDE.md` has carried since Phase 50: `tsc` cannot catch `process` or `Buffer` in `src/`, because `@types/papaparse` pulls Node's types into the root program.
@@ -1427,7 +1445,7 @@ Branch `phase-58s-security`, draft PR #5. It also carried `092e87c`, the Phase 5
 | # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
 |---|---|---|---|---|---|---|---|---|---|---|
 | T245 | `profiles` migration and its probe | `supabase/migrations/20260930_phase58s_profiles_hardening.sql`, `supabase/tests/20260930_phase58s.probe.sql` | High | Med | 1h | done | - | ca5d465 | probe OK in `BEGIN … ROLLBACK`; two negative controls failed as designed | - |
-| T246 | Vercel firewall rules | - | High | Low | 0.3h | **blocked** | the owner | - | the API answers `404 Seawall Config not found` to every create; the project has no firewall configuration yet | - |
+| T246 | Vercel firewall rules | - | High | Low | 0.3h | done in Phase 70 (T392, T393): the guest rule only, ADR `0046` | the owner | - | the API answers `404 Seawall Config not found` to every create; the project has no firewall configuration yet | - |
 | T247 | Apply the migration live | live DB | High | Med | 0.3h | done | T245 | - (applied 2026-09-30) | body md5 matches the file; Phase 58s and Phase 52 probes OK after | - |
 | T248 | `checkCaller` in both proxies | `api/classify.ts`, `api/insights.ts` | High | Med | 1h | done | - | 6a8e790 | 2 mutations caught (13 and 4 failures) | - |
 | T249 | `authorizationHeader()`; the clients send it; a 401 is `unavailable` without latching | `src/lib/supabase.ts`, `src/utils/jevClassifier.ts`, `src/utils/insightsClient.ts` | High | Low | 0.5h | done | T248 | 6a8e790 | 3 mutations caught | - |
