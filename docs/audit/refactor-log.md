@@ -4,6 +4,28 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
+## Phase 72 - The three pre-0024 ADJUSTMENT rows, repaired: T402-T406 (2026-10-03, data only, applied 14:01:03 UTC)
+
+ADR `0048`, amending ADR `0024`. ADR `0024` fixed the balance editor that credited every downward adjustment, and left three production rows to the owner with a repair query.
+
+**Changed (live project, one transaction)**
+- `2fd1fc6b-...` +460.00 -> −460.00 and `605a07b3-...` +0.03 -> −0.03 (flipped).
+- `d6ffc280-...` +920.00 soft-deleted.
+- Wallet "main" `ef7d8b6a` ฿5,011.77 -> ฿3,171.77 and "Sub" `058d890e` ฿4,728.99 -> ฿4,728.93; both were already soft-deleted.
+- **Docs:** ADR `0048`; ADR `0024`'s status and its "reported, not repaired" section; `CLAUDE.md`'s signed-ADJUSTMENT note; the ledger; this log.
+
+**Found**
+- **ADR `0024`'s script would have over-corrected "main" by ฿920.00.** Its rows reproduce the stored balance exactly, which gives the timeline: the owner set ฿3,171.77 (−460), the editor credited it to ฿4,091.77, the owner set ฿3,171.77 again 23 s later (−920) and was credited to ฿5,011.77, then deleted the wallet 8 s later.
+- **No figure depended on the rows:** both wallets were deleted (out of net worth), and ADJUSTMENT is not spending or income. Only the Transactions list's sign was wrong.
+- **`transactions` has no `balance_after` column, no CHECK on `amount` and no triggers;** the repair's own wallet updates were the only balance changes.
+
+**Still open**
+- **"Sub" `058d890e`'s ledger does not explain its balance:** ฿6,972.72 of live rows against ฿4,728.93 stored, a ฿2,243.79 gap from before this phase, near its own "+$2243.82" row of 2026-08-31. Deleted wallet; not repaired.
+
+**Gate:**
+- Dry run inside `BEGIN ... ROLLBACK` (an unconditional raise carrying the results): counts 1, 1, 2, 1; "main" ledger = stored = ฿3,171.77; "Sub" ฿4,728.93; PASS.
+- Applied with the same assertions as a rollback guard; read back: the three rows and two wallets as above, ADR `0024`'s step-1 predicate finds 0 rows, 3 negative ADJUSTMENT rows in the project, live wallets unchanged (Cash ฿19,400.00, Main ฿2,124.55, Sub ฿5,615.74).
+
 ## Phase 71 - The page behind a dialog is inert: T396-T401 (2026-10-03, commit `f0ff403`, docs `65a26a1` and `b2832a7`, merge `3b9abec`)
 
 ADR `0047`. ADR `0043` keeps Tab inside a dialog, but a screen reader's virtual cursor does not move by Tab, and `aria-modal` alone did not keep it in: on production, Chromium's accessibility tree still lists the header, the nav and the page behind an open Quick Add.
