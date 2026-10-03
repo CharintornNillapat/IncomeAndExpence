@@ -1,6 +1,6 @@
 # 0045: A script keeps Node globals out of src/, because tsc cannot
 
-**Status:** Accepted. Implemented on branch `phase-69-node-globals-guard`, draft PR #19. Not merged yet.
+**Status:** Accepted and released. Commit `626a629` (docs `656195b`), merged into `main` as `89b27a6` (PR #19). PR run `37093195340` and push run `37098175414` on `89b27a6` passed: the guard (`node-globals: 121 files in src, no Node globals.`), both type-checks, unit 666/666 in 29 files, and 141/141 on each of chromium, firefox and webkit. Vercel `dpl_3k2JGRYxSAtiJfQc63zrvPdWh6AB` is READY in production and serves the same entry, `index-BFWd6EeO.js` at 188,651 B: no app file changed.
 - **Closes** the open item recorded in `CLAUDE.md` since Phase 50: "That guard is not currently in force, so do not rely on `tsc` to catch `process`/`Buffer` in `src/`".
 - **Keeps** the root `tsconfig.json` as it is (no `"types": ["node"]`, no `src/`-only config) and adds no dependency.
 

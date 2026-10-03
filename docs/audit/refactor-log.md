@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 69 - Node globals guard for src/: T386-T390 (2026-10-03, draft PR #19, not merged)
+## Phase 69 - Node globals guard for src/: T386-T390 (2026-10-03, commit `626a629`, docs `656195b`, merge `89b27a6`)
 
 ADR `0045`. `src/` runs in the browser, but `tsc` lets Node into it: `@types/papaparse` references Node's types, so `process.env` or `Buffer` in `src/` type-checks and throws at run time. A dependency-free script now refuses them as the first step of `npm run lint`.
 
@@ -37,6 +37,11 @@ ADR `0045`. `src/` runs in the browser, but `tsc` lets Node into it: `@types/pap
 - **Coverage of the masking:** `process.cwd();` inserted before every line of every `src/` file, 19,944 times: all reported except the 1,771 inside block comments.
 - **Mutations** (each fails at least one test, then restored to 51/51): comment masking 3, string masking 4, template masking 2, regex masking 1, the property lookbehind 1, the object-key lookahead 1, built-in imports 6, ignores 4, the reason rule 1, the unused-ignore check 2, the next-line reach 2.
 - **One intermittent unit failure, not identified.** One of 18 full local runs ended 665/666; its output was not saved, so the test is not known. The next 17 full runs passed 666/666, and `node-globals-guard.test.ts` alone passed 20 of 20. Recorded as unexplained, not attributed to this phase; CI is the next independent run.
+
+**Release:**
+- PR #19 marked ready and merged into `main` as `89b27a6` with a merge commit.
+- PR run `37093195340` and push run `37098175414` on `89b27a6` passed: the guard (`node-globals: 121 files in src, no Node globals.`), both type-checks, unit 666/666 in 29 files, and 141/141 on each of chromium, firefox and webkit. The push run took 298 s (jobs 176 / 204 / 251 s, setup 43 to 46 s). Neither CI run's unit job failed, so the local intermittent failure did not recur there.
+- Vercel `dpl_3k2JGRYxSAtiJfQc63zrvPdWh6AB` is READY in production and serves the same entry, `index-BFWd6EeO.js` at 188,651 B: no app file changed.
 
 ## Phase 68 - CI in Playwright's container image: T381-T385 (2026-10-03, commit `3b8a180`, docs `147753d`, merge `33eebde`)
 

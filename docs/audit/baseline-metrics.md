@@ -1108,6 +1108,8 @@ No `src/` change, so no bundle delta.
 | The guard on `src/` | - | 121 files, 0 findings, ~0.16 s |
 | Vitest (`unit/`) | 615 tests, 28 files | 666 tests, 29 files, ~37 s |
 
+**CI** (push run `37098175414` on `89b27a6`): the guard, both `tsc` configs and unit 666/666 in the `checks` job; 141/141 per browser; the run 298 s, jobs 176 / 204 / 251 s, setup 43 to 46 s.
+
 ## Phase 68 (CI in Playwright's container image) - CI timing against Phase 67
 
 No app change, so no bundle delta. Measured with scratchpad `cijobs.py` from the GitHub API. Setup is job start to the start of the test step; tests is the test step.

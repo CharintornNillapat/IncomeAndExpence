@@ -1083,15 +1083,15 @@ Approved explicitly by the user, planned and approved before any code was writte
 
 ## Phase 69 - Node globals guard for src/: T386-T390 (2026-10-03)
 
-ADR `0045`. Branch `phase-69-node-globals-guard`, cut from `main` at `3eba3d4`; draft PR #19. Closes the open item `CLAUDE.md` has carried since Phase 50: `tsc` cannot catch `process` or `Buffer` in `src/`, because `@types/papaparse` pulls Node's types into the root program.
+ADR `0045`. Branch `phase-69-node-globals-guard`, cut from `main` at `3eba3d4`; the phase is `626a629` (docs `656195b`), merged as `89b27a6` (PR #19). PR run `37093195340` and push run `37098175414` on `89b27a6` passed: the guard (`node-globals: 121 files in src, no Node globals.`), both type-checks, unit 666/666 in 29 files, and 141/141 on each of chromium, firefox and webkit. Vercel `dpl_3k2JGRYxSAtiJfQc63zrvPdWh6AB` is READY in production and serves the same entry, `index-BFWd6EeO.js` at 188,651 B: no app file changed. Closes the open item `CLAUDE.md` has carried since Phase 50: `tsc` cannot catch `process` or `Buffer` in `src/`, because `@types/papaparse` pulls Node's types into the root program.
 
 | # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
 |---|---|---|---|---|---|---|---|---|---|---|
-| T386 | ADR `0045`: why a script and not a tsconfig or ESLint | `docs/audit/decisions/` | Low | Low | 0.3h | done | - | - | - | - |
-| T387 | `scripts/check-node-globals.mjs`: masks comments, strings, template text and regexes; reports `process`, `Buffer`, `__dirname`/`__filename`, `global.`, `require`, Node built-in imports; `node-guard-ignore: <why>` | `scripts/` | High | Low | 1.0h | done | T386 | - | `src/`: 121 files, 0 findings, ~0.16 s; every line of `src/` injected (19,944): every miss inside a block comment | - |
-| T388 | `npm run lint` runs it first; `check:node-globals` script | `package.json` | High | Low | 0.1h | done | T387 | - | negative control: `process.env` and `Buffer` in `src/lib/supabase.ts`: `tsc` exits 0, lint exits 1 at `5:19` and `6:15` | lint +~0.2 s |
-| T389 | Unit `node-globals-guard.test.ts` (51) and eleven mutation controls | `unit/` | Med | Low | 0.6h | done | T387 | - | 51/51; each mutation fails at least one test | unit 615 -> 666, 28 -> 29 files |
-| T390 | `CLAUDE.md` (commands, the closed gap, counts, a Do NOT line), refactor log, this ledger, baseline metrics | docs | Low | Low | 0.3h | done | T389 | - | - | - |
+| T386 | ADR `0045`: why a script and not a tsconfig or ESLint | `docs/audit/decisions/` | Low | Low | 0.3h | done | - | `656195b` | - | - |
+| T387 | `scripts/check-node-globals.mjs`: masks comments, strings, template text and regexes; reports `process`, `Buffer`, `__dirname`/`__filename`, `global.`, `require`, Node built-in imports; `node-guard-ignore: <why>` | `scripts/` | High | Low | 1.0h | done | T386 | `626a629` | `src/`: 121 files, 0 findings, ~0.16 s; every line of `src/` injected (19,944): every miss inside a block comment | - |
+| T388 | `npm run lint` runs it first; `check:node-globals` script | `package.json` | High | Low | 0.1h | done | T387 | `626a629` | negative control: `process.env` and `Buffer` in `src/lib/supabase.ts`: `tsc` exits 0, lint exits 1 at `5:19` and `6:15` | lint +~0.2 s |
+| T389 | Unit `node-globals-guard.test.ts` (51) and eleven mutation controls | `unit/` | Med | Low | 0.6h | done | T387 | `626a629` | 51/51; each mutation fails at least one test | unit 615 -> 666, 28 -> 29 files |
+| T390 | `CLAUDE.md` (commands, the closed gap, counts, a Do NOT line), refactor log, this ledger, baseline metrics | docs | Low | Low | 0.3h | done | T389 | `656195b` | - | - |
 
 **Notes on execution:**
 - **No `src/` file changes.** The only `src/` edit was the negative control, reverted (`git status` clean after it). No Playwright run is affected: the guard runs in `npm run lint`, before `tsc`.
