@@ -1107,7 +1107,15 @@ Only `api/`, `unit/`, `tests/`, `supabase/` and docs changed; no `src/` file did
 | Playwright (local) | 29 | 144 | 432 | 431/432 in 6.4 m; the one failure a WebKit click timing out "waiting for ... stable" in `presets.spec.ts:79`, which this phase does not touch, with no assertion failing; that spec then passed 30/30 on WebKit (`--repeat-each=5`) |
 | Vitest (`unit/`) | 29 | 707 | 707 | 707/707, ~39 s |
 
-**Not measured yet:** the time `consume_ai_quota()` adds to a signed-in AI request on production; it needs the migration applied.
+**Production** (`ec9cabb`, Vercel `dpl_5sd1QkZZ4Qx4tBhQCTPzUZQhG3WT`):
+
+| Request to `/api/classify` | Status | Time (this machine, mean) |
+|---|---|---|
+| guest `POST {}`, requests 1 to 30 | 400 | 0.414 s |
+| guest `POST {}`, requests 31 and 32 | 429 (edge) | 0.137 s |
+| `POST {}` with a refused token | 401 | 1.18 s (one request, cold) |
+
+`consume_ai_quota()` in Postgres: about 0.13 ms a call (121 calls, 15.5 ms). The round trip it adds from the function to `ap-northeast-2` is not measured: the runtime logs were empty.
 
 ## Phase 71 (the page behind a dialog is inert) - delta against Phase 70
 

@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 73 - Signed-in callers limited per account: T407-T414 (2026-10-03, draft PR; migration not applied)
+## Phase 73 - Signed-in callers limited per account: T407-T414 (2026-10-03, commit `9d85241`, docs `8815063`, merge `ec9cabb`; migration applied in the SQL editor)
 
 ADR `0049`. The firewall's one rule (ADR `0046`) limits guests; a signed-in caller sends an `Authorization` header, which that rule never matches, so one account could spend TypeSafe credits without bound.
 
@@ -22,9 +22,14 @@ ADR `0049`. The firewall's one rule (ADR `0046`) limits guests; a signed-in call
 - **A count in the functions' memory would not limit an account;** each warm instance keeps its own.
 - **The client needed nothing:** a 429 was already "no suggestion this time", and only a 404 switches the classifier or the insights card off. The new browser tests fail when a 429 latches like a 404.
 
+**Release:**
+- The owner applied the migration to the live project on 2026-10-03 in the Supabase SQL editor, after the probe ended `PHASE 73 PROBE OK` and its negative control (the `+ 1` removed) ended `2 A 121st count is 1`. It is not in the migration history. The deployed function body's md5 matches the file's once line endings are normalised (`8ddf3048...`).
+- PR #23 marked ready and merged into `main` as `ec9cabb`.
+- **Live:** On production (Vercel `dpl_5sd1QkZZ4Qx4tBhQCTPzUZQhG3WT`, READY on `ec9cabb`): a call to `consume_ai_quota()` without a session is refused (`401`, `42501 permission denied`); 32 guest `POST {}` to `/api/classify` got 400 for requests 1 to 30 (mean 0.41 s, the function) and 429 from request 31 (0.13 s, the edge), so the guest path is unchanged; a request with a token the auth server refuses got 401.
+
 **Still open**
-- **T414:** the probe against the live schema and the migration. Merging first would make every signed-in AI request 503 until it lands.
-- **Not measured:** the round trip the count adds to a signed-in request on production.
+- **The added time is not measured.** Vercel's runtime logs returned no entries for this project over the 24 hours before the check (not even Phase 70's guest burst), and the owner's three signed-in Quick Add notes left no row in `ai_request_counts`: they landed on the previous deployment, which went live under a minute before the check. What is known: `consume_ai_quota()` executes in about 0.13 ms in Postgres (the probe's 121 calls took 15.5 ms), so the cost is one HTTPS round trip from the function to the Supabase project in `ap-northeast-2` (Seoul).
+- **A signed-in request on production has not been seen counted yet;** the first one leaves a row in `ai_request_counts`.
 
 **Gate:**
 - Lint clean. Unit 707/707 in 29 files.

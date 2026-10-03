@@ -1,6 +1,6 @@
 # 0049: Signed-in callers are limited to 120 AI requests a minute per account, counted in Supabase
 
-**Status:** Accepted. Implemented on branch `phase-73-auth-rate-limit`, draft PR. **The migration is not applied to the live project yet,** and its probe has not run there: the owner declined the probe run during the phase. Both must happen before the merge (see "Deploy order").
+**Status:** Accepted and released. Commit `9d85241` (docs `8815063`, hash backfill `bb210b2`), merged into `main` as `ec9cabb` (PR #23). The owner applied the migration to the live project on 2026-10-03 in the Supabase SQL editor, after the probe ended `PHASE 73 PROBE OK` and its negative control (the `+ 1` removed) ended `2 A 121st count is 1`. It is not in the migration history. The deployed function body's md5 matches the file's once line endings are normalised (`8ddf3048...`). Vercel `dpl_5sd1QkZZ4Qx4tBhQCTPzUZQhG3WT` is READY in production.
 - **Closes** ADR `0046`'s open consequence: "signed-in callers have no firewall cap".
 - **Keeps** ADR `0046`'s guest rule as it is, ADR `0032`'s caller check, and ADR `0022`'s 429 pass-through.
 
@@ -76,16 +76,23 @@
   - the table refuses a direct read as `authenticated`;
   - a new minute starts at 1 and deletes the account's earlier rows;
   - deleting an account deletes its count.
-  - **Not yet run against the live schema** (declined during the phase). It runs before the migration is applied.
+  - **Run against the live schema** by the owner in the Supabase SQL editor, before the migration: `PHASE 73 PROBE OK`; the negative control ended `2 A 121st count is 1`. (The probe run through Supabase's MCP connector was declined three times: its confirmation for DDL never reached the terminal.)
 - **Gate:** lint clean; unit 707/707 in 29 files; Playwright 431/432. The one failure was a WebKit click timing out "waiting for ... stable" in `presets.spec.ts:79`, a spec this phase does not touch, with no assertion failing; that spec then passed 30/30 on WebKit (`--repeat-each=5`). These are the local WebKit timeouts earlier phases recorded in the baseline metrics.
 
 ## Deploy order
+
+Followed on 2026-10-03: the owner ran steps 1 and 2 in the SQL editor, then merged.
 
 1. Run the probe against the live schema (the migration pasted in place of `\ir`), and its negative control (the `+ 1` removed, which must fail at "2 A 121st count").
 2. Apply the migration to the live project.
 3. Merge. Production then counts signed-in requests.
 
 Deployed before step 2, a signed-in caller's AI requests get 503 and fall back to keyword rules and the local summary, as for any outage; guests are unaffected. This PR's preview deployment, if it carries the Supabase settings, behaves that way until step 2.
+
+## On production after the merge
+
+- On production (Vercel `dpl_5sd1QkZZ4Qx4tBhQCTPzUZQhG3WT`, READY on `ec9cabb`): a call to `consume_ai_quota()` without a session is refused (`401`, `42501 permission denied`); 32 guest `POST {}` to `/api/classify` got 400 for requests 1 to 30 (mean 0.41 s, the function) and 429 from request 31 (0.13 s, the edge), so the guest path is unchanged; a request with a token the auth server refuses got 401.
+- **The added time is not measured.** Vercel's runtime logs returned no entries for this project over the 24 hours before the check (not even Phase 70's guest burst), and the owner's three signed-in Quick Add notes left no row in `ai_request_counts`: they landed on the previous deployment, which went live under a minute before the check. What is known: `consume_ai_quota()` executes in about 0.13 ms in Postgres (the probe's 121 calls took 15.5 ms), so the cost is one HTTPS round trip from the function to the Supabase project in `ap-northeast-2` (Seoul).
 
 ## Consequences
 

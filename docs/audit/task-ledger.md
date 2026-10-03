@@ -1083,7 +1083,7 @@ Approved explicitly by the user, planned and approved before any code was writte
 
 ## Phase 73 - Signed-in callers limited per account: T407-T414 (2026-10-03)
 
-ADR `0049`, closing ADR `0046`'s open consequence. Branch `phase-73-auth-rate-limit`, cut from `main` at `26d501c`; commit `9d85241` (docs `8815063`); draft PR. **The migration is not applied to the live project, and its probe has not run there** (the owner declined the probe run during the phase); T414 is open.
+ADR `0049`, closing ADR `0046`'s open consequence. Branch `phase-73-auth-rate-limit`, cut from `main` at `26d501c`; commit `9d85241` (docs `8815063`, hash backfill `bb210b2`), merged into `main` as `ec9cabb` (PR #23); Vercel `dpl_5sd1QkZZ4Qx4tBhQCTPzUZQhG3WT` READY. The owner applied the migration to the live project on 2026-10-03 in the Supabase SQL editor, after the probe ended `PHASE 73 PROBE OK` and its negative control (the `+ 1` removed) ended `2 A 121st count is 1`. It is not in the migration history. The deployed function body's md5 matches the file's once line endings are normalised (`8ddf3048...`) (T414).
 
 | # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
 |---|---|---|---|---|---|---|---|---|---|---|
@@ -1094,12 +1094,13 @@ ADR `0049`, closing ADR `0046`'s open consequence. Branch `phase-73-auth-rate-li
 | T411 | E2E +2: a 429 changes nothing and does not switch the classifier or the insights card off | `tests/jev-classify.spec.ts`, `tests/insights.spec.ts` | Med | Low | 0.3h | done | T409 | `9d85241` | 6/6; both fail with the client latching on 429 | E2E 142 -> 144 tests, 426 -> 432 runs |
 | T412 | Gate: lint, unit, Playwright in full | - | Low | Low | 0.3h | done | T410-T411 | - | lint clean; unit 707/707; Playwright 431/432 (one WebKit 'stable' timeout in an untouched spec; 30/30 on repeat) | - |
 | T413 | `CLAUDE.md`, ADR `0046`'s status, this ledger, the refactor log, baseline metrics | `docs/`, `CLAUDE.md` | Low | Low | 0.3h | done | T412 | `8815063` | - | - |
-| T414 | Run the probe against the live schema with its negative control, then apply the migration; before the merge | live DB | High | Med | 0.2h | todo | the owner | - | - | - |
+| T414 | Run the probe against the live schema with its negative control, then apply the migration; before the merge | live DB | High | Med | 0.2h | done | T408 | - (SQL editor) | probe `PHASE 73 PROBE OK`; control `2 A 121st count is 1`; deployed body md5 = file | - |
 
 **Notes on execution:**
 - **Not in memory.** Vercel runs each function on as many instances as traffic needs, so a per-instance count allows 120 per instance. The count is one row per account in Supabase, reached with the caller's own token.
 - **Counted before the body:** a request the proxy rejects as malformed still counts, which is what lets an empty-body burst check the limit without a TypeSafe call.
 - **Deploy order:** probe, apply, then merge. Merged first, signed-in AI requests would get 503 and fall back to keyword rules and the local summary until the migration lands.
+- **Live:** On production (Vercel `dpl_5sd1QkZZ4Qx4tBhQCTPzUZQhG3WT`, READY on `ec9cabb`): a call to `consume_ai_quota()` without a session is refused (`401`, `42501 permission denied`); 32 guest `POST {}` to `/api/classify` got 400 for requests 1 to 30 (mean 0.41 s, the function) and 429 from request 31 (0.13 s, the edge), so the guest path is unchanged; a request with a token the auth server refuses got 401. **The added time is not measured.** Vercel's runtime logs returned no entries for this project over the 24 hours before the check (not even Phase 70's guest burst), and the owner's three signed-in Quick Add notes left no row in `ai_request_counts`: they landed on the previous deployment, which went live under a minute before the check. What is known: `consume_ai_quota()` executes in about 0.13 ms in Postgres (the probe's 121 calls took 15.5 ms), so the cost is one HTTPS round trip from the function to the Supabase project in `ap-northeast-2` (Seoul).
 - **No client change.** A 429 was already "no suggestion this time"; the two new browser tests pin that it does not switch either feature off.
 - **No `src/` or `tests/` file was edited during a Playwright run;** the negative control's `src/` edit was made before its run and restored after (`git diff --quiet`).
 

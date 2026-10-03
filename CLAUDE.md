@@ -419,6 +419,7 @@ Without it, `FinanceContext` falls back to the legacy non-atomic path (three sep
 `supabase/migrations/20261003_phase73_ai_request_quota.sql` creates `public.ai_request_counts` (row-level security on, no policy, no client grant) and `consume_ai_quota()`, executable by `authenticated` only. Probe: `supabase/tests/20261003_phase73.probe.sql`.
 - **Apply it before deploying the proxies that call it.** Without it every signed-in AI request is 503 (the client falls back to keyword rules and the local summary); guests are unaffected.
 - **The function only counts;** the limit is in the proxies. It holds one row per active account: each call deletes that account's earlier minutes.
+- Applied to the live project on 2026-10-03 by the owner in the SQL editor (not in the migration history), after its probe and negative control; the deployed body's md5 matches the file. Released in `ec9cabb` (PR #23), Vercel `dpl_5sd1QkZZ4Qx4tBhQCTPzUZQhG3WT`.
 
 ### Atomic ledger writes (ADR `0023`)
 `supabase/migrations/20260927_ledger_rpcs.sql` (applied to the live project on 2026-09-27) moves every other signed-in ledger write into RPCs that lock the rows they touch, apply **relative** updates, and replay on the idempotency key:
