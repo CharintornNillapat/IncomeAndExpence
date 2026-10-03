@@ -1083,7 +1083,7 @@ Approved explicitly by the user, planned and approved before any code was writte
 
 ## Phase 70 - The guest rate limit on the AI proxies: T391-T395 (2026-10-03)
 
-ADR `0046`, amending `0032`. Branch `phase-70-firewall-rate-limit`, cut from `main` at `cb7f063`. Docs only: the rule itself is in the Vercel dashboard, created and published by the owner. Closes T246 (Phase 58s), open since 2026-09-30.
+ADR `0046`, amending `0032`. Branch `phase-70-firewall-rate-limit`, cut from `main` at `cb7f063`; the docs are `7ad29f8`, merged as `466469e` (PR #20). Docs only: the rule itself is in the Vercel dashboard, created and published by the owner. Closes T246 (Phase 58s), open since 2026-09-30.
 
 | # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
 |---|---|---|---|---|---|---|---|---|---|---|
@@ -1091,7 +1091,7 @@ ADR `0046`, amending `0032`. Branch `phase-70-firewall-rate-limit`, cut from `ma
 | T392 | The guest rule, in the dashboard (owner): `/api/classify` or `/api/insights`, no `authorization` header, fixed 60 s, 30 per IP, 429. The 120/min all-callers rule dropped: Hobby allows one rate-limit rule | Vercel dashboard | High | Low | - | done (owner) | T391 | - | before: 40 guest requests, all 400 | guests: unlimited -> 30 a minute per IP |
 | T393 | Burst test against production, empty bodies (no TypeSafe cost) | - | High | Low | 0.3h | done | T392 | - | 1-30 -> 400, 31-40 -> 429; insights 429 (shared count); with a header 401; after 65 s 400 | 429 answered in 0.12-0.14 s at the edge |
 | T394 | The app on production while limited (`fallback70.mjs`) | - | High | Low | 0.4h | done | T393 | - | 13/13: a rule miss gets 429 and shows nothing; not latched; entry saves; "coffee 45" categorised with no request; no page error | - |
-| T395 | ADR `0046`, ADR `0032`'s status, `CLAUDE.md`, refactor log, this ledger, baseline metrics | docs | Low | Low | 0.4h | done | T394 | - | - | - |
+| T395 | ADR `0046`, ADR `0032`'s status, `CLAUDE.md`, refactor log, this ledger, baseline metrics | docs | Low | Low | 0.4h | done | T394 | `7ad29f8` | - | - |
 
 **Notes on execution:**
 - **T246 is closed by T392 and T393,** with one rule instead of two (ADR `0046`).

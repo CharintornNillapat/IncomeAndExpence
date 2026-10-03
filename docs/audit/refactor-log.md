@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 70 - The guest rate limit on the AI proxies: T391-T395 (2026-10-03, docs only; the rule is in the Vercel dashboard)
+## Phase 70 - The guest rate limit on the AI proxies: T391-T395 (2026-10-03, docs `7ad29f8`, merge `466469e`; the rule is in the Vercel dashboard)
 
 ADR `0046`, amending `0032`. Since Phase 58s a guest could call `/api/classify` and `/api/insights`, and so spend TypeSafe credits, without limit: the firewall rules ADR `0032` planned could not be created through the API. The owner created the guest rule in the dashboard, and it is verified here against production.
 
