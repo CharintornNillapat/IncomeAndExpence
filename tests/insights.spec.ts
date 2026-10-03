@@ -153,6 +153,36 @@ test.describe('Monthly spending insights', () => {
     await expect(card(page)).not.toContainText(/error|failed|unavailable|something went wrong/i);
   });
 
+  // A 429 (the guests' firewall rule, ADR 0046, or the per-account limit, ADR
+  // 0049) falls back like any failure, but unlike a 404 it does not switch the
+  // card off: Refresh asks again.
+  test('a 429 falls back to the local summary, and Refresh asks again', async ({ page }) => {
+    let calls = 0;
+    await page.route(INSIGHTS_ROUTE, async (route: Route) => {
+      calls += 1;
+      await route.fulfill({
+        status: 429,
+        contentType: 'application/json',
+        headers: { 'Retry-After': '30' },
+        body: JSON.stringify({ error: 'Too many requests.' }),
+      });
+    });
+    await seedSpending(page, 'zzzlimited');
+
+    await page.locator('#insights-generate-btn').click();
+
+    const body = page.getByTestId('insights-body');
+    await expect(body).toBeVisible();
+    await expect(body).toContainText('฿500.00');
+    await expect(page.getByTestId('insights-offline-note')).toBeVisible();
+    await expect(card(page)).not.toContainText(/error|failed|unavailable|too many|something went wrong/i);
+    expect(calls).toBe(1);
+
+    await page.locator('#insights-refresh-btn').click();
+    await expect.poll(() => calls).toBe(2);
+    await expect(body).toContainText('฿500.00');
+  });
+
   test('collapsing the card persists across a reload', async ({ page }) => {
     await seedSpending(page, 'zzzcollapse');
 
