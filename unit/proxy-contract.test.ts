@@ -182,11 +182,16 @@ describe.each(ENDPOINTS)('$name caller check', ({ name, handler, body, answers }
         if (authStatus === 'throw') throw new TypeError('fetch failed');
         return new Response('{}', { status: authStatus });
       }
+      // ADR 0049: an accepted token is counted next; well under the limit here.
+      if (url === `${SUPABASE_URL}/rest/v1/rpc/consume_ai_quota`) {
+        return new Response(JSON.stringify({ count: 1, retry_after: 30 }), { status: 200 });
+      }
       return new Response(JSON.stringify({ answers }), { status: 200 });
     });
   });
 
-  const typesafeCalls = () => upstream.mock.calls.filter(([url]) => url !== AUTH_USER_URL);
+  const typesafeCalls = () =>
+    upstream.mock.calls.filter(([url]) => url !== AUTH_USER_URL && !String(url).includes('/rest/v1/rpc/'));
   const authCalls = () => upstream.mock.calls.filter(([url]) => url === AUTH_USER_URL);
 
   it('lets a guest through without asking the auth server', async () => {
@@ -291,5 +296,166 @@ describe.each(ENDPOINTS)('$name caller check', ({ name, handler, body, answers }
 
     expect(res.status).toBe(404);
     expect(upstream).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * The per-account limit (ADR 0049). A signed-in request is counted through
+ * `consume_ai_quota()` before anything else happens to it. The stub below
+ * keeps one count per token, standing in for the database's one row per
+ * account (`auth.uid()`), and answers the way PostgREST does.
+ */
+const QUOTA_URL = `${SUPABASE_URL}/rest/v1/rpc/consume_ai_quota`;
+const LIMIT = 120;
+
+describe.each(ENDPOINTS)('$name per-account limit', ({ name, handler, body, answers }) => {
+  let counts: Map<string, number>;
+  let quotaReply: number | 'throw' | 'not-json' | 'no-count' | null;
+
+  beforeEach(() => {
+    vi.stubEnv('VITE_SUPABASE_URL', SUPABASE_URL);
+    vi.stubEnv('VITE_SUPABASE_ANON_KEY', 'anon-key-not-real');
+    counts = new Map();
+    quotaReply = null;
+    upstream.mockImplementation(async (url: string, init: RequestInit) => {
+      if (url === AUTH_USER_URL) return new Response('{}', { status: 200 });
+      if (url === QUOTA_URL) {
+        if (quotaReply === 'throw') throw new TypeError('fetch failed');
+        if (quotaReply === 'not-json') return new Response('<html>', { status: 200 });
+        if (quotaReply === 'no-count') return new Response('{"retry_after":30}', { status: 200 });
+        if (typeof quotaReply === 'number') return new Response('{}', { status: quotaReply });
+        const caller = (init.headers as Record<string, string>).Authorization;
+        const count = (counts.get(caller) ?? 0) + 1;
+        counts.set(caller, count);
+        return new Response(JSON.stringify({ count, retry_after: 17 }), { status: 200 });
+      }
+      return new Response(JSON.stringify({ answers }), { status: 200 });
+    });
+  });
+
+  const quotaCalls = () => upstream.mock.calls.filter(([url]) => url === QUOTA_URL);
+  const typesafeCalls = () => upstream.mock.calls.filter(([url]) => url !== AUTH_USER_URL && url !== QUOTA_URL);
+
+  /** Sends `n` requests as `token` and returns their statuses in order. */
+  async function burst(token: string, n: number, payload: unknown = body): Promise<number[]> {
+    const statuses: number[] = [];
+    for (let i = 0; i < n; i++) statuses.push((await handler(postAs(name, payload, `Bearer ${token}`))).status);
+    return statuses;
+  }
+
+  it(`answers the ${LIMIT + 1}st request in a minute from one account 429, without calling TypeSafe`, async () => {
+    const statuses = await burst(freshToken(), LIMIT + 1);
+
+    expect(statuses.slice(0, LIMIT).every((s) => s === 200)).toBe(true);
+    expect(statuses[LIMIT]).toBe(429);
+    expect(typesafeCalls()).toHaveLength(LIMIT);
+  });
+
+  it('says when to try again, and nothing else', async () => {
+    const token = freshToken();
+    counts.set(`Bearer ${token}`, LIMIT);
+
+    const res = await handler(postAs(name, body, `Bearer ${token}`));
+
+    expect(res.status).toBe(429);
+    expect(res.headers.get('Retry-After')).toBe('17');
+    expect(res.headers.get('Cache-Control')).toBe('no-store');
+    expect(await res.json()).toEqual({ error: 'Too many requests.' });
+  });
+
+  it('counts each account on its own', async () => {
+    const busy = freshToken();
+    counts.set(`Bearer ${busy}`, LIMIT);
+
+    expect((await handler(postAs(name, body, `Bearer ${busy}`))).status).toBe(429);
+    expect((await handler(postAs(name, body, `Bearer ${freshToken()}`))).status).toBe(200);
+  });
+
+  it('asks for the count on every request, even while the token is remembered', async () => {
+    await burst(freshToken(), 3);
+
+    expect(upstream.mock.calls.filter(([url]) => url === AUTH_USER_URL)).toHaveLength(1);
+    expect(quotaCalls()).toHaveLength(3);
+  });
+
+  it("counts with the caller's own token and the anon key, sending no account id", async () => {
+    const token = freshToken();
+
+    await handler(postAs(name, body, `Bearer ${token}`));
+
+    const [, init] = quotaCalls()[0];
+    expect(init.method).toBe('POST');
+    expect(init.headers).toEqual({
+      apikey: 'anon-key-not-real',
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    });
+    expect(init.body).toBe('{}');
+  });
+
+  it('counts before reading the body, so an empty-body burst reaches the limit for free', async () => {
+    const statuses = await burst(freshToken(), LIMIT + 1, {});
+
+    expect(statuses.slice(0, LIMIT).every((s) => s === 400)).toBe(true);
+    expect(statuses[LIMIT]).toBe(429);
+    expect(typesafeCalls()).toHaveLength(0);
+  });
+
+  it('never counts a guest: the firewall rule does that', async () => {
+    const statuses: number[] = [];
+    for (let i = 0; i < LIMIT + 10; i++) statuses.push((await handler(post(name, {}))).status);
+
+    expect(statuses.every((s) => s === 400)).toBe(true);
+    expect(quotaCalls()).toHaveLength(0);
+  });
+
+  it('never counts a token the auth server refused', async () => {
+    upstream.mockImplementation(async (url: string) =>
+      new Response('{}', { status: url === AUTH_USER_URL ? 401 : 200 })
+    );
+
+    expect((await handler(postAs(name, body, `Bearer ${freshToken()}`))).status).toBe(401);
+    expect(quotaCalls()).toHaveLength(0);
+  });
+
+  it('answers 401 when the database refuses the token, without calling TypeSafe', async () => {
+    quotaReply = 401;
+
+    expect((await handler(postAs(name, body, `Bearer ${freshToken()}`))).status).toBe(401);
+    expect(typesafeCalls()).toHaveLength(0);
+  });
+
+  it.each([403, 404, 429, 500, 503, 'throw', 'not-json', 'no-count'] as const)(
+    'answers 503 when the count cannot be had (%s), without calling TypeSafe',
+    async (reply) => {
+      quotaReply = reply;
+
+      expect((await handler(postAs(name, body, `Bearer ${freshToken()}`))).status).toBe(503);
+      expect(typesafeCalls()).toHaveLength(0);
+    }
+  );
+});
+
+describe('both proxies share one count per account', () => {
+  it(`refuses the ${LIMIT + 1}st request whichever proxy it goes to`, async () => {
+    vi.stubEnv('VITE_SUPABASE_URL', SUPABASE_URL);
+    vi.stubEnv('VITE_SUPABASE_ANON_KEY', 'anon-key-not-real');
+    let count = 0;
+    upstream.mockImplementation(async (url: string) => {
+      if (url === QUOTA_URL) {
+        count += 1;
+        return new Response(JSON.stringify({ count, retry_after: 5 }), { status: 200 });
+      }
+      return new Response('{}', { status: 200 });
+    });
+    const token = `Bearer ${freshToken()}`;
+
+    for (let i = 0; i < LIMIT / 2; i++) {
+      await classify(postAs('/api/classify', {}, token));
+      await insights(postAs('/api/insights', {}, token));
+    }
+
+    expect((await classify(postAs('/api/classify', {}, token))).status).toBe(429);
+    expect((await insights(postAs('/api/insights', {}, token))).status).toBe(429);
   });
 });

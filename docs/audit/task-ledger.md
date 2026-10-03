@@ -1081,6 +1081,28 @@ Approved explicitly by the user, planned and approved before any code was writte
 - **One negative control was redone** because the first attempt produced malformed TypeScript that the dev server still served — the tests failed, but possibly for the wrong reason.
 - **No flakes.** Phase 44's `wallets.spec.ts` webkit flake has now not reproduced across three consecutive phases; still watched rather than closed.
 
+## Phase 73 - Signed-in callers limited per account: T407-T414 (2026-10-03)
+
+ADR `0049`, closing ADR `0046`'s open consequence. Branch `phase-73-auth-rate-limit`, cut from `main` at `26d501c`; commit `9d85241` (docs `8815063`); draft PR. **The migration is not applied to the live project, and its probe has not run there** (the owner declined the probe run during the phase); T414 is open.
+
+| # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
+|---|---|---|---|---|---|---|---|---|---|---|
+| T407 | ADR `0049`: why the count is in Supabase, the limit in the proxies, and every failure 401 or 503 | `docs/audit/decisions/` | Low | Low | 0.4h | done | - | `8815063` | - | - |
+| T408 | `ai_request_counts` and `consume_ai_quota()`: one row per account per minute, counted from `auth.uid()`, earlier minutes deleted; authenticated-only; its probe | `supabase/migrations/`, `supabase/tests/` | High | Med | 0.5h | done | T407 | `9d85241` | probe written; not run live | - |
+| T409 | `checkQuota` in both proxies, after `checkCaller` and before the body: 120 a minute per account, 429 with `Retry-After`; `checkCaller` returns the token | `api/classify.ts`, `api/insights.ts` | High | Med | 0.5h | done | T408 | `9d85241` | both copies identical (`diff`) | - |
+| T410 | Unit +35 in `proxy-contract.test.ts`; eight mutations | `unit/` | Med | Low | 0.5h | done | T409 | `9d85241` | 97/97; every mutation caught | unit 672 -> 707 |
+| T411 | E2E +2: a 429 changes nothing and does not switch the classifier or the insights card off | `tests/jev-classify.spec.ts`, `tests/insights.spec.ts` | Med | Low | 0.3h | done | T409 | `9d85241` | 6/6; both fail with the client latching on 429 | E2E 142 -> 144 tests, 426 -> 432 runs |
+| T412 | Gate: lint, unit, Playwright in full | - | Low | Low | 0.3h | done | T410-T411 | - | lint clean; unit 707/707; Playwright 431/432 (one WebKit 'stable' timeout in an untouched spec; 30/30 on repeat) | - |
+| T413 | `CLAUDE.md`, ADR `0046`'s status, this ledger, the refactor log, baseline metrics | `docs/`, `CLAUDE.md` | Low | Low | 0.3h | done | T412 | `8815063` | - | - |
+| T414 | Run the probe against the live schema with its negative control, then apply the migration; before the merge | live DB | High | Med | 0.2h | todo | the owner | - | - | - |
+
+**Notes on execution:**
+- **Not in memory.** Vercel runs each function on as many instances as traffic needs, so a per-instance count allows 120 per instance. The count is one row per account in Supabase, reached with the caller's own token.
+- **Counted before the body:** a request the proxy rejects as malformed still counts, which is what lets an empty-body burst check the limit without a TypeSafe call.
+- **Deploy order:** probe, apply, then merge. Merged first, signed-in AI requests would get 503 and fall back to keyword rules and the local summary until the migration lands.
+- **No client change.** A 429 was already "no suggestion this time"; the two new browser tests pin that it does not switch either feature off.
+- **No `src/` or `tests/` file was edited during a Playwright run;** the negative control's `src/` edit was made before its run and restored after (`git diff --quiet`).
+
 ## Phase 72 - The three pre-0024 ADJUSTMENT rows, repaired: T402-T406 (2026-10-03)
 
 ADR `0048`, amending ADR `0024`. Data only, on the live project (`rmpnzlcufeioxmgoocpt`), on the owner's word after a read-only report; no code, migration or test changes. Branch `phase-72-adjustment-repair`, cut from `main` at `18a883f`; docs `8e687de`.

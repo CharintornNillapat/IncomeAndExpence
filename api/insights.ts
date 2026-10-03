@@ -22,7 +22,8 @@ import type { InsightsRequest, InsightsResponse, SpendingSummary } from '../src/
  * relay for arbitrary Jev prompts billed to this project's key.
  *
  * Who may call it is `checkCaller`'s job (ADR 0032), the same rule as
- * `classify.ts`.
+ * `classify.ts`, and how often is `checkQuota`'s (ADR 0049), against the same
+ * per-account count.
  *
  * PRIVACY: the body carries no transaction text, no ids, no wallet names and
  * no individual amounts - see `SpendingSummary` in `src/types.ts`. Nothing
@@ -61,12 +62,12 @@ const FOCUS_INSTRUCTIONS =
 
 const NONE_KEY = 'none';
 
-function json(body: unknown, status: number): Response {
+function json(body: unknown, status: number, headers: Record<string, string> = {}): Response {
   return new Response(JSON.stringify(body), {
     status,
     // `no-store` matches `classify.ts`: a verdict is about one user's month
     // and must never be served from a shared cache.
-    headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' },
+    headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store', ...headers },
   });
 }
 
@@ -89,14 +90,19 @@ const MAX_VERIFIED_TOKENS = 500;
 /** Access tokens the auth server accepted recently, to their expiry (ms). Per warm instance only. */
 const verifiedTokens = new Map<string, number>();
 
+/** A caller allowed to go on: its access token, or `null` for a guest. */
+interface Caller {
+  token: string | null;
+}
+
 /**
- * Returns `null` to go on, or the response to send instead. No header is a
+ * Returns the caller to go on, or the response to send instead. No header is a
  * guest (limited per IP by the Vercel firewall); a malformed header or a token
  * the auth server refuses is 401; no answer from it is 503. See `classify.ts`.
  */
-async function checkCaller(req: Request): Promise<Response | null> {
+async function checkCaller(req: Request): Promise<Response | Caller> {
   const header = req.headers.get('Authorization');
-  if (header === null) return null;
+  if (header === null) return { token: null };
 
   // The scheme is case-insensitive (RFC 7235); the token is one run of non-space.
   const match = /^Bearer (\S+)$/i.exec(header);
@@ -105,7 +111,7 @@ async function checkCaller(req: Request): Promise<Response | null> {
 
   const now = Date.now();
   const expiry = verifiedTokens.get(token);
-  if (expiry !== undefined && expiry > now) return null;
+  if (expiry !== undefined && expiry > now) return { token };
 
   const supabaseUrl = process.env.VITE_SUPABASE_URL;
   const anonKey = process.env.VITE_SUPABASE_ANON_KEY;
@@ -126,6 +132,58 @@ async function checkCaller(req: Request): Promise<Response | null> {
 
   if (verifiedTokens.size >= MAX_VERIFIED_TOKENS) verifiedTokens.clear();
   verifiedTokens.set(token, now + VERIFIED_TOKEN_TTL_MS);
+  return { token };
+}
+
+// --- Per-account limit (ADR 0049) --------------------------------------------
+// A copy of `classify.ts`'s; see the note there. Change both copies together.
+
+const AI_REQUESTS_PER_MINUTE = 120;
+const QUOTA_TIMEOUT_MS = 3000;
+
+/**
+ * Counts a signed-in request against its account's limit, shared with
+ * `/api/classify`. Returns `null` to go on, or the response to send instead.
+ * A guest is not counted (the firewall's rule); past the limit is 429 with
+ * `Retry-After`; a token the database refuses is 401; no answer is 503.
+ */
+async function checkQuota(token: string | null): Promise<Response | null> {
+  if (token === null) return null;
+
+  const supabaseUrl = process.env.VITE_SUPABASE_URL;
+  const anonKey = process.env.VITE_SUPABASE_ANON_KEY;
+  if (!supabaseUrl || !anonKey) return json({ error: 'Usage check unavailable.' }, 503);
+
+  let res: Response;
+  try {
+    res = await fetch(`${supabaseUrl.replace(/\/+$/, '')}/rest/v1/rpc/consume_ai_quota`, {
+      method: 'POST',
+      headers: { apikey: anonKey, Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: '{}',
+      signal: AbortSignal.timeout(QUOTA_TIMEOUT_MS),
+    });
+  } catch {
+    return json({ error: 'Usage check unavailable.' }, 503);
+  }
+
+  if (res.status === 401) return json({ error: 'Unauthorized.' }, 401);
+  if (!res.ok) return json({ error: 'Usage check unavailable.' }, 503);
+
+  let usage: unknown;
+  try {
+    usage = await res.json();
+  } catch {
+    return json({ error: 'Usage check unavailable.' }, 503);
+  }
+  if (!isPlainObject(usage) || typeof usage.count !== 'number' || !Number.isFinite(usage.count)) {
+    return json({ error: 'Usage check unavailable.' }, 503);
+  }
+
+  if (usage.count > AI_REQUESTS_PER_MINUTE) {
+    const wait = usage.retry_after;
+    const retryAfter = typeof wait === 'number' && wait > 0 && wait <= 60 ? Math.ceil(wait) : 60;
+    return json({ error: 'Too many requests.' }, 429, { 'Retry-After': String(retryAfter) });
+  }
   return null;
 }
 
@@ -209,8 +267,11 @@ export async function POST(req: Request): Promise<Response> {
     return json({ error: 'Insights are not configured.' }, 404);
   }
 
-  const refused = await checkCaller(req);
-  if (refused) return refused;
+  const caller = await checkCaller(req);
+  if (caller instanceof Response) return caller;
+
+  const limited = await checkQuota(caller.token);
+  if (limited) return limited;
 
   let body: unknown;
   try {

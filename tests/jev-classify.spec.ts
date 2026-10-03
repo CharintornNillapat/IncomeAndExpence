@@ -321,4 +321,49 @@ test.describe('Jev classification', () => {
     // The modal closing is the app's own confirmation that the write succeeded.
     await expect(modal).not.toBeVisible();
   });
+
+  // A 429 is what a guest gets past the firewall rule (ADR 0046) and a
+  // signed-in caller past the per-account limit (ADR 0049). It means "no
+  // suggestion this time": unlike a 404 it must not switch the classifier
+  // off, or one busy minute would end suggestions for the session.
+  test('a 429 changes nothing, the next note is asked again, and the form still submits', async ({ page }) => {
+    let calls = 0;
+    await page.route(CLASSIFY_ROUTE, async (route: Route) => {
+      calls += 1;
+      if (calls === 1) {
+        await route.fulfill({
+          status: 429,
+          contentType: 'application/json',
+          headers: { 'Retry-After': '30' },
+          body: JSON.stringify({ error: 'Too many requests.' }),
+        });
+        return;
+      }
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ categoryId: TRANSPORT.id, categoryConfidence: 0.97, detectedType: 'EXPENSE', typeConfidence: 0.99 }),
+      });
+    });
+
+    const modal = await openQuickAdd(page);
+    const category = modal.locator('select[id$="-category"]');
+    const note = modal.locator('input[id$="-desc"]');
+    const startingCategory = await category.inputValue();
+
+    await note.fill(UNMATCHED_NOTE);
+    await expect.poll(() => calls).toBe(1);
+    await expect(modal.getByTestId('tx-category-suggestion')).toHaveCount(0);
+    await expect(modal.getByText(/Auto-categorized:/i)).toHaveCount(0);
+    await expect(category).toHaveValue(startingCategory);
+
+    // Still on: the next unmatched note reaches the classifier and is answered.
+    await note.fill('Spotify family plan');
+    await expect.poll(() => calls).toBe(2);
+    await expect(category).toHaveValue(TRANSPORT.id);
+
+    await modal.locator('input[name="amount_expression"]').fill('150');
+    await modal.locator('button[type="submit"]').click();
+    await expect(modal).not.toBeVisible();
+  });
 });

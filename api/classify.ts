@@ -23,7 +23,8 @@ import type { ClassifyCandidate, ClassifyRequest, ClassifyResponse } from '../sr
  *
  * Who may call it is `checkCaller`'s job (ADR 0032): a guest, or a signed-in
  * caller whose token the auth server accepts. Guests are limited per IP by the
- * Vercel firewall, not here.
+ * Vercel firewall, not here; a signed-in caller is limited per account by
+ * `checkQuota` (ADR 0049).
  *
  * Never log `text` - it is ledger content.
  */
@@ -64,10 +65,10 @@ const TYPE_CRITERIA = {
   INCOME: 'Money coming in: salary, a refund, a gift received, a sale, freelance payment.',
 };
 
-function json(body: unknown, status: number): Response {
+function json(body: unknown, status: number, headers: Record<string, string> = {}): Response {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' },
+    headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store', ...headers },
   });
 }
 
@@ -89,9 +90,14 @@ const MAX_VERIFIED_TOKENS = 500;
 /** Access tokens the auth server accepted recently, to their expiry (ms). Per warm instance only. */
 const verifiedTokens = new Map<string, number>();
 
+/** A caller allowed to go on: its access token, or `null` for a guest. */
+interface Caller {
+  token: string | null;
+}
+
 /**
- * Decides whether this caller may spend TypeSafe credits. Returns `null` to go
- * on, or the response to send instead. Nothing here calls TypeSafe.
+ * Decides whether this caller may spend TypeSafe credits. Returns the caller
+ * to go on, or the response to send instead. Nothing here calls TypeSafe.
  *
  * - **No `Authorization` header: a guest, allowed.** The app works signed out,
  *   and guests keep Jev. The Vercel firewall limits these requests per IP.
@@ -105,9 +111,9 @@ const verifiedTokens = new Map<string, number>();
  *   an auth round-trip to every suggestion. A token revoked inside that minute
  *   keeps classifying until it passes; it can do nothing else here.
  */
-async function checkCaller(req: Request): Promise<Response | null> {
+async function checkCaller(req: Request): Promise<Response | Caller> {
   const header = req.headers.get('Authorization');
-  if (header === null) return null;
+  if (header === null) return { token: null };
 
   // The scheme is case-insensitive (RFC 7235); the token is one run of non-space.
   const match = /^Bearer (\S+)$/i.exec(header);
@@ -116,7 +122,7 @@ async function checkCaller(req: Request): Promise<Response | null> {
 
   const now = Date.now();
   const expiry = verifiedTokens.get(token);
-  if (expiry !== undefined && expiry > now) return null;
+  if (expiry !== undefined && expiry > now) return { token };
 
   const supabaseUrl = process.env.VITE_SUPABASE_URL;
   const anonKey = process.env.VITE_SUPABASE_ANON_KEY;
@@ -137,6 +143,76 @@ async function checkCaller(req: Request): Promise<Response | null> {
 
   if (verifiedTokens.size >= MAX_VERIFIED_TOKENS) verifiedTokens.clear();
   verifiedTokens.set(token, now + VERIFIED_TOKEN_TTL_MS);
+  return { token };
+}
+
+// --- Per-account limit (ADR 0049) --------------------------------------------
+// Copied in `insights.ts` for the same reason as the caller check. Both
+// proxies count against one `consume_ai_quota()` row per account, so a
+// caller's classify and insights requests share the limit, as guests share
+// the firewall's.
+
+const AI_REQUESTS_PER_MINUTE = 120;
+const QUOTA_TIMEOUT_MS = 3000;
+
+/**
+ * Counts a signed-in request against its account's limit. Returns `null` to
+ * go on, or the response to send instead. Nothing here calls TypeSafe.
+ *
+ * - **A guest is not counted here.** The Vercel firewall limits guests per IP
+ *   (ADR 0046). That rule matches only requests with no `Authorization`
+ *   header, so it never sees a signed-in caller.
+ * - **The count is in Supabase,** through `consume_ai_quota()` called with the
+ *   caller's own token. The function reads the account from `auth.uid()`, so
+ *   no account id travels, and every instance of both functions adds to the
+ *   same count. A count in memory would be one per warm instance.
+ * - **Past the limit is 429** with `Retry-After`. The client already treats a
+ *   429 as "no suggestion this time" and switches nothing off.
+ * - **A token the database refuses is 401.** One can expire inside the caller
+ *   check's one-minute cache.
+ * - **No answer is 503:** a timeout, a 5xx, the function missing, or a reply
+ *   without a count. An uncounted request never spends credits.
+ * - **Every request counts, before its body is read,** including one the proxy
+ *   then rejects as malformed. That is also what lets an empty-body burst
+ *   check the limit without spending credits.
+ */
+async function checkQuota(token: string | null): Promise<Response | null> {
+  if (token === null) return null;
+
+  const supabaseUrl = process.env.VITE_SUPABASE_URL;
+  const anonKey = process.env.VITE_SUPABASE_ANON_KEY;
+  if (!supabaseUrl || !anonKey) return json({ error: 'Usage check unavailable.' }, 503);
+
+  let res: Response;
+  try {
+    res = await fetch(`${supabaseUrl.replace(/\/+$/, '')}/rest/v1/rpc/consume_ai_quota`, {
+      method: 'POST',
+      headers: { apikey: anonKey, Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: '{}',
+      signal: AbortSignal.timeout(QUOTA_TIMEOUT_MS),
+    });
+  } catch {
+    return json({ error: 'Usage check unavailable.' }, 503);
+  }
+
+  if (res.status === 401) return json({ error: 'Unauthorized.' }, 401);
+  if (!res.ok) return json({ error: 'Usage check unavailable.' }, 503);
+
+  let usage: unknown;
+  try {
+    usage = await res.json();
+  } catch {
+    return json({ error: 'Usage check unavailable.' }, 503);
+  }
+  if (!isPlainObject(usage) || typeof usage.count !== 'number' || !Number.isFinite(usage.count)) {
+    return json({ error: 'Usage check unavailable.' }, 503);
+  }
+
+  if (usage.count > AI_REQUESTS_PER_MINUTE) {
+    const wait = usage.retry_after;
+    const retryAfter = typeof wait === 'number' && wait > 0 && wait <= 60 ? Math.ceil(wait) : 60;
+    return json({ error: 'Too many requests.' }, 429, { 'Retry-After': String(retryAfter) });
+  }
   return null;
 }
 
@@ -224,8 +300,11 @@ export async function POST(req: Request): Promise<Response> {
     return json({ error: 'Classification is not configured.' }, 404);
   }
 
-  const refused = await checkCaller(req);
-  if (refused) return refused;
+  const caller = await checkCaller(req);
+  if (caller instanceof Response) return caller;
+
+  const limited = await checkQuota(caller.token);
+  if (limited) return limited;
 
   let body: unknown;
   try {

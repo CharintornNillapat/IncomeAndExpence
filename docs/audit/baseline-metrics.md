@@ -1098,6 +1098,17 @@ The entry's growth is the ledger action itself, which lives with the other ledge
 
 **Intermittent local failures:** 6 in 1,071 full-suite runs (3 full runs). All were timeouts: a Firefox `goto`, a Firefox context close, and four WebKit clicks waiting for "stable". No assertion failed. See audit 005 finding 3 for the control runs.
 
+## Phase 73 (signed-in callers limited per account) - delta against Phase 72
+
+Only `api/`, `unit/`, `tests/`, `supabase/` and docs changed; no `src/` file did, so the client bundle is unchanged (not rebuilt).
+
+| Suite | Files | Tests | Runs | Result |
+|---|---|---|---|---|
+| Playwright (local) | 29 | 144 | 432 | 431/432 in 6.4 m; the one failure a WebKit click timing out "waiting for ... stable" in `presets.spec.ts:79`, which this phase does not touch, with no assertion failing; that spec then passed 30/30 on WebKit (`--repeat-each=5`) |
+| Vitest (`unit/`) | 29 | 707 | 707 | 707/707, ~39 s |
+
+**Not measured yet:** the time `consume_ai_quota()` adds to a signed-in AI request on production; it needs the migration applied.
+
 ## Phase 71 (the page behind a dialog is inert) - delta against Phase 70
 
 A local build of the Phase 71 tree with the repo's `.env`, against `main`'s entry as served in production (`index-BFWd6EeO.js`, 188,651 B, unchanged since Phase 67). Gzip is level 9.
