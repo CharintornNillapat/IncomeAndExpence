@@ -195,6 +195,38 @@ test.describe('dialogs by keyboard (ADR 0043)', () => {
     await expect(opener).toBeFocused();
   });
 
+  // Phase 71 (ADR 0047): the page behind a dialog is inert, so a screen
+  // reader's virtual cursor stays in the dialog. The unit suite pins which
+  // elements are marked; this is each engine enforcing it.
+  test('the page behind Quick Add is inert while it is open, and only then', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await page.goto('/');
+    const opener = page.locator('#navbar-quick-add-btn');
+    await opener.focus();
+    await page.keyboard.press('Enter');
+    const dialog = page.getByRole('dialog', { name: /Quick Record Transaction/i });
+    await expect(dialog.locator('input[id$="-desc"]')).toBeVisible();
+
+    const state = () =>
+      page.evaluate(() => {
+        const navButton = document.querySelector<HTMLElement>('#navbar-quick-add-btn')!;
+        const panel = document.querySelector('[role="dialog"]');
+        navButton.focus();
+        return {
+          backgroundInert: !!navButton.closest('[inert]'),
+          dialogInert: !!panel?.closest('[inert]'),
+          backgroundTakesFocus: document.activeElement === navButton,
+          focusInDialog: !!document.activeElement?.closest('[role="dialog"]'),
+        };
+      });
+    expect(await state()).toEqual({ backgroundInert: true, dialogInert: false, backgroundTakesFocus: false, focusInDialog: true });
+
+    await page.keyboard.press('Escape');
+    await expect(dialog).not.toBeVisible();
+    await expect(opener).toBeFocused();
+    await expect.poll(() => page.evaluate(() => document.querySelectorAll('[inert]').length)).toBe(0);
+  });
+
   test('at phone width a transaction row opened with Enter puts focus in its sheet', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
     await page.goto('/');

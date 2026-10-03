@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
-import { describe, it, expect, afterEach } from 'vitest';
+import { describe, it, expect, afterEach, beforeEach } from 'vitest';
 import React, { useState } from 'react';
-import { render, cleanup, fireEvent, screen } from '@testing-library/react';
+import { render, cleanup, fireEvent, screen, waitFor } from '@testing-library/react';
 import { Modal } from '../src/components/Modal';
 import { OverflowMenu } from '../src/components/ui/OverflowMenu';
 
@@ -300,4 +300,159 @@ describe('Modal over another Modal', () => {
       expect(active()).toBe(openSheet);
     });
   }
+});
+
+// Phase 71 (ADR 0047): while a dialog is open everything outside it is inert,
+// so a screen reader's virtual cursor cannot leave it. jsdom stores the
+// attribute but does not apply it, so focus() is made to refuse an inert
+// element here, as a browser does: that is what makes the order of the
+// cleanup (release the background, then give focus back) testable.
+describe('Modal background is inert while a dialog is open', () => {
+  const realFocus = HTMLElement.prototype.focus;
+  beforeEach(() => {
+    HTMLElement.prototype.focus = function focus(this: HTMLElement, options?: FocusOptions) {
+      if (this.closest('[inert]')) return;
+      realFocus.call(this, options);
+    };
+  });
+  afterEach(() => {
+    HTMLElement.prototype.focus = realFocus;
+  });
+
+  const isInert = (el: Element) => el.closest('[inert]') !== null;
+  const inertCount = () => document.querySelectorAll('[inert]').length;
+
+  it('marks everything outside the dialog, never the dialog, and clears it on close', () => {
+    render(
+      <Opener title="Details">
+        <input aria-label="Name" />
+      </Opener>,
+    );
+    expect(inertCount()).toBe(0);
+    const opener = openWithKeyboard();
+    const dialog = screen.getByRole('dialog', { name: 'Details' });
+
+    expect(isInert(opener)).toBe(true);
+    expect(isInert(screen.getByRole('button', { name: 'Behind the scrim' }))).toBe(true);
+    expect(isInert(screen.getByTestId('state'))).toBe(true);
+    expect(isInert(dialog)).toBe(false);
+    expect(isInert(screen.getByLabelText('Name'))).toBe(false);
+    expect(active()).toBe(screen.getByRole('button', { name: 'Close modal' }));
+
+    escape();
+    expect(inertCount()).toBe(0);
+    expect(active()).toBe(opener);
+  });
+
+  it('leaves an element that was already inert as it was', () => {
+    render(
+      <div>
+        <section inert data-testid="frozen">
+          <button type="button">Frozen</button>
+        </section>
+        <Opener title="Details">
+          <input aria-label="Name" />
+        </Opener>
+      </div>,
+    );
+    const frozen = screen.getByTestId('frozen');
+    openWithKeyboard();
+    escape();
+    expect(frozen.hasAttribute('inert')).toBe(true);
+    expect(inertCount()).toBe(1);
+  });
+
+  for (const asChild of [false, true]) {
+    it(`makes the sheet inert under a confirmation ${asChild ? 'inside' : 'beside'} it, and gives it back`, () => {
+      function Nested() {
+        const [outer, setOuter] = useState(false);
+        const [inner, setInner] = useState(false);
+        const confirm = (
+          <Modal isOpen={inner} onClose={() => setInner(false)} title="Confirm">
+            <button type="button">Confirm delete</button>
+          </Modal>
+        );
+        return (
+          <div>
+            <button type="button" onClick={() => setOuter(true)}>
+              Open sheet
+            </button>
+            <Modal isOpen={outer} onClose={() => setOuter(false)} title="Sheet">
+              <button type="button" onClick={() => setInner(true)}>
+                Delete wallet
+              </button>
+              {asChild && confirm}
+            </Modal>
+            {!asChild && confirm}
+          </div>
+        );
+      }
+      render(<Nested />);
+      const openSheet = screen.getByRole('button', { name: 'Open sheet' });
+      openSheet.focus();
+      fireEvent.click(openSheet);
+      const sheet = screen.getByRole('dialog', { name: 'Sheet' });
+      const del = screen.getByRole('button', { name: 'Delete wallet' });
+      expect(isInert(openSheet)).toBe(true);
+      expect(isInert(del)).toBe(false);
+
+      del.focus();
+      fireEvent.click(del);
+      const confirmDialog = screen.getByRole('dialog', { name: 'Confirm' });
+      expect(isInert(confirmDialog)).toBe(false);
+      expect(isInert(screen.getByRole('button', { name: 'Confirm delete' }))).toBe(false);
+      expect(isInert(del)).toBe(true);
+      expect(isInert(openSheet)).toBe(true);
+      if (!asChild) expect(isInert(sheet)).toBe(true);
+
+      escape();
+      expect(isInert(del)).toBe(false);
+      expect(isInert(sheet)).toBe(false);
+      expect(isInert(openSheet)).toBe(true);
+      expect(active()).toBe(del);
+
+      escape();
+      expect(inertCount()).toBe(0);
+      expect(active()).toBe(openSheet);
+    });
+  }
+
+  it('marks something mounted beside an open dialog', async () => {
+    function LateToast() {
+      const [open, setOpen] = useState(false);
+      const [toast, setToast] = useState(false);
+      return (
+        <div>
+          <button type="button" onClick={() => setOpen(true)}>
+            Open dialog
+          </button>
+          <Modal isOpen={open} onClose={() => setOpen(false)} title="Details">
+            <button type="button" onClick={() => setToast(true)}>
+              Show toast
+            </button>
+          </Modal>
+          {toast && <div role="status">A new version is ready</div>}
+        </div>
+      );
+    }
+    render(<LateToast />);
+    openWithKeyboard();
+    fireEvent.click(screen.getByRole('button', { name: 'Show toast' }));
+    const toast = screen.getByRole('status');
+    await waitFor(() => expect(isInert(toast)).toBe(true));
+    escape();
+    expect(inertCount()).toBe(0);
+  });
+
+  it('clears the background when an open dialog is unmounted', () => {
+    const { unmount } = render(
+      <Opener title="Details">
+        <input aria-label="Name" />
+      </Opener>,
+    );
+    openWithKeyboard();
+    expect(inertCount()).toBeGreaterThan(0);
+    unmount();
+    expect(inertCount()).toBe(0);
+  });
 });
