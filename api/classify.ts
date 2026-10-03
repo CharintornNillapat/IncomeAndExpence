@@ -76,6 +76,39 @@ function isPlainObject(v: unknown): v is Record<string, unknown> {
   return typeof v === 'object' && v !== null && !Array.isArray(v);
 }
 
+// --- Server-Timing (ADR 0050) ------------------------------------------------
+// Copied in `insights.ts`, like the caller check below. Change both together.
+//
+// Every response this function writes carries a `Server-Timing` header naming
+// the steps that ran and how long each took, in milliseconds:
+//   - `auth`: the `/auth/v1/user` check; `dur=0.0;desc="cached"` when the
+//     token was verified in the last minute on this instance;
+//   - `quota`: the `consume_ai_quota()` round trip (signed in only);
+//   - `ai`: TypeSafe, until its response headers arrive;
+//   - `total`: the whole handler.
+// A step that did not run is absent, so a guest's header has no `auth` or
+// `quota`, and a request refused before TypeSafe has no `ai`. A 429 from the
+// firewall never reaches this function and carries none.
+
+/** One request's measured steps, in the order they finished. */
+type Timings = Array<{ name: 'auth' | 'quota' | 'ai' | 'total'; dur: number; desc?: string }>;
+
+/** Awaits `step` and records how long it took under `name`, whether it resolved or threw. */
+async function timed<T>(timings: Timings, name: Timings[number]['name'], step: () => Promise<T>): Promise<T> {
+  const start = performance.now();
+  try {
+    return await step();
+  } finally {
+    timings.push({ name, dur: performance.now() - start });
+  }
+}
+
+function serverTimingHeader(timings: Timings): string {
+  return timings
+    .map(({ name, dur, desc }) => `${name};dur=${dur.toFixed(1)}${desc ? `;desc="${desc}"` : ''}`)
+    .join(', ');
+}
+
 // --- Caller check (ADR 0032) -------------------------------------------------
 // Duplicated in `insights.ts` on purpose, like `json` and `isPlainObject`
 // above. A shared `api/_auth.ts` would be the first runtime import between
@@ -111,7 +144,7 @@ interface Caller {
  *   an auth round-trip to every suggestion. A token revoked inside that minute
  *   keeps classifying until it passes; it can do nothing else here.
  */
-async function checkCaller(req: Request): Promise<Response | Caller> {
+async function checkCaller(req: Request, timings: Timings): Promise<Response | Caller> {
   const header = req.headers.get('Authorization');
   if (header === null) return { token: null };
 
@@ -122,7 +155,10 @@ async function checkCaller(req: Request): Promise<Response | Caller> {
 
   const now = Date.now();
   const expiry = verifiedTokens.get(token);
-  if (expiry !== undefined && expiry > now) return { token };
+  if (expiry !== undefined && expiry > now) {
+    timings.push({ name: 'auth', dur: 0, desc: 'cached' });
+    return { token };
+  }
 
   const supabaseUrl = process.env.VITE_SUPABASE_URL;
   const anonKey = process.env.VITE_SUPABASE_ANON_KEY;
@@ -130,10 +166,12 @@ async function checkCaller(req: Request): Promise<Response | Caller> {
 
   let res: Response;
   try {
-    res = await fetch(`${supabaseUrl.replace(/\/+$/, '')}/auth/v1/user`, {
-      headers: { apikey: anonKey, Authorization: `Bearer ${token}` },
-      signal: AbortSignal.timeout(AUTH_TIMEOUT_MS),
-    });
+    res = await timed(timings, 'auth', () =>
+      fetch(`${supabaseUrl.replace(/\/+$/, '')}/auth/v1/user`, {
+        headers: { apikey: anonKey, Authorization: `Bearer ${token}` },
+        signal: AbortSignal.timeout(AUTH_TIMEOUT_MS),
+      })
+    );
   } catch {
     return json({ error: 'Sign-in check unavailable.' }, 503);
   }
@@ -292,6 +330,15 @@ function validate(body: unknown): { text: string; categories: ClassifyCandidate[
  * before this runs, so there is no method check here.
  */
 export async function POST(req: Request): Promise<Response> {
+  const timings: Timings = [];
+  const start = performance.now();
+  const res = await handle(req, timings);
+  timings.push({ name: 'total', dur: performance.now() - start });
+  res.headers.set('Server-Timing', serverTimingHeader(timings));
+  return res;
+}
+
+async function handle(req: Request, timings: Timings): Promise<Response> {
   const apiKey = process.env.TYPESAFE_API_KEY;
   if (!apiKey) {
     // 404, not 500: an unconfigured deployment should look exactly like a
@@ -300,10 +347,11 @@ export async function POST(req: Request): Promise<Response> {
     return json({ error: 'Classification is not configured.' }, 404);
   }
 
-  const caller = await checkCaller(req);
+  const caller = await checkCaller(req, timings);
   if (caller instanceof Response) return caller;
 
-  const limited = await checkQuota(caller.token);
+  const { token } = caller;
+  const limited = token === null ? null : await timed(timings, 'quota', () => checkQuota(token));
   if (limited) return limited;
 
   let body: unknown;
@@ -340,7 +388,7 @@ export async function POST(req: Request): Promise<Response> {
 
   let upstream: Response;
   try {
-    upstream = await fetch(TYPESAFE_ENDPOINT, {
+    upstream = await timed(timings, 'ai', () => fetch(TYPESAFE_ENDPOINT, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${apiKey}`,
@@ -360,7 +408,7 @@ export async function POST(req: Request): Promise<Response> {
         },
       }),
       signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
-    });
+    }));
   } catch {
     // Timeout or network failure. The client treats any non-200 as "no
     // suggestion", so the status here only matters for log triage.

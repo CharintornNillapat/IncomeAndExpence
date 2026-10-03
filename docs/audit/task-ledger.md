@@ -1081,6 +1081,25 @@ Approved explicitly by the user, planned and approved before any code was writte
 - **One negative control was redone** because the first attempt produced malformed TypeScript that the dev server still served — the tests failed, but possibly for the wrong reason.
 - **No flakes.** Phase 44's `wallets.spec.ts` webkit flake has now not reproduced across three consecutive phases; still watched rather than closed.
 
+## Phase 74 - The AI proxies time their steps: T415-T420 (2026-10-03)
+
+ADR `0050`, answering ADR `0049`'s open measurement. Branch `phase-74-server-timing`, cut from `main` at `11d3844`; commit `7651728` (docs `193f0df`); draft PR. No migration, no client change.
+
+| # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
+|---|---|---|---|---|---|---|---|---|---|---|
+| T415 | ADR `0050`: the steps, what the header exposes, why not logs | `docs/audit/decisions/` | Low | Low | 0.3h | done | - | `193f0df` | - | - |
+| T416 | `timed()` and `serverTimingHeader()`; `POST` wraps `handle()` and sets `Server-Timing` on every response; `auth` (or `cached`), `quota`, `ai`, `total` | `api/classify.ts`, `api/insights.ts` | Med | Low | 0.4h | done | T415 | `7651728` | both copies identical (`diff`) | - |
+| T417 | Unit +18 in `proxy-contract.test.ts` with delayed stubs; seven mutations; five runs in a row | `unit/` | Med | Low | 0.4h | done | T416 | `7651728` | 115/115 five times; every mutation caught | unit 707 -> 725 |
+| T418 | Gate: lint, unit, Playwright in full | - | Low | Low | 0.2h | done | T417 | - | lint clean; unit 725/725; Playwright 431/432 (a Firefox `page.goto` timeout on the dev server; 27/27 on repeat) | - |
+| T419 | `CLAUDE.md`, ADR `0049`'s pointer, this ledger, the refactor log, baseline metrics | `docs/`, `CLAUDE.md` | Low | Low | 0.2h | done | T418 | `193f0df` | - | - |
+| T420 | After the merge: read the header on production, guest and signed in, and record the quota's cost | production | Low | Low | 0.2h | todo | the merge | - | - | - |
+
+**Notes on execution:**
+- **Why a header:** ADR `0049`'s signed-in timings (697 and 886 ms) included TypeSafe, and Vercel's runtime logs returned nothing, so the count's own cost could not be separated. `Server-Timing` shows each step in DevTools with no client change.
+- **One wrapper, not one header per `return`:** `POST` times `handle()` and sets the header on the response it gets back, so every exit carries it, including the ones the caller check and the count return early.
+- **The tests time real delays** (20, 30 and 40 ms stubs) rather than mocking `performance.now()`, with 5 ms of timer slack; the file passed five runs in a row.
+- **No `src/` or `tests/` file was edited during a Playwright run.**
+
 ## Phase 73 - Signed-in callers limited per account: T407-T414 (2026-10-03)
 
 ADR `0049`, closing ADR `0046`'s open consequence. Branch `phase-73-auth-rate-limit`, cut from `main` at `26d501c`; commit `9d85241` (docs `8815063`, hash backfill `bb210b2`), merged into `main` as `ec9cabb` (PR #23); Vercel `dpl_5sd1QkZZ4Qx4tBhQCTPzUZQhG3WT` READY. The owner applied the migration to the live project on 2026-10-03 in the Supabase SQL editor, after the probe ended `PHASE 73 PROBE OK` and its negative control (the `+ 1` removed) ended `2 A 121st count is 1`. It is not in the migration history. The deployed function body's md5 matches the file's once line endings are normalised (`8ddf3048...`) (T414).

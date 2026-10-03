@@ -1098,6 +1098,15 @@ The entry's growth is the ledger action itself, which lives with the other ledge
 
 **Intermittent local failures:** 6 in 1,071 full-suite runs (3 full runs). All were timeouts: a Firefox `goto`, a Firefox context close, and four WebKit clicks waiting for "stable". No assertion failed. See audit 005 finding 3 for the control runs.
 
+## Phase 74 (the AI proxies time their steps) - delta against Phase 73
+
+Only `api/`, `unit/` and docs changed; no `src/` file did, so the client bundle is unchanged (not rebuilt).
+
+| Suite | Files | Tests | Runs | Result |
+|---|---|---|---|---|
+| Playwright (local) | 29 | 144 | 432 | 431/432 in 7.4 m; the one failure was Firefox timing out loading the dev server's page (`page.goto`, 30 s) in `jev-classify.spec.ts:209`'s setup, before the test body ran and in a spec that never reaches the proxies; that spec then passed 27/27 on Firefox (`--repeat-each=3`) |
+| Vitest (`unit/`) | 29 | 725 | 725 | 725/725, ~39 s |
+
 ## Phase 73 (signed-in callers limited per account) - delta against Phase 72
 
 Only `api/`, `unit/`, `tests/`, `supabase/` and docs changed; no `src/` file did, so the client bundle is unchanged (not rebuilt).

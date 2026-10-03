@@ -459,3 +459,151 @@ describe('both proxies share one count per account', () => {
     expect((await insights(postAs('/api/insights', {}, token))).status).toBe(429);
   });
 });
+
+/**
+ * Server-Timing (ADR 0050). Every response the handler writes names the steps
+ * that ran, in the order they finished, with `total` last. The stub delays each
+ * remote step by a known amount, so a duration can be checked against the step
+ * it belongs to: auth 20 ms, quota 30 ms, TypeSafe 40 ms.
+ */
+const STEP = String.raw`(auth|quota|ai|total);dur=\d+\.\d(;desc="cached")?`;
+const TIMING_FORMAT = new RegExp(`^${STEP}(, ${STEP})*$`);
+
+interface Step {
+  dur: number;
+  desc?: string;
+}
+
+/** Parses the header, after checking its shape, into step name -> duration. */
+function timingsOf(res: Response): Record<string, Step> {
+  const header = res.headers.get('Server-Timing') ?? '';
+  expect(header).toMatch(TIMING_FORMAT);
+  const steps: Record<string, Step> = {};
+  for (const part of header.split(', ')) {
+    const [stepName, ...params] = part.split(';');
+    const step: Step = { dur: Number.NaN };
+    for (const param of params) {
+      const [key, value] = param.split('=');
+      if (key === 'dur') step.dur = Number(value);
+      if (key === 'desc') step.desc = value.replace(/"/g, '');
+    }
+    steps[stepName] = step;
+  }
+  return steps;
+}
+
+const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/** Timer slack: a timer can fire a little early against `performance.now()`. */
+const SLACK_MS = 5;
+
+describe.each(ENDPOINTS)('$name Server-Timing', ({ name, handler, body, answers }) => {
+  let authReply: number | 'throw';
+  let quotaCount: number;
+  let typesafeStatus: number;
+
+  beforeEach(() => {
+    vi.stubEnv('VITE_SUPABASE_URL', SUPABASE_URL);
+    vi.stubEnv('VITE_SUPABASE_ANON_KEY', 'anon-key-not-real');
+    authReply = 200;
+    quotaCount = 1;
+    typesafeStatus = 200;
+    upstream.mockImplementation(async (url: string) => {
+      if (url === AUTH_USER_URL) {
+        await wait(20);
+        if (authReply === 'throw') throw new TypeError('fetch failed');
+        return new Response('{}', { status: authReply });
+      }
+      if (url === QUOTA_URL) {
+        await wait(30);
+        return new Response(JSON.stringify({ count: quotaCount, retry_after: 9 }), { status: 200 });
+      }
+      await wait(40);
+      return new Response(JSON.stringify({ answers }), { status: typesafeStatus });
+    });
+  });
+
+  const signedIn = (payload: unknown = body) => handler(postAs(name, payload, `Bearer ${freshToken()}`));
+
+  it('a signed-in answer names auth, quota, ai and total, each timing its own step', async () => {
+    const res = await signedIn();
+
+    expect(res.status).toBe(200);
+    const t = timingsOf(res);
+    expect(Object.keys(t)).toEqual(['auth', 'quota', 'ai', 'total']);
+    expect(t.auth.dur).toBeGreaterThanOrEqual(20 - SLACK_MS);
+    expect(t.quota.dur).toBeGreaterThanOrEqual(30 - SLACK_MS);
+    expect(t.ai.dur).toBeGreaterThanOrEqual(40 - SLACK_MS);
+    // The steps run one after another, inside the whole.
+    expect(t.total.dur).toBeGreaterThanOrEqual(t.auth.dur + t.quota.dur + t.ai.dur);
+  });
+
+  it('marks a remembered token as a cached auth step that took no time', async () => {
+    const token = freshToken();
+    await handler(postAs(name, body, `Bearer ${token}`));
+
+    const t = timingsOf(await handler(postAs(name, body, `Bearer ${token}`)));
+
+    expect(t.auth).toEqual({ dur: 0, desc: 'cached' });
+    expect(t.quota.dur).toBeGreaterThanOrEqual(30 - SLACK_MS);
+  });
+
+  it("a guest's answer has only ai and total", async () => {
+    const t = timingsOf(await handler(post(name, body)));
+
+    expect(Object.keys(t)).toEqual(['ai', 'total']);
+  });
+
+  it('a 429 from the quota names auth, quota and total, and keeps its Retry-After', async () => {
+    quotaCount = 121;
+
+    const res = await signedIn();
+
+    expect(res.status).toBe(429);
+    expect(res.headers.get('Retry-After')).toBe('9');
+    expect(Object.keys(timingsOf(res))).toEqual(['auth', 'quota', 'total']);
+  });
+
+  it('a token the auth server refuses names auth and total only', async () => {
+    authReply = 401;
+
+    const res = await signedIn();
+
+    expect(res.status).toBe(401);
+    expect(Object.keys(timingsOf(res))).toEqual(['auth', 'total']);
+  });
+
+  it('an auth server that cannot be reached is still timed', async () => {
+    authReply = 'throw';
+
+    const res = await signedIn();
+
+    expect(res.status).toBe(503);
+    const t = timingsOf(res);
+    expect(Object.keys(t)).toEqual(['auth', 'total']);
+    expect(t.auth.dur).toBeGreaterThanOrEqual(20 - SLACK_MS);
+  });
+
+  it('a TypeSafe failure keeps its ai step', async () => {
+    typesafeStatus = 503;
+
+    const res = await signedIn();
+
+    expect(res.status).toBe(503);
+    expect(Object.keys(timingsOf(res))).toEqual(['auth', 'quota', 'ai', 'total']);
+  });
+
+  it('a body refused before TypeSafe has no ai step', async () => {
+    expect(Object.keys(timingsOf(await signedIn({})))).toEqual(['auth', 'quota', 'total']);
+    expect(Object.keys(timingsOf(await handler(post(name, {}))))).toEqual(['total']);
+  });
+
+  it('a request refused before any step still carries total', async () => {
+    expect(Object.keys(timingsOf(await handler(postAs(name, body, 'Basic dXNlcjpwYXNz'))))).toEqual(['total']);
+
+    vi.stubEnv('TYPESAFE_API_KEY', '');
+    const missingKey = await handler(post(name, body));
+    expect(missingKey.status).toBe(404);
+    expect(Object.keys(timingsOf(missingKey))).toEqual(['total']);
+  });
+});
