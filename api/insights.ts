@@ -79,6 +79,28 @@ function isFiniteNumber(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value);
 }
 
+// --- Server-Timing (ADR 0050) ------------------------------------------------
+// A copy of `classify.ts`'s; see the note there. Change both copies together.
+
+/** One request's measured steps, in the order they finished. */
+type Timings = Array<{ name: 'auth' | 'quota' | 'ai' | 'total'; dur: number; desc?: string }>;
+
+/** Awaits `step` and records how long it took under `name`, whether it resolved or threw. */
+async function timed<T>(timings: Timings, name: Timings[number]['name'], step: () => Promise<T>): Promise<T> {
+  const start = performance.now();
+  try {
+    return await step();
+  } finally {
+    timings.push({ name, dur: performance.now() - start });
+  }
+}
+
+function serverTimingHeader(timings: Timings): string {
+  return timings
+    .map(({ name, dur, desc }) => `${name};dur=${dur.toFixed(1)}${desc ? `;desc="${desc}"` : ''}`)
+    .join(', ');
+}
+
 // --- Caller check (ADR 0032) -------------------------------------------------
 // A copy of `classify.ts`'s, on purpose: see the note there on why the two
 // functions share no runtime module. Change both copies together.
@@ -100,7 +122,7 @@ interface Caller {
  * guest (limited per IP by the Vercel firewall); a malformed header or a token
  * the auth server refuses is 401; no answer from it is 503. See `classify.ts`.
  */
-async function checkCaller(req: Request): Promise<Response | Caller> {
+async function checkCaller(req: Request, timings: Timings): Promise<Response | Caller> {
   const header = req.headers.get('Authorization');
   if (header === null) return { token: null };
 
@@ -111,7 +133,10 @@ async function checkCaller(req: Request): Promise<Response | Caller> {
 
   const now = Date.now();
   const expiry = verifiedTokens.get(token);
-  if (expiry !== undefined && expiry > now) return { token };
+  if (expiry !== undefined && expiry > now) {
+    timings.push({ name: 'auth', dur: 0, desc: 'cached' });
+    return { token };
+  }
 
   const supabaseUrl = process.env.VITE_SUPABASE_URL;
   const anonKey = process.env.VITE_SUPABASE_ANON_KEY;
@@ -119,10 +144,12 @@ async function checkCaller(req: Request): Promise<Response | Caller> {
 
   let res: Response;
   try {
-    res = await fetch(`${supabaseUrl.replace(/\/+$/, '')}/auth/v1/user`, {
-      headers: { apikey: anonKey, Authorization: `Bearer ${token}` },
-      signal: AbortSignal.timeout(AUTH_TIMEOUT_MS),
-    });
+    res = await timed(timings, 'auth', () =>
+      fetch(`${supabaseUrl.replace(/\/+$/, '')}/auth/v1/user`, {
+        headers: { apikey: anonKey, Authorization: `Bearer ${token}` },
+        signal: AbortSignal.timeout(AUTH_TIMEOUT_MS),
+      })
+    );
   } catch {
     return json({ error: 'Sign-in check unavailable.' }, 503);
   }
@@ -259,6 +286,15 @@ function toState(summary: SpendingSummary): string {
 }
 
 export async function POST(req: Request): Promise<Response> {
+  const timings: Timings = [];
+  const start = performance.now();
+  const res = await handle(req, timings);
+  timings.push({ name: 'total', dur: performance.now() - start });
+  res.headers.set('Server-Timing', serverTimingHeader(timings));
+  return res;
+}
+
+async function handle(req: Request, timings: Timings): Promise<Response> {
   const apiKey = process.env.TYPESAFE_API_KEY;
   if (!apiKey) {
     // 404, not 500: an unconfigured deployment must look exactly like a
@@ -267,10 +303,11 @@ export async function POST(req: Request): Promise<Response> {
     return json({ error: 'Insights are not configured.' }, 404);
   }
 
-  const caller = await checkCaller(req);
+  const caller = await checkCaller(req, timings);
   if (caller instanceof Response) return caller;
 
-  const limited = await checkQuota(caller.token);
+  const { token } = caller;
+  const limited = token === null ? null : await timed(timings, 'quota', () => checkQuota(token));
   if (limited) return limited;
 
   let body: unknown;
@@ -299,7 +336,7 @@ export async function POST(req: Request): Promise<Response> {
 
   let upstream: Response;
   try {
-    upstream = await fetch(TYPESAFE_ENDPOINT, {
+    upstream = await timed(timings, 'ai', () => fetch(TYPESAFE_ENDPOINT, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${apiKey}`,
@@ -316,7 +353,7 @@ export async function POST(req: Request): Promise<Response> {
         },
       }),
       signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
-    });
+    }));
   } catch {
     return json({ error: 'Insights upstream unavailable.' }, 503);
   }
