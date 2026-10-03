@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 71 - The page behind a dialog is inert: T396-T401 (2026-10-03, draft PR, not merged)
+## Phase 71 - The page behind a dialog is inert: T396-T401 (2026-10-03, commit `f0ff403`, docs `65a26a1` and `b2832a7`, merge `3b9abec`)
 
 ADR `0047`. ADR `0043` keeps Tab inside a dialog, but a screen reader's virtual cursor does not move by Tab, and `aria-modal` alone did not keep it in: on production, Chromium's accessibility tree still lists the header, the nav and the page behind an open Quick Add.
 
@@ -41,6 +41,12 @@ ADR `0047`. ADR `0043` keeps Tab inside a dialog, but a screen reader's virtual 
   - `modalfocus.cjs`: every Tab stop inside at 1280 and 390; the More sheet wraps.
   - `nested67.cjs`: 22/22 in chromium, firefox and webkit.
 - **Bundle:** entry `index-*.js` 188,651 -> **189,481 B (+830 B)**, 54,403 B gzip (+157 B).
+
+**Release:**
+- **Antislop pass before the merge** (`antislop-copywriting` on the PR's comments and docs, `b2832a7`): no listed vocabulary, negative parallelism, hedge stacks or caps emphasis. Four wording fixes: the em dash on the `CLAUDE.md` unit-count line the PR edits, "the platform's answer", "a real trap", and an actorless passive in a test comment.
+- PR #21 marked ready and merged into `main` as `3b9abec` with a merge commit. PR runs `37124844842` and `37126194733` and push run `37126532803` on `3b9abec` passed: the Node globals guard, both type-checks, unit 672/672 in 29 files, and 142/142 on each of chromium, firefox and webkit. The push run took 307 s (jobs 195 / 239 / 259 s).
+- Vercel `dpl_5VQ4CZchLxdFrkPFpfM4cgmDjSRU` is READY in production and serves `index-C0jaDWkz.js` at 189,481 B, the local build: 55 of 59 files identical, the two icons and `robots.txt` line endings only, `sw.js` only those icons' revisions.
+- **Live:** On production, with Quick Add open, Chromium's accessibility tree hides all 35 background names and exposes them again after Escape, focus returns to the Quick Add button and nothing is left inert (`ax71.mjs`, 7/7); every Tab stop stays inside at 1280 and 390 (`modalfocus.cjs`); nested dialogs 22/22 in chromium, firefox and webkit (`nested67.cjs`).
 
 ## Phase 70 - The guest rate limit on the AI proxies: T391-T395 (2026-10-03, docs `7ad29f8`, merge `466469e`; the rule is in the Vercel dashboard)
 

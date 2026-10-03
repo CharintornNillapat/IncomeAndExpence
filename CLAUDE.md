@@ -111,6 +111,7 @@ From `package.json` (requires `npm install` prior to execution):
     - something mounted beside the path while a dialog is open is marked too (one `MutationObserver` on `<body>`, live only while a dialog is open);
     - **the return-focus cleanup releases the background before it focuses the opener**, because React runs it before the stack cleanup and `focus()` on an inert element does nothing.
     - jsdom stores `inert` but does not enforce it, so `modal-focus.test.tsx` patches `focus()` to refuse an inert element; Playwright's role queries ignore `inert`, so the E2E check reads focus, not roles.
+    - Released in `3b9abec` (PR #21, Vercel `dpl_5VQ4CZchLxdFrkPFpfM4cgmDjSRU`); on production Chromium's accessibility tree hides the page behind an open Quick Add and restores it on close.
 - **UI primitives**: `src/components/ui/` holds generic, domain-agnostic pieces (spec section 4, ADR `0029`):
   - `Modal`, `ConfirmDialog`, `EmptyState`;
   - `Button`, `IconButton`;

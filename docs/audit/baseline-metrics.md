@@ -1111,6 +1111,8 @@ A local build of the Phase 71 tree with the repo's `.env`, against `main`'s entr
 | Playwright (local) | 29 | 142 | 426 | 7.8 / 7.0 m (two full runs, 425/426 each) |
 | Vitest (`unit/`) | 29 | 672 | 672 | ~37 s |
 
+**Production** (`3b9abec`, Vercel `dpl_5VQ4CZchLxdFrkPFpfM4cgmDjSRU`): `index-C0jaDWkz.js` at 189,481 B, the size measured locally. CI (push run `37126532803`): unit 672/672, 142/142 per browser, the run 307 s.
+
 **Intermittent local failures:** 2 in 852 full-suite runs, plus 1 in a WebKit-only run (142), all WebKit clicks timing out "waiting for ... stable", no assertion. A WebKit-only A/B on the same machine: this branch 1 failure in 2 runs, `main`'s `Modal.tsx` 2 in 2.
 
 ## Phase 70 (the guest rate limit) - the AI proxies on production

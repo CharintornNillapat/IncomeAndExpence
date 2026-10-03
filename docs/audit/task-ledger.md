@@ -1083,21 +1083,22 @@ Approved explicitly by the user, planned and approved before any code was writte
 
 ## Phase 71 - The page behind a dialog is inert: T396-T401 (2026-10-03)
 
-ADR `0047`, closing ADR `0043`'s open item. Branch `phase-71-modal-inert-bg`, cut from `main` at `d3e624b`; draft PR. The request was `inert` (or `aria-hidden`) on `#root`; `Modal` renders inside `#root`, so that would disable the open dialog too, and the dialog's siblings are marked instead (ADR `0047`).
+ADR `0047`, closing ADR `0043`'s open item. Branch `phase-71-modal-inert-bg`, cut from `main` at `d3e624b`; commit `f0ff403` (docs `65a26a1`, antislop pass `b2832a7`), merged into `main` as `3b9abec` (PR #21). PR runs `37124844842` and `37126194733` and push run `37126532803` on `3b9abec` passed: the Node globals guard, both type-checks, unit 672/672 in 29 files, and 142/142 on each of chromium, firefox and webkit. Vercel `dpl_5VQ4CZchLxdFrkPFpfM4cgmDjSRU` is READY in production and serves `index-C0jaDWkz.js` at 189,481 B, the local build: 55 of 59 files identical, the two icons and `robots.txt` line endings only, `sw.js` only those icons' revisions. The request was `inert` (or `aria-hidden`) on `#root`; `Modal` renders inside `#root`, so that would disable the open dialog too, and the dialog's siblings are marked instead (ADR `0047`).
 
 | # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
 |---|---|---|---|---|---|---|---|---|---|---|
-| T396 | ADR `0047`: why the siblings and not `#root`, the stack, the cleanup order | `docs/audit/decisions/` | Low | Low | 0.4h | done | - | - | - | - |
-| T397 | Mark every element beside the path from the top dialog's overlay up to `<body>` as `inert`; recompute on every stack change; remove only its own marks | `components/Modal.tsx` | High | Med | 0.6h | done | T396 | - | AX tree: 38 background names hidden while Quick Add is open, all back after it closes | entry +830 B |
-| T398 | Release the background before the return-focus cleanup focuses the opener; a `MutationObserver` marks what mounts beside the path while a dialog is open | `components/Modal.tsx` | High | Med | 0.3h | done | T397 | - | focus returns to the opener in jsdom with `focus()` refusing inert elements | - |
-| T399 | Unit, +6 in `modal-focus.test.tsx`; six mutations | `unit/` | Med | Low | 0.5h | done | T397-T398 | - | 25/25; each mutation caught; the `#root` proposal fails 19/25 | unit 666 -> 672 |
-| T400 | E2E, +1: the page behind Quick Add is inert in each engine, and only while it is open | `tests/account-and-mobile-nav.spec.ts` | Med | Low | 0.3h | done | T397 | - | 9/9 in the file's keyboard block; fails on `main`'s `Modal` | E2E 141 -> 142 tests, 423 -> 426 runs |
-| T401 | Gate (lint, unit, two full Playwright runs, a WebKit A/B), probes, bundle; `CLAUDE.md`, refactor log, this ledger, baseline metrics | - | Low | Low | 0.8h | done | T399-T400 | - | 425/426 twice (WebKit 'stable' timeouts, seen on `main`'s `Modal` too) | - |
+| T396 | ADR `0047`: why the siblings and not `#root`, the stack, the cleanup order | `docs/audit/decisions/` | Low | Low | 0.4h | done | - | `65a26a1` | - | - |
+| T397 | Mark every element beside the path from the top dialog's overlay up to `<body>` as `inert`; recompute on every stack change; remove only its own marks | `components/Modal.tsx` | High | Med | 0.6h | done | T396 | `f0ff403` | AX tree: 38 background names hidden while Quick Add is open, all back after it closes | entry +830 B |
+| T398 | Release the background before the return-focus cleanup focuses the opener; a `MutationObserver` marks what mounts beside the path while a dialog is open | `components/Modal.tsx` | High | Med | 0.3h | done | T397 | `f0ff403` | focus returns to the opener in jsdom with `focus()` refusing inert elements | - |
+| T399 | Unit, +6 in `modal-focus.test.tsx`; six mutations | `unit/` | Med | Low | 0.5h | done | T397-T398 | `f0ff403` | 25/25; each mutation caught; the `#root` proposal fails 19/25 | unit 666 -> 672 |
+| T400 | E2E, +1: the page behind Quick Add is inert in each engine, and only while it is open | `tests/account-and-mobile-nav.spec.ts` | Med | Low | 0.3h | done | T397 | `f0ff403` | 9/9 in the file's keyboard block; fails on `main`'s `Modal` | E2E 141 -> 142 tests, 423 -> 426 runs |
+| T401 | Gate (lint, unit, two full Playwright runs, a WebKit A/B), probes, bundle; `CLAUDE.md`, refactor log, this ledger, baseline metrics | - | Low | Low | 0.8h | done | T399-T400 | `65a26a1`, `b2832a7` | 425/426 twice (WebKit 'stable' timeouts, seen on `main`'s `Modal` too) | - |
 
 **Notes on execution:**
 - **Not `#root`.** Every dialog renders inside it (ADR `0042`: no portal), and `inert`/`aria-hidden` cover the whole subtree. As a mutation it fails 19 of 25 unit tests.
 - **The return-focus cleanup had to change.** React runs audit 008's return-focus cleanup before the stack cleanup; with `inert` still on, `focus()` on the opener does nothing in a browser. jsdom does not enforce `inert`, so the new tests patch `focus()` to refuse inert elements; without that, the trap would pass unnoticed.
 - **The WebKit timeouts are this machine's, not this change:** two full runs lost one WebKit click each to "waiting for ... stable", before any dialog opened, and two WebKit runs with `main`'s `Modal.tsx` lost one each the same way.
+- **Live on production:** On production, with Quick Add open, Chromium's accessibility tree hides all 35 background names and exposes them again after Escape, focus returns to the Quick Add button and nothing is left inert (`ax71.mjs`, 7/7); every Tab stop stays inside at 1280 and 390 (`modalfocus.cjs`); nested dialogs 22/22 in chromium, firefox and webkit (`nested67.cjs`).
 - **No `src/` or `tests/` file was edited during a Playwright run**; the swaps to `main`'s `Modal.tsx` were between runs and restored after (`cmp`).
 
 ## Phase 70 - The guest rate limit on the AI proxies: T391-T395 (2026-10-03)

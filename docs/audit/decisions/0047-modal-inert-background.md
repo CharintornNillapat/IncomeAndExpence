@@ -1,6 +1,6 @@
 # 0047: The page behind a dialog is inert, marked beside the dialog, never on #root
 
-**Status:** Accepted. Implemented on branch `phase-71-modal-inert-bg`, draft PR. Not merged yet.
+**Status:** Accepted and released. Commit `f0ff403` (docs `65a26a1`, antislop pass `b2832a7`), merged into `main` as `3b9abec` (PR #21). PR runs `37124844842` and `37126194733` and push run `37126532803` on `3b9abec` passed: the Node globals guard, both type-checks, unit 672/672 in 29 files, and 142/142 on each of chromium, firefox and webkit. Vercel `dpl_5VQ4CZchLxdFrkPFpfM4cgmDjSRU` is READY in production and serves `index-C0jaDWkz.js` at 189,481 B, the local build: 55 of 59 files identical, the two icons and `robots.txt` line endings only, `sw.js` only those icons' revisions.
 - **Closes** ADR `0043`'s one open item: "nothing beyond `aria-modal` keeps a screen reader's virtual cursor out of the page behind a dialog".
 - **Keeps** ADR `0042`'s decision not to portal `Modal`, ADR `0043`'s focus trap and top-of-stack rule, and audit 008's return of focus to the opener.
 
@@ -61,6 +61,7 @@
   - **Playwright, two full runs: 425/426 each.** Each lost one WebKit click to a "waiting for element to be visible, enabled and stable" timeout, on `#open-add-debt-btn`, a page button clicked before any dialog opens (`debt-repayment.spec.ts:101`, then `:139`). That spec then passed 55/55 on WebKit (`--repeat-each=5`).
   - **The same WebKit timeouts happen without this change.** Two WebKit-only runs on this branch went 140/141 and 141/141; two with `main`'s `Modal.tsx` went 140/141 and 140/141. Every failure was a timeout on an unrelated control, and none an assertion. They are the local WebKit timeouts that earlier phases' gates also recorded (Phase 55a onward, in the baseline metrics), not this change.
 - **Bundle:** entry `index-*.js` 188,651 -> 189,481 B (+830 B), 54,246 -> 54,403 B gzip (+157 B).
+- **On production after the merge:** On production, with Quick Add open, Chromium's accessibility tree hides all 35 background names and exposes them again after Escape, focus returns to the Quick Add button and nothing is left inert (`ax71.mjs`, 7/7); every Tab stop stays inside at 1280 and 390 (`modalfocus.cjs`); nested dialogs 22/22 in chromium, firefox and webkit (`nested67.cjs`).
 
 ## Consequences
 
