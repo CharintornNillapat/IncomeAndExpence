@@ -1081,6 +1081,25 @@ Approved explicitly by the user, planned and approved before any code was writte
 - **One negative control was redone** because the first attempt produced malformed TypeScript that the dev server still served — the tests failed, but possibly for the wrong reason.
 - **No flakes.** Phase 44's `wallets.spec.ts` webkit flake has now not reproduced across three consecutive phases; still watched rather than closed.
 
+## Phase 71 - The page behind a dialog is inert: T396-T401 (2026-10-03)
+
+ADR `0047`, closing ADR `0043`'s open item. Branch `phase-71-modal-inert-bg`, cut from `main` at `d3e624b`; draft PR. The request was `inert` (or `aria-hidden`) on `#root`; `Modal` renders inside `#root`, so that would disable the open dialog too, and the dialog's siblings are marked instead (ADR `0047`).
+
+| # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
+|---|---|---|---|---|---|---|---|---|---|---|
+| T396 | ADR `0047`: why the siblings and not `#root`, the stack, the cleanup order | `docs/audit/decisions/` | Low | Low | 0.4h | done | - | - | - | - |
+| T397 | Mark every element beside the path from the top dialog's overlay up to `<body>` as `inert`; recompute on every stack change; remove only its own marks | `components/Modal.tsx` | High | Med | 0.6h | done | T396 | - | AX tree: 38 background names hidden while Quick Add is open, all back after it closes | entry +830 B |
+| T398 | Release the background before the return-focus cleanup focuses the opener; a `MutationObserver` marks what mounts beside the path while a dialog is open | `components/Modal.tsx` | High | Med | 0.3h | done | T397 | - | focus returns to the opener in jsdom with `focus()` refusing inert elements | - |
+| T399 | Unit, +6 in `modal-focus.test.tsx`; six mutations | `unit/` | Med | Low | 0.5h | done | T397-T398 | - | 25/25; each mutation caught; the `#root` proposal fails 19/25 | unit 666 -> 672 |
+| T400 | E2E, +1: the page behind Quick Add is inert in each engine, and only while it is open | `tests/account-and-mobile-nav.spec.ts` | Med | Low | 0.3h | done | T397 | - | 9/9 in the file's keyboard block; fails on `main`'s `Modal` | E2E 141 -> 142 tests, 423 -> 426 runs |
+| T401 | Gate (lint, unit, two full Playwright runs, a WebKit A/B), probes, bundle; `CLAUDE.md`, refactor log, this ledger, baseline metrics | - | Low | Low | 0.8h | done | T399-T400 | - | 425/426 twice (WebKit 'stable' timeouts, seen on `main`'s `Modal` too) | - |
+
+**Notes on execution:**
+- **Not `#root`.** Every dialog renders inside it (ADR `0042`: no portal), and `inert`/`aria-hidden` cover the whole subtree. As a mutation it fails 19 of 25 unit tests.
+- **The return-focus order was a real trap.** React runs audit 008's return-focus cleanup before the stack cleanup; with `inert` still on, `focus()` on the opener does nothing in a browser. jsdom does not enforce `inert`, so the new tests patch `focus()` to refuse inert elements; without that, the trap would pass unnoticed.
+- **The WebKit timeouts are this machine's, not this change:** two full runs lost one WebKit click each to "waiting for ... stable", before any dialog opened, and two WebKit runs with `main`'s `Modal.tsx` lost one each the same way.
+- **No `src/` or `tests/` file was edited during a Playwright run**; the swaps to `main`'s `Modal.tsx` were between runs and restored after (`cmp`).
+
 ## Phase 70 - The guest rate limit on the AI proxies: T391-T395 (2026-10-03)
 
 ADR `0046`, amending `0032`. Branch `phase-70-firewall-rate-limit`, cut from `main` at `cb7f063`; the docs are `7ad29f8`, merged as `466469e` (PR #20). Docs only: the rule itself is in the Vercel dashboard, created and published by the owner. Closes T246 (Phase 58s), open since 2026-09-30.
