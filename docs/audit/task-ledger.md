@@ -1081,6 +1081,22 @@ Approved explicitly by the user, planned and approved before any code was writte
 - **One negative control was redone** because the first attempt produced malformed TypeScript that the dev server still served — the tests failed, but possibly for the wrong reason.
 - **No flakes.** Phase 44's `wallets.spec.ts` webkit flake has now not reproduced across three consecutive phases; still watched rather than closed.
 
+## Phase 69 - Node globals guard for src/: T386-T390 (2026-10-03)
+
+ADR `0045`. Branch `phase-69-node-globals-guard`, cut from `main` at `3eba3d4`; draft PR #19. Closes the open item `CLAUDE.md` has carried since Phase 50: `tsc` cannot catch `process` or `Buffer` in `src/`, because `@types/papaparse` pulls Node's types into the root program.
+
+| # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
+|---|---|---|---|---|---|---|---|---|---|---|
+| T386 | ADR `0045`: why a script and not a tsconfig or ESLint | `docs/audit/decisions/` | Low | Low | 0.3h | done | - | - | - | - |
+| T387 | `scripts/check-node-globals.mjs`: masks comments, strings, template text and regexes; reports `process`, `Buffer`, `__dirname`/`__filename`, `global.`, `require`, Node built-in imports; `node-guard-ignore: <why>` | `scripts/` | High | Low | 1.0h | done | T386 | - | `src/`: 121 files, 0 findings, ~0.16 s; every line of `src/` injected (19,944): every miss inside a block comment | - |
+| T388 | `npm run lint` runs it first; `check:node-globals` script | `package.json` | High | Low | 0.1h | done | T387 | - | negative control: `process.env` and `Buffer` in `src/lib/supabase.ts`: `tsc` exits 0, lint exits 1 at `5:19` and `6:15` | lint +~0.2 s |
+| T389 | Unit `node-globals-guard.test.ts` (51) and eleven mutation controls | `unit/` | Med | Low | 0.6h | done | T387 | - | 51/51; each mutation fails at least one test | unit 615 -> 666, 28 -> 29 files |
+| T390 | `CLAUDE.md` (commands, the closed gap, counts, a Do NOT line), refactor log, this ledger, baseline metrics | docs | Low | Low | 0.3h | done | T389 | - | - | - |
+
+**Notes on execution:**
+- **No `src/` file changes.** The only `src/` edit was the negative control, reverted (`git status` clean after it). No Playwright run is affected: the guard runs in `npm run lint`, before `tsc`.
+- **One full unit run of eight had a failure** that did not repeat; see the refactor log's Gate for what the follow-up runs found.
+
 ## Phase 68 - CI in Playwright's container image: T381-T385 (2026-10-03)
 
 ADR `0044`. Branch `phase-68-ci-apt-optimization`, cut from `main` at `1ce499f`; the workflow change is `3b8a180` and the docs `147753d`, merged as `33eebde` (PR #18). PR run `37087564638` passed on four attempts, `37089300857` on the docs push, and push run `37091502761` on `main`. Vercel `dpl_GDc711VKqjfDjxXq2u8mgXahNaFQ` is READY in production and serves the same entry as before, `index-BFWd6EeO.js` at 188,651 B: no app file changed. Removes the apt step whose slow mirror took up to 19 minutes, the backlog item chosen after Phase 67.
