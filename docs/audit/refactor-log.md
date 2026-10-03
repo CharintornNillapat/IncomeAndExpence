@@ -4,6 +4,44 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
+## Phase 71 - The page behind a dialog is inert: T396-T401 (2026-10-03, draft PR, not merged)
+
+ADR `0047`. ADR `0043` keeps Tab inside a dialog, but a screen reader's virtual cursor does not move by Tab, and `aria-modal` alone did not keep it in: on production, Chromium's accessibility tree still lists the header, the nav and the page behind an open Quick Add.
+
+**Changed**
+- **`Modal` marks the page behind the top dialog `inert`.** Every element beside the path from the dialog's overlay up to `<body>` gets `inert` at each level; the dialog and its ancestors never do.
+  - **Not `#root`,** as first asked: `Modal` is not portalled, so the dialog is inside `#root`, and `inert` or `aria-hidden` there would disable it too.
+  - **Recomputed whenever the dialog stack changes:** a confirmation beside the Wallets or Categories sheet makes the sheet inert and gives it back; one inside `AccountModal` marks the parent's other controls.
+  - **Only its own marks are removed;** an element already inert stays inert.
+  - **Late arrivals:** while a dialog is open, a `MutationObserver` on `<body>` marks what mounts beside the path (the update toast, another dialog's exit). It never fires for changes inside the top dialog.
+- **The return-focus cleanup releases the background first,** then focuses the opener; otherwise audit 008's return would land on an inert element and do nothing.
+- **No `aria-hidden`:** `inert` already removes the background from the accessibility tree.
+- **Tests:** unit +6 (`modal-focus.test.tsx`, 19 -> 25; 666 -> 672); E2E +1 in `account-and-mobile-nav.spec.ts` (141 -> 142 tests, 423 -> 426 runs).
+- **Docs:** ADR `0047`; ADR `0043`'s status; `CLAUDE.md` (the `Modal` focus notes, a Do NOT line, counts); this log; the ledger; baseline metrics.
+
+**Resolved**
+- **ADR `0043`'s open item:** a screen reader's virtual cursor could leave a dialog.
+
+**Found**
+- **The `#root` proposal disables the dialog:** as a mutation, marking the top-level container fails 19 of the 25 modal tests (focus cannot enter, Tab cannot move).
+- **Cleanup order:** React runs the return-focus cleanup before the stack cleanup, so a naive implementation sends focus to a still-inert opener. jsdom does not enforce `inert`, so the tests patch `focus()` to refuse inert elements, as a browser does; the "focus before release" mutation then fails 3 tests.
+- **Playwright's role queries ignore `inert`,** so `getByRole` cannot show the background is hidden; the E2E check reads focus, and the accessibility tree is read with Chromium's DevTools protocol instead.
+- **Live regions behind a dialog go silent while it is open:** the navbar's sync status (`role="status"`) is the one that matters; the badge still shows the state when the dialog closes.
+
+**Still open**
+- **Not tested with a screen reader on a device.** The accessibility tree shows what a screen reader is given; how each reader behaves is not checked.
+
+**Gate:**
+- Lint clean. Unit 672/672 in 29 files.
+- **Mutations** (`modal-focus.test.tsx`, of 25): focus before release 3; no marks on open 5; an existing `inert` overwritten 1; no watcher 1; marks from the bottom dialog 3; the top-level container marked (the `#root` proposal) 19.
+- **E2E:** the new test 3/3 browsers; against `main`'s `Modal.tsx` on chromium it fails (`backgroundInert: false`, `backgroundTakesFocus: true`, `focusInDialog: false`).
+- **Playwright, full:** run 1 425/426 (WebKit `debt-repayment.spec.ts:101`), run 2 425/426 (WebKit `:139`); both a click on `#open-add-debt-btn` timing out "waiting for element to be visible, enabled and stable" before any dialog opened. That spec then 55/55 on WebKit (x5). WebKit alone: 141/142 (`jev-classify.spec.ts:144`, the same timeout on a chip). **A/B, WebKit only:** this branch 140/141 and 141/141; `main`'s `Modal.tsx` 140/141 and 140/141, each failure a timeout on an unrelated control.
+- **Probes on a `vite preview` build** (`npm run build` with the repo's `.env`):
+  - `ax71.mjs` (Chromium accessibility tree): 5/5. All 38 background names are hidden while Quick Add is open and back after it closes. The same probe on production fails: the background stays exposed.
+  - `modalfocus.cjs`: every Tab stop inside at 1280 and 390; the More sheet wraps.
+  - `nested67.cjs`: 22/22 in chromium, firefox and webkit.
+- **Bundle:** entry `index-*.js` 188,651 -> **189,481 B (+830 B)**, 54,403 B gzip (+157 B).
+
 ## Phase 70 - The guest rate limit on the AI proxies: T391-T395 (2026-10-03, docs `7ad29f8`, merge `466469e`; the rule is in the Vercel dashboard)
 
 ADR `0046`, amending `0032`. Since Phase 58s a guest could call `/api/classify` and `/api/insights`, and so spend TypeSafe credits, without limit: the firewall rules ADR `0032` planned could not be created through the API. The owner created the guest rule in the dashboard, and it is verified here against production.

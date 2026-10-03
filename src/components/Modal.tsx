@@ -49,6 +49,64 @@ function focusableIn(panel: HTMLElement): HTMLElement[] {
 // or traps the sheet under it.
 const openDialogs: object[] = [];
 
+// Phase 71 (ADR 0047): while a dialog is open, everything outside it is inert,
+// so a screen reader's virtual cursor stays inside (aria-modal alone does not
+// hold it). Modal is not portalled (ADR 0042), so the dialog sits inside
+// #root and #root itself cannot be marked: inert applies to the whole subtree.
+// Instead every element beside the path from the top dialog's overlay up to
+// <body> is marked. Only elements marked here are unmarked, and the marks are
+// recomputed whenever the stack changes, so a confirmation over a sheet makes
+// the sheet inert too and gives it back when it closes.
+const overlayOf = new Map<object, HTMLElement>();
+const markedInert = new Set<Element>();
+const NOT_CONTENT = new Set(['SCRIPT', 'STYLE', 'LINK', 'META', 'TEMPLATE', 'NOSCRIPT']);
+let backgroundWatcher: MutationObserver | null = null;
+
+function topOverlay(): HTMLElement | undefined {
+  const top = openDialogs[openDialogs.length - 1];
+  return top ? overlayOf.get(top) : undefined;
+}
+
+function syncBackgroundInert() {
+  for (const el of markedInert) el.removeAttribute('inert');
+  markedInert.clear();
+  const overlay = topOverlay();
+  if (overlay?.isConnected) {
+    for (let node: Element = overlay; node !== document.body && node.parentElement; node = node.parentElement) {
+      for (const sibling of Array.from(node.parentElement.children)) {
+        if (sibling === node || NOT_CONTENT.has(sibling.tagName) || sibling.hasAttribute('inert')) continue;
+        sibling.setAttribute('inert', '');
+        markedInert.add(sibling);
+      }
+    }
+  }
+  // Something mounted beside the path while a dialog is open (the update
+  // toast, another dialog's exit) is marked too. Only childList changes
+  // outside the top dialog resync; typing inside it never does.
+  if (openDialogs.length > 0 && !backgroundWatcher) {
+    backgroundWatcher = new MutationObserver((records) => {
+      const current = topOverlay();
+      if (current && records.some((r) => r.addedNodes.length > 0 && r.target !== current && r.target.contains(current))) {
+        syncBackgroundInert();
+      }
+    });
+    backgroundWatcher.observe(document.body, { childList: true, subtree: true });
+  } else if (openDialogs.length === 0 && backgroundWatcher) {
+    backgroundWatcher.disconnect();
+    backgroundWatcher = null;
+  }
+}
+
+// Leaving the stack and giving the background back come before focus returns
+// to the opener: the opener is in the background, and focus() on an inert
+// element does nothing.
+function releaseDialog(token: object) {
+  const index = openDialogs.lastIndexOf(token);
+  if (index !== -1) openDialogs.splice(index, 1);
+  overlayOf.delete(token);
+  syncBackgroundInert();
+}
+
 export interface ModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -112,23 +170,27 @@ export const Modal: React.FC<ModalProps> = ({
   // dialog still gets a proper `aria-labelledby` link to it.
   const resolvedTitleId = titleId || (title ? `modal-title-${generatedTitleId}` : undefined);
 
+  const panelRef = useRef<HTMLDivElement>(null);
+  const stackToken = useRef({});
+  const isTopDialog = () => openDialogs[openDialogs.length - 1] === stackToken.current;
+
   // Audit 008 finding 1: closing a dialog or sheet used to drop keyboard
   // focus to <body>, so a keyboard user started again from the top. The
   // element that had focus when it opened (the wallet row, the button) gets
   // it back when it closes, however it closes, if it is still on the page.
+  // This cleanup runs before the stack effect's, so it releases the dialog
+  // first (ADR 0047): the opener is still inert until then.
   useEffect(() => {
     if (!isOpen) return;
+    const token = stackToken.current;
     const opener = document.activeElement instanceof HTMLElement && document.activeElement !== document.body
       ? document.activeElement
       : null;
     return () => {
+      releaseDialog(token);
       if (opener?.isConnected) opener.focus({ preventScroll: true });
     };
   }, [isOpen]);
-
-  const panelRef = useRef<HTMLDivElement>(null);
-  const stackToken = useRef({});
-  const isTopDialog = () => openDialogs[openDialogs.length - 1] === stackToken.current;
 
   // Phase 67 (ADR 0043): focus goes into the dialog when it opens. Declared
   // after the return-focus effect, so that one has already recorded the opener.
@@ -140,13 +202,12 @@ export const Modal: React.FC<ModalProps> = ({
     const token = stackToken.current;
     openDialogs.push(token);
     const panel = panelRef.current;
+    if (panel?.parentElement) overlayOf.set(token, panel.parentElement);
+    syncBackgroundInert();
     if (panel && !panel.contains(document.activeElement)) {
       (focusableIn(panel)[0] ?? panel).focus({ preventScroll: true });
     }
-    return () => {
-      const index = openDialogs.lastIndexOf(token);
-      if (index !== -1) openDialogs.splice(index, 1);
-    };
+    return () => releaseDialog(token);
   }, [isOpen]);
 
   // Phase 67 (ADR 0043): Tab and Shift+Tab stay inside the top dialog. Capture

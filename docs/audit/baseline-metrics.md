@@ -1098,6 +1098,21 @@ The entry's growth is the ledger action itself, which lives with the other ledge
 
 **Intermittent local failures:** 6 in 1,071 full-suite runs (3 full runs). All were timeouts: a Firefox `goto`, a Firefox context close, and four WebKit clicks waiting for "stable". No assertion failed. See audit 005 finding 3 for the control runs.
 
+## Phase 71 (the page behind a dialog is inert) - delta against Phase 70
+
+A local build of the Phase 71 tree with the repo's `.env`, against `main`'s entry as served in production (`index-BFWd6EeO.js`, 188,651 B, unchanged since Phase 67). Gzip is level 9.
+
+| Chunk | Phase 70 | Phase 71 | Delta |
+|---|---|---|---|
+| entry `index-*.js` | 188,651 B / 54,246 B gzip | 189,481 B / 54,403 B gzip | **+830 B raw / +157 B gzip** (`Modal` is in the entry: the marks, their release and the watcher) |
+
+| Suite | Files | Tests | Runs | Wall clock |
+|---|---|---|---|---|
+| Playwright (local) | 29 | 142 | 426 | 7.8 / 7.0 m (two full runs, 425/426 each) |
+| Vitest (`unit/`) | 29 | 672 | 672 | ~37 s |
+
+**Intermittent local failures:** 2 in 852 full-suite runs, plus 1 in a WebKit-only run (142), all WebKit clicks timing out "waiting for ... stable", no assertion. A WebKit-only A/B on the same machine: this branch 1 failure in 2 runs, `main`'s `Modal.tsx` 2 in 2.
+
 ## Phase 70 (the guest rate limit) - the AI proxies on production
 
 No code change, so no bundle, unit or E2E delta. Measured from this machine against `income-and-expence-neon.vercel.app` with `POST {}` (no TypeSafe call).
