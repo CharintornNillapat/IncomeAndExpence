@@ -4,6 +4,33 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
+## Phase 73 - Signed-in callers limited per account: T407-T414 (2026-10-03, draft PR; migration not applied)
+
+ADR `0049`. The firewall's one rule (ADR `0046`) limits guests; a signed-in caller sends an `Authorization` header, which that rule never matches, so one account could spend TypeSafe credits without bound.
+
+**Changed**
+- **`consume_ai_quota()` and `public.ai_request_counts`** (new migration and probe): one row per account for the current minute, counted from `auth.uid()` in one upsert, earlier minutes deleted; row-level security with no policy and no client grant; the function is authenticated-only.
+- **Both proxies count a signed-in request** (`checkQuota`), after `checkCaller` and before the body: past 120 a minute per account, shared by both, **429 with `Retry-After`**. A token the database refuses is 401; no answer is 503. Guests are not counted here.
+- **`checkCaller` returns the caller's token** (or `null` for a guest) instead of `null`, and `json()` takes extra headers.
+- **Tests:** unit +35 (`proxy-contract.test.ts`, 62 -> 97; 672 -> 707); E2E +2 (142 -> 144 tests, 426 -> 432 runs).
+- **Docs:** ADR `0049`; ADR `0046`'s status and its consequence; `CLAUDE.md` (the proxy notes, the firewall note, a Phase 73 migration section, a Do NOT line, counts); the ledger; this log; baseline metrics.
+
+**Resolved**
+- **ADR `0046`'s open consequence:** a signed-in account had no limit.
+
+**Found**
+- **A count in the functions' memory would not limit an account;** each warm instance keeps its own.
+- **The client needed nothing:** a 429 was already "no suggestion this time", and only a 404 switches the classifier or the insights card off. The new browser tests fail when a 429 latches like a 404.
+
+**Still open**
+- **T414:** the probe against the live schema and the migration. Merging first would make every signed-in AI request 503 until it lands.
+- **Not measured:** the round trip the count adds to a signed-in request on production.
+
+**Gate:**
+- Lint clean. Unit 707/707 in 29 files.
+- **Mutations** (`api/classify.ts`): limit check removed 5 failed; `>=` for `>` 2; not counted while the token is cached 4; fail open on a non-OK reply 5; guests counted 9; a database 401 as 503 1; counted after the body is validated 2; no `Retry-After` 1.
+- **E2E:** the two new tests 6/6 on three browsers; with the client latching on 429, both fail on chromium. Full run: 431/432 in 6.4 m; the one failure a WebKit click timing out "waiting for ... stable" in `presets.spec.ts:79`, which this phase does not touch, with no assertion failing; that spec then passed 30/30 on WebKit (`--repeat-each=5`).
+
 ## Phase 72 - The three pre-0024 ADJUSTMENT rows, repaired: T402-T406 (2026-10-03, data only, applied 14:01:03 UTC, docs `8e687de`)
 
 ADR `0048`, amending ADR `0024`. ADR `0024` fixed the balance editor that credited every downward adjustment, and left three production rows to the owner with a repair query.

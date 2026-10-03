@@ -3,6 +3,7 @@
 **Status:** Accepted. The rule is live in production: created and published by the owner in the Vercel dashboard on 2026-10-03, and verified from outside the same day. Recorded in `7ad29f8`, merged into `main` as `466469e` (PR #20).
 - **Amends** ADR `0032`'s firewall section: of its two rules, only the guest rule exists. The "all callers 120/min per IP" rule is not created, because the Vercel Hobby plan allows one rate-limit rule.
 - **Closes** T246 (open since Phase 58s): guests were unlimited until this rule.
+- **Amended by** ADR `0049` (Phase 73): signed-in callers are limited in the proxies, 120 a minute per account, counted in Supabase. The guest rule is unchanged.
 
 **Date:** 2026-10-03
 
@@ -55,7 +56,7 @@ Every request in the bursts has an empty body (`{}`). The proxy answers 400 for 
 
 ## Consequences
 
-- **Signed-in callers have no firewall cap.** Anyone can create an account, and a valid token passes `checkCaller`, so one account can call TypeSafe as fast as it likes. ADR `0032`'s 120 a minute was the only bound on that. Ways to close it, none taken here:
+- **Signed-in callers have no firewall cap** (closed in code by ADR `0049`). Anyone can create an account, and a valid token passes `checkCaller`, so one account can call TypeSafe as fast as it likes. ADR `0032`'s 120 a minute was the only bound on that. Ways to close it, none taken here:
   - the Pro plan, which allows more rate-limit rules;
   - a per-user count kept in the proxies (Supabase or Edge Config);
   - a lower-cost rule type, if Vercel offers one on Hobby.

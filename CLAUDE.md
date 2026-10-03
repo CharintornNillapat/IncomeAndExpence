@@ -241,8 +241,13 @@ Two layers, in a fixed order. Do not reverse them and do not collapse them into 
   - no answer from the auth server (or no `VITE_SUPABASE_*` settings on the deployment) is 503.
 
   TypeSafe is never called on a 401 or 503. An accepted token is cached for 60 s per warm instance. **The check is duplicated in both files on purpose**: a shared `api/_auth.ts` would be the first runtime import between the functions, which nothing local can prove resolves on Vercel. Change both copies together.
+- **A signed-in caller is then counted** (`checkQuota`, ADR `0049`): 120 AI requests a minute per account, shared by both proxies, a fixed 60 s window, **429 with `Retry-After`** past it.
+  - **The count is in Supabase** (`consume_ai_quota()`, called with the caller's own token, which reads the account from `auth.uid()`), never in the function's memory: each warm instance has its own, so a count there would allow 120 per instance.
+  - **Every signed-in request is counted, before its body is read,** even while `checkCaller` remembers the token. So an empty-body burst checks the limit for free: 400 up to 120, 429 at 121.
+  - A token the database refuses is 401; no answer (a timeout, a 5xx, the function missing, a reply without a count) is 503. TypeSafe is never called on either.
+  - A guest is never counted here; the firewall rule below does that. `AI_REQUESTS_PER_MINUTE` and `checkQuota` are duplicated in both files, like `checkCaller`.
 - **Guests are limited by the Vercel firewall, not by code** (ADR `0032`, amended by `0046`): one rule, "AI proxy: guests 30/min per IP", on `/api/classify` and `/api/insights` when there is no `Authorization` header, a fixed 60 s window, 429 past 30. The two paths share the count. The token check alone protects nothing against a caller who sends no header, so this rule is the guest protection.
-  - **There is no all-callers cap.** ADR `0032`'s 120 a minute for everyone was not created: the Hobby plan allows one rate-limit rule. A signed-in account is bounded only by `checkCaller` needing a token Supabase accepts.
+  - **There is no all-callers firewall rule.** ADR `0032`'s 120 a minute for everyone was not created: the Hobby plan allows one rate-limit rule. Signed-in callers are limited per account in code instead (ADR `0049`, above).
   - **The rule lives in the Vercel dashboard, not the repo,** and the API cannot read it (`404 Seawall Config not found`, by slug and by team id). To check it, send 31 guest `POST {}` to `/api/classify` within a minute: `{}` gets 400 before any TypeSafe call, so it costs nothing, and request 31 must get 429 (`X-Vercel-Mitigated: deny`).
 - **The client sends the token through `authorizationHeader()`** (`src/lib/supabase.ts`), which is `{}` for a guest and never throws. A guest must send no `Authorization` header at all. A 401 is `unavailable` for that call (a batch stops) and never latches; only a 404 latches for the session.
 - **A category's `description` is what Jev actually sees.** `api/classify.ts` renders each option as `"<name>: <description>"`, falling back to the bare name. Sending bare names is what made `Netflix subscription` classify as the `other` escape option at 0.93 — a correct answer to a badly posed question. Keep the shipped `DEFAULT_SYSTEM_CATEGORIES` descriptions concrete and situational (what belongs here), never instructional ("always pick this").
@@ -410,6 +415,11 @@ Without it, `FinanceContext` falls back to the legacy non-atomic path (three sep
 - **New accounts only.** Accounts already seeded and stored guest ledgers keep their balances: real rows may sit on them. A seeded account never reaches the inserts again, so the new body changes no existing row.
 - **The filename sorts after `20261002_phase64_*`** on purpose, so a fresh replay ends on the ฿0.00 body.
 
+### Phase 73 (ADR `0049`)
+`supabase/migrations/20261003_phase73_ai_request_quota.sql` creates `public.ai_request_counts` (row-level security on, no policy, no client grant) and `consume_ai_quota()`, executable by `authenticated` only. Probe: `supabase/tests/20261003_phase73.probe.sql`.
+- **Apply it before deploying the proxies that call it.** Without it every signed-in AI request is 503 (the client falls back to keyword rules and the local summary); guests are unaffected.
+- **The function only counts;** the limit is in the proxies. It holds one row per active account: each call deletes that account's earlier minutes.
+
 ### Atomic ledger writes (ADR `0023`)
 `supabase/migrations/20260927_ledger_rpcs.sql` (applied to the live project on 2026-09-27) moves every other signed-in ledger write into RPCs that lock the rows they touch, apply **relative** updates, and replay on the idempotency key:
 - `record_transaction` — `addTransaction` for every type **except TRANSFER** (it rejects TRANSFER; `transfer_funds` stays the one transfer implementation).
@@ -452,7 +462,7 @@ Rules that are load-bearing:
 ## Testing
 Two suites, with a hard boundary between them — see "Unit tests" below for why the boundary is pinned from both sides.
 - **Framework**: Playwright with Chromium, Firefox, and WebKit projects.
-- **Suite size**: 142 tests across 29 spec files, run on all three browsers = **426 test runs**. All must pass.
+- **Suite size**: 144 tests across 29 spec files, run on all three browsers = **432 test runs**. All must pass.
 - **Location**: `tests/*.spec.ts` (`transaction`, `wallets`, `diary`, `theme`, `wallet-forms`, `debts`, `soft-delete`, `keywords`, `categories`, `csv`, `auth`, `date-boundary`, `storage-persistence`, `presets`, `jev-classify`, `express-input`, `transfer-preview`, `debt-repayment`, `smart-rules`, `voice-input`, `csv-classify`, `insights`, `account-and-mobile-nav`, `transaction-edit`, `wallets-page`, `debts-page`, `diary-page`, `categories-page`, `toast-layering`), with shared helpers in `tests/helpers.ts`.
 - **Never edit files while a run is in flight.** `playwright.config.ts`'s `webServer` is `npm run dev` — a live Vite dev server — so writing to `src/` mid-run HMRs the app under test and produces failures that do not reproduce in isolation. This cost a wasted baseline in Phase 39.
 - **A second webServer, port 3100** (ADR `0042`): `vite --mode pwa-dev`, where `vite.config.ts` turns on vite-plugin-pwa's `devOptions`, so a development service worker registers and the real PWA toast appears. Only `toast-layering.spec.ts` uses it, through its own `baseURL`; every other spec stays on 3000, where no toast can cover a control. The mode writes `dev-dist/` (gitignored). Check 3100 for a stale server before a local run, as for 3000. Do not turn `devOptions` on for `npm run dev`.
@@ -467,7 +477,7 @@ Two suites, with a hard boundary between them — see "Unit tests" below for why
   - `--user 1001` is the runner's user: the checkout stays writable and Firefox gets a `$HOME` it owns. Do not switch to root without setting `HOME: /root`.
 
 ## Unit tests: what the browser cannot reach
-`npm run test:unit` runs Vitest over **`unit/`**: 672 tests in 29 files, ~37 s (ADR `0021`, extended by `0022`, `0023`, `0024`, `0026`, `0027`, `0028`, `0029`, `0030`, `0031`, `0032`, `0033`, `0034`, `0035`, `0036`, `0037`, `0038`, `0039`, `0040`, `0041`, `0042`, `0043`, `0045` and `0047`; the reconnect tests' debounce windows and the sign-out tests' 400 ms writer waits are most of the growth from ~3 s). It exists because four phases in a row closed with a coverage hole for the same structural reason, not because E2E coverage was thin.
+`npm run test:unit` runs Vitest over **`unit/`**: 707 tests in 29 files, ~39 s (ADR `0021`, extended by `0022`, `0023`, `0024`, `0026`, `0027`, `0028`, `0029`, `0030`, `0031`, `0032`, `0033`, `0034`, `0035`, `0036`, `0037`, `0038`, `0039`, `0040`, `0041`, `0042`, `0043`, `0045`, `0047` and `0049`; the reconnect tests' debounce windows and the sign-out tests' 400 ms writer waits are most of the growth from ~3 s). It exists because four phases in a row closed with a coverage hole for the same structural reason, not because E2E coverage was thin.
 - **The directory is `unit/`, not `tests/unit/`, and that is load-bearing.** Two default globs collide. Vitest's default `include` is `**/*.{test,spec}.?(c|m)[jt]s?(x)`, which collects all 22 Playwright specs. Playwright's default `testMatch` is `**/*.@(spec|test).?(c|m)[jt]s?(x)` — note `@(spec|test)` — which collects `*.test.ts` as readily as `*.spec.ts`. So the boundary is pinned three times: a directory `testDir: './tests'` cannot see, an explicit `include` in `vitest.config.ts`, and an explicit `testMatch: '**/*.spec.ts'` in `playwright.config.ts`. The last is redundant today **on purpose** — it makes a future move of the unit tests under `tests/` read as the breaking change it is.
 - **`vitest.config.ts` is its own file, never a `test` key on `vite.config.ts`.** `vite build` does not read it, which makes zero production bundle impact structural rather than a matter of discipline.
 - **`environment: 'node'` is the default; the two DOM suites opt in per file** with a `// @vitest-environment jsdom` docblock. The pure-module suites never touch jsdom's `AbortSignal`, `fetch` or timer surfaces, which differ from Node's in ways that fail about the environment rather than the code.
@@ -581,6 +591,7 @@ Refer to `.env.example`:
 - Do NOT route editing through `TransactionForm`; `EditTransactionPanel` is the edit surface.
 - Do NOT let an `/api/*` proxy call TypeSafe before `checkCaller` has passed, or treat an unanswered token check as accepted; it is 503 (ADR `0032`).
 - Do NOT send an `Authorization` header from a guest, and do NOT latch the classifier or insights off on a 401; only a 404 latches.
+- Do NOT count AI requests in a proxy's memory, cache the count with the token, or let a request through when the count could not be had; it is `consume_ai_quota()` on every signed-in request, and no answer is 503 (ADR `0049`).
 - Do NOT send a wallet's `balance` through `updateWallet`/`editWallet`; a balance moves only through a ledger row (ADR `0034`).
 - Do NOT bring back a wallet popup or a second wallet-detail surface; the Wallets page owns a wallet's details, and the Dashboard hands off to it.
 - Do NOT offer an archived wallet in a new-entry picker; use `isActiveWallet`/`useWallets().wallets`.
