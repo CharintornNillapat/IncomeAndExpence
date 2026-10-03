@@ -1098,6 +1098,16 @@ The entry's growth is the ledger action itself, which lives with the other ledge
 
 **Intermittent local failures:** 6 in 1,071 full-suite runs (3 full runs). All were timeouts: a Firefox `goto`, a Firefox context close, and four WebKit clicks waiting for "stable". No assertion failed. See audit 005 finding 3 for the control runs.
 
+## Phase 69 (Node globals guard) - against Phase 68
+
+No `src/` change, so no bundle delta.
+
+| Measure | Phase 68 | Phase 69 |
+|---|---|---|
+| `npm run lint` steps | `tsc` (root), `tsc` (api) | **the guard**, then the same two |
+| The guard on `src/` | - | 121 files, 0 findings, ~0.16 s |
+| Vitest (`unit/`) | 615 tests, 28 files | 666 tests, 29 files, ~37 s |
+
 ## Phase 68 (CI in Playwright's container image) - CI timing against Phase 67
 
 No app change, so no bundle delta. Measured with scratchpad `cijobs.py` from the GitHub API. Setup is job start to the start of the test step; tests is the test step.

@@ -4,6 +4,40 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
+## Phase 69 - Node globals guard for src/: T386-T390 (2026-10-03, draft PR #19, not merged)
+
+ADR `0045`. `src/` runs in the browser, but `tsc` lets Node into it: `@types/papaparse` references Node's types, so `process.env` or `Buffer` in `src/` type-checks and throws at run time. A dependency-free script now refuses them as the first step of `npm run lint`.
+
+**Changed**
+- **`scripts/check-node-globals.mjs`** (new). Reads every `.ts`, `.tsx`, `.js`, `.jsx` (and `.mts`, `.cts`, `.mjs`, `.cjs`) file under `src/`, blanks comments, string contents, template text and regular expressions (the code in `${...}` is still read), and reports, each with its fix:
+  - `process.env` (read `import.meta.env`), and any other `process`, including `const { env } = process` and `typeof process`;
+  - `Buffer`, `__dirname`, `__filename`, `global.` / `global[`, `require(` / `require.`;
+  - an `import`, `import()` or `export ... from` of `node:*` or a Node built-in (`module.builtinModules`, subpaths included).
+
+  A property (`job.process`, `ArrayBuffer`) and an object key (`{ process: 1 }`, supabase-js's `global` option) are not findings.
+- **`// node-guard-ignore: <why>`** on the line, or alone on the line above, skips it. No reason, or nothing to suppress, is an error.
+- **`package.json`:** `check:node-globals`, and `lint` runs it before `tsc`. CI's `checks` job runs `npm run lint`, so no workflow change.
+- **Tests:** `unit/node-globals-guard.test.ts`, 51: each pattern, 19 non-matches, line and column, the ignore rules, `src/` clean, and the command's exit codes on a temporary tree; 615 -> 666, 28 -> 29 files.
+- **Docs:** ADR `0045`; `CLAUDE.md` (the commands, the closed gap under Categorization, the unit count, a Do NOT line); this log; the ledger; baseline metrics.
+
+**Resolved**
+- **The Phase 50 gap** ("do not rely on `tsc` to catch `process`/`Buffer` in `src/`").
+
+**Found**
+- **`tsc` really does pass it:** with `process.env` and `Buffer.from` in `src/lib/supabase.ts`, `tsc --noEmit` exits 0.
+- **`src/` mentions these names only in comments,** a `'global'` string (the sign-out scope) and supabase-js's `global: { fetch }` option, which is why masking and the object-key rule are needed for a clean start.
+
+**Still open**
+- **JSX text is not parsed:** a forbidden word in visible copy is reported, and an unterminated quote in JSX text hides the rest of its line. Neither occurs in `src/`.
+
+**Gate:**
+- `npm run lint` clean (`node-globals: 121 files in src, no Node globals.`, then both `tsc` configs).
+- Unit 666/666 in 29 files, ~37 s.
+- **Negative control:** two lines added to `src/lib/supabase.ts`: `tsc --noEmit` exit 0; `npm run lint` exit 1 with `src/lib/supabase.ts:5:19  `process.env` does not exist in the browser; read `import.meta.env` (a VITE_ variable)` and `:6:15` for `Buffer`. Reverted.
+- **Coverage of the masking:** `process.cwd();` inserted before every line of every `src/` file, 19,944 times: all reported except the 1,771 inside block comments.
+- **Mutations** (each fails at least one test, then restored to 51/51): comment masking 3, string masking 4, template masking 2, regex masking 1, the property lookbehind 1, the object-key lookahead 1, built-in imports 6, ignores 4, the reason rule 1, the unused-ignore check 2, the next-line reach 2.
+- **One intermittent unit failure, not identified.** One of 18 full local runs ended 665/666; its output was not saved, so the test is not known. The next 17 full runs passed 666/666, and `node-globals-guard.test.ts` alone passed 20 of 20. Recorded as unexplained, not attributed to this phase; CI is the next independent run.
+
 ## Phase 68 - CI in Playwright's container image: T381-T385 (2026-10-03, commit `3b8a180`, docs `147753d`, merge `33eebde`)
 
 ADR `0044`. The browser jobs installed their OS packages from the Ubuntu mirror on every run, which took a median 23 s and, three times in two days, 5.6 to 19.3 minutes. They now run in Playwright's own image, which already has them.
