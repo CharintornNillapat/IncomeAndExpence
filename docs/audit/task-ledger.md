@@ -1083,17 +1083,17 @@ Approved explicitly by the user, planned and approved before any code was writte
 
 ## Phase 79 - Every import run is heard, and local runs use 4 workers: T446-T452 (2026-10-04)
 
-ADR `0055`, amending ADR `0054` and Phase 55's local `workers` note. Branch `phase-79-a11y-outcome-and-test-stability`, cut from `main` at `3fd3083`; draft PR. No migration, no CI change.
+ADR `0055`, amending ADR `0054` and Phase 55's local `workers` note. Branch `phase-79-a11y-outcome-and-test-stability`, cut from `main` at `3fd3083`; commit `3a8adea` (docs `0d8f49d`); draft PR. No migration, no CI change.
 
 | # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
 |---|---|---|---|---|---|---|---|---|---|---|
-| T446 | ADR `0055`: every run's note announced; the measured case for 4 local workers; the categories race | `docs/audit/decisions/` | Low | Low | 0.4h | done | - | - | - | - |
-| T447 | `ImportCsvModal`: every finished run announces its note; ADR `0054`'s pause flag removed | `components/transaction/ImportCsvModal.tsx` | Med | Low | 0.2h | done | T446 | - | - | - |
-| T448 | Unit: announcer 11 -> 14 (two expectations changed), 14 mutations; E2E: two more existing tests check the region | `unit/`, `tests/` | Med | Low | 0.4h | done | T447 | - | 14 of 14 mutations caught; `csv-classify.spec.ts` 33/33 | unit 781 -> 784 |
+| T446 | ADR `0055`: every run's note announced; the measured case for 4 local workers; the categories race | `docs/audit/decisions/` | Low | Low | 0.4h | done | - | `0d8f49d` | - | - |
+| T447 | `ImportCsvModal`: every finished run announces its note; ADR `0054`'s pause flag removed | `components/transaction/ImportCsvModal.tsx` | Med | Low | 0.2h | done | T446 | `3a8adea` | - | - |
+| T448 | Unit: announcer 11 -> 14 (two expectations changed), 14 mutations; E2E: two more existing tests check the region | `unit/`, `tests/` | Med | Low | 0.4h | done | T447 | `3a8adea` | 14 of 14 mutations caught; `csv-classify.spec.ts` 33/33 | unit 781 -> 784 |
 | T449 | Measure the Firefox timeouts: dev-server logs, 441 Firefox runs at 6 and at 4 workers | - | High | Low | 0.6h | done | - | - | 6 workers: 2 failed, slowest 42.5 s; 4 workers: 0 failed, slowest 12.1 s | - |
-| T450 | `workers: process.env.CI ? 2 : 4`; the categories test flushes effects before the guard | `playwright.config.ts`, `unit/categories-page.test.tsx` | High | Low | 0.2h | done | T449 | - | - | - |
+| T450 | `workers: process.env.CI ? 2 : 4`; the categories test flushes effects before the guard | `playwright.config.ts`, `unit/categories-page.test.tsx` | High | Low | 0.2h | done | T449 | `3a8adea` | - | - |
 | T451 | Gate: lint, unit three times, Playwright twice from cold servers, bundle | - | Low | Low | 0.4h | done | T448, T450 | - | lint clean; unit 784/784 x3; Playwright 441/441 twice, first pass, no retries (7.3 m and 7.2 m; slowest test 10.3 s and 10.9 s) | - |
-| T452 | `CLAUDE.md`, this ledger, the refactor log, baseline metrics | `docs/`, `CLAUDE.md` | Low | Low | 0.2h | done | T451 | - | - | - |
+| T452 | `CLAUDE.md`, this ledger, the refactor log, baseline metrics | `docs/`, `CLAUDE.md` | Low | Low | 0.2h | done | T451 | `0d8f49d` | - | - |
 
 **Notes on execution:**
 - **A Vite reload is ruled out:** both dev servers were run by hand with their output logged through the 6-worker experiment, and neither logged a re-optimisation or a reload.

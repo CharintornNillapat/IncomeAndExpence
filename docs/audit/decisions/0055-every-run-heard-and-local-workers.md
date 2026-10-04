@@ -1,6 +1,6 @@
 # 0055: Every import run is heard when it ends, and local test runs use 4 workers
 
-**Status:** Accepted. Implemented on branch `phase-79-a11y-outcome-and-test-stability`, draft PR. Not merged yet.
+**Status:** Accepted. Implemented on branch `phase-79-a11y-outcome-and-test-stability` (commit `3a8adea`, docs `0d8f49d`), draft PR. Not merged yet.
 - **Amends** ADR `0054`, which announced a run's end only after a pause or a stop at the rate limit.
 - **Amends** Phase 55's `workers` note in `playwright.config.ts` ("local runs use more without flakes"), which no longer held.
 

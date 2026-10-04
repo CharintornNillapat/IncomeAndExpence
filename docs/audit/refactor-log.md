@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 79 - Every import run is heard, and local runs use 4 workers: T446-T452 (2026-10-04, draft PR)
+## Phase 79 - Every import run is heard, and local runs use 4 workers: T446-T452 (2026-10-04, commit `3a8adea`, docs `0d8f49d`, draft PR)
 
 ADR `0055`. Two loose ends from Phase 78: a classification run that never met the rate limit finished silently for a screen reader, and every recent local gate lost one or two Firefox tests to timeouts.
 
