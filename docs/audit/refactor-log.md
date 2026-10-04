@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 78 - A screen reader hears the import's pause: T440-T445 (2026-10-04, draft PR)
+## Phase 78 - A screen reader hears the import's pause: T440-T445 (2026-10-04, commit `77aa908`, docs `40f331d`, draft PR)
 
 ADR `0054`. ADRs `0052` and `0053` left the import's rate-limit pause visual only: a screen reader user heard nothing during a wait of up to a minute, or when a run was cancelled or stopped.
 

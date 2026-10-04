@@ -1,6 +1,6 @@
 # 0054: A screen reader hears the import's rate-limit pause once, and how the run ended
 
-**Status:** Accepted. Implemented on branch `phase-78-a11y-rate-limit-pause`, draft PR. Not merged yet.
+**Status:** Accepted. Implemented on branch `phase-78-a11y-rate-limit-pause` (commit `77aa908`, docs `40f331d`), draft PR. Not merged yet.
 - **Extends** ADRs `0052` and `0053`, whose consequences both said "the countdown is visual only; the progress line is not a live region".
 
 **Date:** 2026-10-04

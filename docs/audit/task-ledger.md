@@ -1083,16 +1083,16 @@ Approved explicitly by the user, planned and approved before any code was writte
 
 ## Phase 78 - A screen reader hears the import's pause: T440-T445 (2026-10-04)
 
-ADR `0054`, extending ADRs `0052` and `0053`. Branch `phase-78-a11y-rate-limit-pause`, cut from `main` at `8a81507`; draft PR. No migration, no proxy change.
+ADR `0054`, extending ADRs `0052` and `0053`. Branch `phase-78-a11y-rate-limit-pause`, cut from `main` at `8a81507`; commit `77aa908` (docs `40f331d`); draft PR. No migration, no proxy change.
 
 | # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
 |---|---|---|---|---|---|---|---|---|---|---|
-| T440 | ADR `0054`: one polite region, the five events, the countdown outside it | `docs/audit/decisions/` | Low | Low | 0.3h | done | - | - | - | - |
-| T441 | `ImportCsvModal`: `csv-classify-announcer`, announced on pause, resume, cancel, a stop over a minute, and the end of a run that paused | `components/transaction/ImportCsvModal.tsx` | Med | Low | 0.5h | done | T440 | - | - | - |
-| T442 | Unit: `csv-import-announcer.test.tsx`, 11 tests on fake timers with a `MutationObserver`; 16 mutations | `unit/` | Med | Low | 0.6h | done | T441 | - | 11/11 three runs in a row; 16 of 16 mutations caught | unit 770 -> 781, files 29 -> 30 |
-| T443 | E2E: the region checked in three existing `csv-classify.spec.ts` tests; a negative control | `tests/` | Low | Low | 0.2h | done | T441 | - | 27/27 over three runs on all browsers; fails with no cancel announcement | no new test |
+| T440 | ADR `0054`: one polite region, the five events, the countdown outside it | `docs/audit/decisions/` | Low | Low | 0.3h | done | - | `40f331d` | - | - |
+| T441 | `ImportCsvModal`: `csv-classify-announcer`, announced on pause, resume, cancel, a stop over a minute, and the end of a run that paused | `components/transaction/ImportCsvModal.tsx` | Med | Low | 0.5h | done | T440 | `77aa908` | - | - |
+| T442 | Unit: `csv-import-announcer.test.tsx`, 11 tests on fake timers with a `MutationObserver`; 16 mutations | `unit/` | Med | Low | 0.6h | done | T441 | `77aa908` | 11/11 three runs in a row; 16 of 16 mutations caught | unit 770 -> 781, files 29 -> 30 |
+| T443 | E2E: the region checked in three existing `csv-classify.spec.ts` tests; a negative control | `tests/` | Low | Low | 0.2h | done | T441 | `77aa908` | 27/27 over three runs on all browsers; fails with no cancel announcement | no new test |
 | T444 | Gate: lint, unit, Playwright in full, bundle | - | Low | Low | 0.3h | done | T442-T443 | - | lint clean; unit 781/781; Playwright 439/441 in 8.2 m; the 2 Firefox failures (a `page.goto` timeout in `account-and-mobile-nav.spec.ts`, a Quick Add click never stable in `smart-rules.spec.ts`, both with Firefox's own compositor errors in the log) passed 6/6 on re-run, three times each | - |
-| T445 | `CLAUDE.md`, this ledger, the refactor log, baseline metrics | `docs/`, `CLAUDE.md` | Low | Low | 0.2h | done | T444 | - | - | - |
+| T445 | `CLAUDE.md`, this ledger, the refactor log, baseline metrics | `docs/`, `CLAUDE.md` | Low | Low | 0.2h | done | T444 | `40f331d` | - | - |
 
 **Notes on execution:**
 - **WebKit found a gap the first design had.** With a mocked reply, the end of the pause and the end of the run rendered as one update, so "resumed" was never set and "paused" was the last thing heard. A run that announced a pause now ends by announcing its note.
