@@ -4,6 +4,31 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
+## Phase 79 - Every import run is heard, and local runs use 4 workers: T446-T452 (2026-10-04, draft PR)
+
+ADR `0055`. Two loose ends from Phase 78: a classification run that never met the rate limit finished silently for a screen reader, and every recent local gate lost one or two Firefox tests to timeouts.
+
+**Changed**
+- **`ImportCsvModal`:** every finished run announces its note in `csv-classify-announcer`, including "nothing matched" and "Jev is unavailable". ADR `0054`'s pause flag is gone.
+- **`playwright.config.ts`:** `workers: process.env.CI ? 2 : 4`; CI unchanged.
+- **`unit/categories-page.test.tsx`:** the repeated-colour test flushes effects with `act` after the row appears, before the guard reads `categoriesRef`.
+- **Tests:** unit 781 -> 784 (announcer 11 -> 14); E2E assertions in two more existing `csv-classify.spec.ts` tests.
+- **Docs:** ADR `0055`; `CLAUDE.md` (the live-region line, the local-workers rule, two Do NOT lines, counts); the ledger; this log; baseline metrics.
+
+**Found**
+- **The Firefox timeouts were contention, not cold compile or reloads.** At 6 workers, 441 Firefox runs had ten tests over 20 s (slowest 42.5 s, 9 of them not their spec's first test) and 2 `page.goto` timeouts; at 4 workers, none over 12.1 s and none failed, in the same wall time.
+- **The categories unit flake was a ref-mirror race in the test.**
+
+**Still open**
+- **The worker count is measured on one 12-thread machine.**
+- **The announcements are still not tried with a screen reader.**
+
+**Gate:**
+- Lint clean. Unit 784/784 three times in a row.
+- **Mutations:** 14 of 14 caught (the table is in ADR `0055` and `0054`).
+- **E2E:** 441/441 twice, first pass, no retries (7.3 m and 7.2 m; slowest test 10.3 s and 10.9 s).
+- **Bundle** (local builds with `.env`, gzip level 9): `TransactionsView` 34,870 -> 34,784 B (-86 B, -34 B gzip), from removing the pause flag. No other chunk changed, and the entry `index-*.js` is identical to `main`'s once its hashed chunk names are normalised.
+
 ## Phase 78 - A screen reader hears the import's pause: T440-T445 (2026-10-04, commit `77aa908`, docs `40f331d`, merge `45eb2d4`)
 
 ADR `0054`. ADRs `0052` and `0053` left the import's rate-limit pause visual only: a screen reader user heard nothing during a wait of up to a minute, or when a run was cancelled or stopped.
