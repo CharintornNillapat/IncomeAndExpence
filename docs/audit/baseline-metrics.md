@@ -1109,7 +1109,21 @@ No `src/` file changed, so the client bundle is unchanged (not rebuilt). Unit 72
 | 1 to 5 | `sin1::iad1` | `total` 0.6 to 4.8 ms | 0.603 to 1.288 s |
 | 6 to 10 | `sin1::iad1` | `total` 0.5 to 0.8 ms | 0.364 to 0.376 s |
 
-**Signed in, `iad1`:** one sample so far (ADR `0050`): `quota;dur=614.5, ai;dur=134.3, total;dur=750.2`, `auth` cached.
+**After, on `icn1`** (`65d49f4`, Vercel `dpl_BnxC9uqZHQBTPhzxskVM9a8bpZQq`):
+
+| Guest `POST {}`, 10 requests from Thailand | fastest | median | mean | slowest |
+|---|---|---|---|---|
+| `iad1` (`sin1::iad1`, 2026-10-03 23:33 UTC) | 0.364 s | 0.490 s | 0.615 s | 1.288 s |
+| `icn1` (`sin1::icn1`, 2026-10-04 00:34 UTC) | **0.226 s** | **0.358 s** | **0.341 s** | 0.574 s |
+
+| Signed-in `/api/classify` (ms) | `auth` | `quota` | `ai` | `total` |
+|---|---|---|---|---|
+| token not yet cached, `iad1` | 793.5 | 680.6 | 141.1 | **1616.3** |
+| token not yet cached, `icn1` | 356.0 | 54.8 | 213.3 | **626.3** (−61%) |
+| token cached, `iad1` (3 to 5 samples) | 0 | ~626 to 652 | ~132 to 185 | **~782 to 839** |
+| token cached, `icn1` (4 samples) | 0 | 31.4 to 43.5, median 35.8 | 175.6 to 225.8, median 196.2 | **209.0 to 261.7, median 237.9** (about −70%) |
+
+The function's own time for a guest's `POST {}` stayed under 5 ms. One `icn1` value arrived cut off (`total;dur=244.`) and is read as 244.0.
 
 ## Phase 74 (the AI proxies time their steps) - delta against Phase 73
 

@@ -1083,7 +1083,7 @@ Approved explicitly by the user, planned and approved before any code was writte
 
 ## Phase 75 - The functions run beside the database: T421-T426 (2026-10-04)
 
-ADR `0051`, acting on ADR `0050`'s finding. Branch `phase-75-function-region-opt`, cut from `main` at `235eeec`; commit `f70a069` (docs `b562bfa`); draft PR. One configuration key, no code change, no migration.
+ADR `0051`, acting on ADR `0050`'s finding. Branch `phase-75-function-region-opt`, cut from `main` at `235eeec`; commit `f70a069` (docs `b562bfa`, hash backfill `e922394`), merged into `main` as `65d49f4` (PR #25); Vercel `dpl_BnxC9uqZHQBTPhzxskVM9a8bpZQq` READY in `icn1`. Kept: On production, `quota` fell from about 640 to about 36 ms (−94%) and an uncached `auth` from 793.5 to 356.0 ms; `ai` rose from about 140 to about 196 ms, consistent with TypeSafe running nearer the US. A signed-in classification with a cached token, most requests, now takes about 238 ms in the function instead of about 810. One configuration key, no code change, no migration.
 
 | # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
 |---|---|---|---|---|---|---|---|---|---|---|
@@ -1091,8 +1091,8 @@ ADR `0051`, acting on ADR `0050`'s finding. Branch `phase-75-function-region-opt
 | T422 | `vercel.json` with `regions: ["icn1"]`; `classify.ts`'s header comment no longer says there is none | `vercel.json`, `api/classify.ts` | High | Low | 0.1h | done | T421 | `f70a069` | valid JSON, two keys (`$schema`, `regions`) | - |
 | T423 | Gate: lint, unit, Playwright in full | - | Low | Low | 0.2h | done | T422 | - | lint clean; unit 725/725; Playwright 432/432 | - |
 | T424 | `CLAUDE.md`, this ledger, the refactor log, baseline metrics | `docs/`, `CLAUDE.md` | Low | Low | 0.2h | done | T423 | `b562bfa` | - | - |
-| T425 | Before: 10 guest `POST {}` from this machine (done) and 3 to 5 signed-in `Server-Timing` samples from the owner, on `iad1` production | production | Med | Low | 0.2h | in-progress | the owner | - | guest warm 0.364-0.376 s, `sin1::iad1` | - |
-| T426 | After the merge: the deployment's `regions`, `x-vercel-id`, the same guest and signed-in samples; keep `icn1` or revert by ADR `0051`'s rule | production | Med | Low | 0.3h | todo | T425, the merge | - | - | - |
+| T425 | Before: 10 guest `POST {}` from this machine (done) and 3 to 5 signed-in `Server-Timing` samples from the owner, on `iad1` production | production | Med | Low | 0.2h | done | the owner | - | guest warm 0.364-0.376 s, `sin1::iad1`; signed in: uncached `total` 1616.3, cached ~782-839 ms | - |
+| T426 | After the merge: the deployment's `regions`, `x-vercel-id`, the same guest and signed-in samples; keep `icn1` or revert by ADR `0051`'s rule | production | Med | Low | 0.3h | done | T425, the merge | - | `regions: ["icn1"]`, `sin1::icn1`; signed in: uncached `total` 626.3, cached median 237.9 ms; kept | signed-in cached `total` about −70%, `quota` −94%, `ai` +56 ms |
 
 **Notes on execution:**
 - **Why production:** Playwright answers `/api/*` itself and the unit suite calls the handlers, so no local run sees a region; previews have `VITE_SUPABASE_*` for production only and sit behind Vercel's login.

@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 75 - The functions run beside the database: T421-T426 (2026-10-04, draft PR; not measured yet)
+## Phase 75 - The functions run beside the database: T421-T426 (2026-10-04, commit `f70a069`, docs `b562bfa`, merge `65d49f4`; kept)
 
 ADR `0051`. ADR `0050` showed the per-account count taking 614.5 of a signed-in request's 750.2 ms, because the functions ran in `iad1` (Washington, D.C.) and the database is in Seoul.
 
@@ -16,8 +16,29 @@ ADR `0051`. ADR `0050` showed the per-account count taking 614.5 of a signed-in 
 **Found**
 - **Previews cannot measure this:** `VITE_SUPABASE_*` are production-only, and previews sit behind Vercel's login. The measurement is on production, before and after.
 
+**Release:**
+- PR #25 merged into `main` as `65d49f4`; Vercel `dpl_BnxC9uqZHQBTPhzxskVM9a8bpZQq` READY with `regions: ["icn1"]`; responses read `sin1::icn1`.
+
+| Signed-in `/api/classify` (ms) | `auth` | `quota` | `ai` | `total` |
+|---|---|---|---|---|
+| token not yet cached, `iad1` | 793.5 | 680.6 | 141.1 | **1616.3** |
+| token not yet cached, `icn1` | 356.0 | 54.8 | 213.3 | **626.3** (−61%) |
+| token cached, `iad1` (3 to 5 samples) | 0 | ~626 to 652 | ~132 to 185 | **~782 to 839** |
+| token cached, `icn1` (4 samples) | 0 | 31.4 to 43.5, median 35.8 | 175.6 to 225.8, median 196.2 | **209.0 to 261.7, median 237.9** (about −70%) |
+
+| Guest `POST {}`, 10 requests from Thailand | fastest | median | mean | slowest |
+|---|---|---|---|---|
+| `iad1` (`sin1::iad1`, 2026-10-03 23:33 UTC) | 0.364 s | 0.490 s | 0.615 s | 1.288 s |
+| `icn1` (`sin1::icn1`, 2026-10-04 00:34 UTC) | **0.226 s** | **0.358 s** | **0.341 s** | 0.574 s |
+
+- The owner took every signed-in sample from DevTools on production, with notes no keyword rule matches. One `icn1` value arrived cut off (`total;dur=244.`) and is read as 244.0; the median moves by at most 0.05 ms.
+- **The uncached `auth` is still the largest single step** (356.0 ms), though the auth server is now in the same region. It may include a new connection's handshake; not confirmed.
+- **Guests gained too:** the function's own time is under 5 ms either way, so the faster wall time is the shorter network from Singapore to Seoul. The `icn1` times fall into two groups (6 near 0.23 s, 4 near 0.48 s), probably new connections; not confirmed.
+
+**Decision: kept.** On production, `quota` fell from about 640 to about 36 ms (−94%) and an uncached `auth` from 793.5 to 356.0 ms; `ai` rose from about 140 to about 196 ms, consistent with TypeSafe running nearer the US. A signed-in classification with a cached token, most requests, now takes about 238 ms in the function instead of about 810.
+
 **Still open**
-- **T425 and T426:** the owner's signed-in samples on `iad1` before the merge, and the same on `icn1` after; keep or revert by ADR `0051`'s rule.
+- **The uncached `auth`** (356.0 ms in Seoul) is the largest step left; whether it is a connection's handshake is not known.
 
 **Gate:**
 - Lint clean. Unit 725/725 in 29 files. E2E: 432/432 in 6.7 m.

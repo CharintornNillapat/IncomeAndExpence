@@ -1,6 +1,6 @@
 # 0051: The functions run in icn1 (Seoul), beside the database
 
-**Status:** Proposed. Implemented on branch `phase-75-function-region-opt`, draft PR. Not merged; the before-and-after measurement below decides whether it stays.
+**Status:** Accepted and released; kept by its own rule after the measurement below. Commit `f70a069` (docs `b562bfa`, hash backfill `e922394`), merged into `main` as `65d49f4` (PR #25). Vercel `dpl_BnxC9uqZHQBTPhzxskVM9a8bpZQq` is READY in production with `regions: ["icn1"]`, and every response reads `x-vercel-id: sin1::icn1::...`.
 - **Acts on** ADR `0050`'s finding: on production the per-account count (ADR `0049`) was most of a signed-in request.
 
 **Date:** 2026-10-04
@@ -50,6 +50,26 @@
 - **Decision rule:**
   - keep `icn1` if the signed-in median `total` falls;
   - revert (delete `vercel.json`, or set `iad1`) if it rises, because a slower `ai` outweighed a faster `quota`.
+
+## Result
+
+| Signed-in `/api/classify` (ms) | `auth` | `quota` | `ai` | `total` |
+|---|---|---|---|---|
+| token not yet cached, `iad1` | 793.5 | 680.6 | 141.1 | **1616.3** |
+| token not yet cached, `icn1` | 356.0 | 54.8 | 213.3 | **626.3** (−61%) |
+| token cached, `iad1` (3 to 5 samples) | 0 | ~626 to 652 | ~132 to 185 | **~782 to 839** |
+| token cached, `icn1` (4 samples) | 0 | 31.4 to 43.5, median 35.8 | 175.6 to 225.8, median 196.2 | **209.0 to 261.7, median 237.9** (about −70%) |
+
+| Guest `POST {}`, 10 requests from Thailand | fastest | median | mean | slowest |
+|---|---|---|---|---|
+| `iad1` (`sin1::iad1`, 2026-10-03 23:33 UTC) | 0.364 s | 0.490 s | 0.615 s | 1.288 s |
+| `icn1` (`sin1::icn1`, 2026-10-04 00:34 UTC) | **0.226 s** | **0.358 s** | **0.341 s** | 0.574 s |
+
+- The owner took every signed-in sample from DevTools on production, with notes no keyword rule matches. One `icn1` value arrived cut off (`total;dur=244.`) and is read as 244.0; the median moves by at most 0.05 ms.
+- **The uncached `auth` is still the largest single step** (356.0 ms), though the auth server is now in the same region. It may include a new connection's handshake; not confirmed.
+- **Guests gained too:** the function's own time is under 5 ms either way, so the faster wall time is the shorter network from Singapore to Seoul. The `icn1` times fall into two groups (6 near 0.23 s, 4 near 0.48 s), probably new connections; not confirmed.
+
+**Decision: keep `icn1`.** On production, `quota` fell from about 640 to about 36 ms (−94%) and an uncached `auth` from 793.5 to 356.0 ms; `ai` rose from about 140 to about 196 ms, consistent with TypeSafe running nearer the US. A signed-in classification with a cached token, most requests, now takes about 238 ms in the function instead of about 810.
 
 ## Consequences
 
