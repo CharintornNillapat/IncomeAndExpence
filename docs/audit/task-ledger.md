@@ -1081,6 +1081,24 @@ Approved explicitly by the user, planned and approved before any code was writte
 - **One negative control was redone** because the first attempt produced malformed TypeScript that the dev server still served — the tests failed, but possibly for the wrong reason.
 - **No flakes.** Phase 44's `wallets.spec.ts` webkit flake has now not reproduced across three consecutive phases; still watched rather than closed.
 
+## Phase 75 - The functions run beside the database: T421-T426 (2026-10-04)
+
+ADR `0051`, acting on ADR `0050`'s finding. Branch `phase-75-function-region-opt`, cut from `main` at `235eeec`; commit `f70a069` (docs `b562bfa`); draft PR. One configuration key, no code change, no migration.
+
+| # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
+|---|---|---|---|---|---|---|---|---|---|---|
+| T421 | ADR `0051`: the regions involved, the trade-off with TypeSafe, the measurement and the rule that decides | `docs/audit/decisions/` | Low | Low | 0.3h | done | - | `b562bfa` | - | - |
+| T422 | `vercel.json` with `regions: ["icn1"]`; `classify.ts`'s header comment no longer says there is none | `vercel.json`, `api/classify.ts` | High | Low | 0.1h | done | T421 | `f70a069` | valid JSON, two keys (`$schema`, `regions`) | - |
+| T423 | Gate: lint, unit, Playwright in full | - | Low | Low | 0.2h | done | T422 | - | lint clean; unit 725/725; Playwright 432/432 | - |
+| T424 | `CLAUDE.md`, this ledger, the refactor log, baseline metrics | `docs/`, `CLAUDE.md` | Low | Low | 0.2h | done | T423 | `b562bfa` | - | - |
+| T425 | Before: 10 guest `POST {}` from this machine (done) and 3 to 5 signed-in `Server-Timing` samples from the owner, on `iad1` production | production | Med | Low | 0.2h | in-progress | the owner | - | guest warm 0.364-0.376 s, `sin1::iad1` | - |
+| T426 | After the merge: the deployment's `regions`, `x-vercel-id`, the same guest and signed-in samples; keep `icn1` or revert by ADR `0051`'s rule | production | Med | Low | 0.3h | todo | T425, the merge | - | - | - |
+
+**Notes on execution:**
+- **Why production:** Playwright answers `/api/*` itself and the unit suite calls the handlers, so no local run sees a region; previews have `VITE_SUPABASE_*` for production only and sit behind Vercel's login.
+- **The guest baseline** (2026-10-03 23:33 UTC): 10 `400`s from `sin1::iad1`, the function's own `total` 0.5 to 4.8 ms, wall time 0.364 to 0.376 s once warm and 0.60 to 1.29 s for the first five.
+- **No `src/` or `tests/` file was edited during a Playwright run.**
+
 ## Phase 74 - The AI proxies time their steps: T415-T420 (2026-10-03)
 
 ADR `0050`, answering ADR `0049`'s open measurement. Branch `phase-74-server-timing`, cut from `main` at `11d3844`; commit `7651728` (docs `193f0df`, hash backfill `1695d06`), merged into `main` as `e69425f` (PR #24); Vercel `dpl_2J9Asnb3kofhqt3RyPRYMRRvCWS9` READY. No migration, no client change.

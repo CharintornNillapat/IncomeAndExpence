@@ -10,7 +10,8 @@ import type { ClassifyCandidate, ClassifyRequest, ClassifyResponse } from '../sr
  * client bundle is a second, independent reason. See ADR 0011.
  *
  * Vercel zero-config: the project is `framework: "vite"` on Node 24.x, so a root
- * `api/` directory is served as functions with no `vercel.json`. The
+ * `api/` directory is served as functions. `vercel.json` sets only the region
+ * they run in, `icn1`, beside the Supabase project (ADR 0051). The
  * web-standard `(Request) => Response` handler signature is used so that no
  * `@vercel/node` dependency is needed - but it MUST be reached through a named
  * method export (`export function POST`), never `export default`. See the note
