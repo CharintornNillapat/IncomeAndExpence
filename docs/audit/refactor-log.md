@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 78 - A screen reader hears the import's pause: T440-T445 (2026-10-04, commit `77aa908`, docs `40f331d`, draft PR)
+## Phase 78 - A screen reader hears the import's pause: T440-T445 (2026-10-04, commit `77aa908`, docs `40f331d`, merge `45eb2d4`)
 
 ADR `0054`. ADRs `0052` and `0053` left the import's rate-limit pause visual only: a screen reader user heard nothing during a wait of up to a minute, or when a run was cancelled or stopped.
 
@@ -15,6 +15,9 @@ ADR `0054`. ADRs `0052` and `0053` left the import's rate-limit pause visual onl
 
 **Found**
 - **WebKit renders a resume and a finish together** when the reply is instant, so a resume alone cannot be relied on to close a pause; the run's note now does.
+
+**Release:**
+- PR #28 merged into `main` as `45eb2d4`. Vercel `dpl_JARpUTJzSYio4svwtyA4RBNpv2mo` is READY in production (`icn1`), and its `TransactionsView` chunk carries `csv-classify-announcer` and the paused, resumed and cancelled sentences. `main` CI on the merge passed, all four jobs (run `37188885802`).
 
 **Still open**
 - **A run that never pauses is silent when it finishes,** as before.

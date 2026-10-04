@@ -1083,7 +1083,7 @@ Approved explicitly by the user, planned and approved before any code was writte
 
 ## Phase 78 - A screen reader hears the import's pause: T440-T445 (2026-10-04)
 
-ADR `0054`, extending ADRs `0052` and `0053`. Branch `phase-78-a11y-rate-limit-pause`, cut from `main` at `8a81507`; commit `77aa908` (docs `40f331d`); draft PR. No migration, no proxy change.
+ADR `0054`, extending ADRs `0052` and `0053`. Branch `phase-78-a11y-rate-limit-pause`, cut from `main` at `8a81507`; commit `77aa908` (docs `40f331d`, hash backfill `69ccea5`), merged into `main` as `45eb2d4` (PR #28); Vercel `dpl_JARpUTJzSYio4svwtyA4RBNpv2mo` READY in `icn1`, CI run `37188885802` passed. No migration, no proxy change.
 
 | # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
 |---|---|---|---|---|---|---|---|---|---|---|
