@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 82 - A dialog isolates the page in the commit that shows it: T470-T476 (2026-10-04, commit `4d9e34e`, docs `234eb2e`, draft PR)
+## Phase 82 - A dialog isolates the page in the commit that shows it: T470-T476 (2026-10-04, commit `4d9e34e`, docs `234eb2e`, merge `bef52be`)
 
 ADR `0058`, amending ADR `0047`. The two items Phase 81 left open.
 
@@ -25,7 +25,13 @@ ADR `0058`, amending ADR `0047`. The two items Phase 81 left open.
 - **E2E:** run 1 440/441 in 7.5 m (WebKit, the high-confidence classification test: the badge never appeared, no trace); run 2 440/441 in 11.1 m with traces on (WebKit, a Categories click stalled on "stable"); run 3 441/441 in 8.1 m, first pass.
 - **Bundle** (the branch built with `.env` against production's files, which are `main`'s build byte for byte): the entry `index-*.js` 189,481 -> 189,653 B (+172 B, +61 B gzip), where `Modal` lives. Every other chunk is identical once hashed chunk names are normalised.
 
+**Release:**
+- PR #32 merged into `main` as `bef52be`. Vercel `dpl_9gzWuPDm3Hs3BtSHMjg6BngFs1HJ` is READY in production (`icn1`; a guest `POST {}` to `/api/classify` answered 400 from `icn1`). Its entry `index-BMIDhs0y.js` is byte-identical to the local build of the branch.
+- The PR's CI run (`37212150668`) passed every browser job with no retry. The inert spec this phase fixed did not flake on the PR or the merge.
+- `main` CI on the merge (run `37212793444`) passed every job, with one WebKit test flaky (passed on retry): `categories.spec.ts`'s "attempting to delete an in-use category surfaces the guard error in the confirm dialog". With the Delete category confirmation open, it opens Quick Add over it, fills the amount with "50" and picks the category; the submit stayed disabled for 15 s ("element is not enabled", 30 retries). The failed attempt's page snapshot shows the category picked and the amount field empty. `selectOption` sets a value in script, but `fill` needs focus first, so one reading is that Quick Add's field was `inert` (or not yet focusable) when it was filled; another is that the form remounted between the two steps. It is new: the same test's Phase 63 failure was a Firefox teardown crash. Locally it did not recur in 60 WebKit repeats (one stall of the known Windows kind) or 20 on chromium and Firefox. Recorded as open, first in the backlog.
+
 **Still open**
+- **Quick Add over a confirmation lost a filled amount once on WebKit CI** (above).
 - **WebKit on Windows stops painting a page now and then** (about once in a few hundred runs). Its trace is recognisable: the screencast's last frame comes before the stalled action.
 - **The classifier test's one unexplained failure** in run 1.
 

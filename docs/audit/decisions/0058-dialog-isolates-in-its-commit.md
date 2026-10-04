@@ -1,6 +1,6 @@
 # 0058: A dialog isolates the page in the commit that shows it
 
-**Status:** Accepted. Implemented on branch `phase-82-modal-inert-and-dialog-settle` (commit `4d9e34e`, docs `234eb2e`), draft PR. Not merged yet.
+**Status:** Accepted. Implemented on branch `phase-82-modal-inert-and-dialog-settle` (commit `4d9e34e`, docs `234eb2e`, hash backfill `9fbfe81`), merged into `main` as `bef52be` (PR #32). Vercel `dpl_9gzWuPDm3Hs3BtSHMjg6BngFs1HJ` is READY in production (`icn1`).
 - **Amends** ADR `0047`: the background is still marked beside the dialog, never on `#root`; what changes is when.
 - **Amends** audit 008's return of focus to the opener: the same opener, given focus in the closing commit.
 

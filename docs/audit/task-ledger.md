@@ -1083,7 +1083,7 @@ Approved explicitly by the user, planned and approved before any code was writte
 
 ## Phase 82 - A dialog isolates the page in the commit that shows it: T470-T476 (2026-10-04)
 
-ADR `0058`, amending ADR `0047`. Branch `phase-82-modal-inert-and-dialog-settle`, cut from `main` at `7fc77af`; commit `4d9e34e` (docs `234eb2e`); draft PR. No migration, no proxy change, no CI change.
+ADR `0058`, amending ADR `0047`. Branch `phase-82-modal-inert-and-dialog-settle`, cut from `main` at `7fc77af`; commit `4d9e34e` (docs `234eb2e`, hash backfill `9fbfe81`), merged into `main` as `bef52be` (PR #32); Vercel `dpl_9gzWuPDm3Hs3BtSHMjg6BngFs1HJ` READY in `icn1`, CI run `37212793444` passed (one WebKit test flaky, see the refactor log). No migration, no proxy change, no CI change.
 
 | # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
 |---|---|---|---|---|---|---|---|---|---|---|
