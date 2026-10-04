@@ -154,10 +154,17 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
   });
 
   // L12: 25 at a time. A filter change starts the list again from the top.
+  // The reset happens during the render that sees the new filters, not in an
+  // effect (ADR 0056): the search settles on a timer, and an effect runs after
+  // its render, so a "Load more" click that landed in between was undone.
   const [shownCount, setShownCount] = useState<number>(PAGE_STEP);
-  useEffect(() => {
+  const filterKey = [debouncedSearchTerm, selectedWalletId, selectedCategoryId, selectedType, range, dayFilter, showSoftDeleted].join('\u0000');
+  const [shownFor, setShownFor] = useState(filterKey);
+  if (shownFor !== filterKey) {
+    setShownFor(filterKey);
     setShownCount(PAGE_STEP);
-  }, [debouncedSearchTerm, selectedWalletId, selectedCategoryId, selectedType, range, dayFilter, showSoftDeleted]);
+  }
+  const loadMore = () => setShownCount((n) => n + PAGE_STEP);
 
   // Modal States
   const [isAddModalOpen, setIsAddModalOpen] = useState<boolean>(false);
@@ -194,9 +201,10 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
     () => (selectedTxId ? sortedRows.find((tx) => tx.id === selectedTxId) ?? null : null),
     [selectedTxId, sortedRows]
   );
-  useEffect(() => {
-    if (selectedTxId && !selectedTx) setSelectedTxId(null);
-  }, [selectedTxId, selectedTx]);
+  // A selected row that left the list closes the panel, in the render that
+  // finds it gone (ADR 0056). As an effect it ran after that render, and its
+  // `null` replaced a row the user had picked in between.
+  if (selectedTxId && !selectedTx) setSelectedTxId(null);
 
   // One render path by width, never two copies hidden by CSS (ADR 0031). Inline
   // from `lg` since Phase 58b (audit 006 finding 2), where the list keeps about 620px.
@@ -295,7 +303,7 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
             Showing {shownRows.length} of {sortedRows.length}
           </span>
           {hasMoreRows(sortedRows, shownCount) && (
-            <Button id="tx-load-more-btn" variant="secondary" onClick={() => setShownCount((n) => n + PAGE_STEP)}>
+            <Button id="tx-load-more-btn" variant="secondary" onClick={loadMore}>
               Load {Math.min(PAGE_STEP, sortedRows.length - shownRows.length)} more
             </Button>
           )}
