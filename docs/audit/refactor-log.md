@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 79 - Every import run is heard, and local runs use 4 workers: T446-T452 (2026-10-04, commit `3a8adea`, docs `0d8f49d`, draft PR)
+## Phase 79 - Every import run is heard, and local runs use 4 workers: T446-T452 (2026-10-04, commit `3a8adea`, CI fix `8694ab2`, merge `e21c071`)
 
 ADR `0055`. Two loose ends from Phase 78: a classification run that never met the rate limit finished silently for a screen reader, and every recent local gate lost one or two Firefox tests to timeouts.
 
@@ -20,6 +20,10 @@ ADR `0055`. Two loose ends from Phase 78: a classification run that never met th
 - **The Firefox timeouts were contention, not cold compile or reloads.** At 6 workers, 441 Firefox runs had ten tests over 20 s (slowest 42.5 s, 9 of them not their spec's first test) and 2 `page.goto` timeouts; at 4 workers, none over 12.1 s and none failed, in the same wall time.
 - **The categories unit flake was a ref-mirror race in the test.**
 - **CI found a race in the component.** On WebKit an effect's late "resumed" replaced the finished run's note (3 of 3 CI attempts, 1 of 10 locally). After the fix: 80/80 for that test, 55/55 for its spec.
+
+**Release:**
+- PR #29 merged into `main` as `e21c071`. Vercel `dpl_3u7u9dGSJfBUeMirCY4GDYF2LMBS` is READY in production (`icn1`), and its `TransactionsView-B7OG80OZ.js` is byte-identical to the local build of the branch (34,825 B). `main` CI on the merge passed, all four jobs (run `37198720091`).
+- The PR's second CI run (`37195309421`) passed every browser job with no retry: 147 passed each.
 
 **Still open**
 - **The worker count is measured on one 12-thread machine.**

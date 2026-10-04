@@ -1083,7 +1083,7 @@ Approved explicitly by the user, planned and approved before any code was writte
 
 ## Phase 79 - Every import run is heard, and local runs use 4 workers: T446-T452 (2026-10-04)
 
-ADR `0055`, amending ADR `0054` and Phase 55's local `workers` note. Branch `phase-79-a11y-outcome-and-test-stability`, cut from `main` at `3fd3083`; commit `3a8adea` (docs `0d8f49d`); draft PR. No migration, no CI change.
+ADR `0055`, amending ADR `0054` and Phase 55's local `workers` note. Branch `phase-79-a11y-outcome-and-test-stability`, cut from `main` at `3fd3083`; commit `3a8adea` (docs `0d8f49d`, hash backfill `a928b5e`; CI fix `8694ab2`, its docs `c1b0901`, backfill `bbe83c6`), merged into `main` as `e21c071` (PR #29); Vercel `dpl_3u7u9dGSJfBUeMirCY4GDYF2LMBS` READY in `icn1`, CI run `37198720091` passed. No migration, no CI change.
 
 | # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
 |---|---|---|---|---|---|---|---|---|---|---|

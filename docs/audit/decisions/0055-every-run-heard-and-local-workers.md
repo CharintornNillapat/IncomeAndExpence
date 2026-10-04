@@ -1,6 +1,6 @@
 # 0055: Every import run is heard when it ends, and local test runs use 4 workers
 
-**Status:** Accepted. Implemented on branch `phase-79-a11y-outcome-and-test-stability` (commit `3a8adea`, docs `0d8f49d`), draft PR. Not merged yet.
+**Status:** Accepted and released. Commit `3a8adea` (docs `0d8f49d`, hash backfill `a928b5e`; CI fix `8694ab2`, its docs `c1b0901`, backfill `bbe83c6`), merged into `main` as `e21c071` (PR #29). Vercel `dpl_3u7u9dGSJfBUeMirCY4GDYF2LMBS` is READY in production (`icn1`), and its `TransactionsView-B7OG80OZ.js` is byte-identical to the local build of the branch (34,825 B). `main` CI on the merge passed, all four jobs (run `37198720091`).
 - **Amends** ADR `0054`, which announced a run's end only after a pause or a stop at the rate limit.
 - **Amends** Phase 55's `workers` note in `playwright.config.ts` ("local runs use more without flakes"), which no longer held.
 
