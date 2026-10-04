@@ -1,4 +1,4 @@
-import React, { useEffect, useId, useRef } from 'react';
+import React, { useEffect, useId, useLayoutEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X } from 'lucide-react';
 import { IconButton } from './ui/IconButton';
@@ -180,24 +180,49 @@ export const Modal: React.FC<ModalProps> = ({
   // it back when it closes, however it closes, if it is still on the page.
   // This cleanup runs before the stack effect's, so it releases the dialog
   // first (ADR 0047): the opener is still inert until then.
-  useEffect(() => {
+  //
+  // Phase 82 (ADR 0058): this and the stack effect below are layout effects,
+  // so the background is inert and focus is inside in the commit that puts the
+  // dialog on the page, and both are given back in the commit that closes it.
+  // As passive effects they ran a task later whenever the dialog opened on a
+  // default-priority update (Quick Add's lazy chunk resolving), and the first
+  // frame showed a dialog over a live page. They stay in this order: this one
+  // must read the opener before the stack effect moves focus into the panel.
+  // The app renders only in the browser, so there is no server render to warn.
+  const returnFocusTo = useRef<HTMLElement | null>(null);
+  useLayoutEffect(() => {
     if (!isOpen) return;
     const token = stackToken.current;
     const opener = document.activeElement instanceof HTMLElement && document.activeElement !== document.body
       ? document.activeElement
       : null;
+    returnFocusTo.current = opener;
     return () => {
       releaseDialog(token);
+      // Enough when the dialog unmounts. When it only closes, its controls stay
+      // on the page for the exit tween, and React puts focus back on the one
+      // that had it once this cleanup's commit step is done; the effect below
+      // moves it to the opener after that.
       if (opener?.isConnected) opener.focus({ preventScroll: true });
     };
+  }, [isOpen]);
+
+  // The closing commit's layout step runs after React has restored focus to
+  // the closing dialog's control, so the opener gets it here, before paint.
+  useLayoutEffect(() => {
+    if (isOpen) return;
+    const opener = returnFocusTo.current;
+    returnFocusTo.current = null;
+    if (opener?.isConnected) opener.focus({ preventScroll: true });
   }, [isOpen]);
 
   // Phase 67 (ADR 0043): focus goes into the dialog when it opens. Declared
   // after the return-focus effect, so that one has already recorded the opener.
   // The panel is in the DOM from the first frame of its entrance tween. A
-  // field that focused itself (autoFocus, or a child's own effect, which runs
-  // first) keeps focus.
-  useEffect(() => {
+  // field that focused itself (autoFocus, or a child's own layout effect,
+  // which runs first) keeps focus; a child that focuses in a passive effect
+  // runs after this and takes it, as before.
+  useLayoutEffect(() => {
     if (!isOpen) return;
     const token = stackToken.current;
     openDialogs.push(token);

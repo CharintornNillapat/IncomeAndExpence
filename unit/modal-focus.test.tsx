@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
-import { describe, it, expect, afterEach, beforeEach } from 'vitest';
+import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest';
 import React, { useState } from 'react';
+import { createRoot } from 'react-dom/client';
 import { render, cleanup, fireEvent, screen, waitFor } from '@testing-library/react';
 import { Modal } from '../src/components/Modal';
 import { OverflowMenu } from '../src/components/ui/OverflowMenu';
@@ -454,5 +455,95 @@ describe('Modal background is inert while a dialog is open', () => {
     expect(inertCount()).toBeGreaterThan(0);
     unmount();
     expect(inertCount()).toBe(0);
+  });
+});
+
+// Phase 82 (ADR 0058): the background is inert, and focus is inside, in the
+// same commit that puts the dialog on the page, and both are given back in
+// the commit that closes it.
+//
+// Under `act` React runs every effect before the test's next line, so this
+// runs without it. The dialog opens and closes on a default-priority update
+// (Quick Add's lazy chunk resolving is one), whose passive effects React runs
+// in a later task. A MutationObserver callback is a microtask: it runs after
+// the commit and before that task, so it sees the page as the first frame
+// would.
+describe('Modal isolates the page in the commit that shows the dialog', () => {
+  const realFocus = HTMLElement.prototype.focus;
+  beforeEach(() => {
+    HTMLElement.prototype.focus = function focus(this: HTMLElement, options?: FocusOptions) {
+      if (this.closest('[inert]')) return;
+      realFocus.call(this, options);
+    };
+  });
+  afterEach(() => {
+    HTMLElement.prototype.focus = realFocus;
+  });
+
+  type Seen = { behindInert: boolean; dialogInert: boolean; focusInDialog: boolean; focusOnOpener: boolean; inert: number };
+
+  it('marks the background and moves focus in before the first frame, and gives both back in the closing commit', async () => {
+    const g = globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean };
+    const before = g.IS_REACT_ACT_ENVIRONMENT;
+    g.IS_REACT_ACT_ENVIRONMENT = false;
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const root = createRoot(container);
+    let setOpen: (open: boolean) => void = () => {};
+    function Host() {
+      const [open, set] = useState(false);
+      setOpen = set;
+      return (
+        <div>
+          <button type="button" id="opener">
+            Open
+          </button>
+          <button type="button" id="behind">
+            Behind the scrim
+          </button>
+          <Modal isOpen={open} onClose={() => set(false)} title="Details">
+            <input aria-label="Name" />
+          </Modal>
+          <output id="state">{open ? 'open' : 'closed'}</output>
+        </div>
+      );
+    }
+    const snapshot = (): Seen => {
+      const dialog = container.querySelector('[role="dialog"]');
+      return {
+        behindInert: container.querySelector('#behind')!.closest('[inert]') !== null,
+        dialogInert: !!dialog?.closest('[inert]'),
+        focusInDialog: !!dialog?.contains(document.activeElement),
+        focusOnOpener: document.activeElement === container.querySelector('#opener'),
+        inert: document.querySelectorAll('[inert]').length,
+      };
+    };
+    try {
+      root.render(<Host />);
+      await vi.waitFor(() => expect(container.querySelector('#state')?.textContent).toBe('closed'));
+      container.querySelector<HTMLElement>('#opener')!.focus();
+
+      let atOpen: Seen | null = null;
+      let atClose: Seen | null = null;
+      const observer = new MutationObserver(() => {
+        const state = container.querySelector('#state')?.textContent;
+        if (state === 'open' && !atOpen) atOpen = snapshot();
+        if (state === 'closed' && atOpen && !atClose) atClose = snapshot();
+      });
+      observer.observe(container, { childList: true, subtree: true, characterData: true });
+
+      setOpen(true);
+      await vi.waitFor(() => expect(atOpen).not.toBeNull());
+      expect(atOpen).toMatchObject({ behindInert: true, dialogInert: false, focusInDialog: true });
+
+      setOpen(false);
+      await vi.waitFor(() => expect(atClose).not.toBeNull());
+      observer.disconnect();
+      expect(atClose).toMatchObject({ behindInert: false, focusOnOpener: true, inert: 0 });
+    } finally {
+      root.unmount();
+      container.remove();
+      g.IS_REACT_ACT_ENVIRONMENT = before;
+    }
   });
 });
