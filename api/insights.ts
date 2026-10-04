@@ -71,6 +71,22 @@ function json(body: unknown, status: number, headers: Record<string, string> = {
   });
 }
 
+/**
+ * The wait TypeSafe asked for on its own 429, as delay-seconds, or undefined
+ * (ADR 0053). A copy of `classify.ts`'s; change both together.
+ */
+function upstreamRetryAfter(res: Response, now = Date.now()): string | undefined {
+  const seconds = (s: number) => String(Math.min(Math.ceil(s), 86_400));
+  const ms = res.headers.get('retry-after-ms')?.trim();
+  if (ms && /^\d+(\.\d+)?$/.test(ms)) return seconds(Number(ms) / 1000);
+  const value = res.headers.get('retry-after')?.trim();
+  if (!value) return undefined;
+  if (/^\d+$/.test(value)) return seconds(Number(value));
+  const at = Date.parse(value);
+  if (Number.isNaN(at) || at <= now) return undefined;
+  return seconds((at - now) / 1000);
+}
+
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
@@ -360,11 +376,15 @@ async function handle(req: Request, timings: Timings): Promise<Response> {
 
   if (!upstream.ok) {
     // The upstream body may echo request content, so nothing is forwarded.
-    // 429 passes through as 429, for the same reason as in `classify.ts`
-    // (ADR 0022); the client falls back to the local verdict either way.
+    // 429 passes through as 429, with TypeSafe's wait when it gave one, for
+    // the same reason as in `classify.ts` (ADR 0022, ADR 0053); the client
+    // falls back to the local verdict either way.
     console.error('[insights] upstream returned', upstream.status);
-    const status = upstream.status === 429 ? 429 : upstream.status === 401 ? 502 : 503;
-    return json({ error: 'Insights upstream error.' }, status);
+    if (upstream.status === 429) {
+      const retryAfter = upstreamRetryAfter(upstream);
+      return json({ error: 'Insights upstream error.' }, 429, retryAfter === undefined ? {} : { 'Retry-After': retryAfter });
+    }
+    return json({ error: 'Insights upstream error.' }, upstream.status === 401 ? 502 : 503);
   }
 
   let payload: unknown;

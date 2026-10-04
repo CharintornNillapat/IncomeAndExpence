@@ -42,6 +42,20 @@ const BASE_BACKOFF_MS = 400;
  */
 const MAX_RETRY_AFTER_MS = 60_000;
 
+/**
+ * The guest firewall's window (ADR 0046): 30 requests, then 429 until 60 s
+ * after the window's first request. Measured on production (ADR 0053): the
+ * window starts with the first request, not on the clock's minute, and a
+ * refused request does not move it.
+ */
+const FIREWALL_WINDOW_MS = 60_000;
+
+/**
+ * Added to the estimate because the firewall starts its window when the
+ * request arrives, which is after this run sent it.
+ */
+const FIREWALL_MARGIN_MS = 1_000;
+
 export interface BatchClassifyItem {
   /** Caller's key, echoed back untouched. The importer passes `rowIndex`. */
   id: number;
@@ -120,6 +134,34 @@ export async function classifyBatch(
   let resumesAt = 0;
   let pauseReported = false;
 
+  /*
+   * The firewall's 429 names no wait (ADR 0053), so the run keeps its own
+   * estimate of the guest window: it started with the first request this run
+   * sent, and a request sent a full window later starts the next one. A 429
+   * marked `firewall` waits until that window's end.
+   */
+  let windowStartedAt: number | undefined;
+
+  function firewallWaitMs(attempt: number): number {
+    const estimate = (windowStartedAt ?? Date.now()) + FIREWALL_WINDOW_MS + FIREWALL_MARGIN_MS - Date.now();
+    // An estimate already over means this run's requests were not the only
+    // ones counted (another tab, the same network): its window began earlier
+    // and cannot be known, so wait a whole window, which always clears it.
+    if (estimate <= BASE_BACKOFF_MS * attempt) return MAX_RETRY_AFTER_MS;
+    return Math.min(estimate, MAX_RETRY_AFTER_MS);
+  }
+
+  function pauseFor(ms: number, attempt: number): void {
+    // Never sooner than the old fixed backoff, so `Retry-After: 0` cannot
+    // turn the retry into an immediate second hit.
+    const until = Date.now() + Math.max(ms, BASE_BACKOFF_MS * attempt);
+    if (until > resumesAt) {
+      resumesAt = until;
+      pauseReported = true;
+      report();
+    }
+  }
+
   function report(): void {
     onProgress?.(Date.now() < resumesAt ? { done, total, resumesAt } : { done, total });
   }
@@ -180,6 +222,8 @@ export async function classifyBatch(
       }
 
       attempted += 1;
+      const sentAt = Date.now();
+      if (windowStartedAt === undefined || sentAt >= windowStartedAt + FIREWALL_WINDOW_MS) windowStartedAt = sentAt;
       const outcome = await classifyOnce(item.text, candidates, signal);
 
       if (outcome.kind === 'ok') {
@@ -207,19 +251,18 @@ export async function classifyBatch(
             rateLimited = true;
             return;
           }
-          // Never sooner than the old fixed backoff, so `Retry-After: 0` cannot
-          // turn the retry into an immediate second hit.
-          const until = Date.now() + Math.max(outcome.retryAfterMs, BASE_BACKOFF_MS * attempt);
-          if (until > resumesAt) {
-            resumesAt = until;
-            pauseReported = true;
-            report();
-          }
+          pauseFor(outcome.retryAfterMs, attempt);
           if (attempt < MAX_ATTEMPTS) continue;
           return;
         }
-        // No `Retry-After` (the firewall's guest limit sends none): the
-        // original per-row backoff, unchanged.
+        if (outcome.firewall) {
+          // The guest limit: the same shared pause, until the window's end.
+          pauseFor(firewallWaitMs(attempt), attempt);
+          if (attempt < MAX_ATTEMPTS) continue;
+          return;
+        }
+        // A 429 that names no wait and is not the firewall's: the original
+        // per-row backoff, unchanged.
         if (attempt < MAX_ATTEMPTS) {
           await delay(BASE_BACKOFF_MS * attempt, signal);
           continue;

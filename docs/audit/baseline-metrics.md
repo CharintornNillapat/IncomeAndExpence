@@ -1098,6 +1098,15 @@ The entry's growth is the ledger action itself, which lives with the other ledge
 
 **Intermittent local failures:** 6 in 1,071 full-suite runs (3 full runs). All were timeouts: a Firefox `goto`, a Firefox context close, and four WebKit clicks waiting for "stable". No assertion failed. See audit 005 finding 3 for the control runs.
 
+## Phase 77 (every 429 says how long to wait) - delta against Phase 76
+
+**Bundle** (local builds with `.env`, gzip level 9): `TransactionsView` 33,955 -> 34,179 B (+224 B, +93 B gzip) and `TransactionForm` 25,742 -> 25,869 B (+127 B, +46 B gzip), the two lazy chunks that hold the classifier. The entry `index-*.js` is identical to `main`'s once its hashed chunk names are normalised.
+
+| Suite | Files | Tests | Runs | Result |
+|---|---|---|---|---|
+| Playwright (local) | 29 | 147 | 441 | 439/441 in 6.8 m; the 2 Firefox failures (a `page.goto` timeout in `account-and-mobile-nav.spec.ts`, a nav click never stable in `date-boundary.spec.ts`) passed 6/6 on re-run, three times each |
+| Vitest (`unit/`) | 29 | 770 | 770 | 770/770, ~39 s |
+
 ## Phase 76 (the CSV importer waits out Retry-After) - delta against Phase 75
 
 **Bundle** (local builds with `.env`, gzip level 9): `TransactionsView` 33,033 -> 33,955 B (+922 B, +370 B gzip) and `TransactionForm` 25,486 -> 25,742 B (+256 B, +122 B gzip), the two lazy chunks that hold the classifier and the import preview. The entry `index-*.js` stays 189,481 B and is identical to `main`'s once its 55 hashed chunk names are normalised (gzip +2 B from those names).

@@ -71,8 +71,8 @@ function post(path: string, body: unknown): Request {
 let upstream: ReturnType<typeof vi.fn>;
 
 /** Makes the next TypeSafe call answer with `status` and `body`. */
-function upstreamReplies(status: number, body: unknown = {}) {
-  upstream.mockResolvedValue(new Response(JSON.stringify(body), { status }));
+function upstreamReplies(status: number, body: unknown = {}, headers: Record<string, string> = {}) {
+  upstream.mockResolvedValue(new Response(JSON.stringify(body), { status, headers }));
 }
 
 beforeEach(() => {
@@ -121,7 +121,54 @@ describe.each(ENDPOINTS)('$name', ({ name, handler, body, answers }) => {
 
   it('passes an upstream 429 through, so the batch backoff can see it', async () => {
     upstreamReplies(429);
-    expect((await handler(post(name, body))).status).toBe(429);
+    const res = await handler(post(name, body));
+    expect(res.status).toBe(429);
+    expect(res.headers.get('Retry-After')).toBeNull();
+  });
+
+  // ADR 0053: TypeSafe's own wait reaches the client, always as whole seconds.
+  it.each([
+    ['Retry-After seconds', { 'Retry-After': '7' }, '7'],
+    ['Retry-After with spaces', { 'Retry-After': ' 12 ' }, '12'],
+    ['retry-after-ms, rounded up', { 'retry-after-ms': '2500' }, '3'],
+    ['retry-after-ms over Retry-After', { 'retry-after-ms': '1000', 'Retry-After': '30' }, '1'],
+    ['a huge value, capped at a day', { 'Retry-After': '99999999999999999999999' }, '86400'],
+  ])('forwards an upstream 429\'s wait: %s', async (_label, headers, expected) => {
+    upstreamReplies(429, {}, headers);
+    const res = await handler(post(name, body));
+    expect(res.status).toBe(429);
+    expect(res.headers.get('Retry-After')).toBe(expected);
+  });
+
+  it('forwards an upstream 429\'s HTTP date as the seconds left', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    try {
+      vi.setSystemTime(new Date('2026-10-04T03:00:00Z'));
+      upstreamReplies(429, {}, { 'Retry-After': 'Sun, 04 Oct 2026 03:00:20 GMT' });
+      expect((await handler(post(name, body))).headers.get('Retry-After')).toBe('20');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it.each([
+    ['a word', { 'Retry-After': 'soon' }],
+    ['a negative number', { 'Retry-After': '-5' }],
+    ['a date already past', { 'Retry-After': 'Thu, 01 Jan 2026 00:00:00 GMT' }],
+    ['an empty value', { 'Retry-After': '' }],
+  ])('sends a 429 without Retry-After when upstream\'s is unusable: %s', async (_label, headers) => {
+    upstreamReplies(429, {}, headers);
+    const res = await handler(post(name, body));
+    expect(res.status).toBe(429);
+    expect(res.headers.get('Retry-After')).toBeNull();
+  });
+
+  it('forwards no other upstream header and no Retry-After on a non-429', async () => {
+    upstreamReplies(503, {}, { 'Retry-After': '5', 'x-typesafe-request-id': 'req-123' });
+    const res = await handler(post(name, body));
+    expect(res.status).toBe(503);
+    expect(res.headers.get('Retry-After')).toBeNull();
+    expect(res.headers.get('x-typesafe-request-id')).toBeNull();
   });
 
   it('maps a rejected key to 502, not a retryable status', async () => {
