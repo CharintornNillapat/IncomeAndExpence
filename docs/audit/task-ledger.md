@@ -1083,7 +1083,7 @@ Approved explicitly by the user, planned and approved before any code was writte
 
 ## Phase 81 - A warm PWA test server, and the amount field's seed during render: T461-T468 (2026-10-04)
 
-ADR `0057`, closing the two items ADR `0056` left open. Branch `phase-81-test-warmup-and-math-seed`, cut from `main` at `72e0bdd`; commit `a3b3365`; draft PR. No migration, no proxy change, no CI change.
+ADR `0057`, closing the two items ADR `0056` left open. Branch `phase-81-test-warmup-and-math-seed`, cut from `main` at `72e0bdd`; commit `a3b3365` (docs `05ee7ef`); draft PR. No migration, no proxy change, no CI change.
 
 | # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
 |---|---|---|---|---|---|---|---|---|---|---|
@@ -1094,7 +1094,7 @@ ADR `0057`, closing the two items ADR `0056` left open. Branch `phase-81-test-wa
 | T465 | Callers record what they seed: `TransactionForm`'s `seedAmount`, the transfer form's Transfer all | `components/TransactionForm.tsx`, `wallet/WalletTransferForm.tsx` | High | Med | 0.3h | done | T464 | `a3b3365` | - | - |
 | T466 | Unit `inline-math-seed.test.tsx` (25), with a test outside `act` that types between a seed's commit and its effects; negative controls | `unit/` | High | Low | 0.7h | done | T464, T465 | `a3b3365` | main's components: 3 fail (the window test ends on "60", not "777"), twin passes; callers without their report: 3 fail | unit 802 -> 827, files 31 -> 32 |
 | T467 | Gate: lint, unit, Playwright twice at 4 workers, the spec alone with and without the warm-up, bundle | - | High | Low | 0.5h | done | T462, T466 | - | lint clean; unit 827/827; Playwright run 1 439/441 in 8.3 m: two WebKit clicks waited 15 s for a button to be stable after a dialog closed (`debts-page.spec.ts` Mark as paid off, `transaction-edit.spec.ts` the repayment edit); run 2 441/441 in 8.0 m, first pass | see the refactor log |
-| T468 | ADR `0057`, `CLAUDE.md`, this ledger, the refactor log, baseline metrics | `docs/`, `CLAUDE.md` | Low | Low | 0.3h | done | T467 | - | - | - |
+| T468 | ADR `0057`, `CLAUDE.md`, this ledger, the refactor log, baseline metrics | `docs/`, `CLAUDE.md` | Low | Low | 0.3h | done | T467 | `05ee7ef` | - | - |
 
 **Notes on execution:**
 - **The near miss was not where Phase 80 put it.** The 34 s tests passed, so the 30 s navigation timeout was not at stake; most of a cold load is the service worker's first build and install, bounded by the spec's 45 s toast wait and the 60 s test timeout.

@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 81 - A warm PWA test server, and the amount field's seed during render: T461-T468 (2026-10-04, commit `a3b3365`, draft PR)
+## Phase 81 - A warm PWA test server, and the amount field's seed during render: T461-T468 (2026-10-04, commit `a3b3365`, docs `05ee7ef`, draft PR)
 
 ADR `0057`. The two items Phase 80 left open.
 
