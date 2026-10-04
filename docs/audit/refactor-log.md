@@ -4,6 +4,28 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
+## Phase 78 - A screen reader hears the import's pause: T440-T445 (2026-10-04, draft PR)
+
+ADR `0054`. ADRs `0052` and `0053` left the import's rate-limit pause visual only: a screen reader user heard nothing during a wait of up to a minute, or when a run was cancelled or stopped.
+
+**Changed**
+- **`ImportCsvModal`** has one polite, atomic, `sr-only` live region (`csv-classify-announcer`), mounted empty with the preview. It says when a pause starts (with its length, once), when it ends, when the run is cancelled, when it stops at a wait over a minute, and the note when a run that paused finishes. The countdown stays outside it. It is emptied at each run's start.
+- **Tests:** unit `csv-import-announcer.test.tsx`, new (11; 770 -> 781, 29 -> 30 files); E2E assertions in three existing `csv-classify.spec.ts` tests.
+- **Docs:** ADR `0054`; `CLAUDE.md` (the CSV section, counts, a Do NOT line); the ledger; this log; baseline metrics.
+
+**Found**
+- **WebKit renders a resume and a finish together** when the reply is instant, so a resume alone cannot be relied on to close a pause; the run's note now does.
+
+**Still open**
+- **A run that never pauses is silent when it finishes,** as before.
+- **Not tried with a screen reader;** how readers queue two polite updates a moment apart is not verified.
+
+**Gate:**
+- Lint clean. Unit 781/781 in 30 files (one earlier full run failed once in `categories-page.test.tsx`, untouched; see the ledger).
+- **Mutations:** 16 of 16 caught (the table is in ADR `0054`).
+- **E2E:** the three rate-limit tests 27/27 over three runs; with no cancel announcement, the firewall test fails on chromium. Full run: 439/441 in 8.2 m; the 2 Firefox failures (a `page.goto` timeout in `account-and-mobile-nav.spec.ts`, a Quick Add click never stable in `smart-rules.spec.ts`, both with Firefox's own compositor errors in the log) passed 6/6 on re-run, three times each.
+- **Bundle** (local builds with `.env`, gzip level 9): `TransactionsView` 34,179 -> 34,870 B (+691 B, +255 B gzip), the lazy chunk that holds the import preview. No other chunk changed, and the entry `index-*.js` is identical to `main`'s once its hashed chunk names are normalised.
+
 ## Phase 77 - Every 429 says how long to wait: T433-T439 (2026-10-04, commit `05d103c`, docs `c87020e`, merge `07d51f1`)
 
 ADR `0053`. After ADR `0052` only the per-account 429 was waited out. TypeSafe's own 429 lost its wait at the proxy, and the guest firewall's names none, so a guest import past 30 distinct notes a minute still left the rest blank.
