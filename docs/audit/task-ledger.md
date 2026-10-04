@@ -1083,7 +1083,7 @@ Approved explicitly by the user, planned and approved before any code was writte
 
 ## Phase 76 - The CSV importer waits out Retry-After: T427-T432 (2026-10-04)
 
-ADR `0052`, amending ADR `0019`'s rate-limit handling. Branch `phase-76-csv-import-backoff`, cut from `main` at `f32a746`; commit `4d861f6` (docs `658f28d`); draft PR. No migration, no proxy change.
+ADR `0052`, amending ADR `0019`'s rate-limit handling. Branch `phase-76-csv-import-backoff`, cut from `main` at `f32a746`; commit `4d861f6` (docs `658f28d`, hash backfill `40e25f2`), merged into `main` as `23d73ed` (PR #26); Vercel `dpl_AWVqP3WTkaKHoBbojS4gKhyPR2GK` READY in `icn1`, CI run `37170048902` passed. No migration, no proxy change.
 
 | # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
 |---|---|---|---|---|---|---|---|---|---|---|

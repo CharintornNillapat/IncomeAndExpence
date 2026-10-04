@@ -1,6 +1,6 @@
 # 0052: The CSV importer waits out a 429's Retry-After, once for the whole run
 
-**Status:** Accepted. Implemented on branch `phase-76-csv-import-backoff`, draft PR. Not merged yet.
+**Status:** Accepted and released. Commit `4d861f6` (docs `658f28d`, hash backfill `40e25f2`), merged into `main` as `23d73ed` (PR #26). Vercel `dpl_AWVqP3WTkaKHoBbojS4gKhyPR2GK` is READY in production (`icn1`), and its `TransactionsView` chunk carries "Rate limit reached, continuing in" and "Stopped early: the rate limit". `main` CI on the merge passed (run `37170048902`).
 - **Amends** ADR `0019`'s rate-limit handling and ADR `0021`'s note on it: a 429 that names its wait is waited out; one that does not keeps the original 400 ms retry.
 - **Uses** ADR `0049`'s `Retry-After`, which the client ignored until now.
 
@@ -81,3 +81,4 @@
 - **A signed-in import larger than the limit finishes,** one minute's worth of rows at a time, instead of leaving everything past the 120th blank. The preview stays open while it waits.
 - **A guest's import is as before:** the firewall's 429 carried no `Retry-After` when ADR `0046` recorded its headers, so rows past 30 a minute still come back blank after one 400 ms retry. Whether the rule can be made to send one was not checked.
 - **The countdown is visual only;** the progress line is not a live region, as before.
+- **Not seen on production yet.** The pause needs a signed-in import of more than 120 distinct notes in a minute; only the tests' simulated 429 has shown it.

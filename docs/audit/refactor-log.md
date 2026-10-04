@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 76 - The CSV importer waits out Retry-After: T427-T432 (2026-10-04, draft PR)
+## Phase 76 - The CSV importer waits out Retry-After: T427-T432 (2026-10-04, commit `4d861f6`, docs `658f28d`, merge `23d73ed`)
 
 ADR `0052`. Since ADR `0049` a signed-in 429 says when the window turns over, and the importer ignored it: each of its four workers retried once after 400 ms, inside the same exhausted minute, so an import of more than 120 distinct notes left the rest blank.
 
@@ -18,7 +18,12 @@ ADR `0052`. Since ADR `0049` a signed-in 429 says when the window turns over, an
 **Found**
 - **The old line in `CLAUDE.md` was wrong:** a `rate-limited` row was retried once, not twice.
 
+**Release:**
+- PR #26 merged into `main` as `23d73ed`. Vercel `dpl_AWVqP3WTkaKHoBbojS4gKhyPR2GK` is READY in production (`icn1`), and its `TransactionsView` chunk carries "Rate limit reached, continuing in" and "Stopped early: the rate limit". `main` CI on the merge passed (run `37170048902`).
+- A guest `POST {}` to `/api/classify` still gets 400.
+
 **Still open**
+- **Not seen on production:** the pause needs a signed-in import of more than 120 distinct notes in a minute.
 - **Guests:** the firewall's 429 had no `Retry-After` when ADR `0046` recorded it, so a guest import still loses rows past 30 a minute.
 - **The countdown is visual only;** the progress line is not a live region.
 
