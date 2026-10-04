@@ -162,8 +162,12 @@ export type ClassifyOutcome =
   | { kind: 'ok'; data: ClassifyResponse }
   /** The model answered "other", or answered unusably. A real answer, not a failure. */
   | { kind: 'no-answer' }
-  /** HTTP 429. Retryable after a wait. */
-  | { kind: 'rate-limited' }
+  /**
+   * HTTP 429. Retryable after a wait. `retryAfterMs` is the response's
+   * `Retry-After` when it sent a usable one (ADR 0052): the per-account limit
+   * does (ADR 0049), the firewall's guest limit does not.
+   */
+  | { kind: 'rate-limited'; retryAfterMs?: number }
   /**
    * The endpoint is absent or has latched off, so every subsequent call is
    * pointless - or it refused this caller's sign-in (401, ADR 0032), which no
@@ -172,6 +176,20 @@ export type ClassifyOutcome =
   | { kind: 'unavailable' }
   /** Aborted, timed out, 5xx, malformed JSON, offline. Not worth retrying in a batch. */
   | { kind: 'failed' };
+
+/**
+ * `Retry-After` in milliseconds: delay-seconds (`30`) or an HTTP date, the
+ * header's two forms. Anything else, or a time already past, is `undefined`,
+ * and the caller falls back to its own backoff.
+ */
+function parseRetryAfter(value: string | null, now = Date.now()): number | undefined {
+  if (value === null) return undefined;
+  const trimmed = value.trim();
+  if (/^\d+$/.test(trimmed)) return Number(trimmed) * 1000;
+  const at = Date.parse(trimmed);
+  if (Number.isNaN(at) || at <= now) return undefined;
+  return at - now;
+}
 
 /**
  * The full-fidelity classify call. Identical network behaviour to
@@ -214,7 +232,10 @@ export async function classifyOnce(
     }
 
     // Retryable, and the only status a batch should wait and re-attempt on.
-    if (res.status === 429) return { kind: 'rate-limited' };
+    if (res.status === 429) {
+      const retryAfterMs = parseRetryAfter(res.headers.get('Retry-After'));
+      return retryAfterMs === undefined ? { kind: 'rate-limited' } : { kind: 'rate-limited', retryAfterMs };
+    }
 
     // The proxy refused this sign-in (ADR 0032). A batch stops; the session
     // does not latch, because a refreshed token on the next call may pass.
