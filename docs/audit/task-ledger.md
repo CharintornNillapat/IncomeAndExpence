@@ -1083,7 +1083,7 @@ Approved explicitly by the user, planned and approved before any code was writte
 
 ## Phase 83 - An open dialog keeps its focus when React re-runs its effects; CI keeps the first failure's trace: T477-T482 (2026-10-05)
 
-ADR `0059`, amending ADR `0058`. Branch `phase-83-stacked-modal-inert-and-ci-trace`, cut from `main` at `349f3f5`; commit `19a523b` (docs `eb779b5`); draft PR. No migration, no proxy change.
+ADR `0059`, amending ADR `0058`. Branch `phase-83-stacked-modal-inert-and-ci-trace`, cut from `main` at `349f3f5`; commit `19a523b` (docs `eb779b5`, hash backfill `e2b3a5c`), merged into `main` as `9c8851a` (PR #33); Vercel `dpl_8wVCLUe7cfxLPDHGEdAaaz2d49W7` READY in `icn1`. `main` CI on the merge (run `37244844805`) passed every job with no flaky test: 147 passed per browser, chromium 3.1 m, Firefox 3.7 m, WebKit 4.5 m. With first-attempt tracing, WebKit has taken 4.5 m on both runs so far (the PR's and this one), against 3.6 and 3.8 m on the two `main` runs before it; Firefox (4.0 and 3.7 m, against 2.6 and 3.5 m) and chromium (2.5 and 3.1 m, against 2.5 and 2.5 m) vary too much run to run to call. Production check: 6 of 6 (see the refactor log). No migration, no proxy change.
 
 | # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
 |---|---|---|---|---|---|---|---|---|---|---|

@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 83 - An open dialog keeps its focus when React re-runs its effects; CI keeps the first failure's trace: T477-T482 (2026-10-05, commit `19a523b`, docs `eb779b5`, draft PR)
+## Phase 83 - An open dialog keeps its focus when React re-runs its effects; CI keeps the first failure's trace: T477-T482 (2026-10-05, commit `19a523b`, docs `eb779b5`, merge `9c8851a`)
 
 ADR `0059`, amending ADR `0058`. The flaky WebKit test on the Phase 82 merge.
 
@@ -23,6 +23,17 @@ ADR `0059`, amending ADR `0058`. The flaky WebKit test on the Phase 82 merge.
 - **Negative controls:** `main`'s and Phase 81's `Modal` lose the amount; without StrictMode the test passes on `main`'s.
 - **E2E:** `categories.spec.ts` on WebKit x15: 118/120; both failures were the known Windows WebKit painting stall (the trace's last frame about 14.8 s before the timeout), at a category save and a type toggle, before any stacked dialog. Full suite: 441/441 in 8.0 m, first pass.
 - **Bundle** (the branch built with `.env` against production's files, `main`'s build): the entry `index-*.js` 189,653 -> 189,919 B (+266 B, +61 B gzip), where `Modal` lives. Every other chunk is identical once hashed chunk names are normalised.
+
+**Release:**
+- PR #33 merged into `main` as `9c8851a`. Vercel `dpl_8wVCLUe7cfxLPDHGEdAaaz2d49W7` is READY in production (`icn1`; a guest `POST {}` to `/api/classify` answered 400 from `icn1`). Its entry `index-Dd6m-dnP.js` (189,919 B) is byte-identical to the local build of `main`.
+- `main` CI on the merge (run `37244844805`) passed every job with no flaky test: 147 passed per browser, chromium 3.1 m, Firefox 3.7 m, WebKit 4.5 m. With first-attempt tracing, WebKit has taken 4.5 m on both runs so far (the PR's and this one), against 3.6 and 3.8 m on the two `main` runs before it; Firefox (4.0 and 3.7 m, against 2.6 and 3.5 m) and chromium (2.5 and 3.1 m, against 2.5 and 2.5 m) vary too much run to run to call.
+
+**Production check** (2026-10-05, a script driving Playwright's Chromium, Firefox and WebKit against production, a fresh guest context each, at 1280x800 and 390x844; 6 of 6 passed):
+- **The test's stack:** a custom category, its Delete confirmation, then Quick Add opened over it by a dispatched click, as `categories.spec.ts` does. A person cannot do this: the Quick Add button is inert under the confirmation, which the check confirmed. At 390 the confirmation sits over the Edit category sheet, so three dialogs were open.
+- **Focus:** Quick Add opened with one focus move, to its close button (ADR `0043`), and none after it in the next 500 ms. After a click on the amount field, focus stayed there on every animation frame for 1 s; "50" typed by keyboard landed, and picking the category moved nothing.
+- **Isolation:** every dialog under Quick Add was inert and Quick Add was not. In Chromium's accessibility tree the only dialog exposed was Quick Record Transaction, and no navigation landmark was.
+- **Close:** saving closed Quick Add and focus went back to the confirmation's close button, since the opener was inert; the confirmation was live again, and confirming showed the in-use guard error.
+- **Console:** no error or warning from the app in any browser. Chromium's cumulative layout shift without recent input was 0.044 at 1280 and 0.028 at 390, under the 0.1 "good" bound.
 
 **Still open**
 - **WebKit on Windows stops painting a page now and then** (both stress failures).
