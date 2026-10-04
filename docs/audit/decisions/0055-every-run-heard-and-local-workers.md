@@ -31,15 +31,33 @@ ADR `0054` gave the import preview a polite live region (`csv-classify-announcer
 
 ### Verification
 
-- **Unit** (`csv-import-announcer.test.tsx`, 11 -> 14). Two tests changed their expectation from silence to the note, and three were added:
+- **Unit** (`csv-import-announcer.test.tsx`, 11 -> 15). Two tests changed their expectation from silence to the note, and four were added:
   - a run never limited is heard once, as its exact note;
   - a missing endpoint from the start is heard as the unavailable note;
   - "nothing matched" is heard;
-  - the same note at the end of a second run is read again.
-- **Mutations:** 14 of 14 caught.
+  - the same note at the end of a second run is read again;
+  - a 429 that lands after Cancel is not announced (added with the fix below).
+- **Mutations:** 15 of 15 caught.
   - New here: no note at the end of a run (8 failed); the note only after a limit, ADR `0054`'s rule (7); no unavailable note (2).
-  - The other eleven are ADR `0054`'s.
+  - New with the fix below: announcing after a cancel (1); the pause state not reset per run (1). Both survived on the first try, so a test was added for the first and the clean-run test was given two rows that answer apart.
+  - The other ten are ADR `0054`'s, re-anchored to the callback.
 - **E2E:** two more existing `csv-classify.spec.ts` tests check the region: a normal run's exact note, and the unavailable note.
+
+### Found on CI: a late "resumed" replaced the note
+
+- **What CI saw.** The first CI run of this branch failed on WebKit, all three attempts, in "a 429 with Retry-After pauses the run...". The region held "Rate limit cleared. Classification resumed." for the whole 10 s instead of the run's note, although the run had finished. Locally the same test failed 1 time in 10 on WebKit.
+- **Why.** Pause and resume were announced from a passive `useEffect` keyed on the progress. On a slow machine:
+  1. the render in which the pause ended committed;
+  2. the run finished and queued its note;
+  3. only then did React run that render's effect, which queued "resumed" after the note, and the later update won.
+
+  It was a bug in the component, not lag in the test: no timeout would have changed a value that never moved.
+- **The fix.** Pause and resume are announced in the progress callback (`reportProgress`) as the batch reports them, so every announcement is queued in the order the events happen, and the note, queued after the batch returns, is always last.
+  - The effect is gone.
+  - A report arriving after Cancel announces nothing, so a 429 already on its way when Cancel is pressed cannot say "paused" over "cancelled".
+- **After the fix:**
+  - the failing test passed 80 of 80 on WebKit (20, then 60);
+  - `csv-classify.spec.ts` passed 55 of 55 on WebKit (`--repeat-each=5`).
 
 ## Part 2: local test stability
 
@@ -79,9 +97,9 @@ The last phases' local gates each lost one or two Firefox tests to timeouts (`pa
 
 ### Verification
 
-- **Unit:** the full suite three times in a row, 784/784 each.
-- **Playwright, the full suite at 4 workers, each run starting both dev servers cold:** 441/441 twice, first pass, no retries (7.3 m and 7.2 m; slowest test 10.3 s and 10.9 s).
-- **Gate:** lint clean; unit 784/784 in 30 files, three times. **Bundle** (local builds with `.env`, gzip level 9): `TransactionsView` 34,870 -> 34,784 B (-86 B, -34 B gzip), from removing the pause flag. No other chunk changed, and the entry `index-*.js` is identical to `main`'s once its hashed chunk names are normalised.
+- **Unit:** the full suite three times in a row, 784/784 each, before the CI fix; 785/785 after it.
+- **Playwright, the full suite at 4 workers, each run starting both dev servers cold:** 441/441 three times, first pass, no retries (7.3 m, 7.2 m and, after the CI fix, 7.2 m; slowest test 10.3 s, 10.9 s and 10.3 s).
+- **Gate:** lint clean; unit 785/785 in 30 files. **Bundle** (local builds with `.env`, gzip level 9): `TransactionsView` 34,870 -> 34,825 B (-45 B, -18 B gzip), from removing the pause flag and the effect. No other chunk changed, and the entry `index-*.js` is identical to `main`'s once its hashed chunk names are normalised.
 
 ## Consequences
 

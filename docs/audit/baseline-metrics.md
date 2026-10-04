@@ -1100,12 +1100,12 @@ The entry's growth is the ledger action itself, which lives with the other ledge
 
 ## Phase 79 (every run heard; 4 local workers) - delta against Phase 78
 
-**Bundle** (local builds with `.env`, gzip level 9): `TransactionsView` 34,870 -> 34,784 B (-86 B, -34 B gzip), from removing the pause flag. No other chunk changed, and the entry `index-*.js` is identical to `main`'s once its hashed chunk names are normalised.
+**Bundle** (local builds with `.env`, gzip level 9): `TransactionsView` 34,870 -> 34,825 B (-45 B, -18 B gzip), from removing the pause flag and the effect. No other chunk changed, and the entry `index-*.js` is identical to `main`'s once its hashed chunk names are normalised.
 
 | Suite | Files | Tests | Runs | Result |
 |---|---|---|---|---|
-| Playwright (local, 4 workers) | 29 | 147 | 441 | 441/441 twice, first pass, no retries (7.3 m and 7.2 m; slowest test 10.3 s and 10.9 s) |
-| Vitest (`unit/`) | 30 | 784 | 784 | 784/784 three times, 36.8 to 39.2 s |
+| Playwright (local, 4 workers) | 29 | 147 | 441 | 441/441 three times, first pass, no retries (7.3 m, 7.2 m, 7.2 m; slowest test 10.3 s, 10.9 s, 10.3 s) |
+| Vitest (`unit/`) | 30 | 785 | 785 | 785/785 (784/784 three times before the CI fix, 36.8 to 39.2 s) |
 
 | Firefox only, `--repeat-each 3` (441 runs) | Wall time | Failed | Slowest test | Tests over 20 s |
 |---|---|---|---|---|

@@ -1093,12 +1093,14 @@ ADR `0055`, amending ADR `0054` and Phase 55's local `workers` note. Branch `pha
 | T449 | Measure the Firefox timeouts: dev-server logs, 441 Firefox runs at 6 and at 4 workers | - | High | Low | 0.6h | done | - | - | 6 workers: 2 failed, slowest 42.5 s; 4 workers: 0 failed, slowest 12.1 s | - |
 | T450 | `workers: process.env.CI ? 2 : 4`; the categories test flushes effects before the guard | `playwright.config.ts`, `unit/categories-page.test.tsx` | High | Low | 0.2h | done | T449 | `3a8adea` | - | - |
 | T451 | Gate: lint, unit three times, Playwright twice from cold servers, bundle | - | Low | Low | 0.4h | done | T448, T450 | - | lint clean; unit 784/784 x3; Playwright 441/441 twice, first pass, no retries (7.3 m and 7.2 m; slowest test 10.3 s and 10.9 s) | - |
+| T453 | CI fix: WebKit held "resumed" over the note; pause and resume moved from an effect into the progress callback, nothing announced after Cancel; unit +1, 15 mutations | `components/transaction/ImportCsvModal.tsx`, `unit/` | High | Low | 0.5h | done | CI run `37193712970` | - | WebKit: before 1 of 10 failed locally, 3 of 3 on CI; after 80/80 and the spec 55/55; full Playwright 441/441; unit 785/785 | unit 784 -> 785 |
 | T452 | `CLAUDE.md`, this ledger, the refactor log, baseline metrics | `docs/`, `CLAUDE.md` | Low | Low | 0.2h | done | T451 | `0d8f49d` | - | - |
 
 **Notes on execution:**
 - **A Vite reload is ruled out:** both dev servers were run by hand with their output logged through the 6-worker experiment, and neither logged a re-optimisation or a reload.
 - **Six workers bought no speed:** 10.4 m against 10.2 m for the same 441 Firefox runs; they only stretched the slow tail across the 30 s navigation timeout.
 - **The categories flake is a race in the test, not the guard:** the row appears on screen before the passive effect that refreshes `categoriesRef` runs.
+- **CI found a race the local gate had passed:** on WebKit a late effect's "resumed" replaced the run's note (all three CI attempts; 1 in 10 locally). See ADR `0055`, "Found on CI".
 - **No `src/` or `tests/` file was edited during a Playwright run.**
 
 ## Phase 78 - A screen reader hears the import's pause: T440-T445 (2026-10-04)
