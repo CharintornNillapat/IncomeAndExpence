@@ -1,6 +1,6 @@
 # 0053: Every 429 says how long to wait, or the client works it out
 
-**Status:** Accepted. Implemented on branch `phase-77-rate-limit-completion`, draft PR. Not merged yet.
+**Status:** Accepted. Implemented on branch `phase-77-rate-limit-completion` (commit `05d103c`, docs `c87020e`), draft PR. Not merged yet.
 - **Extends** ADR `0052`. That ADR waited out a 429's `Retry-After`; this one covers the two 429s that had none:
   - TypeSafe's own 429, whose wait the proxies dropped;
   - the guest firewall's.

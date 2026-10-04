@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 77 - Every 429 says how long to wait: T433-T439 (2026-10-04, draft PR)
+## Phase 77 - Every 429 says how long to wait: T433-T439 (2026-10-04, commit `05d103c`, docs `c87020e`, draft PR)
 
 ADR `0053`. After ADR `0052` only the per-account 429 was waited out. TypeSafe's own 429 lost its wait at the proxy, and the guest firewall's names none, so a guest import past 30 distinct notes a minute still left the rest blank.
 
