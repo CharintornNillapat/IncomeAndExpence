@@ -4,6 +4,29 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
+## Phase 83 - An open dialog keeps its focus when React re-runs its effects; CI keeps the first failure's trace: T477-T482 (2026-10-05, commit `19a523b`, draft PR)
+
+ADR `0059`, amending ADR `0058`. The flaky WebKit test on the Phase 82 merge.
+
+**Found**
+- **Quick Add over a confirmation lost its amount because focus moved, not because it was inert.** StrictMode re-runs a newly mounted component's effects a task after the commit; `Modal`'s cleanup handed focus to the opener and the re-run moved it to the first control. Playwright's `fill` types a round trip after it focuses, into whatever has focus. The Phase 81 `Modal` does the same, so this predates Phase 82; production, without StrictMode, does not.
+- **CI could not show it:** it traced only retries, and the retry passed.
+
+**Changed**
+- **`Modal`:** the opener cleanup notes `focusInside`; the stack effect focuses it again when still in the panel; the closing effect clears it.
+- **`playwright.config.ts`:** `trace` is `retain-on-first-failure` on CI.
+- **Tests:** `unit/modal-focus.test.tsx` +1 (828 -> 829).
+- **Docs:** ADR `0059`, ADR `0058`'s amended line, `CLAUDE.md` (a `Modal` bullet, a CI bullet, two Do NOT lines, counts), the ledger, this log, baseline metrics.
+
+**Gate:**
+- Lint clean. Unit 829/829 in 32 files; the modal file 27/27 three runs in a row.
+- **Negative controls:** `main`'s and Phase 81's `Modal` lose the amount; without StrictMode the test passes on `main`'s.
+- **E2E:** `categories.spec.ts` on WebKit x15: 118/120; both failures were the known Windows WebKit painting stall (the trace's last frame about 14.8 s before the timeout), at a category save and a type toggle, before any stacked dialog. Full suite: 441/441 in 8.0 m, first pass.
+- **Bundle** (the branch built with `.env` against production's files, `main`'s build): the entry `index-*.js` 189,653 -> 189,919 B (+266 B, +61 B gzip), where `Modal` lives. Every other chunk is identical once hashed chunk names are normalised.
+
+**Still open**
+- **WebKit on Windows stops painting a page now and then** (both stress failures).
+
 ## Phase 82 - A dialog isolates the page in the commit that shows it: T470-T476 (2026-10-04, commit `4d9e34e`, docs `234eb2e`, merge `bef52be`)
 
 ADR `0058`, amending ADR `0047`. The two items Phase 81 left open.

@@ -1098,6 +1098,15 @@ The entry's growth is the ledger action itself, which lives with the other ledge
 
 **Intermittent local failures:** 6 in 1,071 full-suite runs (3 full runs). All were timeouts: a Firefox `goto`, a Firefox context close, and four WebKit clicks waiting for "stable". No assertion failed. See audit 005 finding 3 for the control runs.
 
+## Phase 83 (an open dialog keeps its focus across effect re-runs) - delta against Phase 82
+
+**Bundle** (the branch built with `.env` against production's files, `main`'s build): the entry `index-*.js` 189,653 -> 189,919 B (+266 B, +61 B gzip), where `Modal` lives. Every other chunk is identical once hashed chunk names are normalised.
+
+| Suite | Files | Tests | Runs | Result |
+|---|---|---|---|---|
+| Playwright (local, 4 workers) | 29 | 147 | 441 | 441/441 in 8.0 m, first pass |
+| Vitest (`unit/`) | 32 | 829 | 829 | 829/829 |
+
 ## Phase 82 (a dialog isolates the page in its commit) - delta against Phase 81
 
 **Bundle** (the branch built with `.env` against production's files, which are `main`'s build byte for byte): the entry `index-*.js` 189,481 -> 189,653 B (+172 B, +61 B gzip), where `Modal` lives. Every other chunk is identical once hashed chunk names are normalised.
