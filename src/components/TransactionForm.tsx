@@ -14,7 +14,7 @@ import { SaveRuleChip } from './transaction/SaveRuleChip';
 import type { JevSuggestion } from '../utils/jevClassifier';
 import { matchSmartDescription } from '../utils/smartMatcher';
 import { parseExpressInput } from '../utils/expressInput';
-import { safeEvaluateMath } from '../utils/mathEvaluator';
+import { evaluateAmountInput, safeEvaluateMath } from '../utils/mathEvaluator';
 import { roundToCents } from '../utils/money';
 import { APP_CURRENCY_SYMBOL, formatCurrencyAmount } from '../utils/currency';
 import { todayIsoDate } from '../utils/date';
@@ -142,9 +142,10 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
   const [debtId, setDebtId] = useState<string>(presetDebtId || activeDebts[0]?.id || debts[0]?.id || '');
   const [date, setDate] = useState<string>(todayIsoDate());
 
-  // Drives `InlineMathInput`'s `seed` prop. Both the express note parser and
-  // an applied template push through here; bumping `key` is what makes the
-  // push land even when the text is unchanged from a previous seed.
+  // Drives `InlineMathInput`'s `seed` prop, only ever through `seedAmount`
+  // below. The note parser, an applied template, a payoff chip and a reset
+  // after saving push through here; bumping `key` is what makes the push land
+  // even when the text is unchanged from a previous seed.
   const [amountSeed, setAmountSeed] = useState<{ key: number; value: string }>({ key: 0, value: '' });
   const [saveAsTemplate, setSaveAsTemplate] = useState<boolean>(false);
   const [templateName, setTemplateName] = useState<string>('');
@@ -213,7 +214,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
       setAutoMatchedCategory(null);
       // Clear the amount too: with the note now driving it, leaving a stale
       // amount behind after a successful save invites double-recording it.
-      setAmountSeed((prev) => ({ key: prev.key + 1, value: '' }));
+      seedAmount('');
       lastSeededExprRef.current = null;
       // Both are declared below this closure; it only ever runs at submit time.
       clearSuggestion();
@@ -237,6 +238,18 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
   const handleAmountUserEdit = React.useCallback(() => {
     userTouchedRef.current.amount = true;
   }, []);
+
+  /**
+   * Puts `value` in the amount field and records the amount it holds, in the
+   * same handler (ADR 0057). The field applies a seed during render and does
+   * not report it back, so the form's amount and the field's text change
+   * together and a submit can never see one without the other.
+   */
+  const seedAmount = (value: string) => {
+    setAmountSeed((prev) => ({ key: prev.key + 1, value }));
+    const { amount: seeded } = evaluateAmountInput(value);
+    handleAmountEvaluated(seeded, value.trim() ? value : '', seeded !== null);
+  };
 
   /**
    * Async half of the two-layer categorization (ADR 0011). The keyword matcher
@@ -298,7 +311,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
       parsed.amountExpression !== lastSeededExprRef.current
     ) {
       lastSeededExprRef.current = parsed.amountExpression;
-      setAmountSeed((prev) => ({ key: prev.key + 1, value: parsed.amountExpression as string }));
+      seedAmount(parsed.amountExpression);
     }
 
     // A locked-type form (e.g. debt repayment) has no business letting the
@@ -395,7 +408,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
     if (preset.walletId && wallets.some((w) => w.id === preset.walletId)) {
       setWalletId(preset.walletId);
     }
-    setAmountSeed((prev) => ({ key: prev.key + 1, value: preset.amount.toString() }));
+    seedAmount(preset.amount.toString());
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -546,14 +559,14 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
    * Pushes a value into the amount field without remounting it, and latches
    * the field as user-owned.
    *
-   * The latch has to be set here because `InlineMathInput`'s `seed` effect
+   * The latch has to be set here because `InlineMathInput`'s `seed`
    * deliberately never fires `onUserEdit` - same reasoning as
    * `handleApplyPreset` above. A chip is an explicit choice of amount and
    * outranks the note parser from this point on (ADR 0013).
    */
   const seedPayoffAmount = (value: number) => {
     userTouchedRef.current.amount = true;
-    setAmountSeed((prev) => ({ key: prev.key + 1, value: String(value) }));
+    seedAmount(String(value));
   };
 
   // One definition for what used to be the same expression written out more

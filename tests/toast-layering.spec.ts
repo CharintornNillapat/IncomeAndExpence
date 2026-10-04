@@ -37,8 +37,9 @@ test.describe('at 390', () => {
   test('the More sheet sits above the toast, and its rows open their pages', async ({ page }) => {
     await page.goto('/');
     const toast = page.getByRole('complementary', { name: TOAST_NAME });
-    // The service worker installs after the first load; chromium's first visit
-    // also waits on the dev server compiling every module.
+    // The service worker installs after the first load. The server compiled the
+    // app before any worker started (`global-setup.ts`, ADR 0057); the 45 s is
+    // left as the bound for a slow machine.
     await expect(toast).toBeVisible({ timeout: 45_000 });
 
     // Over the page and clear of the bottom nav (Phase 65, ADR 0041).

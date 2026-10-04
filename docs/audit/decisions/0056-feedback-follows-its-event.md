@@ -2,6 +2,7 @@
 
 **Status:** Accepted. Implemented on branch `phase-80-audit-effect-handler-races` (commit `68a8559`, docs `6285323`, hash backfill `cad0801`), merged into `main` as `ac6a7c5` (PR #30). Vercel `dpl_Dx3Qt9A1b2H8AdGgx4Sm9TQnaM7w` is READY in production (`icn1`).
 - **Generalises** ADR `0055`'s CI finding (a late effect's "resumed" replaced the import's note) into a rule for every piece of UI feedback.
+- **Amended by** ADR `0057`: the `InlineMathInput` seed left below now applies during render, and the near miss measured below was not against the navigation timeout.
 
 **Date:** 2026-10-04
 

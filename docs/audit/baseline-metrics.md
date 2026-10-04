@@ -1098,6 +1098,17 @@ The entry's growth is the ledger action itself, which lives with the other ledge
 
 **Intermittent local failures:** 6 in 1,071 full-suite runs (3 full runs). All were timeouts: a Firefox `goto`, a Firefox context close, and four WebKit clicks waiting for "stable". No assertion failed. See audit 005 finding 3 for the control runs.
 
+## Phase 81 (warm PWA server; seed during render) - delta against Phase 80
+
+**Bundle** (local builds with `.env`, gzip level 9): `InlineMathInput` 5,983 -> 5,680 B (-303 B, -137 B gzip), `TransactionForm` 25,869 -> 25,865 B (-4 B, +26 B gzip) and `TransferFundsModal` 6,855 -> 6,927 B (+72 B, +39 B gzip). No other chunk changed size, and the entry `index-*.js` is identical to `main`'s once its hashed chunk names are normalised.
+
+| Suite | Files | Tests | Runs | Result |
+|---|---|---|---|---|
+| Playwright (local, 4 workers) | 29 | 147 | 441 | run 1 439/441 in 8.3 m: two WebKit clicks waited 15 s for a button to be stable after a dialog closed (`debts-page.spec.ts` Mark as paid off, `transaction-edit.spec.ts` the repayment edit); run 2 441/441 in 8.0 m, first pass |
+| Vitest (`unit/`) | 32 | 827 | 827 | 827/827 |
+
+`toast-layering.spec.ts` on chromium 1.7 s and 2.5 s in both full runs (Phase 80: 28.5 s and 29.4 s); the warm-up took 3.6 s and 3.8 s.
+
 ## Phase 80 (feedback follows its event) - delta against Phase 79
 
 **Bundle** (local builds with `.env`, gzip level 9): `TransactionsView` 34,825 -> 34,823 B (-2 B, +33 B gzip) and `WalletsView` 14,765 -> 14,740 B (-25 B, 0 B gzip). No other chunk changed, and the entry `index-*.js` is identical to `main`'s once its hashed chunk names are normalised.

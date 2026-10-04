@@ -1081,6 +1081,29 @@ Approved explicitly by the user, planned and approved before any code was writte
 - **One negative control was redone** because the first attempt produced malformed TypeScript that the dev server still served — the tests failed, but possibly for the wrong reason.
 - **No flakes.** Phase 44's `wallets.spec.ts` webkit flake has now not reproduced across three consecutive phases; still watched rather than closed.
 
+## Phase 81 - A warm PWA test server, and the amount field's seed during render: T461-T469 (2026-10-04)
+
+ADR `0057`, closing the two items ADR `0056` left open. Branch `phase-81-test-warmup-and-math-seed`, cut from `main` at `72e0bdd`; commit `a3b3365` (docs `05ee7ef`); draft PR. No migration, no proxy change, no CI change.
+
+| # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
+|---|---|---|---|---|---|---|---|---|---|---|
+| T461 | Measure the cold port-3100 load: a stage-by-stage probe, the spec alone on fresh servers, the full chromium project | - | High | Low | 0.5h | done | - | `a3b3365` | `load` 0.5 to 1.4 s, toast 3.5 to 5.0 s; a first run of the day 34 s a test; not the navigation timeout | - |
+| T462 | `tests/global-setup.ts`: load 3100 once and wait for its service worker before any worker starts; `globalSetup` in the config | `tests/`, `playwright.config.ts` | High | Low | 0.3h | done | T461 | `a3b3365` | warm-up 3.4 to 4.2 s | toast tests on chromium 28.5/29.4 s -> 1.7/2.5 s in the full run |
+| T463 | `evaluateAmountInput`: the amount field's rules with no state | `utils/mathEvaluator.ts` | Med | Low | 0.2h | done | - | `a3b3365` | - | - |
+| T464 | `InlineMathInput`: derive what it shows from its text; apply a new seed key during render; drop `defaultValue` and both effects | `components/InlineMathInput.tsx` | High | Med | 0.4h | done | T463 | `a3b3365` | - | chunk -303 B |
+| T465 | Callers record what they seed: `TransactionForm`'s `seedAmount`, the transfer form's Transfer all | `components/TransactionForm.tsx`, `wallet/WalletTransferForm.tsx` | High | Med | 0.3h | done | T464 | `a3b3365` | - | - |
+| T466 | Unit `inline-math-seed.test.tsx` (25), with a test outside `act` that types between a seed's commit and its effects; negative controls | `unit/` | High | Low | 0.7h | done | T464, T465 | `a3b3365` | main's components: 3 fail (the window test ends on "60", not "777"), twin passes; callers without their report: 3 fail | unit 802 -> 827, files 31 -> 32 |
+| T467 | Gate: lint, unit, Playwright twice at 4 workers, the spec alone with and without the warm-up, bundle | - | High | Low | 0.5h | done | T462, T466 | - | lint clean; unit 827/827; Playwright run 1 439/441 in 8.3 m: two WebKit clicks waited 15 s for a button to be stable after a dialog closed (`debts-page.spec.ts` Mark as paid off, `transaction-edit.spec.ts` the repayment edit); run 2 441/441 in 8.0 m, first pass | see the refactor log |
+| T468 | ADR `0057`, `CLAUDE.md`, this ledger, the refactor log, baseline metrics | `docs/`, `CLAUDE.md` | Low | Low | 0.3h | done | T467 | `05ee7ef` | - | - |
+| T469 | CI: the warm-up's wait ended by a reload; wait through an init-script flag and `waitForFunction` instead | `tests/global-setup.ts` | Med | Low | 0.3h | done | T462 | `b56c98b` | forced-reload probe: old fails, new passes; Playwright run 3 441/441 | - |
+
+**Notes on execution:**
+- **The near miss was not where Phase 80 put it.** The 34 s tests passed, so the 30 s navigation timeout was not at stake; most of a cold load is the service worker's first build and install, bounded by the spec's 45 s toast wait and the 60 s test timeout.
+- **The seed's window is real but narrow.** A note keystroke or a chip is a discrete event, whose effects React runs at the end of its commit. The reset after a save and a voice transcript render at default priority, so their effects ran a task later. jsdom under `act` cannot open that window; the new test runs outside `act` and types from a `MutationObserver` callback.
+- **The two WebKit failures are not this phase's.** `debts-page.spec.ts`'s test never touches the amount field, and Phase 63 recorded the `transaction-edit` one failing the same way. Repeated: both specs together on WebKit, 5 times each, failed 1 of 30 on the branch, then the branch passed 60/60 and `main`'s components 60/60; the repayment test alone passed 15/15 on each.
+- **Found on CI:** in PR #31's first run the chromium job's warm-up stopped with "Execution context was destroyed, most likely because of a navigation" (it warned, and all 147 tests passed). A reload during the first load, most likely Vite reloading once it has pre-bundled the dependencies it found on a fresh checkout, ended the `evaluate` that waited for the service worker. The wait is now an init script that marks the service worker ready in every page it loads, polled with `waitForFunction`, which keeps polling across a reload. A probe that forces a reload mid-wait fails the old wait with CI's message and passes the new one; an empty local Vite cache did not reproduce the reload (old 12.7 s, new 7.0 s, both succeeded). Run 3 after it: 441/441 in 7.8 m.
+- **No `src/` or `tests/` file was edited during a Playwright run.** The component swaps for the A/B runs happened between runs.
+
 ## Phase 80 - Feedback follows the event that produced it: T454-T460 (2026-10-04)
 
 ADR `0056`, generalising ADR `0055`'s CI finding. Branch `phase-80-audit-effect-handler-races`, cut from `main` at `548e358`; commit `68a8559` (docs `6285323`, hash backfill `cad0801`), merged into `main` as `ac6a7c5` (PR #30); Vercel `dpl_Dx3Qt9A1b2H8AdGgx4Sm9TQnaM7w` READY in `icn1`, CI run `37201902376` passed. No migration, no proxy change.

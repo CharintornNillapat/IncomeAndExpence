@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useId } from 'react';
+import React, { useState, useMemo, useId } from 'react';
 import { Calculator, Check, AlertCircle } from 'lucide-react';
-import { safeEvaluateMath } from '../utils/mathEvaluator';
+import { evaluateAmountInput } from '../utils/mathEvaluator';
 import { APP_CURRENCY_SYMBOL } from '../utils/currency';
 import { LABEL_TEXT_CLASS } from '../utils/formStyles';
 
@@ -9,16 +9,23 @@ export interface InlineMathInputProps {
   label?: string;
   placeholder?: string;
   currencyPrefix?: string;
-  defaultValue?: string;
   /**
-   * Imperative re-seed. Bumping `key` pushes `value` into the field without
-   * remounting the component, which is what lets a caller drive this field
-   * from another one (the express note parser) on every keystroke. `key` is
-   * compared, not `value`, so re-seeding the same text twice is a no-op.
+   * Caller-driven text. Bumping `key` puts `value` in the field without
+   * remounting it, which is what lets a caller drive this field from another
+   * one (the express note parser) on every keystroke. `key` is compared, not
+   * `value`, so a caller can put the same text in twice. The key a field
+   * mounts with is not a seed.
+   *
+   * It is applied during render (ADR 0057), so a keystroke can never land
+   * between the push and the text changing. A seed is the caller's own event,
+   * so the field does not report it back through `onAmountEvaluated`: the
+   * caller reads its amount from `evaluateAmountInput(value)` in the handler
+   * that seeds, as `TransactionForm`'s `seedAmount` does.
    */
   seed?: { key: number; value: string };
   disabled?: boolean;
   required?: boolean;
+  /** Fired for every change a person makes to the text; a `seed` is never reported. */
   onAmountEvaluated: (amount: number | null, rawExpression: string, isValid: boolean) => void;
   /**
    * Fired on any *human* interaction with this field - typing, a quick-amount
@@ -35,7 +42,6 @@ export const InlineMathInput: React.FC<InlineMathInputProps> = ({
   label = 'Amount / Math Expression',
   placeholder = 'e.g. 500+500 or 1200*0.8',
   currencyPrefix = APP_CURRENCY_SYMBOL,
-  defaultValue = '',
   seed,
   disabled = false,
   required = false,
@@ -45,117 +51,46 @@ export const InlineMathInput: React.FC<InlineMathInputProps> = ({
   const generatedId = useId();
   const inputId = id || generatedId;
 
-  const [rawInput, setRawInput] = useState<string>(defaultValue);
-  const [evaluatedAmount, setEvaluatedAmount] = useState<number | null>(null);
-  const [formattedResult, setFormattedResult] = useState<string>('');
-  const [hasCalculation, setHasCalculation] = useState<boolean>(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [rawInput, setRawInput] = useState<string>('');
   const [isFocused, setIsFocused] = useState<boolean>(false);
 
-  const onAmountEvaluatedRef = React.useRef(onAmountEvaluated);
-  const onUserEditRef = React.useRef(onUserEdit);
-  useEffect(() => {
-    onAmountEvaluatedRef.current = onAmountEvaluated;
-    onUserEditRef.current = onUserEdit;
-  });
-
-  // Marks the field as user-owned. Every human entry point funnels through
-  // here; the `seed` effect below deliberately does not.
-  const notifyUserEdit = () => {
-    onUserEditRef.current?.();
-  };
-
-  // Shared evaluation body so both direct typing and the quick-amount chips
-  // go through identical math evaluation rules.
-  const evaluateAndNotify = (val: string) => {
-    if (!val.trim()) {
-      setEvaluatedAmount(null);
-      setFormattedResult('');
-      setHasCalculation(false);
-      setErrorMessage(null);
-      onAmountEvaluatedRef.current(null, '', false);
-      return;
-    }
-
-    const isComplex = /[+\-*/%^()]/.test(val);
-    setHasCalculation(isComplex);
-
-    const evalResult = safeEvaluateMath(val);
-
-    if (evalResult.isValid && evalResult.value !== null) {
-      if (evalResult.value <= 0) {
-        setEvaluatedAmount(null);
-        setFormattedResult('');
-        setErrorMessage('Amount must be greater than zero');
-        onAmountEvaluatedRef.current(null, val, false);
-      } else {
-        setEvaluatedAmount(evalResult.value);
-        setFormattedResult(evalResult.formattedValue);
-        setErrorMessage(null);
-        onAmountEvaluatedRef.current(evalResult.value, val, true);
-      }
-    } else {
-      setEvaluatedAmount(null);
-      setFormattedResult('');
-      // A trailing operator or open paren is an expected intermediate state -
-      // mid-way through typing "120 + 30", or the instant an operator chip is
-      // tapped. Report it to the parent as not-yet-valid so the submit button
-      // stays disabled, but do not shout an error about it.
-      const isIncomplete = /[+\-*/%^(]\s*$/.test(val);
-      if (!isIncomplete && (val.trim().length > 1 || !/^[0-9.]+$/.test(val))) {
-        setErrorMessage(evalResult.error || 'Invalid expression');
-      } else {
-        setErrorMessage(null);
-      }
-      onAmountEvaluatedRef.current(null, val, false);
-    }
-  };
-
-  // Synchronous change handler to prevent race conditions during testing / rapid form submission
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = e.target.value;
-    notifyUserEdit();
-    setRawInput(val);
-    evaluateAndNotify(val);
-  };
-
-  // Evaluate whenever raw input or defaultValue initializes
-  useEffect(() => {
-    if (defaultValue && !rawInput) {
-      setRawInput(defaultValue);
-      const evalResult = safeEvaluateMath(defaultValue);
-      if (evalResult.isValid && evalResult.value !== null && evalResult.value > 0) {
-        setEvaluatedAmount(evalResult.value);
-        setFormattedResult(evalResult.formattedValue);
-        onAmountEvaluatedRef.current(evalResult.value, defaultValue, true);
-      }
-    }
-  }, [defaultValue]);
-
-  // Caller-driven re-seed. Keyed on `seed.key` rather than `seed.value` so a
-  // caller can deliberately re-push the same text, and initialized to the
-  // mount-time key so the first render is never treated as a seed (that would
-  // clobber `defaultValue`).
-  const lastSeedKeyRef = React.useRef<number | undefined>(seed?.key);
-  useEffect(() => {
-    if (!seed || seed.key === lastSeedKeyRef.current) return;
-    lastSeedKeyRef.current = seed.key;
+  // A new seed replaces the text in this render, before any later keystroke
+  // can be handled (ADR 0057). The key the field mounted with is not a seed.
+  const [seedKey, setSeedKey] = useState<number | undefined>(seed?.key);
+  if (seed && seed.key !== seedKey) {
+    setSeedKey(seed.key);
     setRawInput(seed.value);
-    evaluateAndNotify(seed.value);
-    // `evaluateAndNotify` reads no state - it only calls setters and a ref'd
-    // callback - so re-running this on its identity would be pure churn.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [seed?.key]);
+  }
+
+  // Everything the field shows is derived from its text, so it can never
+  // disagree with it.
+  const {
+    amount: evaluatedAmount,
+    formattedValue: formattedResult,
+    hasCalculation,
+    error: errorMessage,
+  } = useMemo(() => evaluateAmountInput(rawInput), [rawInput]);
+
+  // Every human change goes through here: it marks the field as the user's,
+  // sets the text, and reports the amount the text now holds. A trailing
+  // operator reports not-yet-valid, so the submit button stays disabled.
+  const setTextByUser = (next: string) => {
+    onUserEdit?.();
+    setRawInput(next);
+    const { amount } = evaluateAmountInput(next);
+    onAmountEvaluated(amount, next.trim() ? next : '', amount !== null);
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setTextByUser(e.target.value);
+  };
 
   // Each of the three below replaces the field's contents, so each must
   // re-evaluate: leaving the parent's `amount`/`isAmountValid` stale here is
   // what used to leave the submit button disabled after tapping an operator.
   const handleApplyResult = () => {
     if (evaluatedAmount !== null && hasCalculation) {
-      const next = evaluatedAmount.toString();
-      notifyUserEdit();
-      setRawInput(next);
-      evaluateAndNotify(next);
+      setTextByUser(evaluatedAmount.toString());
     }
   };
 
@@ -163,10 +98,7 @@ export const InlineMathInput: React.FC<InlineMathInputProps> = ({
     const trimmed = rawInput.trim();
     if (!trimmed) return;
     // Avoid duplicate consecutive operator characters
-    const next = /[+\-*/]$/.test(trimmed) ? trimmed.slice(0, -1) + operator : trimmed + operator;
-    notifyUserEdit();
-    setRawInput(next);
-    evaluateAndNotify(next);
+    setTextByUser(/[+\-*/]$/.test(trimmed) ? trimmed.slice(0, -1) + operator : trimmed + operator);
   };
 
   // Rapid expense recording: chip appends the amount, chaining with "+" onto
@@ -178,9 +110,7 @@ export const InlineMathInput: React.FC<InlineMathInputProps> = ({
       : /[+\-*/]$/.test(trimmed)
       ? trimmed + amount.toString()
       : `${trimmed}+${amount.toString()}`;
-    notifyUserEdit();
-    setRawInput(next);
-    evaluateAndNotify(next);
+    setTextByUser(next);
   };
 
   return (

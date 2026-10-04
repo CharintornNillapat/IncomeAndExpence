@@ -4,6 +4,35 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
+## Phase 81 - A warm PWA test server, and the amount field's seed during render: T461-T469 (2026-10-04, commit `a3b3365`, docs `05ee7ef`, draft PR)
+
+ADR `0057`. The two items Phase 80 left open.
+
+**Found**
+- **The cold PWA server:** port 3100 is ready to Playwright once its HTML answers, but Vite compiles on first request and vite-plugin-pwa builds its service worker then. The first toast test paid for both: 28.5 s and 29.4 s in Phase 80's full run, 34 s on a first run of the day, 0.7 s for a second load. The page's `load` was 0.5 to 1.4 s of it, so the navigation timeout Phase 80 named was not the limit at stake.
+- **The amount field's seed:** a seed's text reached the field in a passive effect. A keystroke handled between a default-priority seed's commit (the reset after a save, a voice transcript) and that effect was replaced, and until the effect the form's amount and the field's text disagreed. Four of the field's state variables were functions of its text, and a `defaultValue` no caller passed had its own effect.
+
+**Changed**
+- **`tests/global-setup.ts`** (new) and `globalSetup` in `playwright.config.ts`: load 3100 once in a throwaway chromium and wait for its service worker, before any worker starts. No timeout changed.
+- **`evaluateAmountInput`** (new, `utils/mathEvaluator.ts`): the field's rules with no state.
+- **`InlineMathInput`:** derives its badge, result and error from its text; applies a new seed key during render; no longer reports a seed; `defaultValue`, both effects and the callback ref mirror are gone.
+- **`TransactionForm`:** `seedAmount(value)` seeds and records the amount in one handler (note parser, template, payoff chip, reset after save). **`WalletTransferForm`:** Transfer all does the same.
+- **Tests:** unit `inline-math-seed.test.tsx`, new (25; 802 -> 827, 31 -> 32 files). `toast-layering.spec.ts`: one comment.
+- **Docs:** ADR `0057`, ADR `0056`'s amended line, `CLAUDE.md`, the ledger, this log, baseline metrics.
+
+**Gate:**
+- Lint clean. Unit 827/827 in 32 files; the new file 25/25 three runs in a row.
+- **Negative controls:** `main`'s three components fail 3 of the new tests (the window test ends on the seed's "60", not the typed "777"; its twin passes); the new field with each caller's report removed fails 3.
+- **E2E:** run 1 439/441 in 8.3 m: two WebKit clicks waited 15 s for a button to be stable after a dialog closed (`debts-page.spec.ts` Mark as paid off, `transaction-edit.spec.ts` the repayment edit); run 2 441/441 in 8.0 m, first pass. `toast-layering.spec.ts` on chromium 1.7 s and 2.5 s in both full runs (Phase 80: 28.5 s and 29.4 s); the warm-up took 3.6 s and 3.8 s.
+- **The two WebKit failures are not this phase's.** `debts-page.spec.ts`'s test never touches the amount field, and Phase 63 recorded the `transaction-edit` one failing the same way. Repeated: both specs together on WebKit, 5 times each, failed 1 of 30 on the branch, then the branch passed 60/60 and `main`'s components 60/60; the repayment test alone passed 15/15 on each.
+- **Bundle** (local builds with `.env`, gzip level 9): `InlineMathInput` 5,983 -> 5,680 B (-303 B, -137 B gzip), `TransactionForm` 25,869 -> 25,865 B (-4 B, +26 B gzip) and `TransferFundsModal` 6,855 -> 6,927 B (+72 B, +39 B gzip). No other chunk changed size, and the entry `index-*.js` is identical to `main`'s once its hashed chunk names are normalised.
+
+- **Found on CI:** in PR #31's first run the chromium job's warm-up stopped with "Execution context was destroyed, most likely because of a navigation" (it warned, and all 147 tests passed). A reload during the first load, most likely Vite reloading once it has pre-bundled the dependencies it found on a fresh checkout, ended the `evaluate` that waited for the service worker. The wait is now an init script that marks the service worker ready in every page it loads, polled with `waitForFunction`, which keeps polling across a reload. A probe that forces a reload mid-wait fails the old wait with CI's message and passes the new one; an empty local Vite cache did not reproduce the reload (old 12.7 s, new 7.0 s, both succeeded). Run 3 after it: 441/441 in 7.8 m, first pass.
+
+**Still open**
+- **A WebKit click that waits for its button to be stable after a dialog closes**, about once in a few hundred runs.
+- **Firefox's context-close error** (`_maybeDontRestoreTabs`), seen once here without the warm-up and once in Phase 61.
+
 ## Phase 80 - Feedback follows the event that produced it: T454-T460 (2026-10-04, commit `68a8559`, docs `6285323`, merge `ac6a7c5`)
 
 ADR `0056`. Phase 79's CI failure was feedback written both by a passive effect and by a handler. This phase looked for the same shape everywhere.

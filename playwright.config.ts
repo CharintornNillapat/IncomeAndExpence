@@ -18,6 +18,12 @@ export default defineConfig({
    * `include` collecting all 22 specs here) is pinned in `vitest.config.ts`.
    */
   testMatch: '**/*.spec.ts',
+  /*
+   * Phase 81 (ADR 0057): runs after both webServers answer and before any
+   * worker starts. It loads port 3100 once, so `toast-layering.spec.ts` no
+   * longer pays for that server's first compile inside its own timeouts.
+   */
+  globalSetup: './tests/global-setup.ts',
   /* Run tests in files in parallel */
   fullyParallel: true,
   /* Fail the build on CI if you accidentally left test.only in the source code. */
