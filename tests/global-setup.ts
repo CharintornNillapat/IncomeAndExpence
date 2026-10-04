@@ -30,18 +30,23 @@ export default async function globalSetup(): Promise<void> {
   if (!browser) return;
   try {
     const page = await browser.newPage();
-    await page.goto(PWA_DEV_URL, { timeout: WARMUP_TIMEOUT_MS });
     // The development service worker is built on its first request; waiting for
     // it to be active means the toast spec's own install is a warm one too.
-    const active = await page.evaluate(
-      (ms) =>
-        Promise.race([
-          navigator.serviceWorker.ready.then(() => true),
-          new Promise<boolean>((resolve) => setTimeout(() => resolve(false), ms)),
-        ]),
-      WARMUP_TIMEOUT_MS - (Date.now() - started),
+    // Vite can reload the page during a first load (on a fresh checkout it
+    // reloads once it has pre-bundled the dependencies it found), which ends
+    // any `evaluate` in flight. An init script runs again in the reloaded page,
+    // and `waitForFunction` keeps polling across the reload.
+    await page.addInitScript(() => {
+      void navigator.serviceWorker.ready.then(() => {
+        (window as { __warmupServiceWorkerReady?: boolean }).__warmupServiceWorkerReady = true;
+      });
+    });
+    await page.goto(PWA_DEV_URL, { timeout: WARMUP_TIMEOUT_MS });
+    await page.waitForFunction(
+      () => (window as { __warmupServiceWorkerReady?: boolean }).__warmupServiceWorkerReady === true,
+      undefined,
+      { timeout: Math.max(1, WARMUP_TIMEOUT_MS - (Date.now() - started)) },
     );
-    if (!active) throw new Error('no service worker became active');
     console.log(`[warmup] ${PWA_DEV_URL} loaded and its service worker active in ${((Date.now() - started) / 1000).toFixed(1)} s`);
   } catch (error) {
     console.warn(`[warmup] ${PWA_DEV_URL} did not finish its first load: ${String(error)}`);
