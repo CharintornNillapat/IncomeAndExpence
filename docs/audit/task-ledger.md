@@ -1081,6 +1081,26 @@ Approved explicitly by the user, planned and approved before any code was writte
 - **One negative control was redone** because the first attempt produced malformed TypeScript that the dev server still served — the tests failed, but possibly for the wrong reason.
 - **No flakes.** Phase 44's `wallets.spec.ts` webkit flake has now not reproduced across three consecutive phases; still watched rather than closed.
 
+## Phase 83 - An open dialog keeps its focus when React re-runs its effects; CI keeps the first failure's trace: T477-T482 (2026-10-05)
+
+ADR `0059`, amending ADR `0058`. Branch `phase-83-stacked-modal-inert-and-ci-trace`, cut from `main` at `349f3f5`; commit `19a523b` (docs `eb779b5`); draft PR. No migration, no proxy change.
+
+| # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
+|---|---|---|---|---|---|---|---|---|---|---|
+| T477 | CI traces every first attempt and keeps a failed one (`retain-on-first-failure`); local unchanged | `playwright.config.ts` | Med | Low | 0.1h | done | - | `19a523b` | - | CI E2E time: see the PR run |
+| T478 | Investigation: the CI snapshot, Playwright's `fill` source, the stacking order, StrictMode | - | High | Low | 0.6h | done | - | - | `fill` types into whatever has focus a round trip after focusing; StrictMode re-runs the mount's effects in between | - |
+| T479 | Unit test: StrictMode, outside `act`, a lazy dialog beside `<main>` over an open confirmation, filled as Playwright fills | `unit/modal-focus.test.tsx` | High | Low | 0.6h | done | T478 | `19a523b` | `main`'s and Phase 81's `Modal`: amount empty; no StrictMode: passes | unit 828 -> 829 |
+| T480 | `Modal`: the opener cleanup notes `focusInside`; the re-run gives focus back; a close clears it | `components/Modal.tsx` | High | Low | 0.3h | done | T479 | `19a523b` | modal file 27/27 three times | entry +266 B |
+| T481 | Gate: lint, unit, `categories.spec.ts` x15 on WebKit, full suite, bundle | - | High | Low | 0.4h | done | T480 | - | lint clean; unit 829/829; `categories.spec.ts` on WebKit x15: 118/120; both failures were the known Windows WebKit painting stall (the trace's last frame about 14.8 s before the timeout), at a category save and a type toggle, before any stacked dialog; full 441/441 in 8.0 m, first pass | see the refactor log |
+| T482 | ADR `0059`, ADR `0058`'s amended line, `CLAUDE.md`, this ledger, the refactor log, baseline metrics | `docs/`, `CLAUDE.md` | Low | Low | 0.3h | done | T481 | `eb779b5` | - | - |
+
+**Notes on execution:**
+- **The inert marks were never wrong.** The test's first reading (fill at the first commit) showed the field not inert and the amount taken, but focus gone afterwards; filling as Playwright does, with a task between focusing and typing, reproduced CI's empty amount.
+- **The race predates Phase 82:** the Phase 81 `Modal` fails the same test.
+- **The test harness's first version never mounted the lazy dialog** (the chunk was released before `React.lazy` asked for it); fixed before any result was read.
+- **No `src/` or `tests/` file was edited during a Playwright run.**
+- **Two untracked folders appeared during the session that this phase did not create, `.antigravity/` and `review/`;** both are left alone.
+
 ## Phase 82 - A dialog isolates the page in the commit that shows it: T470-T476 (2026-10-04)
 
 ADR `0058`, amending ADR `0047`. Branch `phase-82-modal-inert-and-dialog-settle`, cut from `main` at `7fc77af`; commit `4d9e34e` (docs `234eb2e`, hash backfill `9fbfe81`), merged into `main` as `bef52be` (PR #32); Vercel `dpl_9gzWuPDm3Hs3BtSHMjg6BngFs1HJ` READY in `icn1`, CI run `37212793444` passed (one WebKit test flaky, see the refactor log). No migration, no proxy change, no CI change.

@@ -190,6 +190,15 @@ export const Modal: React.FC<ModalProps> = ({
   // must read the opener before the stack effect moves focus into the panel.
   // The app renders only in the browser, so there is no server render to warn.
   const returnFocusTo = useRef<HTMLElement | null>(null);
+  // Phase 83 (ADR 0059): the control that had focus inside the panel when
+  // these effects were last torn down while the dialog stayed open. React
+  // does that to every newly mounted component in development (StrictMode
+  // runs its effects, their cleanups, then the effects again, a task after
+  // the commit), and would to a dialog inside a hidden <Activity>. The
+  // cleanup below hands focus to the opener, so without this the re-run
+  // moved it to the first control: a person's caret, or Playwright's fill
+  // between its focus and its typing, left the field they were in.
+  const focusInside = useRef<HTMLElement | null>(null);
   useLayoutEffect(() => {
     if (!isOpen) return;
     const token = stackToken.current;
@@ -198,6 +207,8 @@ export const Modal: React.FC<ModalProps> = ({
       : null;
     returnFocusTo.current = opener;
     return () => {
+      const active = document.activeElement;
+      focusInside.current = active instanceof HTMLElement && panelRef.current?.contains(active) ? active : null;
       releaseDialog(token);
       // Enough when the dialog unmounts. When it only closes, its controls stay
       // on the page for the exit tween, and React puts focus back on the one
@@ -211,6 +222,8 @@ export const Modal: React.FC<ModalProps> = ({
   // the closing dialog's control, so the opener gets it here, before paint.
   useLayoutEffect(() => {
     if (isOpen) return;
+    // A real close: the next open starts from the first control again.
+    focusInside.current = null;
     const opener = returnFocusTo.current;
     returnFocusTo.current = null;
     if (opener?.isConnected) opener.focus({ preventScroll: true });
@@ -229,7 +242,11 @@ export const Modal: React.FC<ModalProps> = ({
     const panel = panelRef.current;
     if (panel?.parentElement) overlayOf.set(token, panel.parentElement);
     syncBackgroundInert();
-    if (panel && !panel.contains(document.activeElement)) {
+    const kept = focusInside.current;
+    focusInside.current = null;
+    if (panel && kept?.isConnected && panel.contains(kept)) {
+      kept.focus({ preventScroll: true });
+    } else if (panel && !panel.contains(document.activeElement)) {
       (focusableIn(panel)[0] ?? panel).focus({ preventScroll: true });
     }
     return () => releaseDialog(token);
