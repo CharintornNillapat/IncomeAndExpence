@@ -86,24 +86,15 @@ export const ImportCsvModal: React.FC<ImportCsvModalProps> = ({ isOpen, onClose 
    * run is cancelled, and when any run finishes (its note, word for word).
    * The countdown is outside it, so a pause is announced once, not every
    * second.
+   *
+   * Pause and resume are announced where the batch reports them
+   * (`reportProgress` below), never from an effect. An effect runs after its
+   * render, so on a slow machine the run could finish and queue its note
+   * first, and the effect's late "resumed" then replaced the note for good
+   * (WebKit on CI, ADR 0055). Set in event order, the note is always last.
    */
   const [announcement, setAnnouncement] = useState('');
-  const isClassifying = classifyProgress !== null;
   const wasPausedRef = useRef(false);
-  useEffect(() => {
-    const paused = resumesAt !== undefined;
-    if (resumesAt !== undefined && !wasPausedRef.current) {
-      const seconds = Math.max(1, Math.ceil((resumesAt - Date.now()) / 1000));
-      setAnnouncement(
-        `Rate limit reached. Classification paused for about ${seconds} second${seconds === 1 ? '' : 's'}, then it continues on its own.`
-      );
-    } else if (!paused && wasPausedRef.current && isClassifying) {
-      // Only a pause that ends with the run still going is a resume; a run
-      // cancelled or finished during it says nothing here.
-      setAnnouncement('Rate limit cleared. Classification resumed.');
-    }
-    wasPausedRef.current = paused;
-  }, [resumesAt, isClassifying]);
 
   const activeCategoriesForForm = useMemo(() => categories.filter((c) => !c.isDeleted), [categories]);
 
@@ -201,14 +192,32 @@ export const ImportCsvModal: React.FC<ImportCsvModalProps> = ({ isOpen, onClose 
     setClassifyNote(null);
     // Emptied so the same sentence in a later run counts as a change and is read.
     setAnnouncement('');
+    wasPausedRef.current = false;
     setClassifyProgress({ done: 0, total: uncategorizedRows.length });
+
+    /** Progress for the countdown, and a pause's start and end for the region, in the order they happen. */
+    const reportProgress = (progress: BatchClassifyProgress) => {
+      setClassifyProgress(progress);
+      // A cancelled run has announced its cancel; nothing after it is news.
+      if (controller.signal.aborted) return;
+      const paused = progress.resumesAt !== undefined;
+      if (progress.resumesAt !== undefined && !wasPausedRef.current) {
+        const seconds = Math.max(1, Math.ceil((progress.resumesAt - Date.now()) / 1000));
+        setAnnouncement(
+          `Rate limit reached. Classification paused for about ${seconds} second${seconds === 1 ? '' : 's'}, then it continues on its own.`
+        );
+      } else if (!paused && wasPausedRef.current) {
+        setAnnouncement('Rate limit cleared. Classification resumed.');
+      }
+      wasPausedRef.current = paused;
+    };
 
     const candidates = toClassifyCandidates(categories);
     const result = await classifyBatch(
       uncategorizedRows.map((r) => ({ id: r.rowIndex, text: r.description })),
       categories,
       candidates,
-      { onProgress: setClassifyProgress, signal: controller.signal }
+      { onProgress: reportProgress, signal: controller.signal }
     );
 
     classifyAbortRef.current = null;

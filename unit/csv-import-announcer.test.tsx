@@ -47,6 +47,11 @@ afterEach(() => {
 
 /** Mounts the modal and loads a one-row CSV no keyword rule matches. */
 async function openWithOneRow() {
+  return openWithRows(['zzznovelshop']);
+}
+
+/** Mounts the modal and loads one row per description, none matched by a keyword rule. */
+async function openWithRows(descriptions: string[]) {
   render(
     <FinanceProvider>
       <ImportCsvModal isOpen onClose={() => {}} />
@@ -54,7 +59,7 @@ async function openWithOneRow() {
   );
   const text = [
     'Date,Wallet,Category,Type,Amount,Description,DestinationWallet',
-    `${todayIsoDate()},Main Checking,,EXPENSE,45,zzznovelshop,`,
+    ...descriptions.map((d) => `${todayIsoDate()},Main Checking,,EXPENSE,45,${d},`),
   ].join('\n');
   const input = document.querySelector('#csv-file-input') as HTMLInputElement;
   fireEvent.change(input, { target: { files: [new File([text], 'import.csv', { type: 'text/csv' })] } });
@@ -250,9 +255,34 @@ describe('the import\'s live region (ADR 0054)', () => {
     expect(heard[2]).toContain('Classified 2 of 2');
   });
 
-  it('starts a clean run after a cancelled paused one from empty, and ends it on its note', async () => {
-    fetchMock.mockImplementationOnce(async () => limited('30')).mockImplementation(async () => reply(200));
+  it('does not announce a 429 that lands after Cancel', async () => {
+    // The reply is already on its way when Cancel is pressed: it arrives
+    // after the cancel, and the run would start a pause for it.
+    let answer: (r: Response) => void = () => {};
+    fetchMock.mockImplementation(() => new Promise<Response>((resolve) => (answer = resolve)));
     const heard = record(await openWithOneRow());
+
+    await classify();
+    fireEvent.click(screen.getByText('Cancel'));
+    await tick(0);
+    answer(limited('30'));
+    await tick(0);
+    await tick(30_000);
+
+    expect(heard).toEqual([CANCELLED]);
+  });
+
+  it('starts a clean run after a cancelled paused one from empty, and ends it on its note', async () => {
+    // Two rows answering 100 ms and 300 ms into the second run: the progress
+    // after the first renders on its own, so a stray "resumed" left over
+    // from the first run would be heard before the note.
+    fetchMock.mockImplementation(async (_url: string, init: RequestInit) => {
+      const { text } = JSON.parse(init.body as string) as { text: string };
+      if (fetchMock.mock.calls.length <= 2) return limited('30');
+      await new Promise((resolve) => setTimeout(resolve, text === 'zzzfirstshop' ? 100 : 300));
+      return reply(200);
+    });
+    const heard = record(await openWithRows(['zzzfirstshop', 'zzzsecondshop']));
 
     await classify();
     fireEvent.click(screen.getByText('Cancel'));
@@ -261,9 +291,10 @@ describe('the import\'s live region (ADR 0054)', () => {
 
     fireEvent.click(screen.getByText('Classify remaining with Jev'));
     await tick(0);
-    await tick(0);
+    await tick(100);
+    await tick(200);
     const note = screen.getByTestId('csv-classify-note').textContent;
-    expect(note).toContain('Classified 1 of 1');
+    expect(note).toContain('Classified 2 of 2');
     expect(heard.slice(-2)).toEqual(['', note]);
     expect(heard).not.toContain(RESUMED);
   });
