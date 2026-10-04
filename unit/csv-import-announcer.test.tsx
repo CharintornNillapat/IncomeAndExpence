@@ -250,7 +250,7 @@ describe('the import\'s live region (ADR 0054)', () => {
     expect(heard[2]).toContain('Classified 2 of 2');
   });
 
-  it('forgets an earlier run\'s pause: a clean run after it says nothing', async () => {
+  it('starts a clean run after a cancelled paused one from empty, and ends it on its note', async () => {
     fetchMock.mockImplementationOnce(async () => limited('30')).mockImplementation(async () => reply(200));
     const heard = record(await openWithOneRow());
 
@@ -262,16 +262,59 @@ describe('the import\'s live region (ADR 0054)', () => {
     fireEvent.click(screen.getByText('Classify remaining with Jev'));
     await tick(0);
     await tick(0);
-    expect(screen.getByTestId('csv-classify-note').textContent).toContain('Classified 1 of 1');
-    expect(heard[heard.length - 1]).toBe('');
+    const note = screen.getByTestId('csv-classify-note').textContent;
+    expect(note).toContain('Classified 1 of 1');
+    expect(heard.slice(-2)).toEqual(['', note]);
+    expect(heard).not.toContain(RESUMED);
   });
 
-  it('says nothing for a run that is never limited', async () => {
+  // ADR 0055: every finished run is heard, limited or not.
+  it('announces the note once for a run that is never limited, and nothing else', async () => {
     const heard = record(await openWithOneRow());
 
     await classify();
     await tick(0);
-    expect(screen.getByTestId('csv-classify-note').textContent).toContain('Classified 1 of 1');
-    expect(heard).toEqual([]);
+    const note = screen.getByTestId('csv-classify-note').textContent;
+    expect(note).toBe('Classified 1 of 1: 1 applied, 0 to confirm. 1 request sent.');
+    expect(heard).toEqual([note]);
+  });
+
+  it('announces the unavailable note for a run whose endpoint is missing from the start', async () => {
+    fetchMock.mockImplementation(async () => reply(404, {}));
+    const heard = record(await openWithOneRow());
+
+    await classify();
+    await tick(0);
+    expect(heard).toEqual(['Jev is unavailable right now. Import still works, and categories stay blank.']);
+  });
+
+  it('announces the note when nothing matched, so an empty result is not silence', async () => {
+    fetchMock.mockImplementation(async () => reply(200, { categoryId: 'other', categoryConfidence: 0.9, detectedType: 'EXPENSE', typeConfidence: 0.9 }));
+    const heard = record(await openWithOneRow());
+
+    await classify();
+    await tick(0);
+    expect(heard).toEqual(['Classified 0 of 1: 0 applied, 0 to confirm. 1 request sent.']);
+  });
+
+  it('reads the same note again when a second run ends on it', async () => {
+    const heard = record(await openWithOneRow());
+
+    await classify();
+    await tick(0);
+    const note = screen.getByTestId('csv-classify-note').textContent;
+    // The row is now filled, so reload the preview to classify it again.
+    vi.useRealTimers();
+    const input = document.querySelector('#csv-file-input') as HTMLInputElement;
+    const text = [
+      'Date,Wallet,Category,Type,Amount,Description,DestinationWallet',
+      `${todayIsoDate()},Main Checking,,EXPENSE,45,zzznovelshop,`,
+    ].join('\n');
+    fireEvent.change(input, { target: { files: [new File([text], 'again.csv', { type: 'text/csv' })] } });
+    await screen.findByText('Classify remaining with Jev');
+    await classify();
+    await tick(0);
+
+    expect(heard.filter((t) => t === note)).toHaveLength(2);
   });
 });

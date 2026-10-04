@@ -81,23 +81,18 @@ export const ImportCsvModal: React.FC<ImportCsvModalProps> = ({ isOpen, onClose 
   const waitSeconds = resumesAt === undefined ? null : Math.max(0, Math.ceil((resumesAt - waitClock) / 1000));
 
   /*
-   * What a screen reader hears about the run (ADR 0054): one polite live
-   * region, changed only when a pause starts, when it ends, when the run is
-   * cancelled, when it stops at a wait over a minute, and when a run that
-   * paused finishes. The countdown is outside it, so a pause is announced
-   * once, not every second.
+   * What a screen reader hears about the run (ADR 0054, 0055): one polite
+   * live region, changed only when a pause starts, when it ends, when the
+   * run is cancelled, and when any run finishes (its note, word for word).
+   * The countdown is outside it, so a pause is announced once, not every
+   * second.
    */
   const [announcement, setAnnouncement] = useState('');
   const isClassifying = classifyProgress !== null;
   const wasPausedRef = useRef(false);
-  // Set once this run's pause has been announced: the run then also
-  // announces how it ended, because a resume and the finish can land in one
-  // render (WebKit did), and "paused" must not be the last thing heard.
-  const pauseAnnouncedRef = useRef(false);
   useEffect(() => {
     const paused = resumesAt !== undefined;
     if (resumesAt !== undefined && !wasPausedRef.current) {
-      pauseAnnouncedRef.current = true;
       const seconds = Math.max(1, Math.ceil((resumesAt - Date.now()) / 1000));
       setAnnouncement(
         `Rate limit reached. Classification paused for about ${seconds} second${seconds === 1 ? '' : 's'}, then it continues on its own.`
@@ -206,7 +201,6 @@ export const ImportCsvModal: React.FC<ImportCsvModalProps> = ({ isOpen, onClose 
     setClassifyNote(null);
     // Emptied so the same sentence in a later run counts as a change and is read.
     setAnnouncement('');
-    pauseAnnouncedRef.current = false;
     setClassifyProgress({ done: 0, total: uncategorizedRows.length });
 
     const candidates = toClassifyCandidates(categories);
@@ -228,7 +222,7 @@ export const ImportCsvModal: React.FC<ImportCsvModalProps> = ({ isOpen, onClose 
       // serve `api/`). The import still commits perfectly well without it.
       const unavailableNote = 'Jev is unavailable right now. Import still works, and categories stay blank.';
       setClassifyNote(unavailableNote);
-      if (pauseAnnouncedRef.current) setAnnouncement(unavailableNote);
+      setAnnouncement(unavailableNote);
       return;
     }
 
@@ -259,10 +253,10 @@ export const ImportCsvModal: React.FC<ImportCsvModalProps> = ({ isOpen, onClose 
       // ADR 0052: the rate limit asked for longer than the importer waits.
       (result.rateLimited ? ' Stopped early: the rate limit asked for a wait of over a minute, so the rest stay blank.' : '');
     setClassifyNote(note);
-    // ADR 0054: a run the rate limit stopped, or one whose pause was
-    // announced, ends by reading out the note, with its counts. A run that
-    // never paused stays silent, as before.
-    if (result.rateLimited || pauseAnnouncedRef.current) setAnnouncement(note);
+    // Every finished run reads out its note, with its counts (ADR 0055; ADR
+    // 0054 did this only after a pause). It also closes a pause whose resume
+    // landed in the same render as the finish, which WebKit showed can happen.
+    setAnnouncement(note);
   };
 
   /** A manual pick, or accepting a mid-confidence suggestion. Always wins. */

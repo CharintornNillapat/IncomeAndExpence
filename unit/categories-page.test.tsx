@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, afterEach } from 'vitest';
-import { render, cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
+import { render, cleanup, fireEvent, screen, waitFor, within, act } from '@testing-library/react';
 import { FinanceProvider, useFinanceActions, FinanceActionsContextType } from '../src/context/FinanceContext';
 import { CategoriesView } from '../src/views/CategoriesView';
 import { Navbar } from '../src/components/Navbar';
@@ -336,7 +336,12 @@ describe('the guards behind the form (guest)', () => {
     expect((await actions!.addCategory({ name: 'Early', type: 'EXPENSE', color: '#E879A6' })).success).toBe(false);
     expect((await actions!.addCategory({ name: 'Last free', type: 'EXPENSE', color: '#9C8CD9' })).success).toBe(true);
     // Let it land, as a person's next tap would, before the guard reads it.
+    // The row on screen is not enough: the guard reads `categoriesRef`, which
+    // a passive effect updates after that render, and under a loaded full
+    // run the effect had not run yet (ADR 0055). React runs pending effects
+    // before it handles a new tap; `act` does the same here.
     await waitFor(() => expect(byId('category-group-expense')!.textContent).toContain('Last free'));
+    await act(async () => {});
     expect((await actions!.addCategory({ name: 'Repeat', type: 'EXPENSE', color: '#E879A6' })).success).toBe(true);
   });
 });
