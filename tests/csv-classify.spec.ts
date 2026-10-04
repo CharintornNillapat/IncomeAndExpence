@@ -319,6 +319,33 @@ test.describe('CSV import auto-categorization', () => {
     await expect(page.getByText(/Successfully imported 1 transactions/i)).toBeVisible();
   });
 
+  // ADR 0053: the guest firewall's 429 names no wait, only
+  // `X-Vercel-Mitigated: deny` (the headers production sent). Refused on the
+  // run's first request, the importer waits a whole window; Cancel ends it.
+  test('the guest firewall\'s 429 pauses the run for its window, and Cancel ends the wait', async ({ page }) => {
+    let calls = 0;
+    await page.route(CLASSIFY_ROUTE, async (route: Route) => {
+      calls += 1;
+      await route.fulfill({
+        status: 429,
+        contentType: 'application/json',
+        headers: { 'X-Vercel-Mitigated': 'deny' },
+        body: JSON.stringify({ error: { code: '429', message: 'Too Many Requests' } }),
+      });
+    });
+
+    await openImportWith(page, csv([{ desc: 'zzzguestwall', amount: '25' }]));
+    await page.locator('#csv-classify-btn').click();
+
+    const wait = page.getByTestId('csv-classify-wait');
+    await expect(wait).toContainText(/Rate limit reached, continuing in (5\d|60) s\./);
+
+    await page.locator('#csv-classify-cancel-btn').click();
+    await expect(wait).toHaveCount(0);
+    await expect(page.locator('#csv-classify-btn')).toBeVisible();
+    expect(calls).toBe(1);
+  });
+
   test('with no endpoint the importer says so and still commits', async ({ page }) => {
     // Deliberately no mock: the Vite dev server does not serve `api/`, so
     // this is the genuine offline / unconfigured-deployment path.

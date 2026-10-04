@@ -53,6 +53,14 @@ function limited(retryAfter: string) {
   return reply(429, {}, { 'Retry-After': retryAfter });
 }
 
+/**
+ * A 429 from the guest firewall (ADR 0046), with the headers production sent
+ * on 2026-10-04 (ADR 0053): `X-Vercel-Mitigated: deny` and no `Retry-After`.
+ */
+function firewallDenied(mitigated = 'deny') {
+  return reply(429, { error: { code: '429', message: 'Too Many Requests' } }, { 'X-Vercel-Mitigated': mitigated });
+}
+
 function rows(count: number, text: (i: number) => string): BatchClassifyItem[] {
   return Array.from({ length: count }, (_, i) => ({ id: i, text: text(i) }));
 }
@@ -556,5 +564,138 @@ describe('classifyBatch - waiting out Retry-After', () => {
     await run;
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('classifyOnce - naming the firewall\'s 429 (ADR 0053)', () => {
+  it('marks a 429 with X-Vercel-Mitigated: deny and no Retry-After as the firewall\'s', async () => {
+    fetchMock.mockImplementation(async () => firewallDenied());
+    expect(await classifyOnce('coffee', CANDIDATES)).toEqual({ kind: 'rate-limited', firewall: true });
+  });
+
+  it('reads the mark whatever its case', async () => {
+    fetchMock.mockImplementation(async () => firewallDenied(' DENY '));
+    expect(await classifyOnce('coffee', CANDIDATES)).toEqual({ kind: 'rate-limited', firewall: true });
+  });
+
+  it('prefers a Retry-After when both are present', async () => {
+    fetchMock.mockImplementation(async () => reply(429, {}, { 'X-Vercel-Mitigated': 'deny', 'Retry-After': '9' }));
+    expect(await classifyOnce('coffee', CANDIDATES)).toEqual({ kind: 'rate-limited', retryAfterMs: 9_000 });
+  });
+
+  it('does not read another mitigation (a challenge) as the guest limit', async () => {
+    fetchMock.mockImplementation(async () => firewallDenied('challenge'));
+    expect(await classifyOnce('coffee', CANDIDATES)).toEqual({ kind: 'rate-limited' });
+  });
+});
+
+describe('classifyBatch - waiting out the guest firewall (ADR 0053)', () => {
+  /**
+   * Every request answers after `ms`; the calls numbered in `denied` (from 1)
+   * get the firewall's 429. Returns each call's send time, from now.
+   */
+  function slowReplies(ms: number, denied: number[]): number[] {
+    const start = Date.now();
+    const sent: number[] = [];
+    fetchMock.mockImplementation(async () => {
+      sent.push(Date.now() - start);
+      const n = sent.length;
+      await new Promise((resolve) => setTimeout(resolve, ms));
+      return denied.includes(n) ? firewallDenied() : reply(200);
+    });
+    return sent;
+  }
+
+  it('waits until the window that began with the run\'s first request is over, plus a second', async () => {
+    vi.useFakeTimers();
+    const start = Date.now();
+    // Four at a time, a second each: calls 9 to 12 go out at 2 s, and call 10
+    // is refused at 3 s.
+    slowReplies(1_000, [10]);
+    const seen: BatchClassifyProgress[] = [];
+
+    const run = classifyBatch(rows(12, (i) => `merchant number ${i}`), CATEGORIES, CANDIDATES, {
+      onProgress: (p) => seen.push({ ...p }),
+    });
+
+    await vi.advanceTimersByTimeAsync(3_000);
+    expect(fetchMock).toHaveBeenCalledTimes(12);
+    expect(seen.find((p) => p.resumesAt !== undefined)?.resumesAt).toBe(start + 61_000);
+
+    await vi.advanceTimersByTimeAsync(57_999);
+    expect(fetchMock).toHaveBeenCalledTimes(12);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(fetchMock).toHaveBeenCalledTimes(13);
+
+    await vi.advanceTimersByTimeAsync(1_000);
+    const result = await run;
+    expect(result.suggestions.size).toBe(12);
+    expect(result.rateLimited).toBe(false);
+  });
+
+  it('waits one whole window when the run\'s very first request is refused', async () => {
+    vi.useFakeTimers();
+    fetchMock.mockImplementationOnce(async () => firewallDenied()).mockImplementation(async () => reply(200));
+
+    const run = classifyBatch([{ id: 0, text: 'coffee' }], CATEGORIES, CANDIDATES);
+
+    await vi.advanceTimersByTimeAsync(59_999);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect((await run).suggestions.get(0)?.categoryId).toBe('cat-food');
+  });
+
+  it('waits one whole window when its own estimate has already run out', async () => {
+    vi.useFakeTimers();
+    // Refused 60.8 s after the run's first request: by the run's own count the
+    // window is over, so something else was counted too, and its start is
+    // unknown.
+    fetchMock
+      .mockImplementationOnce(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 60_800));
+        return firewallDenied();
+      })
+      .mockImplementation(async () => reply(200));
+
+    const run = classifyBatch([{ id: 0, text: 'coffee' }], CATEGORIES, CANDIDATES);
+
+    await vi.advanceTimersByTimeAsync(60_800 + 59_999);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    await run;
+  });
+
+  it('starts a new window with the first request after the pause', async () => {
+    vi.useFakeTimers();
+    // Call 10 is refused at 3 s, so the run resumes at 61 s, and that request
+    // starts a new window. Call 21 is sent after it and refused inside it: the
+    // run resumes 61 s after 61 s. Measured from the run's first request
+    // instead, the estimate would be over and the wait a whole minute from
+    // the refusal, which is later.
+    const sent = slowReplies(1_000, [10, 21]);
+
+    const run = classifyBatch(rows(24, (i) => `merchant number ${i}`), CATEGORIES, CANDIDATES);
+    await vi.advanceTimersByTimeAsync(130_000);
+    expect((await run).suggestions.size).toBe(24);
+
+    expect(sent.find((t) => t > 3_000)).toBe(61_000);
+    expect(sent[20]).toBeGreaterThanOrEqual(61_000);
+    const refused = sent[20] + 1_000;
+    expect(sent.find((t) => t > refused)).toBe(61_000 + 61_000);
+  });
+
+  it('keeps the 400 ms retry for a 429 that is neither the firewall\'s nor names a wait', async () => {
+    vi.useFakeTimers();
+    fetchMock.mockImplementationOnce(async () => reply(429, {})).mockImplementation(async () => reply(200));
+
+    const run = classifyBatch([{ id: 0, text: 'coffee' }], CATEGORIES, CANDIDATES);
+
+    await vi.advanceTimersByTimeAsync(BASE_BACKOFF_MS - 1);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    await run;
   });
 });

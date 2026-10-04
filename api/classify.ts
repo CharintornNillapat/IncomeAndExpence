@@ -73,6 +73,33 @@ function json(body: unknown, status: number, headers: Record<string, string> = {
   });
 }
 
+/**
+ * The wait TypeSafe asked for on its own 429, as delay-seconds, or undefined
+ * (ADR 0053). Only this header crosses over; the upstream body never does.
+ *
+ * - TypeSafe's SDKs read a retry wait from the 429's headers without naming
+ *   the header, so both common spellings are read: `retry-after-ms`, then
+ *   `Retry-After` (seconds or an HTTP date).
+ * - The answer is always whole seconds, so the client has one format to read.
+ *   A date is turned into seconds here, against this server's clock, which is
+ *   nearer TypeSafe's than a phone's is.
+ * - Nothing usable (absent, a word, a date already past) is undefined, and the
+ *   429 goes out without the header, as before.
+ * - Capped at a day, so a huge value stays a plain integer; the client stops
+ *   at anything over a minute anyway (ADR 0052).
+ */
+function upstreamRetryAfter(res: Response, now = Date.now()): string | undefined {
+  const seconds = (s: number) => String(Math.min(Math.ceil(s), 86_400));
+  const ms = res.headers.get('retry-after-ms')?.trim();
+  if (ms && /^\d+(\.\d+)?$/.test(ms)) return seconds(Number(ms) / 1000);
+  const value = res.headers.get('retry-after')?.trim();
+  if (!value) return undefined;
+  if (/^\d+$/.test(value)) return seconds(Number(value));
+  const at = Date.parse(value);
+  if (Number.isNaN(at) || at <= now) return undefined;
+  return seconds((at - now) / 1000);
+}
+
 function isPlainObject(v: unknown): v is Record<string, unknown> {
   return typeof v === 'object' && v !== null && !Array.isArray(v);
 }
@@ -424,10 +451,14 @@ async function handle(req: Request, timings: Timings): Promise<Response> {
     // A 429 is passed through as 429 (ADR 0022, amending 0011): it is the one
     // status the client's batch importer backs off on. Mapping it to 503 made
     // that backoff unreachable in production. 401 stays 502 - a wrong key is
-    // not something waiting will fix.
+    // not something waiting will fix. Since ADR 0053 the 429 also carries
+    // TypeSafe's own wait, so the importer pauses for as long as it asked.
     console.error('[classify] upstream returned', upstream.status);
-    const status = upstream.status === 429 ? 429 : upstream.status === 401 ? 502 : 503;
-    return json({ error: 'Classification upstream error.' }, status);
+    if (upstream.status === 429) {
+      const retryAfter = upstreamRetryAfter(upstream);
+      return json({ error: 'Classification upstream error.' }, 429, retryAfter === undefined ? {} : { 'Retry-After': retryAfter });
+    }
+    return json({ error: 'Classification upstream error.' }, upstream.status === 401 ? 502 : 503);
   }
 
   let payload: unknown;

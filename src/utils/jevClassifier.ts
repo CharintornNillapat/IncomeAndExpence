@@ -165,9 +165,12 @@ export type ClassifyOutcome =
   /**
    * HTTP 429. Retryable after a wait. `retryAfterMs` is the response's
    * `Retry-After` when it sent a usable one (ADR 0052): the per-account limit
-   * does (ADR 0049), the firewall's guest limit does not.
+   * does (ADR 0049), and so does TypeSafe's own 429 when it names a wait
+   * (ADR 0053). The firewall's guest limit sends none, but marks its refusal
+   * `X-Vercel-Mitigated: deny`; that 429 has `firewall: true` instead, so a
+   * batch can wait out the guest window (ADR 0053).
    */
-  | { kind: 'rate-limited'; retryAfterMs?: number }
+  | { kind: 'rate-limited'; retryAfterMs?: number; firewall?: true }
   /**
    * The endpoint is absent or has latched off, so every subsequent call is
    * pointless - or it refused this caller's sign-in (401, ADR 0032), which no
@@ -234,7 +237,12 @@ export async function classifyOnce(
     // Retryable, and the only status a batch should wait and re-attempt on.
     if (res.status === 429) {
       const retryAfterMs = parseRetryAfter(res.headers.get('Retry-After'));
-      return retryAfterMs === undefined ? { kind: 'rate-limited' } : { kind: 'rate-limited', retryAfterMs };
+      if (retryAfterMs !== undefined) return { kind: 'rate-limited', retryAfterMs };
+      // Same-origin, so this header is readable without CORS exposure.
+      if (res.headers.get('X-Vercel-Mitigated')?.trim().toLowerCase() === 'deny') {
+        return { kind: 'rate-limited', firewall: true };
+      }
+      return { kind: 'rate-limited' };
     }
 
     // The proxy refused this sign-in (ADR 0032). A batch stops; the session
