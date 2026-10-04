@@ -1,6 +1,6 @@
 # 0056: Feedback follows the event that produced it, not a passive effect
 
-**Status:** Accepted. Implemented on branch `phase-80-audit-effect-handler-races`, draft PR. Not merged yet.
+**Status:** Accepted. Implemented on branch `phase-80-audit-effect-handler-races` (commit `68a8559`, docs `6285323`), draft PR. Not merged yet.
 - **Generalises** ADR `0055`'s CI finding (a late effect's "resumed" replaced the import's note) into a rule for every piece of UI feedback.
 
 **Date:** 2026-10-04

@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 80 - Feedback follows the event that produced it: T454-T460 (2026-10-04, draft PR)
+## Phase 80 - Feedback follows the event that produced it: T454-T460 (2026-10-04, commit `68a8559`, docs `6285323`, draft PR)
 
 ADR `0056`. Phase 79's CI failure was feedback written both by a passive effect and by a handler. This phase looked for the same shape everywhere.
 
