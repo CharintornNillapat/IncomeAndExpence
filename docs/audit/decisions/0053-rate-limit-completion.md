@@ -1,6 +1,6 @@
 # 0053: Every 429 says how long to wait, or the client works it out
 
-**Status:** Accepted. Implemented on branch `phase-77-rate-limit-completion` (commit `05d103c`, docs `c87020e`), draft PR. Not merged yet.
+**Status:** Accepted and released. Commit `05d103c` (docs `c87020e`, hash backfill `9c49a8c`), merged into `main` as `07d51f1` (PR #27). Vercel `dpl_FetmkPeDZf6qNf3Aea6bH5cXQQWG` is READY in production (`icn1`): its `TransactionForm` chunk reads `X-Vercel-Mitigated` and its `TransactionsView` chunk has the `firewall` branch, and a guest `POST {}` still gets 400 from `sin1::icn1`. `main` CI on the merge passed, all four jobs (run `37178250544`).
 - **Extends** ADR `0052`. That ADR waited out a 429's `Retry-After`; this one covers the two 429s that had none:
   - TypeSafe's own 429, whose wait the proxies dropped;
   - the guest firewall's.
@@ -138,4 +138,5 @@ TypeSafe's SDKs expose a server retry delay on their rate-limit error (`RateLimi
 - **A guest import larger than the firewall's limit finishes,** about 30 distinct notes a minute, with the countdown on screen, instead of leaving the rest blank.
 - **A shared network or a second tab can make the estimate early.** The retry is then refused again, that one row stays blank, and the run pauses again.
 - **TypeSafe's wait reaches the importer only if TypeSafe sends one.** Nothing changes if it does not.
+- **Not seen on a real import yet,** for a guest or with TypeSafe's own 429; only the tests' mocked headers have shown it.
 - **The window's behaviour was measured on one day,** from Thailand through `sin1`. If Vercel changes how the rule counts, the fallback still waits a whole minute whenever the estimate has run out.

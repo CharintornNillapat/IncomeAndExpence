@@ -353,6 +353,7 @@ The importer runs `smartMatcher` then Jev, in that order, and shows the result i
 - **A 429 that names its wait pauses the whole run** (ADR `0052`). `classifyOnce` reads `Retry-After` (seconds or an HTTP date) into `retryAfterMs`; `classifyBatch` then holds **every** worker until `resumesAt`, because the per-account limit (ADR `0049`) is shared by all of them, and retries the refused row after it.
   - The wait is never under 400 ms. Over a minute (`MAX_RETRY_AFTER_MS`, the limit's own window) the run stops instead: `rateLimited: true`, answers so far kept, the note says so.
   - **The guest firewall's 429** (`X-Vercel-Mitigated: deny`, no `Retry-After`) is `{ kind: 'rate-limited', firewall: true }` (ADR `0053`). The run estimates the window itself: it starts with the run's first request, and a request 60 s or more later starts the next one. The pause lasts until that start + 61 s; when that is already past, a whole 60 s. Never over 60 s.
+  - Released in `07d51f1` (PR #27, Vercel `dpl_FetmkPeDZf6qNf3Aea6bH5cXQQWG`), with the proxies' forwarded wait. Neither yet seen on a real import, only against mocked headers.
   - A 429 that neither names a wait nor carries the firewall's mark keeps the old per-row 400 ms retry.
   - `ImportCsvModal` shows the pause as "Rate limit reached, continuing in N s" (`csv-classify-wait`), counting down; Cancel ends it at once.
   - Released in `23d73ed` (PR #26, Vercel `dpl_AWVqP3WTkaKHoBbojS4gKhyPR2GK`). Not yet seen on a real signed-in import, only against the tests' simulated 429.

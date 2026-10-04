@@ -1083,7 +1083,7 @@ Approved explicitly by the user, planned and approved before any code was writte
 
 ## Phase 77 - Every 429 says how long to wait: T433-T439 (2026-10-04)
 
-ADR `0053`, extending ADR `0052`. Branch `phase-77-rate-limit-completion`, cut from `main` at `c248a1c`; commit `05d103c` (docs `c87020e`); draft PR. No migration.
+ADR `0053`, extending ADR `0052`. Branch `phase-77-rate-limit-completion`, cut from `main` at `c248a1c`; commit `05d103c` (docs `c87020e`, hash backfill `9c49a8c`), merged into `main` as `07d51f1` (PR #27); Vercel `dpl_FetmkPeDZf6qNf3Aea6bH5cXQQWG` READY in `icn1`, CI run `37178250544` passed. No migration.
 
 | # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
 |---|---|---|---|---|---|---|---|---|---|---|

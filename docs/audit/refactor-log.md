@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 77 - Every 429 says how long to wait: T433-T439 (2026-10-04, commit `05d103c`, docs `c87020e`, draft PR)
+## Phase 77 - Every 429 says how long to wait: T433-T439 (2026-10-04, commit `05d103c`, docs `c87020e`, merge `07d51f1`)
 
 ADR `0053`. After ADR `0052` only the per-account 429 was waited out. TypeSafe's own 429 lost its wait at the proxy, and the guest firewall's names none, so a guest import past 30 distinct notes a minute still left the rest blank.
 
@@ -19,7 +19,11 @@ ADR `0053`. After ADR `0052` only the per-account 429 was waited out. TypeSafe's
 - **Tests:** unit +31 (`proxy-contract.test.ts` +22, `batch-classifier.test.ts` +9; 739 -> 770); E2E +1 in `csv-classify.spec.ts` (146 -> 147 tests, 438 -> 441 runs).
 - **Docs:** ADR `0053`; a pointer in ADR `0052`; `CLAUDE.md` (the proxy 429 line, the firewall's measured 429 and window, the CSV section, counts, a Do NOT line); the ledger; this log; baseline metrics.
 
+**Release:**
+- PR #27 merged into `main` as `07d51f1`. Vercel `dpl_FetmkPeDZf6qNf3Aea6bH5cXQQWG` is READY in production (`icn1`): its `TransactionForm` chunk reads `X-Vercel-Mitigated` and its `TransactionsView` chunk has the `firewall` branch, and a guest `POST {}` still gets 400 from `sin1::icn1`. `main` CI on the merge passed, all four jobs (run `37178250544`).
+
 **Still open**
+- **Not seen on a real import:** the guest pause needs a guest import of more than 30 distinct notes in a minute.
 - **TypeSafe's header is not seen live;** both spellings are read on the SDK docs' word.
 - **A shared network or a second tab can make the guest estimate early;** that row is refused again and stays blank.
 - **The countdown is visual only;** the progress line is not a live region.
