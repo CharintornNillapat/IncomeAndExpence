@@ -1083,16 +1083,16 @@ Approved explicitly by the user, planned and approved before any code was writte
 
 ## Phase 76 - The CSV importer waits out Retry-After: T427-T432 (2026-10-04)
 
-ADR `0052`, amending ADR `0019`'s rate-limit handling. Branch `phase-76-csv-import-backoff`, cut from `main` at `f32a746`; draft PR. No migration, no proxy change.
+ADR `0052`, amending ADR `0019`'s rate-limit handling. Branch `phase-76-csv-import-backoff`, cut from `main` at `f32a746`; commit `4d861f6` (docs `658f28d`); draft PR. No migration, no proxy change.
 
 | # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
 |---|---|---|---|---|---|---|---|---|---|---|
-| T427 | ADR `0052`: one shared pause, the 400 ms floor, the one-minute ceiling, what stays as it was | `docs/audit/decisions/` | Low | Low | 0.3h | done | - | - | - | - |
-| T428 | `classifyOnce` reads `Retry-After` into `retryAfterMs`; `classifyBatch` holds every worker until `resumesAt`, stops past a minute (`rateLimited`) | `utils/jevClassifier.ts`, `utils/batchClassifier.ts` | High | Med | 0.6h | done | T427 | - | - | - |
-| T429 | The import preview counts the wait down ("Rate limit reached, continuing in N s"); a stopped run says so and keeps its answers | `components/transaction/ImportCsvModal.tsx` | Med | Low | 0.3h | done | T428 | - | - | - |
-| T430 | Unit +14 in `batch-classifier.test.ts` (fake timers); ten mutations; E2E +2 in `csv-classify.spec.ts` with a negative control | `unit/`, `tests/` | Med | Low | 0.6h | done | T428-T429 | - | 35/35 three runs in a row; 9 of 10 mutations caught; E2E 6/6, both fail with `Retry-After` ignored | unit 725 -> 739; E2E 144 -> 146 tests, 432 -> 438 runs |
+| T427 | ADR `0052`: one shared pause, the 400 ms floor, the one-minute ceiling, what stays as it was | `docs/audit/decisions/` | Low | Low | 0.3h | done | - | `658f28d` | - | - |
+| T428 | `classifyOnce` reads `Retry-After` into `retryAfterMs`; `classifyBatch` holds every worker until `resumesAt`, stops past a minute (`rateLimited`) | `utils/jevClassifier.ts`, `utils/batchClassifier.ts` | High | Med | 0.6h | done | T427 | `4d861f6` | - | - |
+| T429 | The import preview counts the wait down ("Rate limit reached, continuing in N s"); a stopped run says so and keeps its answers | `components/transaction/ImportCsvModal.tsx` | Med | Low | 0.3h | done | T428 | `4d861f6` | - | - |
+| T430 | Unit +14 in `batch-classifier.test.ts` (fake timers); ten mutations; E2E +2 in `csv-classify.spec.ts` with a negative control | `unit/`, `tests/` | Med | Low | 0.6h | done | T428-T429 | `4d861f6` | 35/35 three runs in a row; 9 of 10 mutations caught; E2E 6/6, both fail with `Retry-After` ignored | unit 725 -> 739; E2E 144 -> 146 tests, 432 -> 438 runs |
 | T431 | Gate: lint, unit, Playwright in full, bundle | - | Low | Low | 0.3h | done | T430 | - | lint clean; unit 739/739; Playwright 438/438 | - |
-| T432 | `CLAUDE.md`, this ledger, the refactor log, baseline metrics | `docs/`, `CLAUDE.md` | Low | Low | 0.2h | done | T431 | - | - | - |
+| T432 | `CLAUDE.md`, this ledger, the refactor log, baseline metrics | `docs/`, `CLAUDE.md` | Low | Low | 0.2h | done | T431 | `658f28d` | - | - |
 
 **Notes on execution:**
 - **Why shared:** the per-account limit counts every request in the run, so when one worker is refused, the other three would be refused too. A per-row wait fails 2 tests as a mutation.
