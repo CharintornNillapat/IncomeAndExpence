@@ -1083,7 +1083,7 @@ Approved explicitly by the user, planned and approved before any code was writte
 
 ## Phase 82 - A dialog isolates the page in the commit that shows it: T470-T476 (2026-10-04)
 
-ADR `0058`, amending ADR `0047`. Branch `phase-82-modal-inert-and-dialog-settle`, cut from `main` at `7fc77af`; commit `4d9e34e`; draft PR. No migration, no proxy change, no CI change.
+ADR `0058`, amending ADR `0047`. Branch `phase-82-modal-inert-and-dialog-settle`, cut from `main` at `7fc77af`; commit `4d9e34e` (docs `234eb2e`); draft PR. No migration, no proxy change, no CI change.
 
 | # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
 |---|---|---|---|---|---|---|---|---|---|---|
@@ -1093,7 +1093,7 @@ ADR `0058`, amending ADR `0047`. Branch `phase-82-modal-inert-and-dialog-settle`
 | T473 | WebKit "stable" stall: Playwright's stability code, three traces, CI history | - | Med | Low | 1.0h | done | - | - | frames stop in all three; two with no dialog; none on CI's Linux WebKit in 12 runs | - |
 | T474 | Stress: `debts-page` + `transaction-edit` x10 twice, the classifier spec x10, the WebKit project x2 with traces | - | Med | Low | 0.6h | done | T471 | - | 120/120, 90/90, 292/294 (both the stall) | - |
 | T475 | Gate: lint, unit, Playwright three times, bundle | - | High | Low | 0.5h | done | T472 | - | lint clean; unit 828/828; Playwright run 1 440/441 in 7.5 m (WebKit, the high-confidence classification test: the badge never appeared, no trace); run 2 440/441 in 11.1 m with traces on (WebKit, a Categories click stalled on "stable"); run 3 441/441 in 8.1 m, first pass | see the refactor log |
-| T476 | ADR `0058`, ADR `0047`'s amended line, `CLAUDE.md`, this ledger, the refactor log, baseline metrics | `docs/`, `CLAUDE.md` | Low | Low | 0.3h | done | T475 | - | - | - |
+| T476 | ADR `0058`, ADR `0047`'s amended line, `CLAUDE.md`, this ledger, the refactor log, baseline metrics | `docs/`, `CLAUDE.md` | Low | Low | 0.3h | done | T475 | `234eb2e` | - | - |
 
 **Notes on execution:**
 - **The spec this fixes was the flaky test on WebKit CI in 4 of the last 12 successful runs (`37170048902`, `37174477163`, `37178250544`, `37207717828`), each failing on the single read that saw the background not yet inert.**

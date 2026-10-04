@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 82 - A dialog isolates the page in the commit that shows it: T470-T476 (2026-10-04, commit `4d9e34e`, draft PR)
+## Phase 82 - A dialog isolates the page in the commit that shows it: T470-T476 (2026-10-04, commit `4d9e34e`, docs `234eb2e`, draft PR)
 
 ADR `0058`, amending ADR `0047`. The two items Phase 81 left open.
 
