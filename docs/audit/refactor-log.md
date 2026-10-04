@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 80 - Feedback follows the event that produced it: T454-T460 (2026-10-04, commit `68a8559`, docs `6285323`, draft PR)
+## Phase 80 - Feedback follows the event that produced it: T454-T460 (2026-10-04, commit `68a8559`, docs `6285323`, merge `ac6a7c5`)
 
 ADR `0056`. Phase 79's CI failure was feedback written both by a passive effect and by a handler. This phase looked for the same shape everywhere.
 
@@ -21,6 +21,10 @@ ADR `0056`. Phase 79's CI failure was feedback written both by a passive effect 
 - **`TransactionsView`:** the paging reset and the selection clear happen during render.
 - **Tests:** unit `feedback-ordering.test.tsx`, new (17; 785 -> 802, 30 -> 31 files).
 - **Docs:** ADR `0056`; `CLAUDE.md` (a State rule, two Do NOT lines, counts); the ledger; this log; baseline metrics.
+
+**Release:**
+- PR #30 merged into `main` as `ac6a7c5`. Vercel `dpl_Dx3Qt9A1b2H8AdGgx4Sm9TQnaM7w` is READY in production (`icn1`; a guest `POST {}` to `/api/classify` answered 400 from `icn1`). Its `TransactionsView-D2QIXfm1.js` (34,823 B) and `WalletsView--f4eYJe5.js` (14,740 B) are the sizes of the local build of the branch. `main` CI on the merge passed, all four jobs (run `37201902376`).
+- The PR's CI run (`37201262901`) passed every browser job with no retry: 147 passed each.
 
 **Still open**
 - **The cold PWA server is close to the navigation timeout:** `toast-layering.spec.ts`'s first requests took 28.5 s and 29.4 s on chromium in the full run.

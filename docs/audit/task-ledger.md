@@ -1083,7 +1083,7 @@ Approved explicitly by the user, planned and approved before any code was writte
 
 ## Phase 80 - Feedback follows the event that produced it: T454-T460 (2026-10-04)
 
-ADR `0056`, generalising ADR `0055`'s CI finding. Branch `phase-80-audit-effect-handler-races`, cut from `main` at `548e358`; commit `68a8559` (docs `6285323`); draft PR. No migration, no proxy change.
+ADR `0056`, generalising ADR `0055`'s CI finding. Branch `phase-80-audit-effect-handler-races`, cut from `main` at `548e358`; commit `68a8559` (docs `6285323`, hash backfill `cad0801`), merged into `main` as `ac6a7c5` (PR #30); Vercel `dpl_Dx3Qt9A1b2H8AdGgx4Sm9TQnaM7w` READY in `icn1`, CI run `37201902376` passed. No migration, no proxy change.
 
 | # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
 |---|---|---|---|---|---|---|---|---|---|---|
