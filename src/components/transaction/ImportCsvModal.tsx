@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback, useRef } from 'react';
+import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { Download, CheckCircle2, AlertCircle, Tags } from 'lucide-react';
 import { useFinanceActions, useFinanceState } from '../../context/FinanceContext';
 import { ImportPreviewSummary, ImportRowValidation } from '../../types';
@@ -67,6 +67,18 @@ export const ImportCsvModal: React.FC<ImportCsvModalProps> = ({ isOpen, onClose 
   const [classifyProgress, setClassifyProgress] = useState<BatchClassifyProgress | null>(null);
   const [classifyNote, setClassifyNote] = useState<string | null>(null);
   const classifyAbortRef = useRef<AbortController | null>(null);
+
+  // While the run waits out a rate limit (ADR 0052), a once-a-second clock
+  // for the countdown. It runs only during that wait.
+  const resumesAt = classifyProgress?.resumesAt;
+  const [waitClock, setWaitClock] = useState(() => Date.now());
+  useEffect(() => {
+    if (resumesAt === undefined) return;
+    setWaitClock(Date.now());
+    const timer = setInterval(() => setWaitClock(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, [resumesAt]);
+  const waitSeconds = resumesAt === undefined ? null : Math.max(0, Math.ceil((resumesAt - waitClock) / 1000));
 
   const activeCategoriesForForm = useMemo(() => categories.filter((c) => !c.isDeleted), [categories]);
 
@@ -207,7 +219,9 @@ export const ImportCsvModal: React.FC<ImportCsvModalProps> = ({ isOpen, onClose 
     const autoFilled = Array.from(result.suggestions.values()).filter((s) => s.strength === 'AUTO_FILL').length;
     setClassifyNote(
       `Classified ${result.suggestions.size} of ${uncategorizedRows.length}: ${autoFilled} applied, ` +
-        `${result.suggestions.size - autoFilled} to confirm. ${result.attempted} request${result.attempted === 1 ? '' : 's'} sent.`
+        `${result.suggestions.size - autoFilled} to confirm. ${result.attempted} request${result.attempted === 1 ? '' : 's'} sent.` +
+        // ADR 0052: the rate limit asked for longer than the importer waits.
+        (result.rateLimited ? ' Stopped early: the rate limit asked for a wait of over a minute, so the rest stay blank.' : '')
     );
   };
 
@@ -385,7 +399,12 @@ export const ImportCsvModal: React.FC<ImportCsvModalProps> = ({ isOpen, onClose 
             {classifyProgress && (
               <div data-testid="csv-classify-progress" className="flex flex-col gap-1.5">
                 <span className="text-[11px] font-medium text-fg-secondary">
-                  Classifying {classifyProgress.done} of {classifyProgress.total} with Jev&hellip;
+                  Classifying {classifyProgress.done} of {classifyProgress.total} with Jev
+                  {waitSeconds === null ? (
+                    <>&hellip;</>
+                  ) : (
+                    <span data-testid="csv-classify-wait">. Rate limit reached, continuing in {waitSeconds} s.</span>
+                  )}
                 </span>
                 <div className="h-1.5 w-full rounded-full bg-surface-3 overflow-hidden">
                   <div

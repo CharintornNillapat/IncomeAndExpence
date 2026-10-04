@@ -34,6 +34,14 @@ const MAX_ATTEMPTS = 2;
 
 const BASE_BACKOFF_MS = 400;
 
+/**
+ * The longest `Retry-After` the importer waits out (ADR 0052): one window of
+ * the per-account limit (ADR 0049), which never asks for more. A longer wait
+ * comes from some other limit, and holding the preview open for it is worse
+ * than finishing now with the rest left blank.
+ */
+const MAX_RETRY_AFTER_MS = 60_000;
+
 export interface BatchClassifyItem {
   /** Caller's key, echoed back untouched. The importer passes `rowIndex`. */
   id: number;
@@ -43,6 +51,8 @@ export interface BatchClassifyItem {
 export interface BatchClassifyProgress {
   done: number;
   total: number;
+  /** While the run waits out a `Retry-After`, when it resumes (`Date.now()` time). */
+  resumesAt?: number;
 }
 
 export interface BatchClassifyResult {
@@ -56,6 +66,11 @@ export interface BatchClassifyResult {
   unavailable: boolean;
   /** Requests actually issued. Far below `items.length` when the cache hits. */
   attempted: number;
+  /**
+   * `true` when a 429 asked for a wait longer than `MAX_RETRY_AFTER_MS` and
+   * the run stopped there. Answers that arrived before it are still returned.
+   */
+  rateLimited: boolean;
 }
 
 function delay(ms: number, signal?: AbortSignal): Promise<void> {
@@ -91,8 +106,33 @@ export async function classifyBatch(
   let done = 0;
   let attempted = 0;
   let unavailable = false;
+  let rateLimited = false;
 
-  if (total === 0) return { suggestions, unavailable, attempted };
+  if (total === 0) return { suggestions, unavailable, attempted, rateLimited };
+
+  /*
+   * One pause for the whole run (ADR 0052). The limit behind a `Retry-After`
+   * is per account, shared by every request this run makes, so a 429 on one
+   * row means the next request from any worker would get one too. Every
+   * worker waits until `resumesAt` before its next request, and the row that
+   * was refused is retried after it.
+   */
+  let resumesAt = 0;
+  let pauseReported = false;
+
+  function report(): void {
+    onProgress?.(Date.now() < resumesAt ? { done, total, resumesAt } : { done, total });
+  }
+
+  async function waitOutPause(): Promise<void> {
+    while (!signal?.aborted && Date.now() < resumesAt) {
+      await delay(resumesAt - Date.now(), signal);
+    }
+    if (pauseReported && Date.now() >= resumesAt) {
+      pauseReported = false;
+      report();
+    }
+  }
 
   /*
    * De-duplicate BEFORE dispatching, not by relying on the cache.
@@ -122,7 +162,8 @@ export async function classifyBatch(
 
   async function runOne(item: BatchClassifyItem): Promise<void> {
     for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt += 1) {
-      if (signal?.aborted || unavailable) return;
+      await waitOutPause();
+      if (signal?.aborted || unavailable || rateLimited) return;
 
       // One row's note being too short is that row's problem, not the run's
       // (ADR 0022). It must be checked before the run-wide test below, which
@@ -159,9 +200,30 @@ export async function classifyBatch(
         return;
       }
 
-      if (outcome.kind === 'rate-limited' && attempt < MAX_ATTEMPTS) {
-        await delay(BASE_BACKOFF_MS * attempt, signal);
-        continue;
+      if (outcome.kind === 'rate-limited') {
+        if (outcome.retryAfterMs !== undefined) {
+          if (outcome.retryAfterMs > MAX_RETRY_AFTER_MS) {
+            // Stop the run: every other row would only be refused the same way.
+            rateLimited = true;
+            return;
+          }
+          // Never sooner than the old fixed backoff, so `Retry-After: 0` cannot
+          // turn the retry into an immediate second hit.
+          const until = Date.now() + Math.max(outcome.retryAfterMs, BASE_BACKOFF_MS * attempt);
+          if (until > resumesAt) {
+            resumesAt = until;
+            pauseReported = true;
+            report();
+          }
+          if (attempt < MAX_ATTEMPTS) continue;
+          return;
+        }
+        // No `Retry-After` (the firewall's guest limit sends none): the
+        // original per-row backoff, unchanged.
+        if (attempt < MAX_ATTEMPTS) {
+          await delay(BASE_BACKOFF_MS * attempt, signal);
+          continue;
+        }
       }
 
       // `no-answer`, `failed`, or a final rate-limit. The row stays
@@ -172,7 +234,7 @@ export async function classifyBatch(
 
   async function worker(): Promise<void> {
     for (;;) {
-      if (signal?.aborted || unavailable) return;
+      if (signal?.aborted || unavailable || rateLimited) return;
       const index = cursor;
       cursor += 1;
       if (index >= distinct.length) return;
@@ -184,7 +246,7 @@ export async function classifyBatch(
       // track what the user can see in the table, and a deduplicated group
       // resolves all of its rows at once.
       done += group.length;
-      onProgress?.({ done, total });
+      report();
     }
   }
 
@@ -192,5 +254,5 @@ export async function classifyBatch(
     Array.from({ length: Math.min(MAX_CONCURRENCY, distinct.length) }, () => worker())
   );
 
-  return { suggestions, unavailable, attempted };
+  return { suggestions, unavailable, attempted, rateLimited };
 }

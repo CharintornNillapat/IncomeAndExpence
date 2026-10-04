@@ -1098,6 +1098,15 @@ The entry's growth is the ledger action itself, which lives with the other ledge
 
 **Intermittent local failures:** 6 in 1,071 full-suite runs (3 full runs). All were timeouts: a Firefox `goto`, a Firefox context close, and four WebKit clicks waiting for "stable". No assertion failed. See audit 005 finding 3 for the control runs.
 
+## Phase 76 (the CSV importer waits out Retry-After) - delta against Phase 75
+
+**Bundle** (local builds with `.env`, gzip level 9): `TransactionsView` 33,033 -> 33,955 B (+922 B, +370 B gzip) and `TransactionForm` 25,486 -> 25,742 B (+256 B, +122 B gzip), the two lazy chunks that hold the classifier and the import preview. The entry `index-*.js` stays 189,481 B and is identical to `main`'s once its 55 hashed chunk names are normalised (gzip +2 B from those names).
+
+| Suite | Files | Tests | Runs | Result |
+|---|---|---|---|---|
+| Playwright (local) | 29 | 146 | 438 | 438/438 in 6.5 m |
+| Vitest (`unit/`) | 29 | 739 | 739 | 739/739, ~39 s |
+
 ## Phase 75 (the functions' region) - before the change
 
 No `src/` file changed, so the client bundle is unchanged (not rebuilt). Unit 725/725; Playwright 432/432 in 6.7 m.

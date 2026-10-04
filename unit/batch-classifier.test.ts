@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { classifyBatch } from '../src/utils/batchClassifier';
 import type { BatchClassifyItem, BatchClassifyProgress } from '../src/utils/batchClassifier';
-import { __resetClassifierState, toClassifyCandidates } from '../src/utils/jevClassifier';
+import { __resetClassifierState, classifyOnce, toClassifyCandidates } from '../src/utils/jevClassifier';
 import type { Category, ClassifyResponse } from '../src/types';
 
 /**
@@ -39,12 +39,18 @@ const GOOD_ANSWER: ClassifyResponse = {
 };
 
 /** A `Response`-shaped stand-in carrying only what `classifyOnce` reads. */
-function reply(status: number, body: unknown = GOOD_ANSWER) {
+function reply(status: number, body: unknown = GOOD_ANSWER, headers: Record<string, string> = {}) {
   return {
     status,
     ok: status >= 200 && status < 300,
+    headers: new Headers(headers),
     json: async () => body,
   } as unknown as Response;
+}
+
+/** A 429 from the per-account limit (ADR 0049), which names its wait. */
+function limited(retryAfter: string) {
+  return reply(429, {}, { 'Retry-After': retryAfter });
 }
 
 function rows(count: number, text: (i: number) => string): BatchClassifyItem[] {
@@ -108,7 +114,7 @@ describe('classifyBatch — concurrency', () => {
     const result = await classifyBatch([], CATEGORIES, CANDIDATES);
 
     expect(fetchMock).not.toHaveBeenCalled();
-    expect(result).toEqual({ suggestions: new Map(), unavailable: false, attempted: 0 });
+    expect(result).toEqual({ suggestions: new Map(), unavailable: false, attempted: 0, rateLimited: false });
   });
 });
 
@@ -376,5 +382,179 @@ describe('classifyBatch — what counts as a usable answer', () => {
     expect(fetchMock).not.toHaveBeenCalled();
     expect(second.attempted).toBe(1);
     expect(second.suggestions.get(7)?.categoryId).toBe('cat-food');
+  });
+});
+
+/**
+ * ADR 0052: a 429 that names its wait. The per-account limit (ADR 0049)
+ * answers with `Retry-After`; before this the importer ignored it, retried
+ * each row once after 400 ms and gave up, so a signed-in import of more than
+ * 120 distinct notes in a minute left the rest blank.
+ */
+describe('classifyOnce - reading Retry-After', () => {
+  it('reads delay-seconds', async () => {
+    fetchMock.mockImplementation(async () => limited('30'));
+    expect(await classifyOnce('coffee', CANDIDATES)).toEqual({ kind: 'rate-limited', retryAfterMs: 30_000 });
+  });
+
+  it('reads an HTTP date', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-10-04T01:00:00Z'));
+    fetchMock.mockImplementation(async () => limited('Sun, 04 Oct 2026 01:00:05 GMT'));
+    expect(await classifyOnce('coffee', CANDIDATES)).toEqual({ kind: 'rate-limited', retryAfterMs: 5_000 });
+  });
+
+  it.each([
+    ['no header', {}],
+    ['a word', { 'Retry-After': 'soon' }],
+    ['a negative number', { 'Retry-After': '-5' }],
+    ['a date already past', { 'Retry-After': 'Thu, 01 Jan 1970 00:00:00 GMT' }],
+  ])('leaves the wait out for %s, so the caller keeps its own backoff', async (_label, headers) => {
+    fetchMock.mockImplementation(async () => reply(429, {}, headers as Record<string, string>));
+    expect(await classifyOnce('coffee', CANDIDATES)).toEqual({ kind: 'rate-limited' });
+  });
+});
+
+describe('classifyBatch - waiting out Retry-After', () => {
+  it('waits the Retry-After, not 400 ms, before the retry', async () => {
+    vi.useFakeTimers();
+    fetchMock.mockImplementationOnce(async () => limited('5')).mockImplementation(async () => reply(200));
+
+    const run = classifyBatch([{ id: 0, text: 'coffee' }], CATEGORIES, CANDIDATES);
+
+    await vi.advanceTimersByTimeAsync(0);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(4_999);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+
+    const result = await run;
+    expect(result.suggestions.get(0)?.categoryId).toBe('cat-food');
+    expect(result.rateLimited).toBe(false);
+  });
+
+  it('never retries sooner than 400 ms, even on Retry-After: 0', async () => {
+    vi.useFakeTimers();
+    fetchMock.mockImplementationOnce(async () => limited('0')).mockImplementation(async () => reply(200));
+
+    const run = classifyBatch([{ id: 0, text: 'coffee' }], CATEGORIES, CANDIDATES);
+
+    await vi.advanceTimersByTimeAsync(BASE_BACKOFF_MS - 1);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    await run;
+  });
+
+  it('holds every worker, not just the refused row, until the window turns over', async () => {
+    vi.useFakeTimers();
+    let calls = 0;
+    fetchMock.mockImplementation(async () => {
+      calls += 1;
+      if (calls === 1) return limited('3');
+      await new Promise((resolve) => setTimeout(resolve, 10));
+      return reply(200);
+    });
+
+    const run = classifyBatch(rows(8, (i) => `merchant number ${i}`), CATEGORIES, CANDIDATES);
+
+    // The first four go out together; one is refused, three answer at 10 ms.
+    await vi.advanceTimersByTimeAsync(10);
+    expect(fetchMock).toHaveBeenCalledTimes(MAX_CONCURRENCY);
+    // Without the shared pause, those three workers would have taken the next
+    // rows at once and been refused by the same exhausted window.
+    await vi.advanceTimersByTimeAsync(2_989);
+    expect(fetchMock).toHaveBeenCalledTimes(MAX_CONCURRENCY);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(fetchMock.mock.calls.length).toBeGreaterThan(MAX_CONCURRENCY);
+
+    await vi.advanceTimersByTimeAsync(100);
+    const result = await run;
+    expect(result.suggestions.size).toBe(8);
+    expect(fetchMock).toHaveBeenCalledTimes(9);
+  });
+
+  it('reports when the run will resume, and reports again once it has', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-10-04T01:00:00Z'));
+    const start = Date.now();
+    fetchMock.mockImplementationOnce(async () => limited('7')).mockImplementation(async () => reply(200));
+    const seen: BatchClassifyProgress[] = [];
+
+    const run = classifyBatch([{ id: 0, text: 'coffee' }], CATEGORIES, CANDIDATES, {
+      onProgress: (p) => seen.push({ ...p }),
+    });
+
+    await vi.advanceTimersByTimeAsync(0);
+    expect(seen).toEqual([{ done: 0, total: 1, resumesAt: start + 7_000 }]);
+
+    await vi.advanceTimersByTimeAsync(7_000);
+    await run;
+    expect(seen).toEqual([
+      { done: 0, total: 1, resumesAt: start + 7_000 },
+      { done: 0, total: 1 },
+      { done: 1, total: 1 },
+    ]);
+  });
+
+  it('stops the run when the wait asked for is over a minute, keeping the answers it has', async () => {
+    fetchMock.mockImplementation(async (_url: string, init: RequestInit) => {
+      const { text } = JSON.parse(init.body as string) as { text: string };
+      if (text === 'blocked note') return limited('120');
+      await new Promise((resolve) => setTimeout(resolve, 10));
+      return reply(200);
+    });
+
+    const result = await classifyBatch(
+      ['blocked note', 'aaa note', 'bbb note', 'ccc note', 'ddd note', 'eee note'].map((text, id) => ({ id, text })),
+      CATEGORIES,
+      CANDIDATES
+    );
+
+    expect(result.rateLimited).toBe(true);
+    expect(result.unavailable).toBe(false);
+    // The three already in flight finish; nothing new goes out.
+    expect(fetchMock).toHaveBeenCalledTimes(MAX_CONCURRENCY);
+    expect(Array.from(result.suggestions.keys()).sort()).toEqual([1, 2, 3]);
+  });
+
+  it('accepts exactly one minute, the per-account window', async () => {
+    vi.useFakeTimers();
+    fetchMock.mockImplementationOnce(async () => limited('60')).mockImplementation(async () => reply(200));
+
+    const run = classifyBatch([{ id: 0, text: 'coffee' }], CATEGORIES, CANDIDATES);
+    await vi.advanceTimersByTimeAsync(60_000);
+    const result = await run;
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(result.rateLimited).toBe(false);
+  });
+
+  it('gives a row up if its retry is refused too, without stopping the run', async () => {
+    vi.useFakeTimers();
+    fetchMock.mockImplementation(async () => limited('2'));
+
+    const run = classifyBatch([{ id: 0, text: 'coffee' }], CATEGORIES, CANDIDATES);
+    await vi.advanceTimersByTimeAsync(10_000);
+    const result = await run;
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(result.suggestions.size).toBe(0);
+    expect(result.rateLimited).toBe(false);
+  });
+
+  it('ends promptly when cancelled during the wait, with no further request', async () => {
+    vi.useFakeTimers();
+    fetchMock.mockImplementation(async () => limited('30'));
+    const controller = new AbortController();
+
+    const run = classifyBatch([{ id: 0, text: 'coffee' }], CATEGORIES, CANDIDATES, { signal: controller.signal });
+    await vi.advanceTimersByTimeAsync(1_000);
+    controller.abort();
+    await vi.advanceTimersByTimeAsync(0);
+    await run;
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });

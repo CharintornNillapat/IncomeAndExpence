@@ -258,6 +258,67 @@ test.describe('CSV import auto-categorization', () => {
     await expect(page.getByTestId('csv-classify-note')).toBeVisible();
   });
 
+  // ADR 0052: a 429 that names its wait. The signed-in limit (ADR 0049) sends
+  // Retry-After; the importer waits it out, says so, and goes on.
+  test('a 429 with Retry-After pauses the run, shows the wait, then finishes the row', async ({ page }) => {
+    let calls = 0;
+    await page.route(CLASSIFY_ROUTE, async (route: Route) => {
+      calls += 1;
+      if (calls === 1) {
+        await route.fulfill({
+          status: 429,
+          contentType: 'application/json',
+          headers: { 'Retry-After': '2' },
+          body: JSON.stringify({ error: 'Too many requests.' }),
+        });
+        return;
+      }
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ categoryId: TRANSPORT.id, categoryConfidence: 0.96, detectedType: 'EXPENSE', typeConfidence: 0.97 }),
+      });
+    });
+
+    await openImportWith(page, csv([{ desc: 'zzzwaitshop', amount: '45' }]));
+    await page.locator('#csv-classify-btn').click();
+
+    const wait = page.getByTestId('csv-classify-wait');
+    await expect(wait).toBeVisible();
+    await expect(wait).toContainText(/Rate limit reached, continuing in [12] s\./);
+    // Cancel stays offered while it waits.
+    await expect(page.locator('#csv-classify-cancel-btn')).toBeVisible();
+
+    await expect(page.getByTestId('csv-row-category-2')).toHaveValue(TRANSPORT.id);
+    await expect(page.getByTestId('csv-classify-note')).toBeVisible();
+    await expect(wait).toHaveCount(0);
+    expect(calls).toBe(2);
+  });
+
+  test('a wait of over a minute stops the run and says so, and the import still commits', async ({ page }) => {
+    let calls = 0;
+    await page.route(CLASSIFY_ROUTE, async (route: Route) => {
+      calls += 1;
+      await route.fulfill({
+        status: 429,
+        contentType: 'application/json',
+        headers: { 'Retry-After': '120' },
+        body: JSON.stringify({ error: 'Too many requests.' }),
+      });
+    });
+
+    const marker = `zzzlongwait${Date.now().toString().slice(-6)}`;
+    await openImportWith(page, csv([{ desc: marker, amount: '30' }]));
+    await page.locator('#csv-classify-btn').click();
+
+    await expect(page.getByTestId('csv-classify-note')).toContainText(/Stopped early: the rate limit asked for a wait of over a minute/);
+    await expect(page.getByTestId('csv-row-category-2')).toHaveValue('');
+    expect(calls).toBe(1);
+
+    await page.locator('#commit-import-btn').click();
+    await expect(page.getByText(/Successfully imported 1 transactions/i)).toBeVisible();
+  });
+
   test('with no endpoint the importer says so and still commits', async ({ page }) => {
     // Deliberately no mock: the Vite dev server does not serve `api/`, so
     // this is the genuine offline / unconfigured-deployment path.
