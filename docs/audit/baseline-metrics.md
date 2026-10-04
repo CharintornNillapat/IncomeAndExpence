@@ -1098,6 +1098,15 @@ The entry's growth is the ledger action itself, which lives with the other ledge
 
 **Intermittent local failures:** 6 in 1,071 full-suite runs (3 full runs). All were timeouts: a Firefox `goto`, a Firefox context close, and four WebKit clicks waiting for "stable". No assertion failed. See audit 005 finding 3 for the control runs.
 
+## Phase 82 (a dialog isolates the page in its commit) - delta against Phase 81
+
+**Bundle** (the branch built with `.env` against production's files, which are `main`'s build byte for byte): the entry `index-*.js` 189,481 -> 189,653 B (+172 B, +61 B gzip), where `Modal` lives. Every other chunk is identical once hashed chunk names are normalised.
+
+| Suite | Files | Tests | Runs | Result |
+|---|---|---|---|---|
+| Playwright (local, 4 workers) | 29 | 147 | 441 | run 1 440/441 in 7.5 m (WebKit, the high-confidence classification test: the badge never appeared, no trace); run 2 440/441 in 11.1 m with traces on (WebKit, a Categories click stalled on "stable"); run 3 441/441 in 8.1 m, first pass |
+| Vitest (`unit/`) | 32 | 828 | 828 | 828/828 |
+
 ## Phase 81 (warm PWA server; seed during render) - delta against Phase 80
 
 **Bundle** (local builds with `.env`, gzip level 9): `InlineMathInput` 5,983 -> 5,680 B (-303 B, -137 B gzip), `TransactionForm` 25,869 -> 25,865 B (-4 B, +26 B gzip) and `TransferFundsModal` 6,855 -> 6,927 B (+72 B, +39 B gzip). No other chunk changed size, and the entry `index-*.js` is identical to `main`'s once its hashed chunk names are normalised.

@@ -207,19 +207,30 @@ test.describe('dialogs by keyboard (ADR 0043)', () => {
     const dialog = page.getByRole('dialog', { name: /Quick Record Transaction/i });
     await expect(dialog.locator('input[id$="-desc"]')).toBeVisible();
 
-    const state = () =>
+    // Read without touching focus, and retried (ADR 0058): a single read once
+    // raced the moment the dialog appeared. Then one focus attempt on the
+    // background, made only once it is inert, so a too-early attempt cannot
+    // move focus out of the dialog and fail every later read.
+    const isolation = () =>
       page.evaluate(() => {
         const navButton = document.querySelector<HTMLElement>('#navbar-quick-add-btn')!;
         const panel = document.querySelector('[role="dialog"]');
-        navButton.focus();
         return {
           backgroundInert: !!navButton.closest('[inert]'),
           dialogInert: !!panel?.closest('[inert]'),
-          backgroundTakesFocus: document.activeElement === navButton,
           focusInDialog: !!document.activeElement?.closest('[role="dialog"]'),
         };
       });
-    expect(await state()).toEqual({ backgroundInert: true, dialogInert: false, backgroundTakesFocus: false, focusInDialog: true });
+    await expect.poll(isolation).toEqual({ backgroundInert: true, dialogInert: false, focusInDialog: true });
+    const afterFocusAttempt = await page.evaluate(() => {
+      const navButton = document.querySelector<HTMLElement>('#navbar-quick-add-btn')!;
+      navButton.focus();
+      return {
+        backgroundTakesFocus: document.activeElement === navButton,
+        focusInDialog: !!document.activeElement?.closest('[role="dialog"]'),
+      };
+    });
+    expect(afterFocusAttempt).toEqual({ backgroundTakesFocus: false, focusInDialog: true });
 
     await page.keyboard.press('Escape');
     await expect(dialog).not.toBeVisible();
