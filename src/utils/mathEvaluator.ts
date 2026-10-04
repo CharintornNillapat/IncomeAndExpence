@@ -78,3 +78,43 @@ export function safeEvaluateMath(expression: string): MathEvaluationResult {
     };
   }
 }
+
+/** What the amount field shows and reports for one piece of text (ADR 0057). */
+export interface AmountInputEvaluation {
+  /** A positive amount, or null for text that is empty, unfinished, invalid or not above zero. */
+  amount: number | null;
+  formattedValue: string;
+  /** The text holds an operator or a bracket, so its result is worth showing beside it. */
+  hasCalculation: boolean;
+  /** The message under the field; null while it is empty or part-way through a formula. */
+  error: string | null;
+}
+
+/**
+ * The amount field's rules for one text, with no state. `InlineMathInput`
+ * derives what it shows from it during render, and a caller that seeds the
+ * field reads the amount it seeded from it, in the same handler.
+ */
+export function evaluateAmountInput(raw: string): AmountInputEvaluation {
+  if (!raw.trim()) return { amount: null, formattedValue: '', hasCalculation: false, error: null };
+
+  const hasCalculation = /[+\-*/%^()]/.test(raw);
+  const result = safeEvaluateMath(raw);
+
+  if (result.isValid && result.value !== null) {
+    if (result.value <= 0) {
+      return { amount: null, formattedValue: '', hasCalculation, error: 'Amount must be greater than zero' };
+    }
+    return { amount: result.value, formattedValue: result.formattedValue, hasCalculation, error: null };
+  }
+
+  // A trailing operator or open paren is an expected intermediate state:
+  // mid-way through typing "120 + 30", or the instant an operator chip is
+  // tapped. It is not yet an amount, but it is not an error either.
+  const isIncomplete = /[+\-*/%^(]\s*$/.test(raw);
+  const error =
+    !isIncomplete && (raw.trim().length > 1 || !/^[0-9.]+$/.test(raw))
+      ? result.error || 'Invalid expression'
+      : null;
+  return { amount: null, formattedValue: '', hasCalculation, error };
+}

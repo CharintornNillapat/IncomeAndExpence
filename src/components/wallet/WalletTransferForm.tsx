@@ -6,6 +6,7 @@ import { useIdempotencyKey } from '../../hooks/useIdempotencyKey';
 import { Wallet } from '../../types';
 import { APP_CURRENCY_SYMBOL, formatCurrencyAmount } from '../../utils/currency';
 import { roundToCents } from '../../utils/money';
+import { evaluateAmountInput } from '../../utils/mathEvaluator';
 import { todayIsoDate } from '../../utils/date';
 import { getWalletIcon } from '../../utils/walletIcons';
 import { InlineMathInput } from '../InlineMathInput';
@@ -247,9 +248,16 @@ export const WalletTransferForm: React.FC<WalletTransferFormProps> = ({
     setDestWalletId(sourceWalletId);
   };
 
+  // The field applies a seed during render and does not report it back, so
+  // the amount it holds is recorded here, in the same click (ADR 0057).
   const handleTransferAll = () => {
     if (!sourceWallet) return;
-    setAmountSeed((prev) => ({ key: prev.key + 1, value: String(sourceWallet.balance) }));
+    const value = String(sourceWallet.balance);
+    setAmountSeed((prev) => ({ key: prev.key + 1, value }));
+    const { amount } = evaluateAmountInput(value);
+    setTransferAmount(amount);
+    setTransferRaw(value);
+    setTransferValid(amount !== null);
   };
 
   const handleExecuteTransfer = (e: React.FormEvent) => {
