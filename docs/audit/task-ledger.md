@@ -1081,6 +1081,27 @@ Approved explicitly by the user, planned and approved before any code was writte
 - **One negative control was redone** because the first attempt produced malformed TypeScript that the dev server still served — the tests failed, but possibly for the wrong reason.
 - **No flakes.** Phase 44's `wallets.spec.ts` webkit flake has now not reproduced across three consecutive phases; still watched rather than closed.
 
+## Phase 77 - Every 429 says how long to wait: T433-T439 (2026-10-04)
+
+ADR `0053`, extending ADR `0052`. Branch `phase-77-rate-limit-completion`, cut from `main` at `c248a1c`; draft PR. No migration.
+
+| # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
+|---|---|---|---|---|---|---|---|---|---|---|
+| T433 | Probe the guest firewall on production: 31 `POST {}`, the 429's headers, when the window reopens (twice, the second to the millisecond) | production | Med | Low | 0.3h | done | - | - | 429 on request 31: `X-Vercel-Mitigated: deny`, no `Retry-After`; reopened 60 s after the window's first request | - |
+| T434 | ADR `0053`: forward TypeSafe's wait; name the firewall's 429; estimate the guest window from the run's own first request, a whole minute when the estimate has run out | `docs/audit/decisions/` | Low | Low | 0.3h | done | T433 | - | - | - |
+| T435 | `upstreamRetryAfter` in both proxies: `retry-after-ms` or `Retry-After` to whole seconds, on a 429 only | `api/classify.ts`, `api/insights.ts` | Med | Low | 0.3h | done | T434 | - | - | - |
+| T436 | `classifyOnce` marks `firewall: true`; `classifyBatch` keeps `windowStartedAt` and pauses until its end + 1 s | `utils/jevClassifier.ts`, `utils/batchClassifier.ts` | High | Med | 0.5h | done | T434 | - | - | - |
+| T437 | Unit +31 (proxy contract +22, batch +9); 20 mutations; E2E +1 with a negative control | `unit/`, `tests/` | Med | Low | 0.6h | done | T435-T436 | - | 20 of 20 mutations caught; the new E2E fails with the mark ignored | unit 739 -> 770; E2E 146 -> 147 tests, 438 -> 441 runs |
+| T438 | Gate: lint, unit, Playwright in full, bundle | - | Low | Low | 0.3h | done | T437 | - | lint clean; unit 770/770; Playwright 439/441 in 6.8 m; the 2 Firefox failures (a `page.goto` timeout in `account-and-mobile-nav.spec.ts`, a nav click never stable in `date-boundary.spec.ts`) passed 6/6 on re-run, three times each | - |
+| T439 | `CLAUDE.md`, ADR `0052`'s pointer, this ledger, the refactor log, baseline metrics | `docs/`, `CLAUDE.md` | Low | Low | 0.2h | done | T438 | - | - | - |
+
+**Notes on execution:**
+- **The probes cost nothing:** `{}` gets 400 before any TypeSafe call. About 75 guest requests in all, from this machine.
+- **The window starts with its first request, not the clock's minute.** That is what makes a client-side estimate possible; reading the `Date` header would not have been.
+- **TypeSafe's header is from its SDK docs, not seen live,** so both spellings are read.
+- **A Firefox run of `csv-classify.spec.ts` failed once** in the existing "concurrency never exceeds the cap" (opening the import, before any request); it passed on the re-run and three times in a row. That test sends no 429.
+- **No `src/` or `tests/` file was edited during a Playwright run;** the negative control's `src/` edit was made before its run and restored after (`cmp`).
+
 ## Phase 76 - The CSV importer waits out Retry-After: T427-T432 (2026-10-04)
 
 ADR `0052`, amending ADR `0019`'s rate-limit handling. Branch `phase-76-csv-import-backoff`, cut from `main` at `f32a746`; commit `4d861f6` (docs `658f28d`, hash backfill `40e25f2`), merged into `main` as `23d73ed` (PR #26); Vercel `dpl_AWVqP3WTkaKHoBbojS4gKhyPR2GK` READY in `icn1`, CI run `37170048902` passed. No migration, no proxy change.

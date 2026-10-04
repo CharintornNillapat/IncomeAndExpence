@@ -4,6 +4,32 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
+## Phase 77 - Every 429 says how long to wait: T433-T439 (2026-10-04, draft PR)
+
+ADR `0053`. After ADR `0052` only the per-account 429 was waited out. TypeSafe's own 429 lost its wait at the proxy, and the guest firewall's names none, so a guest import past 30 distinct notes a minute still left the rest blank.
+
+**Found (production, 2026-10-04)**
+- **The firewall's 429:** `X-Vercel-Mitigated: deny`, no `Retry-After`, no `Server-Timing`, `X-Vercel-Id` with no function region; body `{"error":{"code":"429",...}}`.
+- **Its window runs 60 s from its own first request:** a request sent 59.87 s after the first got 429, one at 60.37 s got 400. Not aligned to the clock's minute; refusals do not move it.
+
+**Changed**
+- **Proxies:** `upstreamRetryAfter` forwards TypeSafe's wait on a 429 as `Retry-After` in whole seconds (`retry-after-ms` first, then `Retry-After`; dates converted on the server; capped at a day). Nothing else from upstream crosses.
+- **`classifyOnce`:** a 429 with `X-Vercel-Mitigated: deny` and no usable `Retry-After` is `{ kind: 'rate-limited', firewall: true }`.
+- **`classifyBatch`:** keeps `windowStartedAt` (the run's first request, re-anchored a window later). A firewall 429 pauses the run until its end + 1 s, or a whole 60 s when that has passed; never over 60 s. Same shared pause and countdown as ADR `0052`.
+- **Tests:** unit +31 (`proxy-contract.test.ts` +22, `batch-classifier.test.ts` +9; 739 -> 770); E2E +1 in `csv-classify.spec.ts` (146 -> 147 tests, 438 -> 441 runs).
+- **Docs:** ADR `0053`; a pointer in ADR `0052`; `CLAUDE.md` (the proxy 429 line, the firewall's measured 429 and window, the CSV section, counts, a Do NOT line); the ledger; this log; baseline metrics.
+
+**Still open**
+- **TypeSafe's header is not seen live;** both spellings are read on the SDK docs' word.
+- **A shared network or a second tab can make the guest estimate early;** that row is refused again and stays blank.
+- **The countdown is visual only;** the progress line is not a live region.
+
+**Gate:**
+- Lint clean. Unit 770/770 in 29 files.
+- **Mutations:** 20 of 20 caught (the table is in ADR `0053`).
+- **E2E:** the new test passes on all three browsers and fails on chromium with the mark ignored. Full run: 439/441 in 6.8 m; the 2 Firefox failures (a `page.goto` timeout in `account-and-mobile-nav.spec.ts`, a nav click never stable in `date-boundary.spec.ts`) passed 6/6 on re-run, three times each.
+- **Bundle** (local builds with `.env`, gzip level 9): `TransactionsView` 33,955 -> 34,179 B (+224 B, +93 B gzip) and `TransactionForm` 25,742 -> 25,869 B (+127 B, +46 B gzip), the two lazy chunks that hold the classifier. The entry `index-*.js` is identical to `main`'s once its hashed chunk names are normalised.
+
 ## Phase 76 - The CSV importer waits out Retry-After: T427-T432 (2026-10-04, commit `4d861f6`, docs `658f28d`, merge `23d73ed`)
 
 ADR `0052`. Since ADR `0049` a signed-in 429 says when the window turns over, and the importer ignored it: each of its four workers retried once after 400 ms, inside the same exhausted minute, so an import of more than 120 distinct notes left the rest blank.
