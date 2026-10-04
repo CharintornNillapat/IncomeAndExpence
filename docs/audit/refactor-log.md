@@ -4,6 +4,31 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
+## Phase 82 - A dialog isolates the page in the commit that shows it: T470-T476 (2026-10-04, commit `4d9e34e`, draft PR)
+
+ADR `0058`, amending ADR `0047`. The two items Phase 81 left open.
+
+**Found**
+- **The background went inert a task late.** `Modal` marked it, and moved focus inside, in passive effects. When a dialog opened on a default-priority update (Quick Add's lazy chunk), those ran after the first paint. The spec this fixes was the flaky test on WebKit CI in 4 of the last 12 successful runs (`37170048902`, `37174477163`, `37178250544`, `37207717828`), each failing on the single read that saw the background not yet inert.
+- **The WebKit "stable" stall is not the app.** **The WebKit "stable" stall is WebKit on Windows not painting, not the app.** Three failures were traced (`account-and-mobile-nav` after Quick Add closed, `smart-rules` on the first click after load, `categories` on a page form): in each the screencast's frames stop and no frame arrives until the 15 s timeout. Playwright's stable check measures the box on animation frames and logs "element is not stable" and retries when it moves; no failure logged a retry, so no frame ran at all. Two of the three had no dialog open. Linux WebKit on CI showed no such stall in the last 12 runs.
+
+**Changed**
+- **`Modal`:** the opener and stack effects are `useLayoutEffect`; focus returns to the opener in a closing layout effect, since React's focus restore undoes a focus in a layout cleanup while the dialog is still on the page.
+- **`account-and-mobile-nav.spec.ts`:** the inert test polls a read-only check, then makes one focus attempt.
+- **Tests:** `unit/modal-focus.test.tsx` +1 (827 -> 828).
+- **Docs:** ADR `0058`, ADR `0047`'s amended line, `CLAUDE.md` (the `Modal` bullets, two Do NOT lines, a Testing note on reading a WebKit stall), the ledger, this log, baseline metrics.
+
+**Gate:**
+- Lint clean. Unit 828/828 in 32 files.
+- **Negative controls:** `main`'s `Modal` fails the new test at open; focus returned only in the cleanup fails 7.
+- **Stress:** the dialog spec 150/150 on WebKit; the inert test 30/30 on the three browsers; `debts-page` + `transaction-edit` 120/120 on WebKit; the classifier spec 90/90 on WebKit.
+- **E2E:** run 1 440/441 in 7.5 m (WebKit, the high-confidence classification test: the badge never appeared, no trace); run 2 440/441 in 11.1 m with traces on (WebKit, a Categories click stalled on "stable"); run 3 441/441 in 8.1 m, first pass.
+- **Bundle** (the branch built with `.env` against production's files, which are `main`'s build byte for byte): the entry `index-*.js` 189,481 -> 189,653 B (+172 B, +61 B gzip), where `Modal` lives. Every other chunk is identical once hashed chunk names are normalised.
+
+**Still open**
+- **WebKit on Windows stops painting a page now and then** (about once in a few hundred runs). Its trace is recognisable: the screencast's last frame comes before the stalled action.
+- **The classifier test's one unexplained failure** in run 1.
+
 ## Phase 81 - A warm PWA test server, and the amount field's seed during render: T461-T469 (2026-10-04, commit `a3b3365`, CI fix `b56c98b`, merge `f1606bc`)
 
 ADR `0057`. The two items Phase 80 left open.

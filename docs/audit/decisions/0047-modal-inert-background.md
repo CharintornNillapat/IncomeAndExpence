@@ -3,6 +3,7 @@
 **Status:** Accepted and released. Commit `f0ff403` (docs `65a26a1`, antislop pass `b2832a7`), merged into `main` as `3b9abec` (PR #21). PR runs `37124844842` and `37126194733` and push run `37126532803` on `3b9abec` passed: the Node globals guard, both type-checks, unit 672/672 in 29 files, and 142/142 on each of chromium, firefox and webkit. Vercel `dpl_5VQ4CZchLxdFrkPFpfM4cgmDjSRU` is READY in production and serves `index-C0jaDWkz.js` at 189,481 B, the local build: 55 of 59 files identical, the two icons and `robots.txt` line endings only, `sw.js` only those icons' revisions.
 - **Closes** ADR `0043`'s one open item: "nothing beyond `aria-modal` keeps a screen reader's virtual cursor out of the page behind a dialog".
 - **Keeps** ADR `0042`'s decision not to portal `Modal`, ADR `0043`'s focus trap and top-of-stack rule, and audit 008's return of focus to the opener.
+- **Amended by** ADR `0058`: the marks, the opener and the focus move are applied in layout effects, in the commit that shows the dialog, and focus returns in the closing commit.
 
 **Date:** 2026-10-03
 
