@@ -1083,7 +1083,7 @@ Approved explicitly by the user, planned and approved before any code was writte
 
 ## Phase 81 - A warm PWA test server, and the amount field's seed during render: T461-T469 (2026-10-04)
 
-ADR `0057`, closing the two items ADR `0056` left open. Branch `phase-81-test-warmup-and-math-seed`, cut from `main` at `72e0bdd`; commit `a3b3365` (docs `05ee7ef`); draft PR. No migration, no proxy change, no CI change.
+ADR `0057`, closing the two items ADR `0056` left open. Branch `phase-81-test-warmup-and-math-seed`, cut from `main` at `72e0bdd`; commit `a3b3365` (docs `05ee7ef`, hash backfill `ff23c04`; CI fix `b56c98b`, its docs `e141f05`), merged into `main` as `f1606bc` (PR #31); Vercel `dpl_Bzm9xE7SzNwfyomR92NSj2WG9hvv` READY in `icn1`, CI run `37207717828` passed. No migration, no proxy change, no CI change.
 
 | # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
 |---|---|---|---|---|---|---|---|---|---|---|

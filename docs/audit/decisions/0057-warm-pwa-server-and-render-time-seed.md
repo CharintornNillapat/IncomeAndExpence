@@ -1,6 +1,6 @@
 # 0057: Warm the PWA test server before the run, and seed the amount field during render
 
-**Status:** Accepted. Implemented on branch `phase-81-test-warmup-and-math-seed` (commit `a3b3365`, docs `05ee7ef`), draft PR. Not merged yet.
+**Status:** Accepted. Implemented on branch `phase-81-test-warmup-and-math-seed` (commit `a3b3365`, docs `05ee7ef`, backfill `ff23c04`, CI fix `b56c98b`, its docs `e141f05`), merged into `main` as `f1606bc` (PR #31). Vercel `dpl_Bzm9xE7SzNwfyomR92NSj2WG9hvv` is READY in production (`icn1`).
 - **Closes** the two items ADR `0056` left open: the cold port-3100 near miss and `InlineMathInput`'s seed effect.
 
 **Date:** 2026-10-04

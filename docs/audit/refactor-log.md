@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 81 - A warm PWA test server, and the amount field's seed during render: T461-T469 (2026-10-04, commit `a3b3365`, docs `05ee7ef`, draft PR)
+## Phase 81 - A warm PWA test server, and the amount field's seed during render: T461-T469 (2026-10-04, commit `a3b3365`, CI fix `b56c98b`, merge `f1606bc`)
 
 ADR `0057`. The two items Phase 80 left open.
 
@@ -29,7 +29,13 @@ ADR `0057`. The two items Phase 80 left open.
 
 - **Found on CI:** in PR #31's first run the chromium job's warm-up stopped with "Execution context was destroyed, most likely because of a navigation" (it warned, and all 147 tests passed). A reload during the first load, most likely Vite reloading once it has pre-bundled the dependencies it found on a fresh checkout, ended the `evaluate` that waited for the service worker. The wait is now an init script that marks the service worker ready in every page it loads, polled with `waitForFunction`, which keeps polling across a reload. A probe that forces a reload mid-wait fails the old wait with CI's message and passes the new one; an empty local Vite cache did not reproduce the reload (old 12.7 s, new 7.0 s, both succeeded). Run 3 after it: 441/441 in 7.8 m, first pass.
 
+**Release:**
+- PR #31 merged into `main` as `f1606bc`. Vercel `dpl_Bzm9xE7SzNwfyomR92NSj2WG9hvv` is READY in production (`icn1`; a guest `POST {}` to `/api/classify` answered 400 from `icn1`). Its entry `index-IvuPAVLI.js`, `InlineMathInput-DzyTlO4A.js`, `TransactionForm-ChugMjNp.js` and `TransferFundsModal-CxjOFOwn.js` are byte-identical to the local build of the branch.
+- The PR's second CI run (`37206889170`) passed every browser job with no retry, the warm-up completing in each (3.8 to 4.7 s).
+- `main` CI on the merge (run `37207717828`) passed every job, with one WebKit test flaky (passed on retry): `account-and-mobile-nav.spec.ts`'s "the page behind Quick Add is inert while it is open" read the background before it was inert. `Modal` marks the background in a passive effect, and the test reads the state once, without retrying, as soon as the dialog's note field is visible. It is unrelated to this phase's change and is recorded as open.
+
 **Still open**
+- **`Modal` marks the page behind it inert in a passive effect**, so for about a frame after a dialog paints the background is not yet inert, and the spec that checks it reads once (flaky once on WebKit CI, above).
 - **A WebKit click that waits for its button to be stable after a dialog closes**, about once in a few hundred runs.
 - **Firefox's context-close error** (`_maybeDontRestoreTabs`), seen once here without the warm-up and once in Phase 61.
 
