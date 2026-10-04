@@ -80,6 +80,36 @@ export const ImportCsvModal: React.FC<ImportCsvModalProps> = ({ isOpen, onClose 
   }, [resumesAt]);
   const waitSeconds = resumesAt === undefined ? null : Math.max(0, Math.ceil((resumesAt - waitClock) / 1000));
 
+  /*
+   * What a screen reader hears about the run (ADR 0054): one polite live
+   * region, changed only when a pause starts, when it ends, when the run is
+   * cancelled, when it stops at a wait over a minute, and when a run that
+   * paused finishes. The countdown is outside it, so a pause is announced
+   * once, not every second.
+   */
+  const [announcement, setAnnouncement] = useState('');
+  const isClassifying = classifyProgress !== null;
+  const wasPausedRef = useRef(false);
+  // Set once this run's pause has been announced: the run then also
+  // announces how it ended, because a resume and the finish can land in one
+  // render (WebKit did), and "paused" must not be the last thing heard.
+  const pauseAnnouncedRef = useRef(false);
+  useEffect(() => {
+    const paused = resumesAt !== undefined;
+    if (resumesAt !== undefined && !wasPausedRef.current) {
+      pauseAnnouncedRef.current = true;
+      const seconds = Math.max(1, Math.ceil((resumesAt - Date.now()) / 1000));
+      setAnnouncement(
+        `Rate limit reached. Classification paused for about ${seconds} second${seconds === 1 ? '' : 's'}, then it continues on its own.`
+      );
+    } else if (!paused && wasPausedRef.current && isClassifying) {
+      // Only a pause that ends with the run still going is a resume; a run
+      // cancelled or finished during it says nothing here.
+      setAnnouncement('Rate limit cleared. Classification resumed.');
+    }
+    wasPausedRef.current = paused;
+  }, [resumesAt, isClassifying]);
+
   const activeCategoriesForForm = useMemo(() => categories.filter((c) => !c.isDeleted), [categories]);
 
   // Handle CSV File Selection (Step 1: Dry-Run Parse)
@@ -140,6 +170,7 @@ export const ImportCsvModal: React.FC<ImportCsvModalProps> = ({ isOpen, onClose 
     setRowSuggestions(new Map());
     setClassifyProgress(null);
     setClassifyNote(null);
+    setAnnouncement('');
   };
 
   /** Layer 1: the synchronous keyword matcher, authoritative and free. */
@@ -173,6 +204,9 @@ export const ImportCsvModal: React.FC<ImportCsvModalProps> = ({ isOpen, onClose 
     const controller = new AbortController();
     classifyAbortRef.current = controller;
     setClassifyNote(null);
+    // Emptied so the same sentence in a later run counts as a change and is read.
+    setAnnouncement('');
+    pauseAnnouncedRef.current = false;
     setClassifyProgress({ done: 0, total: uncategorizedRows.length });
 
     const candidates = toClassifyCandidates(categories);
@@ -192,7 +226,9 @@ export const ImportCsvModal: React.FC<ImportCsvModalProps> = ({ isOpen, onClose 
       // A very different message from "nothing matched": the endpoint is not
       // there (an unconfigured deployment, or the dev server, which does not
       // serve `api/`). The import still commits perfectly well without it.
-      setClassifyNote('Jev is unavailable right now. Import still works, and categories stay blank.');
+      const unavailableNote = 'Jev is unavailable right now. Import still works, and categories stay blank.';
+      setClassifyNote(unavailableNote);
+      if (pauseAnnouncedRef.current) setAnnouncement(unavailableNote);
       return;
     }
 
@@ -217,12 +253,16 @@ export const ImportCsvModal: React.FC<ImportCsvModalProps> = ({ isOpen, onClose 
     setRowSuggestions(result.suggestions);
 
     const autoFilled = Array.from(result.suggestions.values()).filter((s) => s.strength === 'AUTO_FILL').length;
-    setClassifyNote(
+    const note =
       `Classified ${result.suggestions.size} of ${uncategorizedRows.length}: ${autoFilled} applied, ` +
-        `${result.suggestions.size - autoFilled} to confirm. ${result.attempted} request${result.attempted === 1 ? '' : 's'} sent.` +
-        // ADR 0052: the rate limit asked for longer than the importer waits.
-        (result.rateLimited ? ' Stopped early: the rate limit asked for a wait of over a minute, so the rest stay blank.' : '')
-    );
+      `${result.suggestions.size - autoFilled} to confirm. ${result.attempted} request${result.attempted === 1 ? '' : 's'} sent.` +
+      // ADR 0052: the rate limit asked for longer than the importer waits.
+      (result.rateLimited ? ' Stopped early: the rate limit asked for a wait of over a minute, so the rest stay blank.' : '');
+    setClassifyNote(note);
+    // ADR 0054: a run the rate limit stopped, or one whose pause was
+    // announced, ends by reading out the note, with its counts. A run that
+    // never paused stays silent, as before.
+    if (result.rateLimited || pauseAnnouncedRef.current) setAnnouncement(note);
   };
 
   /** A manual pick, or accepting a mid-confidence suggestion. Always wins. */
@@ -375,6 +415,20 @@ export const ImportCsvModal: React.FC<ImportCsvModalProps> = ({ isOpen, onClose 
             which is also how you skip it when offline or in a hurry.
           */}
           <div className="flex flex-col gap-2 rounded-lg border border-line bg-surface-2 p-3">
+            {/*
+              Mounted, empty, with the preview, so the first change is already
+              to a live region (ADR 0054). Visually hidden: everything in it
+              is also on screen, as the countdown or the note.
+            */}
+            <p
+              data-testid="csv-classify-announcer"
+              role="status"
+              aria-live="polite"
+              aria-atomic="true"
+              className="sr-only"
+            >
+              {announcement}
+            </p>
             <div className="flex items-center justify-between gap-3 flex-wrap">
               <span className="text-xs text-fg-secondary">
                 <strong className="font-bold text-fg">{ruleMatchedCount}</strong>{' '}
@@ -390,7 +444,15 @@ export const ImportCsvModal: React.FC<ImportCsvModalProps> = ({ isOpen, onClose 
               )}
 
               {classifyProgress && (
-                <Button id="csv-classify-cancel-btn" variant="secondary" onClick={() => classifyAbortRef.current?.abort()}>
+                <Button
+                  id="csv-classify-cancel-btn"
+                  variant="secondary"
+                  onClick={() => {
+                    classifyAbortRef.current?.abort();
+                    // A cancelled run applies nothing (`handleClassifyRemaining` returns first).
+                    setAnnouncement('Classification cancelled. No categories were filled in.');
+                  }}
+                >
                   Cancel
                 </Button>
               )}

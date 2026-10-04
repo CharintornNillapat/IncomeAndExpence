@@ -1081,6 +1081,25 @@ Approved explicitly by the user, planned and approved before any code was writte
 - **One negative control was redone** because the first attempt produced malformed TypeScript that the dev server still served — the tests failed, but possibly for the wrong reason.
 - **No flakes.** Phase 44's `wallets.spec.ts` webkit flake has now not reproduced across three consecutive phases; still watched rather than closed.
 
+## Phase 78 - A screen reader hears the import's pause: T440-T445 (2026-10-04)
+
+ADR `0054`, extending ADRs `0052` and `0053`. Branch `phase-78-a11y-rate-limit-pause`, cut from `main` at `8a81507`; commit `77aa908` (docs `40f331d`); draft PR. No migration, no proxy change.
+
+| # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
+|---|---|---|---|---|---|---|---|---|---|---|
+| T440 | ADR `0054`: one polite region, the five events, the countdown outside it | `docs/audit/decisions/` | Low | Low | 0.3h | done | - | `40f331d` | - | - |
+| T441 | `ImportCsvModal`: `csv-classify-announcer`, announced on pause, resume, cancel, a stop over a minute, and the end of a run that paused | `components/transaction/ImportCsvModal.tsx` | Med | Low | 0.5h | done | T440 | `77aa908` | - | - |
+| T442 | Unit: `csv-import-announcer.test.tsx`, 11 tests on fake timers with a `MutationObserver`; 16 mutations | `unit/` | Med | Low | 0.6h | done | T441 | `77aa908` | 11/11 three runs in a row; 16 of 16 mutations caught | unit 770 -> 781, files 29 -> 30 |
+| T443 | E2E: the region checked in three existing `csv-classify.spec.ts` tests; a negative control | `tests/` | Low | Low | 0.2h | done | T441 | `77aa908` | 27/27 over three runs on all browsers; fails with no cancel announcement | no new test |
+| T444 | Gate: lint, unit, Playwright in full, bundle | - | Low | Low | 0.3h | done | T442-T443 | - | lint clean; unit 781/781; Playwright 439/441 in 8.2 m; the 2 Firefox failures (a `page.goto` timeout in `account-and-mobile-nav.spec.ts`, a Quick Add click never stable in `smart-rules.spec.ts`, both with Firefox's own compositor errors in the log) passed 6/6 on re-run, three times each | - |
+| T445 | `CLAUDE.md`, this ledger, the refactor log, baseline metrics | `docs/`, `CLAUDE.md` | Low | Low | 0.2h | done | T444 | `40f331d` | - | - |
+
+**Notes on execution:**
+- **WebKit found a gap the first design had.** With a mocked reply, the end of the pause and the end of the run rendered as one update, so "resumed" was never set and "paused" was the last thing heard. A run that announced a pause now ends by announcing its note.
+- **The first mutation run left two survivors** (a pause announced on every change; the region not emptied at a run's start); a test was added for each.
+- **One full unit run failed once in `categories-page.test.tsx`** (the repeated-colour guard, untouched here); the file passed 24/24 three times alone, and the full suite passed 781/781 on the re-run.
+- **No `src/` or `tests/` file was edited during a Playwright run;** the negative control's `src/` edit was made before its run and restored after (`cmp`).
+
 ## Phase 77 - Every 429 says how long to wait: T433-T439 (2026-10-04)
 
 ADR `0053`, extending ADR `0052`. Branch `phase-77-rate-limit-completion`, cut from `main` at `c248a1c`; commit `05d103c` (docs `c87020e`, hash backfill `9c49a8c`), merged into `main` as `07d51f1` (PR #27); Vercel `dpl_FetmkPeDZf6qNf3Aea6bH5cXQQWG` READY in `icn1`, CI run `37178250544` passed. No migration.

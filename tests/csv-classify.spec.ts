@@ -288,10 +288,17 @@ test.describe('CSV import auto-categorization', () => {
     await expect(wait).toContainText(/Rate limit reached, continuing in [12] s\./);
     // Cancel stays offered while it waits.
     await expect(page.locator('#csv-classify-cancel-btn')).toBeVisible();
+    // ADR 0054: a screen reader hears the pause once, then the resume.
+    const announcer = page.getByTestId('csv-classify-announcer');
+    await expect(announcer).toHaveText(/^Rate limit reached\. Classification paused for about [12] seconds?, then it continues on its own\.$/);
 
     await expect(page.getByTestId('csv-row-category-2')).toHaveValue(TRANSPORT.id);
     await expect(page.getByTestId('csv-classify-note')).toBeVisible();
     await expect(wait).toHaveCount(0);
+    // The run that paused ends by reading out its note. Whether the resume
+    // was heard in between depends on how fast the reply lands, so it is
+    // checked in `unit/csv-import-announcer.test.tsx`, on a fake clock.
+    await expect(announcer).toHaveText(/^Classified 1 of 1: /);
     expect(calls).toBe(2);
   });
 
@@ -312,6 +319,7 @@ test.describe('CSV import auto-categorization', () => {
     await page.locator('#csv-classify-btn').click();
 
     await expect(page.getByTestId('csv-classify-note')).toContainText(/Stopped early: the rate limit asked for a wait of over a minute/);
+    await expect(page.getByTestId('csv-classify-announcer')).toContainText(/Stopped early: the rate limit asked for a wait of over a minute/);
     await expect(page.getByTestId('csv-row-category-2')).toHaveValue('');
     expect(calls).toBe(1);
 
@@ -343,6 +351,7 @@ test.describe('CSV import auto-categorization', () => {
     await page.locator('#csv-classify-cancel-btn').click();
     await expect(wait).toHaveCount(0);
     await expect(page.locator('#csv-classify-btn')).toBeVisible();
+    await expect(page.getByTestId('csv-classify-announcer')).toHaveText('Classification cancelled. No categories were filled in.');
     expect(calls).toBe(1);
   });
 
