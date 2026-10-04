@@ -1081,6 +1081,27 @@ Approved explicitly by the user, planned and approved before any code was writte
 - **One negative control was redone** because the first attempt produced malformed TypeScript that the dev server still served — the tests failed, but possibly for the wrong reason.
 - **No flakes.** Phase 44's `wallets.spec.ts` webkit flake has now not reproduced across three consecutive phases; still watched rather than closed.
 
+## Phase 80 - Feedback follows the event that produced it: T454-T460 (2026-10-04)
+
+ADR `0056`, generalising ADR `0055`'s CI finding. Branch `phase-80-audit-effect-handler-races`, cut from `main` at `548e358`; commit `68a8559` (docs `6285323`); draft PR. No migration, no proxy change.
+
+| # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
+|---|---|---|---|---|---|---|---|---|---|---|
+| T454 | Audit: a script listing setters written both in an effect and elsewhere (9 files), plus the named feedback components read by hand | - | High | Low | 0.6h | done | - | - | 5 races found, 11 places safe or left with a reason | - |
+| T455 | ADR `0056`: key per entity; reset during render; the verdict table | `docs/audit/decisions/` | Low | Low | 0.4h | done | T454 | `6285323` | - | - |
+| T456 | Transaction panels keyed by `tx.id`, their reset effects deleted, the draft reset during render | `components/transaction/TransactionDrawer.tsx`, `EditTransactionPanel.tsx` | High | Low | 0.3h | done | T455 | `68a8559` | - | - |
+| T457 | `WalletDetail` keys `WalletDetailBody` by `wallet.id`; its reset effect deleted | `components/wallet/WalletDetail.tsx` | Med | Low | 0.2h | done | T455 | `68a8559` | - | - |
+| T458 | `TransactionsView`: the paging reset and the selection clear during render | `views/TransactionsView.tsx` | Med | Low | 0.3h | done | T455 | `68a8559` | - | - |
+| T459 | Unit `feedback-ordering.test.tsx` (17); negative controls per file from `main`; gate | `unit/` | High | Low | 0.6h | done | T456-T458 | `68a8559` | controls: panels 4 fail, wallet 2, list 0 (not reachable in jsdom); lint clean; unit 802/802; Playwright 441/441 in 8.2 m, first pass, no retries. Near miss: `toast-layering.spec.ts`'s two tests took 28.5 s and 29.4 s on chromium, the first requests to the cold PWA server on port 3100, against the 30 s navigation timeout | unit 785 -> 802, files 30 -> 31 |
+| T460 | `CLAUDE.md`, this ledger, the refactor log, baseline metrics | `docs/`, `CLAUDE.md` | Low | Low | 0.2h | done | T459 | `6285323` | - | - |
+
+**Notes on execution:**
+- **Two shapes, one cause.** An effect writing after a later update (ADR `0055`'s), and a late async result landing after a reset effect ran. Both come from feedback state having two writers in different phases.
+- **The list's two fixes have no failing control.** Under `act`, jsdom flushes effects before the next event, so the window cannot be opened in a unit test; they are closed by construction and pinned.
+- **One test was wrong at first and was rewritten.** It queued a debounce and a click in one `act`, where the click was on the old list, so resetting to the top was right.
+- **A near miss in the full run:** `toast-layering.spec.ts` at 28.5 s and 29.4 s on chromium (the cold port-3100 server's first requests) against the 30 s navigation timeout. Recorded, not changed here.
+- **No `src/` or `tests/` file was edited during a Playwright run.**
+
 ## Phase 79 - Every import run is heard, and local runs use 4 workers: T446-T452 (2026-10-04)
 
 ADR `0055`, amending ADR `0054` and Phase 55's local `workers` note. Branch `phase-79-a11y-outcome-and-test-stability`, cut from `main` at `3fd3083`; commit `3a8adea` (docs `0d8f49d`, hash backfill `a928b5e`; CI fix `8694ab2`, its docs `c1b0901`, backfill `bbe83c6`), merged into `main` as `e21c071` (PR #29); Vercel `dpl_3u7u9dGSJfBUeMirCY4GDYF2LMBS` READY in `icn1`, CI run `37198720091` passed. No migration, no CI change.

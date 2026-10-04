@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import type { Category, Debt, Transaction, TransactionEdit, TransactionType, Wallet } from '../../types';
 import { Button } from '../ui/Button';
 import { SegmentedControl } from '../ui/SegmentedControl';
@@ -82,17 +82,19 @@ export const EditTransactionPanel: React.FC<EditTransactionPanelProps> = ({ tx, 
   const [status, setStatus] = useState<string | null>(null);
   const [isWorking, setIsWorking] = useState(false);
 
-  // A different row starts clean.
-  useEffect(() => {
-    setError(null);
-    setStatus(null);
-  }, [tx.id]);
-  // A saved row (or one reloaded from the cloud) is the new baseline.
-  useEffect(() => {
+  /*
+   * A saved row (or one reloaded from the cloud) is the new baseline (ADR 0056).
+   * Reset during render, when the row's version changes, not in an effect: an
+   * effect runs after its render, so a keystroke landing in between was
+   * replaced by the stale reset. `tx` itself changes identity on unrelated
+   * writes; its version is what matters. A different row is a different
+   * instance (`TransactionDetails` keys the panel by id), so it starts clean.
+   */
+  const [baseVersion, setBaseVersion] = useState(tx.updatedAt);
+  if (tx.updatedAt !== baseVersion) {
+    setBaseVersion(tx.updatedAt);
     setDraft(draftOf(tx));
-    // `tx` itself changes identity on unrelated writes; its version is what matters.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tx.id, tx.updatedAt]);
+  }
 
   const moneyEditable = EDITABLE_TYPES.has(tx.type);
   const isTransfer = draft.type === 'TRANSFER';

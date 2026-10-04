@@ -1098,6 +1098,15 @@ The entry's growth is the ledger action itself, which lives with the other ledge
 
 **Intermittent local failures:** 6 in 1,071 full-suite runs (3 full runs). All were timeouts: a Firefox `goto`, a Firefox context close, and four WebKit clicks waiting for "stable". No assertion failed. See audit 005 finding 3 for the control runs.
 
+## Phase 80 (feedback follows its event) - delta against Phase 79
+
+**Bundle** (local builds with `.env`, gzip level 9): `TransactionsView` 34,825 -> 34,823 B (-2 B, +33 B gzip) and `WalletsView` 14,765 -> 14,740 B (-25 B, 0 B gzip). No other chunk changed, and the entry `index-*.js` is identical to `main`'s once its hashed chunk names are normalised.
+
+| Suite | Files | Tests | Runs | Result |
+|---|---|---|---|---|
+| Playwright (local, 4 workers) | 29 | 147 | 441 | 441/441 in 8.2 m, first pass, no retries. Near miss: `toast-layering.spec.ts`'s two tests took 28.5 s and 29.4 s on chromium, the first requests to the cold PWA server on port 3100, against the 30 s navigation timeout |
+| Vitest (`unit/`) | 31 | 802 | 802 | 802/802 |
+
 ## Phase 79 (every run heard; 4 local workers) - delta against Phase 78
 
 **Bundle** (local builds with `.env`, gzip level 9): `TransactionsView` 34,870 -> 34,825 B (-45 B, -18 B gzip), from removing the pause flag and the effect. No other chunk changed, and the entry `index-*.js` is identical to `main`'s once its hashed chunk names are normalised.

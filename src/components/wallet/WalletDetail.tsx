@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { ArrowLeftRight, History, Pencil, SlidersHorizontal } from 'lucide-react';
 import type { Category, Wallet, WalletEdit, WalletType } from '../../types';
 import type { MutationResult } from '../../context/FinanceContext';
@@ -52,8 +52,16 @@ interface WalletDetailProps {
  * `WalletPopupModal`, ids included (`#wallet-adjust-btn-{id}`,
  * `#wallet-adjust-input`, `#wallet-adjust-save-btn`). It stays a bespoke
  * one-field form, not `TransactionForm` (CLAUDE.md).
+ *
+ * One instance per wallet (`key={wallet.id}`, ADR 0056). An edit or an
+ * adjustment still in flight when another wallet is selected finishes on the
+ * old instance, which is gone, so it cannot close or fill in the new wallet's
+ * editor. Before, an effect on `wallet.id` closed the editors, and a late
+ * save then closed the next wallet's editor too, with its draft.
  */
-export const WalletDetail: React.FC<WalletDetailProps> = ({
+export const WalletDetail: React.FC<WalletDetailProps> = (props) => <WalletDetailBody key={props.wallet.id} {...props} />;
+
+const WalletDetailBody: React.FC<WalletDetailProps> = ({
   wallet,
   items,
   dayNets,
@@ -81,14 +89,6 @@ export const WalletDetail: React.FC<WalletDetailProps> = ({
   const [draft, setDraft] = useState<WalletEdit>({ name: wallet.name, type: wallet.type, color: wallet.color });
   const [editError, setEditError] = useState<string | null>(null);
   const [isSavingEdit, setIsSavingEdit] = useState(false);
-
-  // A different wallet selected closes whatever editor was open for the last one.
-  useEffect(() => {
-    setIsAdjusting(false);
-    setAdjustError(null);
-    setIsEditing(false);
-    setEditError(null);
-  }, [wallet.id]);
 
   const openAdjust = () => {
     setAdjustedBalance(balance);

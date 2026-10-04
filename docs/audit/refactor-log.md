@@ -4,6 +4,34 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
+## Phase 80 - Feedback follows the event that produced it: T454-T460 (2026-10-04, commit `68a8559`, docs `6285323`, draft PR)
+
+ADR `0056`. Phase 79's CI failure was feedback written both by a passive effect and by a handler. This phase looked for the same shape everywhere.
+
+**Found**
+- **Transaction panel:** a save in flight when another row opened said "Changes saved", or its error, on the new row, and held its buttons. A keystroke between a new version's render and the draft-reset effect was replaced.
+- **Deleted row:** a failed restore's error landed on the next deleted row.
+- **Wallet detail:** an edit succeeding after another wallet was selected closed that wallet's editor and lost its draft; a failed adjustment's error landed on the next wallet's editor.
+- **Transactions list:** the effect resetting the count to 25 could undo a "Load more", and the effect clearing a vanished selection could clear a newer pick.
+- **Safe** (11 places, the reasons in ADR `0056`): the sync badge, the PWA toast, every `useTransientFlash` flash, voice input, the import region, the search debounce, the form's wallet repair, the math input's seed, and others.
+
+**Changed**
+- **`TransactionDrawer`:** keys both panels by `tx.id`; `EditTransactionPanel` and `DeletedTransactionDetails` lose their reset effects; the draft resets during render on a new `updatedAt`.
+- **`WalletDetail`:** a wrapper keys `WalletDetailBody` by `wallet.id`; the reset effect is gone.
+- **`TransactionsView`:** the paging reset and the selection clear happen during render.
+- **Tests:** unit `feedback-ordering.test.tsx`, new (17; 785 -> 802, 30 -> 31 files).
+- **Docs:** ADR `0056`; `CLAUDE.md` (a State rule, two Do NOT lines, counts); the ledger; this log; baseline metrics.
+
+**Still open**
+- **The cold PWA server is close to the navigation timeout:** `toast-layering.spec.ts`'s first requests took 28.5 s and 29.4 s on chromium in the full run.
+- **`InlineMathInput`'s seed effect** keeps the same shape; replacing a typed amount needs a click within one frame of a note keystroke.
+
+**Gate:**
+- Lint clean. Unit 802/802 in 31 files; the new file 17/17 three runs in a row.
+- **Negative controls:** panels from `main`, 4 of the new tests fail; `WalletDetail` from `main`, 2; `TransactionsView` from `main`, 0 (not reachable in jsdom).
+- **E2E:** 441/441 in 8.2 m, first pass, no retries. Near miss: `toast-layering.spec.ts`'s two tests took 28.5 s and 29.4 s on chromium, the first requests to the cold PWA server on port 3100, against the 30 s navigation timeout.
+- **Bundle** (local builds with `.env`, gzip level 9): `TransactionsView` 34,825 -> 34,823 B (-2 B, +33 B gzip) and `WalletsView` 14,765 -> 14,740 B (-25 B, 0 B gzip). No other chunk changed, and the entry `index-*.js` is identical to `main`'s once its hashed chunk names are normalised.
+
 ## Phase 79 - Every import run is heard, and local runs use 4 workers: T446-T452 (2026-10-04, commit `3a8adea`, CI fix `8694ab2`, merge `e21c071`)
 
 ADR `0055`. Two loose ends from Phase 78: a classification run that never met the rate limit finished silently for a screen reader, and every recent local gate lost one or two Firefox tests to timeouts.

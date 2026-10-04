@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import type { Category, Debt, Transaction, TransactionEdit, Wallet } from '../../types';
 import { Button } from '../ui/Button';
 import { EditTransactionPanel } from './EditTransactionPanel';
@@ -48,12 +48,19 @@ const Field: React.FC<{ label: string; children: React.ReactNode }> = ({ label, 
  *
  * A failed delete or restore is shown here. Before Phase 58a the table's
  * trash button discarded the `MutationResult`, so a failure showed nothing.
+ *
+ * Each row gets its own panel instance (`key={tx.id}`, ADR 0056). A save or
+ * restore still in flight when another row is opened then finishes on the old
+ * instance, which is gone, so its "saved" or its error can never land on the
+ * new row. Before, both panels cleared their feedback in an effect on
+ * `tx.id`, and a late result arrived after that effect had run.
  */
 export const TransactionDetails: React.FC<TransactionDetailsProps> = (props) =>
   props.tx.isDeleted ? (
-    <DeletedTransactionDetails {...props} />
+    <DeletedTransactionDetails key={props.tx.id} {...props} />
   ) : (
     <EditTransactionPanel
+      key={props.tx.id}
       tx={props.tx}
       wallets={props.walletList}
       categories={props.categoryList}
@@ -66,9 +73,6 @@ export const TransactionDetails: React.FC<TransactionDetailsProps> = (props) =>
 const DeletedTransactionDetails: React.FC<TransactionDetailsProps> = ({ tx, category, wallets, onRestore }) => {
   const [error, setError] = useState<string | null>(null);
   const [isWorking, setIsWorking] = useState(false);
-
-  // A different row starts clean.
-  useEffect(() => setError(null), [tx.id]);
 
   const run = async (action: (id: string) => Promise<WriteResult>, fallback: string) => {
     setIsWorking(true);
