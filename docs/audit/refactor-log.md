@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 83 - An open dialog keeps its focus when React re-runs its effects; CI keeps the first failure's trace: T477-T482 (2026-10-05, commit `19a523b`, draft PR)
+## Phase 83 - An open dialog keeps its focus when React re-runs its effects; CI keeps the first failure's trace: T477-T482 (2026-10-05, commit `19a523b`, docs `eb779b5`, draft PR)
 
 ADR `0059`, amending ADR `0058`. The flaky WebKit test on the Phase 82 merge.
 

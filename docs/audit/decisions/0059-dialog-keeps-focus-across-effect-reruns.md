@@ -1,6 +1,6 @@
 # 0059: An open dialog keeps its focus when React re-runs its effects; CI keeps the first failure's trace
 
-**Status:** Accepted. Implemented on branch `phase-83-stacked-modal-inert-and-ci-trace` (commit `19a523b`), draft PR. Not merged yet.
+**Status:** Accepted. Implemented on branch `phase-83-stacked-modal-inert-and-ci-trace` (commit `19a523b`, docs `eb779b5`), draft PR. Not merged yet.
 - **Amends** ADR `0058` (and `0043`'s focus on open): the focus move on open now gives back a control that had focus inside the panel.
 
 **Date:** 2026-10-05

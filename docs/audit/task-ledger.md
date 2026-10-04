@@ -1083,7 +1083,7 @@ Approved explicitly by the user, planned and approved before any code was writte
 
 ## Phase 83 - An open dialog keeps its focus when React re-runs its effects; CI keeps the first failure's trace: T477-T482 (2026-10-05)
 
-ADR `0059`, amending ADR `0058`. Branch `phase-83-stacked-modal-inert-and-ci-trace`, cut from `main` at `349f3f5`; commit `19a523b`; draft PR. No migration, no proxy change.
+ADR `0059`, amending ADR `0058`. Branch `phase-83-stacked-modal-inert-and-ci-trace`, cut from `main` at `349f3f5`; commit `19a523b` (docs `eb779b5`); draft PR. No migration, no proxy change.
 
 | # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
 |---|---|---|---|---|---|---|---|---|---|---|
@@ -1092,7 +1092,7 @@ ADR `0059`, amending ADR `0058`. Branch `phase-83-stacked-modal-inert-and-ci-tra
 | T479 | Unit test: StrictMode, outside `act`, a lazy dialog beside `<main>` over an open confirmation, filled as Playwright fills | `unit/modal-focus.test.tsx` | High | Low | 0.6h | done | T478 | `19a523b` | `main`'s and Phase 81's `Modal`: amount empty; no StrictMode: passes | unit 828 -> 829 |
 | T480 | `Modal`: the opener cleanup notes `focusInside`; the re-run gives focus back; a close clears it | `components/Modal.tsx` | High | Low | 0.3h | done | T479 | `19a523b` | modal file 27/27 three times | entry +266 B |
 | T481 | Gate: lint, unit, `categories.spec.ts` x15 on WebKit, full suite, bundle | - | High | Low | 0.4h | done | T480 | - | lint clean; unit 829/829; `categories.spec.ts` on WebKit x15: 118/120; both failures were the known Windows WebKit painting stall (the trace's last frame about 14.8 s before the timeout), at a category save and a type toggle, before any stacked dialog; full 441/441 in 8.0 m, first pass | see the refactor log |
-| T482 | ADR `0059`, ADR `0058`'s amended line, `CLAUDE.md`, this ledger, the refactor log, baseline metrics | `docs/`, `CLAUDE.md` | Low | Low | 0.3h | done | T481 | - | - | - |
+| T482 | ADR `0059`, ADR `0058`'s amended line, `CLAUDE.md`, this ledger, the refactor log, baseline metrics | `docs/`, `CLAUDE.md` | Low | Low | 0.3h | done | T481 | `eb779b5` | - | - |
 
 **Notes on execution:**
 - **The inert marks were never wrong.** The test's first reading (fill at the first commit) showed the field not inert and the amount taken, but focus gone afterwards; filling as Playwright does, with a task between focusing and typing, reproduced CI's empty amount.
