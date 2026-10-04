@@ -2,6 +2,7 @@
 
 **Status:** Accepted and released. Commit `77aa908` (docs `40f331d`, hash backfill `69ccea5`), merged into `main` as `45eb2d4` (PR #28). Vercel `dpl_JARpUTJzSYio4svwtyA4RBNpv2mo` is READY in production (`icn1`), and its `TransactionsView` chunk carries `csv-classify-announcer` and the paused, resumed and cancelled sentences. `main` CI on the merge passed, all four jobs (run `37188885802`).
 - **Extends** ADRs `0052` and `0053`, whose consequences both said "the countdown is visual only; the progress line is not a live region".
+- **Amended by** ADR `0055`: every finished run now announces its note, not only one that paused or was stopped, and the pause flag is gone.
 
 **Date:** 2026-10-04
 

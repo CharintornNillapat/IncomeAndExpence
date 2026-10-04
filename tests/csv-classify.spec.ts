@@ -125,6 +125,10 @@ test.describe('CSV import auto-categorization', () => {
 
     await page.locator('#csv-classify-btn').click();
     await expect(page.getByTestId('csv-classify-note')).toBeVisible();
+    // ADR 0055: a run that never met the rate limit is heard too, as its note.
+    await expect(page.getByTestId('csv-classify-announcer')).toHaveText(
+      'Classified 1 of 1: 1 applied, 0 to confirm. 1 request sent.'
+    );
 
     await expect(page.getByTestId('csv-row-category-2')).toHaveValue(TRANSPORT.id);
     await expect(page.getByTestId('csv-row-confidence-2')).toContainText('96%');
@@ -364,6 +368,9 @@ test.describe('CSV import auto-categorization', () => {
     await page.locator('#csv-classify-btn').click();
 
     await expect(page.getByTestId('csv-classify-note')).toContainText(/Jev is unavailable/i);
+    await expect(page.getByTestId('csv-classify-announcer')).toHaveText(
+      'Jev is unavailable right now. Import still works, and categories stay blank.'
+    );
     await expect(page.getByTestId('csv-row-category-2')).toHaveValue('');
 
     // "Unavailable" must never mean "cannot import".

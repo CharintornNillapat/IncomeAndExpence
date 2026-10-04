@@ -26,11 +26,19 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 0,
   /*
    * Two workers on CI (Phase 55, T202). Each CI job now runs one browser, and
-   * GitHub's ubuntu runners have 4 vCPUs; local runs use more without flakes.
-   * Kept only if three consecutive CI runs stay green, since the Vite dev
-   * server compiles each module on first request.
+   * GitHub's ubuntu runners have 4 vCPUs. Kept only if three consecutive CI
+   * runs stay green, since the Vite dev server compiles each module on first
+   * request.
+   *
+   * Four locally (Phase 79, ADR 0055). Left unset, Playwright takes half the
+   * logical CPUs: 6 on the 12-thread machine these phases run on. Measured
+   * there, every Firefox test three times (441 runs): 6 workers took 10.4 m
+   * with 2 `page.goto` timeouts and ten tests over 20 s (slowest 42.5 s);
+   * 4 workers took 10.2 m with none failed and none over 12.1 s. The extra
+   * workers bought no speed, only the tail that crossed the 30 s navigation
+   * timeout. `--workers=N` still overrides it for one run.
    */
-  workers: process.env.CI ? 2 : undefined,
+  workers: process.env.CI ? 2 : 4,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: 'html',
   /*

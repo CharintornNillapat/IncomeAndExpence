@@ -1098,6 +1098,20 @@ The entry's growth is the ledger action itself, which lives with the other ledge
 
 **Intermittent local failures:** 6 in 1,071 full-suite runs (3 full runs). All were timeouts: a Firefox `goto`, a Firefox context close, and four WebKit clicks waiting for "stable". No assertion failed. See audit 005 finding 3 for the control runs.
 
+## Phase 79 (every run heard; 4 local workers) - delta against Phase 78
+
+**Bundle** (local builds with `.env`, gzip level 9): `TransactionsView` 34,870 -> 34,825 B (-45 B, -18 B gzip), from removing the pause flag and the effect. No other chunk changed, and the entry `index-*.js` is identical to `main`'s once its hashed chunk names are normalised.
+
+| Suite | Files | Tests | Runs | Result |
+|---|---|---|---|---|
+| Playwright (local, 4 workers) | 29 | 147 | 441 | 441/441 three times, first pass, no retries (7.3 m, 7.2 m, 7.2 m; slowest test 10.3 s, 10.9 s, 10.3 s) |
+| Vitest (`unit/`) | 30 | 785 | 785 | 785/785 (784/784 three times before the CI fix, 36.8 to 39.2 s) |
+
+| Firefox only, `--repeat-each 3` (441 runs) | Wall time | Failed | Slowest test | Tests over 20 s |
+|---|---|---|---|---|
+| 6 workers (the old local default) | 10.4 m | 2 | 42.5 s | 10 |
+| 4 workers | 10.2 m | 0 | 12.1 s | 0 |
+
 ## Phase 78 (a screen reader hears the import's pause) - delta against Phase 77
 
 **Bundle** (local builds with `.env`, gzip level 9): `TransactionsView` 34,179 -> 34,870 B (+691 B, +255 B gzip), the lazy chunk that holds the import preview. No other chunk changed, and the entry `index-*.js` is identical to `main`'s once its hashed chunk names are normalised.
