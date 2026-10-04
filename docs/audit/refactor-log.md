@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 81 - A warm PWA test server, and the amount field's seed during render: T461-T468 (2026-10-04, commit `a3b3365`, docs `05ee7ef`, draft PR)
+## Phase 81 - A warm PWA test server, and the amount field's seed during render: T461-T469 (2026-10-04, commit `a3b3365`, docs `05ee7ef`, draft PR)
 
 ADR `0057`. The two items Phase 80 left open.
 
@@ -26,6 +26,8 @@ ADR `0057`. The two items Phase 80 left open.
 - **E2E:** run 1 439/441 in 8.3 m: two WebKit clicks waited 15 s for a button to be stable after a dialog closed (`debts-page.spec.ts` Mark as paid off, `transaction-edit.spec.ts` the repayment edit); run 2 441/441 in 8.0 m, first pass. `toast-layering.spec.ts` on chromium 1.7 s and 2.5 s in both full runs (Phase 80: 28.5 s and 29.4 s); the warm-up took 3.6 s and 3.8 s.
 - **The two WebKit failures are not this phase's.** `debts-page.spec.ts`'s test never touches the amount field, and Phase 63 recorded the `transaction-edit` one failing the same way. Repeated: both specs together on WebKit, 5 times each, failed 1 of 30 on the branch, then the branch passed 60/60 and `main`'s components 60/60; the repayment test alone passed 15/15 on each.
 - **Bundle** (local builds with `.env`, gzip level 9): `InlineMathInput` 5,983 -> 5,680 B (-303 B, -137 B gzip), `TransactionForm` 25,869 -> 25,865 B (-4 B, +26 B gzip) and `TransferFundsModal` 6,855 -> 6,927 B (+72 B, +39 B gzip). No other chunk changed size, and the entry `index-*.js` is identical to `main`'s once its hashed chunk names are normalised.
+
+- **Found on CI:** in PR #31's first run the chromium job's warm-up stopped with "Execution context was destroyed, most likely because of a navigation" (it warned, and all 147 tests passed). A reload during the first load, most likely Vite reloading once it has pre-bundled the dependencies it found on a fresh checkout, ended the `evaluate` that waited for the service worker. The wait is now an init script that marks the service worker ready in every page it loads, polled with `waitForFunction`, which keeps polling across a reload. A probe that forces a reload mid-wait fails the old wait with CI's message and passes the new one; an empty local Vite cache did not reproduce the reload (old 12.7 s, new 7.0 s, both succeeded). Run 3 after it: 441/441 in 7.8 m, first pass.
 
 **Still open**
 - **A WebKit click that waits for its button to be stable after a dialog closes**, about once in a few hundred runs.
