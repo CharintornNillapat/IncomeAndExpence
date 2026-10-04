@@ -4,6 +4,30 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
+## Phase 76 - The CSV importer waits out Retry-After: T427-T432 (2026-10-04, draft PR)
+
+ADR `0052`. Since ADR `0049` a signed-in 429 says when the window turns over, and the importer ignored it: each of its four workers retried once after 400 ms, inside the same exhausted minute, so an import of more than 120 distinct notes left the rest blank.
+
+**Changed**
+- **`classifyOnce`** returns `{ kind: 'rate-limited', retryAfterMs }` when the 429 carries a usable `Retry-After` (seconds or a future HTTP date). `classifyDescription` is untouched.
+- **`classifyBatch`** keeps one `resumesAt` for the run: a 429 with a wait holds every worker, never under 400 ms, and the refused row is retried after it. Over a minute the run stops with `rateLimited: true` and keeps the answers it has. Progress carries `resumesAt` while paused. A 429 without `Retry-After` keeps the old per-row 400 ms retry.
+- **`ImportCsvModal`** counts the pause down on the progress line and, after a stopped run, adds "Stopped early: the rate limit asked for a wait of over a minute, so the rest stay blank." to its note.
+- **Tests:** unit +14 (`batch-classifier.test.ts`, 21 -> 35; 725 -> 739); E2E +2 in `csv-classify.spec.ts` (144 -> 146 tests, 432 -> 438 runs).
+- **Docs:** ADR `0052`; `CLAUDE.md` (the CSV section, the unit-test note, a Do NOT line, counts, and a wrong "backs off twice"); the ledger; this log; baseline metrics.
+
+**Found**
+- **The old line in `CLAUDE.md` was wrong:** a `rate-limited` row was retried once, not twice.
+
+**Still open**
+- **Guests:** the firewall's 429 had no `Retry-After` when ADR `0046` recorded it, so a guest import still loses rows past 30 a minute.
+- **The countdown is visual only;** the progress line is not a live region.
+
+**Gate:**
+- Lint clean. Unit 739/739 in 29 files; the batch file 35/35 three runs in a row.
+- **Mutations** (`batchClassifier.ts`, `jevClassifier.ts`): `Retry-After` ignored 5 failed; no pause 5; a per-row pause 2; no ceiling 1; ceiling at `>=` 1; no 400 ms floor 1; resume time not reported 1; seconds read as milliseconds 6; a past date accepted 2; workers keep taking rows after the stop 0 (equivalent, see the ledger).
+- **E2E:** the two new tests 6/6; with `Retry-After` ignored both fail on chromium. Full run: 438/438 in 6.5 m.
+- **Bundle** (local builds with `.env`, gzip level 9): `TransactionsView` 33,033 -> 33,955 B (+922 B, +370 B gzip) and `TransactionForm` 25,486 -> 25,742 B (+256 B, +122 B gzip), the two lazy chunks that hold the classifier and the import preview. The entry `index-*.js` stays 189,481 B and is identical to `main`'s once its 55 hashed chunk names are normalised (gzip +2 B from those names).
+
 ## Phase 75 - The functions run beside the database: T421-T426 (2026-10-04, commit `f70a069`, docs `b562bfa`, merge `65d49f4`; kept)
 
 ADR `0051`. ADR `0050` showed the per-account count taking 614.5 of a signed-in request's 750.2 ms, because the functions ran in `iad1` (Washington, D.C.) and the database is in Seoul.

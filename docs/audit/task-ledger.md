@@ -1081,6 +1081,25 @@ Approved explicitly by the user, planned and approved before any code was writte
 - **One negative control was redone** because the first attempt produced malformed TypeScript that the dev server still served — the tests failed, but possibly for the wrong reason.
 - **No flakes.** Phase 44's `wallets.spec.ts` webkit flake has now not reproduced across three consecutive phases; still watched rather than closed.
 
+## Phase 76 - The CSV importer waits out Retry-After: T427-T432 (2026-10-04)
+
+ADR `0052`, amending ADR `0019`'s rate-limit handling. Branch `phase-76-csv-import-backoff`, cut from `main` at `f32a746`; draft PR. No migration, no proxy change.
+
+| # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
+|---|---|---|---|---|---|---|---|---|---|---|
+| T427 | ADR `0052`: one shared pause, the 400 ms floor, the one-minute ceiling, what stays as it was | `docs/audit/decisions/` | Low | Low | 0.3h | done | - | - | - | - |
+| T428 | `classifyOnce` reads `Retry-After` into `retryAfterMs`; `classifyBatch` holds every worker until `resumesAt`, stops past a minute (`rateLimited`) | `utils/jevClassifier.ts`, `utils/batchClassifier.ts` | High | Med | 0.6h | done | T427 | - | - | - |
+| T429 | The import preview counts the wait down ("Rate limit reached, continuing in N s"); a stopped run says so and keeps its answers | `components/transaction/ImportCsvModal.tsx` | Med | Low | 0.3h | done | T428 | - | - | - |
+| T430 | Unit +14 in `batch-classifier.test.ts` (fake timers); ten mutations; E2E +2 in `csv-classify.spec.ts` with a negative control | `unit/`, `tests/` | Med | Low | 0.6h | done | T428-T429 | - | 35/35 three runs in a row; 9 of 10 mutations caught; E2E 6/6, both fail with `Retry-After` ignored | unit 725 -> 739; E2E 144 -> 146 tests, 432 -> 438 runs |
+| T431 | Gate: lint, unit, Playwright in full, bundle | - | Low | Low | 0.3h | done | T430 | - | lint clean; unit 739/739; Playwright 438/438 | - |
+| T432 | `CLAUDE.md`, this ledger, the refactor log, baseline metrics | `docs/`, `CLAUDE.md` | Low | Low | 0.2h | done | T431 | - | - | - |
+
+**Notes on execution:**
+- **Why shared:** the per-account limit counts every request in the run, so when one worker is refused, the other three would be refused too. A per-row wait fails 2 tests as a mutation.
+- **The surviving mutation** (workers keep taking rows after the stop) changes no request and no result: `runOne` checks `rateLimited` itself before any request. Recorded in ADR `0052`, not chased with a test.
+- **A correction on the way:** `CLAUDE.md` said a `rate-limited` row "backs off twice"; it is retried once, after one wait.
+- **No `src/` or `tests/` file was edited during a Playwright run;** the negative control's `src/` edit was made before its run and restored after (`cmp`).
+
 ## Phase 75 - The functions run beside the database: T421-T426 (2026-10-04)
 
 ADR `0051`, acting on ADR `0050`'s finding. Branch `phase-75-function-region-opt`, cut from `main` at `235eeec`; commit `f70a069` (docs `b562bfa`, hash backfill `e922394`), merged into `main` as `65d49f4` (PR #25); Vercel `dpl_BnxC9uqZHQBTPhzxskVM9a8bpZQq` READY in `icn1`. Kept: On production, `quota` fell from about 640 to about 36 ms (−94%) and an uncached `auth` from 793.5 to 356.0 ms; `ai` rose from about 140 to about 196 ms, consistent with TypeSafe running nearer the US. A signed-in classification with a cached token, most requests, now takes about 238 ms in the function instead of about 810. One configuration key, no code change, no migration.
