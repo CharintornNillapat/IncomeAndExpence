@@ -547,3 +547,167 @@ describe('Modal isolates the page in the commit that shows the dialog', () => {
     }
   });
 });
+
+// Phase 83 (ADR 0059): a dialog opened over another, the way the Categories
+// spec does it. "Delete category" (a ConfirmDialog inside <main>) is open; the
+// header's Quick Add button, inert behind it, is clicked by dispatchEvent;
+// Quick Add's lazy chunk then mounts it beside <main>. On WebKit CI its amount,
+// filled right after the dialog was visible, once never reached the form.
+//
+// Like the app in development, this renders under StrictMode, which runs each
+// layout effect, its cleanup and the effect again on mount, and outside `act`.
+// It fills the field as Playwright does: `select()` and `focus()` in the page,
+// then, one round trip later, text typed into whatever has focus, with no
+// check that focus is still there. It does that from the first commit that
+// shows the dialog and again once it settles.
+describe('Modal opened over another dialog', () => {
+  const realFocus = HTMLElement.prototype.focus;
+  beforeEach(() => {
+    HTMLElement.prototype.focus = function focus(this: HTMLElement, options?: FocusOptions) {
+      if (this.closest('[inert]')) return;
+      realFocus.call(this, options);
+    };
+  });
+  afterEach(() => {
+    HTMLElement.prototype.focus = realFocus;
+  });
+
+  type Fill = { inert: boolean; focused: boolean; value: string; reported: string };
+
+  it('takes a typed amount at the first commit that shows it and after it settles, under StrictMode', async () => {
+    const g = globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean };
+    const before = g.IS_REACT_ACT_ENVIRONMENT;
+    g.IS_REACT_ACT_ENVIRONMENT = false;
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const root = createRoot(container);
+
+    let reported = '';
+    function QuickAdd({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
+      const [amount, setAmount] = useState('');
+      return (
+        <Modal isOpen={isOpen} onClose={onClose} title="Quick Record Transaction">
+          <input
+            aria-label="Amount"
+            id="qa-amount"
+            value={amount}
+            onChange={(e) => {
+              setAmount(e.target.value);
+              reported = e.target.value;
+            }}
+          />
+          <button type="submit" disabled={!amount}>
+            Record
+          </button>
+        </Modal>
+      );
+    }
+    // The chunk resolves when the test says so, after the click has rendered.
+    let releaseChunk: () => void = () => {};
+    const chunk = new Promise<{ default: typeof QuickAdd }>((resolve) => {
+      releaseChunk = () => resolve({ default: QuickAdd });
+    });
+    const LazyQuickAdd = React.lazy(() => chunk);
+    let setConfirm: (open: boolean) => void = () => {};
+    function Shell() {
+      const [confirm, set] = useState(false);
+      setConfirm = set;
+      const [hasOpened, setHasOpened] = useState(false);
+      const [quickAdd, setQuickAdd] = useState(false);
+      return (
+        <div id="shell">
+          <header>
+            <button
+              type="button"
+              id="qa-opener"
+              onClick={() => {
+                setHasOpened(true);
+                setQuickAdd(true);
+              }}
+            >
+              Quick add
+            </button>
+          </header>
+          <main>
+            <button type="button" id="delete-opener" onClick={() => set(true)}>
+              Delete
+            </button>
+            <Modal isOpen={confirm} onClose={() => set(false)} title="Delete category">
+              <button type="button">Delete category</button>
+            </Modal>
+          </main>
+          {hasOpened && (
+            <React.Suspense fallback={null}>
+              <LazyQuickAdd isOpen={quickAdd} onClose={() => setQuickAdd(false)} />
+            </React.Suspense>
+          )}
+        </div>
+      );
+    }
+
+    // Playwright's fill, step for step: focus in the page, then the typing a
+    // task later, which is when React runs the mount's deferred work.
+    const fill = async (text: string): Promise<Fill> => {
+      const input = container.querySelector<HTMLInputElement>('#qa-amount')!;
+      input.select();
+      input.focus();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      const target = document.activeElement;
+      if (target instanceof HTMLInputElement) {
+        Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(target, text);
+        target.dispatchEvent(new Event('input', { bubbles: true }));
+      }
+      return {
+        inert: input.closest('[inert]') !== null,
+        focused: document.activeElement === input,
+        value: input.value,
+        reported,
+      };
+    };
+
+    try {
+      root.render(
+        <React.StrictMode>
+          <Shell />
+        </React.StrictMode>,
+      );
+      await vi.waitFor(() => expect(container.querySelector('#delete-opener')).not.toBeNull());
+      container.querySelector<HTMLElement>('#delete-opener')!.focus();
+      setConfirm(true);
+      await vi.waitFor(() => expect(container.querySelector('[role="dialog"]')).not.toBeNull());
+      expect(container.querySelector('header')!.hasAttribute('inert')).toBe(true);
+
+      let atFirstCommit: Fill | null = null;
+      let filling = false;
+      const observer = new MutationObserver(() => {
+        if (filling || !container.querySelector('#qa-amount')) return;
+        filling = true;
+        void fill('50').then((result) => {
+          atFirstCommit = result;
+        });
+      });
+      observer.observe(container, { childList: true, subtree: true });
+
+      container.querySelector('#qa-opener')!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      releaseChunk();
+      await vi.waitFor(() => expect(atFirstCommit).not.toBeNull());
+      observer.disconnect();
+      expect(atFirstCommit).toEqual({ inert: false, focused: true, value: '50', reported: '50' });
+
+      // Settled: still the top dialog, its field still takes typing, and the
+      // confirmation under it is inert.
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      const settled = await fill('75');
+      expect(settled).toEqual({ inert: false, focused: true, value: '75', reported: '75' });
+      const dialogs = container.querySelectorAll('[role="dialog"]');
+      expect(dialogs).toHaveLength(2);
+      expect(dialogs[0].closest('[inert]')).not.toBeNull();
+      expect(container.querySelector<HTMLButtonElement>('button[type="submit"]')!.disabled).toBe(false);
+    } finally {
+      root.unmount();
+      container.remove();
+      g.IS_REACT_ACT_ENVIRONMENT = before;
+    }
+  });
+});

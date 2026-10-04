@@ -63,8 +63,15 @@ export default defineConfig({
     /* Base URL to use in actions like `await page.goto('/')`. */
     baseURL: 'http://localhost:3000',
 
-    /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
-    trace: 'on-first-retry',
+    /*
+     * Phase 83 (ADR 0059): CI records a trace of every test's first attempt
+     * and keeps it only when that attempt fails, so a flaky test that passes
+     * on retry still leaves the failure's trace in the uploaded report. Before,
+     * CI traced only the retry, which is the attempt that passed. Locally there
+     * are no retries, so it stays off unless a run passes `--trace`; tracing
+     * every local test cost a full run about 3 minutes (Phase 82).
+     */
+    trace: process.env.CI ? 'retain-on-first-failure' : 'on-first-retry',
 
     actionTimeout: 15 * 1000,
     navigationTimeout: 30 * 1000,
