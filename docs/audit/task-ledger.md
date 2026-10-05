@@ -1081,6 +1081,25 @@ Approved explicitly by the user, planned and approved before any code was writte
 - **One negative control was redone** because the first attempt produced malformed TypeScript that the dev server still served — the tests failed, but possibly for the wrong reason.
 - **No flakes.** Phase 44's `wallets.spec.ts` webkit flake has now not reproduced across three consecutive phases; still watched rather than closed.
 
+## Phase 91 - Workflows pin every action to a commit and grant each job only `contents: read`; the Supabase advisors are triaged: T539-T545 (2026-10-05)
+
+ADR `0067`, amending ADRs `0044` and `0066`. Branch `phase-91-workflow-hardening-and-advisors`, cut from `main` at `91380b1`; draft PR. No `src/` change and no migration.
+
+| # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
+|---|---|---|---|---|---|---|---|---|---|---|
+| T539 | Read the live drift role and its first three runs; check the role script | - | Med | Low | 0.2h | done | - | - | role as scripted but one login setting; runs: wrong password, no `USAGE` on `supabase_migrations`, no drift; the script already grants it (line 60, since `edb8109`): no change | - |
+| T540 | Resolve each action's tag to its commit; pin both workflows | `.github/workflows/playwright.yml`, `.github/workflows/schema-drift.yml` | High | Low | 0.3h | done | - | - | 4 actions, 13 `uses:` lines | - |
+| T541 | `permissions: {}` at the top, `contents: read` per job; `persist-credentials: false` on every checkout | (same) | High | Low | 0.2h | done | T540 | - | - | - |
+| T542 | Workflow rules as a unit test; negative controls | `unit/workflow-hardening.test.ts` | Med | Low | 0.4h | done | T541 | - | 12/12; 8 fail on the old workflows; 6 controls | unit +12 |
+| T543 | Advisors (read-only) and their triage: `transfer_funds`' user check read; shared rows counted | - | Med | Low | 0.5h | done | - | - | security 3 lints / 11 findings, performance 3 / 10; none to fix in the database now | - |
+| T544 | Gate: lint, unit, Playwright, drift | - | High | Low | 0.2h | done | T542 | - | lint clean; unit 1009/1009; Playwright 443 passed, 2 failed, 2 skipped of 447 in 8.0 m (both failures WebKit clicks in `jev-classify.spec.ts` waiting 15 s for a stable element, ADR `0058`'s local painting stall); that spec in WebKit three times over: 27/27; drift all 12 kinds match live in count and row hash, 0 rows (no migration; the printed query is unchanged) | - |
+| T545 | ADR `0067`, `CLAUDE.md`, this ledger, the refactor log, baseline metrics | `docs/`, `CLAUDE.md` | Low | Low | 0.4h | done | T544 | - | - | - |
+
+**Notes on execution:**
+- **The role script already had the grant the owner added by hand;** the copy that ran on live lacked it and also the `idle_in_transaction_session_timeout` setting. The repo file is unchanged; the owner can add the setting with one `alter role`.
+- **Each pin is the commit its major tag pointed to,** so CI runs the same code; newer majors of `checkout` and `setup-node` (v7) are left for their own change.
+- **`transfer_funds`' `p_user_id` was read before the triage accepted it:** it refuses another signed-in user's id and wallets not owned by it.
+
 ## Phase 90 - A weekly job compares the live schema with the migrations, as a read-only role; the cold token check is closed: T531-T538 (2026-10-05)
 
 ADR `0066`, amending ADRs `0063`, `0064` and `0065`. Branch `phase-90-scheduled-schema-drift`, cut from `main` at `56b512f`; commit `edb8109`, docs `7984827`, hash backfill `9829814`; merged into `main` as `d988aa8` (PR #40); Vercel `dpl_EVF8YtC64W86cxydr2k6uY5zk5L3` READY in `icn1`, entry JS and CSS byte-identical to the local build of `main`. `main` CI on the merge (run `37309062008`) passed every job with no flaky test in 269 s end to end, 21 s of it the merge job (149 tests per browser: 445 passed, 2 skipped). No `src/` change and no migration. **The role and the secret are the owner's, after the merge:** until then the workflow exits 2 ("not checked"); neither existed when this was recorded.

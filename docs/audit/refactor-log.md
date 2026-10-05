@@ -4,6 +4,27 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
+## Phase 91 - Workflows pin every action to a commit and grant each job only `contents: read`; the Supabase advisors are triaged: T539-T545 (2026-10-05, draft PR)
+
+ADR `0067`. The workflows ran whatever their actions' tags pointed to, `playwright.yml` took the repository's default token permissions, and since Phase 90 one workflow holds a database credential. The advisors had not been reviewed.
+
+**Changed**
+- **Both workflows:** every action pinned to a commit with its release as a comment (`checkout` v5.1.0, `setup-node` v5.0.0, `upload-artifact` v7.0.1, `download-artifact` v8.0.1); `permissions: {}` at the top and `contents: read` on every job; `persist-credentials: false` on every checkout.
+- **`unit/workflow-hardening.test.ts`** (12): every workflow pinned, granting nothing by default, `contents: read` per job, no persisted token, no `pull_request_target`, secrets only in the drift check.
+- **Advisors triaged** (ADR `0067`): accepted the nine `SECURITY DEFINER` RPCs, the policy-less quota table, five unindexed foreign keys and three unused indexes, each with its reason; scheduled dropping two redundant SELECT policies and `transfer_funds`' `p_user_id`; leaked password protection is the owner's switch.
+- **Docs:** ADR `0067`, `CLAUDE.md` (CI pins, an advisors section, the drift check live), the ledger, this log, baseline metrics.
+
+**Gate:**
+- Lint clean. Unit 1009/1009 in 38 files. Playwright 443 passed, 2 failed, 2 skipped of 447 in 8.0 m (both failures WebKit clicks in `jev-classify.spec.ts` waiting 15 s for a stable element, ADR `0058`'s local painting stall); that spec in WebKit three times over: 27/27.
+- **Negative controls:** the test fails 8 of 12 on the old workflows; one action back on a tag, a pin without its comment, a job asking for `actions: write`, a persisted checkout token, `pull_request_target`, and a secret in the Playwright workflow each fail exactly their own test.
+- **Drift:** all 12 kinds match live in count and row hash, 0 rows (no migration; the printed query is unchanged).
+
+**Still open**
+- **Owner:** leaked password protection (Auth settings, if the plan offers it); optionally `alter role schema_drift_reader set idle_in_transaction_session_timeout = '60s';`.
+- **Scheduled by the triage:** drop the "view system and their own" SELECT policies on `categories` and `keyword_rules`; remove `transfer_funds`' `p_user_id`.
+- **Measure a real signed-in request on production** (needs a session).
+- **Four soft-deleted wallets say USD** (owner: relabel or leave).
+
 ## Phase 90 - A weekly job compares the live schema with the migrations, as a read-only role; the cold token check is closed: T531-T538 (2026-10-05, commit `edb8109`, docs `7984827`, merge `d988aa8`)
 
 ADR `0066`. The drift check (ADR `0063`) ran only at releases, by hand, and the live schema has been changed outside the migrations before.
