@@ -4,6 +4,27 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
+## Phase 90 - A weekly job compares the live schema with the migrations, as a read-only role; the cold token check is closed: T531-T538 (2026-10-05, commit `edb8109`, docs `7984827`, draft PR #40)
+
+ADR `0066`. The drift check (ADR `0063`) ran only at releases, by hand, and the live schema has been changed outside the migrations before.
+
+**Changed**
+- **`supabase/ops/20261005_phase90_schema_drift_reader.sql`:** `schema_drift_reader`, a login that reads the catalogs and the migration history and nothing else. It has no password in the repo, is read-only by default, has a 30 s timeout and 2 connections.
+- **`npm run schema:drift`:** with `SUPABASE_DRIFT_DB_URL` it connects (`pg`), works in one read-only transaction, refuses a role that can reach app data, runs `buildDriftQuery()` and exits 0 clean, 1 drift, 2 not checked. `--live` requires the URL. TLS is always verified (`SUPABASE_DRIFT_DB_CA` optional). The job summary gets a per-kind table and every differing row. Without the URL it prints the same query as before.
+- **`.github/workflows/schema-drift.yml`:** Mondays 02:17 UTC and by hand.
+- **The cold token check is closed** (ADRs `0064`, `0065`): reopened only by a signed-in measurement.
+- **Tests:** `unit/drift-runner.test.ts` (27) rehearses the whole runner on PGlite as the role.
+
+**Gate:**
+- Lint clean. Unit 997/997 in 37 files. Playwright 445 passed + 2 skipped of 447 in 8.3 m, first pass.
+- **Negative controls:** no privilege check (2 fail), the role without `USAGE` (5), the role granted every app table (11), `--live` falling through (1), the URL's `ssl*` parameters kept (1), a failed query reported clean (3), a transaction not read-only (6).
+
+**Still open**
+- **Owner, after the merge:** run the role script, set its password, add `SUPABASE_DRIFT_DB_URL`, run the workflow once (ADR `0066`, "Order of release").
+- **Measure a real signed-in request on production** (needs a session).
+- **Four soft-deleted wallets say USD** (owner: relabel or leave).
+- **WebKit on Windows stops painting now and then** (ADR `0058`), locally only.
+
 ## Phase 89 - The proxies fetch their keys as they load; a test keeps their shared code identical; a hand-applied migration's history row is printed: T523-T530 (2026-10-05, commit `8a90f90`, docs `fb87276`, merge `2a9dfd9`)
 
 ADR `0065`. After Phase 88's release a new instance's first signed-in request still waited for the whole key fetch (456 ms on production), the two proxies' copies were kept in step by a comment only, and every migration run in the SQL editor needed its history row written by hand.

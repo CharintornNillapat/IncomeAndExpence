@@ -1,0 +1,52 @@
+name: Schema drift
+
+# Phase 90 (ADR 0066): is the live database still what supabase/migrations/
+# builds? Weekly, and by hand from the Actions tab. The job replays every
+# migration in PGlite, connects to the live project as schema_drift_reader
+# (supabase/ops/20261005_phase90_schema_drift_reader.sql: catalogs and the
+# migration history only, read-only), and fails when anything differs:
+#   exit 1  drift, an unrecorded migration included;
+#   exit 2  not checked (no secret, no connection, or a credential that can
+#           read app data). Never reported as "no drift".
+# The result is the job's summary. The repository is public, so the summary
+# and the log are too: they name schema objects, never a row of data, and the
+# connection string is a secret GitHub masks.
+on:
+  schedule:
+    # Mondays 02:17 UTC, 09:17 in Bangkok. Off the hour, when GitHub's
+    # scheduler is least busy.
+    - cron: '17 2 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: schema-drift
+  cancel-in-progress: false
+
+jobs:
+  drift:
+    name: Compare live with the migrations
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      - name: Install project dependencies
+        run: npm ci
+
+      # --live: without the secret this exits 2, never 0.
+      - name: Replay the migrations and compare live
+        env:
+          SUPABASE_DRIFT_DB_URL: ${{ secrets.SUPABASE_DRIFT_DB_URL }}
+          SUPABASE_DRIFT_DB_CA: ${{ secrets.SUPABASE_DRIFT_DB_CA }}
+        run: npm run schema:drift -- --live
