@@ -1083,18 +1083,18 @@ Approved explicitly by the user, planned and approved before any code was writte
 
 ## Phase 89 - The proxies fetch their keys as they load; a test keeps their shared code identical; a hand-applied migration's history row is printed: T523-T530 (2026-10-05)
 
-ADR `0065`, amending ADRs `0032`, `0063` and `0064`. Branch `phase-89-jwks-prefetch-and-parity`, cut from `main` at `e1d3291`; draft PR. No `src/` change and no migration.
+ADR `0065`, amending ADRs `0032`, `0063` and `0064`. Branch `phase-89-jwks-prefetch-and-parity`, cut from `main` at `e1d3291`; commit `8a90f90`, docs `fb87276`; draft PR #39. No `src/` change and no migration.
 
 | # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
 |---|---|---|---|---|---|---|---|---|---|---|
 | T523 | Read Phase 88's production timings and the two proxies' shared code | - | Med | Low | 0.2h | done | - | - | key fetch 456 ms on a new instance, 31 to 68 ms warm; `json` and `isPlainObject` already differed | - |
-| T524 | `prefetchSigningKeys()` at load, a shared fetch under way (`keysInFlight`), not waited for past 3 s; `issuerFor` | `api/classify.ts`, `api/insights.ts` | Med | Med | 0.6h | done | T523 | - | lint clean; the 189 proxy tests unchanged and passing | key fetch starts at instance load |
-| T525 | Prefetch tests (a fresh module per test); the contract suite's load-time `fetch` stub | `unit/proxy-prefetch.test.ts`, `unit/proxy-contract.test.ts` | Med | Low | 0.5h | done | T524 | - | 18/18 | unit +18 |
-| T526 | Parity test on the compiler API (`SHARED`, `OWN`); `insights.ts`'s `isPlainObject` parameter aligned | `unit/proxy-parity.test.ts`, `api/insights.ts` | Med | Low | 0.4h | done | T524 | - | 39/39 | unit +39 |
-| T527 | `npm run migration:print-history`; the drift query test records files with it | `scripts/migration-history.mjs`, `scripts/lib/migrationHistory.mjs`, `package.json`, `unit/migration-history.test.ts`, `unit/migration-replay.test.ts` | Med | Low | 0.5h | done | - | - | 18/18; replay 14/14 | unit +18 |
+| T524 | `prefetchSigningKeys()` at load, a shared fetch under way (`keysInFlight`), not waited for past 3 s; `issuerFor` | `api/classify.ts`, `api/insights.ts` | Med | Med | 0.6h | done | T523 | `8a90f90` | lint clean; the 189 proxy tests unchanged and passing | key fetch starts at instance load |
+| T525 | Prefetch tests (a fresh module per test); the contract suite's load-time `fetch` stub | `unit/proxy-prefetch.test.ts`, `unit/proxy-contract.test.ts` | Med | Low | 0.5h | done | T524 | `8a90f90` | 18/18 | unit +18 |
+| T526 | Parity test on the compiler API (`SHARED`, `OWN`); `insights.ts`'s `isPlainObject` parameter aligned | `unit/proxy-parity.test.ts`, `api/insights.ts` | Med | Low | 0.4h | done | T524 | `8a90f90` | 39/39 | unit +39 |
+| T527 | `npm run migration:print-history`; the drift query test records files with it | `scripts/migration-history.mjs`, `scripts/lib/migrationHistory.mjs`, `package.json`, `unit/migration-history.test.ts`, `unit/migration-replay.test.ts` | Med | Low | 0.5h | done | - | `8a90f90` | 18/18; replay 14/14 | unit +18 |
 | T528 | Negative controls | - | Med | Low | 0.3h | done | T525-T527 | - | 7 controls, each failing only its own tests | - |
 | T529 | Gate: lint, unit, Playwright, drift | - | High | Low | 0.3h | done | T528 | - | lint clean; unit 970/970; Playwright 445 passed + 2 skipped of 447 in 7.6 m, first pass; drift all 12 kinds match live in count and row hash, 0 unaccounted rows (no migration in this phase) | - |
-| T530 | ADR `0065`, `CLAUDE.md`, this ledger, the refactor log, baseline metrics | `docs/`, `CLAUDE.md` | Low | Low | 0.4h | done | T529 | - | - | - |
+| T530 | ADR `0065`, `CLAUDE.md`, this ledger, the refactor log, baseline metrics | `docs/`, `CLAUDE.md` | Low | Low | 0.4h | done | T529 | `fb87276` | - | - |
 
 **Notes on execution:**
 - **The parity test found the copies already apart:** `json` had a comment only `insights.ts` carries (comments are ignored), and `isPlainObject` named its parameter `value` there and `v` in `classify.ts` (aligned). Nothing else differed outside `handle` and `validate`.

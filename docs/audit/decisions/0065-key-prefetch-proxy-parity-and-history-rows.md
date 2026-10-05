@@ -1,6 +1,6 @@
 # 0065: The proxies fetch their keys as they load; a test keeps their shared code identical; a hand-applied migration's history row is printed
 
-**Status:** Accepted. Implemented on branch `phase-89-jwks-prefetch-and-parity`, draft PR. Not merged yet.
+**Status:** Accepted. Implemented on branch `phase-89-jwks-prefetch-and-parity` (commit `8a90f90`, docs `fb87276`), draft PR #39. Not merged yet.
 - **Amends** ADR `0064`: when the key set is fetched.
 - **Amends** ADR `0032`: the two proxies' copies of the caller check are now kept identical by a test, not only by a comment.
 - **Amends** ADR `0063`: how a migration applied in the SQL editor gets its history row.

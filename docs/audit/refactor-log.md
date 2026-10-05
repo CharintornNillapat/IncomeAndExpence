@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 89 - The proxies fetch their keys as they load; a test keeps their shared code identical; a hand-applied migration's history row is printed: T523-T530 (2026-10-05, draft PR)
+## Phase 89 - The proxies fetch their keys as they load; a test keeps their shared code identical; a hand-applied migration's history row is printed: T523-T530 (2026-10-05, commit `8a90f90`, docs `fb87276`, draft PR #39)
 
 ADR `0065`. After Phase 88's release a new instance's first signed-in request still waited for the whole key fetch (456 ms on production), the two proxies' copies were kept in step by a comment only, and every migration run in the SQL editor needed its history row written by hand.
 
