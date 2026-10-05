@@ -1098,6 +1098,22 @@ The entry's growth is the ledger action itself, which lives with the other ledge
 
 **Intermittent local failures:** 6 in 1,071 full-suite runs (3 full runs). All were timeouts: a Firefox `goto`, a Firefox context close, and four WebKit clicks waiting for "stable". No assertion failed. See audit 005 finding 3 for the control runs.
 
+## Phase 87 (the migrations rebuild the live schema) - delta against Phase 86
+
+**Bundle:** unchanged (no `src/` change; PGlite is a dev dependency).
+
+| Suite | Files | Tests | Runs | Result |
+|---|---|---|---|---|
+| Vitest (`unit/`) | 33 | 840 | 840 | 840/840 (`migration-replay` 11 in about 3 s) |
+| Playwright (local, 4 workers) | 30 | 149 | 447 | 445 passed + 2 skipped of 447 in 8.2 m, first pass |
+
+| Schema | Live | Replayed from the files |
+|---|---|---|
+| Migration files / history rows | 9 recorded | 13 files (9 + baseline + 3 applied outside the tool) |
+| Tables / columns / constraints | 8 / 75 / 28 | 8 / 75 / 28 |
+| Indexes / policies / functions / triggers | 17 / 9 / 15 / 2 | 17 / 9 / 15 / 2 |
+| Per-kind catalog hash | - | 11 of 11 kinds identical |
+
 ## Phase 86 (one Playwright report for all six CI shards) - delta against Phase 85
 
 **Bundle:** unchanged (no `src/` change).

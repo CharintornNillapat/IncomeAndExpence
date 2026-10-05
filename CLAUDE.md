@@ -17,8 +17,12 @@ FinLife Tracker is a full-stack personal finance and holistic lifestyle manageme
 ├── .github/workflows/   # CI pipeline for Playwright E2E tests (playwright.yml)
 ├── api/                 # Vercel serverless functions (classify.ts: Jev proxy; own tsconfig)
 ├── public/              # PWA icons (192px, 512px, SVG) and robots.txt
-├── supabase/migrations/ # SQL migrations (transfer_funds, the ADR 0023/0024 ledger + session RPCs, idempotency indexes)
+├── supabase/migrations/ # SQL migrations, from 20260901_baseline_schema (the dashboard-built schema) on; replay from empty (ADR 0063)
 ├── supabase/tests/      # SQL probes: migration + assertions inside BEGIN ... ROLLBACK
+├── supabase/replay/     # prelude.sql: the Supabase platform's stand-in for replaying migrations in PGlite
+├── supabase/ops/        # one-off SQL that is not a migration (the Phase 87 history backfill)
+├── supabase/catalog.sql # what the schema is made of, one row per object (the drift check's both sides)
+├── scripts/             # check-node-globals.mjs, schema-drift.mjs, lib/migrationReplay.mjs (Node tooling, not shipped)
 ├── src/
 │   ├── components/      # Reusable UI components, modals, and navigation
 │   │   ├── account/     # AccountModal (Account & Security) + GuestDataNotice (ADR 0024)
@@ -55,6 +59,7 @@ From `package.json` (requires `npm install` prior to execution):
 - `npm run clean` : `rm -rf dist server.js`
 - `npm run lint` : `npm run check:node-globals && tsc --noEmit && tsc -p api/tsconfig.json` (Node globals in `src/`, then app+tests, then the Vercel functions)
 - `npm run check:node-globals` : `node scripts/check-node-globals.mjs` (ADR `0045`; exits 1 on a Node global or built-in in `src/`)
+- `npm run schema:drift` : `node scripts/schema-drift.mjs` (ADR `0063`; replays every migration in PGlite and prints a read-only query to run on the live project, which returns every row of drift, or none)
 - `npm test` : `playwright test`
 
 ## Coding Conventions
@@ -406,6 +411,16 @@ Conventions:
 - **Every optimistic write followed by a Supabase call must check the returned `error`, roll back the local state, and compensate any already-committed remote write, before returning its `MutationResult`.** `addTransaction` established this pattern first; Phase 33 (T65–T67) brought `setTransactionDeleted`, `updateWallet`/`deleteWallet`, `settleDebt`/`deleteDebt`, `updateCategory`/`deleteCategory`, `deleteDiaryEntry`, and `deleteKeywordRule` up to the same standard — discarding the Supabase result (no error check, no rollback) leaves local state permanently ahead of cloud state on any rejected write, with nothing telling the user it happened.
 
 ## Supabase: required migrations
+### The migrations rebuild the live schema (Phase 87, ADR `0063`)
+Until Phase 87 the app's seven original tables, their constraints, six indexes, all nine policies, `handle_new_user` and its trigger, the realtime publication and `uuid-ossp` came from no file: they were built in the Supabase dashboard, so a database made from `supabase/migrations/` failed at the first file.
+- **`20260901_baseline_schema.sql` creates them**, as they stood before the first migration (no `categories.description` or `wallets.idempotency_key`, which later files add), plus the untracked `transactions_user_idempotency_uidx`, kept as it is: a key on a soft-deleted row still blocks reuse, which matches ADR `0023`'s replay rule.
+  - **Every statement is guarded** (`if not exists`, or a catalog check), so on the live project it changes nothing. A plain `create or replace` of `handle_new_user` would reset the `search_path` Phase 52 set.
+  - **It holds nothing a later file drops** (the profiles write policy Phase 58s removed), so running it can never bring one back.
+- **Every file replays from empty.** `unit/migration-replay.test.ts` applies them in file order to PGlite (`@electric-sql/pglite`, pinned at `0.4.6`, PostgreSQL 17.5 like live's 17.6; 0.5 is PostgreSQL 18) on top of `supabase/replay/prelude.sql`, the stand-in for the platform (roles, search path, default privileges, `auth.users`/`auth.sessions`, `auth.uid()`/`auth.jwt()`, the publication). A new migration that needs something only live has fails there, in CI.
+- **The drift check:** `npm run schema:drift > drift-check.sql`, then run the file on the live project (SQL editor or MCP `execute_sql`; it is read-only). It compares `supabase/catalog.sql`'s rows (tables, columns, constraints, indexes, policies, function bodies by md5, grants, triggers, publication, extension) and the migration history, by file name without its date, and returns only what differs. On 2026-10-05 every kind of object matched live; the history lacked four names.
+- **`supabase/ops/20261005_phase87_record_migration_history.sql`** records those four (`baseline_schema`, `transfer_funds`, `phase64_dedupe_categories`, `phase73_ai_request_quota`) in `supabase_migrations.schema_migrations`, at their file's date with `000000`, marked in `created_by`. Idempotent. **Not yet applied:** it waits for the owner after the merge, then the drift check must return no rows.
+- **Apply schema changes only as migration files.** A change made in the dashboard or the SQL editor is drift; if one is unavoidable, add its file and record it in the history the same way.
+
 **`supabase/migrations/20260923_add_category_description.sql` must be applied before any build that writes `Category.description` is deployed.** It adds one nullable `description text` column to `public.categories`. PostgREST rejects an unknown column outright (`PGRST204`) rather than ignoring it, so deploying first makes `addCategory`/`updateCategory` fail for every authenticated user until the column exists. Local-storage mode is unaffected. Apply a schema migration *before* pushing the code that depends on it, never after.
 
 ### Atomic transfers
@@ -513,7 +528,7 @@ Two suites, with a hard boundary between them — see "Unit tests" below for why
   - `--user 1001` is the runner's user: the checkout stays writable and Firefox gets a `$HOME` it owns. Do not switch to root without setting `HOME: /root`.
 
 ## Unit tests: what the browser cannot reach
-`npm run test:unit` runs Vitest over **`unit/`**: 829 tests in 32 files, ~39 s (ADR `0021`, extended by `0022`, `0023`, `0024`, `0026`, `0027`, `0028`, `0029`, `0030`, `0031`, `0032`, `0033`, `0034`, `0035`, `0036`, `0037`, `0038`, `0039`, `0040`, `0041`, `0042`, `0043`, `0045`, `0047`, `0049`, `0050`, `0052`, `0053`, `0054`, `0055`, `0056`, `0057`, `0058` and `0059`; the reconnect tests' debounce windows and the sign-out tests' 400 ms writer waits are most of the growth from ~3 s). It exists because four phases in a row closed with a coverage hole for the same structural reason, not because E2E coverage was thin.
+`npm run test:unit` runs Vitest over **`unit/`**: 840 tests in 33 files, ~39 s (ADR `0021`, extended by `0022`, `0023`, `0024`, `0026`, `0027`, `0028`, `0029`, `0030`, `0031`, `0032`, `0033`, `0034`, `0035`, `0036`, `0037`, `0038`, `0039`, `0040`, `0041`, `0042`, `0043`, `0045`, `0047`, `0049`, `0050`, `0052`, `0053`, `0054`, `0055`, `0056`, `0057`, `0058`, `0059` and `0063`; the reconnect tests' debounce windows and the sign-out tests' 400 ms writer waits are most of the growth from ~3 s). It exists because four phases in a row closed with a coverage hole for the same structural reason, not because E2E coverage was thin.
 - **The directory is `unit/`, not `tests/unit/`, and that is load-bearing.** Two default globs collide. Vitest's default `include` is `**/*.{test,spec}.?(c|m)[jt]s?(x)`, which collects all 22 Playwright specs. Playwright's default `testMatch` is `**/*.@(spec|test).?(c|m)[jt]s?(x)` — note `@(spec|test)` — which collects `*.test.ts` as readily as `*.spec.ts`. So the boundary is pinned three times: a directory `testDir: './tests'` cannot see, an explicit `include` in `vitest.config.ts`, and an explicit `testMatch: '**/*.spec.ts'` in `playwright.config.ts`. The last is redundant today **on purpose** — it makes a future move of the unit tests under `tests/` read as the breaking change it is.
 - **`vitest.config.ts` is its own file, never a `test` key on `vite.config.ts`.** `vite build` does not read it, which makes zero production bundle impact structural rather than a matter of discipline.
 - **`environment: 'node'` is the default; the two DOM suites opt in per file** with a `// @vitest-environment jsdom` docblock. The pure-module suites never touch jsdom's `AbortSignal`, `fetch` or timer surfaces, which differ from Node's in ways that fail about the environment rather than the code.
@@ -600,6 +615,9 @@ Refer to `.env.example`:
 - Do NOT add an overdraft check to the ledger RPCs, and do NOT move their replay check after the overpayment guard.
 - Do NOT treat an RPC error without a SQLSTATE as a clean failure; the write may have committed, so re-read after rolling back.
 - Do NOT apply a migration to the live project without first running its probe inside `BEGIN … ROLLBACK`, and do NOT let a probe commit.
+- Do NOT change the live schema outside a migration file, and do NOT write a migration that cannot replay from empty on `supabase/replay/prelude.sql`; run `npm run schema:drift` on live after applying one (ADR `0063`).
+- Do NOT `create or replace` (or otherwise replace) an object in `20260901_baseline_schema.sql`, or add to it an object a later migration drops; it must change nothing on the live project (ADR `0063`).
+- Do NOT move `@electric-sql/pglite` off 0.4.x (PostgreSQL 17) without re-checking `supabase/catalog.sql`'s output against live; PostgreSQL 18 prints and lists objects differently (ADR `0063`).
 - Do NOT call `supabase.auth.signOut()` without an explicit scope; its default is `'global'`.
 - Do NOT reset to guest state on any auth event but `SIGNED_OUT`, and do NOT drop `authEpochRef`'s check after an `await` in `loadSupabaseData`.
 - Do NOT reintroduce a browser-built session list or a per-device revoke that writes to the `auth` schema.
