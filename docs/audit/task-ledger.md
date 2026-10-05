@@ -1083,7 +1083,7 @@ Approved explicitly by the user, planned and approved before any code was writte
 
 ## Phase 91 - Workflows pin every action to a commit and grant each job only `contents: read`; the Supabase advisors are triaged: T539-T545 (2026-10-05)
 
-ADR `0067`, amending ADRs `0044` and `0066`. Branch `phase-91-workflow-hardening-and-advisors`, cut from `main` at `91380b1`; commit `64bd024`, docs `d30a759`; draft PR #41. No `src/` change and no migration. **On CI:** the pull request's run `37316574331` passed every job, 445 passed and 2 skipped with no flaky test, every action fetched by its commit (24 downloads); the drift workflow, started by hand on this branch (`37316584371`), ran its pinned actions and found no drift as `schema_drift_reader`, in 31 s.
+ADR `0067`, amending ADRs `0044` and `0066`. Branch `phase-91-workflow-hardening-and-advisors`, cut from `main` at `91380b1`; commit `64bd024`, docs `d30a759`, hash backfill `2849200`; merged into `main` as `184cc1a` (PR #41); Vercel `dpl_DT7ECQM8v1z92jPMwdz4QPtJSwLx` READY in `icn1`, entry JS and CSS byte-identical to the local build of `main`. `main` CI on the merge (run `37318029545`) passed every job with no flaky test in 269 s end to end, 21 s of it the merge job (149 tests per browser: 445 passed, 2 skipped). No `src/` change and no migration. **On CI:** the pull request's run `37316574331` passed every job, 445 passed and 2 skipped with no flaky test, every action fetched by its commit (24 downloads); the drift workflow, started by hand on this branch (`37316584371`), ran its pinned actions and found no drift as `schema_drift_reader`, in 31 s.
 
 | # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
 |---|---|---|---|---|---|---|---|---|---|---|

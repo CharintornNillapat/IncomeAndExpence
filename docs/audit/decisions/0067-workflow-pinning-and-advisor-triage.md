@@ -1,6 +1,6 @@
 # 0067: Workflows pin every action to a commit and grant each job only `contents: read`; the Supabase advisors are triaged
 
-**Status:** Accepted. Implemented on branch `phase-91-workflow-hardening-and-advisors` (commit `64bd024`, docs `d30a759`), draft PR #41. Not merged yet.
+**Status:** Accepted. Released: commit `64bd024`, docs `d30a759`, hash backfill `2849200`, merged into `main` as `184cc1a` (PR #41); Vercel `dpl_DT7ECQM8v1z92jPMwdz4QPtJSwLx` READY in `icn1`.
 - **Amends** ADR `0044`, the Playwright workflow's container and actions.
 - **Amends** ADR `0066`: the drift workflow is held to the same rules, and its first runs are recorded.
 
@@ -86,6 +86,11 @@ It reads lines rather than parsing YAML, since the repository has no YAML parser
 - **Unit 1009 in 38 files** (997 before). Lint clean. **Playwright:** in the refactor log.
 - **On CI:** the pull request's run `37316574331` passed every job, 445 passed and 2 skipped with no flaky test, every action fetched by its commit (24 downloads); the drift workflow, started by hand on this branch (`37316584371`), ran its pinned actions and found no drift as `schema_drift_reader`, in 31 s.
 - **Drift:** `npm run schema:drift` is unchanged (no migration). Live was compared read-only: see the refactor log.
+
+## Release (2026-10-05)
+
+- **Merge:** PR #41 merged into `main` as `184cc1a`. Vercel `dpl_DT7ECQM8v1z92jPMwdz4QPtJSwLx` is READY in production (`icn1`; a guest `POST {}` to `/api/classify` answered 400 from `icn1`), and its `index-DNX-vcmX.js` (189,976 B) and `index-B4oPRoyv.css` (50,539 B) are byte-identical to the local build of `main` (no `src/` change, the same assets as Phase 90).
+- **CI:** `main` CI on the merge (run `37318029545`) passed every job with no flaky test in 269 s end to end, 21 s of it the merge job (unit 1009 in 38 files; 149 tests per browser: 445 passed, 2 skipped).
 
 ## Consequences
 
