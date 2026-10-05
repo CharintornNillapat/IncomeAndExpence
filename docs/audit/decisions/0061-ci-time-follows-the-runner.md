@@ -1,6 +1,6 @@
 # 0061: CI time follows the runner; each browser runs as two shards
 
-**Status:** Accepted. Implemented on branch `phase-85-ci-timing-profiling`, draft PR #35. Not merged yet.
+**Status:** Accepted. Implemented on branch `phase-85-ci-timing-profiling` (runner step `87c4a42`, shards `f0dbd3d` and `7dcb1ca`, docs `0ecf79f`), draft PR #35. Not merged yet.
 - **Amends** Phase 55's CI layout (one E2E job per browser): two jobs per browser now, still 2 workers each.
 
 **Date:** 2026-10-05
@@ -85,10 +85,12 @@ Three runs each, the runner recorded:
 - **Lint** clean; **unit** 829/829 in 32 files.
 - **Full suite locally** (4 workers, no shards): 445 passed and 2 skipped (by design) of 447, in 7.7 m, first pass.
 - **CI:** the three sharded attempts of run `37260900256` passed all 18 jobs with no flaky test; each browser's two shards covered 149 tests (75 + 74; Firefox and WebKit skip the Chromium-only load test).
+- On the kept configuration, CI run `37262774619` (`7dcb1ca`) passed in 247 s end to end and run `37263171161` (`0ecf79f`) in 286 s, of which 37 s was one WebKit shard waiting for a runner (the `checks` job 51 s, the slowest job 196 s); both green with no flaky test.
 
 ## Consequences
 
 - **Six E2E jobs per run.** A failure appears in its shard's artifact, `playwright-report-<browser>-<shard>`.
+- **Six jobs need six runners at once.** When one has to wait, the run waits: 37 s on run `37263171161`.
 - **About 4 more runner-minutes per run** (16.3 to 16.6 against 11.5 to 13.7). The repository is public, so they cost nothing; if it ever turns private, weigh them against the plan's minutes.
 - **A run's time still depends on the machines it draws;** compare a job's time with its "Runner:" line before blaming a change.
 - **Still open:** WebKit on Windows stops painting now and then (ADR `0058`), locally only.

@@ -1083,7 +1083,7 @@ Approved explicitly by the user, planned and approved before any code was writte
 
 ## Phase 85 - CI time follows the runner; each browser runs as two shards: T492-T498 (2026-10-05)
 
-ADR `0061`, amending Phase 55's one E2E job per browser. Branch `phase-85-ci-timing-profiling`, cut from `main` at `f00a804`; commits `87c4a42` (the runner line), `00e043c` and its revert `1ac3e0d` (3 workers, measured), `f0dbd3d` (two shards, measured), `7dcb1ca` (kept); draft PR #35. No app code, no migration.
+ADR `0061`, amending Phase 55's one E2E job per browser. Branch `phase-85-ci-timing-profiling`, cut from `main` at `f00a804`; commits `87c4a42` (the runner line), `00e043c` and its revert `1ac3e0d` (3 workers, measured), `f0dbd3d` (two shards, measured), `7dcb1ca` (kept), docs `0ecf79f`; draft PR #35. On the kept configuration, CI run `37262774619` (`7dcb1ca`) passed in 247 s end to end and run `37263171161` (`0ecf79f`) in 286 s, of which 37 s was one WebKit shard waiting for a runner (the `checks` job 51 s, the slowest job 196 s); both green with no flaky test. No app code, no migration.
 
 | # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
 |---|---|---|---|---|---|---|---|---|---|---|
@@ -1093,7 +1093,7 @@ ADR `0061`, amending Phase 55's one E2E job per browser. Branch `phase-85-ci-tim
 | T495 | Measure 3 CI workers, three runs, then revert | `playwright.config.ts` | Med | Low | 0.4h | done | T494 | `00e043c`, `1ac3e0d` | end to end 322 to 344 s; jobs 7 to 13% shorter, tests a third slower | rejected |
 | T496 | Measure 2 workers (CPU-labelled baseline) and two shards per browser, three runs each; keep the shards | `.github/workflows/playwright.yml`, `playwright.config.ts` | High | Low | 0.6h | done | T495 | `f0dbd3d`, `7dcb1ca` | baseline 320 to 362 s; shards 233 to 242 s, 18/18 jobs green | E2E runner time 11.5-13.7 -> 16.3-16.6 min |
 | T497 | Gate: lint, unit, full local suite | - | High | Low | 0.2h | done | T496 | - | lint clean; unit 829/829; full 445 passed + 2 skipped in 7.7 m, first pass | - |
-| T498 | ADR `0061`, `CLAUDE.md`, this ledger, the refactor log, baseline metrics | `docs/`, `CLAUDE.md` | Low | Low | 0.4h | done | T497 | - | - | - |
+| T498 | ADR `0061`, `CLAUDE.md`, this ledger, the refactor log, baseline metrics | `docs/`, `CLAUDE.md` | Low | Low | 0.4h | done | T497 | `0ecf79f` | - | - |
 
 **Notes on execution:**
 - **Re-running a workflow** (`gh run rerun`) gave each setup three samples on new machines without new commits; each attempt's artifacts replace the previous one's, so every attempt was summarised before the next.

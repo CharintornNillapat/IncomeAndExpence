@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 85 - CI time follows the runner; each browser runs as two shards: T492-T498 (2026-10-05, commits `87c4a42`, `7dcb1ca`, draft PR #35)
+## Phase 85 - CI time follows the runner; each browser runs as two shards: T492-T498 (2026-10-05, commits `87c4a42`, `7dcb1ca`, docs `0ecf79f`, draft PR #35)
 
 ADR `0061`. Why CI's WebKit job took 3.2 m on some runs and 4.2 to 4.3 m on others.
 
@@ -29,6 +29,7 @@ ADR `0061`. Why CI's WebKit job took 3.2 m on some runs and 4.2 to 4.3 m on othe
 | 2 workers, two shards per browser | 233, 237, 242 s | 184 to 195 s | 16.3 to 16.6 min |
 
 - Every run green with no flaky test; the shards covered 149 tests per browser (75 + 74).
+- On the kept configuration, CI run `37262774619` (`7dcb1ca`) passed in 247 s end to end and run `37263171161` (`0ecf79f`) in 286 s, of which 37 s was one WebKit shard waiting for a runner (the `checks` job 51 s, the slowest job 196 s); both green with no flaky test.
 
 **Still open**
 - **WebKit on Windows stops painting now and then** (ADR `0058`), locally only.
