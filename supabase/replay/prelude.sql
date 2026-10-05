@@ -16,7 +16,9 @@
 --     triggers read, at the live types (list_my_sessions is a SQL function,
 --     so its body is checked against them when it is created);
 --   - auth.uid() and auth.jwt(), reading the request's claims as Supabase's
---     do;
+--     do, with USAGE on the auth schema for the three API roles, so a
+--     policy that calls auth.uid() works as authenticated (Phase 93, read
+--     from the live project on 2026-10-06);
 --   - the empty supabase_realtime publication.
 -- Never run this against a Supabase project.
 -- =============================================================================
@@ -28,6 +30,7 @@ create role supabase_auth_admin nologin;
 
 create schema extensions;
 create schema auth;
+grant usage on schema auth to anon, authenticated, service_role;
 
 set search_path to "$user", public, extensions;
 

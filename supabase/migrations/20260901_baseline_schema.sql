@@ -12,16 +12,18 @@
 --     (20260928), which later files add;
 --   - their check and foreign-key constraints, six indexes and row-level
 --     security;
---   - the nine row-level security policies (no migration created any);
+--   - seven of the nine row-level security policies (no migration created
+--     any);
 --   - transactions_user_idempotency_uidx, the non-partial unique index ADR
 --     0023 found and left in place (see below);
 --   - handle_new_user() and its on_auth_user_created trigger on auth.users.
 --     Phase 52 only altered the function; its body here is the live one;
 --   - the five tables in the supabase_realtime publication.
 --
--- What it leaves out: anything a later migration drops (the profiles
--- "update their own profile" policy, removed in Phase 58s), so that running
--- this file can never bring it back.
+-- What it leaves out: anything a later migration drops, so that running this
+-- file can never bring it back: the profiles "update their own profile"
+-- policy (removed in Phase 58s) and the two "view system and their own"
+-- SELECT policies on categories and keyword_rules (removed in Phase 93).
 --
 -- Safe on a database that already has all of it, which is the live project:
 -- every statement is `if not exists` or checks the catalog first, so nothing
@@ -168,27 +170,20 @@ declare
 begin
   for p in
     select * from (values
-      ('categories',    'Users can manage their own categories',             'all',    'user_id', true),
-      ('categories',    'Users can view system and their own categories',    'select', 'user_id', false),
-      ('debts',         'Users manage their own debts',                      'all',    'user_id', true),
-      ('diary_entries', 'Users can manage their own diary entries',          'all',    'user_id', true),
-      ('keyword_rules', 'Users can manage their own keyword rules',          'all',    'user_id', true),
-      ('keyword_rules', 'Users can view system and their own keyword rules', 'select', 'user_id', false),
-      ('profiles',      'Users can view their own profile',                  'select', 'id',      true),
-      ('transactions',  'Users can manage their own transactions',           'all',    'user_id', true),
-      ('wallets',       'Users can access their own wallets',                'all',    'user_id', true)
-    ) as t(tbl, name, cmd, owner_col, own_rows_only)
+      ('categories',    'Users can manage their own categories',             'all',    'user_id'),
+      ('debts',         'Users manage their own debts',                      'all',    'user_id'),
+      ('diary_entries', 'Users can manage their own diary entries',          'all',    'user_id'),
+      ('keyword_rules', 'Users can manage their own keyword rules',          'all',    'user_id'),
+      ('profiles',      'Users can view their own profile',                  'select', 'id'),
+      ('transactions',  'Users can manage their own transactions',           'all',    'user_id'),
+      ('wallets',       'Users can access their own wallets',                'all',    'user_id')
+    ) as t(tbl, name, cmd, owner_col)
   loop
     if not exists (
       select 1 from pg_policies
        where schemaname = 'public' and tablename = p.tbl and policyname = p.name
     ) then
-      if not p.own_rows_only then
-        -- A system row (user_id null) is readable by every signed-in user.
-        execute format(
-          'create policy %I on public.%I for select to authenticated using (%I is null or (select auth.uid()) = %I)',
-          p.name, p.tbl, p.owner_col, p.owner_col);
-      elsif p.cmd = 'select' then
+      if p.cmd = 'select' then
         execute format(
           'create policy %I on public.%I for select to authenticated using ((select auth.uid()) = %I)',
           p.name, p.tbl, p.owner_col);

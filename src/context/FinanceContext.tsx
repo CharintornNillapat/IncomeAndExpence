@@ -2149,10 +2149,10 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
         // Transfers go through a single database transaction. The RPC locks both
         // wallets, applies relative balance updates and inserts the ledger row
         // atomically, so a partial failure cannot debit one side without
-        // crediting the other.
+        // crediting the other. ADR 0069: no p_user_id, so PostgREST reaches
+        // the Phase 93 overload, which takes the user from the session alone.
         if (data.type === 'TRANSFER' && destWallet) {
           const { data: rpcData, error: rpcError } = await supabase.rpc('transfer_funds', {
-            p_user_id: currentUser.id,
             p_source_wallet_id: sourceWallet.id,
             p_dest_wallet_id: destWallet.id,
             p_amount: data.amount,

@@ -1624,6 +1624,59 @@ describe('a signed ADJUSTMENT, signed in (ADR 0024)', () => {
   });
 });
 
+describe('a signed-in transfer through transfer_funds (Phase 93, ADR 0069)', () => {
+  /*
+   * A stand-in for the function's contract only: relative updates and the
+   * committed row back. The SQL (the session check, the ownership check, the
+   * overload beside the 20260909 signature) is the Phase 93 probe's.
+   */
+  beforeEach(() => {
+    fake.state.rpcs.set('transfer_funds', (args) => {
+      const amount = Number(args.p_amount);
+      const source = serverWallet(args.p_source_wallet_id as string);
+      const dest = serverWallet(args.p_dest_wallet_id as string);
+      source.balance = round2(Number(source.balance) - amount);
+      dest.balance = round2(Number(dest.balance) + amount);
+      const tx = {
+        id: 'tx-srv-transfer-1', user_id: fake.USER_ID, wallet_id: source.id, destination_wallet_id: dest.id,
+        amount, type: 'TRANSFER', description: args.p_notes, raw_input: null, transaction_date: args.p_date,
+        idempotency_key: args.p_idempotency_key, is_deleted: false, created_by: fake.USER_ID,
+        created_at: '2026-09-26T00:00:00.000Z', updated_at: '2026-09-26T00:00:00.000Z',
+      };
+      fake.state.tables.transactions.push(tx);
+      return { data: { reused: false, transaction: tx, source_balance: source.balance, dest_balance: dest.balance }, error: null };
+    });
+  });
+
+  it('names no user: the server takes it from the session', async () => {
+    const result = await actions().addTransaction({
+      amount: 250,
+      type: 'TRANSFER',
+      walletId: WALLET,
+      destinationWalletId: CASH,
+      description: 'Move to cash',
+      transactionDate: TODAY,
+      idempotencyKey: 'key-transfer-1',
+    });
+    expect(result.success).toBe(true);
+
+    const calls = writes('rpc:transfer_funds', 'rpc');
+    expect(calls).toHaveLength(1);
+    // Exactly the Phase 93 overload's arguments; a p_user_id would reach the 20260909 one.
+    expect(calls[0].payload).toEqual({
+      p_source_wallet_id: WALLET,
+      p_dest_wallet_id: CASH,
+      p_amount: 250,
+      p_idempotency_key: 'key-transfer-1',
+      p_notes: 'Move to cash',
+      p_date: TODAY,
+      p_raw_input: null,
+    });
+    await waitFor(() => expect(wallet(CASH)?.balance).toBe(CASH_OPENING + 250));
+    expect(wallet()?.balance).toBe(WALLET_OPENING - 250);
+  });
+});
+
 describe('a signed-in wallet through create_wallet (F7, ADR 0024)', () => {
   beforeEach(() => installLedgerRpcs());
 
