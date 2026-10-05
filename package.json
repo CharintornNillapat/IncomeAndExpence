@@ -12,7 +12,8 @@
     "check:node-globals": "node scripts/check-node-globals.mjs",
     "test": "playwright test",
     "test:unit": "vitest run",
-    "schema:drift": "node scripts/schema-drift.mjs"
+    "schema:drift": "node scripts/schema-drift.mjs",
+    "migration:print-history": "node scripts/migration-history.mjs"
   },
   "dependencies": {
     "@fontsource/ibm-plex-sans-thai": "^5.3.0",

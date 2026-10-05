@@ -1098,6 +1098,21 @@ The entry's growth is the ledger action itself, which lives with the other ledge
 
 **Intermittent local failures:** 6 in 1,071 full-suite runs (3 full runs). All were timeouts: a Firefox `goto`, a Firefox context close, and four WebKit clicks waiting for "stable". No assertion failed. See audit 005 finding 3 for the control runs.
 
+## Phase 89 (key set prefetch, proxy parity test, history row helper) - delta against Phase 88
+
+**Bundle:** unchanged (no `src/` change).
+
+| Suite | Files | Tests | Runs | Result |
+|---|---|---|---|---|
+| Vitest (`unit/`) | 36 | 970 | 970 | 970/970 (prefetch 18, parity 39, history helper 18) |
+| Playwright (local, 4 workers) | 30 | 149 | 447 | 445 passed + 2 skipped of 447 in 7.6 m, first pass |
+
+| Key set on a new instance | Phase 88 (production) | Phase 89 |
+|---|---|---|
+| When the fetch starts | at the first request with a token | when the module loads |
+| What that request waits for | the whole fetch, 456.0 ms measured | what is left of it; to measure on production |
+| Cold requests at once | one fetch each | one fetch |
+
 ## Phase 88 (local token check, session check in the count, THB default) - delta against Phase 87
 
 **Bundle:** unchanged (no `src/` change).

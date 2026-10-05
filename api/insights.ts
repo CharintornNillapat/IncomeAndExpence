@@ -88,8 +88,8 @@ function upstreamRetryAfter(res: Response, now = Date.now()): string | undefined
   return seconds((at - now) / 1000);
 }
 
-function isPlainObject(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
+function isPlainObject(v: unknown): v is Record<string, unknown> {
+  return typeof v === 'object' && v !== null && !Array.isArray(v);
 }
 
 function isFiniteNumber(value: unknown): value is number {
@@ -143,6 +143,18 @@ interface SigningKey {
 
 /** The project's published signing keys, by `kid`. Per warm instance only. */
 let signingKeys: { issuer: string; keys: Map<string, SigningKey>; fetchedAt: number } | null = null;
+
+/**
+ * A key set fetch under way (ADR 0065), which every request that needs keys
+ * meanwhile waits for instead of starting its own: the one started when the
+ * instance loads, or a burst of cold requests.
+ */
+let keysInFlight: { issuer: string; startedAt: number; done: Promise<Map<string, SigningKey> | null> } | null = null;
+
+/** The auth server's issuer for a project URL, as its tokens name it. */
+function issuerFor(supabaseUrl: string): string {
+  return `${supabaseUrl.replace(/\/+$/, '')}/auth/v1`;
+}
 
 /** A caller allowed to go on: its access token, or `null` for a guest. */
 interface Caller {
@@ -211,6 +223,21 @@ async function fetchSigningKeys(issuer: string): Promise<Map<string, SigningKey>
 }
 
 /**
+ * `fetchSigningKeys`, shared with any fetch of the same set already under way.
+ * One older than the fetch's own timeout is not waited for: its instance was
+ * frozen mid-fetch, and a new fetch is quicker than its timer.
+ */
+function fetchSigningKeysOnce(issuer: string, now: number): Promise<Map<string, SigningKey> | null> {
+  if (keysInFlight?.issuer === issuer && now - keysInFlight.startedAt < KEYS_TIMEOUT_MS) return keysInFlight.done;
+  const entry = { issuer, startedAt: now, done: fetchSigningKeys(issuer) };
+  keysInFlight = entry;
+  void entry.done.finally(() => {
+    if (keysInFlight === entry) keysInFlight = null;
+  });
+  return entry.done;
+}
+
+/**
  * The key set to verify with. A set is used for ten minutes. `refresh` asks
  * for a newer one, for a token signed by a key the set does not have (a
  * rotation), but no more than every 30 s. When the auth server does not
@@ -223,7 +250,7 @@ async function currentSigningKeys(issuer: string, refresh: boolean): Promise<{ k
   const age = held ? now - held.fetchedAt : Number.POSITIVE_INFINITY;
   if (held && age < (refresh ? KEYS_REFRESH_MIN_MS : KEYS_TTL_MS)) return { keys: held.keys, fetched: false, answered: true };
 
-  const keys = await fetchSigningKeys(issuer);
+  const keys = await fetchSigningKeysOnce(issuer, now);
   if (keys) {
     signingKeys = { issuer, keys, fetchedAt: now };
     return { keys, fetched: true, answered: true };
@@ -231,6 +258,23 @@ async function currentSigningKeys(issuer: string, refresh: boolean): Promise<{ k
   if (held) signingKeys = { ...held, fetchedAt: now - KEYS_TTL_MS + KEYS_REFRESH_MIN_MS };
   return { keys: held?.keys ?? null, fetched: true, answered: false };
 }
+
+/**
+ * Starts fetching the key set as the instance loads (ADR 0065), so the fetch
+ * runs during the cold start instead of after the first signed-in request
+ * arrives: about 456 ms on a new instance on production, against 31 to 68 ms
+ * on a warm one. A request that comes first waits for this same fetch.
+ * Nothing waits on it here, and it never rejects: when it fails, nothing is
+ * held and the first request fetches the keys itself, as without it. Only a
+ * deployment that checks tokens (both settings present) fetches.
+ */
+function prefetchSigningKeys(): void {
+  const supabaseUrl = process.env.VITE_SUPABASE_URL;
+  if (!supabaseUrl || !process.env.TYPESAFE_API_KEY) return;
+  void currentSigningKeys(issuerFor(supabaseUrl), false).catch(() => undefined);
+}
+
+prefetchSigningKeys();
 
 /**
  * Checks an access token where it stands, without asking the auth server
@@ -315,7 +359,7 @@ async function checkCaller(req: Request, timings: Timings): Promise<Response | C
   if (!supabaseUrl) return json({ error: 'Sign-in check unavailable.' }, 503);
 
   const start = performance.now();
-  const { result, fetched } = await verifyToken(token, `${supabaseUrl.replace(/\/+$/, '')}/auth/v1`);
+  const { result, fetched } = await verifyToken(token, issuerFor(supabaseUrl));
   timings.push({ name: 'auth', dur: performance.now() - start, ...(fetched ? { desc: 'keys' } : {}) });
 
   if (result === 'invalid') return json({ error: 'Unauthorized.' }, 401);
