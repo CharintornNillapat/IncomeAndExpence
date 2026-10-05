@@ -119,11 +119,69 @@ jobs:
         run: npx playwright test --project=${{ matrix.project }} --shard=${{ matrix.shard }}/2
         env:
           CI: true
+          # One blob per browser and shard, so the six never share a name
+          # when the merge job downloads them into one folder (ADR 0062).
+          PLAYWRIGHT_BLOB_OUTPUT_NAME: report-${{ matrix.project }}-${{ matrix.shard }}.zip
 
-      - name: Upload Playwright Test Report Artifact
+      # The raw results and attachments (traces included) for the merge job
+      # below. Not a report to read: the merged one is. Kept a week, so a
+      # failed merge can still be redone by hand with
+      # `npx playwright merge-reports --reporter html <folder of the zips>`.
+      - name: Upload the blob report
         uses: actions/upload-artifact@v7
         if: ${{ !cancelled() }}
         with:
-          name: playwright-report-${{ matrix.project }}-${{ matrix.shard }}
+          name: blob-report-${{ matrix.project }}-${{ matrix.shard }}
+          path: blob-report/
+          retention-days: 7
+
+  # Phase 86 (ADR 0062): one HTML report for all six shards, with every kept
+  # trace in it, instead of six reports to search. It runs whether the tests
+  # passed or failed (a failure is when the report is needed), but not on a
+  # run a newer push cancelled, and not when `checks` failed and no shard ran.
+  # It only reports: a failed test already fails its own E2E job.
+  merge-reports:
+    name: Merge the E2E reports
+    needs: e2e
+    if: ${{ !cancelled() && needs.e2e.result != 'skipped' }}
+    timeout-minutes: 10
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      # merge-reports must be the Playwright version that wrote the blobs,
+      # which is the lockfile's. No browser is needed.
+      - name: Install project dependencies
+        run: npm ci
+
+      - name: Download the blob reports
+        uses: actions/download-artifact@v8
+        with:
+          path: all-blob-reports
+          pattern: blob-report-*
+          merge-multiple: true
+
+      # The JSON goes in the report folder, so the artifact carries every
+      # result in a form a script can read as well as the page to browse.
+      - name: Merge into one HTML report
+        run: npx playwright merge-reports --reporter html,json ./all-blob-reports
+        env:
+          PLAYWRIGHT_JSON_OUTPUT_NAME: playwright-report/results.json
+
+      - name: Summarise each browser
+        run: node scripts/ci-report-summary.mjs playwright-report/results.json >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload the merged report
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-report-unified
           path: playwright-report/
           retention-days: 30

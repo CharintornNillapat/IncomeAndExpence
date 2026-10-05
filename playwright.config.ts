@@ -50,8 +50,15 @@ export default defineConfig({
    * timeout. `--workers=N` still overrides it for one run.
    */
   workers: process.env.CI ? 2 : 4,
-  /* Reporter to use. See https://playwright.dev/docs/test-reporters */
-  reporter: 'html',
+  /*
+   * Locally, the HTML report. On CI (Phase 86, ADR 0062), each shard writes
+   * a blob report, which keeps every result and attachment (traces included)
+   * for the workflow's `merge-reports` job to combine into one HTML report
+   * for all six shards; `list` puts each test and its time in the job log.
+   * The blob's file name comes from PLAYWRIGHT_BLOB_OUTPUT_NAME in the
+   * workflow, one per browser and shard.
+   */
+  reporter: process.env.CI ? [['blob'], ['list']] : 'html',
   /*
    * Timeouts below bound *failure* only - an auto-retrying assertion resolves
    * the moment its condition holds, so raising these does not slow a green run.
