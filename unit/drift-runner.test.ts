@@ -164,7 +164,7 @@ describe('runDriftCheck', () => {
     expect(logged).toEqual([`schema-drift: no drift. Live matches all ${migrationFiles().length} migrations (as ${READER}).`]);
     expect(summary()).toContain('## Schema drift: none');
     expect(summary()).toContain(`Live compared with ${migrationFiles().length} migrations replayed from empty, as \`${READER}\`, at 2026-10-05 10:00 UTC.`);
-    expect(summary()).toContain('| migration | 15 | 15 |  |  |');
+    expect(summary()).toContain(`| migration | ${migrationFiles().length} | ${migrationFiles().length} |  |  |`);
   });
 
   it('exits 1 and names each row when the schema and the history drift', async () => {
@@ -181,7 +181,7 @@ describe('runDriftCheck', () => {
       expect(summary()).toContain('| only in the repo | migration | transfer_funds |   |');
       expect(summary()).toContain('| only in the repo | policy | debts.Users manage their own debts |');
       expect(summary()).toContain('| index | 17 | 18 |  | 1 |');
-      expect(summary()).toContain('| migration | 15 | 14 | 1 |  |');
+      expect(summary()).toContain(`| migration | ${migrationFiles().length} | ${migrationFiles().length - 1} | 1 |  |`);
     } finally {
       await db.exec(`
         drop index public.debts_name_idx;

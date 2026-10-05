@@ -47,7 +47,7 @@ afterAll(async () => {
 describe('every migration, from empty', () => {
   it('applies in file order, starting from the baseline', () => {
     expect(migrationFiles()[0]).toBe(BASELINE);
-    expect(migrationFiles()).toHaveLength(15);
+    expect(migrationFiles()).toHaveLength(17);
   });
 
   it('builds the eight tables and what the live project holds', () => {
@@ -55,12 +55,13 @@ describe('every migration, from empty', () => {
       'ai_request_counts', 'categories', 'debts', 'diary_entries',
       'keyword_rules', 'profiles', 'transactions', 'wallets',
     ]);
-    // The counts read from the live project on 2026-10-05.
+    // The counts read from the live project on 2026-10-05, less Phase 93's
+    // two SELECT policies and plus its transfer_funds overload (ADR 0069).
     expect(count(catalog, 'column')).toBe(75);
     expect(count(catalog, 'constraint')).toBe(28);
     expect(count(catalog, 'index')).toBe(17);
-    expect(count(catalog, 'policy')).toBe(9);
-    expect(count(catalog, 'function')).toBe(15);
+    expect(count(catalog, 'policy')).toBe(7);
+    expect(count(catalog, 'function')).toBe(16);
     expect(count(catalog, 'trigger')).toBe(2);
     expect(count(catalog, 'publication')).toBe(5);
   });
@@ -209,10 +210,11 @@ describe('the live probe (supabase/tests/20261005_phase87.probe.sql)', () => {
 });
 
 describe('the probes against the schema the migrations build', () => {
-  const runProbe = async (probe: string, files: string[], applied: boolean) => {
+  const runProbe = async (probe: string, files: string[], applied: boolean, setup = '') => {
     const probeDb = await createDatabase();
     try {
       await applyMigrations(probeDb, files);
+      if (setup) await probeDb.exec(setup);
       const before = await readCatalog(probeDb);
       const results = await probeDb.exec(inlineProbe(probe, { applied }));
       const after = await readCatalog(probeDb);
@@ -232,6 +234,33 @@ describe('the probes against the schema the migrations build', () => {
   it('Phase 88, after its migrations: passes against every file', async () => {
     const { rows } = await runProbe('20261005_phase88.probe.sql', migrationFiles(), true);
     expect(rows).toContainEqual({ result: 'PHASE 88 PROBE OK' });
+  }, 60_000);
+
+  const upTo92 = () => migrationFiles().filter(file => file < '20261006');
+
+  it('Phase 93, before its migrations: applies them, passes and rolls back', async () => {
+    const { rows, before, after } = await runProbe('20261006_phase93.probe.sql', upTo92(), false);
+    expect(rows).toContainEqual({ result: 'PHASE 93 PROBE OK' });
+    expect(after).toEqual(before);
+  }, 60_000);
+
+  // The baseline no longer creates the two policies Phase 93 drops, so a
+  // replay never has them. Live does until the migration runs: put them back
+  // as the dashboard made them, and the probe must see them dropped.
+  it('Phase 93, on the live shape with both SELECT policies: drops them and passes', async () => {
+    const livePolicies = ['categories', 'keyword_rules'].map(tbl =>
+      `create policy "Users can view system and their own ${tbl === 'categories' ? 'categories' : 'keyword rules'}"
+         on public.${tbl} for select to authenticated using (user_id is null or (select auth.uid()) = user_id);`).join('\n');
+    const { rows, before, after } = await runProbe('20261006_phase93.probe.sql', upTo92(), false, livePolicies);
+    expect(before.filter(r => r.kind === 'policy')).toHaveLength(9);
+    expect(rows).toContainEqual({ result: 'PHASE 93 PROBE OK' });
+    expect(after).toEqual(before);
+  }, 60_000);
+
+  it('Phase 93, after its migrations: passes against every file', async () => {
+    const { rows, before, after } = await runProbe('20261006_phase93.probe.sql', migrationFiles(), true);
+    expect(rows).toContainEqual({ result: 'PHASE 93 PROBE OK' });
+    expect(after).toEqual(before);
   }, 60_000);
 
   it('Phase 73, re-run against the Phase 88 function: still passes', async () => {

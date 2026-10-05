@@ -1098,6 +1098,22 @@ The entry's growth is the ledger action itself, which lives with the other ledge
 
 **Intermittent local failures:** 6 in 1,071 full-suite runs (3 full runs). All were timeouts: a Firefox `goto`, a Firefox context close, and four WebKit clicks waiting for "stable". No assertion failed. See audit 005 finding 3 for the control runs.
 
+## Phase 93 (redundant SELECT policies dropped, transfer_funds from the session) - delta against Phase 92
+
+**Bundle:** entry `index` 190,084 / 54,778 to 190,069 / 54,775 B raw / gzip (-15 / -3: no `p_user_id` in the transfer call). All 42 JS and CSS files 1,416,889 / 423,354 to 1,416,874 / 423,385 (gzip +31 from changed chunk hashes).
+
+| Suite | Files | Tests | Runs | Result |
+|---|---|---|---|---|
+| Vitest (`unit/`) | 39 | 1030 | 1030 | 1030/1030 (Phase 93 probe 3 ways, signed-in transfer 1) |
+| Playwright (local, 4 workers) | 31 | 152 | 456 | 454 passed + 2 skipped of 456 in 7.7 m, first run |
+
+| Schema (replayed) | Phase 92 | Phase 93 |
+|---|---|---|
+| Migrations | 15 | 17 |
+| Policies | 9 | 7 |
+| Functions | 15 | 16 (`transfer_funds` twice) |
+| Function grants | 60 | 64 |
+
 ## Phase 92 (CSV formula escape, zoomable viewport, security headers) - delta against Phase 91
 
 **Bundle** (production build, the same `.env`, `main` built in a worktree at `49d6070`; `main`'s entry is the `index-DNX-vcmX.js` production serves):
