@@ -1098,6 +1098,26 @@ The entry's growth is the ledger action itself, which lives with the other ledge
 
 **Intermittent local failures:** 6 in 1,071 full-suite runs (3 full runs). All were timeouts: a Firefox `goto`, a Firefox context close, and four WebKit clicks waiting for "stable". No assertion failed. See audit 005 finding 3 for the control runs.
 
+## Phase 91 (pinned workflow actions, least-privilege tokens, advisor triage) - delta against Phase 90
+
+**Bundle:** unchanged (no `src/` change).
+
+| Suite | Files | Tests | Runs | Result |
+|---|---|---|---|---|
+| Vitest (`unit/`) | 38 | 1009 | 1009 | 1009/1009 (workflow rules 12) |
+| Playwright (local, 4 workers) | 30 | 149 | 447 | 443 passed, 2 failed, 2 skipped of 447 in 8.0 m (both failures WebKit clicks in `jev-classify.spec.ts` waiting 15 s for a stable element, ADR `0058`'s local painting stall); that spec in WebKit three times over: 27/27 |
+
+| CI | Phase 90 | Phase 91 |
+|---|---|---|
+| Actions | by tag (`@v5`, `@v7`, `@v8`) | by commit, release in a comment |
+| Token permissions | `playwright.yml`: the repository default; `schema-drift.yml`: `contents: read` | none by default; `contents: read` per job |
+| Token in `.git/config` after checkout | yes | no |
+
+| Supabase advisors (2026-10-05) | Findings | Accepted | Scheduled | Owner |
+|---|---|---|---|---|
+| Security | 11 | 10 (9 RPCs, 1 table) | `transfer_funds`' `p_user_id` (within the accepted 9) | 1 (leaked passwords) |
+| Performance | 10 | 8 (5 foreign keys, 3 indexes) | 2 (redundant SELECT policies) | - |
+
 ## Phase 90 (scheduled drift check, read-only role) - delta against Phase 89
 
 **Bundle:** unchanged (no `src/` change; `pg` is a devDependency used by `scripts/` only).

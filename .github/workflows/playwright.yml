@@ -17,18 +17,29 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+# Phase 91 (ADR 0067): no job's token can do anything it was not given below,
+# and each job is given only `contents: read`, for the checkout. Artifacts and
+# the npm cache go through the run's own runtime token, not this one. Every
+# action is pinned to a commit, its release in the comment.
+permissions: {}
+
 jobs:
   checks:
     name: Type-check and unit tests
     timeout-minutes: 15
     runs-on: ubuntu-24.04
+    permissions:
+      contents: read
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          # Nothing here pushes, so the job's token is not left in .git/config.
+          persist-credentials: false
 
       - name: Set up Node.js
-        uses: actions/setup-node@v5
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
         with:
           node-version: 22
           cache: 'npm'
@@ -52,6 +63,8 @@ jobs:
     needs: checks
     timeout-minutes: 30
     runs-on: ubuntu-24.04
+    permissions:
+      contents: read
     # Two jobs per browser, run side by side (Phase 55, T199; sharded in Phase
     # 85, ADR 0061). fail-fast is off so a failure in one engine still reports
     # the other two.
@@ -83,10 +96,13 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          # Nothing here pushes, so the job's token is not left in .git/config.
+          persist-credentials: false
 
       - name: Set up Node.js
-        uses: actions/setup-node@v5
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
         with:
           node-version: 22
           cache: 'npm'
@@ -128,7 +144,7 @@ jobs:
       # failed merge can still be redone by hand with
       # `npx playwright merge-reports --reporter html <folder of the zips>`.
       - name: Upload the blob report
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: ${{ !cancelled() }}
         with:
           name: blob-report-${{ matrix.project }}-${{ matrix.shard }}
@@ -146,13 +162,18 @@ jobs:
     if: ${{ !cancelled() && needs.e2e.result != 'skipped' }}
     timeout-minutes: 10
     runs-on: ubuntu-24.04
+    permissions:
+      contents: read
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          # Nothing here pushes, so the job's token is not left in .git/config.
+          persist-credentials: false
 
       - name: Set up Node.js
-        uses: actions/setup-node@v5
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
         with:
           node-version: 22
           cache: 'npm'
@@ -163,7 +184,7 @@ jobs:
         run: npm ci
 
       - name: Download the blob reports
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           path: all-blob-reports
           pattern: blob-report-*
@@ -180,7 +201,7 @@ jobs:
         run: node scripts/ci-report-summary.mjs playwright-report/results.json >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload the merged report
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: playwright-report-unified
           path: playwright-report/
