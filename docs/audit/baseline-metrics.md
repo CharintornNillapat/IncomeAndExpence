@@ -1098,6 +1098,23 @@ The entry's growth is the ledger action itself, which lives with the other ledge
 
 **Intermittent local failures:** 6 in 1,071 full-suite runs (3 full runs). All were timeouts: a Firefox `goto`, a Firefox context close, and four WebKit clicks waiting for "stable". No assertion failed. See audit 005 finding 3 for the control runs.
 
+## Phase 84 (lean CI traces, nothing moves while the app loads) - delta against Phase 83
+
+**Bundle** (the branch against `main`'s build, both with `.env`): `index-*.css` 48,810 -> 50,539 B (+1,729 B, +229 B gzip), the fallback faces; the entry `index-*.js` 189,919 -> 189,976 B (+57 B, +9 B gzip), `<main>`'s classes. Every other chunk is identical once hashed chunk names are normalised. Precache 58 entries, 1,655.03 -> 1,656.78 KiB.
+
+**Layout shift on load** (Chromium, `vite preview`, throttled, load plus one visit to each tab): 1280 0.0268 -> 0.0000; 390 0.0000 -> 0.0000.
+
+| Suite | Files | Tests | Runs | Result |
+|---|---|---|---|---|
+| Playwright (local, 4 workers) | 30 | 149 | 447 | 445 passed + 2 skipped in 7.5 m, first pass |
+| Vitest (`unit/`) | 32 | 829 | 829 | 829/829 |
+
+| Local WebKit full run, 4 workers | Run 1 | Run 2 |
+|---|---|---|
+| no trace | 3.1 m | 3.3 m |
+| `retain-on-first-failure` (ADR `0059`) | 4.7 m | 4.1 m |
+| the same without screenshots (ADR `0060`) | 3.4 m | 3.3 m |
+
 ## Phase 83 (an open dialog keeps its focus across effect re-runs) - delta against Phase 82
 
 **Bundle** (the branch built with `.env` against production's files, `main`'s build): the entry `index-*.js` 189,653 -> 189,919 B (+266 B, +61 B gzip), where `Modal` lives. Every other chunk is identical once hashed chunk names are normalised.

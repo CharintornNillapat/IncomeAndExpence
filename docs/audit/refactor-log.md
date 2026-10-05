@@ -4,6 +4,34 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
+## Phase 84 - CI traces a first failure without the screencast; nothing moves while the app loads: T483-T490 (2026-10-05, commit `9348b0d`, draft PR)
+
+ADR `0060`, amending ADR `0059`'s CI trace. Two Phase 84 backlog items: the trace's cost on CI and the layout shift the Phase 83 production check measured.
+
+**Found**
+- **The screencast was most of the trace's cost.** Local WebKit at 4 workers: untraced 3.1 / 3.3 m, ADR `0059`'s trace 4.7 / 4.1 m, without screenshots 3.4 / 3.3 m. On CI, WebKit's job went from 3.6 and 3.8 m to 4.5 m twice.
+- **The desktop load's layout shift was the footer.** `<main>` was only `flex-1`, so the footer sat at the bottom of the screen until the Dashboard pushed it off (0.0137 of 0.0139), and came back on each tab's first visit. The rest was the font swap (about 0.0002). At 390 the loading outline is taller than the phone, so it was already 0.00001.
+
+**Changed**
+- **`playwright.config.ts`:** CI's trace is `{ mode: 'retain-on-first-failure', screenshots: false, snapshots: true, sources: true }`.
+- **`App.tsx`:** `<main>` has `min-h-[calc(100dvh-3.5rem)] md:min-h-[calc(100dvh-4rem)]`.
+- **`index.css`:** four `IBM Plex Sans Thai Fallback` faces (local Arial, Arial Bold from 600, then Liberation Sans) with Plex's width, ascent and descent per weight, second in `--font-sans`.
+- **Tests:** `tests/layout-stability.spec.ts` (+2 tests, 147 -> 149; one runs on Chromium only).
+- **Docs:** ADR `0060`, `CLAUDE.md` (a Type bullet, a UI-limits bullet, the suite size, the spec list, a CI bullet, two Do NOT lines), the ledger, this log, baseline metrics.
+
+**Gate:**
+- Lint clean. Unit 829/829 in 32 files.
+- **Layout shift**, throttled (150 ms, 1.6 Mbps), `vite preview` of each build, load plus one visit to every tab: 1280 `main` 0.0268 x3, branch 0.0000 x3; 390 0.0000 for both. Left: 0.00001 (a tab's 1 px rounding; the "THB" label when the Thai subset brings `฿`).
+- **Appearance:** viewport screenshots of all six tabs at 1280 and 390 after a 2 s settle match `main`'s apart from the footer on the short pages and 3 px of anti-aliasing.
+- **Traces:** a deliberate failure in WebKit and chromium keeps the same DOM snapshots (16 and 17), 119 network entries, 39 actions and the source under the lean option, at 180 and 181 kB against 506 and 769 kB; only the full trace has screencast frames.
+- **Negative controls:** `main`'s `App.tsx` fails the footer test in all 3 browsers and the load test 3/3 (0.0137); `main`'s `index.css` fails the load test 3/3 (0.00020 to 0.00027).
+- **E2E:** full suite 445 passed and 2 skipped (by design) of 447 in 7.5 m, first pass.
+- **Bundle** (against `main`'s build, both with `.env`): `index-*.css` +1,729 B (+229 B gzip); the entry +57 B (+9 B gzip); every other chunk identical once hashed names are normalised; precache 58 entries, +1.75 KiB.
+
+**Still open**
+- **CI timing of the lean trace:** the PR's run is one sample; compare over the next `main` runs.
+- **WebKit on Windows stops painting a page now and then** (two of the six timing runs).
+
 ## Phase 83 - An open dialog keeps its focus when React re-runs its effects; CI keeps the first failure's trace: T477-T482 (2026-10-05, commit `19a523b`, docs `eb779b5`, merge `9c8851a`)
 
 ADR `0059`, amending ADR `0058`. The flaky WebKit test on the Phase 82 merge.
