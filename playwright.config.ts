@@ -44,7 +44,7 @@ export default defineConfig({
    * workers bought no speed, only the tail that crossed the 30 s navigation
    * timeout. `--workers=N` still overrides it for one run.
    */
-  workers: process.env.CI ? 3 : 4, // EXPERIMENT (Phase 85): 3 CI workers
+  workers: process.env.CI ? 2 : 4,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: 'html',
   /*
