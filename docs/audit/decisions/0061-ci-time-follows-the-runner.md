@@ -1,6 +1,6 @@
 # 0061: CI time follows the runner; each browser runs as two shards
 
-**Status:** Accepted. Implemented on branch `phase-85-ci-timing-profiling` (runner step `87c4a42`, shards `f0dbd3d` and `7dcb1ca`, docs `0ecf79f`), draft PR #35. Not merged yet.
+**Status:** Accepted. Implemented on branch `phase-85-ci-timing-profiling` (runner step `87c4a42`, shards `f0dbd3d` and `7dcb1ca`, docs `0ecf79f`, hash backfill `9921810`), merged into `main` as `be78622` (PR #35). Vercel `dpl_2e5mqEA9WeM667yihCxp2AeFcz3r` is READY in production (`icn1`), serving the same entry as before: this phase changed no app code.
 - **Amends** Phase 55's CI layout (one E2E job per browser): two jobs per browser now, still 2 workers each.
 
 **Date:** 2026-10-05
@@ -86,6 +86,7 @@ Three runs each, the runner recorded:
 - **Full suite locally** (4 workers, no shards): 445 passed and 2 skipped (by design) of 447, in 7.7 m, first pass.
 - **CI:** the three sharded attempts of run `37260900256` passed all 18 jobs with no flaky test; each browser's two shards covered 149 tests (75 + 74; Firefox and WebKit skip the Chromium-only load test).
 - On the kept configuration, CI run `37262774619` (`7dcb1ca`) passed in 247 s end to end and run `37263171161` (`0ecf79f`) in 286 s, of which 37 s was one WebKit shard waiting for a runner (the `checks` job 51 s, the slowest job 196 s); both green with no flaky test.
+- `main` CI on the merge (run `37264903718`) passed every job with no flaky test in 237 s end to end (`checks` 47 s, the slowest job 185 s), with both WebKit shards on AMD EPYC 7763 runners, the slowest CPU measured: chromium 75 + 74 passed, Firefox and WebKit 75 + 73 passed and 1 skipped each. The PR's last run, on the hash backfill `9921810` (run `37263626581`), passed in 280 s.
 
 ## Consequences
 
