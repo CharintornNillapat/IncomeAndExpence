@@ -1,6 +1,6 @@
 # 0060: CI traces a first failure without the screencast; nothing moves while the app loads
 
-**Status:** Accepted. Implemented on branch `phase-84-ci-trace-opt-and-cls` (commit `9348b0d`), draft PR. Not merged yet.
+**Status:** Accepted. Implemented on branch `phase-84-ci-trace-opt-and-cls` (commit `9348b0d`, docs `1f45a00`, spec follow-ups `1615288` and `7b7822e`), draft PR #34. Not merged yet.
 - **Amends** ADR `0059`'s CI trace: same mode, without screenshots.
 
 **Date:** 2026-10-05
@@ -56,6 +56,8 @@ A second family, `IBM Plex Sans Thai Fallback`, sits after Plex in `--font-sans`
 
 Measured in Chromium on the shipped font files at 1000 px: `size-adjust` is the canvas width of a UI sample in Plex over Arial's; the overrides are Plex's `fontBoundingBoxAscent`/`Descent` (1116 and 534 per 1000) divided by `size-adjust`, which scales them. `line-gap-override` is 0, as every text utility sets its own line height. The faces cover Plex's Latin range only: Thai text keeps the system Thai fonts, and a device with neither Arial nor Liberation Sans (Android) skips the family as before.
 
+**On CI's Linux the fallback leaves more.** The PR's first run failed the load test at 0.00035 (under the first 0.0001 limit): the fallback faces resolve there (Liberation Sans), but the header's nav widened from 649 to 660 px and its actions narrowed from 392 to 386 px when Plex arrived, so a row of labels comes out about 1.5% wider in the fallback. Most likely Chromium on Linux lays out whole-pixel glyph advances at this scale, and the error adds up along a row; one `size-adjust` per weight cannot match both platforms. Windows leaves 0.00001.
+
 **Rejected:**
 - **Preloading the font files:** the build hashes their names, so it needs a build plugin, and 85 kB of high-priority fetches would compete with the entry script on a slow link. The fallback costs no bytes.
 - **`font-display: optional`:** a first visit on a slow link would keep the fallback for the whole page view.
@@ -72,17 +74,19 @@ Measured in Chromium on the shipped font files at 1000 px: `size-adjust` is the 
 - **What is left, 0.00001:** a header tab moving 1 px (sub-pixel width rounding) and the "THB" label beside the Net worth figure moving 4 px when the Thai subset arrives, since `฿` comes from it and Arial has none.
 - **Nothing else moved:** viewport screenshots of all six tabs at 1280 and 390, after the fonts and a 2 s settle, match `main`'s pixel for pixel, apart from the footer on the three short pages (Transactions, Wallets and Debt payoff at 1280; Wallets and Debt payoff at 390) and 3 px of anti-aliasing at the search box's corner.
 - **Trace cost, local WebKit at 4 workers, two runs each:** untraced 3.1 and 3.3 m; ADR `0059`'s full trace 4.7 and 4.1 m; this one 3.4 and 3.3 m. One run of each of the first two had one failure, both the Windows WebKit painting stall (one with no trace at all).
+- **Trace cost on CI:** CI's WebKit job with this trace: 4.3, 3.2 and 3.2 m over the PR's three runs (`37248822330`, `37249754907`, `37250366820`), against 4.5 and 4.5 m with ADR `0059`'s and 3.6 and 3.8 m untraced before it. Firefox 3.7, 3.9 and 3.2 m; chromium 3.1, 3.1 and 2.7 m (its first two runs include the failing load test's retries, below).
 - **A kept trace is still readable.** A deliberately failing test (open Add transaction, type 42, wait for missing text) under both options, in WebKit and chromium:
   - lean: 180 and 181 kB; full: 506 and 769 kB;
   - both: the same 16 and 17 DOM snapshots, 119 network entries, 39 actions and the test source; the open dialog in the snapshot of action 17, the typed 42 in actions 21 and 23;
   - only the full trace has screencast frames (16 and 32).
 - **Spec:** `tests/layout-stability.spec.ts`, two tests:
   - a fresh guest's Transactions, Wallets and Debt payoff pages keep the footer below the fold at 1280x720, and Wallets at 390x844 (all browsers);
-  - a cold load of the Dashboard at 1280x800 adds up to under 0.0001 of layout shift (Chromium only, the one engine that reports it; skipped elsewhere).
+  - a cold load of the Dashboard at 1280x800 (Chromium only, the one engine that reports layout shift; skipped elsewhere): every weight of the fallback family resolves to a local font, and the load adds up to under 0.001. That limit fails the unreserved footer (0.0137) on every platform and passes Linux's font residual (0.00035).
 - **Negative controls:**
   - `main`'s `App.tsx`: the footer test fails in all three browsers on a 720 px screen (chromium and WebKit with the footer's top at 655 px on Transactions; Firefox, whose Transactions page is just taller than the screen, at 715.5 px on Wallets); the load test fails 3 of 3 at 0.0137;
-  - `main`'s `index.css`: the load test fails 3 of 3 at 0.00020 to 0.00027 (`nav`, the brand text, the tabs).
+  - `main`'s `index.css`: the load test fails on the fallback check, every weight `none`. Its layout shift there, 0.00020 to 0.00027, failed the first 0.0001 limit 3 of 3.
   On the dev server the branch measures 0.00001; the load test passed 5 of 5 on repeat.
+- **CI:** the PR's third run (`37250366820`) passed every job with no flaky test: 149 passed in chromium, 148 passed and 1 skipped in Firefox and WebKit.
 - **Lint** clean; **unit** 829/829 in 32 files (no unit change: jsdom has no layout or fonts).
 - **Full suite at 4 workers:** 445 passed and 2 skipped (the load test in Firefox and WebKit) of 447, in 7.5 m, first pass.
 - **Bundle** (the branch against `main`'s build, both with `.env`): `index-*.css` 48,810 -> 50,539 B (+1,729 B, +229 B gzip), the four faces; the entry `index-*.js` 189,919 -> 189,976 B (+57 B, +9 B gzip), `<main>`'s classes. Every other chunk is identical once hashed names are normalised. The precache stays 58 entries, 1,655.03 -> 1,656.78 KiB.
@@ -92,4 +96,4 @@ Measured in Chromium on the shipped font files at 1000 px: `size-adjust` is the 
 - **A failure's CI trace is a third the size and has no filmstrip.** To watch frames, reproduce locally with `--trace=retain-on-failure`.
 - **Changing the font changes the fallback faces.** A new weight, a new subset or a different face needs its row measured the same way, or the swap moves text again.
 - **`<main>` is at least a screen tall.** A short page's footer is one scroll away.
-- **Still open:** the 0.00001 left above, and WebKit on Windows stopping painting now and then (ADR `0058`).
+- **Still open:** the font residual (0.00001 on Windows, 0.00035 on Linux), and WebKit on Windows stopping painting now and then (ADR `0058`).

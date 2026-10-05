@@ -1081,9 +1081,9 @@ Approved explicitly by the user, planned and approved before any code was writte
 - **One negative control was redone** because the first attempt produced malformed TypeScript that the dev server still served — the tests failed, but possibly for the wrong reason.
 - **No flakes.** Phase 44's `wallets.spec.ts` webkit flake has now not reproduced across three consecutive phases; still watched rather than closed.
 
-## Phase 84 - CI traces a first failure without the screencast; nothing moves while the app loads: T483-T490 (2026-10-05)
+## Phase 84 - CI traces a first failure without the screencast; nothing moves while the app loads: T483-T491 (2026-10-05)
 
-ADR `0060`, amending ADR `0059`'s CI trace. Branch `phase-84-ci-trace-opt-and-cls`, cut from `main` at `1b7b5fb`; commit `9348b0d`; draft PR. No migration, no proxy change.
+ADR `0060`, amending ADR `0059`'s CI trace. Branch `phase-84-ci-trace-opt-and-cls`, cut from `main` at `1b7b5fb`; commit `9348b0d` (docs `1f45a00`, spec follow-ups `1615288` and `7b7822e`); draft PR #34, CI green on its third run (`37250366820`). No migration, no proxy change.
 
 | # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
 |---|---|---|---|---|---|---|---|---|---|---|
@@ -1094,12 +1094,15 @@ ADR `0060`, amending ADR `0059`'s CI trace. Branch `phase-84-ci-trace-opt-and-cl
 | T487 | `tests/layout-stability.spec.ts`: footer below the fold on short pages (all browsers); a cold Dashboard load under 0.0001 (Chromium) | `tests/layout-stability.spec.ts` | Med | Low | 0.4h | done | T486 | `9348b0d` | 12/12 x3 plus 6 skipped; the load test 5/5 | spec 147 -> 149 |
 | T488 | CI trace without screenshots; local WebKit timing of off, full and lean, twice; a deliberate failure's trace opened under both | `playwright.config.ts` | Med | Low | 0.6h | done | - | `9348b0d` | full 4.7 / 4.1 m, lean 3.4 / 3.3 m, off 3.1 / 3.3 m; the lean trace keeps 16 DOM snapshots, 119 network entries, the source | trace 506 -> 180 kB (WebKit) |
 | T489 | Gate: lint, unit, full suite, bundle | - | High | Low | 0.3h | done | T488 | - | lint clean; unit 829/829; full 445 passed + 2 skipped in 7.5 m, first pass | see the refactor log |
-| T490 | ADR `0060`, `CLAUDE.md`, this ledger, the refactor log, baseline metrics | `docs/`, `CLAUDE.md` | Low | Low | 0.3h | done | T489 | - | - | - |
+| T490 | ADR `0060`, `CLAUDE.md`, this ledger, the refactor log, baseline metrics | `docs/`, `CLAUDE.md` | Low | Low | 0.3h | done | T489 | `1f45a00` | - | - |
+| T491 | CI follow-up: Linux chromium's load measured 0.00035 (the header's labels about 1.5% wider in the fallback); the spec checks the fallback resolves and holds the load to 0.001 | `tests/layout-stability.spec.ts` | Med | Low | 0.5h | done | T490 | `1615288`, `7b7822e` | CI green; `main`'s `App.tsx` fails at 0.0137, `main`'s `index.css` on the fallback check | CI WebKit 4.3 / 3.2 / 3.2 m |
 
 **Notes on execution:**
 - **The load test first ran at the default 1280x720** and passed against `main`'s `App.tsx`: there the loading outline already pushes the footer off. It runs at 1280x800, the probe's size, where the control fails.
 - **The pixel comparison first differed on Diary and Categories** at a 600 ms settle: the page's slide-in was still finishing. At 2 s `main` matches itself and the branch.
 - **Two local WebKit timing runs had one failure each**, both the Windows painting stall (one with no trace).
+- **Linux could not be measured here:** Docker Desktop would not start and WSL lacks virtualisation, so the PR's CI runs were the Linux measurement. The second run's diagnostics (fallback resolved, boxes of what moved) separated a missing font from a metric mismatch.
+- **The first controls after the commit stashed nothing** (the fixes were committed); they were re-run with `git checkout main -- <file>` and restored.
 
 ## Phase 83 - An open dialog keeps its focus when React re-runs its effects; CI keeps the first failure's trace: T477-T482 (2026-10-05)
 

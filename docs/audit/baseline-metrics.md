@@ -1115,6 +1115,12 @@ The entry's growth is the ledger action itself, which lives with the other ledge
 | `retain-on-first-failure` (ADR `0059`) | 4.7 m | 4.1 m |
 | the same without screenshots (ADR `0060`) | 3.4 m | 3.3 m |
 
+| CI E2E job | untraced (Phase 82) | ADR `0059`'s trace | this trace (PR #34's three runs) |
+|---|---|---|---|
+| WebKit | 3.6, 3.8 m | 4.5, 4.5 m | 4.3, 3.2, 3.2 m |
+| Firefox | 2.6, 3.5 m | 4.0, 3.7 m | 3.7, 3.9, 3.2 m |
+| chromium | 2.5, 2.5 m | 2.5, 3.1 m | 3.1, 3.1, 2.7 m (the first two with a failing test's retries) |
+
 ## Phase 83 (an open dialog keeps its focus across effect re-runs) - delta against Phase 82
 
 **Bundle** (the branch built with `.env` against production's files, `main`'s build): the entry `index-*.js` 189,653 -> 189,919 B (+266 B, +61 B gzip), where `Modal` lives. Every other chunk is identical once hashed chunk names are normalised.
