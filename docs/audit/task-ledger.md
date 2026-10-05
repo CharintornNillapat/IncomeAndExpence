@@ -1083,17 +1083,17 @@ Approved explicitly by the user, planned and approved before any code was writte
 
 ## Phase 91 - Workflows pin every action to a commit and grant each job only `contents: read`; the Supabase advisors are triaged: T539-T545 (2026-10-05)
 
-ADR `0067`, amending ADRs `0044` and `0066`. Branch `phase-91-workflow-hardening-and-advisors`, cut from `main` at `91380b1`; draft PR. No `src/` change and no migration.
+ADR `0067`, amending ADRs `0044` and `0066`. Branch `phase-91-workflow-hardening-and-advisors`, cut from `main` at `91380b1`; commit `64bd024`, docs `d30a759`; draft PR #41. No `src/` change and no migration. **On CI:** the pull request's run `37316574331` passed every job, 445 passed and 2 skipped with no flaky test, every action fetched by its commit (24 downloads); the drift workflow, started by hand on this branch (`37316584371`), ran its pinned actions and found no drift as `schema_drift_reader`, in 31 s.
 
 | # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
 |---|---|---|---|---|---|---|---|---|---|---|
 | T539 | Read the live drift role and its first three runs; check the role script | - | Med | Low | 0.2h | done | - | - | role as scripted but one login setting; runs: wrong password, no `USAGE` on `supabase_migrations`, no drift; the script already grants it (line 60, since `edb8109`): no change | - |
-| T540 | Resolve each action's tag to its commit; pin both workflows | `.github/workflows/playwright.yml`, `.github/workflows/schema-drift.yml` | High | Low | 0.3h | done | - | - | 4 actions, 13 `uses:` lines | - |
-| T541 | `permissions: {}` at the top, `contents: read` per job; `persist-credentials: false` on every checkout | (same) | High | Low | 0.2h | done | T540 | - | - | - |
-| T542 | Workflow rules as a unit test; negative controls | `unit/workflow-hardening.test.ts` | Med | Low | 0.4h | done | T541 | - | 12/12; 8 fail on the old workflows; 6 controls | unit +12 |
+| T540 | Resolve each action's tag to its commit; pin both workflows | `.github/workflows/playwright.yml`, `.github/workflows/schema-drift.yml` | High | Low | 0.3h | done | - | `64bd024` | 4 actions, 13 `uses:` lines | - |
+| T541 | `permissions: {}` at the top, `contents: read` per job; `persist-credentials: false` on every checkout | (same) | High | Low | 0.2h | done | T540 | `64bd024` | - | - |
+| T542 | Workflow rules as a unit test; negative controls | `unit/workflow-hardening.test.ts` | Med | Low | 0.4h | done | T541 | `64bd024` | 12/12; 8 fail on the old workflows; 6 controls | unit +12 |
 | T543 | Advisors (read-only) and their triage: `transfer_funds`' user check read; shared rows counted | - | Med | Low | 0.5h | done | - | - | security 3 lints / 11 findings, performance 3 / 10; none to fix in the database now | - |
 | T544 | Gate: lint, unit, Playwright, drift | - | High | Low | 0.2h | done | T542 | - | lint clean; unit 1009/1009; Playwright 443 passed, 2 failed, 2 skipped of 447 in 8.0 m (both failures WebKit clicks in `jev-classify.spec.ts` waiting 15 s for a stable element, ADR `0058`'s local painting stall); that spec in WebKit three times over: 27/27; drift all 12 kinds match live in count and row hash, 0 rows (no migration; the printed query is unchanged) | - |
-| T545 | ADR `0067`, `CLAUDE.md`, this ledger, the refactor log, baseline metrics | `docs/`, `CLAUDE.md` | Low | Low | 0.4h | done | T544 | - | - | - |
+| T545 | ADR `0067`, `CLAUDE.md`, this ledger, the refactor log, baseline metrics | `docs/`, `CLAUDE.md` | Low | Low | 0.4h | done | T544 | `d30a759` | - | - |
 
 **Notes on execution:**
 - **The role script already had the grant the owner added by hand;** the copy that ran on live lacked it and also the `idle_in_transaction_session_timeout` setting. The repo file is unchanged; the owner can add the setting with one `alter role`.

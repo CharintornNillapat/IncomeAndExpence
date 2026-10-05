@@ -1,6 +1,6 @@
 # 0067: Workflows pin every action to a commit and grant each job only `contents: read`; the Supabase advisors are triaged
 
-**Status:** Accepted. Implemented on branch `phase-91-workflow-hardening-and-advisors`, draft PR. Not merged yet.
+**Status:** Accepted. Implemented on branch `phase-91-workflow-hardening-and-advisors` (commit `64bd024`, docs `d30a759`), draft PR #41. Not merged yet.
 - **Amends** ADR `0044`, the Playwright workflow's container and actions.
 - **Amends** ADR `0066`: the drift workflow is held to the same rules, and its first runs are recorded.
 
@@ -84,7 +84,7 @@ It reads lines rather than parsing YAML, since the repository has no YAML parser
   - **Against the old workflows,** 8 fail: the four rules, in each file.
   - **Negative controls on the new ones,** each failing exactly its own test: one action back on a tag; a pin without its release comment; a job asking for `actions: write`; a checkout keeping its credentials; `pull_request_target`; a secret in the Playwright workflow.
 - **Unit 1009 in 38 files** (997 before). Lint clean. **Playwright:** in the refactor log.
-- **CI on the pull request** runs the pinned Playwright workflow. **A run of the drift workflow started by hand on this branch** runs the pinned drift workflow with its secret; both are in the refactor log.
+- **On CI:** the pull request's run `37316574331` passed every job, 445 passed and 2 skipped with no flaky test, every action fetched by its commit (24 downloads); the drift workflow, started by hand on this branch (`37316584371`), ran its pinned actions and found no drift as `schema_drift_reader`, in 31 s.
 - **Drift:** `npm run schema:drift` is unchanged (no migration). Live was compared read-only: see the refactor log.
 
 ## Consequences

@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 91 - Workflows pin every action to a commit and grant each job only `contents: read`; the Supabase advisors are triaged: T539-T545 (2026-10-05, draft PR)
+## Phase 91 - Workflows pin every action to a commit and grant each job only `contents: read`; the Supabase advisors are triaged: T539-T545 (2026-10-05, commit `64bd024`, docs `d30a759`, draft PR #41)
 
 ADR `0067`. The workflows ran whatever their actions' tags pointed to, `playwright.yml` took the repository's default token permissions, and since Phase 90 one workflow holds a database credential. The advisors had not been reviewed.
 
@@ -18,6 +18,7 @@ ADR `0067`. The workflows ran whatever their actions' tags pointed to, `playwrig
 - Lint clean. Unit 1009/1009 in 38 files. Playwright 443 passed, 2 failed, 2 skipped of 447 in 8.0 m (both failures WebKit clicks in `jev-classify.spec.ts` waiting 15 s for a stable element, ADR `0058`'s local painting stall); that spec in WebKit three times over: 27/27.
 - **Negative controls:** the test fails 8 of 12 on the old workflows; one action back on a tag, a pin without its comment, a job asking for `actions: write`, a persisted checkout token, `pull_request_target`, and a secret in the Playwright workflow each fail exactly their own test.
 - **Drift:** all 12 kinds match live in count and row hash, 0 rows (no migration; the printed query is unchanged).
+- **On CI:** the pull request's run `37316574331` passed every job, 445 passed and 2 skipped with no flaky test, every action fetched by its commit (24 downloads); the drift workflow, started by hand on this branch (`37316584371`), ran its pinned actions and found no drift as `schema_drift_reader`, in 31 s.
 
 **Still open**
 - **Owner:** leaked password protection (Auth settings, if the plan offers it); optionally `alter role schema_drift_reader set idle_in_transaction_session_timeout = '60s';`.
