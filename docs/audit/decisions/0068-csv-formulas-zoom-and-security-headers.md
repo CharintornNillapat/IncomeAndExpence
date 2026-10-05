@@ -1,6 +1,6 @@
 # 0068: Exported CSV cells cannot run as formulas; the page can be zoomed; responses carry security headers and a report-only CSP
 
-**Status:** Accepted. Implemented on branch `phase-92-sec-a11y-hardening`. Not merged yet.
+**Status:** Accepted. Implemented on branch `phase-92-sec-a11y-hardening` (commit `db21e3f`, docs `7a77678`), draft PR #42. Not merged yet.
 - **Amends** ADR `0024`: the CSV export escapes text cells, and the importer reverses it.
 - **Amends** ADR `0051`: `vercel.json` gains a `headers` key, measured on production before and after as that ADR requires.
 
@@ -97,6 +97,7 @@ It changes `package-lock.json` only:
   - After: 0 in all three.
 - **`Server-Timing` before (ADR `0051`):** production, 2026-10-05 13:57 UTC, 10 guest `POST {}` to `/api/classify` from Thailand. All 10 answered `400` from `sin1::icn1`, with `total` 0.5 to 4.5 ms (median 0.75) and 0.21 to 1.05 s at the client. Production sent HSTS only.
 - **Gate:** in the refactor log.
+- **On CI:** the pull request's run `37327510485` passed every job in 287 s, 454 passed and 2 skipped with no flaky test, unit 1026; the drift workflow on this branch (`37327334363`) found no drift as `schema_drift_reader`. **On the Vercel preview** (`dpl_9PV5v1TQvy9ZqLEdqRGQmgjdiv7U`, `icn1`): every header as configured, the served inline script's hash equal to the CSP's, and a walk in the three browsers with no violation from the app; Firefox and WebKit reported only Vercel's preview toolbar (`vercel.live`), which production does not load.
 
 ## Consequences
 

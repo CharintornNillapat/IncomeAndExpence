@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 92 - Exported CSV cells cannot run as formulas; the page can be zoomed; responses carry security headers and a report-only CSP: T546-T554 (2026-10-05)
+## Phase 92 - Exported CSV cells cannot run as formulas; the page can be zoomed; responses carry security headers and a report-only CSP: T546-T554 (2026-10-05, commit `db21e3f`, docs `7a77678`, draft PR #42)
 
 ADR `0068`. An outside review listed four findings no phase had tracked: CSV formula injection, zoom disabled, no security headers, and three vulnerable development packages. Each was confirmed in the code first.
 
@@ -28,6 +28,8 @@ ADR `0068`. An outside review listed four findings no phase had tracked: CSV for
 - **Production before (ADR `0051`):** 10 guest `POST {}` to `/api/classify`, all `400` from `sin1::icn1`, `total` 0.5 to 4.5 ms; only HSTS sent.
 - **Drift:** no migration; the printed query is byte-identical to `main`'s (md5 `7d2fa362`). Live is checked by the drift workflow on this branch.
 - **Bundle:** +367 B raw, +150 B gzip across 42 files (entry +56 gzip, CSS +33, `csvExchange` +65).
+- **On CI:** the pull request's run `37327510485` passed every job in 287 s, 454 passed and 2 skipped with no flaky test, unit 1026; the drift workflow on this branch (`37327334363`) found no drift as `schema_drift_reader`.
+- **On the Vercel preview** (`dpl_9PV5v1TQvy9ZqLEdqRGQmgjdiv7U`, `icn1`): every header as configured, and the served inline script's hash equal to the CSP's. A walk in the three browsers found no violation from the app; Firefox and WebKit reported only Vercel's preview toolbar (`vercel.live`), which production does not load.
 
 **Still open**
 - **After the merge (T554):** `Server-Timing` with the same 10 requests; the headers on production; the CSP walk on production, including signed-in sync.
