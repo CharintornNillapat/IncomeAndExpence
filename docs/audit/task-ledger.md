@@ -1083,7 +1083,7 @@ Approved explicitly by the user, planned and approved before any code was writte
 
 ## Phase 93 - The redundant SELECT policies are dropped; transfer_funds takes the user from the session, beside its old signature: T555-T562 (2026-10-06)
 
-ADR `0069`, amending ADRs `0023`, `0063` and `0067`. Branch `phase-93-db-cleanup-migrations`, cut from `main` at `f44d3e4`; commit `2eeb20c`, docs `11b4f23`; draft PR #43. **On CI:** the pull request's run `37378623941` passed every job in 299 s, 454 passed and 2 skipped with no flaky test, unit 1030. Approved explicitly by the user as the P1 items ADR `0067` scheduled. Two migrations; **the owner applies them before the merge** (ADR `0069`, "Order of release").
+ADR `0069`, amending ADRs `0023`, `0063` and `0067`. Branch `phase-93-db-cleanup-migrations`, cut from `main` at `f44d3e4`; commit `2eeb20c`, docs `11b4f23`, hash backfill `28cc4e8`; merged into `main` as `4744845` (PR #43); Vercel `dpl_DvgAksLjtYP9hEQnPN3ZprPsPWcS` READY in `icn1`, entry JS and CSS byte-identical to the local build of `main`. `main` CI on the merge (run `37385248145`) passed every job with no flaky test in 239 s end to end, 22 s of it the merge job (454 passed, 2 skipped, unit 1030). The drift workflow on `main` (run `37385367893`) found no drift with all 17 migrations. **On the pull request's CI:** the pull request's run `37378623941` passed every job in 299 s, 454 passed and 2 skipped with no flaky test, unit 1030. Approved explicitly by the user as the P1 items ADR `0067` scheduled. Two migrations; **the owner applies them before the merge** (ADR `0069`, "Order of release").
 
 | # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
 |---|---|---|---|---|---|---|---|---|---|---|
@@ -1094,7 +1094,7 @@ ADR `0069`, amending ADRs `0023`, `0063` and `0067`. Branch `phase-93-db-cleanup
 | T559 | The client calls the new overload; a signed-in test pins its seven arguments | `src/context/FinanceContext.tsx`, `unit/authenticated-ledger.test.tsx` | High | Low | 0.3h | done | T557 | `2eeb20c` | fails on `"p_user_id"` against the old call | unit +1 |
 | T560 | Gate: lint, unit, Playwright, drift replay, history inserts, bundle | - | High | Low | 0.3h | done | T559 | - | lint clean; unit 1030/1030 in 39 files; Playwright 454 passed + 2 skipped of 456 in 7.7 m, first run; replay expects 7 policies, 16 functions, 64 function grants, 17 migrations; history inserts printed (to print again at apply) | entry -15 B raw |
 | T561 | ADR `0069`, `CLAUDE.md`, this ledger, the refactor log, baseline metrics | `docs/`, `CLAUDE.md` | Low | Low | 0.4h | done | T560 | `11b4f23` | - | - |
-| T562 | Owner, before the merge: probe, apply both migrations with their history rows, probe again, drift workflow | - | High | Med | 0.3h | pending | T561 | - | - | - |
+| T562 | Owner, before the merge: probe, apply both migrations with their history rows, probe again, drift workflow | - | High | Med | 0.3h | done | T561 | (release record) | owner applied both with their history rows (`20261005224522`, `20261005224812`); after-apply probe passed; drift on `28cc4e8` (`37385081841`) and on `main` (`37385367893`) found no drift, 17 history rows | - |
 
 **Notes on execution:**
 - **The probe found a gap in the replay prelude:** reading `categories` as `authenticated` failed with "permission denied for schema auth", because the prelude never granted the API roles `USAGE` on `auth`. Live has it (T555), so the prelude now does too.

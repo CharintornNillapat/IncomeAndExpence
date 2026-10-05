@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 93 - The redundant SELECT policies are dropped; transfer_funds takes the user from the session, beside its old signature: T555-T562 (2026-10-06, commit `2eeb20c`, docs `11b4f23`, draft PR #43)
+## Phase 93 - The redundant SELECT policies are dropped; transfer_funds takes the user from the session, beside its old signature: T555-T562 (2026-10-06, commit `2eeb20c`, docs `11b4f23`, merge `4744845`)
 
 ADR `0069`. ADR `0067` scheduled two database changes: dropping the two "view system and their own" SELECT policies, and taking `transfer_funds`' user from the session instead of an argument.
 
@@ -30,8 +30,14 @@ ADR `0069`. ADR `0067` scheduled two database changes: dropping the two "view sy
 - **On CI:** the pull request's run `37378623941` passed every job in 299 s, 454 passed and 2 skipped with no flaky test, unit 1030.
 - **Bundle:** entry 190,084 to 190,069 B raw (-15), 54,778 to 54,775 gzip (-3). Total JS and CSS 1,416,889 to 1,416,874 B raw; gzip moves +31 B, from changed chunk hashes.
 
+**Release:**
+- **T562:** the owner applied both migrations before the merge, each with its printed history row (`20261005224522`, `20261005224812`), and the after-apply probe passed. The drift workflow on `28cc4e8` (`37385081841`) found no drift with 17 migrations; one on the old `main` (`37384933081`) listed this phase's 9 rows, as a 15-file replay must.
+- PR #43 merged into `main` as `4744845` (tree identical to `28cc4e8`). Vercel `dpl_DvgAksLjtYP9hEQnPN3ZprPsPWcS` is READY in production (`icn1`). Its `index-DmMi73Ay.js` (190,069 B), `index-BsXfRZb2.css` (50,639 B) and vendor chunks are byte-identical to the local build of `main`, and its transfer call sends no `p_user_id`.
+- The drift workflow on `main` (`37385367893`) found no drift with all 17 migrations.
+- `main` CI on the merge (run `37385248145`) passed every job with no flaky test in 239 s end to end, 22 s of it the merge job (152 tests per browser: 454 passed, 2 skipped).
+
 **Still open**
-- **Owner, before the merge (T562):** probe, apply both files with their history rows, probe again, then run the drift workflow by hand.
+- **A signed-in transfer on production:** not exercised (no session); the after-apply probe covers the function on live.
 - **A later phase:** drop the 20260909 `transfer_funds` signature, once older builds have reloaded.
 - **From Phase 92:** walk signed-in sync under the CSP, then enforce it; leaked password protection; a screen reader pass; the four `USD` wallets.
 

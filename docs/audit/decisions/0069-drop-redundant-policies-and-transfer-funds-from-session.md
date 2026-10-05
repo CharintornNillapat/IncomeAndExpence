@@ -1,6 +1,6 @@
 # 0069: The redundant SELECT policies are dropped; transfer_funds takes the user from the session, beside its old signature
 
-**Status:** Accepted. Implemented on branch `phase-93-db-cleanup-migrations` (commit `2eeb20c`, docs `11b4f23`), draft PR #43. Not merged yet. **The migrations are applied by the owner before the merge** (see "Order of release").
+**Status:** Accepted. Released: commit `2eeb20c`, docs `11b4f23`, hash backfill `28cc4e8`, merged into `main` as `4744845` (PR #43); Vercel `dpl_DvgAksLjtYP9hEQnPN3ZprPsPWcS` READY in `icn1`. Both migrations were applied to live by the owner before the merge (see "Release").
 - **Amends** ADR `0063`: the baseline leaves out the two policies, as it already left out the one Phase 58s dropped, and the replay prelude gains a grant.
 - **Amends** ADR `0067`: its two scheduled findings, P1 and S2a, are done.
 - **Amends** ADR `0023`'s rule that the user comes from `auth.uid()` only, which `transfer_funds` (older than ADR `0023`) did not follow.
@@ -82,6 +82,17 @@ The probe reads `categories` as `authenticated`, and the policies call `auth.uid
 - **Drift:** the replay expects 75 columns, 28 constraints, 1 extension, 16 functions, 64 function grants, 17 indexes, 7 policies, 5 publication tables, 8 tables, 24 table grants, 2 triggers and 17 migrations. Live matches only after step 1.
 - **Gate:** in the refactor log.
 - **On CI:** the pull request's run `37378623941` passed every job in 299 s, 454 passed and 2 skipped with no flaky test, unit 1030.
+
+## Release (2026-10-06)
+
+- **Live, before the merge (T562):** the owner applied both migrations in the SQL editor, each with its printed history row, and the after-apply probe passed. The history has 17 rows; the two new ones are `phase93_drop_redundant_select_policies` at `20261005224522` and `phase93_transfer_funds_from_session` at `20261005224812` (UTC print times).
+- **Drift:**
+  - the workflow on the branch tip `28cc4e8` (run `37385081841`) found no drift with all 17 migrations, as `schema_drift_reader`;
+  - one dispatched on the old `main` `f44d3e4` (run `37384933081`) reported 9 rows, all of them this phase (the new function, its 4 grants, the 2 history rows, the 2 dropped policies). That is the expected result of comparing a 15-file replay with a 17-migration live, not drift;
+  - after the merge, the workflow on `main` `4744845` (run `37385367893`) found no drift with all 17 migrations.
+- **Merge:** PR #43 merged into `main` as `4744845`, whose tree is identical to `28cc4e8`. Vercel `dpl_DvgAksLjtYP9hEQnPN3ZprPsPWcS` is READY in production (`icn1`). Its `index-DmMi73Ay.js` (190,069 B), `index-BsXfRZb2.css` (50,639 B) and the four vendor chunks are byte-identical to the local build of `main`. The shipped `transfer_funds` call names seven arguments and no `p_user_id`.
+- **CI:** `main` CI on the merge (run `37385248145`) passed every job with no flaky test in 239 s end to end, 22 s of it the merge job (unit 1030; 152 tests per browser: 454 passed, 2 skipped).
+- **Not exercised here:** a signed-in transfer on production (no session). The probe's after-apply run covers the function on live.
 
 ## Consequences
 
