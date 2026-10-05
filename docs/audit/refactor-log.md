@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 84 - CI traces a first failure without the screencast; nothing moves while the app loads: T483-T491 (2026-10-05, commit `9348b0d`, docs `1f45a00`, spec `1615288` / `7b7822e`, draft PR #34)
+## Phase 84 - CI traces a first failure without the screencast; nothing moves while the app loads: T483-T491 (2026-10-05, commit `9348b0d`, docs `1f45a00`, spec `1615288` / `7b7822e`, merge `7d38ce2`)
 
 ADR `0060`, amending ADR `0059`'s CI trace. Two Phase 84 backlog items: the trace's cost on CI and the layout shift the Phase 83 production check measured.
 
@@ -29,6 +29,15 @@ ADR `0060`, amending ADR `0059`'s CI trace. Two Phase 84 backlog items: the trac
 - **E2E:** full suite 445 passed and 2 skipped (by design) of 447 in 7.5 m, first pass.
 - **Bundle** (against `main`'s build, both with `.env`): `index-*.css` +1,729 B (+229 B gzip); the entry +57 B (+9 B gzip); every other chunk identical once hashed names are normalised; precache 58 entries, +1.75 KiB.
 - **CI:** the third run (`37250366820`) passed every job with no flaky test. CI's WebKit job with this trace: 4.3, 3.2 and 3.2 m over the PR's three runs (`37248822330`, `37249754907`, `37250366820`), against 4.5 and 4.5 m with ADR `0059`'s and 3.6 and 3.8 m untraced before it. Firefox 3.7, 3.9 and 3.2 m; chromium 3.1, 3.1 and 2.7 m (its first two runs include the failing load test's retries, below).
+
+**Release:**
+- PR #34 merged into `main` as `7d38ce2`. Vercel `dpl_EKczqeGczCt2k2JhXGUXA8SeAAiE` is READY in production (`icn1`; a guest `POST {}` to `/api/classify` answered 400 from `icn1`). Its `index-DNX-vcmX.js` (189,976 B) and `index-B4oPRoyv.css` (50,539 B) are byte-identical to the local build of `main`.
+- `main` CI on the merge (run `37253651460`) passed every job with no flaky test: 149 passed in chromium (3.1 m), 148 passed and 1 skipped in Firefox (3.5 m) and WebKit (4.2 m). WebKit with this trace has now taken 4.3, 3.2, 3.2 and 4.2 m, against 4.5 and 4.5 m with ADR `0059`'s and 3.6 and 3.8 m untraced: below the full trace every time, but within CI's run-to-run spread of untraced.
+
+**Production check** (2026-10-05, Playwright's Chromium against production at 1280x800, a fresh guest profile per load):
+- **Load:** layout shift 0.00001 to 0.00005 over five cold loads, 0.00005 to 0.00007 over five on a throttled link (150 ms, 1.6 Mbps), against 0.0139 before; what is left is a header tab's 1 px and a few text spans when the Thai subset arrives. Every fallback weight resolves.
+- **Footer:** below the 800 px fold on every tab: 849 on the empty Transactions, Wallets and Debt payoff pages (735, on screen, before), 871 on Diary, 937 on Categories, 1385 on the Dashboard. Visiting each tab added no layout shift. No console error.
+- **The connected Chrome could not measure it:** its window was covered, so Chrome reported the tab `hidden` and ran no animation frames, and a hidden page records no layout shift (its zeros were discarded). Its screen is 1366x768, which cannot show an 800 px viewport either.
 
 **Still open**
 - **The font residual on Linux** (0.00035): matching it would need per-platform metrics.

@@ -1083,7 +1083,7 @@ Approved explicitly by the user, planned and approved before any code was writte
 
 ## Phase 84 - CI traces a first failure without the screencast; nothing moves while the app loads: T483-T491 (2026-10-05)
 
-ADR `0060`, amending ADR `0059`'s CI trace. Branch `phase-84-ci-trace-opt-and-cls`, cut from `main` at `1b7b5fb`; commit `9348b0d` (docs `1f45a00`, spec follow-ups `1615288` and `7b7822e`); draft PR #34, CI green on its third run (`37250366820`). No migration, no proxy change.
+ADR `0060`, amending ADR `0059`'s CI trace. Branch `phase-84-ci-trace-opt-and-cls`, cut from `main` at `1b7b5fb`; commit `9348b0d` (docs `1f45a00`, spec follow-ups `1615288` and `7b7822e`, hash backfill `e15d36d`), merged into `main` as `7d38ce2` (PR #34); Vercel `dpl_EKczqeGczCt2k2JhXGUXA8SeAAiE` READY in `icn1`. `main` CI on the merge (run `37253651460`) passed every job with no flaky test: 149 passed in chromium (3.1 m), 148 passed and 1 skipped in Firefox (3.5 m) and WebKit (4.2 m). WebKit with this trace has now taken 4.3, 3.2, 3.2 and 4.2 m, against 4.5 and 4.5 m with ADR `0059`'s and 3.6 and 3.8 m untraced: below the full trace every time, but within CI's run-to-run spread of untraced. Production check: load 0.00001 to 0.00007, the footer below the fold on every tab (see the refactor log). No migration, no proxy change.
 
 | # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
 |---|---|---|---|---|---|---|---|---|---|---|

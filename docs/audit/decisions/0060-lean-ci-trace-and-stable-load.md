@@ -1,6 +1,6 @@
 # 0060: CI traces a first failure without the screencast; nothing moves while the app loads
 
-**Status:** Accepted. Implemented on branch `phase-84-ci-trace-opt-and-cls` (commit `9348b0d`, docs `1f45a00`, spec follow-ups `1615288` and `7b7822e`), draft PR #34. Not merged yet.
+**Status:** Accepted. Implemented on branch `phase-84-ci-trace-opt-and-cls` (commit `9348b0d`, docs `1f45a00`, spec follow-ups `1615288` and `7b7822e`, hash backfill `e15d36d`), merged into `main` as `7d38ce2` (PR #34). Vercel `dpl_EKczqeGczCt2k2JhXGUXA8SeAAiE` is READY in production (`icn1`); on production a cold load at 1280x800 shifts 0.00001 to 0.00007.
 - **Amends** ADR `0059`'s CI trace: same mode, without screenshots.
 
 **Date:** 2026-10-05
