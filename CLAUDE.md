@@ -3,6 +3,33 @@
 ## Project Overview
 FinLife Tracker is a full-stack personal finance and holistic lifestyle management Progressive Web App (PWA). It tracks Thai Baht wallets, income/expense/transfer transactions, and debt repayment goals, while correlating financial behavior with a daily wellness diary (mood, workout, food quality). The app functions offline via `localStorage` and syncs bi-directionally with Supabase when configured.
 
+<!-- agent-skills:start -->
+## Engineering workflow (agent-skills plugin)
+Pick the skill from the task, without waiting to be asked, and say which one you are using.
+**This file wins over any skill.** Where a skill's default disagrees with a rule here
+(test placement, ADR format, design limits, migration order), follow this file.
+
+- Vague request → `interview-me` before writing code.
+- New feature or phase → `spec-driven-development`, then `planning-and-task-breakdown`.
+  Record decisions with `documentation-and-adrs` as the next ADR in `docs/audit/decisions/`.
+- Ledger, `FinanceContext`, `src/selectors/`, `api/` or any money path → `test-driven-development`:
+  failing test first, in `unit/` (signed-in paths in `authenticated-ledger.test.tsx`, never under `act()`)
+  or `tests/*.spec.ts` for UI flows. Run it against the unfixed code first.
+- Supabase migration, RLS, auth, `api/` proxies, CSV export → `security-and-hardening`
+  and `doubt-driven-development` (money and irreversible changes).
+- UI → `frontend-ui-engineering`, but `DESIGN.md` and "UI limits" above override its defaults;
+  load antislop as described below.
+- React 19 / Tailwind v4 / Vite 6 / supabase-js / Playwright APIs → `source-driven-development`.
+- Failing test or build → `debugging-and-error-recovery`. Never edit `src/` while Playwright runs.
+- Bundle size, layout shift, latency → `performance-optimization`; measure before and after.
+- Removing a signature, column or code path → `deprecation-and-migration`.
+- Every commit → `git-workflow-and-versioning`.
+- Before calling a task done → `code-review-and-quality`, with evidence:
+  `npm run lint`, `npm run test:unit`, and the affected Playwright spec(s).
+
+Skip the full workflow for typos, copy tweaks and doc-only edits.
+<!-- agent-skills:end -->
+
 ## Tech Stack
 - **Language**: TypeScript ~5.8.2 (`ES2022`, `bundler` resolution, `allowImportingTsExtensions: true`)
 - **Framework**: React 19.0.1, React DOM 19.0.1
