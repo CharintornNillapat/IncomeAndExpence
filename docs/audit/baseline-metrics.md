@@ -1106,11 +1106,14 @@ The entry's growth is the ledger action itself, which lives with the other ledge
 |---|---|---|---|---|
 | Vitest (`unit/`) | 33 | 895 | 895 | 895/895 (proxy contract 189, migration replay 14) |
 | Playwright (local, 4 workers) | 30 | 149 | 447 | 445 passed + 2 skipped of 447 in 6.9 m, first pass |
+| Playwright (`main` CI on `97d7abb`, 6 shards) | 30 | 149 | 447 | 445 passed + 2 skipped, 0 flaky; 261 s end to end |
 
 | Signed-in AI request | Before (ADR `0051`, production) | Phase 88 |
 |---|---|---|
 | Token check | `/auth/v1/user`, about 390 ms uncached; cached 60 s per instance | local, about 0.05 ms; key set fetched once per 10 min per instance |
-| Function total, uncached token | 626.3 ms | to measure after release (expected near the warm 238 ms) |
+| Key set fetch (production, forged tokens, 2026-10-05) | - | 456.0 ms on a new instance; 31.3 and 68.3 ms on warm ones; once per 10 min per instance |
+| Token check without a fetch (production) | - | 0.2 to 0.6 ms (`auth` step) |
+| Function total, uncached token | 626.3 ms | to measure with a real session (expected near the warm 238 ms) |
 | Revoked session refused | within 60 s | on the next request |
 
 ## Phase 87 (the migrations rebuild the live schema) - delta against Phase 86

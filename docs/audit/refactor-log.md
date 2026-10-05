@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 88 - The AI proxies check a token themselves; the database checks its session; wallets default to THB: T514-T522 (2026-10-05, commit `f224dca`, docs `91a6888`, draft PR #38)
+## Phase 88 - The AI proxies check a token themselves; the database checks its session; wallets default to THB: T514-T522 (2026-10-05, commit `f224dca`, docs `91a6888`, merge `97d7abb`)
 
 ADR `0064`. A signed-in AI request on a cold instance spent about 390 ms of 626 ms asking the auth server about its token.
 
@@ -20,9 +20,15 @@ ADR `0064`. A signed-in AI request on a cold instance spent about 390 ms of 626 
 - **Negative controls:** signature not enforced (2 fail), expiry not checked (4), session claim not checked (2), a 403 not mapped (1), the session check left out of the migration (both Phase 88 probe runs).
 - **Against live (read-only):** the live ES256 key imports and verifies (0.05 ms); with the new files, the drift is exactly `wallets.currency` and `consume_ai_quota()`, and every other column and function hashes as live does.
 
+**Release:**
+- **Migrations:** both were applied to the live project on 2026-10-05, before the merge, by the owner in the Supabase SQL editor, with their history rows (`phase88_quota_checks_session` at `20261005085236`, `wallet_default_thb` at `20261005085237`, `created_by` "owner, SQL editor"). Read-only checks then matched the quota function's body to the file (md5 `b8da714b...`) and found the `'THB'::text` default.
+- PR #38 merged into `main` as `97d7abb`. Vercel `dpl_CgKKNVmoSCdrGTaK5bGHxcUov9Qm` is READY in production (`icn1`). Its `index-DNX-vcmX.js` (189,976 B) and `index-B4oPRoyv.css` (50,539 B) are byte-identical to the local build of `main`.
+- `main` CI on the merge (run `37286541907`) passed every job with no flaky test in 261 s end to end, 20 s of it the merge job (149 tests per browser: 445 passed, 2 skipped).
+- **Drift:** `npm run schema:drift` on `main` against live: all 12 kinds match in count and row hash, **0 unaccounted rows**, 15 history rows for 15 files.
+- **Production probe:** On production, tokens refused before any TypeSafe call show the new check: `alg` none is 401 with `auth;dur=0.6`; an ES256 token with an unknown `kid` makes the instance fetch the key set (`auth;dur=456.0;desc="keys"` on a new instance, 31.3 and 68.3 ms on warm ones) and the next request reuses it (`auth;dur=0.2` to `0.4`), all from `icn1`.
+
 **Still open**
-- **Apply both migrations on live before the merge** (owner), then merge, then `npm run schema:drift` with no rows.
-- **Measure a signed-in request on production** (needs a real session).
+- **Measure a real signed-in request on production** (needs a session): `Server-Timing` from a new instance and a warm one.
 - **Four soft-deleted wallets say USD** (owner: relabel or leave).
 - **WebKit on Windows stops painting now and then** (ADR `0058`), locally only.
 

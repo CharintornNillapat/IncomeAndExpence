@@ -1083,7 +1083,7 @@ Approved explicitly by the user, planned and approved before any code was writte
 
 ## Phase 88 - The AI proxies check a token themselves; the database checks its session; wallets default to THB: T514-T522 (2026-10-05)
 
-ADR `0064`, amending ADRs `0032`, `0049` and `0050`. Branch `phase-88-auth-latency-and-currency-default`, cut from `main` at `6d76cc6`; commit `f224dca`, docs `91a6888`; draft PR #38. No `src/` change. **Two migrations, not applied:** the session check must reach the live project before the new proxies deploy.
+ADR `0064`, amending ADRs `0032`, `0049` and `0050`. Branch `phase-88-auth-latency-and-currency-default`, cut from `main` at `6d76cc6`; commit `f224dca`, docs `91a6888`, hash backfill `32bcf40`; merged into `main` as `97d7abb` (PR #38); Vercel `dpl_CgKKNVmoSCdrGTaK5bGHxcUov9Qm` READY in `icn1`, entry JS and CSS byte-identical to the local build of `main`. `main` CI on the merge (run `37286541907`) passed every job with no flaky test in 261 s end to end, 20 s of it the merge job (149 tests per browser: 445 passed, 2 skipped). No `src/` change. Both migrations were applied to the live project on 2026-10-05, before the merge, by the owner in the Supabase SQL editor, with their history rows (`phase88_quota_checks_session` at `20261005085236`, `wallet_default_thb` at `20261005085237`, `created_by` "owner, SQL editor"), so the session check was live before the new proxies deployed. `npm run schema:drift` against live after the merge: **0 unaccounted rows**, 15 history rows for 15 files.
 
 | # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
 |---|---|---|---|---|---|---|---|---|---|---|
@@ -1100,7 +1100,7 @@ ADR `0064`, amending ADRs `0032`, `0049` and `0050`. Branch `phase-88-auth-laten
 **Notes on execution:**
 - **The probe and the migration header first claimed every live wallet was THB;** a read-only count found 4 USD ones (all soft-deleted, from 2026-08-31). The header was corrected and the probe checks wallets in use only. Relabelling them is left to the owner.
 - **A key rotation within 30 s of a fetch is not picked up** until 30 s have passed (the refetch limit); two tests first assumed otherwise and were corrected, not the code.
-- **No signed-in production request was made:** that needs a real session. The latency gain is measured after release.
+- **No signed-in production request was made:** that needs a real session. After release, forged tokens (refused before any TypeSafe call) timed the key fetch on production: 456 ms on a new instance, 31 to 68 ms on a warm one; a check without a fetch 0.2 to 0.6 ms.
 
 ## Phase 87 - The migrations rebuild the live schema, and a check proves it: T505-T513 (2026-10-05)
 

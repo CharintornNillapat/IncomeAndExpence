@@ -1,6 +1,6 @@
 # 0064: The AI proxies check a token themselves; the database checks its session; wallets default to THB
 
-**Status:** Accepted. Implemented on branch `phase-88-auth-latency-and-currency-default` (commit `f224dca`, docs `91a6888`), draft PR #38. Not merged yet. **The two migrations must be applied to the live project before the new proxies deploy** (see "Order of release"); neither is applied yet.
+**Status:** Accepted. Released: commit `f224dca`, docs `91a6888`, hash backfill `32bcf40`, merged into `main` as `97d7abb` (PR #38); Vercel `dpl_CgKKNVmoSCdrGTaK5bGHxcUov9Qm` READY in `icn1`. Both migrations were applied to the live project on 2026-10-05, before the merge, by the owner in the Supabase SQL editor, with their history rows (`phase88_quota_checks_session` at `20261005085236`, `wallet_default_thb` at `20261005085237`, `created_by` "owner, SQL editor"); the drift check against live returns **0 unaccounted rows** (see "Release").
 - **Amends** ADR `0032` (how a signed-in caller is checked) and ADR `0050` (what the `auth` timing measures).
 - **Amends** ADR `0049`: `consume_ai_quota()` also checks the caller's session.
 
@@ -129,6 +129,15 @@ The Phase 87 probe re-ran `20261003_phase73_ai_request_quota.sql`. After Phase 8
 - **The live key:** imported and verified with the same Web Crypto calls; 0.05 ms per check.
 - **Drift against live (read-only):** with the new files, every kind of object matches live except two rows, both intended: `wallets.currency` (`'USD'` to `'THB'`) and `consume_ai_quota()`'s body. With those two rows left out, the column and function hashes equal live's. The history lacks the two new names.
 - **Lint** clean; **full Playwright** in the refactor log. Every spec mocks `/api/*`, so the proxies' behaviour is pinned by the unit suite.
+
+## Release (2026-10-05)
+
+- **Migrations:** both were applied to the live project on 2026-10-05, before the merge, by the owner in the Supabase SQL editor, with their history rows (`phase88_quota_checks_session` at `20261005085236`, `wallet_default_thb` at `20261005085237`, `created_by` "owner, SQL editor"). A read-only check then found the live body of `consume_ai_quota()` equal to the file's (md5 `b8da714b...`), `wallets.currency` defaulting to `'THB'::text`, and 15 history rows for 15 files.
+- **Merge:** PR #38 merged into `main` as `97d7abb`. Vercel `dpl_CgKKNVmoSCdrGTaK5bGHxcUov9Qm` is READY in production, and its `index-DNX-vcmX.js` (189,976 B) and `index-B4oPRoyv.css` (50,539 B) are byte-identical to the local build of `main` (no `src/` change).
+- **CI:** `main` CI on the merge (run `37286541907`) passed every job with no flaky test in 261 s end to end, 20 s of it the merge job (149 tests per browser: 445 passed, 2 skipped).
+- **Drift:** `npm run schema:drift` on `main` against live: all 12 kinds (11 of objects, plus the history) have the same count and the same hash of their rows on both sides, so the check returns **0 unaccounted rows**.
+- **The proxies on production:** On production, tokens refused before any TypeSafe call show the new check: `alg` none is 401 with `auth;dur=0.6`; an ES256 token with an unknown `kid` makes the instance fetch the key set (`auth;dur=456.0;desc="keys"` on a new instance, 31.3 and 68.3 ms on warm ones) and the next request reuses it (`auth;dur=0.2` to `0.4`), all from `icn1`. A new instance's first key fetch costs about what the old auth round trip did, once per ten minutes per instance; every other signed-in request skips it.
+- **Still to measure:** a real signed-in request's `Server-Timing` (step 5), which needs a session.
 
 ## Consequences
 
