@@ -1,6 +1,6 @@
 # 0066: A weekly job compares the live schema with the migrations, as a read-only role; the cold token check is closed
 
-**Status:** Accepted. Implemented on branch `phase-90-scheduled-schema-drift`, draft PR. Not merged yet. **The workflow checks nothing until the owner creates the role and the secret** (see "Order of release").
+**Status:** Accepted. Implemented on branch `phase-90-scheduled-schema-drift` (commit `edb8109`, docs `7984827`), draft PR #40. Not merged yet. **The workflow checks nothing until the owner creates the role and the secret** (see "Order of release").
 - **Amends** ADR `0063`: the drift check also runs on a schedule, over a connection.
 - **Amends** ADRs `0064` and `0065`: no more work on the cold token check (decision 4).
 

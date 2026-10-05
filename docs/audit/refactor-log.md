@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 90 - A weekly job compares the live schema with the migrations, as a read-only role; the cold token check is closed: T531-T538 (2026-10-05, draft PR)
+## Phase 90 - A weekly job compares the live schema with the migrations, as a read-only role; the cold token check is closed: T531-T538 (2026-10-05, commit `edb8109`, docs `7984827`, draft PR #40)
 
 ADR `0066`. The drift check (ADR `0063`) ran only at releases, by hand, and the live schema has been changed outside the migrations before.
 
