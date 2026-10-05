@@ -1081,6 +1081,26 @@ Approved explicitly by the user, planned and approved before any code was writte
 - **One negative control was redone** because the first attempt produced malformed TypeScript that the dev server still served — the tests failed, but possibly for the wrong reason.
 - **No flakes.** Phase 44's `wallets.spec.ts` webkit flake has now not reproduced across three consecutive phases; still watched rather than closed.
 
+## Phase 89 - The proxies fetch their keys as they load; a test keeps their shared code identical; a hand-applied migration's history row is printed: T523-T530 (2026-10-05)
+
+ADR `0065`, amending ADRs `0032`, `0063` and `0064`. Branch `phase-89-jwks-prefetch-and-parity`, cut from `main` at `e1d3291`; draft PR. No `src/` change and no migration.
+
+| # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
+|---|---|---|---|---|---|---|---|---|---|---|
+| T523 | Read Phase 88's production timings and the two proxies' shared code | - | Med | Low | 0.2h | done | - | - | key fetch 456 ms on a new instance, 31 to 68 ms warm; `json` and `isPlainObject` already differed | - |
+| T524 | `prefetchSigningKeys()` at load, a shared fetch under way (`keysInFlight`), not waited for past 3 s; `issuerFor` | `api/classify.ts`, `api/insights.ts` | Med | Med | 0.6h | done | T523 | - | lint clean; the 189 proxy tests unchanged and passing | key fetch starts at instance load |
+| T525 | Prefetch tests (a fresh module per test); the contract suite's load-time `fetch` stub | `unit/proxy-prefetch.test.ts`, `unit/proxy-contract.test.ts` | Med | Low | 0.5h | done | T524 | - | 18/18 | unit +18 |
+| T526 | Parity test on the compiler API (`SHARED`, `OWN`); `insights.ts`'s `isPlainObject` parameter aligned | `unit/proxy-parity.test.ts`, `api/insights.ts` | Med | Low | 0.4h | done | T524 | - | 39/39 | unit +39 |
+| T527 | `npm run migration:print-history`; the drift query test records files with it | `scripts/migration-history.mjs`, `scripts/lib/migrationHistory.mjs`, `package.json`, `unit/migration-history.test.ts`, `unit/migration-replay.test.ts` | Med | Low | 0.5h | done | - | - | 18/18; replay 14/14 | unit +18 |
+| T528 | Negative controls | - | Med | Low | 0.3h | done | T525-T527 | - | 7 controls, each failing only its own tests | - |
+| T529 | Gate: lint, unit, Playwright, drift | - | High | Low | 0.3h | done | T528 | - | lint clean; unit 970/970; Playwright 445 passed + 2 skipped of 447 in 7.6 m, first pass; drift all 12 kinds match live in count and row hash, 0 unaccounted rows (no migration in this phase) | - |
+| T530 | ADR `0065`, `CLAUDE.md`, this ledger, the refactor log, baseline metrics | `docs/`, `CLAUDE.md` | Low | Low | 0.4h | done | T529 | - | - | - |
+
+**Notes on execution:**
+- **The parity test found the copies already apart:** `json` had a comment only `insights.ts` carries (comments are ignored), and `isPlainObject` named its parameter `value` there and `v` in `classify.ts` (aligned). Nothing else differed outside `handle` and `validate`.
+- **Locally Vitest exposes `VITE_SUPABASE_URL` from `.env` but not `TYPESAFE_API_KEY`,** so the contract suite's static imports never started a real fetch; it now stubs `fetch` before they load anyway.
+- **The gain is not measured here:** how long Vercel takes between loading a module and handing it its first request is visible only on production.
+
 ## Phase 88 - The AI proxies check a token themselves; the database checks its session; wallets default to THB: T514-T522 (2026-10-05)
 
 ADR `0064`, amending ADRs `0032`, `0049` and `0050`. Branch `phase-88-auth-latency-and-currency-default`, cut from `main` at `6d76cc6`; commit `f224dca`, docs `91a6888`, hash backfill `32bcf40`; merged into `main` as `97d7abb` (PR #38); Vercel `dpl_CgKKNVmoSCdrGTaK5bGHxcUov9Qm` READY in `icn1`, entry JS and CSS byte-identical to the local build of `main`. `main` CI on the merge (run `37286541907`) passed every job with no flaky test in 261 s end to end, 20 s of it the merge job (149 tests per browser: 445 passed, 2 skipped). No `src/` change. Both migrations were applied to the live project on 2026-10-05, before the merge, by the owner in the Supabase SQL editor, with their history rows (`phase88_quota_checks_session` at `20261005085236`, `wallet_default_thb` at `20261005085237`, `created_by` "owner, SQL editor"), so the session check was live before the new proxies deployed. `npm run schema:drift` against live after the merge: **0 unaccounted rows**, 15 history rows for 15 files.

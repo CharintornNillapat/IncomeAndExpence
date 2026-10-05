@@ -4,6 +4,27 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
+## Phase 89 - The proxies fetch their keys as they load; a test keeps their shared code identical; a hand-applied migration's history row is printed: T523-T530 (2026-10-05, draft PR)
+
+ADR `0065`. After Phase 88's release a new instance's first signed-in request still waited for the whole key fetch (456 ms on production), the two proxies' copies were kept in step by a comment only, and every migration run in the SQL editor needed its history row written by hand.
+
+**Changed**
+- **Both proxies** (`api/classify.ts`, `api/insights.ts`): `prefetchSigningKeys()` runs at load when both settings are present and never rejects. A fetch under way is shared by every request that needs keys meanwhile (`keysInFlight`), unless it is older than its 3 s timeout. `issuerFor` builds the issuer for both the prefetch and the check. `insights.ts`'s `isPlainObject` takes `v`, like `classify.ts`'s.
+- **`unit/proxy-parity.test.ts`:** every top-level declaration both files hold is the same code (printed without comments) unless listed in `OWN` (`handle`, `validate`); every shared name is listed; the only loose statement is the prefetch call.
+- **`npm run migration:print-history -- <file>`** (`scripts/migration-history.mjs`, `scripts/lib/migrationHistory.mjs`): the idempotent history insert, at the UTC time it is printed, as `owner, SQL editor` unless told otherwise. The drift query test records the post-Phase 87 files with it.
+- **Tests:** prefetch 18, parity 39, helper 18; the contract suite stubs `fetch` before the proxies load.
+- **Docs:** ADR `0065`, `CLAUDE.md`, the ledger, this log, baseline metrics.
+
+**Gate:**
+- Lint clean. Unit 970/970 in 36 files. Playwright 445 passed + 2 skipped of 447 in 7.6 m, first pass.
+- **Negative controls:** no prefetch call in `classify.ts` (7 fail), a fetch under way not shared (2), a frozen fetch waited for (2, by timing out), the prefetch without the TypeSafe key (2), one constant changed in `insights.ts` (3), the helper ignoring a recorded name (2), the helper recording the dated name (4).
+- **Drift against live:** all 12 kinds match live in count and row hash, 0 unaccounted rows (no migration in this phase).
+
+**Still open**
+- **Measure on production after release:** a new instance's first request with a token (refused before TypeSafe), against Phase 88's 456 ms; then a real signed-in request's `Server-Timing`.
+- **Four soft-deleted wallets say USD** (owner: relabel or leave).
+- **WebKit on Windows stops painting now and then** (ADR `0058`), locally only.
+
 ## Phase 88 - The AI proxies check a token themselves; the database checks its session; wallets default to THB: T514-T522 (2026-10-05, commit `f224dca`, docs `91a6888`, merge `97d7abb`)
 
 ADR `0064`. A signed-in AI request on a cold instance spent about 390 ms of 626 ms asking the auth server about its token.
