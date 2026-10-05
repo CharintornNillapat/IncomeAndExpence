@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 90 - A weekly job compares the live schema with the migrations, as a read-only role; the cold token check is closed: T531-T538 (2026-10-05, commit `edb8109`, docs `7984827`, draft PR #40)
+## Phase 90 - A weekly job compares the live schema with the migrations, as a read-only role; the cold token check is closed: T531-T538 (2026-10-05, commit `edb8109`, docs `7984827`, merge `d988aa8`)
 
 ADR `0066`. The drift check (ADR `0063`) ran only at releases, by hand, and the live schema has been changed outside the migrations before.
 
@@ -19,8 +19,13 @@ ADR `0066`. The drift check (ADR `0063`) ran only at releases, by hand, and the 
 - Lint clean. Unit 997/997 in 37 files. Playwright 445 passed + 2 skipped of 447 in 8.3 m, first pass.
 - **Negative controls:** no privilege check (2 fail), the role without `USAGE` (5), the role granted every app table (11), `--live` falling through (1), the URL's `ssl*` parameters kept (1), a failed query reported clean (3), a transaction not read-only (6).
 
+**Release:**
+- PR #40 merged into `main` as `d988aa8`. Vercel `dpl_EVF8YtC64W86cxydr2k6uY5zk5L3` is READY in production (`icn1`). Its `index-DNX-vcmX.js` (189,976 B) and `index-B4oPRoyv.css` (50,539 B) are byte-identical to the local build of `main`.
+- `main` CI on the merge (run `37309062008`) passed every job with no flaky test in 269 s end to end, 21 s of it the merge job (149 tests per browser: 445 passed, 2 skipped).
+- **Not yet checking live** (read-only, 2026-10-05): the role `schema_drift_reader` does not exist on the live project and the repository has no `SUPABASE_DRIFT_DB_URL` secret, so a run now exits 2 ("not checked"). The owner's steps 2 to 5 of "Order of release" turn it on.
+
 **Still open**
-- **Owner, after the merge:** run the role script, set its password, add `SUPABASE_DRIFT_DB_URL`, run the workflow once (ADR `0066`, "Order of release").
+- **Owner:** run the role script, set its password, add `SUPABASE_DRIFT_DB_URL`, run the workflow once (ADR `0066`, "Order of release").
 - **Measure a real signed-in request on production** (needs a session).
 - **Four soft-deleted wallets say USD** (owner: relabel or leave).
 - **WebKit on Windows stops painting now and then** (ADR `0058`), locally only.

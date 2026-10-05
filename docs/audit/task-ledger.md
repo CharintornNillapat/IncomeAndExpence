@@ -1083,7 +1083,7 @@ Approved explicitly by the user, planned and approved before any code was writte
 
 ## Phase 90 - A weekly job compares the live schema with the migrations, as a read-only role; the cold token check is closed: T531-T538 (2026-10-05)
 
-ADR `0066`, amending ADRs `0063`, `0064` and `0065`. Branch `phase-90-scheduled-schema-drift`, cut from `main` at `56b512f`; commit `edb8109`, docs `7984827`; draft PR #40. No `src/` change and no migration. **The role and the secret are the owner's, after the merge:** until then the workflow exits 2 ("not checked").
+ADR `0066`, amending ADRs `0063`, `0064` and `0065`. Branch `phase-90-scheduled-schema-drift`, cut from `main` at `56b512f`; commit `edb8109`, docs `7984827`, hash backfill `9829814`; merged into `main` as `d988aa8` (PR #40); Vercel `dpl_EVF8YtC64W86cxydr2k6uY5zk5L3` READY in `icn1`, entry JS and CSS byte-identical to the local build of `main`. `main` CI on the merge (run `37309062008`) passed every job with no flaky test in 269 s end to end, 21 s of it the merge job (149 tests per browser: 445 passed, 2 skipped). No `src/` change and no migration. **The role and the secret are the owner's, after the merge:** until then the workflow exits 2 ("not checked"); neither existed when this was recorded.
 
 | # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
 |---|---|---|---|---|---|---|---|---|---|---|

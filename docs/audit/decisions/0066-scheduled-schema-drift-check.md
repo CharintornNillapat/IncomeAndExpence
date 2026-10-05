@@ -1,6 +1,6 @@
 # 0066: A weekly job compares the live schema with the migrations, as a read-only role; the cold token check is closed
 
-**Status:** Accepted. Implemented on branch `phase-90-scheduled-schema-drift` (commit `edb8109`, docs `7984827`), draft PR #40. Not merged yet. **The workflow checks nothing until the owner creates the role and the secret** (see "Order of release").
+**Status:** Accepted. Released: commit `edb8109`, docs `7984827`, hash backfill `9829814`, merged into `main` as `d988aa8` (PR #40); Vercel `dpl_EVF8YtC64W86cxydr2k6uY5zk5L3` READY in `icn1`. **The workflow checks nothing until the owner creates the role and the secret** (see "Order of release"; not done as of the release record).
 - **Amends** ADR `0063`: the drift check also runs on a schedule, over a connection.
 - **Amends** ADRs `0064` and `0065`: no more work on the cold token check (decision 4).
 
@@ -118,6 +118,12 @@ After Phase 89, a new instance's first request waited 319 to 483 ms in `auth` (f
 - **The SQL-editor query** printed by `npm run schema:drift` is byte-identical to Phase 89's.
 - **Lint** clean. **Playwright:** in the refactor log.
 - **Not yet run against live:** the role and the secret come after the merge (release steps 2 to 5).
+
+## Release (2026-10-05)
+
+- **Merge:** PR #40 merged into `main` as `d988aa8`. Vercel `dpl_EVF8YtC64W86cxydr2k6uY5zk5L3` is READY in production (`icn1`; a guest `POST {}` to `/api/classify` answered 400 from `icn1`), and its `index-DNX-vcmX.js` (189,976 B) and `index-B4oPRoyv.css` (50,539 B) are byte-identical to the local build of `main` (no `src/` change).
+- **CI:** `main` CI on the merge (run `37309062008`) passed every job with no flaky test in 269 s end to end, 21 s of it the merge job (149 tests per browser: 445 passed, 2 skipped).
+- **Not yet checking live** (read-only, 2026-10-05): the role `schema_drift_reader` does not exist on the live project and the repository has no `SUPABASE_DRIFT_DB_URL` secret, so a run now exits 2 ("not checked"). The owner's steps 2 to 5 of "Order of release" turn it on.
 
 ## Consequences
 
