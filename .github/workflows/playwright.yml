@@ -64,7 +64,7 @@ jobs:
         # EPYC 7763 runners took about 1.3 times as long as EPYC 9V45 ones),
         # so halving each job halves that swing too. Measured over three runs
         # each: end to end 233 to 242 s, against 320 to 362 s unsharded; 3
-        # workers unsharded saved only 8 to 13% and made every test about a
+        # workers unsharded saved only 7 to 13% and made every test about a
         # third slower.
         shard: [ 1, 2 ]
         # The one place the container's Playwright version is written. It must

@@ -37,7 +37,7 @@ export default defineConfig({
    * request.
    *
    * Still two (Phase 85, ADR 0061). Three, measured over three CI runs, cut
-   * each browser's job by only 8 to 13% and made every test about a third
+   * each browser's job by only 7 to 13% and made every test about a third
    * slower, which is timeout headroom spent. CI goes faster by sharding each
    * browser across two jobs instead (`.github/workflows/playwright.yml`).
    *
