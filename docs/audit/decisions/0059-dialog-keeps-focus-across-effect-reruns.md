@@ -2,6 +2,7 @@
 
 **Status:** Accepted. Implemented on branch `phase-83-stacked-modal-inert-and-ci-trace` (commit `19a523b`, docs `eb779b5`, hash backfill `e2b3a5c`), merged into `main` as `9c8851a` (PR #33). Vercel `dpl_8wVCLUe7cfxLPDHGEdAaaz2d49W7` is READY in production (`icn1`).
 - **Amends** ADR `0058` (and `0043`'s focus on open): the focus move on open now gives back a control that had focus inside the panel.
+- **Amended by** ADR `0060`: CI's first-failure trace is recorded without the screencast (`screenshots: false`), which was most of its cost.
 
 **Date:** 2026-10-05
 

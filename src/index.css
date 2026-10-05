@@ -92,6 +92,60 @@
 }
 
 /*
+ * Latin text while Plex loads (Phase 84, ADR 0060). `swap` first paints in the
+ * next family, then reflows into Plex: on production the brand, the header
+ * tabs and "Good morning" moved 3 to 6 px. This family is the local Arial
+ * resized to Plex's width and given Plex's ascent and descent, one face per
+ * weight, so the swap keeps every line box where it was. Measured in Chromium
+ * on the shipped files: canvas width of a UI sample and `fontBoundingBox*` at
+ * 1000px, Plex against Arial (Arial Bold from 600); the overrides are Plex's
+ * metric divided by `size-adjust`, which scales them. Liberation Sans is
+ * metric-compatible with Arial, so Linux (CI's Playwright image included) gets
+ * the same result. Latin only: Thai text keeps the system Thai fonts below,
+ * and a device with neither font (Android) skips this family as before.
+ */
+@font-face {
+  font-family: 'IBM Plex Sans Thai Fallback';
+  font-weight: 400;
+  src: local('Arial'), local('ArialMT'), local('Liberation Sans'), local('LiberationSans');
+  size-adjust: 100.64%;
+  ascent-override: 110.89%;
+  descent-override: 53.06%;
+  line-gap-override: 0%;
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'IBM Plex Sans Thai Fallback';
+  font-weight: 500;
+  src: local('Arial'), local('ArialMT'), local('Liberation Sans'), local('LiberationSans');
+  size-adjust: 102.61%;
+  ascent-override: 108.76%;
+  descent-override: 52.04%;
+  line-gap-override: 0%;
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'IBM Plex Sans Thai Fallback';
+  font-weight: 600;
+  src: local('Arial Bold'), local('Arial-BoldMT'), local('Liberation Sans Bold'), local('LiberationSans-Bold');
+  size-adjust: 97.46%;
+  ascent-override: 114.5%;
+  descent-override: 54.79%;
+  line-gap-override: 0%;
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'IBM Plex Sans Thai Fallback';
+  font-weight: 700;
+  src: local('Arial Bold'), local('Arial-BoldMT'), local('Liberation Sans Bold'), local('LiberationSans-Bold');
+  size-adjust: 98.68%;
+  ascent-override: 113.09%;
+  descent-override: 54.11%;
+  line-gap-override: 0%;
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+/*
  * Design tokens (`docs/design/finlife-redesign-spec.md` section 1, Phase 55a,
  * ADR 0027). Each value is set once for light on `:root` and once for dark on
  * `.dark`, and `@theme inline` below maps the variables onto Tailwind colour
@@ -266,7 +320,7 @@
    * IBM Plex Sans Thai covers Thai, Latin and the baht sign in one family
    * (spec section 2). The system stack is only what paints before it loads.
    */
-  --font-sans: "IBM Plex Sans Thai", system-ui, -apple-system, "Segoe UI", "Leelawadee UI", Thonburi, "Noto Sans Thai", Roboto, sans-serif;
+  --font-sans: "IBM Plex Sans Thai", "IBM Plex Sans Thai Fallback", system-ui, -apple-system, "Segoe UI", "Leelawadee UI", Thonburi, "Noto Sans Thai", Roboto, sans-serif;
 }
 
 @layer base {

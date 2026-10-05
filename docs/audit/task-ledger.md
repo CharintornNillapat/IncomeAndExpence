@@ -1081,6 +1081,29 @@ Approved explicitly by the user, planned and approved before any code was writte
 - **One negative control was redone** because the first attempt produced malformed TypeScript that the dev server still served — the tests failed, but possibly for the wrong reason.
 - **No flakes.** Phase 44's `wallets.spec.ts` webkit flake has now not reproduced across three consecutive phases; still watched rather than closed.
 
+## Phase 84 - CI traces a first failure without the screencast; nothing moves while the app loads: T483-T491 (2026-10-05)
+
+ADR `0060`, amending ADR `0059`'s CI trace. Branch `phase-84-ci-trace-opt-and-cls`, cut from `main` at `1b7b5fb`; commit `9348b0d` (docs `1f45a00`, spec follow-ups `1615288` and `7b7822e`); draft PR #34, CI green on its third run (`37250366820`). No migration, no proxy change.
+
+| # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
+|---|---|---|---|---|---|---|---|---|---|---|
+| T483 | Investigation: layout-shift entries with their `sources` on a clean production load, 3 runs at 1280 and 390 | - | High | Low | 0.4h | done | - | - | 1280: 0.0139 (the footer 0.0137, the font swap about 0.0002); 390: 0.00001 | - |
+| T484 | `<main>` reserves the viewport under the header | `App.tsx` | High | Low | 0.1h | done | T483 | `9348b0d` | the footer test fails on `main`'s `App.tsx` in all 3 browsers, the load test 3/3 at 0.0137 | entry +57 B |
+| T485 | Metric-matched fallback faces: Plex against Arial per weight in Chromium, local Arial then Liberation Sans | `index.css` | Med | Low | 0.5h | done | T483 | `9348b0d` | the load test fails on `main`'s `index.css` 3/3 at 0.00020 to 0.00027 | CSS +1,729 B |
+| T486 | Throttled load and tab pass, `main` against the branch; pixel comparison of 6 tabs at 2 widths | - | High | Low | 0.4h | done | T485 | - | 1280: 0.0268 -> 0.0000 (x3); 390: 0.0000 both; identical pixels apart from the footer on short pages | - |
+| T487 | `tests/layout-stability.spec.ts`: footer below the fold on short pages (all browsers); a cold Dashboard load under 0.0001 (Chromium) | `tests/layout-stability.spec.ts` | Med | Low | 0.4h | done | T486 | `9348b0d` | 12/12 x3 plus 6 skipped; the load test 5/5 | spec 147 -> 149 |
+| T488 | CI trace without screenshots; local WebKit timing of off, full and lean, twice; a deliberate failure's trace opened under both | `playwright.config.ts` | Med | Low | 0.6h | done | - | `9348b0d` | full 4.7 / 4.1 m, lean 3.4 / 3.3 m, off 3.1 / 3.3 m; the lean trace keeps 16 DOM snapshots, 119 network entries, the source | trace 506 -> 180 kB (WebKit) |
+| T489 | Gate: lint, unit, full suite, bundle | - | High | Low | 0.3h | done | T488 | - | lint clean; unit 829/829; full 445 passed + 2 skipped in 7.5 m, first pass | see the refactor log |
+| T490 | ADR `0060`, `CLAUDE.md`, this ledger, the refactor log, baseline metrics | `docs/`, `CLAUDE.md` | Low | Low | 0.3h | done | T489 | `1f45a00` | - | - |
+| T491 | CI follow-up: Linux chromium's load measured 0.00035 (the header's labels about 1.5% wider in the fallback); the spec checks the fallback resolves and holds the load to 0.001 | `tests/layout-stability.spec.ts` | Med | Low | 0.5h | done | T490 | `1615288`, `7b7822e` | CI green; `main`'s `App.tsx` fails at 0.0137, `main`'s `index.css` on the fallback check | CI WebKit 4.3 / 3.2 / 3.2 m |
+
+**Notes on execution:**
+- **The load test first ran at the default 1280x720** and passed against `main`'s `App.tsx`: there the loading outline already pushes the footer off. It runs at 1280x800, the probe's size, where the control fails.
+- **The pixel comparison first differed on Diary and Categories** at a 600 ms settle: the page's slide-in was still finishing. At 2 s `main` matches itself and the branch.
+- **Two local WebKit timing runs had one failure each**, both the Windows painting stall (one with no trace).
+- **Linux could not be measured here:** Docker Desktop would not start and WSL lacks virtualisation, so the PR's CI runs were the Linux measurement. The second run's diagnostics (fallback resolved, boxes of what moved) separated a missing font from a metric mismatch.
+- **The first controls after the commit stashed nothing** (the fixes were committed); they were re-run with `git checkout main -- <file>` and restored.
+
 ## Phase 83 - An open dialog keeps its focus when React re-runs its effects; CI keeps the first failure's trace: T477-T482 (2026-10-05)
 
 ADR `0059`, amending ADR `0058`. Branch `phase-83-stacked-modal-inert-and-ci-trace`, cut from `main` at `349f3f5`; commit `19a523b` (docs `eb779b5`, hash backfill `e2b3a5c`), merged into `main` as `9c8851a` (PR #33); Vercel `dpl_8wVCLUe7cfxLPDHGEdAaaz2d49W7` READY in `icn1`. `main` CI on the merge (run `37244844805`) passed every job with no flaky test: 147 passed per browser, chromium 3.1 m, Firefox 3.7 m, WebKit 4.5 m. With first-attempt tracing, WebKit has taken 4.5 m on both runs so far (the PR's and this one), against 3.6 and 3.8 m on the two `main` runs before it; Firefox (4.0 and 3.7 m, against 2.6 and 3.5 m) and chromium (2.5 and 3.1 m, against 2.5 and 2.5 m) vary too much run to run to call. Production check: 6 of 6 (see the refactor log). No migration, no proxy change.
