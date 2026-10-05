@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 93 - The redundant SELECT policies are dropped; transfer_funds takes the user from the session, beside its old signature: T555-T562 (2026-10-06)
+## Phase 93 - The redundant SELECT policies are dropped; transfer_funds takes the user from the session, beside its old signature: T555-T562 (2026-10-06, commit `2eeb20c`, docs `11b4f23`, draft PR #43)
 
 ADR `0069`. ADR `0067` scheduled two database changes: dropping the two "view system and their own" SELECT policies, and taking `transfer_funds`' user from the session instead of an argument.
 
@@ -27,6 +27,7 @@ ADR `0069`. ADR `0067` scheduled two database changes: dropping the two "view sy
   - the client still sending `p_user_id` fails the signed-in test.
 - **Drift replay:** 17 migrations; expects 7 policies, 16 functions, 64 function grants. Live differs until the owner applies the two files (T562), as designed.
 - **History inserts:** printed with `npm run migration:print-history`. Each carries its print time as its version, so they are printed again at apply.
+- **On CI:** the pull request's run `37378623941` passed every job in 299 s, 454 passed and 2 skipped with no flaky test, unit 1030.
 - **Bundle:** entry 190,084 to 190,069 B raw (-15), 54,778 to 54,775 gzip (-3). Total JS and CSS 1,416,889 to 1,416,874 B raw; gzip moves +31 B, from changed chunk hashes.
 
 **Still open**

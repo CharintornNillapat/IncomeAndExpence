@@ -1,6 +1,6 @@
 # 0069: The redundant SELECT policies are dropped; transfer_funds takes the user from the session, beside its old signature
 
-**Status:** Accepted. Implemented on branch `phase-93-db-cleanup-migrations`. Not merged yet. **The migrations are applied by the owner before the merge** (see "Order of release").
+**Status:** Accepted. Implemented on branch `phase-93-db-cleanup-migrations` (commit `2eeb20c`, docs `11b4f23`), draft PR #43. Not merged yet. **The migrations are applied by the owner before the merge** (see "Order of release").
 - **Amends** ADR `0063`: the baseline leaves out the two policies, as it already left out the one Phase 58s dropped, and the replay prelude gains a grant.
 - **Amends** ADR `0067`: its two scheduled findings, P1 and S2a, are done.
 - **Amends** ADR `0023`'s rule that the user comes from `auth.uid()` only, which `transfer_funds` (older than ADR `0023`) did not follow.
@@ -81,6 +81,7 @@ The probe reads `categories` as `authenticated`, and the policies call `auth.uid
 - **`unit/authenticated-ledger.test.tsx`, +1:** a signed-in transfer sends exactly the new overload's seven arguments and no `p_user_id`, and the balances follow the server. Against the old client it fails on `"p_user_id": "user-test-1"`.
 - **Drift:** the replay expects 75 columns, 28 constraints, 1 extension, 16 functions, 64 function grants, 17 indexes, 7 policies, 5 publication tables, 8 tables, 24 table grants, 2 triggers and 17 migrations. Live matches only after step 1.
 - **Gate:** in the refactor log.
+- **On CI:** the pull request's run `37378623941` passed every job in 299 s, 454 passed and 2 skipped with no flaky test, unit 1030.
 
 ## Consequences
 
