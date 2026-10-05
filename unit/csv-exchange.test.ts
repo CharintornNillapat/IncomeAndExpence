@@ -110,3 +110,85 @@ describe('transactionsToCsv - the Debt column (F8)', () => {
     expect(preview.rows[0]).toMatchObject({ isValid: true, type: 'DEBT_REPAYMENT', debtId: 'd-car', amount: 300 });
   });
 });
+
+/**
+ * Formula injection (ADR 0068): a text cell a spreadsheet would run as a
+ * formula is written with a leading apostrophe, and the importer takes exactly
+ * that apostrophe off again.
+ */
+describe('transactionsToCsv - formula injection (ADR 0068)', () => {
+  const NAMED_WALLETS = [
+    ...WALLETS,
+    { id: 'w-calc', name: '=Wallet', isDeleted: false },
+    { id: 'w-plus', name: '+Plus', isDeleted: false },
+  ] as unknown as Wallet[];
+  const CATEGORIES = [{ id: 'c-at', name: '@Category' }] as unknown as Category[];
+  const NAMED_DEBTS = [{ id: 'd-minus', name: '-Debt', isDeleted: false, remainingAmount: 900 }] as unknown as Debt[];
+
+  const row = (overrides: Record<string, unknown>) =>
+    ({ id: 't', walletId: 'w-cash', type: 'EXPENSE', amount: 50, description: 'Lunch', transactionDate: '2026-09-28', isDeleted: false, ...overrides }) as unknown as Transaction;
+
+  const parse = (text: string) => {
+    const lines = text.split(/\r?\n/);
+    const header = lines[0].split(',');
+    return { header, cells: (i: number) => lines[i].split(',') };
+  };
+
+  it('escapes every text column that starts like a formula', () => {
+    const txs = [
+      row({ walletId: 'w-calc', categoryId: 'c-at', description: '=HYPERLINK(1)', rawInput: '-5+3' }),
+      row({ type: 'TRANSFER', walletId: 'w-cash', destinationWalletId: 'w-plus', description: '@SUM(1)' }),
+      row({ type: 'DEBT_REPAYMENT', debtId: 'd-minus', description: '+cmd' }),
+    ];
+    const { header, cells } = parse(transactionsToCsv(txs, NAMED_WALLETS, CATEGORIES, NAMED_DEBTS));
+    const col = (line: number, name: string) => cells(line)[header.indexOf(name)];
+    expect(col(1, 'Wallet')).toBe("'=Wallet");
+    expect(col(1, 'Category')).toBe("'@Category");
+    expect(col(1, 'Description')).toBe("'=HYPERLINK(1)");
+    expect(col(1, 'Raw Calculation')).toBe("'-5+3");
+    expect(col(2, 'Destination Wallet')).toBe("'+Plus");
+    expect(col(2, 'Description')).toBe("'@SUM(1)");
+    expect(col(3, 'Debt')).toBe("'-Debt");
+    expect(col(3, 'Description')).toBe("'+cmd");
+  });
+
+  it('escapes a leading tab or carriage return', () => {
+    const out = transactionsToCsv([row({ description: '\tTab' }), row({ description: '\rReturn' })], WALLETS, []);
+    expect(out).toContain("'\tTab");
+    expect(out).toContain("'\rReturn");
+  });
+
+  it('leaves the amount alone, so a negative adjustment stays a number', () => {
+    const { header, cells } = parse(transactionsToCsv([row({ type: 'ADJUSTMENT', amount: -50 })], WALLETS, []));
+    expect(cells(1)[header.indexOf('Amount')]).toBe('-50.00');
+  });
+
+  it('leaves ordinary text alone, a formula character later in it included', () => {
+    const { header, cells } = parse(transactionsToCsv([row({ description: 'Lunch = 60 - 5' })], WALLETS, []));
+    expect(cells(1)[header.indexOf('Description')]).toBe('Lunch = 60 - 5');
+  });
+
+  it('round-trips every text column back to what was stored', async () => {
+    const txs = [
+      row({ walletId: 'w-calc', description: '=HYPERLINK(1)' }),
+      row({ type: 'TRANSFER', walletId: 'w-plus', destinationWalletId: 'w-calc', description: "'=already quoted" }),
+      row({ type: 'DEBT_REPAYMENT', debtId: 'd-minus', description: "''@two quotes" }),
+      row({ type: 'ADJUSTMENT', amount: -50, description: "'plain apostrophe" }),
+    ];
+    const preview = await parseAndValidateTransactionCsv(transactionsToCsv(txs, NAMED_WALLETS, CATEGORIES, NAMED_DEBTS), NAMED_WALLETS, NAMED_DEBTS);
+    expect(preview.rows.map((r) => r.isValid)).toEqual([true, true, true, true]);
+    expect(preview.rows.map((r) => r.description)).toEqual(['=HYPERLINK(1)', "'=already quoted", "''@two quotes", "'plain apostrophe"]);
+    expect(preview.rows[0].walletName).toBe('=Wallet');
+    expect(preview.rows[1]).toMatchObject({ walletName: '+Plus', destinationWalletName: '=Wallet' });
+    expect(preview.rows[2]).toMatchObject({ debtId: 'd-minus', debtName: '-Debt' });
+    expect(preview.rows[3].amount).toBe(-50);
+  });
+
+  it('round-trips a category name', async () => {
+    const preview = await parseAndValidateTransactionCsv(
+      transactionsToCsv([row({ categoryId: 'c-at' })], WALLETS, CATEGORIES),
+      WALLETS
+    );
+    expect(preview.rows[0].categoryName).toBe('@Category');
+  });
+});

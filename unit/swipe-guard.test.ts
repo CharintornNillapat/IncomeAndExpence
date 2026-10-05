@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
-import { describe, it, expect, beforeEach } from 'vitest';
-import { isInsideHorizontalScroller } from '../src/utils/swipeGuard';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { isInsideHorizontalScroller, isZoomedIn } from '../src/utils/swipeGuard';
 
 /**
  * ADR 0024: a swipe that starts inside a horizontal scroller belongs to that
@@ -66,5 +66,39 @@ describe('isInsideHorizontalScroller', () => {
   it('handles a non-element target', () => {
     expect(isInsideHorizontalScroller(null, main)).toBe(false);
     expect(isInsideHorizontalScroller(document, main)).toBe(false);
+  });
+});
+
+/**
+ * ADR 0068: with zoom allowed, a one-finger drag while zoomed in pans the page,
+ * so it must not also change the tab. jsdom has no visualViewport; each test
+ * stubs it.
+ */
+describe('isZoomedIn', () => {
+  afterEach(() => {
+    Reflect.deleteProperty(window, 'visualViewport');
+  });
+
+  const withScale = (scale: number) =>
+    Object.defineProperty(window, 'visualViewport', { configurable: true, value: { scale } });
+
+  it('is false at the page\'s own scale', () => {
+    withScale(1);
+    expect(isZoomedIn()).toBe(false);
+  });
+
+  it('is true once the page is pinch-zoomed in', () => {
+    withScale(1.5);
+    expect(isZoomedIn()).toBe(true);
+  });
+
+  it('ignores rounding just above 1', () => {
+    withScale(1.005);
+    expect(isZoomedIn()).toBe(false);
+  });
+
+  it('counts a browser without visualViewport as not zoomed', () => {
+    Reflect.deleteProperty(window, 'visualViewport');
+    expect(isZoomedIn()).toBe(false);
   });
 });

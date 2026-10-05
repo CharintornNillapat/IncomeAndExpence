@@ -346,6 +346,23 @@
     outline: 2px solid var(--focus);
     outline-offset: 2px;
   }
+
+  /*
+   * ADR 0068: zoom is allowed since Phase 92, and iOS Safari zooms the page
+   * into any field whose text is under 16px when it takes focus. Most fields
+   * here are `text-xs` (12px) or `text-sm` (14px). On iOS only, a field's own
+   * `--text-xs` and `--text-sm` become 1rem, so those utilities size its text
+   * at 16px; larger sizes, the field's label and every other element keep
+   * theirs. `-webkit-touch-callout` is supported by iOS and iPadOS Safari
+   * alone, so desktop browsers and Android render as before. A field sized
+   * with an arbitrary value (`text-[11px]`) would escape this; use the scale.
+   */
+  @supports (-webkit-touch-callout: none) {
+    :where(input, select, textarea) {
+      --text-xs: 1rem;
+      --text-sm: 1rem;
+    }
+  }
 }
 
 /*

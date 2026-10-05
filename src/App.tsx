@@ -7,7 +7,7 @@ import { MobileBottomNav } from './components/MobileBottomNav';
 import { ViewLoadingFallback } from './components/ViewLoadingFallback';
 import { AuthModal } from './components/AuthModal';
 import { ReloadPrompt } from './components/ReloadPrompt';
-import { isInsideHorizontalScroller } from './utils/swipeGuard';
+import { isInsideHorizontalScroller, isZoomedIn } from './utils/swipeGuard';
 
 // Ordered tab hierarchy for native-like swipe gestures
 const TABS_ORDER: ActiveTab[] = [
@@ -234,17 +234,18 @@ const MainApp: React.FC = () => {
 
   // Touch swipe gesture hook for iOS/Android native app feel. ADR 0024: a
   // swipe that starts inside a horizontal scroller (a wide table) scrolls that
-  // element and does not also change the tab.
-  const startsInScroller = (e: SwipeEventData) => {
+  // element and does not also change the tab. ADR 0068: neither does a drag
+  // while the page is pinch-zoomed in, which pans the page.
+  const swipeBelongsElsewhere = (e: SwipeEventData) => {
     const target = e.event.target;
-    return isInsideHorizontalScroller(target, target instanceof Element ? target.closest('main') : null);
+    return isZoomedIn() || isInsideHorizontalScroller(target, target instanceof Element ? target.closest('main') : null);
   };
   const swipeHandlers = useSwipeable({
     onSwipedLeft: (e) => {
-      if (!startsInScroller(e)) handleNextTab();
+      if (!swipeBelongsElsewhere(e)) handleNextTab();
     },
     onSwipedRight: (e) => {
-      if (!startsInScroller(e)) handlePrevTab();
+      if (!swipeBelongsElsewhere(e)) handlePrevTab();
     },
     delta: 40,
     preventScrollOnSwipe: false,

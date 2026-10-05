@@ -24,3 +24,15 @@ export function isInsideHorizontalScroller(target: EventTarget | null, boundary:
   }
   return false;
 }
+
+/**
+ * Whether the page is pinch-zoomed in (ADR 0068). Zoom is allowed since Phase
+ * 92, and a person zoomed in moves around the page with the same one-finger
+ * sideways drag that changes tabs, so `App.tsx` ignores a swipe while zoomed.
+ * Without `visualViewport` (an old browser) the page counts as not zoomed,
+ * which keeps the swipe as it was.
+ */
+export function isZoomedIn(): boolean {
+  const scale = window.visualViewport?.scale ?? 1;
+  return scale > 1.01;
+}
