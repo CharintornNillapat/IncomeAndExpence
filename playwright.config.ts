@@ -36,6 +36,11 @@ export default defineConfig({
    * runs stay green, since the Vite dev server compiles each module on first
    * request.
    *
+   * Still two (Phase 85, ADR 0061). Three, measured over three CI runs, cut
+   * each browser's job by only 8 to 13% and made every test about a third
+   * slower, which is timeout headroom spent. CI goes faster by sharding each
+   * browser across two jobs instead (`.github/workflows/playwright.yml`).
+   *
    * Four locally (Phase 79, ADR 0055). Left unset, Playwright takes half the
    * logical CPUs: 6 on the 12-thread machine these phases run on. Measured
    * there, every Firefox test three times (441 runs): 6 workers took 10.4 m

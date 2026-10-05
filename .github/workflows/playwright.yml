@@ -52,14 +52,20 @@ jobs:
     needs: checks
     timeout-minutes: 30
     runs-on: ubuntu-24.04
-    # One job per browser, run side by side (Phase 55, T199). fail-fast is off
-    # so a failure in one engine still reports the other two.
+    # Two jobs per browser, run side by side (Phase 55, T199; sharded in Phase
+    # 85, ADR 0061). fail-fast is off so a failure in one engine still reports
+    # the other two.
     strategy:
       fail-fast: false
       matrix:
         project: [ chromium, firefox, webkit ]
-        # EXPERIMENT (Phase 85): two shards per browser, each on its own
-        # runner with 2 workers.
+        # Each shard runs half of the browser's tests on its own runner, still
+        # with 2 workers. A job's time follows the machine it lands on (AMD
+        # EPYC 7763 runners took about 1.3 times as long as EPYC 9V45 ones),
+        # so halving each job halves that swing too. Measured over three runs
+        # each: end to end 233 to 242 s, against 320 to 362 s unsharded; 3
+        # workers unsharded saved only 8 to 13% and made every test about a
+        # third slower.
         shard: [ 1, 2 ]
         # The one place the container's Playwright version is written. It must
         # equal the version package-lock.json installs: the image carries the
