@@ -1,6 +1,6 @@
 # 0063: The migrations rebuild the live schema, and a check proves it
 
-**Status:** Accepted. Implemented on branch `phase-87-reconcile-db-migrations` (commit `ffd3f13`, docs `0c898b9`), draft PR #37. Not merged yet. The migration history backfill is **not applied** to the live project: that waits for the owner's word after the merge (see "Applying it").
+**Status:** Accepted. Implemented on branch `phase-87-reconcile-db-migrations` (commit `ffd3f13`, docs `0c898b9`, hash backfill `81de85f`), merged into `main` as `67a5bba` (PR #37). Vercel `dpl_2vwnW6ph7E2ZG5nJFiwnjbfoaWLZ` is READY in production (`icn1`), serving the same entry as before: this phase changed no app code. The migration history backfill was applied on the owner's word after the merge, and the live project has **0 unaccounted drift** (see "Applying it").
 
 **Date:** 2026-10-05
 
@@ -107,6 +107,8 @@ After the merge, on the owner's word:
 2. Run `supabase/ops/20261005_phase87_record_migration_history.sql` on live.
 3. Run `drift-check.sql` again. **No rows** is zero unaccounted drift.
 
+**Done on 2026-10-05.** The owner approved the history backfill after the merge, and it was applied on 2026-10-05 through MCP's `execute_sql`: the read-only dry run first showed all 11 kinds of object identical and exactly the four names missing; the insert added those four rows (`baseline_schema`, `transfer_funds`, `phase64_dedupe_categories`, `phase73_ai_request_quota`); the drift check then returned **0 unaccounted rows**, with 13 history rows for 13 files.
+
 The baseline is never run on live: its objects are already there, which is why the history records it rather than applying it.
 
 ## Consequences
@@ -115,4 +117,4 @@ The baseline is never run on live: its objects are already there, which is why t
 - **A schema change made outside a migration now shows up.** Run `npm run schema:drift` after applying any migration, or whenever the dashboard has been used to change the schema.
 - **A new migration must be safe to replay from empty** on top of the prelude. The unit suite fails if it isn't, so a migration that depends on something only live has is caught in CI.
 - **`wallets.currency` defaults to `'USD'`** on live and in the baseline. The client sends `'THB'` and `create_wallet` and the starter seed write it, so this is recorded as found, not changed.
-- **Still open:** applying the backfill (above).
+- **The history now names every file:** 13 rows, four of them marked `phase87 backfill` in `created_by`.

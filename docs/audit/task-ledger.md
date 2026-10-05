@@ -1083,7 +1083,7 @@ Approved explicitly by the user, planned and approved before any code was writte
 
 ## Phase 87 - The migrations rebuild the live schema, and a check proves it: T505-T513 (2026-10-05)
 
-ADR `0063`. Branch `phase-87-reconcile-db-migrations`, cut from `main` at `7723bfd`; commit `ffd3f13`, docs `0c898b9`; draft PR #37. No `src/` change. The migration history backfill is written and tested but **not applied** to the live project: that waits for the owner after the merge. By the owner's decision the live checks stayed read-only (the rollback probe was not run on live).
+ADR `0063`. Branch `phase-87-reconcile-db-migrations`, cut from `main` at `7723bfd`; commit `ffd3f13`, docs `0c898b9`, hash backfill `81de85f`; merged into `main` as `67a5bba` (PR #37); Vercel `dpl_2vwnW6ph7E2ZG5nJFiwnjbfoaWLZ` READY in `icn1`, entry JS and CSS byte-identical to the local build of `main`. `main` CI on the merge (run `37278086248`) passed every job with no flaky test in 270 s end to end (149 tests per browser: 445 passed, 2 skipped). No `src/` change. The owner approved the history backfill after the merge, and it was applied on 2026-10-05 through MCP's `execute_sql`: the read-only dry run first showed all 11 kinds of object identical and exactly the four names missing; the insert added those four rows (`baseline_schema`, `transfer_funds`, `phase64_dedupe_categories`, `phase73_ai_request_quota`); the drift check then returned **0 unaccounted rows**, with 13 history rows for 13 files. By the owner's decision the live checks stayed read-only (the rollback probe was not run on live).
 
 | # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
 |---|---|---|---|---|---|---|---|---|---|---|

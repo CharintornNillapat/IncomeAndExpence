@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 87 - The migrations rebuild the live schema, and a check proves it: T505-T513 (2026-10-05, commit `ffd3f13`, docs `0c898b9`, draft PR #37)
+## Phase 87 - The migrations rebuild the live schema, and a check proves it: T505-T513 (2026-10-05, commit `ffd3f13`, docs `0c898b9`, merge `67a5bba`)
 
 ADR `0063`. Three known gaps in the migration history (Phase 64's cleanup, Phase 73's counter, an untracked index) turned out to sit on a bigger one: the base schema was never in the repo.
 
@@ -26,8 +26,12 @@ ADR `0063`. Three known gaps in the migration history (Phase 64's cleanup, Phase
 - **Against live (read-only):** `schema_catalog` hashed per kind matches for all 11 kinds after one fix (numeric precision). The history lacks exactly the four names the backfill adds; the Phase 64 cleanup would move 0 categories; the backfill's versions are free.
 - **Negative controls:** an unguarded `handle_new_user` in the baseline fails the baseline test, both drift tests and the probe; an unguarded backfill fails on its second run.
 
+**Release:**
+- PR #37 merged into `main` as `67a5bba`. Vercel `dpl_2vwnW6ph7E2ZG5nJFiwnjbfoaWLZ` is READY in production (`icn1`; a guest `POST {}` to `/api/classify` answered 400 from `icn1`). Its `index-DNX-vcmX.js` (189,976 B) and `index-B4oPRoyv.css` (50,539 B) are byte-identical to the local build of `main`.
+- `main` CI on the merge (run `37278086248`) passed every job with no flaky test in 270 s end to end (149 tests per browser: 445 passed, 2 skipped).
+- **History backfill:** The owner approved the history backfill after the merge, and it was applied on 2026-10-05 through MCP's `execute_sql`: the read-only dry run first showed all 11 kinds of object identical and exactly the four names missing; the insert added those four rows (`baseline_schema`, `transfer_funds`, `phase64_dedupe_categories`, `phase73_ai_request_quota`); the drift check then returned **0 unaccounted rows**, with 13 history rows for 13 files.
+
 **Still open**
-- **Apply the history backfill on live** (owner), then `npm run schema:drift` must return no rows.
 - **WebKit on Windows stops painting now and then** (ADR `0058`), locally only.
 
 ## Phase 86 - One Playwright report for all six CI shards: T499-T504 (2026-10-05, commit `002f8b3`, control `a927893` / `4259587`, docs `9fdf119`, merge `a7cb77f`)
