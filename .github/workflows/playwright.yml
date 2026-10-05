@@ -95,6 +95,17 @@ jobs:
             exit 1
           fi
 
+      # Phase 85 (ADR 0061): a job's test time follows the machine it lands
+      # on. Over 20 runs a slow runner took about 1.3 times as long in WebKit,
+      # evenly across every test, so a slow job is read against this line
+      # before anything is blamed on the suite.
+      - name: Describe the runner
+        run: |
+          cpu=$(grep -m1 'model name' /proc/cpuinfo | cut -d: -f2 | sed 's/^ *//')
+          mem=$(awk '/MemTotal/ { printf "%.1f GiB", $2 / 1048576 }' /proc/meminfo)
+          echo "Runner: $(nproc) CPUs, $cpu, $mem"
+          echo "Runner: $(nproc) CPUs, $cpu, $mem" >> "$GITHUB_STEP_SUMMARY"
+
       - name: Run Playwright E2E tests
         run: npx playwright test --project=${{ matrix.project }}
         env:
