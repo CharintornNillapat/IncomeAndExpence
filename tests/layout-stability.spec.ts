@@ -53,12 +53,16 @@ test.describe('Layout stability', () => {
         for (const entry of list.getEntries() as unknown as {
           value: number;
           hadRecentInput: boolean;
-          sources: { node: Node | null }[];
+          sources: { node: Node | null; previousRect: DOMRectReadOnly; currentRect: DOMRectReadOnly }[];
         }[]) {
           if (entry.hadRecentInput) continue;
+          const box = (r: DOMRectReadOnly) => `${Math.round(r.x)},${Math.round(r.y)} ${Math.round(r.width)}x${Math.round(r.height)}`;
           shifts.push({
             value: entry.value,
-            sources: entry.sources.map((s) => (s.node instanceof Element ? s.node.tagName.toLowerCase() + (s.node.id ? `#${s.node.id}` : '') : 'text')),
+            sources: entry.sources.map((s) => {
+              const name = s.node instanceof Element ? s.node.tagName.toLowerCase() + (s.node.id ? `#${s.node.id}` : '') : `"${(s.node?.textContent ?? '').trim().slice(0, 20)}"`;
+              return `${name} ${box(s.previousRect)} -> ${box(s.currentRect)}`;
+            }),
           });
         }
       }).observe({ type: 'layout-shift', buffered: true });
@@ -72,6 +76,22 @@ test.describe('Layout stability', () => {
       await document.fonts.ready;
       await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
     });
+
+    // The fallback faces only help where a local Arial or Liberation Sans
+    // exists, so say so first rather than as a layout-shift number.
+    const fallbackFaces = await page.evaluate(() =>
+      Promise.all(
+        [400, 500, 600, 700].map(async (weight) => {
+          try {
+            const faces = await document.fonts.load(`${weight} 16px "IBM Plex Sans Thai Fallback"`, 'Ag');
+            return `${weight}:${faces.map((f) => f.status).join('+') || 'none'}`;
+          } catch (error) {
+            return `${weight}:error ${(error as Error).message}`;
+          }
+        }),
+      ),
+    );
+    expect(fallbackFaces, 'the fallback family resolves to a local font').toEqual(['400:loaded', '500:loaded', '600:loaded', '700:loaded']);
 
     const shifts = await page.evaluate(() => (window as unknown as { __layoutShifts: { value: number; sources: string[] }[] }).__layoutShifts);
     const total = shifts.reduce((sum, s) => sum + s.value, 0);
