@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 86 - One Playwright report for all six CI shards: T499-T504 (2026-10-05, commit `002f8b3`, control `a927893` / `4259587`, draft PR #36)
+## Phase 86 - One Playwright report for all six CI shards: T499-T504 (2026-10-05, commit `002f8b3`, control `a927893` / `4259587`, docs `9fdf119`, draft PR #36)
 
 ADR `0062`, amending ADR `0061`. Since Phase 85 a run had six E2E jobs and six HTML reports; a failure meant finding its shard first.
 

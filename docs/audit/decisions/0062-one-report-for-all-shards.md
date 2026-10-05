@@ -1,6 +1,6 @@
 # 0062: One Playwright report for all six CI shards
 
-**Status:** Accepted. Implemented on branch `phase-86-consolidated-ci-reports` (commit `002f8b3`; negative control `a927893`, reverted in `4259587`), draft PR #36. Not merged yet.
+**Status:** Accepted. Implemented on branch `phase-86-consolidated-ci-reports` (commit `002f8b3`; negative control `a927893`, reverted in `4259587`; docs `9fdf119`), draft PR #36. Not merged yet.
 - **Amends** ADR `0061`, which rejected a merged report and left each shard to upload its own.
 
 **Date:** 2026-10-05

@@ -1083,7 +1083,7 @@ Approved explicitly by the user, planned and approved before any code was writte
 
 ## Phase 86 - One Playwright report for all six CI shards: T499-T504 (2026-10-05)
 
-ADR `0062`, amending ADR `0061`'s per-shard reports. Branch `phase-86-consolidated-ci-reports`, cut from `main` at `12587b2`; commit `002f8b3`, negative control `a927893` reverted in `4259587`; draft PR #36. No app code, no spec change, no migration.
+ADR `0062`, amending ADR `0061`'s per-shard reports. Branch `phase-86-consolidated-ci-reports`, cut from `main` at `12587b2`; commit `002f8b3`, negative control `a927893` reverted in `4259587`, docs `9fdf119`; draft PR #36. No app code, no spec change, no migration.
 
 | # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
 |---|---|---|---|---|---|---|---|---|---|---|
@@ -1092,7 +1092,7 @@ ADR `0062`, amending ADR `0061`'s per-shard reports. Branch `phase-86-consolidat
 | T501 | Per-browser step summary from the merged JSON | `scripts/ci-report-summary.mjs` | Med | Low | 0.2h | done | T500 | `002f8b3` | 149 / 149 / 149 shown | - |
 | T502 | Local rehearsal: three CI-style blob runs with a probe spec, merged; traces linked | - | Med | Low | 0.2h | done | T501 | - | 7 tests, 2 traces linked and present | - |
 | T503 | Gate: lint, unit, CI run, negative control on CI and its revert | - | High | Low | 0.4h | done | T502 | `a927893`, `4259587` | lint clean; unit 829/829; unified 447 runs (445 passed, 2 skipped); control: 6 traces from 3 shards linked | - |
-| T504 | ADR `0062`, ADR `0061`'s amendment line, `CLAUDE.md`, this ledger, the refactor log, baseline metrics | `docs/`, `CLAUDE.md` | Low | Low | 0.3h | done | T503 | - | - | - |
+| T504 | ADR `0062`, ADR `0061`'s amendment line, `CLAUDE.md`, this ledger, the refactor log, baseline metrics | `docs/`, `CLAUDE.md` | Low | Low | 0.3h | done | T503 | `9fdf119` | - | - |
 
 **Notes on execution:**
 - **The blob reporter empties `blob-report/` when a run starts,** so the local rehearsal's first attempt kept only the last shard's zip; each zip was moved aside after its run. CI is unaffected (a fresh checkout per job).
