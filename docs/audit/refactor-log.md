@@ -4,6 +4,32 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
+## Phase 87 - The migrations rebuild the live schema, and a check proves it: T505-T513 (2026-10-05, commit `ffd3f13`, docs `0c898b9`, draft PR #37)
+
+ADR `0063`. Three known gaps in the migration history (Phase 64's cleanup, Phase 73's counter, an untracked index) turned out to sit on a bigger one: the base schema was never in the repo.
+
+**Found** (live project, read-only)
+- **The history has 9 rows for 12 files.** `transfer_funds`, `phase64_dedupe_categories` and `phase73_ai_request_quota` were applied in the SQL editor.
+- **No file creates the base schema:** the seven original tables and their 25 constraints, six indexes, all nine policies, `handle_new_user()` and `on_auth_user_created` (Phase 52 only altered them), the realtime publication, `uuid-ossp` and `transactions_user_idempotency_uidx`. A database built from the files failed at the first one.
+- **Everything a file does create matches live:** every function body (md5), grant, policy, constraint, index and trigger.
+
+**Changed**
+- **`supabase/migrations/20260901_baseline_schema.sql`** (new): that schema, as it stood before the first migration, every statement guarded so it changes nothing on live, and nothing a later file drops.
+- **`supabase/ops/20261005_phase87_record_migration_history.sql`** (new, not a migration): records the four missing names. Not applied.
+- **Replay and drift tooling:** `@electric-sql/pglite` 0.4.6 (dev, pinned), `supabase/replay/prelude.sql`, `supabase/catalog.sql`, `scripts/lib/migrationReplay.mjs`, `scripts/schema-drift.mjs` (`npm run schema:drift`).
+- **Tests:** `unit/migration-replay.test.ts` (11) and `supabase/tests/20261005_phase87.probe.sql`.
+- **Docs:** ADR `0063`, `CLAUDE.md` (structure, commands, a Supabase subsection, the unit count, three Do NOT lines), the ledger, this log, baseline metrics.
+
+**Gate:**
+- Lint clean. Unit 840/840 in 33 files (11 new). Playwright 445 passed + 2 skipped of 447 in 8.2 m, first pass.
+- **Replay:** all 13 files apply from empty; 8 tables, 75 columns, 28 constraints, 17 indexes, 9 policies, 15 functions, 2 triggers, 5 published tables, as on live.
+- **Against live (read-only):** `schema_catalog` hashed per kind matches for all 11 kinds after one fix (numeric precision). The history lacks exactly the four names the backfill adds; the Phase 64 cleanup would move 0 categories; the backfill's versions are free.
+- **Negative controls:** an unguarded `handle_new_user` in the baseline fails the baseline test, both drift tests and the probe; an unguarded backfill fails on its second run.
+
+**Still open**
+- **Apply the history backfill on live** (owner), then `npm run schema:drift` must return no rows.
+- **WebKit on Windows stops painting now and then** (ADR `0058`), locally only.
+
 ## Phase 86 - One Playwright report for all six CI shards: T499-T504 (2026-10-05, commit `002f8b3`, control `a927893` / `4259587`, docs `9fdf119`, merge `a7cb77f`)
 
 ADR `0062`, amending ADR `0061`. Since Phase 85 a run had six E2E jobs and six HTML reports; a failure meant finding its shard first.
