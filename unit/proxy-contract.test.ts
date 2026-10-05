@@ -2,6 +2,13 @@ import { describe, it, expect, beforeAll, beforeEach, afterEach, vi } from 'vite
 import { POST as classify } from '../api/classify.ts';
 import { POST as insights } from '../api/insights.ts';
 
+// ADR 0065: each proxy starts fetching its key set when it loads, which here is
+// before any test's stub. Whatever the shell's environment holds, that fetch
+// must not leave the machine. (`unit/proxy-prefetch.test.ts` tests it.)
+vi.hoisted(() => {
+  vi.stubGlobal('fetch', () => Promise.reject(new TypeError('no network while the proxies load')));
+});
+
 /**
  * The two Vercel proxies' contract with the client (ADR 0022).
  *

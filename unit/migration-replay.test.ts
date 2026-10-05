@@ -10,6 +10,7 @@ import {
   readCatalog,
   readRepoFile,
 } from '../scripts/lib/migrationReplay.mjs';
+import { historyInsert } from '../scripts/lib/migrationHistory.mjs';
 
 /**
  * The migrations rebuild the live schema from empty (Phase 87, ADR 0063).
@@ -149,10 +150,10 @@ describe('the migration history backfill', () => {
 
 describe('the drift query', () => {
   beforeAll(async () => {
-    // The files after Phase 87, recorded as if applied, as the migration tool does.
+    // The files after Phase 87, recorded as a migration applied in the SQL
+    // editor is: with `npm run migration:print-history`'s statement (ADR 0065).
     for (const file of migrationFiles().filter(f => f >= '20261005')) {
-      await db.query('insert into supabase_migrations.schema_migrations (version, name) values ($1, $2)',
-        [`${file.slice(0, 8)}${String(migrationFiles().indexOf(file)).padStart(6, '0')}`, migrationName(file)]);
+      await db.exec(historyInsert({ file, version: `${file.slice(0, 8)}${String(migrationFiles().indexOf(file)).padStart(6, '0')}` }));
     }
   });
 
