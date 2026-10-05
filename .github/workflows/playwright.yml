@@ -48,7 +48,7 @@ jobs:
         run: npm run test:unit
 
   e2e:
-    name: E2E (${{ matrix.project }})
+    name: E2E (${{ matrix.project }} ${{ matrix.shard }}/2)
     needs: checks
     timeout-minutes: 30
     runs-on: ubuntu-24.04
@@ -58,6 +58,9 @@ jobs:
       fail-fast: false
       matrix:
         project: [ chromium, firefox, webkit ]
+        # EXPERIMENT (Phase 85): two shards per browser, each on its own
+        # runner with 2 workers.
+        shard: [ 1, 2 ]
         # The one place the container's Playwright version is written. It must
         # equal the version package-lock.json installs: the image carries the
         # browsers for that release only (checked below).
@@ -107,7 +110,7 @@ jobs:
           echo "Runner: $(nproc) CPUs, $cpu, $mem" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Run Playwright E2E tests
-        run: npx playwright test --project=${{ matrix.project }}
+        run: npx playwright test --project=${{ matrix.project }} --shard=${{ matrix.shard }}/2
         env:
           CI: true
 
@@ -115,6 +118,6 @@ jobs:
         uses: actions/upload-artifact@v7
         if: ${{ !cancelled() }}
         with:
-          name: playwright-report-${{ matrix.project }}
+          name: playwright-report-${{ matrix.project }}-${{ matrix.shard }}
           path: playwright-report/
           retention-days: 30
