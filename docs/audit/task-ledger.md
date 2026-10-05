@@ -1081,6 +1081,23 @@ Approved explicitly by the user, planned and approved before any code was writte
 - **One negative control was redone** because the first attempt produced malformed TypeScript that the dev server still served — the tests failed, but possibly for the wrong reason.
 - **No flakes.** Phase 44's `wallets.spec.ts` webkit flake has now not reproduced across three consecutive phases; still watched rather than closed.
 
+## Phase 86 - One Playwright report for all six CI shards: T499-T504 (2026-10-05)
+
+ADR `0062`, amending ADR `0061`'s per-shard reports. Branch `phase-86-consolidated-ci-reports`, cut from `main` at `12587b2`; commit `002f8b3`, negative control `a927893` reverted in `4259587`; draft PR #36. No app code, no spec change, no migration.
+
+| # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
+|---|---|---|---|---|---|---|---|---|---|---|
+| T499 | Blob reporter on CI (`blob` + `list`; HTML locally), one blob name per browser and shard | `playwright.config.ts`, `.github/workflows/playwright.yml` | Med | Low | 0.2h | done | - | `002f8b3` | six `blob-report-*` artifacts per run | - |
+| T500 | `merge-reports` job: download the blobs, merge to HTML and JSON, upload `playwright-report-unified`; runs on `!cancelled()` unless no shard ran | `.github/workflows/playwright.yml` | High | Low | 0.3h | done | T499 | `002f8b3` | 17 to 21 s per run | uploads 1.67 -> 1.08 MB a run |
+| T501 | Per-browser step summary from the merged JSON | `scripts/ci-report-summary.mjs` | Med | Low | 0.2h | done | T500 | `002f8b3` | 149 / 149 / 149 shown | - |
+| T502 | Local rehearsal: three CI-style blob runs with a probe spec, merged; traces linked | - | Med | Low | 0.2h | done | T501 | - | 7 tests, 2 traces linked and present | - |
+| T503 | Gate: lint, unit, CI run, negative control on CI and its revert | - | High | Low | 0.4h | done | T502 | `a927893`, `4259587` | lint clean; unit 829/829; unified 447 runs (445 passed, 2 skipped); control: 6 traces from 3 shards linked | - |
+| T504 | ADR `0062`, ADR `0061`'s amendment line, `CLAUDE.md`, this ledger, the refactor log, baseline metrics | `docs/`, `CLAUDE.md` | Low | Low | 0.3h | done | T503 | - | - | - |
+
+**Notes on execution:**
+- **The blob reporter empties `blob-report/` when a run starts,** so the local rehearsal's first attempt kept only the last shard's zip; each zip was moved aside after its run. CI is unaffected (a fresh checkout per job).
+- **The workflow could not be YAML-parsed locally** (neither PyYAML nor the npm `yaml` package is installed); GitHub's own parse on push was the check.
+
 ## Phase 85 - CI time follows the runner; each browser runs as two shards: T492-T498 (2026-10-05)
 
 ADR `0061`, amending Phase 55's one E2E job per browser. Branch `phase-85-ci-timing-profiling`, cut from `main` at `f00a804`; commits `87c4a42` (the runner line), `00e043c` and its revert `1ac3e0d` (3 workers, measured), `f0dbd3d` (two shards, measured), `7dcb1ca` (kept), docs `0ecf79f`, hash backfill `9921810`; merged into `main` as `be78622` (PR #35); Vercel `dpl_2e5mqEA9WeM667yihCxp2AeFcz3r` READY in `icn1`, entry JS and CSS byte-identical to the local build of `main`. `main` CI on the merge (run `37264903718`) passed every job with no flaky test in 237 s end to end (`checks` 47 s, the slowest job 185 s), with both WebKit shards on AMD EPYC 7763 runners, the slowest CPU measured: chromium 75 + 74 passed, Firefox and WebKit 75 + 73 passed and 1 skipped each. The PR's last run, on the hash backfill `9921810` (run `37263626581`), passed in 280 s. On the kept configuration, CI run `37262774619` (`7dcb1ca`) passed in 247 s end to end and run `37263171161` (`0ecf79f`) in 286 s, of which 37 s was one WebKit shard waiting for a runner (the `checks` job 51 s, the slowest job 196 s); both green with no flaky test. No app code, no migration.
