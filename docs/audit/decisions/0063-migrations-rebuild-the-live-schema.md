@@ -1,6 +1,6 @@
 # 0063: The migrations rebuild the live schema, and a check proves it
 
-**Status:** Accepted. Implemented on branch `phase-87-reconcile-db-migrations`, draft PR. Not merged yet. The migration history backfill is **not applied** to the live project: that waits for the owner's word after the merge (see "Applying it").
+**Status:** Accepted. Implemented on branch `phase-87-reconcile-db-migrations` (commit `ffd3f13`, docs `0c898b9`), draft PR #37. Not merged yet. The migration history backfill is **not applied** to the live project: that waits for the owner's word after the merge (see "Applying it").
 
 **Date:** 2026-10-05
 

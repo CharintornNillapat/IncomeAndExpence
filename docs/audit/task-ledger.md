@@ -1083,19 +1083,19 @@ Approved explicitly by the user, planned and approved before any code was writte
 
 ## Phase 87 - The migrations rebuild the live schema, and a check proves it: T505-T513 (2026-10-05)
 
-ADR `0063`. Branch `phase-87-reconcile-db-migrations`, cut from `main` at `7723bfd`; draft PR. No `src/` change. The migration history backfill is written and tested but **not applied** to the live project: that waits for the owner after the merge. By the owner's decision the live checks stayed read-only (the rollback probe was not run on live).
+ADR `0063`. Branch `phase-87-reconcile-db-migrations`, cut from `main` at `7723bfd`; commit `ffd3f13`, docs `0c898b9`; draft PR #37. No `src/` change. The migration history backfill is written and tested but **not applied** to the live project: that waits for the owner after the merge. By the owner's decision the live checks stayed read-only (the rollback probe was not run on live).
 
 | # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
 |---|---|---|---|---|---|---|---|---|---|---|
 | T505 | Inventory the live project, read-only: history, tables, columns, constraints, indexes, policies, functions (md5), grants, triggers, publication, extensions | - | High | Low | 0.5h | done | - | - | history 9 of 12 files; the 7 base tables, their 25 constraints, 6 indexes, all 9 policies, `handle_new_user` + trigger, publication and `uuid-ossp` in no file | - |
-| T506 | `20260901_baseline_schema.sql`: the pre-migration schema, every statement guarded, nothing a later file drops, `transactions_user_idempotency_uidx` kept | `supabase/migrations/` | High | Med | 0.7h | done | T505 | - | changes nothing on a complete database | - |
-| T507 | Replay tooling: PGlite 0.4.6 (PostgreSQL 17.5) pinned, `supabase/replay/prelude.sql`, `supabase/catalog.sql`, `scripts/lib/migrationReplay.mjs` | `package.json`, `supabase/`, `scripts/` | High | Low | 0.7h | done | T506 | - | 13 files replay from empty | devDependency +1 (no bundle change) |
-| T508 | `npm run schema:drift`: a read-only query carrying the replayed catalog and file names, returning only drift | `scripts/schema-drift.mjs` | High | Low | 0.3h | done | T507 | - | 0 rows on a matching database; names an extra index, a lost policy and a missing history row | - |
-| T509 | Compare with live, read-only (per-kind hashes, then drill-down) | `supabase/migrations/20260901_baseline_schema.sql` | High | Low | 0.4h | done | T508 | - | all 11 kinds identical after one fix (amounts `numeric(15,2)`, `interest_rate` `numeric(5,2)`) | - |
-| T510 | History backfill: the four names live lacks, at file date + `000000`, marked in `created_by`, idempotent | `supabase/ops/` | Med | Low | 0.2h | done | T509 | - | live lacks exactly those four; versions free | - |
-| T511 | `unit/migration-replay.test.ts` (11) and `supabase/tests/20261005_phase87.probe.sql`; negative controls | `unit/`, `supabase/tests/` | High | Low | 0.6h | done | T510 | - | 11/11; controls fail as expected; probe passes on a replay with live's history | unit +11 |
+| T506 | `20260901_baseline_schema.sql`: the pre-migration schema, every statement guarded, nothing a later file drops, `transactions_user_idempotency_uidx` kept | `supabase/migrations/` | High | Med | 0.7h | done | T505 | `ffd3f13` | changes nothing on a complete database | - |
+| T507 | Replay tooling: PGlite 0.4.6 (PostgreSQL 17.5) pinned, `supabase/replay/prelude.sql`, `supabase/catalog.sql`, `scripts/lib/migrationReplay.mjs` | `package.json`, `supabase/`, `scripts/` | High | Low | 0.7h | done | T506 | `ffd3f13` | 13 files replay from empty | devDependency +1 (no bundle change) |
+| T508 | `npm run schema:drift`: a read-only query carrying the replayed catalog and file names, returning only drift | `scripts/schema-drift.mjs` | High | Low | 0.3h | done | T507 | `ffd3f13` | 0 rows on a matching database; names an extra index, a lost policy and a missing history row | - |
+| T509 | Compare with live, read-only (per-kind hashes, then drill-down) | `supabase/migrations/20260901_baseline_schema.sql` | High | Low | 0.4h | done | T508 | `ffd3f13` | all 11 kinds identical after one fix (amounts `numeric(15,2)`, `interest_rate` `numeric(5,2)`) | - |
+| T510 | History backfill: the four names live lacks, at file date + `000000`, marked in `created_by`, idempotent | `supabase/ops/` | Med | Low | 0.2h | done | T509 | `ffd3f13` | live lacks exactly those four; versions free | - |
+| T511 | `unit/migration-replay.test.ts` (11) and `supabase/tests/20261005_phase87.probe.sql`; negative controls | `unit/`, `supabase/tests/` | High | Low | 0.6h | done | T510 | `ffd3f13` | 11/11; controls fail as expected; probe passes on a replay with live's history | unit +11 |
 | T512 | Gate: lint, unit, full Playwright | - | High | Low | 0.3h | done | T511 | - | lint clean; unit 840/840 in 33 files; Playwright 445 passed + 2 skipped of 447 in 8.2 m, first pass | - |
-| T513 | ADR `0063`, `CLAUDE.md`, this ledger, the refactor log, baseline metrics | `docs/`, `CLAUDE.md` | Low | Low | 0.4h | done | T512 | - | - | - |
+| T513 | ADR `0063`, `CLAUDE.md`, this ledger, the refactor log, baseline metrics | `docs/`, `CLAUDE.md` | Low | Low | 0.4h | done | T512 | `0c898b9` | - | - |
 
 **Notes on execution:**
 - **PGlite's newest release (0.5.8) is PostgreSQL 18.3;** 0.4.6 is 17.5, the live major version, and was pinned exactly. PostgreSQL 18 lists NOT NULL as constraints and could print definitions differently.

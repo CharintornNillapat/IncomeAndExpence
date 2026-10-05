@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 87 - The migrations rebuild the live schema, and a check proves it: T505-T513 (2026-10-05, draft PR)
+## Phase 87 - The migrations rebuild the live schema, and a check proves it: T505-T513 (2026-10-05, commit `ffd3f13`, docs `0c898b9`, draft PR #37)
 
 ADR `0063`. Three known gaps in the migration history (Phase 64's cleanup, Phase 73's counter, an untracked index) turned out to sit on a bigger one: the base schema was never in the repo.
 
