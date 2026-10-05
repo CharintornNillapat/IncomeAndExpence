@@ -1098,6 +1098,30 @@ The entry's growth is the ledger action itself, which lives with the other ledge
 
 **Intermittent local failures:** 6 in 1,071 full-suite runs (3 full runs). All were timeouts: a Firefox `goto`, a Firefox context close, and four WebKit clicks waiting for "stable". No assertion failed. See audit 005 finding 3 for the control runs.
 
+## Phase 92 (CSV formula escape, zoomable viewport, security headers) - delta against Phase 91
+
+**Bundle** (production build, the same `.env`, `main` built in a worktree at `49d6070`; `main`'s entry is the `index-DNX-vcmX.js` production serves):
+
+| Chunk | Phase 91 raw / gzip | Phase 92 raw / gzip | Delta raw / gzip | Why |
+|---|---|---|---|---|
+| `index` (entry) | 189,976 / 54,722 | 190,084 / 54,778 | +108 / +56 | `isZoomedIn`, zod `jitless` |
+| `index.css` | 50,539 / 9,744 | 50,639 / 9,777 | +100 / +33 | the iOS field rule |
+| `csvExchange` (lazy) | 22,257 / 8,413 | 22,420 / 8,478 | +163 / +65 | escape and unescape |
+| `TransactionsView` (lazy) | 34,823 / 11,106 | 34,819 / 11,106 | -4 / 0 | `text-[11px]` to `text-xs` |
+| All JS and CSS | 1,416,522 / 423,204 | 1,416,889 / 423,354 | +367 / +150 | 42 files before and after |
+
+| Suite | Files | Tests | Runs | Result |
+|---|---|---|---|---|
+| Vitest (`unit/`) | 39 | 1026 | 1026 | 1026/1026 (CSV +6, swipe +4, headers 7) |
+| Playwright (local, 4 workers) | 31 | 152 | 456 | 454 passed + 2 skipped of 456 in 8.4 m (third full run; the first lost its port-3100 server, the second had one WebKit Escape race in the new spec, since fixed) |
+
+| Production `/api/classify`, 10 guest `POST {}` | Phase 91 (before, 2026-10-05 13:57 UTC) | Phase 92 (after) |
+|---|---|---|
+| Status, region | 10 x `400`, `sin1::icn1` | (after the merge) |
+| `Server-Timing: total` | 0.5 to 4.5 ms, median 0.75 | (after the merge) |
+| Client time | 0.21 to 1.05 s | (after the merge) |
+| Security headers | HSTS only | (after the merge) |
+
 ## Phase 91 (pinned workflow actions, least-privilege tokens, advisor triage) - delta against Phase 90
 
 **Bundle:** unchanged (no `src/` change).

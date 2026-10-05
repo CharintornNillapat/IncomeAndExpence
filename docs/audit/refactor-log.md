@@ -4,6 +4,38 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
+## Phase 92 - Exported CSV cells cannot run as formulas; the page can be zoomed; responses carry security headers and a report-only CSP: T546-T554 (2026-10-05)
+
+ADR `0068`. An outside review listed four findings no phase had tracked: CSV formula injection, zoom disabled, no security headers, and three vulnerable development packages. Each was confirmed in the code first.
+
+**Changed**
+- **CSV export:** a Wallet, Destination Wallet, Category, Debt, Description or Raw Calculation cell matching `^'*[=+\-@\t\r]` gets a leading `'`. The importer removes exactly one from `^'+[=+\-@\t\r]` before trimming, so every string round-trips. Amount is never escaped. The diary export is JSON and needs nothing.
+- **Viewport:** `width=device-width, initial-scale=1.0`. On iOS only (`@supports (-webkit-touch-callout: none)`), fields' `--text-xs`/`--text-sm` are `1rem`, so focusing a field does not zoom the page. The CSV preview's select went from `text-[11px]` to `text-xs` so the rule reaches it. A swipe while zoomed in pans instead of changing tabs (`isZoomedIn`).
+- **`vercel.json` headers on every path:** `nosniff`, `strict-origin-when-cross-origin`, `X-Frame-Options: DENY`, an enforced `frame-ancestors 'none'`, and a report-only CSP (self only; the theme script by hash; Supabase over `https`/`wss`; no `unsafe-*`). zod is `jitless`, so its `new Function` test is not a violation. `index.html` is LF (`.gitattributes`) so the hash matches Vercel's build.
+- **`npm audit fix`:** `brace-expansion`, `fast-uri`, `serialize-javascript` (development only); 0 vulnerabilities; production tree unchanged.
+- **Tests:** `unit/csv-exchange.test.ts` +6, `unit/swipe-guard.test.ts` +4, `unit/security-headers.test.ts` (7), `tests/csv.spec.ts` +1, `tests/ios-field-zoom.spec.ts` (2).
+- **Docs:** ADR `0068`, `CLAUDE.md` (CSV escape, zoom, a response-headers section, three Do NOTs), the ledger, this log, baseline metrics.
+
+**Gate:**
+- Lint clean. Unit 1026/1026 in 39 files. Playwright 454 passed + 2 skipped of 456 in 8.4 m, on the third full run:
+  - the first reused the VS Code extension's dev servers, and the 6 `toast-layering` tests lost port 3100 mid-run (all 6 passed afterwards on fresh servers);
+  - the second had one WebKit failure in the new spec, an Escape pressed before `Modal`'s passive listener was attached. The spec now closes dialogs with their button, and passed 30/30 at `--repeat-each 5`.
+- **Negative controls:**
+  - CSV: without the escape, 2 tests fail; without the unescape, 2; with an escape that ignores leading apostrophes, 1.
+  - Field size: without the `--text-xs` line, the spec fails on four 12px filter fields.
+  - Headers: the old viewport and no `jitless` fail their two tests.
+- **CSP, walked locally** (`dist/` served with `vercel.json`'s headers; Chromium, Firefox and WebKit; load, Quick Add, every tab, a CSV export, Sign in; service worker in control): 2 `eval` reports each in Chromium and Firefox before `jitless`, 0 in all three after. WebKit ignores a report-only policy without `report-to`.
+- **Production before (ADR `0051`):** 10 guest `POST {}` to `/api/classify`, all `400` from `sin1::icn1`, `total` 0.5 to 4.5 ms; only HSTS sent.
+- **Drift:** no migration; the printed query is byte-identical to `main`'s (md5 `7d2fa362`). Live is checked by the drift workflow on this branch.
+- **Bundle:** +367 B raw, +150 B gzip across 42 files (entry +56 gzip, CSS +33, `csvExchange` +65).
+
+**Still open**
+- **After the merge (T554):** `Server-Timing` with the same 10 requests; the headers on production; the CSP walk on production, including signed-in sync.
+- **Enforcing the CSP,** or collecting reports first: a later phase.
+- **Owner:** leaked password protection; the optional drift-role setting; a signed-in production measurement; a screen reader pass; the four `USD` wallets.
+- **Scheduled (ADR `0067`):** the two redundant SELECT policies; `transfer_funds`' `p_user_id`.
+- **A privacy notice and a way to delete an account** (the review's CMP-001): needs the owner's decision.
+
 ## Phase 91 - Workflows pin every action to a commit and grant each job only `contents: read`; the Supabase advisors are triaged: T539-T545 (2026-10-05, commit `64bd024`, docs `d30a759`, merge `184cc1a`)
 
 ADR `0067`. The workflows ran whatever their actions' tags pointed to, `playwright.yml` took the repository's default token permissions, and since Phase 90 one workflow holds a database credential. The advisors had not been reviewed.
