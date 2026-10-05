@@ -318,10 +318,15 @@ const MainApp: React.FC = () => {
         onOpenAccount={handleOpenAccount}
       />
 
-      {/* Main Content Area with Touch Swipe Gestures, Framer Slide Animations & Suspense */}
+      {/* Main Content Area with Touch Swipe Gestures, Framer Slide Animations & Suspense.
+          At least the viewport under the header (56px, 64px from `md`), so the
+          footer starts below the fold while a view's chunk loads or a tab's
+          exit tween empties it. As `flex-1` alone it sat at the bottom of the
+          screen until the Dashboard arrived and pushed it off, most of the
+          desktop load's layout shift (Phase 84, ADR 0060). */}
       <main
         {...swipeHandlers}
-        className="flex-1 max-w-7xl w-full mx-auto px-4 pt-4 pb-24 md:px-10 md:pt-8 md:pb-12 overflow-x-hidden touch-pan-y"
+        className="flex-1 min-h-[calc(100dvh-3.5rem)] md:min-h-[calc(100dvh-4rem)] max-w-7xl w-full mx-auto px-4 pt-4 pb-24 md:px-10 md:pt-8 md:pb-12 overflow-x-hidden touch-pan-y"
       >
         <Suspense fallback={<ViewLoadingFallback view={activeTab} />}>
           <AnimatePresence mode="wait" custom={direction}>

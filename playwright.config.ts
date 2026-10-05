@@ -70,8 +70,18 @@ export default defineConfig({
      * CI traced only the retry, which is the attempt that passed. Locally there
      * are no retries, so it stays off unless a run passes `--trace`; tracing
      * every local test cost a full run about 3 minutes (Phase 82).
+     *
+     * Phase 84 (ADR 0060): without the screencast. Its frames were most of
+     * the cost: WebKit's job went from about 3.7 to 4.5 m on CI, and a local
+     * WebKit run took 4.1 to 4.7 m with them, 3.3 to 3.4 m without, against
+     * 3.1 to 3.3 m untraced. A kept trace still has every action's DOM
+     * snapshot, the network log, the call stacks and the test source. A local
+     * `--trace=retain-on-failure` keeps the screencast, which is what shows a
+     * WebKit painting stall (ADR 0058).
      */
-    trace: process.env.CI ? 'retain-on-first-failure' : 'on-first-retry',
+    trace: process.env.CI
+      ? { mode: 'retain-on-first-failure', screenshots: false, snapshots: true, sources: true }
+      : 'on-first-retry',
 
     actionTimeout: 15 * 1000,
     navigationTimeout: 30 * 1000,
