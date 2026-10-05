@@ -1081,6 +1081,25 @@ Approved explicitly by the user, planned and approved before any code was writte
 - **One negative control was redone** because the first attempt produced malformed TypeScript that the dev server still served — the tests failed, but possibly for the wrong reason.
 - **No flakes.** Phase 44's `wallets.spec.ts` webkit flake has now not reproduced across three consecutive phases; still watched rather than closed.
 
+## Phase 85 - CI time follows the runner; each browser runs as two shards: T492-T498 (2026-10-05)
+
+ADR `0061`, amending Phase 55's one E2E job per browser. Branch `phase-85-ci-timing-profiling`, cut from `main` at `f00a804`; commits `87c4a42` (the runner line), `00e043c` and its revert `1ac3e0d` (3 workers, measured), `f0dbd3d` (two shards, measured), `7dcb1ca` (kept), docs `0ecf79f`; draft PR #35. On the kept configuration, CI run `37262774619` (`7dcb1ca`) passed in 247 s end to end and run `37263171161` (`0ecf79f`) in 286 s, of which 37 s was one WebKit shard waiting for a runner (the `checks` job 51 s, the slowest job 196 s); both green with no flaky test. No app code, no migration.
+
+| # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
+|---|---|---|---|---|---|---|---|---|---|---|
+| T492 | Collect 20 CI runs: step timings (Actions API), regions (job logs), 8,922 test results (HTML reports) | - | High | Low | 0.6h | done | - | - | - | - |
+| T493 | Attribute the spread: runner speed (`npm ci` as proxy, r = +0.76 WebKit, +0.83 Firefox), per-test ratios, startup, slowest tests, retries | - | High | Low | 0.6h | done | T492 | - | slow/fast runner 1.33x per WebKit test, evenly; startup 6.4 / 8.8 s; slowest test 5 to 7 s | - |
+| T494 | "Describe the runner" step: CPUs, model and memory in each E2E job's log and summary | `.github/workflows/playwright.yml` | Med | Low | 0.1h | done | T493 | `87c4a42` | four CPU models seen; EPYC 9V45 2.3 to 2.4 s per WebKit test, EPYC 7763 3.2 to 3.5 s | - |
+| T495 | Measure 3 CI workers, three runs, then revert | `playwright.config.ts` | Med | Low | 0.4h | done | T494 | `00e043c`, `1ac3e0d` | end to end 322 to 344 s; jobs 7 to 13% shorter, tests a third slower | rejected |
+| T496 | Measure 2 workers (CPU-labelled baseline) and two shards per browser, three runs each; keep the shards | `.github/workflows/playwright.yml`, `playwright.config.ts` | High | Low | 0.6h | done | T495 | `f0dbd3d`, `7dcb1ca` | baseline 320 to 362 s; shards 233 to 242 s, 18/18 jobs green | E2E runner time 11.5-13.7 -> 16.3-16.6 min |
+| T497 | Gate: lint, unit, full local suite | - | High | Low | 0.2h | done | T496 | - | lint clean; unit 829/829; full 445 passed + 2 skipped in 7.7 m, first pass | - |
+| T498 | ADR `0061`, `CLAUDE.md`, this ledger, the refactor log, baseline metrics | `docs/`, `CLAUDE.md` | Low | Low | 0.4h | done | T497 | `0ecf79f` | - | - |
+
+**Notes on execution:**
+- **Re-running a workflow** (`gh run rerun`) gave each setup three samples on new machines without new commits; each attempt's artifacts replace the previous one's, so every attempt was summarised before the next.
+- **The first runner regex matched the `echo` command** in the log rather than its output; the figures above come from the corrected read.
+- **18 of the 60 job logs** did not match the startup pattern; the startup medians use the other 42.
+
 ## Phase 84 - CI traces a first failure without the screencast; nothing moves while the app loads: T483-T491 (2026-10-05)
 
 ADR `0060`, amending ADR `0059`'s CI trace. Branch `phase-84-ci-trace-opt-and-cls`, cut from `main` at `1b7b5fb`; commit `9348b0d` (docs `1f45a00`, spec follow-ups `1615288` and `7b7822e`, hash backfill `e15d36d`), merged into `main` as `7d38ce2` (PR #34); Vercel `dpl_EKczqeGczCt2k2JhXGUXA8SeAAiE` READY in `icn1`. `main` CI on the merge (run `37253651460`) passed every job with no flaky test: 149 passed in chromium (3.1 m), 148 passed and 1 skipped in Firefox (3.5 m) and WebKit (4.2 m). WebKit with this trace has now taken 4.3, 3.2, 3.2 and 4.2 m, against 4.5 and 4.5 m with ADR `0059`'s and 3.6 and 3.8 m untraced: below the full trace every time, but within CI's run-to-run spread of untraced. Production check: load 0.00001 to 0.00007, the footer below the fold on every tab (see the refactor log). No migration, no proxy change.

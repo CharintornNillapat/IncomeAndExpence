@@ -1098,6 +1098,28 @@ The entry's growth is the ledger action itself, which lives with the other ledge
 
 **Intermittent local failures:** 6 in 1,071 full-suite runs (3 full runs). All were timeouts: a Firefox `goto`, a Firefox context close, and four WebKit clicks waiting for "stable". No assertion failed. See audit 005 finding 3 for the control runs.
 
+## Phase 85 (CI time follows the runner; two shards per browser) - delta against Phase 84
+
+**Bundle:** unchanged (no `src/` change).
+
+| Suite | Files | Tests | Runs | Result |
+|---|---|---|---|---|
+| Playwright (local, 4 workers) | 30 | 149 | 447 | 445 passed + 2 skipped in 7.7 m, first pass |
+| Vitest (`unit/`) | 32 | 829 | 829 | 829/829 |
+
+| CI, three runs each | End to end | Slowest E2E job | E2E runner time |
+|---|---|---|---|
+| 2 workers, one job per browser | 320 / 336 / 362 s | 261 to 307 s | 11.5 to 13.7 min |
+| 3 workers, one job per browser | 322 / 339 / 344 s | 276 to 285 s | 11.6 to 12.4 min |
+| 2 workers, two shards per browser (kept) | 233 / 237 / 242 s | 184 to 195 s | 16.3 to 16.6 min |
+
+| WebKit seconds per test, 2 workers | |
+|---|---|
+| AMD EPYC 9V45 | 2.30 to 2.42 |
+| Intel Xeon Platinum 8573C | 2.89 to 3.08 |
+| AMD EPYC 7763 | 3.21 to 3.46 |
+| AMD EPYC 9V74 | 3.29 |
+
 ## Phase 84 (lean CI traces, nothing moves while the app loads) - delta against Phase 83
 
 **Bundle** (the branch against `main`'s build, both with `.env`): `index-*.css` 48,810 -> 50,539 B (+1,729 B, +229 B gzip), the fallback faces; the entry `index-*.js` 189,919 -> 189,976 B (+57 B, +9 B gzip), `<main>`'s classes. Every other chunk is identical once hashed chunk names are normalised. Precache 58 entries, 1,655.03 -> 1,656.78 KiB.

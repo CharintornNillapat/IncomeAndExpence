@@ -4,6 +4,36 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
+## Phase 85 - CI time follows the runner; each browser runs as two shards: T492-T498 (2026-10-05, commits `87c4a42`, `7dcb1ca`, docs `0ecf79f`, draft PR #35)
+
+ADR `0061`. Why CI's WebKit job took 3.2 m on some runs and 4.2 to 4.3 m on others.
+
+**Found**
+- **The runner.** Over the 20 latest runs, a job's test step followed its `npm ci` time (the same work in every job): r = +0.76 in WebKit, +0.83 in Firefox, +0.49 in chromium. On slow runners each WebKit test took 1.33 times as long (interquartile 1.25 to 1.41), evenly across all 147 tests; Firefox 1.20, chromium 1.06. By CPU, WebKit per test: EPYC 9V45 2.30 to 2.42 s, Xeon 8573C 2.89 to 3.08 s, EPYC 7763 3.21 to 3.46 s. The region does not decide it.
+- **Not the dev server:** 6.4 s (fast) and 8.8 s (slow) from the step's start to the first test, warm-up included; each worker's first test 1 to 5 s.
+- **Not a group of specs:** the slowest tests take 5 to 7 s, the same ones everywhere; no lean-trace run retried. ADR `0060`'s trace adds a median 13 to 17% per WebKit test, evenly.
+
+**Changed**
+- **`.github/workflows/playwright.yml`:** a "Describe the runner" step in each E2E job; `shard: [ 1, 2 ]` and `--shard=N/2`; job names `E2E (<browser> <n>/2)`; artifacts `playwright-report-<browser>-<n>`.
+- **`playwright.config.ts`:** the CI workers comment records why it stays 2.
+- **Docs:** ADR `0061`, `CLAUDE.md` (CI Mode, the trace artifact name, two CI bullets, a Do NOT line), the ledger, this log, baseline metrics.
+
+**Gate:**
+- Lint clean. Unit 829/829 in 32 files. Full local suite 445 passed and 2 skipped of 447 in 7.7 m, first pass.
+- **CI, three runs per setup:**
+
+| Setup | End to end | Slowest E2E job | E2E runner time |
+|---|---|---|---|
+| 2 workers, one job per browser | 320, 336, 362 s | 261 to 307 s | 11.5 to 13.7 min |
+| 3 workers, one job per browser | 322, 339, 344 s | 276 to 285 s | 11.6 to 12.4 min |
+| 2 workers, two shards per browser | 233, 237, 242 s | 184 to 195 s | 16.3 to 16.6 min |
+
+- Every run green with no flaky test; the shards covered 149 tests per browser (75 + 74).
+- On the kept configuration, CI run `37262774619` (`7dcb1ca`) passed in 247 s end to end and run `37263171161` (`0ecf79f`) in 286 s, of which 37 s was one WebKit shard waiting for a runner (the `checks` job 51 s, the slowest job 196 s); both green with no flaky test.
+
+**Still open**
+- **WebKit on Windows stops painting now and then** (ADR `0058`), locally only.
+
 ## Phase 84 - CI traces a first failure without the screencast; nothing moves while the app loads: T483-T491 (2026-10-05, commit `9348b0d`, docs `1f45a00`, spec `1615288` / `7b7822e`, merge `7d38ce2`)
 
 ADR `0060`, amending ADR `0059`'s CI trace. Two Phase 84 backlog items: the trace's cost on CI and the layout shift the Phase 83 production check measured.
