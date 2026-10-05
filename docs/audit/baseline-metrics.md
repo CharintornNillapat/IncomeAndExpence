@@ -1098,6 +1098,21 @@ The entry's growth is the ledger action itself, which lives with the other ledge
 
 **Intermittent local failures:** 6 in 1,071 full-suite runs (3 full runs). All were timeouts: a Firefox `goto`, a Firefox context close, and four WebKit clicks waiting for "stable". No assertion failed. See audit 005 finding 3 for the control runs.
 
+## Phase 90 (scheduled drift check, read-only role) - delta against Phase 89
+
+**Bundle:** unchanged (no `src/` change; `pg` is a devDependency used by `scripts/` only).
+
+| Suite | Files | Tests | Runs | Result |
+|---|---|---|---|---|
+| Vitest (`unit/`) | 37 | 997 | 997 | 997/997 (drift runner 27) |
+| Playwright (local, 4 workers) | 30 | 149 | 447 | 445 passed + 2 skipped of 447 in 8.3 m, first pass |
+
+| Drift check | Phase 89 | Phase 90 |
+|---|---|---|
+| When it runs | at a release, by hand | weekly (Mondays 02:17 UTC) and by hand |
+| As whom | the admin login (SQL editor, MCP) | `schema_drift_reader`: catalogs and history, read-only |
+| Result | rows on screen | exit 0 / 1 / 2 and a job summary |
+
 ## Phase 89 (key set prefetch, proxy parity test, history row helper) - delta against Phase 88
 
 **Bundle:** unchanged (no `src/` change).

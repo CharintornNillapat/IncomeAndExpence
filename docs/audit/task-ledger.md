@@ -1081,6 +1081,27 @@ Approved explicitly by the user, planned and approved before any code was writte
 - **One negative control was redone** because the first attempt produced malformed TypeScript that the dev server still served — the tests failed, but possibly for the wrong reason.
 - **No flakes.** Phase 44's `wallets.spec.ts` webkit flake has now not reproduced across three consecutive phases; still watched rather than closed.
 
+## Phase 90 - A weekly job compares the live schema with the migrations, as a read-only role; the cold token check is closed: T531-T538 (2026-10-05)
+
+ADR `0066`, amending ADRs `0063`, `0064` and `0065`. Branch `phase-90-scheduled-schema-drift`, cut from `main` at `56b512f`; draft PR. No `src/` change and no migration. **The role and the secret are the owner's, after the merge:** until then the workflow exits 2 ("not checked").
+
+| # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
+|---|---|---|---|---|---|---|---|---|---|---|
+| T531 | Read what `PUBLIC` holds on live (read-only) and what the catalog query needs from a non-admin role | - | Med | Low | 0.2h | done | - | - | `PUBLIC`: `USAGE` on `public`, `CONNECT`/`TEMPORARY` on the database; nothing on any table or function | - |
+| T532 | `schema_drift_reader`: login, `USAGE` on `public`/`extensions`, `SELECT` on the history, read-only defaults, 2 connections | `supabase/ops/20261005_phase90_schema_drift_reader.sql` | High | Low | 0.4h | done | T531 | - | idempotent; no catalog row added | - |
+| T533 | `catalogSelect()` and `buildDriftQuery()`: the comparison as one SELECT; the SQL-editor query unchanged | `scripts/lib/migrationReplay.mjs` | Med | Low | 0.3h | done | - | - | SQL-editor query byte-identical; same rows both ways | - |
+| T534 | The runner: read-only transaction, privilege guard, exit 0/1/2, verified TLS, log and job summary; `--live`; `pg` devDependency | `scripts/lib/driftRunner.mjs`, `scripts/schema-drift.mjs`, `package.json`, `package-lock.json` | High | Med | 0.8h | done | T533 | - | refused port: exit 2, password not printed | - |
+| T535 | Weekly and manual workflow, `contents: read`, 10 min | `.github/workflows/schema-drift.yml` | High | Low | 0.2h | done | T534 | - | runs from the default branch only: first run after the merge | - |
+| T536 | Rehearsal on PGlite as the role; negative controls | `unit/drift-runner.test.ts` | High | Low | 0.7h | done | T532-T534 | - | 27/27; 7 controls | unit +27 |
+| T537 | Gate: lint, unit, Playwright | - | High | Low | 0.2h | done | T536 | - | lint clean; unit 997/997; Playwright 445 passed + 2 skipped of 447 in 8.3 m, first pass | - |
+| T538 | ADR `0066` (the cold token check closed), `CLAUDE.md`, this ledger, the refactor log, baseline metrics | `docs/`, `CLAUDE.md` | Low | Low | 0.4h | done | T537 | - | - | - |
+
+**Notes on execution:**
+- **A read-only transaction refuses the SQL editor's temporary view,** so the runner uses the same comparison with the catalog as a CTE; the printed query is unchanged.
+- **The role needs `USAGE` on `public` and `extensions`** even though it reads no table there: PostgreSQL leaves a schema without it out of the search path, and the catalog then prints `extensions.uuid_generate_v4()` for every uuid default. A test shows it.
+- **One control first passed when it should have failed:** the role without `USAGE` failed only the catalog test, because the `USAGE` test's cleanup granted it back. The cleanup now restores only what was there; the control fails 5 tests.
+- **Not run against live yet:** GitHub runs a workflow by hand only from the default branch, and the role's password and the secret are the owner's.
+
 ## Phase 89 - The proxies fetch their keys as they load; a test keeps their shared code identical; a hand-applied migration's history row is printed: T523-T530 (2026-10-05)
 
 ADR `0065`, amending ADRs `0032`, `0063` and `0064`. Branch `phase-89-jwks-prefetch-and-parity`, cut from `main` at `e1d3291`; commit `8a90f90`, docs `fb87276`, hash backfill `76e4709`; merged into `main` as `2a9dfd9` (PR #39); Vercel `dpl_3Vkst7wxvWmk6CKg9gvHQMrebh7V` READY in `icn1`, entry JS and CSS byte-identical to the local build of `main`. `main` CI on the merge (run `37290940345`) passed every job with no flaky test in 289 s end to end, 23 s of it the merge job (149 tests per browser: 445 passed, 2 skipped). No `src/` change and no migration.
