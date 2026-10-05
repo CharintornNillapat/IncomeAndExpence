@@ -1,6 +1,6 @@
 # 0065: The proxies fetch their keys as they load; a test keeps their shared code identical; a hand-applied migration's history row is printed
 
-**Status:** Accepted. Implemented on branch `phase-89-jwks-prefetch-and-parity` (commit `8a90f90`, docs `fb87276`), draft PR #39. Not merged yet.
+**Status:** Accepted. Released: commit `8a90f90`, docs `fb87276`, hash backfill `76e4709`, merged into `main` as `2a9dfd9` (PR #39); Vercel `dpl_3Vkst7wxvWmk6CKg9gvHQMrebh7V` READY in `icn1`. Measured on production after release: see "Release".
 - **Amends** ADR `0064`: when the key set is fetched.
 - **Amends** ADR `0032`: the two proxies' copies of the caller check are now kept identical by a test, not only by a comment.
 - **Amends** ADR `0063`: how a migration applied in the SQL editor gets its history row.
@@ -100,9 +100,17 @@ The drift query test in `unit/migration-replay.test.ts` now records the post-Pha
 - **Lint** clean. **Playwright:** in the refactor log. Every spec mocks `/api/*`.
 - **Drift:** `npm run schema:drift` against live returns no rows; this phase has no migration.
 
+## Release (2026-10-05)
+
+- **Merge:** PR #39 merged into `main` as `2a9dfd9`. Vercel `dpl_3Vkst7wxvWmk6CKg9gvHQMrebh7V` is READY in production (`icn1`), and its `index-DNX-vcmX.js` (189,976 B) and `index-B4oPRoyv.css` (50,539 B) are byte-identical to the local build of `main` (no `src/` change).
+- **CI:** `main` CI on the merge (run `37290940345`) passed every job with no flaky test in 289 s end to end, 23 s of it the merge job (149 tests per browser: 445 passed, 2 skipped).
+- **Measured:** Five cold instances on production (a token with the live `kid` and a bad signature, refused with 401 before the count and TypeSafe; an instance counted as new when its first request had to fetch keys less than 10 minutes after the last fetch, and took 0.8 to 1.3 s from the client against about 300 ms warm): the first function to start waited 326.6, 319.0, 483.1, 341.4 and 390.3 ms in `auth` (median 341.4 ms, every one `desc="keys"`), against the single Phase 88 sample of 456.0 ms. The other function, started about a second later, waited 64.7, 34.5, 57.7, 46.9 and 29.2 ms, whichever of the two it was (one round in reverse order). Warm requests: 0.5 to 0.9 ms.
+- **The prefetch does not measurably shorten the first cold request.** Four of five samples are under 456 ms, but the ranges overlap and the baseline is one sample; every first request still waited on a fetch, so Vercel evaluates the module close to handing it its first request and the overlap is small. What the first request pays is the first connection to Supabase from a new host: a function started a second later on the same host fetches in 29 to 65 ms, like a warm instance. The prefetch stays: it costs nothing, merges a burst of cold requests into one fetch, and that connection is the one the count reuses next.
+- **Still to measure:** a real signed-in request's `Server-Timing` (ADR `0064`, step 5).
+
 ## Consequences
 
-- **A new instance's key fetch no longer waits for its first request.** How much a cold signed-in request gains is measured on production after release.
+- **A new instance's key fetch starts at load, but its first request still waits on most of it** (measured after release, see "Release"): the gain on that request is not measurable against Phase 88's one sample.
 - **A burst of cold requests makes one key fetch, not one each.**
 - **A change to one proxy's shared code fails the unit suite until the other matches.** A new declaration in both files must be added to `SHARED` or `OWN`.
 - **Every hand-applied migration gets its history row from one command,** in the shape the drift check expects.

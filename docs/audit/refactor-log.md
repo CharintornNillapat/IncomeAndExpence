@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 89 - The proxies fetch their keys as they load; a test keeps their shared code identical; a hand-applied migration's history row is printed: T523-T530 (2026-10-05, commit `8a90f90`, docs `fb87276`, draft PR #39)
+## Phase 89 - The proxies fetch their keys as they load; a test keeps their shared code identical; a hand-applied migration's history row is printed: T523-T530 (2026-10-05, commit `8a90f90`, docs `fb87276`, merge `2a9dfd9`)
 
 ADR `0065`. After Phase 88's release a new instance's first signed-in request still waited for the whole key fetch (456 ms on production), the two proxies' copies were kept in step by a comment only, and every migration run in the SQL editor needed its history row written by hand.
 
@@ -20,8 +20,14 @@ ADR `0065`. After Phase 88's release a new instance's first signed-in request st
 - **Negative controls:** no prefetch call in `classify.ts` (7 fail), a fetch under way not shared (2), a frozen fetch waited for (2, by timing out), the prefetch without the TypeSafe key (2), one constant changed in `insights.ts` (3), the helper ignoring a recorded name (2), the helper recording the dated name (4).
 - **Drift against live:** all 12 kinds match live in count and row hash, 0 unaccounted rows (no migration in this phase).
 
+**Release:**
+- PR #39 merged into `main` as `2a9dfd9`. Vercel `dpl_3Vkst7wxvWmk6CKg9gvHQMrebh7V` is READY in production (`icn1`). Its `index-DNX-vcmX.js` (189,976 B) and `index-B4oPRoyv.css` (50,539 B) are byte-identical to the local build of `main`.
+- `main` CI on the merge (run `37290940345`) passed every job with no flaky test in 289 s end to end, 23 s of it the merge job (149 tests per browser: 445 passed, 2 skipped).
+- **Measured:** Five cold instances on production (a token with the live `kid` and a bad signature, refused with 401 before the count and TypeSafe; an instance counted as new when its first request had to fetch keys less than 10 minutes after the last fetch, and took 0.8 to 1.3 s from the client against about 300 ms warm): the first function to start waited 326.6, 319.0, 483.1, 341.4 and 390.3 ms in `auth` (median 341.4 ms, every one `desc="keys"`), against the single Phase 88 sample of 456.0 ms. The other function, started about a second later, waited 64.7, 34.5, 57.7, 46.9 and 29.2 ms, whichever of the two it was (one round in reverse order). Warm requests: 0.5 to 0.9 ms.
+- **The prefetch does not measurably shorten the first cold request.** Four of five samples are under 456 ms, but the ranges overlap and the baseline is one sample; every first request still waited on a fetch, so Vercel evaluates the module close to handing it its first request and the overlap is small. What the first request pays is the first connection to Supabase from a new host: a function started a second later on the same host fetches in 29 to 65 ms, like a warm instance. The prefetch stays: it costs nothing, merges a burst of cold requests into one fetch, and that connection is the one the count reuses next.
+
 **Still open**
-- **Measure on production after release:** a new instance's first request with a token (refused before TypeSafe), against Phase 88's 456 ms; then a real signed-in request's `Server-Timing`.
+- **Measure a real signed-in request on production** (needs a session).
 - **Four soft-deleted wallets say USD** (owner: relabel or leave).
 - **WebKit on Windows stops painting now and then** (ADR `0058`), locally only.
 

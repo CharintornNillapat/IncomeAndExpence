@@ -1110,7 +1110,9 @@ The entry's growth is the ledger action itself, which lives with the other ledge
 | Key set on a new instance | Phase 88 (production) | Phase 89 |
 |---|---|---|
 | When the fetch starts | at the first request with a token | when the module loads |
-| What that request waits for | the whole fetch, 456.0 ms measured | what is left of it; to measure on production |
+| What that request waits for (`auth`, production) | the whole fetch, 456.0 ms (one sample) | 326.6, 319.0, 483.1, 341.4, 390.3 ms (median 341.4; all `desc="keys"`) |
+| The other function, a second later on the same host | - (a warm instance's refetch: 31.3 and 68.3 ms) | 64.7, 34.5, 57.7, 46.9, 29.2 ms |
+| Warm request, keys held | 0.2 to 0.6 ms | 0.5 to 0.9 ms |
 | Cold requests at once | one fetch each | one fetch |
 
 ## Phase 88 (local token check, session check in the count, THB default) - delta against Phase 87

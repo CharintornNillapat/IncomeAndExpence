@@ -1083,7 +1083,7 @@ Approved explicitly by the user, planned and approved before any code was writte
 
 ## Phase 89 - The proxies fetch their keys as they load; a test keeps their shared code identical; a hand-applied migration's history row is printed: T523-T530 (2026-10-05)
 
-ADR `0065`, amending ADRs `0032`, `0063` and `0064`. Branch `phase-89-jwks-prefetch-and-parity`, cut from `main` at `e1d3291`; commit `8a90f90`, docs `fb87276`; draft PR #39. No `src/` change and no migration.
+ADR `0065`, amending ADRs `0032`, `0063` and `0064`. Branch `phase-89-jwks-prefetch-and-parity`, cut from `main` at `e1d3291`; commit `8a90f90`, docs `fb87276`, hash backfill `76e4709`; merged into `main` as `2a9dfd9` (PR #39); Vercel `dpl_3Vkst7wxvWmk6CKg9gvHQMrebh7V` READY in `icn1`, entry JS and CSS byte-identical to the local build of `main`. `main` CI on the merge (run `37290940345`) passed every job with no flaky test in 289 s end to end, 23 s of it the merge job (149 tests per browser: 445 passed, 2 skipped). No `src/` change and no migration.
 
 | # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
 |---|---|---|---|---|---|---|---|---|---|---|
@@ -1099,7 +1099,7 @@ ADR `0065`, amending ADRs `0032`, `0063` and `0064`. Branch `phase-89-jwks-prefe
 **Notes on execution:**
 - **The parity test found the copies already apart:** `json` had a comment only `insights.ts` carries (comments are ignored), and `isPlainObject` named its parameter `value` there and `v` in `classify.ts` (aligned). Nothing else differed outside `handle` and `validate`.
 - **Locally Vitest exposes `VITE_SUPABASE_URL` from `.env` but not `TYPESAFE_API_KEY`,** so the contract suite's static imports never started a real fetch; it now stubs `fetch` before they load anyway.
-- **The gain is not measured here:** how long Vercel takes between loading a module and handing it its first request is visible only on production.
+- **Measured on production after release:** five new instances' first requests waited 319.0 to 483.1 ms in `auth` (median 341.4, all `desc="keys"`) against Phase 88's single 456.0 ms; the function started a second later on the same host waited 29.2 to 64.7 ms, in either order. Not a measurable gain for the first request: its wait is the first connection to Supabase from a new host, and Vercel loads the module close to handing it that request.
 
 ## Phase 88 - The AI proxies check a token themselves; the database checks its session; wallets default to THB: T514-T522 (2026-10-05)
 
