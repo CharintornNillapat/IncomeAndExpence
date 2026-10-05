@@ -1111,7 +1111,7 @@ The entry's growth is the ledger action itself, which lives with the other ledge
 |---|---|---|
 | Reports to read | 6 (one per shard) | 1 (`playwright-report-unified`) |
 | Artifacts uploaded | 1.67 MB (six HTML reports) | 1.08 MB (six blobs 0.64 MB, merged report 0.44 MB) |
-| Merge job | - | 17 to 21 s after the slowest shard |
+| Merge job | - | 17 to 25 s after the slowest shard (five runs) |
 | End to end | 233 to 286 s | 247 s, and 268 s with a 36 s runner wait |
 
 ## Phase 85 (CI time follows the runner; two shards per browser) - delta against Phase 84

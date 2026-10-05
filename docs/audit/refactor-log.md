@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 86 - One Playwright report for all six CI shards: T499-T504 (2026-10-05, commit `002f8b3`, control `a927893` / `4259587`, docs `9fdf119`, draft PR #36)
+## Phase 86 - One Playwright report for all six CI shards: T499-T504 (2026-10-05, commit `002f8b3`, control `a927893` / `4259587`, docs `9fdf119`, merge `a7cb77f`)
 
 ADR `0062`, amending ADR `0061`. Since Phase 85 a run had six E2E jobs and six HTML reports; a failure meant finding its shard first.
 
@@ -19,7 +19,11 @@ ADR `0062`, amending ADR `0061`. Since Phase 85 a run had six E2E jobs and six H
 - **Local rehearsal:** three blob runs (chromium 1/2 and 2/2, Firefox 1/2) merged into one report with both probe traces linked.
 - **CI:** run `37266494042` (`002f8b3`) green, 447 runs in the unified report (149 per browser; 445 passed, 2 skipped), 268 s end to end with a 36 s runner wait; run `37267237910` (`4259587`) green with no flaky test, 247 s.
 - **Negative control** (run `37266863298`, `a927893`): a failing and a first-attempt-only failing probe. Three shards failed, the merge still published, the summary named all six, and each first attempt's trace was linked and present, from three shards.
-- **Merge job:** 17 to 21 s, of which `npm ci` 9 to 11 s and the merge 1 to 2 s. Uploads per run 1.08 MB (six blobs and the report) against 1.67 MB (six reports).
+- **Merge job:** 17 to 25 s over five runs, of which `npm ci` 9 to 11 s and the merge 1 to 2 s. Uploads per run 1.08 MB (six blobs and the report) against 1.67 MB (six reports).
+
+**Release:**
+- PR #36 merged into `main` as `a7cb77f`. Vercel `dpl_BTyVRinCKM9gSB9GZr6vhndfkQSN` is READY in production (`icn1`; a guest `POST {}` to `/api/classify` answered 400 from `icn1`). Its `index-DNX-vcmX.js` (189,976 B) and `index-B4oPRoyv.css` (50,539 B) are byte-identical to the local build of `main`, the same files Phases 84 and 85 shipped.
+- `main` CI on the merge (run `37268674557`) passed every job with no flaky test in 286 s end to end; its merge job took 21 s, and the unified report holds 149 tests per browser (445 passed, 2 skipped). Over five runs (the PR's four and `main`'s) the merge job took 17 to 25 s (21, 21, 17, 25 and 21 s), starting within seconds of the last shard.
 
 **Still open**
 - **WebKit on Windows stops painting now and then** (ADR `0058`), locally only.

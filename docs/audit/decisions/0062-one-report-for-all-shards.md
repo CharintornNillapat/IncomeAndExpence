@@ -1,6 +1,6 @@
 # 0062: One Playwright report for all six CI shards
 
-**Status:** Accepted. Implemented on branch `phase-86-consolidated-ci-reports` (commit `002f8b3`; negative control `a927893`, reverted in `4259587`; docs `9fdf119`), draft PR #36. Not merged yet.
+**Status:** Accepted. Implemented on branch `phase-86-consolidated-ci-reports` (commit `002f8b3`; negative control `a927893`, reverted in `4259587`; docs `9fdf119`, hash backfill `0ad7545`), merged into `main` as `a7cb77f` (PR #36). Vercel `dpl_BTyVRinCKM9gSB9GZr6vhndfkQSN` is READY in production (`icn1`), serving the same entry as before: this phase changed no app code.
 - **Amends** ADR `0061`, which rejected a merged report and left each shard to upload its own.
 
 **Date:** 2026-10-05
@@ -43,7 +43,8 @@ ADR `0061` rejected a merged report as "one more job on every run, for convenien
   - The report links each of the six first-attempt traces to its test, from three different shards, and every trace file is in `data/`. The WebKit trace holds the action trace, network log, call stacks and test source, with no screenshots (ADR `0060`).
   - Reverted in `4259587`.
 - **CI run `37267237910` (`4259587`, after the revert):** green with no flaky test, 149 per browser again (445 passed, 2 skipped), 247 s end to end.
-- **The merge job's cost**, over the three runs: 17 to 21 s, starting 2 to 4 s after the last shard. `npm ci` is 9 to 11 s of that, and the merge itself 1 to 2 s.
+- **The merge job's cost:** Over five runs (the PR's four and `main`'s) the merge job took 17 to 25 s (21, 21, 17, 25 and 21 s), starting within seconds of the last shard. `npm ci` is 9 to 11 s of that, and the merge itself 1 to 2 s.
+- `main` CI on the merge (run `37268674557`) passed every job with no flaky test in 286 s end to end; its merge job took 21 s, and the unified report holds 149 tests per browser (445 passed, 2 skipped).
 
 ## Consequences
 

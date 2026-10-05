@@ -1083,12 +1083,12 @@ Approved explicitly by the user, planned and approved before any code was writte
 
 ## Phase 86 - One Playwright report for all six CI shards: T499-T504 (2026-10-05)
 
-ADR `0062`, amending ADR `0061`'s per-shard reports. Branch `phase-86-consolidated-ci-reports`, cut from `main` at `12587b2`; commit `002f8b3`, negative control `a927893` reverted in `4259587`, docs `9fdf119`; draft PR #36. No app code, no spec change, no migration.
+ADR `0062`, amending ADR `0061`'s per-shard reports. Branch `phase-86-consolidated-ci-reports`, cut from `main` at `12587b2`; commit `002f8b3`, negative control `a927893` reverted in `4259587`, docs `9fdf119`, hash backfill `0ad7545`; merged into `main` as `a7cb77f` (PR #36); Vercel `dpl_BTyVRinCKM9gSB9GZr6vhndfkQSN` READY in `icn1`, entry JS and CSS byte-identical to the local build of `main`. `main` CI on the merge (run `37268674557`) passed every job with no flaky test in 286 s end to end; its merge job took 21 s, and the unified report holds 149 tests per browser (445 passed, 2 skipped). Over five runs (the PR's four and `main`'s) the merge job took 17 to 25 s (21, 21, 17, 25 and 21 s), starting within seconds of the last shard. No app code, no spec change, no migration.
 
 | # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
 |---|---|---|---|---|---|---|---|---|---|---|
 | T499 | Blob reporter on CI (`blob` + `list`; HTML locally), one blob name per browser and shard | `playwright.config.ts`, `.github/workflows/playwright.yml` | Med | Low | 0.2h | done | - | `002f8b3` | six `blob-report-*` artifacts per run | - |
-| T500 | `merge-reports` job: download the blobs, merge to HTML and JSON, upload `playwright-report-unified`; runs on `!cancelled()` unless no shard ran | `.github/workflows/playwright.yml` | High | Low | 0.3h | done | T499 | `002f8b3` | 17 to 21 s per run | uploads 1.67 -> 1.08 MB a run |
+| T500 | `merge-reports` job: download the blobs, merge to HTML and JSON, upload `playwright-report-unified`; runs on `!cancelled()` unless no shard ran | `.github/workflows/playwright.yml` | High | Low | 0.3h | done | T499 | `002f8b3` | 17 to 25 s per run | uploads 1.67 -> 1.08 MB a run |
 | T501 | Per-browser step summary from the merged JSON | `scripts/ci-report-summary.mjs` | Med | Low | 0.2h | done | T500 | `002f8b3` | 149 / 149 / 149 shown | - |
 | T502 | Local rehearsal: three CI-style blob runs with a probe spec, merged; traces linked | - | Med | Low | 0.2h | done | T501 | - | 7 tests, 2 traces linked and present | - |
 | T503 | Gate: lint, unit, CI run, negative control on CI and its revert | - | High | Low | 0.4h | done | T502 | `a927893`, `4259587` | lint clean; unit 829/829; unified 447 runs (445 passed, 2 skipped); control: 6 traces from 3 shards linked | - |
