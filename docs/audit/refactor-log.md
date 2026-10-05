@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 88 - The AI proxies check a token themselves; the database checks its session; wallets default to THB: T514-T522 (2026-10-05, draft PR)
+## Phase 88 - The AI proxies check a token themselves; the database checks its session; wallets default to THB: T514-T522 (2026-10-05, commit `f224dca`, docs `91a6888`, draft PR #38)
 
 ADR `0064`. A signed-in AI request on a cold instance spent about 390 ms of 626 ms asking the auth server about its token.
 

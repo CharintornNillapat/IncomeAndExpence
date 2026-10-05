@@ -1,6 +1,6 @@
 # 0064: The AI proxies check a token themselves; the database checks its session; wallets default to THB
 
-**Status:** Accepted. Implemented on branch `phase-88-auth-latency-and-currency-default`, draft PR. Not merged yet. **The two migrations must be applied to the live project before the new proxies deploy** (see "Order of release"); neither is applied yet.
+**Status:** Accepted. Implemented on branch `phase-88-auth-latency-and-currency-default` (commit `f224dca`, docs `91a6888`), draft PR #38. Not merged yet. **The two migrations must be applied to the live project before the new proxies deploy** (see "Order of release"); neither is applied yet.
 - **Amends** ADR `0032` (how a signed-in caller is checked) and ADR `0050` (what the `auth` timing measures).
 - **Amends** ADR `0049`: `consume_ai_quota()` also checks the caller's session.
 
