@@ -3,6 +3,29 @@ import { todayIsoDate, toIsoDate } from './date';
 import { Transaction, Wallet, Category, Debt, ImportPreviewSummary, ImportRowValidation, TransactionType } from '../types';
 
 /**
+ * Formula injection (ADR 0068, OWASP "CSV Injection"): a spreadsheet runs a
+ * cell that starts with `=`, `+`, `-`, `@`, a tab or a carriage return as a
+ * formula, so a note like `=HYPERLINK(...)` would run when the export opens in
+ * Excel or Sheets. A leading `'` makes the cell text.
+ *
+ * Escaping also covers a cell already made of `'` before one of those
+ * characters, and unescaping removes exactly one `'` from that shape, so a
+ * round trip returns every string unchanged, a note typed as `'=x` included.
+ * Only text columns go through it: `Amount` is a number, and a negative
+ * ADJUSTMENT must stay `-50.00`.
+ */
+const FORMULA_START = /^'*[=+\-@\t\r]/;
+const ESCAPED_FORMULA_START = /^'+[=+\-@\t\r]/;
+
+function escapeFormula(value: string): string {
+  return FORMULA_START.test(value) ? `'${value}` : value;
+}
+
+function unescapeFormula(value: string): string {
+  return ESCAPED_FORMULA_START.test(value) ? value.slice(1) : value;
+}
+
+/**
  * The export's CSV text. Pure, so the column set is testable without a DOM
  * download. `Debt` (F8, ADR 0024) holds a repayment's debt name, which is what
  * lets an exported repayment re-import against the same debt.
@@ -21,14 +44,14 @@ export function transactionsToCsv(
     .filter((tx) => !tx.isDeleted)
     .map((tx) => ({
       Date: tx.transactionDate,
-      Wallet: walletMap.get(tx.walletId) || 'Unknown Wallet',
-      'Destination Wallet': tx.destinationWalletId ? walletMap.get(tx.destinationWalletId) || '' : '',
-      Category: tx.categoryId ? categoryMap.get(tx.categoryId) || 'Uncategorized' : '',
-      Debt: tx.type === 'DEBT_REPAYMENT' && tx.debtId ? debtMap.get(tx.debtId) || '' : '',
+      Wallet: escapeFormula(walletMap.get(tx.walletId) || 'Unknown Wallet'),
+      'Destination Wallet': escapeFormula(tx.destinationWalletId ? walletMap.get(tx.destinationWalletId) || '' : ''),
+      Category: escapeFormula(tx.categoryId ? categoryMap.get(tx.categoryId) || 'Uncategorized' : ''),
+      Debt: escapeFormula(tx.type === 'DEBT_REPAYMENT' && tx.debtId ? debtMap.get(tx.debtId) || '' : ''),
       Type: tx.type,
       Amount: tx.amount.toFixed(2),
-      Description: tx.description,
-      'Raw Calculation': tx.rawInput || '',
+      Description: escapeFormula(tx.description),
+      'Raw Calculation': escapeFormula(tx.rawInput || ''),
       'Idempotency Key': tx.idempotencyKey || '',
     }));
 
@@ -88,13 +111,15 @@ export function parseAndValidateTransactionCsv(
         dataRows.forEach((row, idx) => {
           const rowIndex = idx + 2; // account for header
           const rawDate = (row['date'] || row['transactiondate'] || '').trim();
-          const rawWallet = (row['wallet'] || row['walletname'] || row['sourcewallet'] || '').trim();
-          const rawDestWallet = (row['destinationwallet'] || row['towallet'] || '').trim();
-          const rawCategory = (row['category'] || row['categoryname'] || '').trim();
+          // Text cells drop the export's formula escape before they are trimmed,
+          // so `'\tx` comes back as the `\tx` it was, then trims as before.
+          const rawWallet = unescapeFormula(row['wallet'] || row['walletname'] || row['sourcewallet'] || '').trim();
+          const rawDestWallet = unescapeFormula(row['destinationwallet'] || row['towallet'] || '').trim();
+          const rawCategory = unescapeFormula(row['category'] || row['categoryname'] || '').trim();
           const rawType = (row['type'] || row['transactiontype'] || 'EXPENSE').trim().toUpperCase();
           const rawAmount = (row['amount'] || '0').replace(/[^0-9.-]+/g, '');
-          const description = (row['description'] || row['note'] || 'Imported Transaction').trim();
-          const rawDebt = (row['debt'] || row['debtname'] || '').trim();
+          const description = unescapeFormula(row['description'] || row['note'] || 'Imported Transaction').trim();
+          const rawDebt = unescapeFormula(row['debt'] || row['debtname'] || '').trim();
 
           const errors: string[] = [];
 

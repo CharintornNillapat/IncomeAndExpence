@@ -541,7 +541,7 @@ export const ImportCsvModal: React.FC<ImportCsvModalProps> = ({ isOpen, onClose 
                             data-testid={`csv-row-category-${row.rowIndex}`}
                             value={row.categoryId || ''}
                             onChange={(e) => setRowCategory(row.rowIndex, e.target.value)}
-                            className="w-full max-w-[10rem] text-[11px] rounded-lg border border-line-input bg-surface-2 px-1.5 py-1 text-fg focus:outline-none focus:ring-2 focus:ring-focus cursor-pointer"
+                            className="w-full max-w-[10rem] text-xs rounded-lg border border-line-input bg-surface-2 px-1.5 py-1 text-fg focus:outline-none focus:ring-2 focus:ring-focus cursor-pointer"
                           >
                             <option value="" className={OPTION_CLASS}>
                               Uncategorized

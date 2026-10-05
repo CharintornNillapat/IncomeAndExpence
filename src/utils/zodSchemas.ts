@@ -1,6 +1,13 @@
 import { z } from 'zod';
 import { formatCurrencyAmount } from './currency';
 
+// ADR 0068: zod compiles object schemas with `new Function` when the page
+// allows it, and probes for that once. The CSP allows no eval, so the probe
+// is reported as a violation on every load even though zod then falls back.
+// `jitless` skips the probe and the compiling; these schemas are small enough
+// that parsing them without it costs nothing a person could notice.
+z.config({ jitless: true });
+
 /**
  * Flattens a validation failure into one human-readable line.
  *
