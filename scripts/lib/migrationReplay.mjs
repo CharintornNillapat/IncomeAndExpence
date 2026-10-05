@@ -95,6 +95,8 @@ export function expectedRows(catalog, files = migrationFiles()) {
  * One read-only query that compares `expected` with the database it runs on
  * (its catalog and supabase_migrations.schema_migrations) and returns only the
  * rows that differ, each marked "only in the repo" or "only in the database".
+ * For the SQL editor: it carries the rows in the text and builds the catalog
+ * as a temporary view (supabase/catalog.sql as it is).
  */
 export function buildDriftCheck(expected) {
   const json = JSON.stringify(expected);
@@ -104,9 +106,42 @@ export function buildDriftCheck(expected) {
 
 ${readRepoFile('supabase', 'catalog.sql').trim()}
 
-with expected(kind, name, detail) as (
+with ${driftComparison(`$drift$${json}$drift$::jsonb`)}`;
+}
+
+/** The search path the catalog's names are printed under: the live project's own. */
+export const CATALOG_SEARCH_PATH = '"$user", public, extensions';
+
+/**
+ * supabase/catalog.sql's one SELECT, the body of its schema_catalog view, so
+ * it can run where creating even a temporary view is refused: a read-only
+ * transaction (Phase 90, ADR 0066).
+ */
+export function catalogSelect() {
+  const match = /create or replace temporary view schema_catalog as\s*([\s\S]*?);\s*$/i
+    .exec(readRepoFile('supabase', 'catalog.sql').replace(/\r\n/g, '\n'));
+  if (!match) throw new Error('supabase/catalog.sql no longer ends with its schema_catalog view.');
+  return match[1].trimEnd();
+}
+
+/**
+ * The same comparison as `buildDriftCheck`, as one SELECT that creates
+ * nothing: the catalog is a CTE and the expected rows are its parameter $1
+ * (`JSON.stringify(expected)`). Run it under CATALOG_SEARCH_PATH. Used by the
+ * scheduled check, which connects as a read-only role (ADR 0066).
+ */
+export function buildDriftQuery() {
+  return `with schema_catalog as (
+${catalogSelect()}
+),
+${driftComparison('$1::jsonb')}`;
+}
+
+/** Both forms' comparison: expected rows from `source` (a jsonb expression) against the database. */
+function driftComparison(source) {
+  return `expected(kind, name, detail) as (
   select x.kind, x.name, x.detail
-    from jsonb_to_recordset($drift$${json}$drift$::jsonb) as x(kind text, name text, detail text)
+    from jsonb_to_recordset(${source}) as x(kind text, name text, detail text)
 ),
 actual as (
   select kind, name, detail from schema_catalog
