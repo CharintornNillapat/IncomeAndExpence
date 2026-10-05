@@ -1098,6 +1098,22 @@ The entry's growth is the ledger action itself, which lives with the other ledge
 
 **Intermittent local failures:** 6 in 1,071 full-suite runs (3 full runs). All were timeouts: a Firefox `goto`, a Firefox context close, and four WebKit clicks waiting for "stable". No assertion failed. See audit 005 finding 3 for the control runs.
 
+## Phase 86 (one Playwright report for all six CI shards) - delta against Phase 85
+
+**Bundle:** unchanged (no `src/` change).
+
+| Suite | Files | Tests | Runs | Result |
+|---|---|---|---|---|
+| Vitest (`unit/`) | 32 | 829 | 829 | 829/829 |
+| Playwright, CI merged report | 30 | 149 | 447 | 445 passed + 2 skipped, 149 per browser |
+
+| CI, per run | Phase 85 | Phase 86 |
+|---|---|---|
+| Reports to read | 6 (one per shard) | 1 (`playwright-report-unified`) |
+| Artifacts uploaded | 1.67 MB (six HTML reports) | 1.08 MB (six blobs 0.64 MB, merged report 0.44 MB) |
+| Merge job | - | 17 to 21 s after the slowest shard |
+| End to end | 233 to 286 s | 247 s, and 268 s with a 36 s runner wait |
+
 ## Phase 85 (CI time follows the runner; two shards per browser) - delta against Phase 84
 
 **Bundle:** unchanged (no `src/` change).

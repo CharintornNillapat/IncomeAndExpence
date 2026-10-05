@@ -2,6 +2,7 @@
 
 **Status:** Accepted. Implemented on branch `phase-85-ci-timing-profiling` (runner step `87c4a42`, shards `f0dbd3d` and `7dcb1ca`, docs `0ecf79f`, hash backfill `9921810`), merged into `main` as `be78622` (PR #35). Vercel `dpl_2e5mqEA9WeM667yihCxp2AeFcz3r` is READY in production (`icn1`), serving the same entry as before: this phase changed no app code.
 - **Amends** Phase 55's CI layout (one E2E job per browser): two jobs per browser now, still 2 workers each.
+- **Amended by** ADR `0062`: the shards' results are merged into one report, `playwright-report-unified`, and the per-shard reports are gone.
 
 **Date:** 2026-10-05
 

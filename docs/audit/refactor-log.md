@@ -4,6 +4,26 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
+## Phase 86 - One Playwright report for all six CI shards: T499-T504 (2026-10-05, commit `002f8b3`, control `a927893` / `4259587`, docs `9fdf119`, draft PR #36)
+
+ADR `0062`, amending ADR `0061`. Since Phase 85 a run had six E2E jobs and six HTML reports; a failure meant finding its shard first.
+
+**Changed**
+- **`playwright.config.ts`:** on CI the reporters are `blob` and `list`; locally still `html`.
+- **`.github/workflows/playwright.yml`:** each shard names its blob `report-<browser>-<shard>.zip` and uploads `blob-report-<browser>-<shard>` (7 days) instead of an HTML report. A new `merge-reports` job (`needs: e2e`, `!cancelled() && needs.e2e.result != 'skipped'`) merges them to HTML and JSON, writes a per-browser summary and uploads `playwright-report-unified` (30 days).
+- **`scripts/ci-report-summary.mjs`** (new): the per-browser table and the failed or flaky tests by name, from the merged `results.json`.
+- **Docs:** ADR `0062`, ADR `0061`'s amendment line, `CLAUDE.md` (the trace artifact, a CI bullet, a Do NOT line), the ledger, this log, baseline metrics.
+
+**Gate:**
+- Lint clean. Unit 829/829 in 32 files. No `src/` or spec change, so no local Playwright run beyond the rehearsal.
+- **Local rehearsal:** three blob runs (chromium 1/2 and 2/2, Firefox 1/2) merged into one report with both probe traces linked.
+- **CI:** run `37266494042` (`002f8b3`) green, 447 runs in the unified report (149 per browser; 445 passed, 2 skipped), 268 s end to end with a 36 s runner wait; run `37267237910` (`4259587`) green with no flaky test, 247 s.
+- **Negative control** (run `37266863298`, `a927893`): a failing and a first-attempt-only failing probe. Three shards failed, the merge still published, the summary named all six, and each first attempt's trace was linked and present, from three shards.
+- **Merge job:** 17 to 21 s, of which `npm ci` 9 to 11 s and the merge 1 to 2 s. Uploads per run 1.08 MB (six blobs and the report) against 1.67 MB (six reports).
+
+**Still open**
+- **WebKit on Windows stops painting now and then** (ADR `0058`), locally only.
+
 ## Phase 85 - CI time follows the runner; each browser runs as two shards: T492-T498 (2026-10-05, commits `87c4a42`, `7dcb1ca`, docs `0ecf79f`, merge `be78622`)
 
 ADR `0061`. Why CI's WebKit job took 3.2 m on some runs and 4.2 to 4.3 m on others.
