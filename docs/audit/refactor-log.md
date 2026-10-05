@@ -4,6 +4,36 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
+## Phase 93 - The redundant SELECT policies are dropped; transfer_funds takes the user from the session, beside its old signature: T555-T562 (2026-10-06)
+
+ADR `0069`. ADR `0067` scheduled two database changes: dropping the two "view system and their own" SELECT policies, and taking `transfer_funds`' user from the session instead of an argument.
+
+**Changed**
+- **`20261006_phase93_drop_redundant_select_policies.sql`:** drops both policies. Live has no ownerless row (read 2026-10-06), so every user reads what they read before. The baseline no longer creates them (ADR `0063`'s rule: nothing a later file drops), and its policy loop loses the branch only they used.
+- **`20261006_phase93_transfer_funds_from_session.sql`:** a `transfer_funds` overload without `p_user_id`: the 20260909 body with `auth.uid()`, 42501 with no session, `authenticated` only. The 20260909 signature stays for cached older builds; a later phase drops it.
+- **Client:** `addTransaction`'s transfer sends no `p_user_id`, so PostgREST reaches the new overload.
+- **Replay prelude:** `USAGE` on `auth` for `anon`, `authenticated` and `service_role`, as live has it.
+- **Tests:**
+  - the Phase 93 probe, run three ways in `unit/migration-replay.test.ts`: before its migrations, after them, and on the live shape;
+  - `unit/authenticated-ledger.test.tsx` +1;
+  - `unit/drift-runner.test.ts` reads the migration count from the files.
+- **Docs:** ADR `0069`, `CLAUDE.md` (two transfer signatures, the advisors, two Do NOTs), the ledger, this log, baseline metrics.
+
+**Gate:**
+- Lint clean. Unit 1030/1030 in 39 files. Playwright 454 passed + 2 skipped of 456 in 7.7 m, first run.
+- **Negative controls:**
+  - the new function without its no-session check fails "3 a call with no session was not refused";
+  - the drop emptied, on the old baseline and on the live shape, fails "1 categories has another policy";
+  - the client still sending `p_user_id` fails the signed-in test.
+- **Drift replay:** 17 migrations; expects 7 policies, 16 functions, 64 function grants. Live differs until the owner applies the two files (T562), as designed.
+- **History inserts:** printed with `npm run migration:print-history`. Each carries its print time as its version, so they are printed again at apply.
+- **Bundle:** entry 190,084 to 190,069 B raw (-15), 54,778 to 54,775 gzip (-3). Total JS and CSS 1,416,889 to 1,416,874 B raw; gzip moves +31 B, from changed chunk hashes.
+
+**Still open**
+- **Owner, before the merge (T562):** probe, apply both files with their history rows, probe again, then run the drift workflow by hand.
+- **A later phase:** drop the 20260909 `transfer_funds` signature, once older builds have reloaded.
+- **From Phase 92:** walk signed-in sync under the CSP, then enforce it; leaked password protection; a screen reader pass; the four `USD` wallets.
+
 ## Phase 92 - Exported CSV cells cannot run as formulas; the page can be zoomed; responses carry security headers and a report-only CSP: T546-T554 (2026-10-05, commit `db21e3f`, docs `7a77678`, merge `d05ff4d`)
 
 ADR `0068`. An outside review listed four findings no phase had tracked: CSV formula injection, zoom disabled, no security headers, and three vulnerable development packages. Each was confirmed in the code first.
