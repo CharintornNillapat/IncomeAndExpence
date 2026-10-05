@@ -17,6 +17,12 @@ insert into auth.users (id, email, aud, role, raw_user_meta_data) values
   ('00000000-0000-4000-8000-00000073a001', 'phase73-probe-a@example.invalid', 'authenticated', 'authenticated', '{"name":"Probe A"}'),
   ('00000000-0000-4000-8000-00000073b001', 'phase73-probe-b@example.invalid', 'authenticated', 'authenticated', '{"name":"Probe B"}');
 
+-- Phase 88 (ADR 0064): the function counts only a live session's token, so
+-- each probe user signs in once.
+insert into auth.sessions (id, user_id, created_at, updated_at) values
+  ('00000000-0000-4000-8000-0000007a5e01', '00000000-0000-4000-8000-00000073a001', now(), now()),
+  ('00000000-0000-4000-8000-0000007b5e01', '00000000-0000-4000-8000-00000073b001', now(), now());
+
 -- -----------------------------------------------------------------------------
 -- 1. Grants: the function is authenticated-only; the table has no client grant.
 -- -----------------------------------------------------------------------------
@@ -53,7 +59,7 @@ end;
 $nosession$;
 
 -- A: counts 1, 2, ... 121, with a retry_after inside the minute.
-select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-00000073a001","role":"authenticated"}', true);
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-00000073a001","role":"authenticated","session_id":"00000000-0000-4000-8000-0000007a5e01"}', true);
 do $a$
 declare
   r jsonb;
@@ -83,7 +89,7 @@ end;
 $direct$;
 
 -- B: its own count, untouched by A's.
-select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-00000073b001","role":"authenticated"}', true);
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-00000073b001","role":"authenticated","session_id":"00000000-0000-4000-8000-0000007b5e01"}', true);
 do $b$
 begin
   assert (public.consume_ai_quota()->>'count')::int = 1, '2 B shares A''s count';
@@ -103,7 +109,7 @@ insert into public.ai_request_counts (user_id, window_start, request_count)
 values ('00000000-0000-4000-8000-00000073a001', date_trunc('minute', now()) - interval '5 minutes', 7);
 
 set local role authenticated;
-select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-00000073a001","role":"authenticated"}', true);
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-00000073a001","role":"authenticated","session_id":"00000000-0000-4000-8000-0000007a5e01"}', true);
 do $rollover$
 begin
   assert (public.consume_ai_quota()->>'count')::int = 1, '3 A did not start a new window';

@@ -1098,6 +1098,21 @@ The entry's growth is the ledger action itself, which lives with the other ledge
 
 **Intermittent local failures:** 6 in 1,071 full-suite runs (3 full runs). All were timeouts: a Firefox `goto`, a Firefox context close, and four WebKit clicks waiting for "stable". No assertion failed. See audit 005 finding 3 for the control runs.
 
+## Phase 88 (local token check, session check in the count, THB default) - delta against Phase 87
+
+**Bundle:** unchanged (no `src/` change).
+
+| Suite | Files | Tests | Runs | Result |
+|---|---|---|---|---|
+| Vitest (`unit/`) | 33 | 895 | 895 | 895/895 (proxy contract 189, migration replay 14) |
+| Playwright (local, 4 workers) | 30 | 149 | 447 | 445 passed + 2 skipped of 447 in 6.9 m, first pass |
+
+| Signed-in AI request | Before (ADR `0051`, production) | Phase 88 |
+|---|---|---|
+| Token check | `/auth/v1/user`, about 390 ms uncached; cached 60 s per instance | local, about 0.05 ms; key set fetched once per 10 min per instance |
+| Function total, uncached token | 626.3 ms | to measure after release (expected near the warm 238 ms) |
+| Revoked session refused | within 60 s | on the next request |
+
 ## Phase 87 (the migrations rebuild the live schema) - delta against Phase 86
 
 **Bundle:** unchanged (no `src/` change; PGlite is a dev dependency).

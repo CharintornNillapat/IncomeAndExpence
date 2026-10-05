@@ -4,6 +4,28 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
+## Phase 88 - The AI proxies check a token themselves; the database checks its session; wallets default to THB: T514-T522 (2026-10-05, commit `f224dca`, docs `91a6888`, draft PR #38)
+
+ADR `0064`. A signed-in AI request on a cold instance spent about 390 ms of 626 ms asking the auth server about its token.
+
+**Changed**
+- **Both proxies** (`api/classify.ts`, `api/insights.ts`, still duplicated): `verifyToken` checks the signature against the project's published keys (ES256 or RS256; `none` and HS256 refused) and the claims (`exp`, `nbf`, `iss`, `aud`, `role`, `sub`, `session_id`). Key set per instance: 10 minutes, refetched for a new `kid` at most every 30 s, kept on a failed refetch. The one-minute token cache is gone. A 403 from the count is now 401. `auth` timing: `desc="keys"` when the key set was fetched.
+- **`20261005_phase88_quota_checks_session.sql`:** `consume_ai_quota()` raises 28000 unless the token's session is live and the caller's. A revoked device is refused on its next request.
+- **`20261005_wallet_default_thb.sql`:** the default only.
+- **Tests:** the proxy suite signs real tokens (189); the replay suite runs the Phase 88 and Phase 73 probes and runs each probe against its own schema (14).
+- **Docs:** ADR `0064`, `CLAUDE.md`, the ledger, this log, baseline metrics.
+
+**Gate:**
+- Lint clean. Unit 895/895 in 33 files. Playwright 445 passed + 2 skipped of 447 in 6.9 m, first pass.
+- **Negative controls:** signature not enforced (2 fail), expiry not checked (4), session claim not checked (2), a 403 not mapped (1), the session check left out of the migration (both Phase 88 probe runs).
+- **Against live (read-only):** the live ES256 key imports and verifies (0.05 ms); with the new files, the drift is exactly `wallets.currency` and `consume_ai_quota()`, and every other column and function hashes as live does.
+
+**Still open**
+- **Apply both migrations on live before the merge** (owner), then merge, then `npm run schema:drift` with no rows.
+- **Measure a signed-in request on production** (needs a real session).
+- **Four soft-deleted wallets say USD** (owner: relabel or leave).
+- **WebKit on Windows stops painting now and then** (ADR `0058`), locally only.
+
 ## Phase 87 - The migrations rebuild the live schema, and a check proves it: T505-T513 (2026-10-05, commit `ffd3f13`, docs `0c898b9`, merge `67a5bba`)
 
 ADR `0063`. Three known gaps in the migration history (Phase 64's cleanup, Phase 73's counter, an untracked index) turned out to sit on a bigger one: the base schema was never in the repo.

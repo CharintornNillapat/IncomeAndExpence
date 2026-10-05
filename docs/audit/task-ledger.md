@@ -1081,6 +1081,27 @@ Approved explicitly by the user, planned and approved before any code was writte
 - **One negative control was redone** because the first attempt produced malformed TypeScript that the dev server still served — the tests failed, but possibly for the wrong reason.
 - **No flakes.** Phase 44's `wallets.spec.ts` webkit flake has now not reproduced across three consecutive phases; still watched rather than closed.
 
+## Phase 88 - The AI proxies check a token themselves; the database checks its session; wallets default to THB: T514-T522 (2026-10-05)
+
+ADR `0064`, amending ADRs `0032`, `0049` and `0050`. Branch `phase-88-auth-latency-and-currency-default`, cut from `main` at `6d76cc6`; commit `f224dca`, docs `91a6888`; draft PR #38. No `src/` change. **Two migrations, not applied:** the session check must reach the live project before the new proxies deploy.
+
+| # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
+|---|---|---|---|---|---|---|---|---|---|---|
+| T514 | Read the project's signing keys (public JWKS) and the proxies' auth path | - | High | Low | 0.2h | done | - | - | one ES256 key, `max-age=600`; the uncached auth round trip about 390 ms of 626 ms | - |
+| T515 | `verifyToken` in both proxies: ES256/RS256 by `kid`, claims, key set cached 10 min, refetch for a new `kid` at most every 30 s, stale on error; per-token cache removed | `api/classify.ts`, `api/insights.ts` | High | Med | 1.0h | done | T514 | `f224dca` | live key imports and verifies, 0.05 ms a check | auth round trip -> local check |
+| T516 | `consume_ai_quota()` refuses an ended session (28000); proxies map 403 to 401 | `supabase/migrations/20261005_phase88_quota_checks_session.sql`, both proxies | High | Med | 0.5h | done | T515 | `f224dca` | probe: 1 live session counted, 7 ended ones refused before counting | revocation: up to 60 s -> next request |
+| T517 | `wallets.currency` defaults to THB | `supabase/migrations/20261005_wallet_default_thb.sql` | Low | Low | 0.1h | done | - | `f224dca` | default `'THB'::text`; 4 soft-deleted USD wallets left as found | - |
+| T518 | Probes: Phase 88 (new), Phase 73 (sessions in its fixture); prelude gains `aud`/`role` | `supabase/tests/`, `supabase/replay/prelude.sql` | Med | Low | 0.4h | done | T516 | `f224dca` | both pass on a replay | - |
+| T519 | Each probe against its own schema: `inlineProbe(..., { applied })`; the Phase 87 probe on the files up to Phase 87 | `scripts/lib/migrationReplay.mjs`, `unit/migration-replay.test.ts` | Med | Low | 0.3h | done | T518 | `f224dca` | 14/14; caught re-running Phase 73's file would drop the session check | unit +3 |
+| T520 | Proxy tests rebuilt on real ES256 tokens; negative controls | `unit/proxy-contract.test.ts` | High | Low | 0.8h | done | T515 | `f224dca` | 189/189; 5 controls each fail only their own tests | unit +52 |
+| T521 | Drift against live (read-only): exactly the two intended rows; gate | - | High | Low | 0.3h | done | T520 | - | lint clean; unit 895/895; Playwright 445 passed + 2 skipped of 447 in 6.9 m, first pass | - |
+| T522 | ADR `0064`, `CLAUDE.md`, this ledger, the refactor log, baseline metrics | `docs/`, `CLAUDE.md` | Low | Low | 0.4h | done | T521 | `91a6888` | - | - |
+
+**Notes on execution:**
+- **The probe and the migration header first claimed every live wallet was THB;** a read-only count found 4 USD ones (all soft-deleted, from 2026-08-31). The header was corrected and the probe checks wallets in use only. Relabelling them is left to the owner.
+- **A key rotation within 30 s of a fetch is not picked up** until 30 s have passed (the refetch limit); two tests first assumed otherwise and were corrected, not the code.
+- **No signed-in production request was made:** that needs a real session. The latency gain is measured after release.
+
 ## Phase 87 - The migrations rebuild the live schema, and a check proves it: T505-T513 (2026-10-05)
 
 ADR `0063`. Branch `phase-87-reconcile-db-migrations`, cut from `main` at `7723bfd`; commit `ffd3f13`, docs `0c898b9`, hash backfill `81de85f`; merged into `main` as `67a5bba` (PR #37); Vercel `dpl_2vwnW6ph7E2ZG5nJFiwnjbfoaWLZ` READY in `icn1`, entry JS and CSS byte-identical to the local build of `main`. `main` CI on the merge (run `37278086248`) passed every job with no flaky test in 270 s end to end (149 tests per browser: 445 passed, 2 skipped). No `src/` change. The owner approved the history backfill after the merge, and it was applied on 2026-10-05 through MCP's `execute_sql`: the read-only dry run first showed all 11 kinds of object identical and exactly the four names missing; the insert added those four rows (`baseline_schema`, `transfer_funds`, `phase64_dedupe_categories`, `phase73_ai_request_quota`); the drift check then returned **0 unaccounted rows**, with 13 history rows for 13 files. By the owner's decision the live checks stayed read-only (the rollback probe was not run on live).
