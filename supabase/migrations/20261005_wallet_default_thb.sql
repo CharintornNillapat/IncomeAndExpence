@@ -1,0 +1,24 @@
+-- =============================================================================
+-- Phase 88 (ADR 0064): a wallet's currency defaults to THB.
+--
+-- The app is THB only (CLAUDE.md, "Currency: THB only"), but wallets.currency
+-- still defaulted to 'USD' from the dashboard-built schema (ADR 0063 recorded
+-- it as found). Nothing relied on the default: the client sends APP_CURRENCY,
+-- create_wallet coalesces a missing currency to 'THB', and the starter seed
+-- writes 'THB'. A row inserted without a currency, by a future path or by
+-- hand, now gets the app's one currency instead of a second one.
+--
+-- Changes the default only: no existing row is touched. On the live project
+-- (read 2026-10-05) 26 wallets say THB and 4 say USD: all four soft-deleted,
+-- created on 2026-08-31 in one account, before create_wallet existed, and
+-- labelled by the old default. The app never reads the stored value
+-- (mapWalletRow sets APP_CURRENCY), so they are left as found; relabelling
+-- them would be a data change for the owner to decide. The probe checks that
+-- no wallet still in use holds another currency.
+--
+-- Idempotent: setting the same default again changes nothing.
+--
+-- Probe: supabase/tests/20261005_phase88.probe.sql.
+-- =============================================================================
+
+alter table public.wallets alter column currency set default 'THB';

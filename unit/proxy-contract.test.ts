@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeAll, beforeEach, afterEach, vi } from 'vitest';
 import { POST as classify } from '../api/classify.ts';
 import { POST as insights } from '../api/insights.ts';
 
@@ -192,22 +192,77 @@ describe.each(ENDPOINTS)('$name', ({ name, handler, body, answers }) => {
 });
 
 /**
- * The caller check (ADR 0032). One `fetch` stub answers both hosts: the auth
- * server's `/auth/v1/user` and TypeSafe. The property that matters in every
- * refusal is that TypeSafe was never called - a refused or unverified caller
- * must not spend credits.
+ * The caller check (ADR 0032; local since ADR 0064). A signed-in caller's
+ * access token is checked in the function, against the signing keys the
+ * project publishes at `/auth/v1/.well-known/jwks.json`: the auth server is
+ * never asked about the token itself. These tests sign real ES256 tokens with
+ * a key pair made here and serve its public half from the `fetch` stub.
  *
- * Verified tokens are cached per module for a minute, so every test uses a
- * token of its own.
+ * The property that matters in every refusal is that TypeSafe was never
+ * called - a refused or unchecked caller must not spend credits.
+ *
+ * The functions keep the key set per instance (module), by issuer, so every
+ * test runs against a project URL of its own and starts with no keys held.
  */
-const SUPABASE_URL = 'https://project.supabase.test';
-const AUTH_USER_URL = `${SUPABASE_URL}/auth/v1/user`;
+let projectCounter = 0;
+let SUPABASE_URL = '';
+const issuer = () => `${SUPABASE_URL}/auth/v1`;
+const jwksUrl = () => `${issuer()}/.well-known/jwks.json`;
+const quotaUrl = () => `${SUPABASE_URL}/rest/v1/rpc/consume_ai_quota`;
 
-let tokenCounter = 0;
-function freshToken(): string {
-  tokenCounter += 1;
-  return `token-${tokenCounter}-${Math.random().toString(36).slice(2)}`;
+beforeEach(() => {
+  projectCounter += 1;
+  SUPABASE_URL = `https://project-${projectCounter}.supabase.test`;
+  vi.stubEnv('VITE_SUPABASE_URL', `${SUPABASE_URL}/`);
+  vi.stubEnv('VITE_SUPABASE_ANON_KEY', 'anon-key-not-real');
+});
+
+interface TestKey {
+  kid: string;
+  privateKey: CryptoKey;
+  jwk: JsonWebKey & { kid: string; alg: string; use: string };
 }
+
+async function makeKey(kid: string): Promise<TestKey> {
+  const pair = (await crypto.subtle.generateKey({ name: 'ECDSA', namedCurve: 'P-256' }, true, ['sign', 'verify'])) as CryptoKeyPair;
+  const publicJwk = await crypto.subtle.exportKey('jwk', pair.publicKey);
+  return { kid, privateKey: pair.privateKey, jwk: { ...publicJwk, kid, alg: 'ES256', use: 'sig' } };
+}
+
+let KEY: TestKey;
+let OTHER_KEY: TestKey;
+beforeAll(async () => {
+  KEY = await makeKey('key-1');
+  OTHER_KEY = await makeKey('key-2');
+});
+
+const b64url = (bytes: Uint8Array | string) =>
+  Buffer.from(typeof bytes === 'string' ? Buffer.from(bytes) : bytes).toString('base64url');
+
+const uuid = () => crypto.randomUUID();
+
+/** A token as Supabase issues one: an hour long, for a user and a session. */
+function claimsFor(overrides: Record<string, unknown> = {}): Record<string, unknown> {
+  const now = Math.floor(Date.now() / 1000);
+  return {
+    iss: issuer(), aud: 'authenticated', role: 'authenticated',
+    sub: uuid(), session_id: uuid(), exp: now + 3600, iat: now,
+    ...overrides,
+  };
+}
+
+async function sign(
+  claims: Record<string, unknown> = claimsFor(),
+  { key = KEY, header = {} as Record<string, unknown> } = {},
+): Promise<string> {
+  const head = b64url(JSON.stringify({ alg: 'ES256', kid: key.kid, typ: 'JWT', ...header }));
+  const body = b64url(JSON.stringify(claims));
+  const signature = await crypto.subtle.sign({ name: 'ECDSA', hash: 'SHA-256' }, key.privateKey, Buffer.from(`${head}.${body}`));
+  return `${head}.${body}.${b64url(new Uint8Array(signature))}`;
+}
+
+/** A fresh, valid token for the current test's project. */
+const freshToken = () => sign(claimsFor());
 
 function postAs(path: string, body: unknown, authorization: string): Request {
   return new Request(`https://finlife.test${path}`, {
@@ -217,86 +272,197 @@ function postAs(path: string, body: unknown, authorization: string): Request {
   });
 }
 
+/** What the key set endpoint serves: a list of keys, or a failure. */
+type KeysReply = TestKey[] | number | 'throw' | 'not-json' | 'not-a-key-set';
+
+function keysResponse(reply: KeysReply): Response {
+  if (reply === 'throw') throw new TypeError('fetch failed');
+  if (reply === 'not-json') return new Response('<html>', { status: 200 });
+  if (reply === 'not-a-key-set') return new Response('{}', { status: 200 });
+  if (typeof reply === 'number') return new Response('{}', { status: reply });
+  return new Response(JSON.stringify({ keys: reply.map((k) => k.jwk) }), { status: 200 });
+}
+
 describe.each(ENDPOINTS)('$name caller check', ({ name, handler, body, answers }) => {
-  let authStatus: number | 'throw';
+  let keysReply: KeysReply;
 
   beforeEach(() => {
-    vi.stubEnv('VITE_SUPABASE_URL', `${SUPABASE_URL}/`);
-    vi.stubEnv('VITE_SUPABASE_ANON_KEY', 'anon-key-not-real');
-    authStatus = 200;
+    keysReply = [KEY];
     upstream.mockImplementation(async (url: string) => {
-      if (url === AUTH_USER_URL) {
-        if (authStatus === 'throw') throw new TypeError('fetch failed');
-        return new Response('{}', { status: authStatus });
-      }
+      if (url === jwksUrl()) return keysResponse(keysReply);
       // ADR 0049: an accepted token is counted next; well under the limit here.
-      if (url === `${SUPABASE_URL}/rest/v1/rpc/consume_ai_quota`) {
-        return new Response(JSON.stringify({ count: 1, retry_after: 30 }), { status: 200 });
-      }
+      if (url === quotaUrl()) return new Response(JSON.stringify({ count: 1, retry_after: 30 }), { status: 200 });
       return new Response(JSON.stringify({ answers }), { status: 200 });
     });
   });
 
-  const typesafeCalls = () =>
-    upstream.mock.calls.filter(([url]) => url !== AUTH_USER_URL && !String(url).includes('/rest/v1/rpc/'));
-  const authCalls = () => upstream.mock.calls.filter(([url]) => url === AUTH_USER_URL);
+  const keyCalls = () => upstream.mock.calls.filter(([url]) => url === jwksUrl());
+  const quotaCalls = () => upstream.mock.calls.filter(([url]) => url === quotaUrl());
+  const typesafeCalls = () => upstream.mock.calls.filter(([url]) => !String(url).includes('.supabase.test'));
+  const as = async (token: string | Promise<string>) => handler(postAs(name, body, `Bearer ${await token}`));
 
-  it('lets a guest through without asking the auth server', async () => {
+  it('lets a guest through without fetching keys or counting', async () => {
     const res = await handler(post(name, body));
 
     expect(res.status).toBe(200);
-    expect(authCalls()).toHaveLength(0);
+    expect(keyCalls()).toHaveLength(0);
+    expect(quotaCalls()).toHaveLength(0);
     expect(typesafeCalls()).toHaveLength(1);
   });
 
-  it('asks the auth server about a token, with the anon key, and goes on when it is accepted', async () => {
-    const token = freshToken();
-
-    const res = await handler(postAs(name, body, `Bearer ${token}`));
+  it('checks a valid token itself, never asking the auth server about it', async () => {
+    const res = await as(freshToken());
 
     expect(res.status).toBe(200);
-    expect(authCalls()).toHaveLength(1);
-    const [, init] = authCalls()[0];
-    expect(init.headers).toEqual({ apikey: 'anon-key-not-real', Authorization: `Bearer ${token}` });
+    expect(keyCalls()).toHaveLength(1);
+    // The key set is public: fetched with no token and no key.
+    expect(keyCalls()[0][1]?.headers).toBeUndefined();
+    expect(upstream.mock.calls.some(([url]) => String(url).endsWith('/auth/v1/user'))).toBe(false);
+    expect(quotaCalls()).toHaveLength(1);
     expect(typesafeCalls()).toHaveLength(1);
   });
 
-  it('remembers an accepted token, so the next call does not ask again', async () => {
-    const token = freshToken();
+  it('fetches the key set once and checks every later token with it', async () => {
+    for (let i = 0; i < 3; i++) expect((await as(freshToken())).status).toBe(200);
 
-    await handler(postAs(name, body, `Bearer ${token}`));
-    const res = await handler(postAs(name, body, `Bearer ${token}`));
-
-    expect(res.status).toBe(200);
-    expect(authCalls()).toHaveLength(1);
-    expect(typesafeCalls()).toHaveLength(2);
+    expect(keyCalls()).toHaveLength(1);
   });
 
-  it.each([401, 403])('answers 401 when the auth server refuses the token (%i), without calling TypeSafe', async (status) => {
-    authStatus = status;
+  it('fetches the key set again after ten minutes', async () => {
+    const start = Date.now();
+    expect((await as(freshToken())).status).toBe(200);
+    vi.spyOn(Date, 'now').mockReturnValue(start + 11 * 60_000);
 
-    const res = await handler(postAs(name, body, `Bearer ${freshToken()}`));
+    expect((await as(freshToken())).status).toBe(200);
+    expect(keyCalls()).toHaveLength(2);
+  });
+
+  it('accepts the audience as an array, as the spec allows', async () => {
+    expect((await as(sign(claimsFor({ aud: ['authenticated', 'other'] })))).status).toBe(200);
+  });
+
+  it.each([
+    ['expired', { exp: Math.floor(Date.now() / 1000) - 1 }],
+    ['without an expiry', { exp: undefined }],
+    ['not valid yet', { nbf: Math.floor(Date.now() / 1000) + 600 }],
+    ['from another issuer', { iss: 'https://elsewhere.supabase.test/auth/v1' }],
+    ['for another audience', { aud: 'service' }],
+    ['for the anon role', { role: 'anon' }],
+    ['for the service role', { role: 'service_role' }],
+    ['without a user', { sub: undefined }],
+    ['with a user that is not a uuid', { sub: 'user-1' }],
+    ['without a session', { session_id: undefined }],
+    ['with a session that is not a uuid', { session_id: 'session-1' }],
+  ])('answers 401 to a token %s, without counting or calling TypeSafe', async (_label, overrides) => {
+    const res = await as(sign(claimsFor(overrides)));
+
+    expect(res.status).toBe(401);
+    expect(await res.json()).toEqual({ error: 'Unauthorized.' });
+    expect(quotaCalls()).toHaveLength(0);
+    expect(typesafeCalls()).toHaveLength(0);
+  });
+
+  it('answers 401 to a token whose claims were changed after signing', async () => {
+    const [head, , signature] = (await freshToken()).split('.');
+    const forged = b64url(JSON.stringify(claimsFor({ sub: uuid() })));
+
+    expect((await as(`${head}.${forged}.${signature}`)).status).toBe(401);
+    expect(typesafeCalls()).toHaveLength(0);
+  });
+
+  it('answers 401 to a token signed by another key under a known kid', async () => {
+    const res = await as(sign(claimsFor(), { key: { ...OTHER_KEY, kid: KEY.kid } }));
 
     expect(res.status).toBe(401);
     expect(typesafeCalls()).toHaveLength(0);
   });
 
-  it('does not remember a refused token', async () => {
-    authStatus = 401;
-    const token = freshToken();
+  it.each([
+    ['alg none', { alg: 'none' }],
+    ['HS256, a shared-secret algorithm', { alg: 'HS256' }],
+    ['no kid', { kid: undefined }],
+  ])('answers 401 to a token with %s, before fetching keys', async (_label, header) => {
+    const res = await as(sign(claimsFor(), { header }));
 
-    await handler(postAs(name, body, `Bearer ${token}`));
-    await handler(postAs(name, body, `Bearer ${token}`));
-
-    expect(authCalls()).toHaveLength(2);
+    expect(res.status).toBe(401);
+    expect(keyCalls()).toHaveLength(0);
     expect(typesafeCalls()).toHaveLength(0);
   });
 
+  it.each([
+    ['two segments', 'aaa.bbb'],
+    ['four segments', 'a.b.c.d'],
+    ['a segment that is not base64url', 'a+b.c.d'],
+    ['a header that is not JSON', `${b64url('not json')}.${b64url('{}')}.${b64url('x')}`],
+    ['a header that is a JSON array', `${b64url('[]')}.${b64url('{}')}.${b64url('x')}`],
+  ])('answers 401 to %s, before fetching keys', async (_label, token) => {
+    const res = await as(token);
+
+    expect(res.status).toBe(401);
+    expect(keyCalls()).toHaveLength(0);
+    expect(typesafeCalls()).toHaveLength(0);
+  });
+
+  it('fetches the key set again for a new kid, and accepts a token signed by it (a rotation)', async () => {
+    const start = Date.now();
+    expect((await as(freshToken())).status).toBe(200);
+    keysReply = [KEY, OTHER_KEY];
+    vi.spyOn(Date, 'now').mockReturnValue(start + 31_000);
+
+    expect((await as(sign(claimsFor(), { key: OTHER_KEY }))).status).toBe(200);
+    expect(keyCalls()).toHaveLength(2);
+  });
+
+  it('answers 401 to an unknown kid, and refetches for one at most every 30 s', async () => {
+    const start = Date.now();
+    const now = vi.spyOn(Date, 'now');
+    expect((await as(freshToken())).status).toBe(200);
+
+    // A set fetched under 30 s ago is fresh enough: no fetch, 401.
+    expect((await as(sign(claimsFor(), { key: OTHER_KEY }))).status).toBe(401);
+    expect(keyCalls()).toHaveLength(1);
+    // Older: fetched again, still not there, 401; and not again for 30 s.
+    now.mockReturnValue(start + 31_000);
+    expect((await as(sign(claimsFor(), { key: OTHER_KEY }))).status).toBe(401);
+    now.mockReturnValue(start + 40_000);
+    expect((await as(sign(claimsFor(), { key: OTHER_KEY }))).status).toBe(401);
+    expect(keyCalls()).toHaveLength(2);
+    expect(typesafeCalls()).toHaveLength(1);
+  });
+
+  it.each([500, 503, 404, 'throw', 'not-json', 'not-a-key-set'] as const)(
+    'answers 503 when the key set cannot be had (%s), without calling TypeSafe',
+    async (reply) => {
+      keysReply = reply;
+
+      const res = await as(freshToken());
+
+      expect(res.status).toBe(503);
+      expect(typesafeCalls()).toHaveLength(0);
+    }
+  );
+
+  it('answers 401 when the key set has no key for the token', async () => {
+    keysReply = [];
+
+    expect((await as(freshToken())).status).toBe(401);
+    expect(typesafeCalls()).toHaveLength(0);
+  });
+
+  it('keeps checking with the keys it holds when a later fetch fails', async () => {
+    const start = Date.now();
+    expect((await as(freshToken())).status).toBe(200);
+    vi.spyOn(Date, 'now').mockReturnValue(start + 11 * 60_000);
+    keysReply = 503;
+
+    expect((await as(freshToken())).status).toBe(200);
+    expect(keyCalls()).toHaveLength(2);
+  });
+
   it('accepts the scheme in any case (RFC 7235)', async () => {
-    const res = await handler(postAs(name, body, `bearer ${freshToken()}`));
+    const res = await handler(postAs(name, body, `bearer ${await freshToken()}`));
 
     expect(res.status).toBe(200);
-    expect(authCalls()).toHaveLength(1);
   });
 
   it.each(['Basic dXNlcjpwYXNz', 'Bearer', 'Bearer ', 'Token abc', 'Bearer a b'])(
@@ -309,28 +475,10 @@ describe.each(ENDPOINTS)('$name caller check', ({ name, handler, body, answers }
     }
   );
 
-  it.each([429, 500, 503])('answers 503 when the auth server answers %i, without calling TypeSafe', async (status) => {
-    authStatus = status;
-
-    const res = await handler(postAs(name, body, `Bearer ${freshToken()}`));
-
-    expect(res.status).toBe(503);
-    expect(typesafeCalls()).toHaveLength(0);
-  });
-
-  it('answers 503 when the auth server cannot be reached, without calling TypeSafe', async () => {
-    authStatus = 'throw';
-
-    const res = await handler(postAs(name, body, `Bearer ${freshToken()}`));
-
-    expect(res.status).toBe(503);
-    expect(typesafeCalls()).toHaveLength(0);
-  });
-
   it('answers 503 to a token when this deployment has no Supabase settings', async () => {
     vi.stubEnv('VITE_SUPABASE_URL', '');
 
-    const res = await handler(postAs(name, body, `Bearer ${freshToken()}`));
+    const res = await as(freshToken());
 
     expect(res.status).toBe(503);
     expect(upstream).not.toHaveBeenCalled();
@@ -339,7 +487,7 @@ describe.each(ENDPOINTS)('$name caller check', ({ name, handler, body, answers }
   it('still answers 404 first when the TypeSafe key is missing, so the client latches off', async () => {
     vi.stubEnv('TYPESAFE_API_KEY', '');
 
-    const res = await handler(postAs(name, body, `Bearer ${freshToken()}`));
+    const res = await as(freshToken());
 
     expect(res.status).toBe(404);
     expect(upstream).not.toHaveBeenCalled();
@@ -347,12 +495,12 @@ describe.each(ENDPOINTS)('$name caller check', ({ name, handler, body, answers }
 });
 
 /**
- * The per-account limit (ADR 0049). A signed-in request is counted through
- * `consume_ai_quota()` before anything else happens to it. The stub below
- * keeps one count per token, standing in for the database's one row per
- * account (`auth.uid()`), and answers the way PostgREST does.
+ * The per-account limit (ADR 0049), and since ADR 0064 the session check.
+ * A signed-in request is counted through `consume_ai_quota()` once its token
+ * checks out. The stub below keeps one count per token, standing in for the
+ * database's one row per account (`auth.uid()`), and answers the way PostgREST
+ * does.
  */
-const QUOTA_URL = `${SUPABASE_URL}/rest/v1/rpc/consume_ai_quota`;
 const LIMIT = 120;
 
 describe.each(ENDPOINTS)('$name per-account limit', ({ name, handler, body, answers }) => {
@@ -360,13 +508,11 @@ describe.each(ENDPOINTS)('$name per-account limit', ({ name, handler, body, answ
   let quotaReply: number | 'throw' | 'not-json' | 'no-count' | null;
 
   beforeEach(() => {
-    vi.stubEnv('VITE_SUPABASE_URL', SUPABASE_URL);
-    vi.stubEnv('VITE_SUPABASE_ANON_KEY', 'anon-key-not-real');
     counts = new Map();
     quotaReply = null;
     upstream.mockImplementation(async (url: string, init: RequestInit) => {
-      if (url === AUTH_USER_URL) return new Response('{}', { status: 200 });
-      if (url === QUOTA_URL) {
+      if (url === jwksUrl()) return keysResponse([KEY]);
+      if (url === quotaUrl()) {
         if (quotaReply === 'throw') throw new TypeError('fetch failed');
         if (quotaReply === 'not-json') return new Response('<html>', { status: 200 });
         if (quotaReply === 'no-count') return new Response('{"retry_after":30}', { status: 200 });
@@ -380,8 +526,8 @@ describe.each(ENDPOINTS)('$name per-account limit', ({ name, handler, body, answ
     });
   });
 
-  const quotaCalls = () => upstream.mock.calls.filter(([url]) => url === QUOTA_URL);
-  const typesafeCalls = () => upstream.mock.calls.filter(([url]) => url !== AUTH_USER_URL && url !== QUOTA_URL);
+  const quotaCalls = () => upstream.mock.calls.filter(([url]) => url === quotaUrl());
+  const typesafeCalls = () => upstream.mock.calls.filter(([url]) => !String(url).includes('.supabase.test'));
 
   /** Sends `n` requests as `token` and returns their statuses in order. */
   async function burst(token: string, n: number, payload: unknown = body): Promise<number[]> {
@@ -391,7 +537,7 @@ describe.each(ENDPOINTS)('$name per-account limit', ({ name, handler, body, answ
   }
 
   it(`answers the ${LIMIT + 1}st request in a minute from one account 429, without calling TypeSafe`, async () => {
-    const statuses = await burst(freshToken(), LIMIT + 1);
+    const statuses = await burst(await freshToken(), LIMIT + 1);
 
     expect(statuses.slice(0, LIMIT).every((s) => s === 200)).toBe(true);
     expect(statuses[LIMIT]).toBe(429);
@@ -399,7 +545,7 @@ describe.each(ENDPOINTS)('$name per-account limit', ({ name, handler, body, answ
   });
 
   it('says when to try again, and nothing else', async () => {
-    const token = freshToken();
+    const token = await freshToken();
     counts.set(`Bearer ${token}`, LIMIT);
 
     const res = await handler(postAs(name, body, `Bearer ${token}`));
@@ -411,22 +557,21 @@ describe.each(ENDPOINTS)('$name per-account limit', ({ name, handler, body, answ
   });
 
   it('counts each account on its own', async () => {
-    const busy = freshToken();
+    const busy = await freshToken();
     counts.set(`Bearer ${busy}`, LIMIT);
 
     expect((await handler(postAs(name, body, `Bearer ${busy}`))).status).toBe(429);
-    expect((await handler(postAs(name, body, `Bearer ${freshToken()}`))).status).toBe(200);
+    expect((await handler(postAs(name, body, `Bearer ${await freshToken()}`))).status).toBe(200);
   });
 
-  it('asks for the count on every request, even while the token is remembered', async () => {
-    await burst(freshToken(), 3);
+  it('asks for the count, and so the session, on every request', async () => {
+    await burst(await freshToken(), 3);
 
-    expect(upstream.mock.calls.filter(([url]) => url === AUTH_USER_URL)).toHaveLength(1);
     expect(quotaCalls()).toHaveLength(3);
   });
 
   it("counts with the caller's own token and the anon key, sending no account id", async () => {
-    const token = freshToken();
+    const token = await freshToken();
 
     await handler(postAs(name, body, `Bearer ${token}`));
 
@@ -441,7 +586,7 @@ describe.each(ENDPOINTS)('$name per-account limit', ({ name, handler, body, answ
   });
 
   it('counts before reading the body, so an empty-body burst reaches the limit for free', async () => {
-    const statuses = await burst(freshToken(), LIMIT + 1, {});
+    const statuses = await burst(await freshToken(), LIMIT + 1, {});
 
     expect(statuses.slice(0, LIMIT).every((s) => s === 400)).toBe(true);
     expect(statuses[LIMIT]).toBe(429);
@@ -456,28 +601,29 @@ describe.each(ENDPOINTS)('$name per-account limit', ({ name, handler, body, answ
     expect(quotaCalls()).toHaveLength(0);
   });
 
-  it('never counts a token the auth server refused', async () => {
-    upstream.mockImplementation(async (url: string) =>
-      new Response('{}', { status: url === AUTH_USER_URL ? 401 : 200 })
-    );
+  it('never counts a token the check refused', async () => {
+    const expired = await sign(claimsFor({ exp: Math.floor(Date.now() / 1000) - 60 }));
 
-    expect((await handler(postAs(name, body, `Bearer ${freshToken()}`))).status).toBe(401);
+    expect((await handler(postAs(name, body, `Bearer ${expired}`))).status).toBe(401);
     expect(quotaCalls()).toHaveLength(0);
   });
 
-  it('answers 401 when the database refuses the token, without calling TypeSafe', async () => {
-    quotaReply = 401;
+  it.each([401, 403])(
+    'answers 401 when the database refuses the token or its session has ended (%i), without calling TypeSafe',
+    async (status) => {
+      quotaReply = status;
 
-    expect((await handler(postAs(name, body, `Bearer ${freshToken()}`))).status).toBe(401);
-    expect(typesafeCalls()).toHaveLength(0);
-  });
+      expect((await handler(postAs(name, body, `Bearer ${await freshToken()}`))).status).toBe(401);
+      expect(typesafeCalls()).toHaveLength(0);
+    }
+  );
 
-  it.each([403, 404, 429, 500, 503, 'throw', 'not-json', 'no-count'] as const)(
+  it.each([404, 429, 500, 503, 'throw', 'not-json', 'no-count'] as const)(
     'answers 503 when the count cannot be had (%s), without calling TypeSafe',
     async (reply) => {
       quotaReply = reply;
 
-      expect((await handler(postAs(name, body, `Bearer ${freshToken()}`))).status).toBe(503);
+      expect((await handler(postAs(name, body, `Bearer ${await freshToken()}`))).status).toBe(503);
       expect(typesafeCalls()).toHaveLength(0);
     }
   );
@@ -485,17 +631,16 @@ describe.each(ENDPOINTS)('$name per-account limit', ({ name, handler, body, answ
 
 describe('both proxies share one count per account', () => {
   it(`refuses the ${LIMIT + 1}st request whichever proxy it goes to`, async () => {
-    vi.stubEnv('VITE_SUPABASE_URL', SUPABASE_URL);
-    vi.stubEnv('VITE_SUPABASE_ANON_KEY', 'anon-key-not-real');
     let count = 0;
     upstream.mockImplementation(async (url: string) => {
-      if (url === QUOTA_URL) {
+      if (url === jwksUrl()) return keysResponse([KEY]);
+      if (url === quotaUrl()) {
         count += 1;
         return new Response(JSON.stringify({ count, retry_after: 5 }), { status: 200 });
       }
       return new Response('{}', { status: 200 });
     });
-    const token = `Bearer ${freshToken()}`;
+    const token = `Bearer ${await freshToken()}`;
 
     for (let i = 0; i < LIMIT / 2; i++) {
       await classify(postAs('/api/classify', {}, token));
@@ -511,9 +656,11 @@ describe('both proxies share one count per account', () => {
  * Server-Timing (ADR 0050). Every response the handler writes names the steps
  * that ran, in the order they finished, with `total` last. The stub delays each
  * remote step by a known amount, so a duration can be checked against the step
- * it belongs to: auth 20 ms, quota 30 ms, TypeSafe 40 ms.
+ * it belongs to: the key set 20 ms, quota 30 ms, TypeSafe 40 ms. Since ADR 0064
+ * `auth` is the local check: it carries `desc="keys"` when it fetched the key
+ * set, and is otherwise far under the 20 ms a fetch takes here.
  */
-const STEP = String.raw`(auth|quota|ai|total);dur=\d+\.\d(;desc="cached")?`;
+const STEP = String.raw`(auth|quota|ai|total);dur=\d+\.\d(;desc="keys")?`;
 const TIMING_FORMAT = new RegExp(`^${STEP}(, ${STEP})*$`);
 
 interface Step {
@@ -545,23 +692,20 @@ const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 const SLACK_MS = 5;
 
 describe.each(ENDPOINTS)('$name Server-Timing', ({ name, handler, body, answers }) => {
-  let authReply: number | 'throw';
+  let keysReply: KeysReply;
   let quotaCount: number;
   let typesafeStatus: number;
 
   beforeEach(() => {
-    vi.stubEnv('VITE_SUPABASE_URL', SUPABASE_URL);
-    vi.stubEnv('VITE_SUPABASE_ANON_KEY', 'anon-key-not-real');
-    authReply = 200;
+    keysReply = [KEY];
     quotaCount = 1;
     typesafeStatus = 200;
     upstream.mockImplementation(async (url: string) => {
-      if (url === AUTH_USER_URL) {
+      if (url === jwksUrl()) {
         await wait(20);
-        if (authReply === 'throw') throw new TypeError('fetch failed');
-        return new Response('{}', { status: authReply });
+        return keysResponse(keysReply);
       }
-      if (url === QUOTA_URL) {
+      if (url === quotaUrl()) {
         await wait(30);
         return new Response(JSON.stringify({ count: quotaCount, retry_after: 9 }), { status: 200 });
       }
@@ -570,7 +714,7 @@ describe.each(ENDPOINTS)('$name Server-Timing', ({ name, handler, body, answers 
     });
   });
 
-  const signedIn = (payload: unknown = body) => handler(postAs(name, payload, `Bearer ${freshToken()}`));
+  const signedIn = async (payload: unknown = body) => handler(postAs(name, payload, `Bearer ${await freshToken()}`));
 
   it('a signed-in answer names auth, quota, ai and total, each timing its own step', async () => {
     const res = await signedIn();
@@ -578,6 +722,7 @@ describe.each(ENDPOINTS)('$name Server-Timing', ({ name, handler, body, answers 
     expect(res.status).toBe(200);
     const t = timingsOf(res);
     expect(Object.keys(t)).toEqual(['auth', 'quota', 'ai', 'total']);
+    expect(t.auth.desc).toBe('keys');
     expect(t.auth.dur).toBeGreaterThanOrEqual(20 - SLACK_MS);
     expect(t.quota.dur).toBeGreaterThanOrEqual(30 - SLACK_MS);
     expect(t.ai.dur).toBeGreaterThanOrEqual(40 - SLACK_MS);
@@ -585,13 +730,13 @@ describe.each(ENDPOINTS)('$name Server-Timing', ({ name, handler, body, answers 
     expect(t.total.dur).toBeGreaterThanOrEqual(t.auth.dur + t.quota.dur + t.ai.dur);
   });
 
-  it('marks a remembered token as a cached auth step that took no time', async () => {
-    const token = freshToken();
-    await handler(postAs(name, body, `Bearer ${token}`));
+  it('a check with the keys already held has no desc and takes no round trip', async () => {
+    await signedIn();
 
-    const t = timingsOf(await handler(postAs(name, body, `Bearer ${token}`)));
+    const t = timingsOf(await signedIn());
 
-    expect(t.auth).toEqual({ dur: 0, desc: 'cached' });
+    expect(t.auth.desc).toBeUndefined();
+    expect(t.auth.dur).toBeLessThan(20 - SLACK_MS);
     expect(t.quota.dur).toBeGreaterThanOrEqual(30 - SLACK_MS);
   });
 
@@ -611,23 +756,24 @@ describe.each(ENDPOINTS)('$name Server-Timing', ({ name, handler, body, answers 
     expect(Object.keys(timingsOf(res))).toEqual(['auth', 'quota', 'total']);
   });
 
-  it('a token the auth server refuses names auth and total only', async () => {
-    authReply = 401;
+  it('a token the check refuses names auth and total only', async () => {
+    const expired = await sign(claimsFor({ exp: Math.floor(Date.now() / 1000) - 60 }));
 
-    const res = await signedIn();
+    const res = await handler(postAs(name, body, `Bearer ${expired}`));
 
     expect(res.status).toBe(401);
     expect(Object.keys(timingsOf(res))).toEqual(['auth', 'total']);
   });
 
-  it('an auth server that cannot be reached is still timed', async () => {
-    authReply = 'throw';
+  it('a key set that cannot be fetched is still timed', async () => {
+    keysReply = 'throw';
 
     const res = await signedIn();
 
     expect(res.status).toBe(503);
     const t = timingsOf(res);
     expect(Object.keys(t)).toEqual(['auth', 'total']);
+    expect(t.auth).toMatchObject({ desc: 'keys' });
     expect(t.auth.dur).toBeGreaterThanOrEqual(20 - SLACK_MS);
   });
 

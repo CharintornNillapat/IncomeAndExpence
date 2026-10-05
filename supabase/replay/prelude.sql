@@ -38,6 +38,8 @@ alter default privileges in schema public grant execute on functions to anon, au
 create table auth.users (
   id                 uuid primary key,
   email              character varying(255),
+  aud                character varying(255),
+  role               character varying(255),
   raw_user_meta_data jsonb,
   created_at         timestamptz,
   updated_at         timestamptz

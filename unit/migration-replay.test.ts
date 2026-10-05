@@ -46,7 +46,7 @@ afterAll(async () => {
 describe('every migration, from empty', () => {
   it('applies in file order, starting from the baseline', () => {
     expect(migrationFiles()[0]).toBe(BASELINE);
-    expect(migrationFiles()).toHaveLength(13);
+    expect(migrationFiles()).toHaveLength(15);
   });
 
   it('builds the eight tables and what the live project holds', () => {
@@ -122,9 +122,12 @@ describe('the migration history backfill', () => {
     await createLiveHistory(db);
   });
 
-  it('records exactly the four missing files, so the history matches every file', async () => {
+  it('records exactly the four missing files, so the history matched every Phase 87 file', async () => {
     await backfill();
-    expect(await names()).toEqual(migrationFiles().map(migrationName).sort());
+    // Phase 87's thirteen; later files are recorded when they are applied.
+    const phase87Files = migrationFiles().filter(file => file < '20261005');
+    expect(phase87Files).toHaveLength(13);
+    expect(await names()).toEqual(phase87Files.map(migrationName).sort());
   });
 
   it('inserts nothing when run again', async () => {
@@ -145,6 +148,14 @@ describe('the migration history backfill', () => {
 });
 
 describe('the drift query', () => {
+  beforeAll(async () => {
+    // The files after Phase 87, recorded as if applied, as the migration tool does.
+    for (const file of migrationFiles().filter(f => f >= '20261005')) {
+      await db.query('insert into supabase_migrations.schema_migrations (version, name) values ($1, $2)',
+        [`${file.slice(0, 8)}${String(migrationFiles().indexOf(file)).padStart(6, '0')}`, migrationName(file)]);
+    }
+  });
+
   const drift = async () => {
     const results = await db.exec(buildDriftCheck(expectedRows(catalog)));
     return results[results.length - 1].rows as Array<CatalogRow & { side: string }>;
@@ -176,10 +187,12 @@ describe('the drift query', () => {
 });
 
 describe('the live probe (supabase/tests/20261005_phase87.probe.sql)', () => {
-  it('passes on a replayed database with the live history, and leaves it as it was', async () => {
+  it('passes on a database at Phase 87 with the live history, and leaves it as it was', async () => {
     const probeDb = await createDatabase();
     try {
-      await applyMigrations(probeDb);
+      // The schema it was written for: it re-runs the Phase 73 file, which
+      // since Phase 88 would put back the function without the session check.
+      await applyMigrations(probeDb, migrationFiles().filter(file => file < '20261005'));
       await createLiveHistory(probeDb);
       const before = await readCatalog(probeDb);
       const results = await probeDb.exec(inlineProbe('20261005_phase87.probe.sql'));
@@ -191,5 +204,38 @@ describe('the live probe (supabase/tests/20261005_phase87.probe.sql)', () => {
     } finally {
       await probeDb.close();
     }
+  }, 60_000);
+});
+
+describe('the probes against the schema the migrations build', () => {
+  const runProbe = async (probe: string, files: string[], applied: boolean) => {
+    const probeDb = await createDatabase();
+    try {
+      await applyMigrations(probeDb, files);
+      const before = await readCatalog(probeDb);
+      const results = await probeDb.exec(inlineProbe(probe, { applied }));
+      const after = await readCatalog(probeDb);
+      return { rows: results.flatMap(r => r.rows), before, after };
+    } finally {
+      await probeDb.close();
+    }
+  };
+  const upTo87 = () => migrationFiles().filter(file => file < '20261005');
+
+  it('Phase 88, before its migrations: applies them, passes and rolls back', async () => {
+    const { rows, before, after } = await runProbe('20261005_phase88.probe.sql', upTo87(), false);
+    expect(rows).toContainEqual({ result: 'PHASE 88 PROBE OK' });
+    expect(after).toEqual(before);
+  }, 60_000);
+
+  it('Phase 88, after its migrations: passes against every file', async () => {
+    const { rows } = await runProbe('20261005_phase88.probe.sql', migrationFiles(), true);
+    expect(rows).toContainEqual({ result: 'PHASE 88 PROBE OK' });
+  }, 60_000);
+
+  it('Phase 73, re-run against the Phase 88 function: still passes', async () => {
+    const { rows, before, after } = await runProbe('20261003_phase73.probe.sql', migrationFiles(), true);
+    expect(rows).toContainEqual({ result: 'PHASE 73 PROBE OK' });
+    expect(after).toEqual(before);
   }, 60_000);
 });

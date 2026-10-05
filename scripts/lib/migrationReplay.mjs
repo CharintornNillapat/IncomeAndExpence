@@ -62,12 +62,18 @@ export async function readCatalog(db) {
 /**
  * A probe under supabase/tests/ with each `\ir <path>` line replaced by that
  * file, as a runner without psql pastes it (MCP's execute_sql, PGlite).
+ *
+ * `applied: true` runs it the way its header says to once its migrations are
+ * applied: the `\ir ../migrations/...` lines are dropped (other includes, such
+ * as the catalog, stay), so its assertions run against the schema as it is.
+ * Re-running an old migration that re-creates a function would put back the
+ * old body (Phase 88: the Phase 73 file would drop the session check).
  */
-export function inlineProbe(probeFile) {
+export function inlineProbe(probeFile, { applied = false } = {}) {
   const probeDir = join(ROOT, 'supabase', 'tests');
   return readFileSync(join(probeDir, probeFile), 'utf8').replace(
     /^\\ir\s+(\S+)\s*$/gm,
-    (_line, path) => readFileSync(join(probeDir, path), 'utf8'));
+    (_line, path) => (applied && path.startsWith('../migrations/') ? '' : readFileSync(join(probeDir, path), 'utf8')));
 }
 
 /** A database built from every migration, with its catalog. */
