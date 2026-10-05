@@ -537,6 +537,7 @@ Rules that are load-bearing:
 - **zod is `jitless`** (`z.config` in `zodSchemas.ts`): its test for `new Function` is otherwise a violation on every load.
 - **No report endpoint:** a violation shows only in the visitor's console, and WebKit ignores a report-only policy without `report-to`. Enforcing it is a later phase.
 - **`unit/security-headers.test.ts` hashes the inline script and fails when `vercel.json` disagrees.** `index.html` is LF (`.gitattributes`), as Vercel builds it. Nothing local serves these headers; a walk of `dist/` served with them, in all three browsers, found no violation.
+- Released in `d05ff4d` (PR #42, Vercel `dpl_BrRs1ym5isR91twq4JDxBhDwuwFi`). On production every header is served; a guest walk in all three browsers found 0 violations; `Server-Timing` is unchanged (`total` 0.4 to 4.5 ms against 0.5 to 4.5 ms, ADR `0051`). Signed-in sync is not yet walked.
 
 ## Testing
 Two suites, with a hard boundary between them — see "Unit tests" below for why the boundary is pinned from both sides.

@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 92 - Exported CSV cells cannot run as formulas; the page can be zoomed; responses carry security headers and a report-only CSP: T546-T554 (2026-10-05, commit `db21e3f`, docs `7a77678`, draft PR #42)
+## Phase 92 - Exported CSV cells cannot run as formulas; the page can be zoomed; responses carry security headers and a report-only CSP: T546-T554 (2026-10-05, commit `db21e3f`, docs `7a77678`, merge `d05ff4d`)
 
 ADR `0068`. An outside review listed four findings no phase had tracked: CSV formula injection, zoom disabled, no security headers, and three vulnerable development packages. Each was confirmed in the code first.
 
@@ -31,8 +31,17 @@ ADR `0068`. An outside review listed four findings no phase had tracked: CSV for
 - **On CI:** the pull request's run `37327510485` passed every job in 287 s, 454 passed and 2 skipped with no flaky test, unit 1026; the drift workflow on this branch (`37327334363`) found no drift as `schema_drift_reader`.
 - **On the Vercel preview** (`dpl_9PV5v1TQvy9ZqLEdqRGQmgjdiv7U`, `icn1`): every header as configured, and the served inline script's hash equal to the CSP's. A walk in the three browsers found no violation from the app; Firefox and WebKit reported only Vercel's preview toolbar (`vercel.live`), which production does not load.
 
+**Release:**
+- PR #42 merged into `main` as `d05ff4d`. Vercel `dpl_BrRs1ym5isR91twq4JDxBhDwuwFi` is READY in production (`icn1`). Its `index-BC9gfn-R.js` (190,084 B) and `index-BsXfRZb2.css` (50,639 B) are byte-identical to the local build of `main`.
+- **T554:**
+  - Every header is served, on the page and on `/api/classify`.
+  - 10 guest `POST {}`: all `400` from `sin1::icn1`, `total` 0.4 to 4.5 ms (median 0.7), against 0.5 to 4.5 (median 0.75) before; `vercel.json` stays.
+  - The guest walk on production found 0 violations in all three browsers.
+  - The service worker was active and controlling in 9 of 9 single loads.
+- `main` CI on the merge (run `37329823376`) passed every job with no flaky test in 285 s end to end, 26 s of it the merge job (152 tests per browser: 454 passed, 2 skipped).
+
 **Still open**
-- **After the merge (T554):** `Server-Timing` with the same 10 requests; the headers on production; the CSP walk on production, including signed-in sync.
+- **Signed-in sync and realtime under the CSP:** not walked (needs a session); a violation would show in that browser's console.
 - **Enforcing the CSP,** or collecting reports first: a later phase.
 - **Owner:** leaked password protection; the optional drift-role setting; a signed-in production measurement; a screen reader pass; the four `USD` wallets.
 - **Scheduled (ADR `0067`):** the two redundant SELECT policies; `transfer_funds`' `p_user_id`.

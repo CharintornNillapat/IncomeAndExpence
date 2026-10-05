@@ -1,6 +1,6 @@
 # 0068: Exported CSV cells cannot run as formulas; the page can be zoomed; responses carry security headers and a report-only CSP
 
-**Status:** Accepted. Implemented on branch `phase-92-sec-a11y-hardening` (commit `db21e3f`, docs `7a77678`), draft PR #42. Not merged yet.
+**Status:** Accepted. Released: commit `db21e3f`, docs `7a77678`, hash backfill `18f894d`, merged into `main` as `d05ff4d` (PR #42); Vercel `dpl_BrRs1ym5isR91twq4JDxBhDwuwFi` READY in `icn1`.
 - **Amends** ADR `0024`: the CSV export escapes text cells, and the importer reverses it.
 - **Amends** ADR `0051`: `vercel.json` gains a `headers` key, measured on production before and after as that ADR requires.
 
@@ -98,6 +98,16 @@ It changes `package-lock.json` only:
 - **`Server-Timing` before (ADR `0051`):** production, 2026-10-05 13:57 UTC, 10 guest `POST {}` to `/api/classify` from Thailand. All 10 answered `400` from `sin1::icn1`, with `total` 0.5 to 4.5 ms (median 0.75) and 0.21 to 1.05 s at the client. Production sent HSTS only.
 - **Gate:** in the refactor log.
 - **On CI:** the pull request's run `37327510485` passed every job in 287 s, 454 passed and 2 skipped with no flaky test, unit 1026; the drift workflow on this branch (`37327334363`) found no drift as `schema_drift_reader`. **On the Vercel preview** (`dpl_9PV5v1TQvy9ZqLEdqRGQmgjdiv7U`, `icn1`): every header as configured, the served inline script's hash equal to the CSP's, and a walk in the three browsers with no violation from the app; Firefox and WebKit reported only Vercel's preview toolbar (`vercel.live`), which production does not load.
+
+## Release (2026-10-05)
+
+- **Merge:** PR #42 merged into `main` as `d05ff4d`. Vercel `dpl_BrRs1ym5isR91twq4JDxBhDwuwFi` is READY in production (`icn1`). Its `index-BC9gfn-R.js` (190,084 B) and `index-BsXfRZb2.css` (50,639 B) are byte-identical to the local build of `main`. It serves the zoomable viewport, and its inline script hashes to the CSP's value.
+- **Headers on production:** every header as configured, on the page and on `/api/classify` alike, beside Vercel's own HSTS.
+- **`Server-Timing` after (ADR `0051`):** 2026-10-05 15:05 UTC, the same 10 guest `POST {}`. All 10 answered `400` from `sin1::icn1`, `total` 0.4 to 4.5 ms (median 0.7), 0.22 to 0.88 s at the client. Before: 0.5 to 4.5 ms (median 0.75), 0.21 to 1.05 s. The headers cost the function nothing measurable, and `vercel.json` stays as it is.
+- **CSP on production:** the local walk repeated on production as a guest, in Chromium, Firefox and WebKit, found 0 violations. A separate check loaded the page 3 times in each browser; the service worker was active and controlling every time, with no error.
+  - The walk's own double navigation once cut a WebKit registration short, and WebKit logged a failed `sw.js` load. The separate check shows the headers did not cause it.
+- **Not walked: signed-in sync and realtime** (no session here). `connect-src` names the project over `https` and `wss`; a violation there would show in the signed-in browser's console.
+- **CI:** `main` CI on the merge (run `37329823376`) passed every job with no flaky test in 285 s end to end, 26 s of it the merge job (152 tests per browser: 454 passed, 2 skipped).
 
 ## Consequences
 

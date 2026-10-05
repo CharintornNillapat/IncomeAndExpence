@@ -1115,12 +1115,13 @@ The entry's growth is the ledger action itself, which lives with the other ledge
 | Vitest (`unit/`) | 39 | 1026 | 1026 | 1026/1026 (CSV +6, swipe +4, headers 7) |
 | Playwright (local, 4 workers) | 31 | 152 | 456 | 454 passed + 2 skipped of 456 in 8.4 m (third full run; the first lost its port-3100 server, the second had one WebKit Escape race in the new spec, since fixed) |
 
-| Production `/api/classify`, 10 guest `POST {}` | Phase 91 (before, 2026-10-05 13:57 UTC) | Phase 92 (after) |
+| Production `/api/classify`, 10 guest `POST {}` | Phase 91 (before, 2026-10-05 13:57 UTC) | Phase 92 (after, 2026-10-05 15:05 UTC) |
 |---|---|---|
-| Status, region | 10 x `400`, `sin1::icn1` | (after the merge) |
-| `Server-Timing: total` | 0.5 to 4.5 ms, median 0.75 | (after the merge) |
-| Client time | 0.21 to 1.05 s | (after the merge) |
-| Security headers | HSTS only | (after the merge) |
+| Status, region | 10 x `400`, `sin1::icn1` | 10 x `400`, `sin1::icn1` |
+| `Server-Timing: total` | 0.5 to 4.5 ms, median 0.75 | 0.4 to 4.5 ms, median 0.7 |
+| Client time | 0.21 to 1.05 s | 0.22 to 0.88 s |
+| Security headers | HSTS only | HSTS, `nosniff`, referrer policy, `X-Frame-Options`, `frame-ancestors`, report-only CSP |
+| CSP violations (guest walk, three browsers) | - | 0 |
 
 ## Phase 91 (pinned workflow actions, least-privilege tokens, advisor triage) - delta against Phase 90
 
