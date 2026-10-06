@@ -733,8 +733,10 @@ describe.each(ENDPOINTS)('$name Server-Timing', ({ name, handler, body, answers 
     expect(t.auth.dur).toBeGreaterThanOrEqual(20 - SLACK_MS);
     expect(t.quota.dur).toBeGreaterThanOrEqual(30 - SLACK_MS);
     expect(t.ai.dur).toBeGreaterThanOrEqual(40 - SLACK_MS);
-    // The steps run one after another, inside the whole.
-    expect(t.total.dur).toBeGreaterThanOrEqual(t.auth.dur + t.quota.dur + t.ai.dur);
+    // The steps run one after another, inside the whole. Each of the four
+    // figures is rounded to 0.1 ms on its own, so the parts can add up to as
+    // much as 0.2 ms over the total (CI saw 94.6 against 94.60000000000001).
+    expect(t.total.dur).toBeGreaterThanOrEqual(t.auth.dur + t.quota.dur + t.ai.dur - 0.2);
   });
 
   it('a check with the keys already held has no desc and takes no round trip', async () => {
