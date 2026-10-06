@@ -1098,6 +1098,15 @@ The entry's growth is the ledger action itself, which lives with the other ledge
 
 **Intermittent local failures:** 6 in 1,071 full-suite runs (3 full runs). All were timeouts: a Firefox `goto`, a Firefox context close, and four WebKit clicks waiting for "stable". No assertion failed. See audit 005 finding 3 for the control runs.
 
+## Phase 103 (one payoff percent selector) - delta against Phase 102
+
+**Bundle** (gzip -9 on both sides; Phase 102 built from a `main` worktree with `.env`): 51 files on each side. `selectors/debts.ts` moved from the `useDebts` chunk, 1,775 / 915 to 906 / 499 B, into the shared `ProgressBar` chunk, 716 / 476 to 1,724 / 960 B, which `DebtsView`, `DashboardView`, `TransactionForm` and `useDebts` already load; `DashboardView` 23,155 / 7,430 to 23,102 / 7,393; `DebtsView` 17,197 / 5,231 to 17,189 / 5,221; `TransactionForm` 25,865 / 8,485 to 25,844 / 8,479; `QuickAddModal` 2,587 / 1,246 to 2,619 / 1,256; entry `index` 191,652 / 55,091 to 191,656 / 55,078. Every other change is a hashed chunk name. All JS 1,379,936 / 417,354 to 1,380,027 / 417,315 B (+91 / −39). CSS unchanged.
+
+| Suite | Files | Tests | Runs | Result |
+|---|---|---|---|---|
+| Vitest (`unit/`) | 42 | 1086 | 1086 | 1086/1086 (+6: four `payoffPercent` tests, two zero-total pins) |
+| Playwright (local, 4 workers) | 32 | 158 | 474 | 468 passed, 6 skipped of 474 (9.6 m), no failure |
+
 ## Phase 102 (legacy transfer_funds refuses) - delta against Phase 101
 
 **Database (replay):** 19 migrations, from 18; `SECURITY DEFINER` functions `authenticated` may execute: 10, from 11 signatures. **Bundle:** no client change.
