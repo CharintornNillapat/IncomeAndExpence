@@ -1,6 +1,6 @@
 # 0078: The 20260909 `transfer_funds` signature refuses every call, now, rather than being dropped
 
-**Status:** Accepted. Implemented on branch `phase-102-deprecate-legacy-transfer`. Not merged yet, and **not applied to live yet**: the owner applies the migration. The client does not change.
+**Status:** Accepted. Implemented on branch `phase-102-deprecate-legacy-transfer` (code `0b036d4`, docs `0871b15`, probe fix `f23832c`), draft PR #53. Not merged yet, and **not applied to live yet**: the owner applies the migration. The client does not change.
 - **Amends** ADR `0069`, whose decision 4 said a later phase drops the 20260909 signature: this phase refuses with it first, and the drop waits.
 - **Amends** ADR `0067`'s advisor triage (and ADR `0074`'s count): ten `SECURITY DEFINER` functions, one signature each, not eleven signatures.
 
@@ -58,6 +58,7 @@ The session signature is untouched: its body's md5 with carriage returns removed
 
 - **First CI run:** the probe pinned the raw md5, which CI's Linux checkout (LF) cannot match; both Phase 102 tests failed there and passed on Windows. The probe now hashes without carriage returns, like `catalog.sql`.
 - **Gate:** in the refactor log.
+- **On CI:** the pull request's first run (`37470255332`) failed two unit tests, the Phase 102 probe before and after, because it pinned the raw md5 of a body that holds carriage returns on Windows and live but not on CI's Linux checkout (T628); after the fix, run `37470710876` passed every job in 269 s, 468 passed and 6 skipped with no flaky test, unit 1080. Before the apply, the drift workflow on the branch (`37470252617`) reports exactly the three expected rows: the 20260909 signature as live has it (`security definer`, the old body), as the repo has it (`search_path=""`, the refusal), and the missing history row `phase102_deprecate_legacy_transfer_funds`.
 
 ## Consequences
 
