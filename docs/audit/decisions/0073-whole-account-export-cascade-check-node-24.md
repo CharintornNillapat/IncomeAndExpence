@@ -1,6 +1,6 @@
 # 0073: Every account's data exports as one JSON file; the erasure cascade needs no index yet; Node 24.x
 
-**Status:** Accepted. Implemented on branch `phase-97-account-export-and-cascade-check` (commit `b860bbe`, docs `71c9e15`), draft PR #48. Not merged yet. No migration: the schema is unchanged.
+**Status:** Accepted. Released: commit `b860bbe`, docs `71c9e15`, hash backfill `2c22d18`, merged into `main` as `73d705f` (PR #48); Vercel `dpl_TYesMrgBErqA1F3cM4BmaBPz1bq2` READY in `icn1`. No migration: the schema is unchanged.
 - **Amends** ADR `0072`: Delete account points to the new export, not to the Transactions CSV.
 - **Amends** ADR `0067`'s accepted "five unindexed foreign keys": the hard delete it named as the reason to revisit now exists, and is measured below.
 - **Amends** ADR `0071`'s Node range: `>=22.0.0` becomes `24.x`.
@@ -79,6 +79,12 @@
 - **`tests/account-and-mobile-nav.spec.ts`, +1:** a guest's export in all three browsers downloads `finlife-export-YYYY-MM-DD.json` holding the three starter wallets and the transaction just added, with `source: "this-device"` and an `exportedAt` in `toISOString()` form. It intercepts nothing.
 - **Gate:** in the refactor log.
 - **On CI:** the pull request's run `37419198793` passed every job in 269 s on Node 24.21, 462 passed and 6 skipped with no flaky test, unit 1061; the drift workflow on the branch (`37419198799`) found no drift with all 18 migrations.
+
+## Release (2026-10-06)
+
+- **Merge:** PR #48 merged into `main` as `73d705f`, whose tree is identical to `2c22d18`. Vercel `dpl_TYesMrgBErqA1F3cM4BmaBPz1bq2` is READY in production (`icn1`); a function answers from `icn1` (`X-Vercel-Id` `sin1::icn1::...`). Its `index-Cvq5_pqq.js` (190,954 B), `index-CWXxYTou.css` (51,229 B), `AccountModal-m3lXzka9.js`, `DiaryView-CJA1w7uU.js`, `accountExport-DmAVRE4H.js` and the five vendor chunks are byte-identical to the local build of `main`.
+- **Node:** The project's Node version reads `24.x`, and the build log no longer carries the open range's "will automatically upgrade" warning that Phase 95's build had. A function's own `process.version` is not visible from outside, so the runtime is shown by its configuration, not read from a request.
+- **CI:** `main` CI on the merge (run `37426684622`) passed every job on Node 24.21 with no flaky test in 285 s end to end, 19 s of it the merge job (unit 1061; 462 passed, 6 skipped).
 
 ## Consequences
 

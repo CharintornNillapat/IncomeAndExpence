@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 97 - Every account's data exports as one JSON file; the erasure cascade needs no index yet; Node 24.x: T588-T594 (2026-10-06, commit `b860bbe`, docs `71c9e15`, draft PR #48)
+## Phase 97 - Every account's data exports as one JSON file; the erasure cascade needs no index yet; Node 24.x: T588-T594 (2026-10-06, commit `b860bbe`, docs `71c9e15`, merge `73d705f`)
 
 ADR `0073`. PDPA's portability right, before ADR `0072`'s erasure: the app exported transactions and the diary, never the rest, and never soft-deleted rows.
 
@@ -32,6 +32,11 @@ ADR `0073`. PDPA's portability right, before ADR `0072`'s erasure: the app expor
 - **On CI:** the pull request's run `37419198793` passed every job in 269 s on Node 24.21, 462 passed and 6 skipped with no flaky test, unit 1061; the drift workflow on the branch (`37419198799`) found no drift with all 18 migrations.
 - **Drift replay:** unchanged, 18 migrations.
 - **Bundle** (gzip -9 against production `main`): entry JS 190,913 / 54,813 to 190,954 / 54,830 B (+41 / +17: the new chunk's name in the preload map); a new lazy `accountExport` chunk, 2,282 / 946, shared by `AccountModal` (12,409 / 3,994 to 14,184 / 4,463) and `DiaryView` (14,494 / 5,106 to 14,277 / 4,989, its own download code gone); CSS unchanged.
+
+**Release:**
+- PR #48 merged into `main` as `73d705f`, whose tree is identical to `2c22d18`. Vercel `dpl_TYesMrgBErqA1F3cM4BmaBPz1bq2` is READY in production (`icn1`); a function answers from `icn1` (`X-Vercel-Id` `sin1::icn1::...`). Its `index-Cvq5_pqq.js` (190,954 B), `index-CWXxYTou.css` (51,229 B), `AccountModal-m3lXzka9.js`, `DiaryView-CJA1w7uU.js`, `accountExport-DmAVRE4H.js` and the five vendor chunks are byte-identical to the local build of `main`.
+- The project's Node version reads `24.x`, and the build log no longer carries the open range's "will automatically upgrade" warning that Phase 95's build had. A function's own `process.version` is not visible from outside, so the runtime is shown by its configuration, not read from a request.
+- `main` CI on the merge (run `37426684622`) passed every job on Node 24.21 with no flaky test in 285 s end to end, 19 s of it the merge job (unit 1061; 462 passed, 6 skipped).
 
 **Still open**
 - **Owner:** delete a throwaway account on production end to end; T571 (the signed-in walk, an installed iPhone app).
