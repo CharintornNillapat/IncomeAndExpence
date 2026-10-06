@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 98 - Install scripts are an allow-list; the advisors re-read; the Do NOT list keeps what is stated nowhere else; the slow local runs are the machine: T595-T600 (2026-10-06, build `ab357f9`, docs `03133a6`, draft PR #49)
+## Phase 98 - Install scripts are an allow-list; the advisors re-read; the Do NOT list keeps what is stated nowhere else; the slow local runs are the machine: T595-T600 (2026-10-06, build `ab357f9`, docs `03133a6`, merge `83161ad`)
 
 ADR `0074`. Build and documentation hygiene; no change to `src/`, no migration.
 
@@ -23,6 +23,10 @@ ADR `0074`. Build and documentation hygiene; no change to `src/`, no migration.
 - **On CI:** the pull request's run `37431460824` passed every job in 285 s, 462 passed and 6 skipped with no flaky test, unit 1061, and its eight `npm ci` installs on Linux printed no install-script warning; the drift workflow on the branch (`37431460417`) found no drift with all 18 migrations.
 - **On the preview:** the Vercel preview (`dpl_6gw57CuAxfUDaaRTc85WNfSYaLcE`, READY in `icn1`) installs and goes straight to `npm run build`, without the four `npm warn install-scripts` lines Phase 97's production build printed there.
 - **Timing:** local per-spec time is 1.5 to 3.3 times CI's for the same code, evenly; CI went 323, 304, 285 s over Phases 95 to 97. The slow local runs are the machine.
+
+**Release:**
+- PR #49 merged into `main` as `83161ad`, whose tree is identical to `dd4d969`. Vercel `dpl_8q6Kn4Atybvfvw1DDKBiUQvWeWLB` is READY in production (`icn1`); a function answers from `icn1`. Its install step reads "up to date in 2s" and goes straight to `npm run build`, with none of the four `npm warn install-scripts` lines Phase 97's production build printed there. It serves the same entry script, stylesheet and chunks as Phase 97, byte for byte (10 of 10), as no app code changed.
+- `main` CI on the merge (run `37436490898`) passed every job with no flaky test and no install-script warning in 274 s end to end, 24 s of it the merge job (unit 1061; 462 passed, 6 skipped).
 
 **Still open**
 - **From Phase 93:** drop the 20260909 `transfer_funds` signature (not before about 2026-10-13).

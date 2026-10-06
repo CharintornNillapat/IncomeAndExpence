@@ -1,6 +1,6 @@
 # 0074: Install scripts are an allow-list; the advisors re-read; the Do NOT list keeps what is stated nowhere else; the slow local runs are the machine
 
-**Status:** Accepted. Implemented on branch `phase-98-build-hygiene-and-docs` (build `ab357f9`, docs `03133a6`), draft PR #49. Not merged yet. No migration, and no change to `src/`.
+**Status:** Accepted. Released: build `ab357f9`, docs `03133a6`, hash backfill `dd4d969`, merged into `main` as `83161ad` (PR #49); Vercel `dpl_8q6Kn4Atybvfvw1DDKBiUQvWeWLB` READY in `icn1`. No migration, and no change to `src/`.
 - **Amends** ADR `0067`'s advisor triage: the accepted `SECURITY DEFINER` count is eleven signatures, not nine.
 
 **Date:** 2026-10-06
@@ -92,6 +92,11 @@
 - The drift replay is unchanged: 18 migrations, 17 functions, 68 function grants.
 - **On CI:** the pull request's run `37431460824` passed every job in 285 s, 462 passed and 6 skipped with no flaky test, unit 1061, and its eight `npm ci` installs on Linux printed no install-script warning; the drift workflow on the branch (`37431460417`) found no drift with all 18 migrations.
 - **On the preview:** the Vercel preview (`dpl_6gw57CuAxfUDaaRTc85WNfSYaLcE`, READY in `icn1`) installs and goes straight to `npm run build`, without the four `npm warn install-scripts` lines Phase 97's production build printed there.
+
+## Release (2026-10-06)
+
+- **Merge:** PR #49 merged into `main` as `83161ad`, whose tree is identical to `dd4d969`. Vercel `dpl_8q6Kn4Atybvfvw1DDKBiUQvWeWLB` is READY in production (`icn1`); a function answers from `icn1`. Its install step reads "up to date in 2s" and goes straight to `npm run build`, with none of the four `npm warn install-scripts` lines Phase 97's production build printed there. It serves the same entry script, stylesheet and chunks as Phase 97, byte for byte (10 of 10), as no app code changed.
+- **CI:** `main` CI on the merge (run `37436490898`) passed every job with no flaky test and no install-script warning in 274 s end to end, 24 s of it the merge job (unit 1061; 462 passed, 6 skipped).
 
 ## Consequences
 
