@@ -1083,15 +1083,15 @@ Approved explicitly by the user, planned and approved before any code was writte
 
 ## Phase 103 - A debt's payoff percentage is one selector, `payoffPercent`: T629-T633 (2026-10-06)
 
-ADR `0079`, amending ADR `0028` and `0015`. Branch `phase-103-decouple-debt-dashboard`, cut from `main` at `3665fc5`. Prompted by a `graphify` knowledge graph's lowest-cohesion community (debt plan and Dashboard figures, 118 nodes, 0.042); the owner asked to separate the pure debt projection from the presentation without changing a figure.
+ADR `0079`, amending ADR `0028` and `0015`. Branch `phase-103-decouple-debt-dashboard`, cut from `main` at `3665fc5`; code `c91e3c1`, docs `cf52633`; draft PR #54. Prompted by a `graphify` knowledge graph's lowest-cohesion community (debt plan and Dashboard figures, 118 nodes, 0.042); the owner asked to separate the pure debt projection from the presentation without changing a figure.
 
 | # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
 |---|---|---|---|---|---|---|---|---|---|---|
-| T629 | Trace L3 to L5 against the cards: selectors already pure and computed once per view; the payoff percentage re-typed in four places, with 100 or 0 for nothing borrowed; a zero total reachable (no database check) | - | Med | Low | 0.3h | done | - | uncommitted | - | - |
-| T630 | Unit, red first: `payoffPercent`'s formula, no clamp, the caller's figure for nothing borrowed, bit-for-bit against the four old formulas; pins on today's zero-total figures | `unit/selectors-debts.test.ts`, `unit/debts-page.test.tsx`, `unit/dashboard.test.tsx` | High | Low | 0.3h | done | T629 | uncommitted | 4 failed on the unchanged code; the 2 pins passed | unit 1080 to 1086 |
-| T631 | `payoffPercent` in `selectors/debts.ts`; `DebtCard`, `DebtPayoffCard`, `TransactionForm`, `useDebts` call it with their own figure | `src/selectors/debts.ts`, `src/components/debt/DebtCard.tsx`, `src/components/dashboard/DebtPayoffCard.tsx`, `src/components/TransactionForm.tsx`, `src/hooks/useDebts.ts` | Med | Low | 0.2h | done | T630 | uncommitted | controls: each call site's figure swapped fails its pin | JS +91 B raw, −39 B gzip |
+| T629 | Trace L3 to L5 against the cards: selectors already pure and computed once per view; the payoff percentage re-typed in four places, with 100 or 0 for nothing borrowed; a zero total reachable (no database check) | - | Med | Low | 0.3h | done | - | `c91e3c1` | - | - |
+| T630 | Unit, red first: `payoffPercent`'s formula, no clamp, the caller's figure for nothing borrowed, bit-for-bit against the four old formulas; pins on today's zero-total figures | `unit/selectors-debts.test.ts`, `unit/debts-page.test.tsx`, `unit/dashboard.test.tsx` | High | Low | 0.3h | done | T629 | `c91e3c1` | 4 failed on the unchanged code; the 2 pins passed | unit 1080 to 1086 |
+| T631 | `payoffPercent` in `selectors/debts.ts`; `DebtCard`, `DebtPayoffCard`, `TransactionForm`, `useDebts` call it with their own figure | `src/selectors/debts.ts`, `src/components/debt/DebtCard.tsx`, `src/components/dashboard/DebtPayoffCard.tsx`, `src/components/TransactionForm.tsx`, `src/hooks/useDebts.ts` | Med | Low | 0.2h | done | T630 | `c91e3c1` | controls: each call site's figure swapped fails its pin | JS +91 B raw, −39 B gzip |
 | T632 | Gate: lint, unit, Playwright, bundle | - | High | Low | 0.3h | done | T631 | - | lint clean; unit 1086/1086 in 42 files; Playwright 468 passed, 6 skipped of 474 (9.6 m), no failure | - |
-| T633 | ADR `0079`, `CLAUDE.md`, this ledger, the refactor log, baseline metrics | `docs/`, `CLAUDE.md` | Low | Low | 0.3h | done | T632 | uncommitted | - | - |
+| T633 | ADR `0079`, `CLAUDE.md`, this ledger, the refactor log, baseline metrics | `docs/`, `CLAUDE.md` | Low | Low | 0.3h | done | T632 | `cf52633` | - | - |
 
 **Notes on execution:**
 - **The graph's community was mostly clustering:** shared primitives, ADR nodes and `unit/dashboard.test.tsx` beside the debt code. The coupling it pointed at was one formula, not a module boundary.

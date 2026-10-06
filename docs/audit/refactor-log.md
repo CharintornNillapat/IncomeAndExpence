@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 103 - A debt's payoff percentage is one selector, `payoffPercent`: T629-T633 (2026-10-06, uncommitted)
+## Phase 103 - A debt's payoff percentage is one selector, `payoffPercent`: T629-T633 (2026-10-06, code `c91e3c1`, docs `cf52633`, PR #54)
 
 ADR `0079`. The prompt was a `graphify` knowledge graph that put the debt plan and the Dashboard's figures in one community of 118 nodes with cohesion 0.042. Traced, L3 to L5 were already pure selectors computed once per view; the one leak was the per-debt payoff percentage, re-typed in four places. No figure changes.
 
