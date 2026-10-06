@@ -1,6 +1,6 @@
 # 0070: The Content Security Policy is enforced; the viewport covers the screen with safe-area insets; the package has its name and a licence
 
-**Status:** Accepted. Implemented on branch `phase-94-enforce-csp-and-metadata`. Not merged yet.
+**Status:** Accepted. Implemented on branch `phase-94-enforce-csp-and-metadata` (commit `204f2cd`, docs `f0b121e`), draft PR #45. Not merged yet.
 - **Amends** ADR `0068`: its report-only policy becomes the enforced one, and its viewport gains `viewport-fit=cover`.
 - **Amends** ADR `0041` and ADR `0060`: the toast's desktop corner and `<main>`'s minimum height now account for the safe-area insets.
 
@@ -79,6 +79,8 @@ On every device without insets each `env()` is 0 and nothing moves.
   - **Negative control:** without the header's and the sheet's insets it fails with "Expected: >= 47, Received: 0".
   - The footer check allows 1 px: the nav's top border overlaps the footer by 1 px with or without insets (780 against 779 at 390x844 with none), because 4rem is 64 px and the nav is 65.
 - **Gate:** in the refactor log.
+- **On CI:** the pull request's run `37392537330` passed every job in 303 s, 456 passed and 6 skipped with no flaky test, unit 1031. The drift workflow on the branch (`37392536742`) found no drift with all 17 migrations, as `schema_drift_reader`.
+- **On the Vercel preview** (`dpl_87w3VXTjnjhDxhtNn8Lkv8mT2YeL`): one enforced `Content-Security-Policy` as configured, no report-only header, and the new viewport.
 
 ## Consequences
 
@@ -87,4 +89,5 @@ On every device without insets each `env()` is 0 and nothing moves.
   - A changed theme bootstrap needs its new hash: `unit/security-headers.test.ts` fails until it is updated.
 - **Signed-in sync and realtime under the enforced policy were not walked**, because there is no session here. The bundle connects to no origin the policy leaves out, but the first signed-in load on production after the merge is the real check.
   - **Rollback:** rename the header back to `Content-Security-Policy-Report-Only` in `vercel.json`. That is one line, with no client change.
+- **Vercel's preview toolbar is blocked on previews.** A preview injects `https://vercel.live/_next-live/feedback/feedback.js`, which `script-src` refuses; production injects nothing. Allowing it would put a third-party script in the production policy, so previews go without the toolbar.
 - **A real iPhone has not been checked.** The insets were measured in Chromium's emulation. An installed iOS app with the notch is the remaining check.

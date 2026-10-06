@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 94 - The Content Security Policy is enforced; the viewport covers the screen with safe-area insets; the package has its name and a licence: T563-T570 (2026-10-06)
+## Phase 94 - The Content Security Policy is enforced; the viewport covers the screen with safe-area insets; the package has its name and a licence: T563-T570 (2026-10-06, commit `204f2cd`, docs `f0b121e`, draft PR #45)
 
 ADR `0070`. The CSP had been report-only since Phase 92, which protects nothing; the package was still `react-example` with no licence file; and the installed iOS app drew under the status bar with no way to move clear of it.
 
@@ -33,6 +33,7 @@ ADR `0070`. The CSP had been report-only since Phase 92, which protects nothing;
 - **The built bundle's only connection origin is the Supabase project.** The inline script's hash in `dist/index.html` equals the policy's.
 - **Safe-area negative control:** without the header's and the sheet's insets the spec fails "Expected: >= 47, Received: 0".
 - **Drift replay:** unchanged, 17 migrations (no file under `supabase/` changed).
+- **On CI:** the pull request's run `37392537330` passed every job in 303 s, 456 passed and 6 skipped with no flaky test, unit 1031. Drift workflow on the branch (`37392536742`): no drift. The Vercel preview serves the enforced policy, and blocks Vercel's own preview toolbar script (`vercel.live`), which production does not inject.
 - **Bundle** (gzip -9 on both sides, main from production): entry JS 190,069 / 54,595 to 190,318 / 54,638 B (+249 / +43); CSS 50,639 / 9,750 to 51,218 / 9,845 (+579 / +95). All of it is the inset classes.
 
 **Still open**

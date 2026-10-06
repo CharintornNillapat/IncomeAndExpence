@@ -1083,17 +1083,17 @@ Approved explicitly by the user, planned and approved before any code was writte
 
 ## Phase 94 - The Content Security Policy is enforced; the viewport covers the screen with safe-area insets; the package has its name and a licence: T563-T570 (2026-10-06)
 
-ADR `0070`, amending ADRs `0041`, `0060` and `0068`. Branch `phase-94-enforce-csp-and-metadata`, cut from `main` at `588e6e3`. Approved explicitly by the user: enforce the CSP, DOC-001, and `viewport-fit=cover`. No migration; the schema is unchanged.
+ADR `0070`, amending ADRs `0041`, `0060` and `0068`. Branch `phase-94-enforce-csp-and-metadata`, cut from `main` at `588e6e3`; commit `204f2cd`, docs `f0b121e`; draft PR #45. **On CI:** the pull request's run `37392537330` passed every job in 303 s, 456 passed and 6 skipped with no flaky test, unit 1031; the drift workflow on this branch (`37392536742`) found no drift. **On the Vercel preview** (`dpl_87w3VXTjnjhDxhtNn8Lkv8mT2YeL`): the enforced policy as configured, no report-only header. Approved explicitly by the user: enforce the CSP, DOC-001, and `viewport-fit=cover`. No migration; the schema is unchanged.
 
 | # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
 |---|---|---|---|---|---|---|---|---|---|---|
-| T563 | One enforced `Content-Security-Policy` (the report-only policy, unchanged), the frames-only header folded into it | `vercel.json`, `unit/security-headers.test.ts` | High | Med | 0.3h | done | - | - | unit +1; hash and Supabase `https`/`wss` intact | - |
+| T563 | One enforced `Content-Security-Policy` (the report-only policy, unchanged), the frames-only header folded into it | `vercel.json`, `unit/security-headers.test.ts` | High | Med | 0.3h | done | - | `204f2cd` | unit +1; hash and Supabase `https`/`wss` intact | - |
 | T564 | Walk `dist/` served with the enforced headers in three browsers, with a sign-in attempt; negative control | - | High | Low | 0.4h | done | T563 | - | 0 violations in each; service worker controlling; auth request answered `400`; without Supabase in `connect-src` WebKit blocks it | - |
-| T565 | Package `finlife-tracker`, `"license": "MIT"`, an MIT `LICENSE` | `package.json`, `package-lock.json`, `LICENSE` | Low | Low | 0.1h | done | - | - | `npm ci --dry-run` clean | - |
-| T566 | README rewritten from the current code | `README.md` | Low | Low | 0.5h | done | - | - | no em dash; every link resolves | - |
-| T567 | `viewport-fit=cover`; the header, body sides, footer margin, bottom sheet and toast clear their insets | `index.html`, `src/index.css`, `src/App.tsx`, `src/components/Navbar.tsx`, `src/components/Modal.tsx`, `src/components/ReloadPrompt.tsx`, `tests/safe-area.spec.ts` | Med | Low | 0.6h | done | - | - | spec passes in Chromium; control without the header and sheet insets fails "Expected: >= 47, Received: 0" | entry +249 B raw, CSS +579 B raw |
+| T565 | Package `finlife-tracker`, `"license": "MIT"`, an MIT `LICENSE` | `package.json`, `package-lock.json`, `LICENSE` | Low | Low | 0.1h | done | - | `204f2cd` | `npm ci --dry-run` clean | - |
+| T566 | README rewritten from the current code | `README.md` | Low | Low | 0.5h | done | - | `f0b121e` | no em dash; every link resolves | - |
+| T567 | `viewport-fit=cover`; the header, body sides, footer margin, bottom sheet and toast clear their insets | `index.html`, `src/index.css`, `src/App.tsx`, `src/components/Navbar.tsx`, `src/components/Modal.tsx`, `src/components/ReloadPrompt.tsx`, `tests/safe-area.spec.ts` | Med | Low | 0.6h | done | - | `204f2cd` | spec passes in Chromium; control without the header and sheet insets fails "Expected: >= 47, Received: 0" | entry +249 B raw, CSS +579 B raw |
 | T568 | Gate: lint, unit, Playwright, drift replay | - | High | Low | 0.2h | done | T567 | - | lint clean; unit 1031/1031 in 39 files; Playwright 456 passed + 6 skipped of 462 in 7.4 m, first run; replay unchanged (17 migrations) | - |
-| T569 | ADR `0070`, `CLAUDE.md`, this ledger, the refactor log, baseline metrics | `docs/`, `CLAUDE.md` | Low | Low | 0.4h | done | T568 | - | - | - |
+| T569 | ADR `0070`, `CLAUDE.md`, this ledger, the refactor log, baseline metrics | `docs/`, `CLAUDE.md` | Low | Low | 0.4h | done | T568 | `f0b121e` | - | - |
 | T570 | After the merge: headers on production; the enforced CSP walked signed in (sync, realtime, a transfer, an import) in the owner's browser; an installed iPhone app checked for the insets | - | High | Med | 0.3h | pending | merge | - | - | - |
 
 **Notes on execution:**
