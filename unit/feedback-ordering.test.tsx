@@ -7,6 +7,7 @@ import { TransactionDetails } from '../src/components/transaction/TransactionDra
 import { WalletDetail } from '../src/components/wallet/WalletDetail';
 import { useTransientFlash } from '../src/hooks/useTransientFlash';
 import { todayIsoDate } from '../src/utils/date';
+import type { ComponentProps } from 'react';
 import type { Transaction, Wallet } from '../src/types';
 
 /**
@@ -50,7 +51,7 @@ function row(id: string, overrides: Partial<Transaction> = {}): Transaction {
   };
 }
 
-function details(tx: Transaction, handlers: Partial<Record<'onSave' | 'onDelete' | 'onRestore', (...args: never[]) => Promise<Result>>>) {
+function details(tx: Transaction, handlers: Partial<Pick<ComponentProps<typeof TransactionDetails>, 'onSave' | 'onDelete' | 'onRestore'>>) {
   return (
     <TransactionDetails
       tx={tx}

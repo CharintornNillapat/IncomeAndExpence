@@ -1,8 +1,8 @@
 /**
  * The drifts `schemaOf` must refuse (Phase 100, ADR 0076). Type-only: Vitest
- * never collects this file (`*.check.ts`), and only `tsconfig.parity.json`
- * (strict) compiles it, through `npm run lint`. The root config leaves it out,
- * since there the nullable case cannot fail.
+ * never collects this file (`*.check.ts`); the root `tsc` in `npm run lint`
+ * compiles it, under `strict` since Phase 101 (ADR 0077), which the nullable
+ * case needs.
  *
  * Every `@ts-expect-error` is a negative check: if `schemaOf` stopped refusing
  * that drift, the directive would be unused and `tsc` would fail on it.

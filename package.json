@@ -12,7 +12,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "clean": "rm -rf dist server.js",
-    "lint": "npm run check:node-globals && tsc --noEmit && tsc -p tsconfig.parity.json && tsc -p api/tsconfig.json",
+    "lint": "npm run check:node-globals && tsc --noEmit && tsc -p api/tsconfig.json",
     "check:node-globals": "node scripts/check-node-globals.mjs",
     "test": "playwright test",
     "test:unit": "vitest run",
