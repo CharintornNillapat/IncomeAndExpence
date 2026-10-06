@@ -1083,16 +1083,16 @@ Approved explicitly by the user, planned and approved before any code was writte
 
 ## Phase 98 - Install scripts are an allow-list; the advisors re-read; the Do NOT list keeps what is stated nowhere else; the slow local runs are the machine: T595-T600 (2026-10-06)
 
-ADR `0074`, amending ADR `0067`. Branch `phase-98-build-hygiene-and-docs`, cut from `main` at `612995c`. Approved explicitly by the user. No migration, and no change to `src/`.
+ADR `0074`, amending ADR `0067`. Branch `phase-98-build-hygiene-and-docs`, cut from `main` at `612995c`; build `ab357f9`, docs `03133a6`; draft PR #49. **On CI:** the pull request's run `37431460824` passed every job in 285 s, 462 passed and 6 skipped with no flaky test, unit 1061, and its eight `npm ci` installs on Linux printed no install-script warning; the drift workflow on the branch (`37431460417`) found no drift with all 18 migrations. **On the preview:** the Vercel preview (`dpl_6gw57CuAxfUDaaRTc85WNfSYaLcE`, READY in `icn1`) installs and goes straight to `npm run build`, without the four `npm warn install-scripts` lines Phase 97's production build printed there. Approved explicitly by the user. No migration, and no change to `src/`.
 
 | # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
 |---|---|---|---|---|---|---|---|---|---|---|
-| T595 | `npm deny-scripts esbuild`: `"allowScripts": { "esbuild": false }`; esbuild's `install.js` read in full first | `package.json` | Med | Low | 0.3h | done | - | - | clean `npm ci` with no install-script warning; esbuild's API works; build byte-identical to production (10 of 10 files) | - |
-| T596 | Supabase advisors read again; CLAUDE.md's count of accepted `SECURITY DEFINER` signatures | `CLAUDE.md` | Low | Low | 0.1h | done | - | - | 11 signatures (ten functions; two `transfer_funds`); nothing new otherwise | nine to eleven |
-| T597 | Do NOT list: remove the rules a parent section states, by a script that checks each sentence exists outside the list | `CLAUDE.md` | Med | Med | 0.8h | done | - | - | 96 removed, 37 kept; table in ADR `0074` | 798 to 702 lines before additions; 705 / 147,454 B after |
+| T595 | `npm deny-scripts esbuild`: `"allowScripts": { "esbuild": false }`; esbuild's `install.js` read in full first | `package.json` | Med | Low | 0.3h | done | - | `ab357f9` | clean `npm ci` with no install-script warning; esbuild's API works; build byte-identical to production (10 of 10 files) | - |
+| T596 | Supabase advisors read again; CLAUDE.md's count of accepted `SECURITY DEFINER` signatures | `CLAUDE.md` | Low | Low | 0.1h | done | - | `03133a6` | 11 signatures (ten functions; two `transfer_funds`); nothing new otherwise | nine to eleven |
+| T597 | Do NOT list: remove the rules a parent section states, by a script that checks each sentence exists outside the list | `CLAUDE.md` | Med | Med | 0.8h | done | - | `03133a6` | 96 removed, 37 kept; table in ADR `0074` | 798 to 702 lines before additions; 705 / 147,454 B after |
 | T598 | Local run time: per-spec summed time, two local runs against `main` CI on the same code; unit suite three times | - | Med | Low | 0.4h | done | - | - | every spec 1.5 to 3.3 times CI, no outlier; unit 84.5 s cold after `npm ci`, then 42.9 and 42.8 s | - |
 | T599 | Gate: lint, unit, Playwright, drift replay | - | High | Low | 0.2h | done | T598 | - | lint clean; unit 1061/1061 in 41 files; Playwright 462 passed + 6 skipped of 468 in 10.7 m, first run, no failure; replay 18 migrations, 17 functions | - |
-| T600 | ADR `0074`, `CLAUDE.md`, this ledger, the refactor log, baseline metrics | `docs/`, `CLAUDE.md` | Low | Low | 0.4h | done | T599 | - | - | - |
+| T600 | ADR `0074`, `CLAUDE.md`, this ledger, the refactor log, baseline metrics | `docs/`, `CLAUDE.md` | Low | Low | 0.4h | done | T599 | `03133a6` | - | - |
 
 **Notes on execution:**
 - **Two npm versions name the command differently.** Vercel's npm printed `npm install-scripts approve`; local npm 11.17 knows only `npm approve-scripts` / `npm deny-scripts`. Both read the same `allowScripts` field, which is what the fix writes.
