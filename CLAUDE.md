@@ -37,12 +37,13 @@ Skip the full workflow for typos, copy tweaks and doc-only edits.
 - **Styling**: Tailwind CSS ^4.1.14 (`@tailwindcss/vite` ^4.1.14, `@import "tailwindcss"`, semantic design tokens from `DESIGN.md`)
 - **Database & Auth**: Supabase (`@supabase/supabase-js` ^2.112.4)
 - **Testing**: Playwright ^1.50.1 (`@playwright/test`)
+- **Runtime**: Node.js 22 or later (`engines` in `package.json`, ADR `0071`); CI runs 22, and Vercel resolves the open range to its newest major for the functions
 - **Key Libraries**: `framer-motion` ^13.1.1, `lucide-react` ^0.546.0, `mathjs` ^15.2.0 (`mathjs/number`), `zod` ^4.5.4, `papaparse` ^5.7.0, `react-swipeable` ^7.0.2
 
 ## Project Structure
 ```
 ├── .github/workflows/   # CI: Playwright E2E (playwright.yml); the weekly live schema drift check (schema-drift.yml)
-├── api/                 # Vercel serverless functions (classify.ts: Jev proxy; own tsconfig)
+├── api/                 # Vercel serverless functions (classify.ts: Jev proxy; insights.ts; csp-report.ts: CSP violation log, ADR 0071; own tsconfig)
 ├── public/              # PWA icons (192px, 512px, SVG) and robots.txt
 ├── supabase/migrations/ # SQL migrations, from 20260901_baseline_schema (the dashboard-built schema) on; replay from empty (ADR 0063)
 ├── supabase/tests/      # SQL probes: migration + assertions inside BEGIN ... ROLLBACK
@@ -132,7 +133,7 @@ From `package.json` (requires `npm install` prior to execution):
   - **The page draws under the notch, so every edge clears its own safe-area inset** (Phase 94, ADR `0070`). With `viewport-fit=cover` iOS reports real `env(safe-area-inset-*)` values, and the installed app's `black-translucent` status bar sits over the page:
     - the header pads `env(safe-area-inset-top)`;
     - `body` pads the left and right insets, which covers the header, the page and the footer in landscape;
-    - the mobile nav and the footer's margin use `env(safe-area-inset-bottom,0.5rem)`;
+    - the mobile nav and the footer's margin use `env(safe-area-inset-bottom,0.5rem)`; the margin is the nav's height, `4rem + 1px` (its border), plus that expression (ADR `0071`);
     - `Modal`'s panel pads the bottom inset below `sm`, where it is a bottom sheet;
     - `ReloadPrompt` adds the bottom and right insets from `md`.
 
@@ -565,7 +566,11 @@ Rules that are load-bearing:
 - **The policy** (enforced since Phase 94, ADR `0070`; report-only before it): `default-src 'self'`; `script-src 'self'` plus the SHA-256 of `index.html`'s one inline script, the theme bootstrap; `style-src 'self'`; `img-src 'self' data: blob:`; `font-src`, `worker-src` and `manifest-src 'self'`; `connect-src 'self'` plus the Supabase project over `https` and `wss`; `object-src 'none'`, `base-uri` and `form-action 'self'`; `frame-ancestors 'none'`.
 - **A new external origin needs its entry in the policy first.** Nothing local serves the headers, so an image host, a script or an API the policy leaves out works under `npm run dev` and is blocked in production.
 - **zod is `jitless`** (`z.config` in `zodSchemas.ts`): its test for `new Function` is otherwise a violation on every load.
-- **No report endpoint:** a blocked request shows only in the visitor's console. To roll the policy back, rename the header to `Content-Security-Policy-Report-Only`; no client change is needed.
+- **Violations are reported to `api/csp-report.ts`** (Phase 95, ADR `0071`) through `report-uri /api/csp-report`, which Chromium, Firefox and WebKit all deliver. Each violation becomes one `{"event":"csp-violation",...}` line in that function's runtime log: the page, the directive, the blocked origin and path, the source file and line. Search the log there before widening the policy.
+  - **`report-uri` alone, never `report-to`:** a browser that supports `report-to` ignores `report-uri`, and Chromium delivered nothing through `report-to` in Phase 95's walk.
+  - **Nothing in a report is trusted:** a URL is logged as origin and path only (a query or fragment can carry a token), text is stripped and cut to 200 characters, and the caller's IP counts toward the limit and is never logged.
+  - **The limit:** 16 KB and 10 violations a request; 20 violations a minute per IP and 300 per instance, in the instance's memory (it bounds log volume, the only cost), then 429.
+- To roll the policy back, rename the header to `Content-Security-Policy-Report-Only`; no client change is needed.
 - **`unit/security-headers.test.ts` hashes the inline script and fails when `vercel.json` disagrees**, and when there is a second CSP header or a report-only one. `index.html` is LF (`.gitattributes`), as Vercel builds it. Nothing local serves these headers.
 
 ## Testing
@@ -595,7 +600,7 @@ Two suites, with a hard boundary between them — see "Unit tests" below for why
   - `--user 1001` is the runner's user: the checkout stays writable and Firefox gets a `$HOME` it owns. Do not switch to root without setting `HOME: /root`.
 
 ## Unit tests: what the browser cannot reach
-`npm run test:unit` runs Vitest over **`unit/`**: 1031 tests in 39 files, ~40 s (ADR `0021`, extended by `0022`, `0023`, `0024`, `0026`, `0027`, `0028`, `0029`, `0030`, `0031`, `0032`, `0033`, `0034`, `0035`, `0036`, `0037`, `0038`, `0039`, `0040`, `0041`, `0042`, `0043`, `0045`, `0047`, `0049`, `0050`, `0052`, `0053`, `0054`, `0055`, `0056`, `0057`, `0058`, `0059`, `0063`, `0064`, `0065`, `0066`, `0067`, `0068`, `0069` and `0070`). It exists because four phases in a row closed with a coverage hole for the same structural reason, not because E2E coverage was thin.
+`npm run test:unit` runs Vitest over **`unit/`**: 1042 tests in 40 files, ~40 s (ADR `0021`, extended by `0022`, `0023`, `0024`, `0026`, `0027`, `0028`, `0029`, `0030`, `0031`, `0032`, `0033`, `0034`, `0035`, `0036`, `0037`, `0038`, `0039`, `0040`, `0041`, `0042`, `0043`, `0045`, `0047`, `0049`, `0050`, `0052`, `0053`, `0054`, `0055`, `0056`, `0057`, `0058`, `0059`, `0063`, `0064`, `0065`, `0066`, `0067`, `0068`, `0069`, `0070` and `0071`). It exists because four phases in a row closed with a coverage hole for the same structural reason, not because E2E coverage was thin.
 - **The directory is `unit/`, not `tests/unit/`, and that is load-bearing.** Two default globs collide. Vitest's default `include` is `**/*.{test,spec}.?(c|m)[jt]s?(x)`, which collects all 22 Playwright specs. Playwright's default `testMatch` is `**/*.@(spec|test).?(c|m)[jt]s?(x)` — note `@(spec|test)` — which collects `*.test.ts` as readily as `*.spec.ts`. So the boundary is pinned three times: a directory `testDir: './tests'` cannot see, an explicit `include` in `vitest.config.ts`, and an explicit `testMatch: '**/*.spec.ts'` in `playwright.config.ts`. The last is redundant today **on purpose** — it makes a future move of the unit tests under `tests/` read as the breaking change it is.
 - **`vitest.config.ts` is its own file, never a `test` key on `vite.config.ts`.** `vite build` does not read it, which makes zero production bundle impact structural rather than a matter of discipline.
 - **`environment: 'node'` is the default; the two DOM suites opt in per file** with a `// @vitest-environment jsdom` docblock. The pure-module suites never touch jsdom's `AbortSignal`, `fetch` or timer surfaces, which differ from Node's in ways that fail about the environment rather than the code.
@@ -747,6 +752,8 @@ Refer to `.env.example`:
 - Do NOT add `maximum-scale` or `user-scalable=no` back to the viewport, or size a form field with an arbitrary `text-[Npx]`; iOS's 16px field rule works through `--text-xs` and `--text-sm` (ADR `0068`).
 - Do NOT add an inline script, `'unsafe-inline'` or `'unsafe-eval'` to get past the CSP; a changed theme bootstrap gets a new hash in `vercel.json`, and zod stays `jitless` (ADR `0068`).
 - Do NOT add a second `Content-Security-Policy` header, bring back `Content-Security-Policy-Report-Only` beside it, or ship code that reaches an origin the policy does not list; the policy is enforced, and nothing local serves it (ADR `0070`).
+- Do NOT add `report-to` or a `Reporting-Endpoints` header beside `report-uri` until Chromium is shown delivering through it on production; it makes Chromium ignore `report-uri` (ADR `0071`).
+- Do NOT log a CSP report's query string, fragment, free text or the caller's IP, or let `api/csp-report.ts` call another service; a report is unauthenticated input (ADR `0071`).
 - Do NOT add a fixed or edge-anchored element without its `env(safe-area-inset-*)`, or remove `viewport-fit=cover` while the status bar is `black-translucent`; the installed iOS app draws under the notch (ADR `0070`).
 - Do NOT put an id, a token, an account or request content in a `Server-Timing` description; the header reaches every caller (ADR `0050`).
 - Do NOT count AI requests in a proxy's memory, cache the count with the token, or let a request through when the count could not be had; it is `consume_ai_quota()` on every signed-in request, and no answer is 503 (ADR `0049`).

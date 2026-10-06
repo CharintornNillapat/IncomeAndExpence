@@ -4,6 +4,39 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
+## Phase 95 - CSP violations are reported to /api/csp-report; the footer clears the nav exactly; Node 22 or later: T572-T578 (2026-10-06)
+
+ADR `0071`. The enforced policy (ADR `0070`) had no report endpoint, so a blocked request was invisible to anyone but the visitor.
+
+**Changed**
+- **`api/csp-report.ts`** (new):
+  - takes the three report shapes the browsers send and logs one `{"event":"csp-violation",...}` line per violation;
+  - URLs keep their origin and path only, text is stripped and cut to 200 characters, and the IP is never logged;
+  - 16 KB and 10 violations a request, 20 a minute per IP and 300 per instance, then 429. The count is in memory, a stated ceiling: it bounds log volume, the only cost.
+- **`vercel.json`:** the policy ends `; report-uri /api/csp-report`. Not `report-to`: Chromium delivered nothing through it, and it makes a browser ignore `report-uri`.
+- **Footer:** its margin below `md` is `4rem + 1px` plus the inset, the nav's exact height, so the 1 px overlap is gone. `tests/safe-area.spec.ts` lost its allowance.
+- **`package.json`:** `"engines": { "node": ">=22.0.0" }`, in the lockfile root too.
+- **Tests:**
+  - `unit/csp-report.test.ts` (new, 10);
+  - `unit/security-headers.test.ts` +1: `report-uri`, and no `report-to` or `Reporting-Endpoints`.
+- **Docs:** ADR `0071`, `CLAUDE.md` (the endpoint, the runtime line, the unit count, two Do NOTs), the ledger, this log, baseline metrics.
+
+**Gate:**
+- Lint clean. Unit 1042/1042 in 40 files. Playwright 455 passed + 1 failed + 6 skipped of 462 in 7.9 m, first run; the failure (WebKit, jev-classify mid-confidence chip) passed 10/10 alone and 100/100 with both Jev specs under 4 workers.
+- **Negative controls:**
+  - logging the raw URL fails the two URL tests;
+  - removing the limit check fails both rate-limit tests.
+- **The walk with the committed policy** (`dist/` served with `vercel.json`'s headers, `/api/csp-report` routed to the real handler):
+  - one violation caused in each browser produced one logged report in each of Chromium, Firefox and WebKit;
+  - a walk without a violation sent none.
+- **Drift replay:** unchanged, 17 migrations.
+- **Bundle** (gzip -9 against production `main`): entry JS 190,318 / 54,642 to 190,322 / 54,636 B; CSS 51,218 / 9,849 to 51,229 / 9,852. Only the footer's class.
+
+**Still open**
+- **After the merge:** post one report to production's `/api/csp-report` and find it in the runtime log.
+- **Owner (T571):** the signed-in walk under the enforced policy; an installed iPhone app.
+- **From Phase 93:** drop the 20260909 `transfer_funds` signature (not before about 2026-10-13).
+
 ## Phase 94 - The Content Security Policy is enforced; the viewport covers the screen with safe-area insets; the package has its name and a licence: T563-T571 (2026-10-06, commit `204f2cd`, docs `f0b121e`, merge `35f5fe4`)
 
 ADR `0070`. The CSP had been report-only since Phase 92, which protects nothing; the package was still `react-example` with no licence file; and the installed iOS app drew under the status bar with no way to move clear of it.
