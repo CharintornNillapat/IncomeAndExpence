@@ -75,8 +75,7 @@ Skip the full workflow for typos, copy tweaks and doc-only edits.
 ├── index.html           # Anti-FOUC theme bootstrap and PWA meta tags
 ├── playwright.config.ts # Playwright multi-browser test configuration
 ├── vite.config.ts       # Vite config (PWA manifest, Tailwind plugin, HMR switch)
-├── tsconfig.json        # TypeScript configuration (strict unused-locals/params, no path aliases; strictNullChecks off)
-├── tsconfig.parity.json # The backup schemas again with strict on, so nullability counts too (ADR 0076)
+├── tsconfig.json        # TypeScript configuration (strict, unused locals/params, no path aliases; ADR 0077)
 └── vercel.json          # The functions' region, icn1 (ADR 0051), and the security headers with the enforced CSP (ADR 0068, 0070)
 ```
 
@@ -86,7 +85,7 @@ From `package.json` (requires `npm install` prior to execution):
 - `npm run build` : `vite build`
 - `npm run preview` : `vite preview`
 - `npm run clean` : `rm -rf dist server.js`
-- `npm run lint` : `npm run check:node-globals && tsc --noEmit && tsc -p tsconfig.parity.json && tsc -p api/tsconfig.json` (Node globals in `src/`, then app+tests, then the backup schemas under `strict` (ADR `0076`), then the Vercel functions)
+- `npm run lint` : `npm run check:node-globals && tsc --noEmit && tsc -p api/tsconfig.json` (Node globals in `src/`, then app+tests, then the Vercel functions; both `tsc` runs are `strict`, ADR `0077`)
 - `npm run check:node-globals` : `node scripts/check-node-globals.mjs` (ADR `0045`; exits 1 on a Node global or built-in in `src/`)
 - `npm run schema:drift` : `node scripts/schema-drift.mjs` (ADR `0063`; replays every migration in PGlite and prints a read-only query to run on the live project, which returns every row of drift, or none. With `SUPABASE_DRIFT_DB_URL` it compares live itself and exits 0 clean, 1 drift, 2 not checked; `-- --live` requires the URL; ADR `0066`)
 - `npm run migration:print-history -- <file>` : `node scripts/migration-history.mjs` (ADR `0065`; prints the idempotent history insert for a migration applied in the SQL editor; `--version=`, `--by=`)
@@ -187,6 +186,8 @@ From `package.json` (requires `npm install` prior to execution):
   - `TransactionRow`'s `dateText` renders the row's ISO date as `sr-only` text, for a list that shows dates only in day headers; `presets.spec.ts` filters rows by it. A new primitive goes in `ui/` unless its props are typed against a specific domain model (a `TransactionType`, a `Wallet`), in which case it goes beside that domain's other files, matching `wallet/`'s existing precedent for `AddWalletForm`/`WalletTransferForm`. Each of these primitives takes an escape-hatch prop (e.g. `TxAmount.colorClassName`) for the one field a specific call site had already diverged on before the primitive existed — check whether a call site's appearance is supposed to differ before assuming a mismatch is a bug. See `docs/audit/decisions/0006-ui-primitive-inventory.md`.
 - **Data Integrity**: Soft deletion (`isDeleted: true`) on records to protect ledger and history integrity. The one hard delete is account deletion (`delete_user_account`, ADR `0072`), which erases the whole account.
 - **Unused symbols**: `tsconfig.json` sets `noUnusedLocals` and `noUnusedParameters`, so `npm run lint` fails on dead imports and locals. Prefix a deliberately unused parameter with `_` (see `_event` in `FinanceContext.tsx`).
+- **Strict mode** (Phase 101, ADR `0077`): `tsconfig.json` and `api/tsconfig.json` both set `"strict": true`, so null and undefined are checked in the app, its tests and the Vercel functions. Type a parameter `tsc` cannot infer instead of reaching for `any`. Never turn the whole family off; a flag that must be off for one config is turned off alone, with its reason beside it.
+  - A `.mjs` helper that a test imports declares its return type in JSDoc (`readCatalog` in `scripts/lib/migrationReplay.mjs`), so every caller is typed by one line.
 - **Re-renders**: Never wrap a component in `React.memo` while it still subscribes to `useFinanceState()`/`useFinanceActions()` (or any other context) directly — a context value change re-renders every subscriber regardless of `React.memo`'s props comparison, so the memo would look like a fix while doing nothing. Cut the subscription first (read the data in a parent and pass it down as props, or extract a self-subscribing child), then memo the now-props-only component.
 
 ## Currency: THB only
@@ -566,8 +567,7 @@ Rules that are load-bearing:
 - **Import backup restores that file into a guest's browser** (Phase 99, ADR `0075`). The same section, guest only.
   - **The file is read only through `parseAccountBackup`**: strict objects (an unknown field is refused), enums, calendar days, ISO timestamps, ADR `0024`'s sign rule, counts that match, unique ids, and every wallet, category and debt reference resolving inside the file. A refusal names the first rows by path (`transactions[3].walletId`).
   - **Each schema parses to exactly its type, and `tsc` checks it** (Phase 100, ADR `0076`). Every row schema and the file schema are wrapped in `schemaOf<T>()` (`src/utils/schemaParity.ts`), so a field added to a type or to `AccountExport` fails at the schema until it is listed (`"schema lacks field: pinned"`), as it already fails at the export's field list. Never cast the parsed result back to its type.
-    - The root config has `strictNullChecks` off and cannot see a field turn nullable, so `tsconfig.parity.json` compiles `accountExport.ts` again with `strict`.
-    - `unit/schema-parity.check.ts` holds the drifts it must refuse, as `@ts-expect-error` lines.
+    - `unit/schema-parity.check.ts` holds the drifts it must refuse, as `@ts-expect-error` lines. Its nullable case needs `strict` (ADR `0077`), so it also fails `tsc` if strict mode is turned off.
     - Formats (a timestamp, a calendar day) are not types; the round-trip unit test covers them.
   - **Nothing changes until the person confirms**, after a dialog that says what the file holds and how many transactions this browser holds now. `restoreBackup` then **replaces** the six slices; it never merges. Rows take the guest's user id; a template stays unless it names a wallet or category the backup lacks.
   - **Signed in, it is refused**: `restoreBackup` returns an error and the section says to sign out first. The cloud is the record, and the next load would replace a restored copy.
