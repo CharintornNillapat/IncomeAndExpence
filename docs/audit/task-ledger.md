@@ -1083,7 +1083,7 @@ Approved explicitly by the user, planned and approved before any code was writte
 
 ## Phase 103 - A debt's payoff percentage is one selector, `payoffPercent`: T629-T633 (2026-10-06)
 
-ADR `0079`, amending ADR `0028` and `0015`. Branch `phase-103-decouple-debt-dashboard`, cut from `main` at `3665fc5`; code `c91e3c1`, docs `cf52633`; draft PR #54. Prompted by a `graphify` knowledge graph's lowest-cohesion community (debt plan and Dashboard figures, 118 nodes, 0.042); the owner asked to separate the pure debt projection from the presentation without changing a figure.
+ADR `0079`, amending ADR `0028` and `0015`. Branch `phase-103-decouple-debt-dashboard`, cut from `main` at `3665fc5`; code `c91e3c1`, docs `cf52633`, hash backfill `8b6d5cd`; merged into `main` as `ed5ee04` (PR #54); Vercel `dpl_CFvLc5AdZPxKoX268CZU1GomageF` READY in `icn1`. The pull request's CI (run `37481898337`) passed every job. `Main` CI on the merge (run `37482863518`): attempt 1 was cancelled from outside during the unit step, with no newer push and no failing test; attempt 2 passed every job in 300 s end to end, 28 s of it the merge job (unit 1086; 468 passed, 6 skipped, no flaky test). Prompted by a `graphify` knowledge graph's lowest-cohesion community (debt plan and Dashboard figures, 118 nodes, 0.042); the owner asked to separate the pure debt projection from the presentation without changing a figure.
 
 | # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
 |---|---|---|---|---|---|---|---|---|---|---|

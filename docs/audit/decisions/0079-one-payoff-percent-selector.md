@@ -1,6 +1,6 @@
 # 0079: A debt's payoff percentage is one selector, `payoffPercent`, and each caller states its own figure for nothing borrowed
 
-**Status:** Accepted. Code `c91e3c1`, docs `cf52633`, draft PR #54; not merged.
+**Status:** Accepted. Released: code `c91e3c1`, docs `cf52633`, hash backfill `8b6d5cd`, merged into `main` as `ed5ee04` (PR #54); Vercel `dpl_CFvLc5AdZPxKoX268CZU1GomageF` READY in `icn1`. No migration.
 - **Amends** ADR `0028`: the share of a debt that is paid off joins L3 to L5 in `src/selectors/debts.ts`.
 - **Amends** ADR `0015`: `TransactionForm`'s payoff block still mirrors `DebtCard`, now by calling the same function rather than repeating its formula.
 

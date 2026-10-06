@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 103 - A debt's payoff percentage is one selector, `payoffPercent`: T629-T633 (2026-10-06, code `c91e3c1`, docs `cf52633`, PR #54)
+## Phase 103 - A debt's payoff percentage is one selector, `payoffPercent`: T629-T633 (2026-10-06, code `c91e3c1`, docs `cf52633`, merge `ed5ee04`)
 
 ADR `0079`. The prompt was a `graphify` knowledge graph that put the debt plan and the Dashboard's figures in one community of 118 nodes with cohesion 0.042. Traced, L3 to L5 were already pure selectors computed once per view; the one leak was the per-debt payoff percentage, re-typed in four places. No figure changes.
 
@@ -27,6 +27,14 @@ ADR `0079`. The prompt was a `graphify` knowledge graph that put the debt plan a
 **Deliberately not done**
 - Splitting the graph community along its lines: most of it is the shared UI primitives, ADR nodes and the dashboard unit test, not coupled code.
 - Moving `useDebts`' totals into a selector: sums over the hook's own list, one copy.
+
+**Release:**
+- The pull request's CI (run `37481898337`, on `8b6d5cd`) passed every job.
+- PR #54 merged into `main` as `ed5ee04`, whose tree is identical to `8b6d5cd`. Vercel `dpl_CFvLc5AdZPxKoX268CZU1GomageF` is READY in production, region `icn1`; `/api/classify` answers from `icn1` (`X-Vercel-Id: sin1::icn1::...`), and production serves the entry `index-DhnQcc5z.js`, the same hash as the local Phase 103 build.
+- `main` CI on the merge (run `37482863518`): the first attempt was cancelled from outside 54 s in, during the unit step, with no newer push to `main` and no failing test; attempt 2 passed every job in 300 s end to end, 28 s of it the merge job (unit 1086; 468 passed, 6 skipped, no flaky test).
+
+**Still open**
+- **Owner:** one figure for a debt with nothing borrowed (ADR `0079`).
 
 ---
 
