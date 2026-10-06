@@ -1,6 +1,6 @@
 # 0080: A debt with nothing borrowed reads 100% everywhere; the Google Fonts cache goes; the date helpers stay in one module
 
-**Status:** Accepted. Released: pending.
+**Status:** Accepted. Code `1f53d5d`, docs `4d06ae8`, draft PR #55; not merged.
 - **Amends** ADR `0079`: the Dashboard's row passes 100 for nothing borrowed, as the Debt payoff page's card and the repayment form do. `useDebts`' total keeps 0.
 - **Closes** findings 10 and 11 of `AGY_AUDIT300926.md` (the 2026-09-30 architecture audit): 10 by removing the configuration, 11 by measuring it and declining the split.
 

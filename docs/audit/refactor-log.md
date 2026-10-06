@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 104 - A debt with nothing borrowed reads 100% everywhere; the Google Fonts cache goes; the date helpers stay in one module: T634-T639 (2026-10-06, uncommitted)
+## Phase 104 - A debt with nothing borrowed reads 100% everywhere; the Google Fonts cache goes; the date helpers stay in one module: T634-T639 (2026-10-06, code `1f53d5d`, docs `4d06ae8`, PR #55)
 
 ADR `0080`. The owner's decision on ADR `0079`'s open question, plus findings 10 and 11 of the 2026-09-30 architecture audit (`AGY_AUDIT300926.md`).
 
