@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 102 - The 20260909 `transfer_funds` signature refuses every call, now, rather than being dropped: T621-T628 (2026-10-06, code `0b036d4`, docs `0871b15`, probe fix `f23832c`, draft PR #53)
+## Phase 102 - The 20260909 `transfer_funds` signature refuses every call, now, rather than being dropped: T621-T628 (2026-10-06, code `0b036d4`, docs `0871b15`, probe fix `f23832c`, merge `ae90bba`)
 
 ADR `0078`. A build cached from before Phase 93 now gets "OUTDATED_CLIENT: Please reload the app to continue." from a transfer, instead of an atomic transfer today or, after a drop, the legacy non-atomic one. Not applied to live yet.
 
@@ -22,8 +22,14 @@ ADR `0078`. A build cached from before Phase 93 now gets "OUTDATED_CLIENT: Pleas
 - **Replay:** 19 migrations; ten `SECURITY DEFINER` functions `authenticated` may execute, from eleven.
 - **Bundle:** no client change.
 
+**Release:**
+- The owner applied the migration to live with history row `20261006134830` (`owner, SQL editor`), after the dry-run probe, and the after-apply probe passed. Read on live afterwards: the 20260909 signature is `SECURITY INVOKER` with `search_path=""` and the refusal body, its grants unchanged; the session signature's body md5 without carriage returns is still `03b469921a7c0d01909608cb8c6a53d7`; the history holds 19 rows.
+- The drift workflow on `main` (run `37474083588`) found no drift: live matches all 19 migrations.
+- Supabase's security advisor now lists 10 `SECURITY DEFINER` functions `authenticated` may execute (`authenticated_security_definer_function_executable`), one signature each, and not the 20260909 `transfer_funds`; its other findings are the two already accepted, `ai_request_counts` with no policy and leaked password protection.
+- PR #53 merged into `main` as `ae90bba`, whose tree is identical to `16193a3`. Vercel `dpl_9CjMVjNukPXkm1AEN3XX7ZZKbM6V` is READY in production (`icn1`); a function answers from `icn1`. It serves the same `index.html` and 43 scripts and stylesheets as Phase 101's production, byte for byte, as no client code changed.
+- `main` CI on the merge (run `37474010547`) passed every job with no flaky test in 281 s end to end, 20 s of it the merge job (unit 1080; 468 passed, 6 skipped).
+
 **Still open**
-- **Owner:** apply the migration (dry-run probe, migration, history insert, after-apply probe), then the drift workflow.
 - **Later:** drop the 20260909 signature once no pre-Phase 93 build can be running.
 - **Owner:** a throwaway account on production (export, delete, restore); T571; leaked password protection.
 

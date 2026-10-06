@@ -1,6 +1,6 @@
 # 0078: The 20260909 `transfer_funds` signature refuses every call, now, rather than being dropped
 
-**Status:** Accepted. Implemented on branch `phase-102-deprecate-legacy-transfer` (code `0b036d4`, docs `0871b15`, probe fix `f23832c`), draft PR #53. Not merged yet, and **not applied to live yet**: the owner applies the migration. The client does not change.
+**Status:** Accepted. Released: code `0b036d4`, docs `0871b15`, probe fix `f23832c`, hash backfill `16193a3`, merged into `main` as `ae90bba` (PR #53); applied to live by the owner (history row `20261006134830`); Vercel `dpl_9CjMVjNukPXkm1AEN3XX7ZZKbM6V` READY in `icn1`. The client does not change.
 - **Amends** ADR `0069`, whose decision 4 said a later phase drops the 20260909 signature: this phase refuses with it first, and the drop waits.
 - **Amends** ADR `0067`'s advisor triage (and ADR `0074`'s count): ten `SECURITY DEFINER` functions, one signature each, not eleven signatures.
 
@@ -59,6 +59,14 @@ The session signature is untouched: its body's md5 with carriage returns removed
 - **First CI run:** the probe pinned the raw md5, which CI's Linux checkout (LF) cannot match; both Phase 102 tests failed there and passed on Windows. The probe now hashes without carriage returns, like `catalog.sql`.
 - **Gate:** in the refactor log.
 - **On CI:** the pull request's first run (`37470255332`) failed two unit tests, the Phase 102 probe before and after, because it pinned the raw md5 of a body that holds carriage returns on Windows and live but not on CI's Linux checkout (T628); after the fix, run `37470710876` passed every job in 269 s, 468 passed and 6 skipped with no flaky test, unit 1080. Before the apply, the drift workflow on the branch (`37470252617`) reports exactly the three expected rows: the 20260909 signature as live has it (`security definer`, the old body), as the repo has it (`search_path=""`, the refusal), and the missing history row `phase102_deprecate_legacy_transfer_funds`.
+
+## Release (2026-10-06)
+
+- **Live:** The owner applied the migration to live with history row `20261006134830` (`owner, SQL editor`), after the dry-run probe, and the after-apply probe passed. Read on live afterwards: the 20260909 signature is `SECURITY INVOKER` with `search_path=""` and the refusal body, its grants unchanged; the session signature's body md5 without carriage returns is still `03b469921a7c0d01909608cb8c6a53d7`; the history holds 19 rows.
+- **Drift:** The drift workflow on `main` (run `37474083588`) found no drift: live matches all 19 migrations.
+- **Advisor:** Supabase's security advisor now lists 10 `SECURITY DEFINER` functions `authenticated` may execute (`authenticated_security_definer_function_executable`), one signature each, and not the 20260909 `transfer_funds`; its other findings are the two already accepted, `ai_request_counts` with no policy and leaked password protection.
+- **Merge:** PR #53 merged into `main` as `ae90bba`, whose tree is identical to `16193a3`. Vercel `dpl_9CjMVjNukPXkm1AEN3XX7ZZKbM6V` is READY in production (`icn1`); a function answers from `icn1`. It serves the same `index.html` and 43 scripts and stylesheets as Phase 101's production, byte for byte, as no client code changed.
+- **CI:** `main` CI on the merge (run `37474010547`) passed every job with no flaky test in 281 s end to end, 20 s of it the merge job (unit 1080; 468 passed, 6 skipped).
 
 ## Consequences
 
