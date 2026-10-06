@@ -1,6 +1,6 @@
 # 0071: CSP violations are reported to /api/csp-report; the footer clears the nav exactly; Node 22 or later
 
-**Status:** Accepted. Implemented on branch `phase-95-csp-telemetry-and-polish`. Not merged yet.
+**Status:** Accepted. Implemented on branch `phase-95-csp-telemetry-and-polish` (commit `57c7a06`, docs `c8c2934`), draft PR #46. Not merged yet.
 - **Amends** ADR `0070`: the enforced policy gains `report-uri`, and the footer's margin loses the 1 px overlap ADR `0070` accepted.
 
 **Date:** 2026-10-06
@@ -85,9 +85,12 @@ A browser that supports `report-to` ignores `report-uri`, so adding `report-to` 
   - a violation produced one logged report in each of Chromium, Firefox and WebKit (204);
   - a walk without a violation sent none.
 - **Gate:** in the refactor log.
+- **On CI:** the pull request's run `37399307620` passed every job in 286 s, 456 passed and 6 skipped with no flaky test (WebKit's Jev test included), unit 1042; the drift workflow on the branch (`37399307758`) found no drift with all 17 migrations.
+- **On the preview:** the Vercel preview (`dpl_8HwwiQMDTgcKP9GoJY9JohXCrras`) serves the policy with `report-uri /api/csp-report`, and its `/api/csp-report` answers a GET with 405 from `icn1`. Its build warns that `>=22.0.0` "will automatically upgrade when a new major Node.js Version is released": the functions follow Vercel's newest major, 24.x today, as before.
 
 ## Consequences
 
 - **A violation on production now leaves a line** in the `csp-report` function's runtime log (`"event":"csp-violation"`), with the page and the blocked origin and path. Search the log for it before widening the policy.
 - **Anybody can post a fake report.** The log is a hint, not evidence: a report names a directive and an origin, and the fix is checked by reproducing it.
+- **The functions follow each new Node major.** An open `engines` range is what Vercel warns about: the next major reaches the functions without a commit. Pin a major (`"24.x"`) if a release ever needs holding back.
 - **Browser extensions cause reports too.** An extension's own origin (`chrome-extension://...`) is logged as itself, so those are easy to tell apart and ignore.

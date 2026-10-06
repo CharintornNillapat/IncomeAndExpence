@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 95 - CSP violations are reported to /api/csp-report; the footer clears the nav exactly; Node 22 or later: T572-T578 (2026-10-06)
+## Phase 95 - CSP violations are reported to /api/csp-report; the footer clears the nav exactly; Node 22 or later: T572-T578 (2026-10-06, commit `57c7a06`, docs `c8c2934`, draft PR #46)
 
 ADR `0071`. The enforced policy (ADR `0070`) had no report endpoint, so a blocked request was invisible to anyone but the visitor.
 
@@ -30,6 +30,7 @@ ADR `0071`. The enforced policy (ADR `0070`) had no report endpoint, so a blocke
   - one violation caused in each browser produced one logged report in each of Chromium, Firefox and WebKit;
   - a walk without a violation sent none.
 - **Drift replay:** unchanged, 17 migrations.
+- **On CI:** the pull request's run `37399307620` passed every job in 286 s, 456 passed and 6 skipped with no flaky test (WebKit's Jev test included), unit 1042; the drift workflow on the branch (`37399307758`) found no drift with all 17 migrations. On the preview, the Vercel preview (`dpl_8HwwiQMDTgcKP9GoJY9JohXCrras`) serves the policy with `report-uri /api/csp-report`, and its `/api/csp-report` answers a GET with 405 from `icn1`; its build warns that the open `engines` range follows each new Node major.
 - **Bundle** (gzip -9 against production `main`): entry JS 190,318 / 54,642 to 190,322 / 54,636 B; CSS 51,218 / 9,849 to 51,229 / 9,852. Only the footer's class.
 
 **Still open**

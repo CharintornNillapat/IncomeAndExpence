@@ -1083,17 +1083,17 @@ Approved explicitly by the user, planned and approved before any code was writte
 
 ## Phase 95 - CSP violations are reported to /api/csp-report; the footer clears the nav exactly; Node 22 or later: T572-T578 (2026-10-06)
 
-ADR `0071`, amending ADR `0070`. Branch `phase-95-csp-telemetry-and-polish`, cut from `main` at `4f4edcb`. Approved explicitly by the user, who also chose to leave T571 (the owner's signed-in walk) for later. No migration; the schema is unchanged.
+ADR `0071`, amending ADR `0070`. Branch `phase-95-csp-telemetry-and-polish`, cut from `main` at `4f4edcb`; commit `57c7a06`, docs `c8c2934`; draft PR #46. **On CI:** the pull request's run `37399307620` passed every job in 286 s, 456 passed and 6 skipped with no flaky test (WebKit's Jev test included), unit 1042; the drift workflow on the branch (`37399307758`) found no drift with all 17 migrations. **On the preview:** the Vercel preview (`dpl_8HwwiQMDTgcKP9GoJY9JohXCrras`) serves the policy with `report-uri /api/csp-report`, and its `/api/csp-report` answers a GET with 405 from `icn1`. Approved explicitly by the user, who also chose to leave T571 (the owner's signed-in walk) for later. No migration; the schema is unchanged.
 
 | # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
 |---|---|---|---|---|---|---|---|---|---|---|
-| T572 | `api/csp-report.ts`: three report shapes, URLs to origin and path, text stripped and cut, 16 KB and 10 violations a request, 20 a minute per IP and 300 per instance, one log line per violation | `api/csp-report.ts`, `unit/csp-report.test.ts` | High | Low | 0.8h | done | - | - | unit +10; controls: raw URL fails 2, no limit check fails 2 | - |
-| T573 | The policy reports to it through `report-uri` alone | `vercel.json`, `unit/security-headers.test.ts` | High | Med | 0.3h | done | T572 | - | unit +1; `report-to` tried and dropped (Chromium sent nothing through it) | - |
+| T572 | `api/csp-report.ts`: three report shapes, URLs to origin and path, text stripped and cut, 16 KB and 10 violations a request, 20 a minute per IP and 300 per instance, one log line per violation | `api/csp-report.ts`, `unit/csp-report.test.ts` | High | Low | 0.8h | done | - | `57c7a06` | unit +10; controls: raw URL fails 2, no limit check fails 2 | - |
+| T573 | The policy reports to it through `report-uri` alone | `vercel.json`, `unit/security-headers.test.ts` | High | Med | 0.3h | done | T572 | `57c7a06` | unit +1; `report-to` tried and dropped (Chromium sent nothing through it) | - |
 | T574 | Walk `dist/` with the real headers and handler: a violation in each browser, then none | - | High | Low | 0.6h | done | T573 | - | violation: one logged report each in Chromium, Firefox, WebKit; clean: no report | - |
-| T575 | The footer's margin is the nav's height (4rem + 1px); the spec's 1 px allowance goes | `src/App.tsx`, `tests/safe-area.spec.ts` | Low | Low | 0.1h | done | - | - | spec passes with no allowance | CSS +11 B raw |
-| T576 | `"engines": { "node": ">=22.0.0" }` in `package.json` and the lockfile root | `package.json`, `package-lock.json` | Low | Low | 0.1h | done | - | - | `npm ci --dry-run` clean | - |
+| T575 | The footer's margin is the nav's height (4rem + 1px); the spec's 1 px allowance goes | `src/App.tsx`, `tests/safe-area.spec.ts` | Low | Low | 0.1h | done | - | `57c7a06` | spec passes with no allowance | CSS +11 B raw |
+| T576 | `"engines": { "node": ">=22.0.0" }` in `package.json` and the lockfile root | `package.json`, `package-lock.json` | Low | Low | 0.1h | done | - | `57c7a06` | `npm ci --dry-run` clean | - |
 | T577 | Gate: lint, unit, Playwright, drift replay | - | High | Low | 0.2h | done | T576 | - | lint clean; unit 1042/1042 in 40 files; Playwright 455 passed + 1 failed + 6 skipped of 462 in 7.9 m, first run; the failure (WebKit, jev-classify mid-confidence chip) passed 10/10 alone and 100/100 with both Jev specs under 4 workers; replay unchanged (17 migrations) | - |
-| T578 | ADR `0071`, `CLAUDE.md`, this ledger, the refactor log, baseline metrics | `docs/`, `CLAUDE.md` | Low | Low | 0.4h | done | T577 | - | - | - |
+| T578 | ADR `0071`, `CLAUDE.md`, this ledger, the refactor log, baseline metrics | `docs/`, `CLAUDE.md` | Low | Low | 0.4h | done | T577 | `c8c2934` | - | - |
 
 **Notes on execution:**
 - **WebKit's report did not match either documented shape.** It sends one Reporting API object (`{ type, url, body }`) labelled `application/csp-report`, and the first handler answered it 400. The walk caught it before any test did; the handler and a unit test now cover it.
