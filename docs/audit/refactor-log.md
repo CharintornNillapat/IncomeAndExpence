@@ -4,6 +4,41 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
+## Phase 99 - A backup restores into a guest's browser, by replacement, after a strict check; three specs intercept requests: T601-T607 (2026-10-06)
+
+ADR `0075`. The export (ADR `0073`) can now be read back, into a guest's browser.
+
+**Changed**
+- **`src/utils/accountExport.ts`:** `parseAccountBackup` and `MAX_BACKUP_CHARS`. A strict Zod schema of version 1, then counts, unique ids, ADR `0024`'s sign rule and every reference inside the file. It never throws; a refusal names up to three rows by path.
+- **`FinanceContext`:** `restoreBackup`, guest only. It replaces the six slices, gives the rows the guest's id, and keeps templates that still have their wallet and category.
+- **`AccountModal`:** "Back up and restore". For a guest, Import backup (JSON), a refusal with its reason, and a confirmation saying what the file holds and what the browser holds now. Signed in, a line saying to sign out first.
+- **`CLAUDE.md`:**
+  - the Testing line names the three intercepting specs and states the "fourth only if no unit test reaches it" rule;
+  - the Do NOT "fifth" line goes;
+  - an Accounts bullet for the restore;
+  - suite sizes.
+- **Tests:**
+  - `account-export.test.ts` +10;
+  - `backup-restore.test.tsx` (4, new);
+  - `authenticated-ledger.test.tsx` +2;
+  - `account-and-mobile-nav.spec.ts` +2.
+
+**Gate:**
+- Lint clean. Unit 1077/1077 in 42 files. Playwright 466 passed + 2 failed + 6 skipped of 474 in 13.4 m, first run; both failures (WebKit: `csv-classify` "a wait of over a minute", `transaction` "a fresh guest sees a first-run empty state") are the ADR `0058` painting stall, a click waiting 15 s with the screencast stopping 1.0 and 0.2 s into the wait, and both passed 10 of 10 alone.
+- **Negative controls:**
+  - strict objects made plain fail 1;
+  - no wallet reference check fails 2;
+  - restore while signed in fails 1;
+  - restore without the dialog fails 3;
+  - rows keeping the account's id fails 1.
+- **Drift replay:** unchanged, 18 migrations.
+- **Bundle** (gzip -9 against production `main`): entry JS 190,954 / 54,830 to 191,652 / 55,091 B (+698 / +261: `restoreBackup`); `accountExport` 2,282 / 946 to 5,694 / 2,210 (+3,412 / +1,264: the schema and `parseAccountBackup`); `AccountModal` 14,184 / 4,463 to 16,414 / 5,167 (+2,230 / +704); `vendor-icons` 24,383 / 5,279 to 24,742 / 5,320 (`Upload`); CSS and the other vendor chunks unchanged.
+
+**Still open**
+- **A restore into a signed-in account:** a server function writing six tables atomically, with a migration (ADR `0075`).
+- **From Phase 93:** drop the 20260909 `transfer_funds` signature (not before about 2026-10-13).
+- **Owner:** a throwaway account on production (export, delete); T571.
+
 ## Phase 98 - Install scripts are an allow-list; the advisors re-read; the Do NOT list keeps what is stated nowhere else; the slow local runs are the machine: T595-T600 (2026-10-06, build `ab357f9`, docs `03133a6`, merge `83161ad`)
 
 ADR `0074`. Build and documentation hygiene; no change to `src/`, no migration.

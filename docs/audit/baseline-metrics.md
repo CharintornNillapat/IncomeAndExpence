@@ -1098,6 +1098,15 @@ The entry's growth is the ledger action itself, which lives with the other ledge
 
 **Intermittent local failures:** 6 in 1,071 full-suite runs (3 full runs). All were timeouts: a Firefox `goto`, a Firefox context close, and four WebKit clicks waiting for "stable". No assertion failed. See audit 005 finding 3 for the control runs.
 
+## Phase 99 (backup restore) - delta against Phase 98
+
+**Bundle** (gzip -9 on both sides; Phase 98 from the production assets): entry `index` JS 190,954 / 54,830 to 191,652 / 55,091 B (+698 / +261); `accountExport` 2,282 / 946 to 5,694 / 2,210 (+3,412 / +1,264); `AccountModal` 14,184 / 4,463 to 16,414 / 5,167 (+2,230 / +704); `vendor-icons` 24,383 / 5,279 to 24,742 / 5,320 (+359 / +41); CSS 51,229 / 9,852 unchanged.
+
+| Suite | Files | Tests | Runs | Result |
+|---|---|---|---|---|
+| Vitest (`unit/`) | 42 | 1077 | 1077 | 1077/1077 (parser 10, guest restore 4, signed-in refusal 2) |
+| Playwright (local, 4 workers) | 32 | 158 | 474 | 466 passed + 2 failed + 6 skipped of 474 in 13.4 m, first run; both failures (WebKit: `csv-classify` "a wait of over a minute", `transaction` "a fresh guest sees a first-run empty state") are the ADR `0058` painting stall, a click waiting 15 s with the screencast stopping 1.0 and 0.2 s into the wait, and both passed 10 of 10 alone |
+
 ## Phase 98 (install scripts, CLAUDE.md, run time) - delta against Phase 97
 
 **Bundle:** unchanged; the build on a clean `npm ci` is byte-identical to production's Phase 97 files.
