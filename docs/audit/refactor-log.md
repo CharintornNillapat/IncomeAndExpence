@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 101 - Both TypeScript configs are `strict`; `tsconfig.parity.json` is gone: T615-T620 (2026-10-06, code `30609b4`, docs `2322ecc`, draft PR #52)
+## Phase 101 - Both TypeScript configs are `strict`; `tsconfig.parity.json` is gone: T615-T620 (2026-10-06, code `30609b4`, docs `2322ecc`, merge `313bbde`)
 
 ADR `0077`. Null and undefined are now checked in the app, its tests and the Vercel functions; nothing that ships changed.
 
@@ -21,6 +21,10 @@ ADR `0077`. Null and undefined are now checked in the app, its tests and the Ver
 - **On CI:** the pull request's run `37459118247` passed every job in 282 s, 468 passed and 6 skipped with no flaky test, unit 1077, lint under `strict` in both configs; the drift workflow on the branch (`37459116585`) found no drift: live matches all 18 migrations.
 - **Drift replay:** unchanged, 18 migrations.
 - **Bundle:** all 51 files in `dist/assets/` and `index.html` byte-identical to production's files of the same name.
+
+**Release:**
+- PR #52 merged into `main` as `313bbde`, whose tree is identical to `b28349f`. Vercel `dpl_BXMY81b5uGNQTuVWdQQWRkKDbNvk` is READY in production (`icn1`); a function answers from `icn1`. It serves the same `index.html` and the same 43 scripts and stylesheets as Phase 100's production, byte for byte, as strict mode changes only what `tsc` accepts.
+- `main` CI on the merge (run `37465352511`) passed every job with no flaky test in 292 s end to end, 19 s of it the merge job (unit 1077; 468 passed, 6 skipped).
 
 **Still open**
 - **From Phase 93:** drop the 20260909 `transfer_funds` signature (not before about 2026-10-13).

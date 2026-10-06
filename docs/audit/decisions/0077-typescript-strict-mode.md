@@ -1,6 +1,6 @@
 # 0077: Both TypeScript configs are `strict`; `tsconfig.parity.json` is gone
 
-**Status:** Accepted. Implemented on branch `phase-101-typescript-strict-mode` (code `30609b4`, docs `2322ecc`), draft PR #52. Not merged yet. No migration, and no change to what ships: the build is byte-identical to production's.
+**Status:** Accepted. Released: code `30609b4`, docs `2322ecc`, hash backfill `b28349f`, merged into `main` as `313bbde` (PR #52); Vercel `dpl_BXMY81b5uGNQTuVWdQQWRkKDbNvk` READY in `icn1`. No migration, and no change to what ships: the build is byte-identical to production's.
 - **Amends** ADR `0076`: its strict pass (`tsconfig.parity.json`) is folded into the root config.
 
 **Date:** 2026-10-06
@@ -56,6 +56,11 @@ Phase 99 narrowed `parseAccountBackup`'s result with `'error' in result` and `'b
 - **Bundle:** `npm run build` on the branch gives the same 51 files in `dist/assets/`, every one byte-identical to the file of the same name on production, and the same `index.html`. Strict mode changes what `tsc` accepts, not what Vite emits.
 - **Gate:** in the refactor log.
 - **On CI:** the pull request's run `37459118247` passed every job in 282 s, 468 passed and 6 skipped with no flaky test, unit 1077, lint under `strict` in both configs; the drift workflow on the branch (`37459116585`) found no drift: live matches all 18 migrations.
+
+## Release (2026-10-06)
+
+- **Merge:** PR #52 merged into `main` as `313bbde`, whose tree is identical to `b28349f`. Vercel `dpl_BXMY81b5uGNQTuVWdQQWRkKDbNvk` is READY in production (`icn1`); a function answers from `icn1`. It serves the same `index.html` and the same 43 scripts and stylesheets as Phase 100's production, byte for byte, as strict mode changes only what `tsc` accepts.
+- **CI:** `main` CI on the merge (run `37465352511`) passed every job with no flaky test in 292 s end to end, 19 s of it the merge job (unit 1077; 468 passed, 6 skipped).
 
 ## Consequences
 
