@@ -1,6 +1,6 @@
 # 0075: A backup restores into a guest's browser, by replacement, after a strict check; three specs intercept requests
 
-**Status:** Accepted. Implemented on branch `phase-99-doc-alignment-and-data-restore` (commit `0e7f4fe`, docs `f5b64e0`), draft PR #50. Not merged yet. No migration: the schema is unchanged.
+**Status:** Accepted. Released: commit `0e7f4fe`, docs `f5b64e0`, hash backfill `b99b6c0`, merged into `main` as `59e2807` (PR #50); Vercel `dpl_8ikvp4XEBhbHjprSD1mYj63um3b5` READY in `icn1`. No migration: the schema is unchanged.
 - **Extends** ADR `0073`: the export's file can be read back.
 - **Settles** the count of request-intercepting specs, on which CLAUDE.md's Testing section and its Do NOT list disagreed.
 
@@ -78,6 +78,11 @@ CLAUDE.md's Testing section names the three (`jev-classify`, `csv-classify`, `in
   - a JSON file that is not a backup is refused and changes nothing.
 - **Gate:** in the refactor log.
 - **On CI:** the pull request's run `37440867655` passed every job in 267 s, 468 passed and 6 skipped with no flaky test, unit 1077; the drift workflow on the branch (`37440866209`) found no drift with all 18 migrations.
+
+## Release (2026-10-06)
+
+- **Merge:** PR #50 merged into `main` as `59e2807`, whose tree is identical to `b99b6c0`. Vercel `dpl_8ikvp4XEBhbHjprSD1mYj63um3b5` is READY in production (`icn1`); a function answers from `icn1`. It serves the build measured on the branch: the entry script (191,652 B, with `restoreBackup`'s signed-in refusal), `accountExport` (5,694 B, with `parseAccountBackup`) and `AccountModal` (16,414 B, with `#account-import-btn`).
+- **CI:** `main` CI on the merge (run `37442373083`) passed every job with no flaky test in 275 s end to end, 24 s of it the merge job (unit 1077; 468 passed, 6 skipped).
 
 ## Consequences
 

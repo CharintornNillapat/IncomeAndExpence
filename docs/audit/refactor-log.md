@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 99 - A backup restores into a guest's browser, by replacement, after a strict check; three specs intercept requests: T601-T607 (2026-10-06, commit `0e7f4fe`, docs `f5b64e0`, draft PR #50)
+## Phase 99 - A backup restores into a guest's browser, by replacement, after a strict check; three specs intercept requests: T601-T607 (2026-10-06, commit `0e7f4fe`, docs `f5b64e0`, merge `59e2807`)
 
 ADR `0075`. The export (ADR `0073`) can now be read back, into a guest's browser.
 
@@ -34,6 +34,10 @@ ADR `0075`. The export (ADR `0073`) can now be read back, into a guest's browser
 - **On CI:** the pull request's run `37440867655` passed every job in 267 s, 468 passed and 6 skipped with no flaky test, unit 1077; the drift workflow on the branch (`37440866209`) found no drift with all 18 migrations.
 - **Drift replay:** unchanged, 18 migrations.
 - **Bundle** (gzip -9 against production `main`): entry JS 190,954 / 54,830 to 191,652 / 55,091 B (+698 / +261: `restoreBackup`); `accountExport` 2,282 / 946 to 5,694 / 2,210 (+3,412 / +1,264: the schema and `parseAccountBackup`); `AccountModal` 14,184 / 4,463 to 16,414 / 5,167 (+2,230 / +704); `vendor-icons` 24,383 / 5,279 to 24,742 / 5,320 (`Upload`); CSS and the other vendor chunks unchanged.
+
+**Release:**
+- PR #50 merged into `main` as `59e2807`, whose tree is identical to `b99b6c0`. Vercel `dpl_8ikvp4XEBhbHjprSD1mYj63um3b5` is READY in production (`icn1`); a function answers from `icn1`. It serves the build measured on the branch: the entry script (191,652 B, with `restoreBackup`'s signed-in refusal), `accountExport` (5,694 B, with `parseAccountBackup`) and `AccountModal` (16,414 B, with `#account-import-btn`).
+- `main` CI on the merge (run `37442373083`) passed every job with no flaky test in 275 s end to end, 24 s of it the merge job (unit 1077; 468 passed, 6 skipped).
 
 **Still open**
 - **A restore into a signed-in account:** a server function writing six tables atomically, with a migration (ADR `0075`).
