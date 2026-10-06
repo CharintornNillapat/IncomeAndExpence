@@ -23,9 +23,8 @@ type Mismatch<Out, T> = { [K in Exclude<keyof T, keyof Out> & string as `schema 
  * schema parses to exactly `T`. A field added to `T` therefore fails until the
  * schema lists it too.
  *
- * Nullability is visible only under `strictNullChecks`, which the root
- * `tsconfig.json` leaves off, so `tsconfig.parity.json` checks the callers again
- * with `strict` (`npm run lint`).
+ * Nullability is visible only under `strictNullChecks`, which both configs
+ * have through `strict` since Phase 101 (ADR 0077).
  */
 export const schemaOf =
   <T>() =>

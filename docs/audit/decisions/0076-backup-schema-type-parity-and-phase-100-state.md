@@ -1,6 +1,7 @@
 # 0076: The backup schemas parse to exactly their types, checked by `tsc`; the architecture at Phase 100
 
 **Status:** Accepted. Released: code `95525fb`, docs `5c474ea`, test fix `955e74b`, hash backfill `b0a3ae6`, merged into `main` as `c3af6f7` (PR #51); Vercel `dpl_CHtSQ9Fa3eJUwQrEpwmtovmwjzCa` READY in `icn1`. No migration, and no change to what the app does.
+- **Amended by** ADR `0077`: both configs are `strict`, so the separate strict pass (`tsconfig.parity.json`, Decision 2) is gone and the root `tsc` compiles the check file.
 - **Amends** ADR `0075`'s consequence that nothing made a new field reach the restore's schema: `tsc` now does.
 
 **Date:** 2026-10-06

@@ -223,7 +223,7 @@ export function parseAndValidateTransactionCsv(
           rows: validationRows,
         });
       },
-      error: (err) => reject(err),
+      error: (err: Error) => reject(err),
     });
   });
 }

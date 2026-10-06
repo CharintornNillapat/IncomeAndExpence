@@ -1081,6 +1081,25 @@ Approved explicitly by the user, planned and approved before any code was writte
 - **One negative control was redone** because the first attempt produced malformed TypeScript that the dev server still served — the tests failed, but possibly for the wrong reason.
 - **No flakes.** Phase 44's `wallets.spec.ts` webkit flake has now not reproduced across three consecutive phases; still watched rather than closed.
 
+## Phase 101 - Both TypeScript configs are `strict`; `tsconfig.parity.json` is gone: T615-T620 (2026-10-06)
+
+ADR `0077`, amending ADR `0076`. Branch `phase-101-typescript-strict-mode`, cut from `main` at `85870c7`; code `30609b4`, docs `2322ecc`; draft PR #52. **On CI:** the pull request's run `37459118247` passed every job in 282 s, 468 passed and 6 skipped with no flaky test, unit 1077, lint under `strict` in both configs; the drift workflow on the branch (`37459116585`) found no drift: live matches all 18 migrations. Approved explicitly by the user (scope: `strict` in both configs, fix the errors, delete `tsconfig.parity.json`, simplify `npm run lint`). No migration, and no change to what ships.
+
+| # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
+|---|---|---|---|---|---|---|---|---|---|---|
+| T615 | `"strict": true` in the root and `api/` configs | `tsconfig.json`, `api/tsconfig.json` | High | Low | 0.1h | done | - | `30609b4` | - | - |
+| T616 | `src/`: `categoryLabels`'s `parts: string[]`; `csvExchange`'s `(err: Error)` | `src/components/category/categoryLabels.ts`, `src/utils/csvExchange.ts` | Med | Low | 0.1h | done | T615 | `30609b4` | - | - |
+| T617 | Tests: `feedback-ordering`'s handlers typed from `TransactionDetails`' props; `csp-report`'s spy as `MockInstance<typeof console.warn>`; `readCatalog`'s return type in JSDoc, once for its four callers | `unit/feedback-ordering.test.tsx`, `unit/csp-report.test.ts`, `scripts/lib/migrationReplay.mjs` | Med | Low | 0.2h | done | T615 | `30609b4` | - | - |
+| T618 | `tsconfig.parity.json` deleted; `npm run lint` back to two `tsc` runs; the check file joins the root program | `tsconfig.parity.json`, `tsconfig.json`, `package.json`, `unit/schema-parity.check.ts`, `src/utils/schemaParity.ts` | Med | Low | 0.1h | done | T617 | `30609b4` | controls: root `strict` off fails 1 (the check file's nullable `@ts-expect-error` goes unused); `Debt.dueDate` nullable fails 2 from the root `tsc` alone; `csvExchange`'s `err` untyped fails 1; `feedback-ordering`'s handlers back to `never[]` fail 4; `readCatalog` without its JSDoc fails 1; a `string | null` read as a string in `api/` fails 1 | - |
+| T619 | Gate: lint, unit, Playwright, drift replay, bundle | - | High | Low | 0.3h | done | T618 | - | lint clean; unit 1077/1077 in 42 files; Playwright 468 passed, 6 skipped of 474 (8.9 m), no failure; replay 18 migrations | bundle: all 51 files in `dist/assets/` and `index.html` byte-identical to production's files of the same name |
+| T620 | ADR `0077`, ADR `0076`'s amendment line, `CLAUDE.md`, this ledger, the refactor log, baseline metrics | `docs/`, `CLAUDE.md` | Low | Low | 0.3h | done | T619 | `2322ecc` | - | - |
+
+**Notes on execution:**
+- **`categoryLabels.ts` is in `src/components/category/`**, not `src/utils/` as the request had it.
+- **Its two errors show only under `strictNullChecks` alone.** Under full `strict` an empty array literal takes its type from what is pushed; the explicit `string[]` holds either way.
+- **`readCatalog` was fixed at its declaration,** not at each of its four callers.
+- **Phase 99's `'error' in result` narrowing** could now be `!result.ok`; left for the next edit to those lines.
+
 ## Phase 100 - The backup schemas parse to exactly their types, checked by `tsc`; the architecture at Phase 100: T608-T614 (2026-10-06)
 
 ADR `0076`, amending ADR `0075`. Branch `phase-100-type-parity-and-milestone`, cut from `main` at `961165d`; code `95525fb`, docs `5c474ea`, test fix `955e74b`, hash backfill `b0a3ae6`; merged into `main` as `c3af6f7` (PR #51); Vercel `dpl_CHtSQ9Fa3eJUwQrEpwmtovmwjzCa` READY in `icn1`. `Main` CI on the merge (run `37456205706`) passed every job with no flaky test in 262 s end to end, 20 s of it the merge job (unit 1077; 468 passed, 6 skipped). **On the pull request's CI:** the pull request's first run (`37447199860`) failed on one unit test, `proxy-contract.test.ts`'s Server-Timing sum (94.6 against 94.60000000000001, a rounding the test did not allow for; T614); after the fix, run `37447478059` passed every job in 297 s, 468 passed and 6 skipped with no flaky test, unit 1077, the strict pass included; the drift workflow on the branch (`37447199821`) found no drift: live matches all 18 migrations. Approved explicitly by the user (scope: replace the restore's type assertion with a compile-time check that each schema equals its type, negative type-level checks, the gate, a milestone ADR). No migration, and no change to what the app does.

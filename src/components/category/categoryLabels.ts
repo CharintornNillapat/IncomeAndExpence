@@ -30,7 +30,7 @@ const plural = (n: number, one: string) => `${n} ${one}${n === 1 ? '' : 's'}`;
 
 /** "Used by 3 transactions and 1 rule": what keeps a category from being deleted. */
 export function usageText(usage: CategoryUsage): string {
-  const parts = [];
+  const parts: string[] = [];
   if (usage.transactions > 0) parts.push(plural(usage.transactions, 'transaction'));
   if (usage.rules > 0) parts.push(plural(usage.rules, 'rule'));
   return `Used by ${parts.join(' and ')}`;

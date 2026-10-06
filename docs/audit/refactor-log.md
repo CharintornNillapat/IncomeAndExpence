@@ -4,6 +4,29 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
+## Phase 101 - Both TypeScript configs are `strict`; `tsconfig.parity.json` is gone: T615-T620 (2026-10-06, code `30609b4`, docs `2322ecc`, draft PR #52)
+
+ADR `0077`. Null and undefined are now checked in the app, its tests and the Vercel functions; nothing that ships changed.
+
+**Changed**
+- **`tsconfig.json`, `api/tsconfig.json`:** `"strict": true`. The root config no longer excludes `unit/schema-parity.check.ts`.
+- **`tsconfig.parity.json`:** deleted. `npm run lint` runs `check:node-globals`, the root `tsc` and `tsc -p api/tsconfig.json`.
+- **`src/`:** `categoryLabels.ts` (`parts: string[]`), `csvExchange.ts` (`(err: Error)`), and `schemaParity.ts`'s comment.
+- **Tests:** `feedback-ordering.test.tsx` types its handlers from `TransactionDetails`' props; `csp-report.test.ts` types its spy; `scripts/lib/migrationReplay.mjs` gives `readCatalog` a JSDoc return type; `schema-parity.check.ts`'s comment.
+- **Docs:** ADR `0077`; ADR `0076` points to it; `CLAUDE.md`'s structure, lint command, restore rule and a Strict mode convention.
+
+**Gate:**
+- Lint clean, both configs `strict`. Unit 1077/1077 in 42 files. Playwright 468 passed, 6 skipped of 474 (8.9 m), no failure.
+- **Controls** (each fails `npm run lint`): root `strict` off fails 1 (the check file's nullable `@ts-expect-error` goes unused); `Debt.dueDate` nullable fails 2 from the root `tsc` alone; `csvExchange`'s `err` untyped fails 1; `feedback-ordering`'s handlers back to `never[]` fail 4; `readCatalog` without its JSDoc fails 1; a `string | null` read as a string in `api/` fails 1.
+- **On CI:** the pull request's run `37459118247` passed every job in 282 s, 468 passed and 6 skipped with no flaky test, unit 1077, lint under `strict` in both configs; the drift workflow on the branch (`37459116585`) found no drift: live matches all 18 migrations.
+- **Drift replay:** unchanged, 18 migrations.
+- **Bundle:** all 51 files in `dist/assets/` and `index.html` byte-identical to production's files of the same name.
+
+**Still open**
+- **From Phase 93:** drop the 20260909 `transfer_funds` signature (not before about 2026-10-13).
+- **A restore into a signed-in account:** a six-table database function and a migration (ADR `0075`).
+- **Owner:** a throwaway account on production (export, delete, restore); T571; leaked password protection.
+
 ## Phase 100 - The backup schemas parse to exactly their types, checked by `tsc`; the architecture at Phase 100: T608-T614 (2026-10-06, code `95525fb`, docs `5c474ea`, test fix `955e74b`, merge `c3af6f7`)
 
 ADR `0076`. The restore's schemas are now held to the types the export writes; no change to what the app does.

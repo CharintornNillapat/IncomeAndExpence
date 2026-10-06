@@ -51,7 +51,10 @@ export async function applyMigrations(db, files = migrationFiles()) {
   }
 }
 
-/** Every row of supabase/catalog.sql, sorted. */
+/**
+ * Every row of supabase/catalog.sql, sorted.
+ * @returns {Promise<Array<{ kind: string; name: string; detail: string }>>}
+ */
 export async function readCatalog(db) {
   await db.exec(readRepoFile('supabase', 'catalog.sql'));
   const { rows } = await db.query(
