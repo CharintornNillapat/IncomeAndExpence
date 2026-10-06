@@ -118,6 +118,12 @@ export interface FinanceActionsContextType {
   signOutOtherDevices: () => Promise<MutationResult>;
   /** Signs this device out (or every device with `everywhere`) and clears it of the account's data (F5, ADR 0024). */
   signOut: (options?: { everywhere?: boolean }) => Promise<void>;
+  /**
+   * Erases the signed-in account and everything in it (`delete_user_account`,
+   * ADR 0072), then signs this device out and clears it. `confirmation` is the
+   * phrase the person typed; the server refuses anything but `DELETE`.
+   */
+  deleteAccount: (confirmation: string) => Promise<MutationResult>;
 
   // Wallets
   // `balance` is omitted: the opening balance is supplied via `initialBalance`.
@@ -1362,6 +1368,32 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     }
     return { success: true };
   }, [isAuthenticated]);
+
+  // ADR 0072: the one hard delete. `delete_user_account` removes the auth user,
+  // and every table that references it cascades, so the account, its email and
+  // every row go in one database transaction, and every device's session ends.
+  //   - On success this device signs out and clears itself, like any sign-out.
+  //   - A missing function deletes nothing; the person is told, and stays in.
+  //   - No SQLSTATE is an unknown outcome: the delete may have committed. The
+  //     auth server is asked (`verifySession`), and a deleted account's session
+  //     is rejected there, which signs this device out.
+  const deleteAccount = useCallback(async (confirmation: string): Promise<MutationResult> => {
+    if (!isAuthenticated) return { success: false, error: 'Sign in to delete your account' };
+    const { error } = await supabase.rpc('delete_user_account', { p_confirm: confirmation });
+    if (error) {
+      if (isMissingRpcError(error)) {
+        return { success: false, error: 'Account deletion needs a database update that has not been applied yet. Nothing was deleted.' };
+      }
+      if (isUnknownOutcomeError(error)) {
+        await verifySession();
+        return { success: false, error: 'We could not confirm whether your account was deleted. If it was, this device has been signed out.' };
+      }
+      console.error('[Delete Account Failed]', error);
+      return { success: false, error: error.message || 'Could not delete your account' };
+    }
+    await signOut();
+    return { success: true };
+  }, [isAuthenticated, signOut, verifySession]);
 
   // Wallets CRUD
   const addWallet = useCallback(async (
@@ -3510,6 +3542,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       listMySessions,
       signOutOtherDevices,
       signOut,
+      deleteAccount,
       addWallet,
       deleteWallet,
       editWallet,
@@ -3541,6 +3574,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       listMySessions,
       signOutOtherDevices,
       signOut,
+      deleteAccount,
       addWallet,
       deleteWallet,
       editWallet,

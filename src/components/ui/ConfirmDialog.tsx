@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { AlertTriangle } from 'lucide-react';
 import { Modal } from '../Modal';
-import { ERROR_BANNER_CLASS } from '../../utils/formStyles';
+import { ERROR_BANNER_CLASS, LABEL_CLASS, inputClass } from '../../utils/formStyles';
 import { Button } from './Button';
 
 interface ConfirmDialogProps {
@@ -18,6 +18,11 @@ interface ConfirmDialogProps {
   isLoading?: boolean;
   /** Shown as an `ERROR_BANNER_CLASS` banner below the description when a confirmed action's write failed - the dialog stays open (caller's responsibility) so the user sees why, instead of it silently closing on a rejected write. */
   error?: string | null;
+  /**
+   * For an action that cannot be undone at all (account deletion, ADR 0072):
+   * the person types this phrase, exactly, before Confirm enables.
+   */
+  confirmPhrase?: string;
 }
 
 /**
@@ -38,7 +43,13 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
   isDestructive = true,
   isLoading = false,
   error = null,
+  confirmPhrase,
 }) => {
+  const [typed, setTyped] = useState('');
+  // A closed dialog forgets the phrase, so the next opening starts empty.
+  if (!isOpen && typed !== '') setTyped('');
+  const phraseMissing = confirmPhrase !== undefined && typed !== confirmPhrase;
+
   return (
     <Modal
       isOpen={isOpen}
@@ -56,7 +67,7 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
             id="confirm-destructive-btn"
             variant={isDestructive ? 'danger' : 'primary'}
             onClick={onConfirm}
-            disabled={isLoading}
+            disabled={isLoading || phraseMissing}
           >
             {isLoading ? 'Working…' : confirmText}
           </Button>
@@ -71,6 +82,25 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
         )}
         <div className="flex-1 pt-1.5 space-y-2">
           <p className="text-xs text-fg-secondary leading-relaxed">{description}</p>
+          {confirmPhrase !== undefined && (
+            <div>
+              <label htmlFor="confirm-phrase-input" className={LABEL_CLASS}>
+                Type {confirmPhrase} to confirm
+              </label>
+              <input
+                id="confirm-phrase-input"
+                type="text"
+                value={typed}
+                onChange={(ev) => setTyped(ev.target.value)}
+                autoFocus
+                autoComplete="off"
+                autoCapitalize="characters"
+                spellCheck={false}
+                disabled={isLoading}
+                className={inputClass('plain')}
+              />
+            </div>
+          )}
           {error && <div className={ERROR_BANNER_CLASS}>{error}</div>}
         </div>
       </div>

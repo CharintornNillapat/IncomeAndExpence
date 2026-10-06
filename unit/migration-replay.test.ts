@@ -47,7 +47,7 @@ afterAll(async () => {
 describe('every migration, from empty', () => {
   it('applies in file order, starting from the baseline', () => {
     expect(migrationFiles()[0]).toBe(BASELINE);
-    expect(migrationFiles()).toHaveLength(17);
+    expect(migrationFiles()).toHaveLength(18);
   });
 
   it('builds the eight tables and what the live project holds', () => {
@@ -56,12 +56,13 @@ describe('every migration, from empty', () => {
       'keyword_rules', 'profiles', 'transactions', 'wallets',
     ]);
     // The counts read from the live project on 2026-10-05, less Phase 93's
-    // two SELECT policies and plus its transfer_funds overload (ADR 0069).
+    // two SELECT policies, plus its transfer_funds overload (ADR 0069) and
+    // Phase 96's delete_user_account (ADR 0072).
     expect(count(catalog, 'column')).toBe(75);
     expect(count(catalog, 'constraint')).toBe(28);
     expect(count(catalog, 'index')).toBe(17);
     expect(count(catalog, 'policy')).toBe(7);
-    expect(count(catalog, 'function')).toBe(16);
+    expect(count(catalog, 'function')).toBe(17);
     expect(count(catalog, 'trigger')).toBe(2);
     expect(count(catalog, 'publication')).toBe(5);
   });
@@ -260,6 +261,20 @@ describe('the probes against the schema the migrations build', () => {
   it('Phase 93, after its migrations: passes against every file', async () => {
     const { rows, before, after } = await runProbe('20261006_phase93.probe.sql', migrationFiles(), true);
     expect(rows).toContainEqual({ result: 'PHASE 93 PROBE OK' });
+    expect(after).toEqual(before);
+  }, 60_000);
+
+  const upTo95 = () => migrationFiles().filter(file => !file.includes('_phase96_'));
+
+  it('Phase 96, before its migration: applies it, passes and rolls back', async () => {
+    const { rows, before, after } = await runProbe('20261006_phase96.probe.sql', upTo95(), false);
+    expect(rows).toContainEqual({ result: 'PHASE 96 PROBE OK' });
+    expect(after).toEqual(before);
+  }, 60_000);
+
+  it('Phase 96, after its migration: passes against every file', async () => {
+    const { rows, before, after } = await runProbe('20261006_phase96.probe.sql', migrationFiles(), true);
+    expect(rows).toContainEqual({ result: 'PHASE 96 PROBE OK' });
     expect(after).toEqual(before);
   }, 60_000);
 
