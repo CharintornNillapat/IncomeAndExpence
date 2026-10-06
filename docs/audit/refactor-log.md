@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 95 - CSP violations are reported to /api/csp-report; the footer clears the nav exactly; Node 22 or later: T572-T578 (2026-10-06, commit `57c7a06`, docs `c8c2934`, draft PR #46)
+## Phase 95 - CSP violations are reported to /api/csp-report; the footer clears the nav exactly; Node 22 or later: T572-T579 (2026-10-06, commit `57c7a06`, docs `c8c2934`, merge `a632c3e`)
 
 ADR `0071`. The enforced policy (ADR `0070`) had no report endpoint, so a blocked request was invisible to anyone but the visitor.
 
@@ -33,8 +33,12 @@ ADR `0071`. The enforced policy (ADR `0070`) had no report endpoint, so a blocke
 - **On CI:** the pull request's run `37399307620` passed every job in 286 s, 456 passed and 6 skipped with no flaky test (WebKit's Jev test included), unit 1042; the drift workflow on the branch (`37399307758`) found no drift with all 17 migrations. On the preview, the Vercel preview (`dpl_8HwwiQMDTgcKP9GoJY9JohXCrras`) serves the policy with `report-uri /api/csp-report`, and its `/api/csp-report` answers a GET with 405 from `icn1`; its build warns that the open `engines` range follows each new Node major.
 - **Bundle** (gzip -9 against production `main`): entry JS 190,318 / 54,642 to 190,322 / 54,636 B; CSS 51,218 / 9,849 to 51,229 / 9,852. Only the footer's class.
 
+**Release:**
+- PR #46 merged into `main` as `a632c3e`, whose tree is identical to `999f6ee`. Vercel `dpl_H4V1GtieKNdkKqZumgsoKByAh4oT` is READY in production (`icn1`). Its `index-DeLrvd5X.js` (190,322 B), `index-CWXxYTou.css` (51,229 B) and the four vendor chunks are byte-identical to the local build of `main`.
+- **T579:** one CSP2 report posted to `https://income-and-expence-neon.vercel.app/api/csp-report` answered `204`, and the production runtime log holds exactly one line for it, `{"event":"csp-violation","documentUrl":"https://income-and-expence-neon.vercel.app/","directive":"connect-src","blockedUrl":"https://phase95-test.invalid/collect","disposition":"enforce","sourceFile":".../assets/phase95-test.js","line":95,"column":1,"statusCode":200}`. The report carried three canaries: a query on the page (`?probe=phase95-query-canary`), a token in its fragment (`#access_token=phase95-fragment-canary`) and a query on the blocked URL (`?secret=phase95-blocked-canary`). A full-text search of the project's runtime logs for `canary` and for `access_token` finds nothing.
+- `main` CI on the merge (run `37403418258`) passed every job with no flaky test in 323 s end to end, 19 s of it the merge job (unit 1042; 456 passed, 6 skipped).
+
 **Still open**
-- **After the merge:** post one report to production's `/api/csp-report` and find it in the runtime log.
 - **Owner (T571):** the signed-in walk under the enforced policy; an installed iPhone app.
 - **From Phase 93:** drop the 20260909 `transfer_funds` signature (not before about 2026-10-13).
 

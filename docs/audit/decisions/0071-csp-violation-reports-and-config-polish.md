@@ -1,6 +1,6 @@
 # 0071: CSP violations are reported to /api/csp-report; the footer clears the nav exactly; Node 22 or later
 
-**Status:** Accepted. Implemented on branch `phase-95-csp-telemetry-and-polish` (commit `57c7a06`, docs `c8c2934`), draft PR #46. Not merged yet.
+**Status:** Accepted. Released: commit `57c7a06`, docs `c8c2934`, hash backfill `999f6ee`, merged into `main` as `a632c3e` (PR #46); Vercel `dpl_H4V1GtieKNdkKqZumgsoKByAh4oT` READY in `icn1`.
 - **Amends** ADR `0070`: the enforced policy gains `report-uri`, and the footer's margin loses the 1 px overlap ADR `0070` accepted.
 
 **Date:** 2026-10-06
@@ -87,6 +87,12 @@ A browser that supports `report-to` ignores `report-uri`, so adding `report-to` 
 - **Gate:** in the refactor log.
 - **On CI:** the pull request's run `37399307620` passed every job in 286 s, 456 passed and 6 skipped with no flaky test (WebKit's Jev test included), unit 1042; the drift workflow on the branch (`37399307758`) found no drift with all 17 migrations.
 - **On the preview:** the Vercel preview (`dpl_8HwwiQMDTgcKP9GoJY9JohXCrras`) serves the policy with `report-uri /api/csp-report`, and its `/api/csp-report` answers a GET with 405 from `icn1`. Its build warns that `>=22.0.0` "will automatically upgrade when a new major Node.js Version is released": the functions follow Vercel's newest major, 24.x today, as before.
+
+## Release (2026-10-06)
+
+- **Merge:** PR #46 merged into `main` as `a632c3e`, whose tree is identical to `999f6ee`. Vercel `dpl_H4V1GtieKNdkKqZumgsoKByAh4oT` is READY in production (`icn1`). Its `index-DeLrvd5X.js` (190,322 B), `index-CWXxYTou.css` (51,229 B) and the four vendor chunks are byte-identical to the local build of `main`, and its policy ends `report-uri /api/csp-report`.
+- **The endpoint on production (T579):** one CSP2 report posted to `https://income-and-expence-neon.vercel.app/api/csp-report` answered `204`, and the production runtime log holds exactly one line for it, `{"event":"csp-violation","documentUrl":"https://income-and-expence-neon.vercel.app/","directive":"connect-src","blockedUrl":"https://phase95-test.invalid/collect","disposition":"enforce","sourceFile":".../assets/phase95-test.js","line":95,"column":1,"statusCode":200}`. The report carried three canaries: a query on the page (`?probe=phase95-query-canary`), a token in its fragment (`#access_token=phase95-fragment-canary`) and a query on the blocked URL (`?secret=phase95-blocked-canary`). A full-text search of the project's runtime logs for `canary` and for `access_token` finds nothing.
+- **CI:** `main` CI on the merge (run `37403418258`) passed every job with no flaky test in 323 s end to end, 19 s of it the merge job (unit 1042; 456 passed, 6 skipped).
 
 ## Consequences
 

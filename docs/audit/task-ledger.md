@@ -1081,9 +1081,9 @@ Approved explicitly by the user, planned and approved before any code was writte
 - **One negative control was redone** because the first attempt produced malformed TypeScript that the dev server still served — the tests failed, but possibly for the wrong reason.
 - **No flakes.** Phase 44's `wallets.spec.ts` webkit flake has now not reproduced across three consecutive phases; still watched rather than closed.
 
-## Phase 95 - CSP violations are reported to /api/csp-report; the footer clears the nav exactly; Node 22 or later: T572-T578 (2026-10-06)
+## Phase 95 - CSP violations are reported to /api/csp-report; the footer clears the nav exactly; Node 22 or later: T572-T579 (2026-10-06)
 
-ADR `0071`, amending ADR `0070`. Branch `phase-95-csp-telemetry-and-polish`, cut from `main` at `4f4edcb`; commit `57c7a06`, docs `c8c2934`; draft PR #46. **On CI:** the pull request's run `37399307620` passed every job in 286 s, 456 passed and 6 skipped with no flaky test (WebKit's Jev test included), unit 1042; the drift workflow on the branch (`37399307758`) found no drift with all 17 migrations. **On the preview:** the Vercel preview (`dpl_8HwwiQMDTgcKP9GoJY9JohXCrras`) serves the policy with `report-uri /api/csp-report`, and its `/api/csp-report` answers a GET with 405 from `icn1`. Approved explicitly by the user, who also chose to leave T571 (the owner's signed-in walk) for later. No migration; the schema is unchanged.
+ADR `0071`, amending ADR `0070`. Branch `phase-95-csp-telemetry-and-polish`, cut from `main` at `4f4edcb`; commit `57c7a06`, docs `c8c2934`, hash backfill `999f6ee`; merged into `main` as `a632c3e` (PR #46); Vercel `dpl_H4V1GtieKNdkKqZumgsoKByAh4oT` READY in `icn1`, entry JS, CSS and vendor chunks byte-identical to the local build of `main`. `Main` CI on the merge (run `37403418258`) passed every job with no flaky test in 323 s end to end, 19 s of it the merge job (unit 1042; 456 passed, 6 skipped). **On the pull request's CI:** the pull request's run `37399307620` passed every job in 286 s, 456 passed and 6 skipped with no flaky test (WebKit's Jev test included), unit 1042; the drift workflow on the branch (`37399307758`) found no drift with all 17 migrations. **On the preview:** the Vercel preview (`dpl_8HwwiQMDTgcKP9GoJY9JohXCrras`) serves the policy with `report-uri /api/csp-report`, and its `/api/csp-report` answers a GET with 405 from `icn1`. Approved explicitly by the user, who also chose to leave T571 (the owner's signed-in walk) for later. No migration; the schema is unchanged.
 
 | # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
 |---|---|---|---|---|---|---|---|---|---|---|
@@ -1094,12 +1094,13 @@ ADR `0071`, amending ADR `0070`. Branch `phase-95-csp-telemetry-and-polish`, cut
 | T576 | `"engines": { "node": ">=22.0.0" }` in `package.json` and the lockfile root | `package.json`, `package-lock.json` | Low | Low | 0.1h | done | - | `57c7a06` | `npm ci --dry-run` clean | - |
 | T577 | Gate: lint, unit, Playwright, drift replay | - | High | Low | 0.2h | done | T576 | - | lint clean; unit 1042/1042 in 40 files; Playwright 455 passed + 1 failed + 6 skipped of 462 in 7.9 m, first run; the failure (WebKit, jev-classify mid-confidence chip) passed 10/10 alone and 100/100 with both Jev specs under 4 workers; replay unchanged (17 migrations) | - |
 | T578 | ADR `0071`, `CLAUDE.md`, this ledger, the refactor log, baseline metrics | `docs/`, `CLAUDE.md` | Low | Low | 0.4h | done | T577 | `c8c2934` | - | - |
+| T579 | After the merge: one canary CSP report to production's `/api/csp-report`, its line in the runtime log | - | Med | Low | 0.1h | done | merge | (release record) | `204`; one `csp-violation` line with origin and path only; no canary query, fragment token or `access_token` anywhere in the runtime logs | - |
 
 **Notes on execution:**
 - **WebKit's report did not match either documented shape.** It sends one Reporting API object (`{ type, url, body }`) labelled `application/csp-report`, and the first handler answered it 400. The walk caught it before any test did; the handler and a unit test now cover it.
 - **`report-to` silenced Chromium.** With `report-to` in the policy (a relative, then an absolute `Reporting-Endpoints` URL), Chromium sent nothing in 150 s; with `report-uri` alone it delivered at once. ADR `0071` records the table.
 - **One WebKit failure in the full run, not reproduced.** `jev-classify.spec.ts`'s mid-confidence test waited 10 s for the suggestion chip, which never rendered. The test mocks `/api/classify` and touches nothing this phase changed; it passed 10 of 10 alone and 100 of 100 (both Jev specs, 5 repeats, 4 workers). Its trace was not kept: later runs cleared `test-results/`. Watched, not closed.
-- **After the merge:** post one report to production's `/api/csp-report` and find its line in the runtime log; T571 (signed-in walk, iPhone) is still the owner's.
+- **After the merge (T579):** the canary report's line reached the runtime log with every query and fragment removed. T571 (signed-in walk, iPhone) is still the owner's.
 
 ## Phase 94 - The Content Security Policy is enforced; the viewport covers the screen with safe-area insets; the package has its name and a licence: T563-T571 (2026-10-06)
 
