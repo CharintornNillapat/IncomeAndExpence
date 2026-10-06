@@ -341,7 +341,7 @@ export const Modal: React.FC<ModalProps> = ({
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 24, opacity: 0 }}
             transition={{ duration: 0.2, ease: 'easeOut' }}
-            className={`bg-surface-1 rounded-t-xl sm:rounded-lg w-full ${maxWidthClassName} max-h-[92vh] sm:max-h-[90vh] flex flex-col shadow-modal border border-line overflow-hidden focus-visible:outline-none ${panelClassName}`}
+            className={`bg-surface-1 rounded-t-xl sm:rounded-lg w-full ${maxWidthClassName} max-h-[92vh] sm:max-h-[90vh] pb-[env(safe-area-inset-bottom)] sm:pb-0 flex flex-col shadow-modal border border-line overflow-hidden focus-visible:outline-none ${panelClassName}`}
           >
             {showMobileHandle && (
               <div className="sm:hidden pt-3 pb-1 flex justify-center cursor-pointer shrink-0" onClick={onClose}>

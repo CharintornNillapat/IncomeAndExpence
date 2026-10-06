@@ -94,7 +94,7 @@ export const Navbar: React.FC<NavbarProps> = React.memo(({ activeTab, setActiveT
    * CLAUDE.md's 44px floor rather than the spec's 40px header buttons.
    */
   return (
-    <header className="sticky top-0 z-40 bg-header border-b border-line transition-control duration-200">
+    <header className="sticky top-0 z-40 bg-header border-b border-line pt-[env(safe-area-inset-top)] transition-control duration-200">
       <div className="max-w-7xl mx-auto px-3 sm:px-6 h-14 md:h-16 flex items-center gap-2 sm:gap-3">
         <div className="relative shrink-0">
           <img

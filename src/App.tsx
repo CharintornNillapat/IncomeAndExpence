@@ -327,7 +327,7 @@ const MainApp: React.FC = () => {
           desktop load's layout shift (Phase 84, ADR 0060). */}
       <main
         {...swipeHandlers}
-        className="flex-1 min-h-[calc(100dvh-3.5rem)] md:min-h-[calc(100dvh-4rem)] max-w-7xl w-full mx-auto px-4 pt-4 pb-24 md:px-10 md:pt-8 md:pb-12 overflow-x-hidden touch-pan-y"
+        className="flex-1 min-h-[calc(100dvh-3.5rem-env(safe-area-inset-top))] md:min-h-[calc(100dvh-4rem-env(safe-area-inset-top))] max-w-7xl w-full mx-auto px-4 pt-4 pb-24 md:px-10 md:pt-8 md:pb-12 overflow-x-hidden touch-pan-y"
       >
         <Suspense fallback={<ViewLoadingFallback view={activeTab} />}>
           <AnimatePresence mode="wait" custom={direction}>
@@ -365,7 +365,7 @@ const MainApp: React.FC = () => {
       <ReloadPrompt />
 
       {/* Footer (with safe bottom margin on mobile) */}
-      <footer className="border-t border-line bg-surface-1 py-6 mt-6 sm:mt-12 mb-16 sm:mb-0 text-center text-xs text-fg-secondary transition-control duration-200">
+      <footer className="border-t border-line bg-surface-1 py-6 mt-6 sm:mt-12 mb-[calc(4rem+env(safe-area-inset-bottom,0.5rem))] md:mb-0 text-center text-xs text-fg-secondary transition-control duration-200">
         <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
           <p>FinLife Tracker · Track money and daily habits</p>
         </div>
