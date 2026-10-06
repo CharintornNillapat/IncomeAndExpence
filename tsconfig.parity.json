@@ -1,0 +1,9 @@
+{
+  "//": "Phase 100, ADR 0076: schemaOf's checks again with strictNullChecks, which the root config leaves off, so a field that turns nullable fails too. unit/schema-parity.check.ts holds the drifts it must refuse.",
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "strict": true
+  },
+  "include": [],
+  "files": ["src/utils/accountExport.ts", "unit/schema-parity.check.ts"]
+}
