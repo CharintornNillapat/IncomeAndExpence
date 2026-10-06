@@ -1081,6 +1081,23 @@ Approved explicitly by the user, planned and approved before any code was writte
 - **One negative control was redone** because the first attempt produced malformed TypeScript that the dev server still served — the tests failed, but possibly for the wrong reason.
 - **No flakes.** Phase 44's `wallets.spec.ts` webkit flake has now not reproduced across three consecutive phases; still watched rather than closed.
 
+## Phase 104 - A debt with nothing borrowed reads 100% everywhere; the Google Fonts cache goes; the date helpers stay in one module: T634-T639 (2026-10-06)
+
+ADR `0080`, amending ADR `0079`. Branch `phase-104-debt-zero-and-audit-cleanups`, cut from `main` at `be76c8a`. The owner's decision on the ฿0 debt (100% everywhere), and findings 10 and 11 of `AGY_AUDIT300926.md`.
+
+| # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
+|---|---|---|---|---|---|---|---|---|---|---|
+| T634 | Trace: no Google host anywhere in `index.html`, `src/`, `public/` or `vercel.json`, and the CSP allows neither; the date display helpers are in the entry chunk with no formatter built at load; `formatDayInfo`/`DayInfo` have no caller | - | Med | Low | 0.3h | done | - | uncommitted | - | - |
+| T635 | ฿0 debt: the Dashboard pin reads 100%, red first; `DebtPayoffCard` passes 100 | `unit/dashboard.test.tsx`, `unit/debts-page.test.tsx`, `src/components/dashboard/DebtPayoffCard.tsx`, `src/selectors/debts.ts`, `src/components/debt/DebtCard.tsx` | Med | Low | 0.2h | done | T634 | uncommitted | failed on the unchanged card (`expected '0' to be '100'`), then passed | - |
+| T636 | Remove the two Google Fonts `runtimeCaching` routes | `vite.config.ts` | Low | Low | 0.1h | done | T634 | uncommitted | no Google host left in `sw.js` | Workbox runtime −6,751 / −2,234 B; `sw.js` −472 / −152 B |
+| T637 | Split the date helpers into `dateDisplay.ts`: built, measured, reverted (the Dashboard's cold start would load more); `formatDayInfo`/`DayInfo` deleted | `src/utils/date.ts` | Low | Low | 0.4h | done | T634 | uncommitted | the split: entry −541 B gzip, a 754 B chunk on every cold start; declined | none shipped |
+| T638 | Gate: lint, unit, Playwright, bundle, schema drift | - | High | Low | 0.3h | done | T637 | - | lint clean; unit 1086/1086 in 42 files; Playwright 468 passed, 6 skipped of 474 (8.8 m), no failure; schema drift run `37487419261`: no drift, 19 migrations | - |
+| T639 | ADR `0080`, ADR `0079`'s amended-by line, `CLAUDE.md`, this ledger, the refactor log, baseline metrics | `docs/`, `CLAUDE.md` | Low | Low | 0.3h | done | T638 | uncommitted | - | - |
+
+**Notes on execution:**
+- **The first attempt to measure the alternative was wrong:** a re-export of `dateDisplay` from `date.ts` was tree-shaken away, so the "one module" build came out identical to the split. Rebuilt with the helpers back in `date.ts`, which gave the Phase 103 entry exactly (191,656 B).
+- **`formatDayInfo` never shipped:** Rollup drops an unused export, so deleting it changes no byte.
+
 ## Phase 103 - A debt's payoff percentage is one selector, `payoffPercent`: T629-T633 (2026-10-06)
 
 ADR `0079`, amending ADR `0028` and `0015`. Branch `phase-103-decouple-debt-dashboard`, cut from `main` at `3665fc5`; code `c91e3c1`, docs `cf52633`, hash backfill `8b6d5cd`; merged into `main` as `ed5ee04` (PR #54); Vercel `dpl_CFvLc5AdZPxKoX268CZU1GomageF` READY in `icn1`. The pull request's CI (run `37481898337`) passed every job. `Main` CI on the merge (run `37482863518`): attempt 1 was cancelled from outside during the unit step, with no newer push and no failing test; attempt 2 passed every job in 300 s end to end, 28 s of it the merge job (unit 1086; 468 passed, 6 skipped, no flaky test). Prompted by a `graphify` knowledge graph's lowest-cohesion community (debt plan and Dashboard figures, 118 nodes, 0.042); the owner asked to separate the pure debt projection from the presentation without changing a figure.

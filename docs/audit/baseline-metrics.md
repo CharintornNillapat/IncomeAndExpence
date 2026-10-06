@@ -1098,6 +1098,17 @@ The entry's growth is the ledger action itself, which lives with the other ledge
 
 **Intermittent local failures:** 6 in 1,071 full-suite runs (3 full runs). All were timeouts: a Firefox `goto`, a Firefox context close, and four WebKit clicks waiting for "stable". No assertion failed. See audit 005 finding 3 for the control runs.
 
+## Phase 104 (฿0 debt, fonts cache, date helpers) - delta against Phase 103
+
+**Bundle** (gzip -9 on both sides; Phase 103 is the build whose entry production serves, `index-DhnQcc5z.js`): the app's JS is unchanged apart from hashed chunk names, entry `index` 191,656 B raw either way, all JS 1,380,027 to 1,380,029 B raw. **Service worker:** `sw.js` 4,761 / 1,765 to 4,289 / 1,613 B; the Workbox runtime 21,863 / 7,462 to 15,112 / 5,228 B (−6,751 / −2,234), as the expiration and cacheable-response plugins go with the font routes. Precache 59 entries.
+
+**Measured and not shipped:** the `dateDisplay.ts` split, entry 189,839 / 54,537 B (−1,817 / −541) plus a 1,830 / 754 B chunk the Dashboard loads on every cold start (ADR `0080`).
+
+| Suite | Files | Tests | Runs | Result |
+|---|---|---|---|---|
+| Vitest (`unit/`) | 42 | 1086 | 1086 | 1086/1086 (one pin changed, none added) |
+| Playwright (local, 4 workers) | 32 | 158 | 474 | 468 passed, 6 skipped of 474 (8.8 m), no failure |
+
 ## Phase 103 (one payoff percent selector) - delta against Phase 102
 
 **Bundle** (gzip -9 on both sides; Phase 102 built from a `main` worktree with `.env`): 51 files on each side. `selectors/debts.ts` moved from the `useDebts` chunk, 1,775 / 915 to 906 / 499 B, into the shared `ProgressBar` chunk, 716 / 476 to 1,724 / 960 B, which `DebtsView`, `DashboardView`, `TransactionForm` and `useDebts` already load; `DashboardView` 23,155 / 7,430 to 23,102 / 7,393; `DebtsView` 17,197 / 5,231 to 17,189 / 5,221; `TransactionForm` 25,865 / 8,485 to 25,844 / 8,479; `QuickAddModal` 2,587 / 1,246 to 2,619 / 1,256; entry `index` 191,652 / 55,091 to 191,656 / 55,078. Every other change is a hashed chunk name. All JS 1,379,936 / 417,354 to 1,380,027 / 417,315 B (+91 / −39). CSS unchanged.

@@ -4,6 +4,32 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
+## Phase 104 - A debt with nothing borrowed reads 100% everywhere; the Google Fonts cache goes; the date helpers stay in one module: T634-T639 (2026-10-06, uncommitted)
+
+ADR `0080`. The owner's decision on ADR `0079`'s open question, plus findings 10 and 11 of the 2026-09-30 architecture audit (`AGY_AUDIT300926.md`).
+
+**Changed**
+- **`DebtPayoffCard`:** passes 100 to `payoffPercent`, so a ฿0 debt's Dashboard row reads 100%, as its card on the Debt payoff page and the repayment form do. `useDebts`' summaries keep 0.
+- **`vite.config.ts`:** the two Workbox `runtimeCaching` routes for `fonts.googleapis.com` and `fonts.gstatic.com` are gone; nothing could match them.
+- **`src/utils/date.ts`:** the unused `formatDayInfo` and `DayInfo` are deleted.
+- **Unit:** the Dashboard pin reads 100% (two ฿0 debts, ฿0 and ฿250 recorded as owed); the Debt payoff page's pin is renamed.
+- **Docs:** ADR `0080`; ADR `0079`'s amended-by line; `CLAUDE.md`'s payoff rule and ADR list.
+
+**Gate:**
+- Lint clean. Unit 1086/1086 in 42 files. Playwright 468 passed, 6 skipped of 474 (8.8 m), no failure, no flaky test.
+- **Red first:** the changed Dashboard pin failed on the unchanged card (`expected '0' to be '100'`).
+- **Bundle:** in baseline metrics; the service worker's Workbox runtime is 2,234 B smaller gzipped, and the app's JS is unchanged apart from hashed names.
+- **Schema drift:** run `37487419261` (dispatched on `main` at `be76c8a`; this phase changes no migration) replayed 19 migrations and found no drift: "Live matches all 19 migrations".
+
+**Measured and declined**
+- **Splitting the date helpers into a `dateDisplay.ts` (finding 11):** built and measured, then reverted. The entry would lose 1,817 / 541 B, but the Dashboard, the first view of every session, uses `formatLongDate` and `greetingFor`, so the new shared chunk (1,830 / 754 B) would load on every cold start: about 230 B more and one more request. The table is in ADR `0080`.
+
+**Deliberately not done**
+- **The summaries' 0% for a ledger of only ฿0 debts:** that is a share of everything borrowed; changing it is a separate decision.
+- **Deleting the two empty font caches on installed copies:** nothing ever filled them.
+
+---
+
 ## Phase 103 - A debt's payoff percentage is one selector, `payoffPercent`: T629-T633 (2026-10-06, code `c91e3c1`, docs `cf52633`, merge `ed5ee04`)
 
 ADR `0079`. The prompt was a `graphify` knowledge graph that put the debt plan and the Dashboard's figures in one community of 118 nodes with cohesion 0.042. Traced, L3 to L5 were already pure selectors computed once per view; the one leak was the per-debt payoff percentage, re-typed in four places. No figure changes.
