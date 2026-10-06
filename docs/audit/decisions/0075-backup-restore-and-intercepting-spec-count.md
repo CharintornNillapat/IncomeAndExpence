@@ -1,6 +1,6 @@
 # 0075: A backup restores into a guest's browser, by replacement, after a strict check; three specs intercept requests
 
-**Status:** Accepted. Implemented on branch `phase-99-doc-alignment-and-data-restore`. Not merged yet. No migration: the schema is unchanged.
+**Status:** Accepted. Implemented on branch `phase-99-doc-alignment-and-data-restore` (commit `0e7f4fe`, docs `f5b64e0`), draft PR #50. Not merged yet. No migration: the schema is unchanged.
 - **Extends** ADR `0073`: the export's file can be read back.
 - **Settles** the count of request-intercepting specs, on which CLAUDE.md's Testing section and its Do NOT list disagreed.
 
@@ -77,6 +77,7 @@ CLAUDE.md's Testing section names the three (`jev-classify`, `csv-classify`, `in
   - a guest exports, adds a transaction, imports the file, sees "3 wallets, 1 transaction," and "This browser holds 2 transactions now", confirms, and the later transaction is gone, before and after a reload;
   - a JSON file that is not a backup is refused and changes nothing.
 - **Gate:** in the refactor log.
+- **On CI:** the pull request's run `37440867655` passed every job in 267 s, 468 passed and 6 skipped with no flaky test, unit 1077; the drift workflow on the branch (`37440866209`) found no drift with all 18 migrations.
 
 ## Consequences
 

@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 99 - A backup restores into a guest's browser, by replacement, after a strict check; three specs intercept requests: T601-T607 (2026-10-06)
+## Phase 99 - A backup restores into a guest's browser, by replacement, after a strict check; three specs intercept requests: T601-T607 (2026-10-06, commit `0e7f4fe`, docs `f5b64e0`, draft PR #50)
 
 ADR `0075`. The export (ADR `0073`) can now be read back, into a guest's browser.
 
@@ -31,6 +31,7 @@ ADR `0075`. The export (ADR `0073`) can now be read back, into a guest's browser
   - restore while signed in fails 1;
   - restore without the dialog fails 3;
   - rows keeping the account's id fails 1.
+- **On CI:** the pull request's run `37440867655` passed every job in 267 s, 468 passed and 6 skipped with no flaky test, unit 1077; the drift workflow on the branch (`37440866209`) found no drift with all 18 migrations.
 - **Drift replay:** unchanged, 18 migrations.
 - **Bundle** (gzip -9 against production `main`): entry JS 190,954 / 54,830 to 191,652 / 55,091 B (+698 / +261: `restoreBackup`); `accountExport` 2,282 / 946 to 5,694 / 2,210 (+3,412 / +1,264: the schema and `parseAccountBackup`); `AccountModal` 14,184 / 4,463 to 16,414 / 5,167 (+2,230 / +704); `vendor-icons` 24,383 / 5,279 to 24,742 / 5,320 (`Upload`); CSS and the other vendor chunks unchanged.
 
