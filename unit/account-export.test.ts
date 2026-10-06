@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildAccountExport, type AccountData } from '../src/utils/accountExport';
+import { buildAccountExport, parseAccountBackup, MAX_BACKUP_CHARS, type AccountData } from '../src/utils/accountExport';
 import type { Category, DiaryEntry, Debt, KeywordRule, Transaction, Wallet } from '../src/types';
 
 /*
@@ -114,5 +114,93 @@ describe('the whole-account export (Phase 97, ADR 0073)', () => {
     const t0 = buildAccountExport(data, { signedIn: true, exportedAt: AT }).transactions.find((t) => t.id === 't-0')!;
     expect('destinationWalletId' in t0).toBe(false);
     expect('rawInput' in t0).toBe(false);
+  });
+});
+
+/*
+ * Restoring that file (Phase 99, ADR 0075). The file is untrusted input: a
+ * backup is read only through `parseAccountBackup`, which accepts exactly
+ * what the export writes and refuses anything else with the row it stopped at.
+ */
+describe('reading a backup back (Phase 99, ADR 0075)', () => {
+  const file = () => JSON.parse(JSON.stringify(buildAccountExport(data, { signedIn: true, exportedAt: AT })));
+  const text = (value: unknown) => JSON.stringify(value);
+  const refused = (value: unknown) => {
+    const result = parseAccountBackup(typeof value === 'string' ? value : text(value));
+    expect(result.ok).toBe(false);
+    return 'error' in result ? result.error : '';
+  };
+
+  it('reads back exactly what the export wrote', () => {
+    const result = parseAccountBackup(text(file()));
+    expect(result.ok).toBe(true);
+    if (!('backup' in result)) return;
+    expect(result.backup).toEqual(file());
+    expect(result.backup.transactions.find((t) => t.id === 't-0')?.isDeleted).toBe(true);
+  });
+
+  it('refuses text that is not JSON', () => {
+    expect(refused('{"format":')).toMatch(/not a JSON file/);
+  });
+
+  it('refuses another file format or a later version', () => {
+    expect(refused({ ...file(), format: 'something-else' })).toMatch(/format/);
+    expect(refused({ ...file(), version: 2 })).toMatch(/version/);
+  });
+
+  it('refuses a field the export never writes, and names where it is', () => {
+    const f = file();
+    f.wallets[0].password = 'x';
+    expect(refused(f)).toMatch(/wallets\[0\]/);
+  });
+
+  it('refuses a wrong type, an unknown enum value and a bad calendar day', () => {
+    const a = file();
+    a.wallets[0].balance = '100';
+    expect(refused(a)).toMatch(/wallets\[0\]\.balance/);
+    const b = file();
+    b.transactions[0].type = 'GIFT';
+    expect(refused(b)).toMatch(/transactions\[0\]\.type/);
+    const c = file();
+    c.diaryEntries[0].date = '2026-13-40';
+    expect(refused(c)).toMatch(/diaryEntries\[0\]\.date/);
+  });
+
+  it('refuses a negative amount on any type but ADJUSTMENT, and a zero adjustment', () => {
+    const a = file();
+    a.transactions.find((t: { type: string }) => t.type === 'EXPENSE').amount = -60;
+    expect(refused(a)).toMatch(/amount/);
+    const b = file();
+    b.transactions.find((t: { type: string }) => t.type === 'ADJUSTMENT').amount = 0;
+    expect(refused(b)).toMatch(/amount/);
+  });
+
+  it('refuses counts that disagree with the rows', () => {
+    const f = file();
+    f.counts.transactions = 5;
+    expect(refused(f)).toMatch(/counts\.transactions/);
+  });
+
+  it('refuses a row that points at a wallet, category or debt the file does not hold', () => {
+    const a = file();
+    a.transactions[0].walletId = 'w-missing';
+    expect(refused(a)).toMatch(/transactions\[0\]\.walletId/);
+    const b = file();
+    b.keywordRules[0].categoryId = 'c-missing';
+    expect(refused(b)).toMatch(/keywordRules\[0\]\.categoryId/);
+    const c = file();
+    c.transactions.find((t: { debtId?: string }) => t.debtId).debtId = 'd-missing';
+    expect(refused(c)).toMatch(/debtId/);
+  });
+
+  it('refuses two rows with one id', () => {
+    const f = file();
+    f.wallets[1].id = f.wallets[0].id;
+    f.transactions = f.transactions.map((t: { walletId: string; destinationWalletId?: string }) => ({ ...t, walletId: f.wallets[0].id, destinationWalletId: undefined }));
+    expect(refused(f)).toMatch(/wallets\[1\]\.id/);
+  });
+
+  it('refuses a file over the size limit before parsing it', () => {
+    expect(refused(' '.repeat(MAX_BACKUP_CHARS + 1))).toMatch(/too large/);
   });
 });

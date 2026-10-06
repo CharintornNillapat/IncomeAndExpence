@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   AlertCircle,
   CheckCircle2,
@@ -14,6 +14,7 @@ import {
   ShieldCheck,
   Smartphone,
   Trash2,
+  Upload,
   User as UserIcon,
 } from 'lucide-react';
 import { Modal } from '../Modal';
@@ -26,7 +27,7 @@ import { Button } from '../ui/Button';
 import { LABEL_CLASS, inputClass } from '../../utils/formStyles';
 import { describeUserAgent } from '../../utils/userAgent';
 import { formatLocalDateTime, todayIsoDate } from '../../utils/date';
-import { buildAccountExport, saveJsonFile } from '../../utils/accountExport';
+import { buildAccountExport, parseAccountBackup, saveJsonFile, type AccountExport } from '../../utils/accountExport';
 import type { AuthSession } from '../../types';
 
 interface AccountModalProps {
@@ -361,11 +362,19 @@ const SessionsSection: React.FC = () => {
  * account alike. It writes what state holds, so it refuses while a cloud load
  * is running or after one failed a read: a backup missing a table, taken just
  * before a delete, would lose that table for good.
+ *
+ * Restore (Phase 99, ADR 0075) is the guest's only. A file goes through
+ * `parseAccountBackup` and nothing changes until the person confirms, after
+ * reading what the file holds and what this browser holds now. Signed in, the
+ * cloud is the record, so the section says why it offers no restore.
  */
 const ExportDataSection: React.FC = () => {
   const { isAuthenticated, isSyncing, syncError, wallets, transactions, debts, categories, keywordRules, diaryEntries } =
     useFinanceState();
+  const { restoreBackup } = useFinanceActions();
   const [error, setError] = useState<string | null>(null);
+  const [pending, setPending] = useState<AccountExport | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const { value: success, flash: flashSuccess, clear: clearSuccess } = useTransientFlash<string | null>(null, 5000);
 
   const handleExport = () => {
@@ -394,29 +403,109 @@ const ExportDataSection: React.FC = () => {
     flashSuccess(`Saved ${fileName}.`);
   };
 
+  const handleFile = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = ''; // so picking the same file again still fires
+    if (!file) return;
+    clearSuccess();
+    setError(null);
+    let fileText: string;
+    try {
+      fileText = await file.text();
+    } catch {
+      setError('Could not read the file.');
+      return;
+    }
+    const parsed = parseAccountBackup(fileText);
+    if ('error' in parsed) {
+      setError(`This file cannot be restored: ${parsed.error}`);
+      return;
+    }
+    setPending(parsed.backup);
+  };
+
+  const handleRestore = () => {
+    if (!pending) return;
+    const result = restoreBackup(pending);
+    setPending(null);
+    if (!result.success) {
+      setError(result.error ?? 'Could not restore the backup.');
+      return;
+    }
+    flashSuccess(`Restored the backup from ${formatLocalDateTime(pending.exportedAt) ?? pending.exportedAt}.`);
+  };
+
   return (
     <section id="account-export" className="rounded-xl border border-line p-4 sm:p-5 space-y-3">
       <div className="flex items-center gap-2">
         <Download className="w-4 h-4 text-fg-secondary" />
-        <h3 className="text-sm font-bold text-fg">Export your data</h3>
+        <h3 className="text-sm font-bold text-fg">Back up and restore</h3>
       </div>
       <p className="text-xs text-fg-secondary leading-relaxed">
         {isAuthenticated
-          ? 'Downloads everything in your account as one JSON file: wallets, transactions, debts, categories, smart rules and diary entries, deleted items included. Your email, password and sign-in are not in it.'
-          : 'Downloads everything stored in this browser as one JSON file: wallets, transactions, debts, categories, smart rules and diary entries, deleted items included.'}
+          ? 'Export downloads everything in your account as one JSON file: wallets, transactions, debts, categories, smart rules and diary entries, deleted items included. Your email, password and sign-in are not in it.'
+          : 'Export downloads everything stored in this browser as one JSON file: wallets, transactions, debts, categories, smart rules and diary entries, deleted items included. Import replaces this browser\'s data with a file exported here.'}
       </p>
+      {isAuthenticated && (
+        <p id="account-import-signed-in-note" className="text-xs text-fg-secondary leading-relaxed">
+          Restoring a backup works in guest mode, on this browser only. Signed in, your data lives in the cloud, and the
+          next sync would replace a restored copy. To restore one, sign out first.
+        </p>
+      )}
       <FormFeedback success={success} error={error} />
-      <Button
-        id="account-export-btn"
-        variant="secondary"
-        onClick={handleExport}
-        icon={<Download className="w-3.5 h-3.5" />}
-      >
-        <span>Export all data (JSON)</span>
-      </Button>
+      <div className="flex flex-wrap gap-2">
+        <Button
+          id="account-export-btn"
+          variant="secondary"
+          onClick={handleExport}
+          icon={<Download className="w-3.5 h-3.5" />}
+        >
+          <span>Export all data (JSON)</span>
+        </Button>
+        {!isAuthenticated && (
+          <>
+            <Button
+              id="account-import-btn"
+              variant="secondary"
+              onClick={() => fileInputRef.current?.click()}
+              icon={<Upload className="w-3.5 h-3.5" />}
+            >
+              <span>Import backup (JSON)</span>
+            </Button>
+            <input
+              ref={fileInputRef}
+              id="account-import-input"
+              type="file"
+              accept="application/json,.json"
+              className="hidden"
+              onChange={handleFile}
+            />
+          </>
+        )}
+      </div>
+
+      <ConfirmDialog
+        isOpen={pending !== null}
+        title="Replace this browser's data with the backup?"
+        description={pending ? restoreSummary(pending, transactions.length) : ''}
+        confirmText="Replace with backup"
+        isDestructive
+        onConfirm={handleRestore}
+        onClose={() => setPending(null)}
+      />
     </section>
   );
 };
+
+const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
+
+/** What the file holds and what restoring it replaces, in the confirmation's words. */
+function restoreSummary(backup: AccountExport, transactionsNow: number): string {
+  const c = backup.counts;
+  const holds = `${plural(c.wallets, 'wallet', 'wallets')}, ${plural(c.transactions, 'transaction', 'transactions')}, ${plural(c.debts, 'debt', 'debts')}, ${plural(c.categories, 'category', 'categories')}, ${plural(c.keywordRules, 'smart rule', 'smart rules')} and ${plural(c.diaryEntries, 'diary entry', 'diary entries')}`;
+  const made = formatLocalDateTime(backup.exportedAt) ?? backup.exportedAt;
+  return `The backup from ${made} holds ${holds}, deleted items included. This browser holds ${plural(transactionsNow, 'transaction', 'transactions')} now; restoring replaces them and everything else stored here, and cannot be undone. Templates stay unless they use a wallet or category the backup does not have. To keep what is here, export it first.`;
+}
 
 /** The phrase the person types before an account can be deleted; the server checks it too (ADR 0072). */
 const DELETE_PHRASE = 'DELETE';

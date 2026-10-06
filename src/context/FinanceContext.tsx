@@ -15,6 +15,7 @@ import {
   TransactionType,
   Preset,
 } from '../types';
+import type { AccountData } from '../utils/accountExport';
 import { isAuthApiError, isAuthSessionMissingError } from '@supabase/supabase-js';
 import { supabase, isSupabaseConfigured, onDataApiUnauthorized } from '../lib/supabase';
 import {
@@ -124,6 +125,14 @@ export interface FinanceActionsContextType {
    * phrase the person typed; the server refuses anything but `DELETE`.
    */
   deleteAccount: (confirmation: string) => Promise<MutationResult>;
+  /**
+   * Replaces this browser's guest data with a backup (Phase 99, ADR 0075).
+   * Guest only: signed in, the cloud is the record and the next load would
+   * replace it. `data` comes from `parseAccountBackup`, the Zod check every
+   * restore goes through. Templates stay unless they name a wallet or category
+   * the backup does not hold.
+   */
+  restoreBackup: (data: AccountData) => MutationResult;
 
   // Wallets
   // `balance` is omitted: the opening balance is supplied via `initialBalance`.
@@ -1394,6 +1403,27 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     await signOut();
     return { success: true };
   }, [isAuthenticated, signOut, verifySession]);
+
+  const restoreBackup = useCallback((data: AccountData): MutationResult => {
+    if (isAuthenticated) {
+      return { success: false, error: 'Sign out first. A backup restores into this browser in guest mode, not into an account.' };
+    }
+    // Rows from an account carry its uuid; on this device they are the guest's.
+    const asGuest = <T extends { userId?: string | null }>(rows: T[]): T[] => rows.map((row) => ({ ...row, userId: DEFAULT_USER.id }));
+    const walletIds = new Set(data.wallets.map((w) => w.id));
+    const categoryIds = new Set(data.categories.map((c) => c.id));
+    setWallets(asGuest(data.wallets));
+    setTransactions(asGuest(data.transactions));
+    setDebts(asGuest(data.debts));
+    setCategories(asGuest(data.categories));
+    setKeywordRules(asGuest(data.keywordRules));
+    setDiaryEntries(asGuest(data.diaryEntries));
+    setPresets((prev) =>
+      prev.filter((p) => (!p.walletId || walletIds.has(p.walletId)) && (!p.categoryId || categoryIds.has(p.categoryId)))
+    );
+    inFlightIdempotencyKeys.current.clear();
+    return { success: true };
+  }, [isAuthenticated]);
 
   // Wallets CRUD
   const addWallet = useCallback(async (
@@ -3543,6 +3573,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       signOutOtherDevices,
       signOut,
       deleteAccount,
+      restoreBackup,
       addWallet,
       deleteWallet,
       editWallet,
@@ -3575,6 +3606,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       signOutOtherDevices,
       signOut,
       deleteAccount,
+      restoreBackup,
       addWallet,
       deleteWallet,
       editWallet,
