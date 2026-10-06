@@ -1,6 +1,6 @@
 # 0076: The backup schemas parse to exactly their types, checked by `tsc`; the architecture at Phase 100
 
-**Status:** Accepted. Implemented on branch `phase-100-type-parity-and-milestone`. Not merged yet. No migration, and no change to what the app does.
+**Status:** Accepted. Implemented on branch `phase-100-type-parity-and-milestone` (code `95525fb`, docs `5c474ea`, test fix `955e74b`), draft PR #51. Not merged yet. No migration, and no change to what the app does.
 - **Amends** ADR `0075`'s consequence that nothing made a new field reach the restore's schema: `tsc` now does.
 
 **Date:** 2026-10-06
@@ -58,6 +58,7 @@ Formats are not types. A timestamp, a calendar day and free text are all `string
   | `schemaOf` made to always pass (`Equal<T, T>`) | 6 | every `@ts-expect-error` in `unit/schema-parity.check.ts`, unused |
 
 - **Gate:** in the refactor log.
+- **On CI:** the pull request's first run (`37447199860`) failed on one unit test, `proxy-contract.test.ts`'s Server-Timing sum (94.6 against 94.60000000000001, a rounding the test did not allow for; T614); after the fix, run `37447478059` passed every job in 297 s, 468 passed and 6 skipped with no flaky test, unit 1077, the strict pass included; the drift workflow on the branch (`37447199821`) found no drift: live matches all 18 migrations.
 
 ## Consequences
 
