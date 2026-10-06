@@ -165,6 +165,13 @@ describe('a debt card', () => {
     expect(card.textContent).toContain(`Needed / month${formatCurrencyAmount(required!)}`);
   });
 
+  it('reads a debt with nothing borrowed as paid off, while the summary reads 0% (ADR 0079 keeps both)', () => {
+    // No database check stops a zero total, and a restored backup can carry one.
+    mount({ debts: [debtRow({ id: 'zero', name: 'Gift', totalAmount: 0, remainingAmount: 250 })] });
+    expect(byId('debt-card-zero')!.textContent).toContain('100.0% paid');
+    expect(screen.getByTestId('debt-summary-paid').textContent).toContain('Paid off0.0%');
+  });
+
   it('keeps Edit and Delete in its ⋯ menu, which holds nothing until opened', () => {
     mount({ debts: [debtRow({ id: 'a', name: 'Car' })] });
     expect(byId('edit-debt-a')).toBeNull();

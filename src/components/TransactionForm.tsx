@@ -16,6 +16,7 @@ import { matchSmartDescription } from '../utils/smartMatcher';
 import { parseExpressInput } from '../utils/expressInput';
 import { evaluateAmountInput, safeEvaluateMath } from '../utils/mathEvaluator';
 import { roundToCents } from '../utils/money';
+import { payoffPercent } from '../selectors/debts';
 import { APP_CURRENCY_SYMBOL, formatCurrencyAmount } from '../utils/currency';
 import { todayIsoDate } from '../utils/date';
 import { LABEL_TEXT_CLASS, OPTION_CLASS, ERROR_BANNER_CLASS } from '../utils/formStyles';
@@ -542,13 +543,10 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
    */
   const isOverpaying = repayTargetDebt !== null && overpayment > 0;
 
-  // Mirrors `DebtCard`'s formula with its `isSettled ? 0 : remaining`
+  // `DebtCard`'s figure (ADR 0079) with its `isSettled ? 0 : remaining`
   // branch collapsed - `projectedRemaining` is already the post-payment
   // figure, and a settled debt is zero by construction.
-  const projectedPercent =
-    repayTargetDebt && repayTargetDebt.totalAmount > 0
-      ? ((repayTargetDebt.totalAmount - projectedRemaining) / repayTargetDebt.totalAmount) * 100
-      : 100;
+  const projectedPercent = repayTargetDebt ? payoffPercent(repayTargetDebt.totalAmount, projectedRemaining, 100) : 100;
   // `ProgressBar` clamps its own bar; the printed number does not get that
   // for free, and a debt created with remaining > total (the add-debt form
   // permits it) would otherwise print a negative percentage beside a

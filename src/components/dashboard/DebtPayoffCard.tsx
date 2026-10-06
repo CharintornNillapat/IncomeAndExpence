@@ -3,7 +3,7 @@ import { Card, Inset } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { Money } from '../ui/Money';
 import { ProgressBar } from '../ui/ProgressBar';
-import type { DebtPlan, DebtPlanItem } from '../../selectors/debts';
+import { payoffPercent, type DebtPlan } from '../../selectors/debts';
 import { formatCurrencyAmount } from '../../utils/currency';
 import { formatShortDate } from '../../utils/date';
 import { DashboardLink } from './DashboardLink';
@@ -15,11 +15,6 @@ interface DebtPayoffCardProps {
   total: number;
   progressPercent: number;
   onOpenDebts: () => void;
-}
-
-function debtProgress(item: DebtPlanItem): number {
-  const { totalAmount, remainingAmount } = item.debt;
-  return totalAmount > 0 ? ((totalAmount - remainingAmount) / totalAmount) * 100 : 0;
 }
 
 /**
@@ -56,8 +51,9 @@ export const DebtPayoffCard: React.FC<DebtPayoffCardProps> = ({ plan, paid, tota
 
         <ul className="flex flex-col gap-3">
           {plan.items.map((item) => {
-            const percent = debtProgress(item);
             const { debt } = item;
+            // Nothing borrowed reads 0% here, 100% on the Debt payoff page (ADR 0079).
+            const percent = payoffPercent(debt.totalAmount, debt.remainingAmount, 0);
             return (
               <li key={debt.id}>
                 <Inset className="px-4 py-3.5 border border-line flex flex-col gap-2.5">

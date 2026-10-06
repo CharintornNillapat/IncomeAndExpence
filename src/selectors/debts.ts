@@ -37,6 +37,16 @@ export function requiredMonthly(debt: Debt, today: string): number | null {
   return roundToCents(Math.max(0, debt.remainingAmount) / monthsLeft(debt.dueDate, today));
 }
 
+/**
+ * The share of what was borrowed that is paid off, in percent, unclamped
+ * (ADR 0079). With nothing borrowed there is no share, so it is
+ * `ifNothingBorrowed`: the Debt payoff page reads such a debt as 100% and the
+ * Dashboard as 0%, and each caller passes its own.
+ */
+export function payoffPercent(total: number, remaining: number, ifNothingBorrowed: number): number {
+  return total > 0 ? ((total - remaining) / total) * 100 : ifNothingBorrowed;
+}
+
 /** Nearest due date first; debts with no due date last, in their given order. Returns a new array. */
 export function sortByDueDate<T extends Pick<Debt, 'dueDate'>>(debts: T[]): T[] {
   return debts

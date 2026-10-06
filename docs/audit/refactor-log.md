@@ -4,6 +4,32 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
+## Phase 103 - A debt's payoff percentage is one selector, `payoffPercent`: T629-T633 (2026-10-06, code `c91e3c1`, docs `cf52633`, PR #54)
+
+ADR `0079`. The prompt was a `graphify` knowledge graph that put the debt plan and the Dashboard's figures in one community of 118 nodes with cohesion 0.042. Traced, L3 to L5 were already pure selectors computed once per view; the one leak was the per-debt payoff percentage, re-typed in four places. No figure changes.
+
+**Changed**
+- **`src/selectors/debts.ts`:** `payoffPercent(total, remaining, ifNothingBorrowed)`, unclamped.
+- **`DebtCard`, `DebtPayoffCard`, `TransactionForm`, `useDebts`:** each calls it with the figure it already had for nothing borrowed (100, 0, 100, 0). `DebtPayoffCard`'s private `debtProgress` is gone.
+- **Unit:** four `payoffPercent` tests in `unit/selectors-debts.test.ts`, including a bit-for-bit comparison with the old formulas; two pins on the zero-total figures (`unit/debts-page.test.tsx`, `unit/dashboard.test.tsx`).
+- **Docs:** ADR `0079`; `CLAUDE.md`'s money rules (the selector, the kept disagreement), the debt repayment section, the unit count.
+
+**Gate:**
+- Lint clean. Unit 1086/1086 in 42 files. Playwright 468 passed, 6 skipped of 474 (9.6 m), no failure, no flaky test.
+- **Red first:** the four selector tests failed on the unchanged code (`payoffPercent is not a function`); the two pins passed on it.
+- **Controls:** `DebtCard` passing 0 fails "100.0% paid"; `DebtPayoffCard` passing 100 fails its 0.0% row; `useDebts` passing 100 fails "Paid off0.0%" (run alone, as the card's assertion comes first in the same test).
+- **Bundle:** in baseline metrics; JS +91 B raw, −39 B gzip in all.
+
+**Correctness notes**
+- `(total - remaining) / total * 100` and `repaid / total * 100` with `repaid = total - remaining` are the same IEEE operations, so `Object.is` holds on every pair tested, cents and a total of 999,999,999.99 included.
+- **A zero-total debt is reachable** (no database check; a restored backup, ADR `0075`) and reads 100% on the Debt payoff page, 0% on the Dashboard. Kept, named at each call site, pinned; choosing one is the owner's.
+
+**Deliberately not done**
+- Splitting the graph community along its lines: most of it is the shared UI primitives, ADR nodes and the dashboard unit test, not coupled code.
+- Moving `useDebts`' totals into a selector: sums over the hook's own list, one copy.
+
+---
+
 ## Phase 102 - The 20260909 `transfer_funds` signature refuses every call, now, rather than being dropped: T621-T628 (2026-10-06, code `0b036d4`, docs `0871b15`, probe fix `f23832c`, merge `ae90bba`)
 
 ADR `0078`. A build cached from before Phase 93 now gets "OUTDATED_CLIENT: Please reload the app to continue." from a transfer, instead of an atomic transfer today or, after a drop, the legacy non-atomic one. Not applied to live yet.
