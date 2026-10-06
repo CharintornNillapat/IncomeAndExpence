@@ -4,6 +4,27 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
+## Phase 102 - The 20260909 `transfer_funds` signature refuses every call, now, rather than being dropped: T621-T627 (2026-10-06)
+
+ADR `0078`. A build cached from before Phase 93 now gets "OUTDATED_CLIENT: Please reload the app to continue." from a transfer, instead of an atomic transfer today or, after a drop, the legacy non-atomic one. Not applied to live yet.
+
+**Changed**
+- **`supabase/migrations/20261006_phase102_deprecate_legacy_transfer_funds.sql` (new):** the 20260909 signature's body only raises (P0001); `SECURITY INVOKER`, `search_path = ''`; parameters, defaults, return type and grants unchanged.
+- **`supabase/tests/20261006_phase102.probe.sql` (new).**
+- **`unit/migration-replay.test.ts`:** three Phase 102 tests; Phase 93's after-run up to Phase 102; 19 migrations.
+- **Docs:** ADR `0078`; `CLAUDE.md`'s two-signature paragraph, the advisors' accepted list (ten functions), Done in Phase 102, the drop's condition, the unit count.
+
+**Gate:**
+- Lint clean. Unit 1080/1080 in 42 files. Playwright 468 passed, 6 skipped of 474 (8.9 m), no failure.
+- **Controls** (each fails the Phase 102 test on its intended assertion): a drop instead fails "the 20260909 signature is gone"; `SECURITY DEFINER` kept fails "still security definer"; `errcode = '42883'` fails "did not refuse A's own transfer"; `authenticated` revoked fails "would get 42501".
+- **Replay:** 19 migrations; ten `SECURITY DEFINER` functions `authenticated` may execute, from eleven.
+- **Bundle:** no client change.
+
+**Still open**
+- **Owner:** apply the migration (dry-run probe, migration, history insert, after-apply probe), then the drift workflow.
+- **Later:** drop the 20260909 signature once no pre-Phase 93 build can be running.
+- **Owner:** a throwaway account on production (export, delete, restore); T571; leaked password protection.
+
 ## Phase 101 - Both TypeScript configs are `strict`; `tsconfig.parity.json` is gone: T615-T620 (2026-10-06, code `30609b4`, docs `2322ecc`, merge `313bbde`)
 
 ADR `0077`. Null and undefined are now checked in the app, its tests and the Vercel functions; nothing that ships changed.

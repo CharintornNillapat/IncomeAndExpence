@@ -1081,6 +1081,25 @@ Approved explicitly by the user, planned and approved before any code was writte
 - **One negative control was redone** because the first attempt produced malformed TypeScript that the dev server still served — the tests failed, but possibly for the wrong reason.
 - **No flakes.** Phase 44's `wallets.spec.ts` webkit flake has now not reproduced across three consecutive phases; still watched rather than closed.
 
+## Phase 102 - The 20260909 `transfer_funds` signature refuses every call, now, rather than being dropped: T621-T627 (2026-10-06)
+
+ADR `0078`, amending ADR `0069` and `0067`. Branch `phase-102-deprecate-legacy-transfer`, cut from `main` at `b66c95c`. Approved explicitly by the owner: Option B (refuse first, drop later), then to run it now rather than after 2026-10-13. **The migration is not applied yet;** the owner applies it. The client does not change.
+
+| # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
+|---|---|---|---|---|---|---|---|---|---|---|
+| T621 | Live, read-only: both signatures' shape, grants and body md5 (equal to a replay), `track_functions` (`none`), eleven `SECURITY DEFINER` signatures; the pre-Phase 93 client's error handling read at `f44d3e4` | - | High | Low | 0.4h | done | - | - | - | - |
+| T622 | Migration: the 20260909 signature raises `OUTDATED_CLIENT` (P0001), `SECURITY INVOKER`, `search_path = ''`, same parameters, return type and grants | `supabase/migrations/20261006_phase102_deprecate_legacy_transfer_funds.sql` | High | Med | 0.3h | done | T621 | - | - | advisor: 11 to 10 |
+| T623 | Probe: shape, grants, the session body's md5, the count of ten; the refusal three ways with nothing moved; the session signature still moves, replays and refuses | `supabase/tests/20261006_phase102.probe.sql` | High | Low | 0.4h | done | T622 | - | - | - |
+| T624 | Unit: the probe before and after, and failing on the pre-Phase 102 schema; Phase 93's after-run on the files up to Phase 102; the migration count 19 | `unit/migration-replay.test.ts` | High | Low | 0.3h | done | T623 | - | +3 tests; controls: a drop instead fails "the 20260909 signature is gone"; `SECURITY DEFINER` kept fails "still security definer"; `errcode = '42883'` fails "did not refuse A's own transfer"; `authenticated` revoked fails "would get 42501" | unit 1077 to 1080 |
+| T625 | Gate: lint, unit, Playwright, replay | - | High | Low | 0.3h | done | T624 | - | lint clean; unit 1080/1080 in 42 files; Playwright 468 passed, 6 skipped of 474 (8.9 m), no failure; replay 19 migrations | - |
+| T626 | Owner's apply kit: the dry-run probe (migration inline), the migration, the history insert, the after-apply probe | - | High | Low | 0.1h | done | T625 | - | - | - |
+| T627 | ADR `0078`, `CLAUDE.md` (the refusal, ten functions, the drop's condition, unit count), this ledger, the refactor log, baseline metrics | `docs/`, `CLAUDE.md` | Low | Low | 0.4h | done | T625 | - | - | - |
+
+**Notes on execution:**
+- **The planned "check the API logs first" could not work:** the logs carry no argument names, and `track_functions` is `none`. The refusal makes the count unnecessary: no old build can take the legacy path while the signature exists.
+- **The message is shown as written** by an old build's transfer form, `OUTDATED_CLIENT:` prefix included (the owner's wording).
+- **The file name sorts before Phase 93's;** harmless, as neither earlier file of that day touches the 20260909 signature (ADR `0078`).
+
 ## Phase 101 - Both TypeScript configs are `strict`; `tsconfig.parity.json` is gone: T615-T620 (2026-10-06)
 
 ADR `0077`, amending ADR `0076`. Branch `phase-101-typescript-strict-mode`, cut from `main` at `85870c7`; code `30609b4`, docs `2322ecc`, hash backfill `b28349f`; merged into `main` as `313bbde` (PR #52); Vercel `dpl_BXMY81b5uGNQTuVWdQQWRkKDbNvk` READY in `icn1`. `Main` CI on the merge (run `37465352511`) passed every job with no flaky test in 292 s end to end, 19 s of it the merge job (unit 1077; 468 passed, 6 skipped). **On the pull request's CI:** the pull request's run `37459118247` passed every job in 282 s, 468 passed and 6 skipped with no flaky test, unit 1077, lint under `strict` in both configs; the drift workflow on the branch (`37459116585`) found no drift: live matches all 18 migrations. Approved explicitly by the user (scope: `strict` in both configs, fix the errors, delete `tsconfig.parity.json`, simplify `npm run lint`). No migration, and no change to what ships.
