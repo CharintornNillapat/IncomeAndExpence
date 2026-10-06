@@ -1,6 +1,6 @@
 # 0072: Account deletion erases the whole account, the one hard delete
 
-**Status:** Accepted. Implemented on branch `phase-96-pdpa-account-deletion` (commit `9272c4b`, docs `75b968e`), draft PR #47. Not merged yet. **The owner applies the migration before the merge** (see "Order of release").
+**Status:** Accepted. Released: commit `9272c4b`, docs `75b968e`, hash backfill `5f4371f`, merged into `main` as `73878b4` (PR #47) after the owner applied the migration; Vercel `dpl_7hebLp296RsBVmXpQSuG8tmGdSBm` READY in `icn1`.
 - **Amends** the soft-delete rule (ADR `0016`, CLAUDE.md "Data Integrity"): an account's erasure deletes its rows for good.
 - **Amends** ADR `0024`'s note that the app never writes to the `auth` schema: this one function deletes the caller's `auth.users` row.
 
@@ -94,6 +94,13 @@ Stated so the claim is not larger than the code:
 - **`tests/account-and-mobile-nav.spec.ts`, +1:** a guest's Account & Security has no Delete account section, in all three browsers. No spec signs in, so the signed-in flow is in the unit suite: a spec that faked Supabase's auth and data APIs would be the request-intercepting spec CLAUDE.md rules out when a unit test reaches the same code.
 - **Gate:** in the refactor log.
 - **On CI:** the pull request's run `37406934324` passed every job in 300 s, 459 passed and 6 skipped with no flaky test, unit 1050.
+
+## Release (2026-10-06)
+
+- **Migration:** The owner applied `20261006_phase96_delete_user_account.sql` with its printed history row (`20261006035741`) before the merge, and the after-apply probe passed. The drift workflow on the branch (`37415916275`) found no drift with all 18 migrations. Read-only on live afterwards: `delete_user_account(text)` is `SECURITY DEFINER` with `search_path=public, pg_temp`, executable by `authenticated` and not by `anon`; 18 history rows.
+- **Merge:** PR #47 merged into `main` as `73878b4`, whose tree is identical to `5f4371f`. Vercel `dpl_7hebLp296RsBVmXpQSuG8tmGdSBm` is READY in production (`icn1`); a function answers from `icn1` (`X-Vercel-Id` `sin1::icn1::...`). Its `index-DxOBq52k.js` (190,913 B), `index-CWXxYTou.css` (51,229 B), `AccountModal-DK1aZZoX.js` (12,409 B) and the four vendor chunks are byte-identical to the local build of `main`.
+- **CI:** `main` CI on the merge (run `37416264478`) passed every job with no flaky test in 304 s end to end, 16 s of it the merge job (unit 1050; 459 passed, 6 skipped).
+- **Not yet done on production:** a deletion of a throwaway account end to end. It needs a real sign-in, so it is the owner's.
 
 ## Consequences
 

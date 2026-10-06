@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 96 - Account deletion erases the whole account, the one hard delete: T580-T587 (2026-10-06, commit `9272c4b`, docs `75b968e`, draft PR #47)
+## Phase 96 - Account deletion erases the whole account, the one hard delete: T580-T587 (2026-10-06, commit `9272c4b`, docs `75b968e`, merge `73878b4`)
 
 ADR `0072`. A signed-in person had no way to erase their account, which Thailand's PDPA entitles them to. Everything else stays soft-deleted.
 
@@ -37,8 +37,13 @@ ADR `0072`. A signed-in person had no way to erase their account, which Thailand
 - **Drift replay:** 18 migrations; expects 17 functions and 68 function grants. Live differs until the owner applies the file (T587), as designed.
 - **Bundle** (gzip -9 against production `main`): entry JS 190,322 / 54,636 to 190,913 / 54,813 B (+591 / +177: `deleteAccount` and the dialog's field); the lazy `AccountModal` chunk 10,631 / 3,550 to 12,409 / 3,994 (+1,778 / +444); CSS unchanged.
 
+**Release:**
+- **T587:** The owner applied `20261006_phase96_delete_user_account.sql` with its printed history row (`20261006035741`) before the merge, and the after-apply probe passed. The drift workflow on the branch (`37415916275`) found no drift with all 18 migrations. Read-only on live afterwards: `delete_user_account(text)` is `SECURITY DEFINER` with `search_path=public, pg_temp`, executable by `authenticated` and not by `anon`; 18 history rows.
+- PR #47 merged into `main` as `73878b4`, whose tree is identical to `5f4371f`. Vercel `dpl_7hebLp296RsBVmXpQSuG8tmGdSBm` is READY in production (`icn1`); a function answers from `icn1` (`X-Vercel-Id` `sin1::icn1::...`). Its `index-DxOBq52k.js` (190,913 B), `index-CWXxYTou.css` (51,229 B), `AccountModal-DK1aZZoX.js` (12,409 B) and the four vendor chunks are byte-identical to the local build of `main`.
+- `main` CI on the merge (run `37416264478`) passed every job with no flaky test in 304 s end to end, 16 s of it the merge job (unit 1050; 459 passed, 6 skipped).
+
 **Still open**
-- **Owner, before the merge (T587):** the probe with the migration inlined, the migration with its history row, the probe again, then the drift workflow by hand.
+- **Owner:** delete a throwaway account on production end to end.
 - **Owner (T571):** the signed-in walk under the enforced CSP; an installed iPhone app.
 - **From Phase 93:** drop the 20260909 `transfer_funds` signature (not before about 2026-10-13).
 
