@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { createHash } from 'crypto';
-import { readFileSync } from 'fs';
+import { existsSync, readFileSync } from 'fs';
 import { resolve } from 'path';
 import { z } from 'zod';
 import '../src/utils/zodSchemas';
@@ -44,6 +44,15 @@ describe('vercel.json headers (ADR 0068)', () => {
     expect(header('Referrer-Policy')).toBe('strict-origin-when-cross-origin');
     expect(header('X-Frame-Options')).toBe('DENY');
     expect(csp.get('frame-ancestors')).toEqual(["'none'"]);
+  });
+
+  it('sends violations to /api/csp-report through report-uri alone (ADR 0071)', () => {
+    expect(csp.get('report-uri')).toEqual(['/api/csp-report']);
+    expect(existsSync(resolve(ROOT, 'api/csp-report.ts'))).toBe(true);
+    // A browser that understands report-to ignores report-uri, and Chromium
+    // delivered nothing through report-to in Phase 95's walk.
+    expect(csp.has('report-to')).toBe(false);
+    expect(header('Reporting-Endpoints')).toBeUndefined();
   });
 
   it('enforces the content security policy, in one header (ADR 0070)', () => {
