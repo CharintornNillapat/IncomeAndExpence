@@ -27,7 +27,7 @@
 - **`SECURITY INVOKER`, `search_path = ''`:** it reads nothing, so it needs neither the owner's rights nor a search path. That takes it off the advisor's list.
 - **Grants restated as they were:** `authenticated` and `service_role` execute, `public` and `anon` do not. Without `authenticated`, an old build would get `42501` instead of the message.
 
-The session signature is untouched: its body's md5 on live is `0f4ef8407ef5eea1a1224f740d7daef3`, the same as a replay of the repo, and the probe pins it.
+The session signature is untouched: its body's md5 with carriage returns removed (as `supabase/catalog.sql` hashes it) is `03b469921a7c0d01909608cb8c6a53d7` on live and in a replay, and the probe pins it.
 
 **The file name** is the one the owner gave. It sorts before `20261006_phase93_*` and `_phase96_*` (`1` before `9`), which is harmless: Phase 93 creates only the session signature and Phase 96 does not touch `transfer_funds`, so a replay ends in the same state in either order. The history records it by name, at its apply time.
 
@@ -35,7 +35,7 @@ The session signature is untouched: its body's md5 on live is `0f4ef8407ef5eea1a
 
 ## Verification
 
-- **Live, read-only, before writing anything:** both signatures' arguments, return type, `prosecdef`, `proconfig`, grants and owner. Their bodies' md5 (`8b900ec3…` for 20260909, `0f4ef840…` for the session one) equal a PGlite replay of the repo's 18 migrations. Eleven `SECURITY DEFINER` signatures that `authenticated` may execute.
+- **Live, read-only, before writing anything:** both signatures' arguments, return type, `prosecdef`, `proconfig`, grants and owner. Their bodies' md5 (raw: `8b900ec3…` for 20260909, `0f4ef840…` for the session one) equal a PGlite replay of the repo's 18 migrations from this Windows checkout. Live's bodies hold carriage returns, so a Linux replay matches only without them, as the drift check compares. Eleven `SECURITY DEFINER` signatures that `authenticated` may execute.
 - **Replay:** with the migration, the 20260909 signature is `SECURITY INVOKER` with `search_path=""`, the session signature's md5 and grants are unchanged, and the count is ten.
 - **Probe** `supabase/tests/20261006_phase102.probe.sql`, in `BEGIN ... ROLLBACK`, checks:
   1. both signatures' shape and grants, the session body's md5, and the advisor's count of ten;
@@ -56,6 +56,7 @@ The session signature is untouched: its body's md5 on live is `0f4ef8407ef5eea1a
   | raise with `errcode = '42883'` | "the old signature did not refuse A's own transfer" |
   | revoke `authenticated` | "authenticated cannot call the old signature: an old build would get 42501, not the reload message" |
 
+- **First CI run:** the probe pinned the raw md5, which CI's Linux checkout (LF) cannot match; both Phase 102 tests failed there and passed on Windows. The probe now hashes without carriage returns, like `catalog.sql`.
 - **Gate:** in the refactor log.
 
 ## Consequences

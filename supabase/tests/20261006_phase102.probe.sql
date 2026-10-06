@@ -72,7 +72,9 @@ begin
   assert (select prosecdef from pg_proc where oid = v_new::regprocedure), '1 the session signature is not security definer';
   assert (select proconfig from pg_proc where oid = v_new::regprocedure) = array['search_path=public, pg_temp'],
     '1 the session signature lost its pinned search_path';
-  assert (select md5(prosrc) from pg_proc where oid = v_new::regprocedure) = '0f4ef8407ef5eea1a1224f740d7daef3',
+  -- Carriage returns removed, as supabase/catalog.sql does: live's body has
+  -- them (applied from a Windows checkout), a Linux replay does not.
+  assert (select md5(replace(prosrc, chr(13), '')) from pg_proc where oid = v_new::regprocedure) = '03b469921a7c0d01909608cb8c6a53d7',
     '1 the session signature''s body changed';
   assert has_function_privilege('authenticated', v_new, 'execute'), '1 authenticated cannot execute the session signature';
   assert not has_function_privilege('anon', v_new, 'execute'), '1 anon can execute the session signature';
