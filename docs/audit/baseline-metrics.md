@@ -1098,6 +1098,16 @@ The entry's growth is the ledger action itself, which lives with the other ledge
 
 **Intermittent local failures:** 6 in 1,071 full-suite runs (3 full runs). All were timeouts: a Firefox `goto`, a Firefox context close, and four WebKit clicks waiting for "stable". No assertion failed. See audit 005 finding 3 for the control runs.
 
+## Phase 100 (backup schema type parity) - delta against Phase 99
+
+**Bundle** (gzip -9 on both sides; Phase 99 from the production assets): entry JS the same size, 191,652 / 55,091 B; `accountExport` 5,694 / 2,210 to 5,740 / 2,225 B (+46 / +15: the `schemaOf` calls); `AccountModal` 16,414 / 5,167 to 16,414 / 5,169 (only the hashed chunk names it imports changed); CSS and the vendor chunks unchanged. `schemaParity.ts` has no chunk of its own: its one runtime function is inlined into `accountExport`, and its types emit nothing.
+
+| Suite | Files | Tests | Runs | Result |
+|---|---|---|---|---|
+| Vitest (`unit/`) | 42 | 1077 | 1077 | 1077/1077 |
+| Type checks (`tsconfig.parity.json`, strict) | 2 | 7 | - | 1 schema passes, 6 drifts refused |
+| Playwright (local, 4 workers) | 32 | 158 | 474 | 468 passed, 6 skipped of 474 (8.8 m), no failure |
+
 ## Phase 99 (backup restore) - delta against Phase 98
 
 **Bundle** (gzip -9 on both sides; Phase 98 from the production assets): entry `index` JS 190,954 / 54,830 to 191,652 / 55,091 B (+698 / +261); `accountExport` 2,282 / 946 to 5,694 / 2,210 (+3,412 / +1,264); `AccountModal` 14,184 / 4,463 to 16,414 / 5,167 (+2,230 / +704); `vendor-icons` 24,383 / 5,279 to 24,742 / 5,320 (+359 / +41); CSS 51,229 / 9,852 unchanged.

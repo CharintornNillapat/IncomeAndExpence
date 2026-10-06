@@ -4,6 +4,30 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
+## Phase 100 - The backup schemas parse to exactly their types, checked by `tsc`; the architecture at Phase 100: T608-T614 (2026-10-06, code `95525fb`, docs `5c474ea`, test fix `955e74b`, draft PR #51)
+
+ADR `0076`. The restore's schemas are now held to the types the export writes; no change to what the app does.
+
+**Changed**
+- **`src/utils/schemaParity.ts` (new):** `Equal<A, B>` (identity, not assignability) and `schemaOf<T>()(schema)`, which returns the schema and fails `tsc` unless it parses to exactly `T`, naming the field a side lacks.
+- **`src/utils/accountExport.ts`:** the six row schemas and the file schema go through `schemaOf`; `parseAccountBackup` returns `result.data` without a cast.
+- **`tsconfig.parity.json` (new), `tsconfig.json`, `package.json`:** `npm run lint` compiles the parity files again with `strict`, since the root config's `strictNullChecks` is off; the root config excludes the check file.
+- **`unit/schema-parity.check.ts` (new, type-only):** one schema that must pass, six drifts that must fail.
+- **Test fix (T614):** `unit/proxy-contract.test.ts`: the Server-Timing test summed three figures each rounded to 0.1 ms and required the rounded total to be at least that; it now allows the 0.2 ms the four roundings can add. A test bug since Phase 74, unrelated to this phase, that failed PR #51's first CI run.
+- **Docs:** ADR `0076` (with the architecture at Phase 100); ADR `0075` points to it; `CLAUDE.md`'s structure, lint command and restore rules.
+
+**Gate:**
+- Lint clean, including the strict pass. Unit 1077/1077 in 42 files (no Vitest test added: the checks are type-level). Playwright 468 passed, 6 skipped of 474 (8.8 m), no failure.
+- **Controls** (each fails `npm run lint`): a new `Wallet` field fails 34 (4 in the parity files, naming `pinned`); `Debt.dueDate` nullable fails 2 (strict pass only); a new `AccountExport` header field fails 3; a new `FoodQuality` member fails 2; the schema making `rawInput` required fails 2; `schemaOf` made to always pass leaves all 6 `@ts-expect-error` lines unused.
+- **On CI:** the pull request's first run (`37447199860`) failed on one unit test, `proxy-contract.test.ts`'s Server-Timing sum (94.6 against 94.60000000000001, a rounding the test did not allow for; T614); after the fix, run `37447478059` passed every job in 297 s, 468 passed and 6 skipped with no flaky test, unit 1077, the strict pass included; the drift workflow on the branch (`37447199821`) found no drift: live matches all 18 migrations.
+- **Drift replay:** unchanged, 18 migrations.
+- **Bundle** (gzip -9 against production `main`): entry JS the same size, 191,652 / 55,091 B; `accountExport` 5,694 / 2,210 to 5,740 / 2,225 B (+46 / +15: the `schemaOf` calls); `AccountModal` 16,414 / 5,167 to 16,414 / 5,169 (only the hashed chunk names it imports changed); CSS and the vendor chunks unchanged. `schemaParity.ts` has no chunk of its own: its one runtime function is inlined into `accountExport`, and its types emit nothing.
+
+**Still open**
+- **From Phase 93:** drop the 20260909 `transfer_funds` signature (not before about 2026-10-13).
+- **A restore into a signed-in account:** a six-table database function and a migration (ADR `0075`).
+- **Owner:** a throwaway account on production (export, delete, restore); T571; leaked password protection.
+
 ## Phase 99 - A backup restores into a guest's browser, by replacement, after a strict check; three specs intercept requests: T601-T607 (2026-10-06, commit `0e7f4fe`, docs `f5b64e0`, merge `59e2807`)
 
 ADR `0075`. The export (ADR `0073`) can now be read back, into a guest's browser.
