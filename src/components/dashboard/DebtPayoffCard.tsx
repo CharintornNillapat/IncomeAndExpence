@@ -52,8 +52,8 @@ export const DebtPayoffCard: React.FC<DebtPayoffCardProps> = ({ plan, paid, tota
         <ul className="flex flex-col gap-3">
           {plan.items.map((item) => {
             const { debt } = item;
-            // Nothing borrowed reads 0% here, 100% on the Debt payoff page (ADR 0079).
-            const percent = payoffPercent(debt.totalAmount, debt.remainingAmount, 0);
+            // Nothing borrowed is paid off, as on the Debt payoff page (ADR 0080).
+            const percent = payoffPercent(debt.totalAmount, debt.remainingAmount, 100);
             return (
               <li key={debt.id}>
                 <Inset className="px-4 py-3.5 border border-line flex flex-col gap-2.5">

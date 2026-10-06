@@ -206,10 +206,10 @@ describe('acceptance check 4: L4 figures and the L5 banner', () => {
     expect(screen.getByText(/due Jan 1, 2027/)).toBeTruthy();
   });
 
-  it('reads a debt with nothing borrowed as 0% paid, unlike the Debt payoff page (ADR 0079 keeps both)', () => {
-    render(<DebtPayoffCard plan={debtPlan([debt('zero', 'Gift', 0, 250)], TODAY, 5000)} paid={-250} total={0} progressPercent={0} onOpenDebts={() => {}} />);
-    expect(screen.getByLabelText('Gift payoff progress')).toBeTruthy();
-    expect(screen.getByText(/^0\.0% · no due date$/)).toBeTruthy();
+  it('reads a debt with nothing borrowed as 100% paid, as the Debt payoff page does (ADR 0080)', () => {
+    render(<DebtPayoffCard plan={debtPlan([debt('zero', 'Gift', 0, 0), debt('owed', 'Gift owed', 0, 250)], TODAY, 5000)} paid={-250} total={0} progressPercent={0} onOpenDebts={() => {}} />);
+    expect(screen.getByLabelText('Gift payoff progress').getAttribute('aria-valuenow')).toBe('100');
+    expect(screen.getAllByText(/^100\.0% · no due date$/)).toHaveLength(2);
   });
 
   it('says Overdue in red once a due date has passed', () => {

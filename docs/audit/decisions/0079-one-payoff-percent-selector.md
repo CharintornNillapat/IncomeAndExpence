@@ -3,6 +3,7 @@
 **Status:** Accepted. Released: code `c91e3c1`, docs `cf52633`, hash backfill `8b6d5cd`, merged into `main` as `ed5ee04` (PR #54); Vercel `dpl_CFvLc5AdZPxKoX268CZU1GomageF` READY in `icn1`. No migration.
 - **Amends** ADR `0028`: the share of a debt that is paid off joins L3 to L5 in `src/selectors/debts.ts`.
 - **Amends** ADR `0015`: `TransactionForm`'s payoff block still mirrors `DebtCard`, now by calling the same function rather than repeating its formula.
+- **Amended by** ADR `0080`: the owner chose 100% for a debt with nothing borrowed, so the Dashboard's row now passes 100 too.
 
 **Date:** 2026-10-06
 
