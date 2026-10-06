@@ -1081,6 +1081,27 @@ Approved explicitly by the user, planned and approved before any code was writte
 - **One negative control was redone** because the first attempt produced malformed TypeScript that the dev server still served — the tests failed, but possibly for the wrong reason.
 - **No flakes.** Phase 44's `wallets.spec.ts` webkit flake has now not reproduced across three consecutive phases; still watched rather than closed.
 
+## Phase 94 - The Content Security Policy is enforced; the viewport covers the screen with safe-area insets; the package has its name and a licence: T563-T570 (2026-10-06)
+
+ADR `0070`, amending ADRs `0041`, `0060` and `0068`. Branch `phase-94-enforce-csp-and-metadata`, cut from `main` at `588e6e3`. Approved explicitly by the user: enforce the CSP, DOC-001, and `viewport-fit=cover`. No migration; the schema is unchanged.
+
+| # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
+|---|---|---|---|---|---|---|---|---|---|---|
+| T563 | One enforced `Content-Security-Policy` (the report-only policy, unchanged), the frames-only header folded into it | `vercel.json`, `unit/security-headers.test.ts` | High | Med | 0.3h | done | - | - | unit +1; hash and Supabase `https`/`wss` intact | - |
+| T564 | Walk `dist/` served with the enforced headers in three browsers, with a sign-in attempt; negative control | - | High | Low | 0.4h | done | T563 | - | 0 violations in each; service worker controlling; auth request answered `400`; without Supabase in `connect-src` WebKit blocks it | - |
+| T565 | Package `finlife-tracker`, `"license": "MIT"`, an MIT `LICENSE` | `package.json`, `package-lock.json`, `LICENSE` | Low | Low | 0.1h | done | - | - | `npm ci --dry-run` clean | - |
+| T566 | README rewritten from the current code | `README.md` | Low | Low | 0.5h | done | - | - | no em dash; every link resolves | - |
+| T567 | `viewport-fit=cover`; the header, body sides, footer margin, bottom sheet and toast clear their insets | `index.html`, `src/index.css`, `src/App.tsx`, `src/components/Navbar.tsx`, `src/components/Modal.tsx`, `src/components/ReloadPrompt.tsx`, `tests/safe-area.spec.ts` | Med | Low | 0.6h | done | - | - | spec passes in Chromium; control without the header and sheet insets fails "Expected: >= 47, Received: 0" | entry +249 B raw, CSS +579 B raw |
+| T568 | Gate: lint, unit, Playwright, drift replay | - | High | Low | 0.2h | done | T567 | - | lint clean; unit 1031/1031 in 39 files; Playwright 456 passed + 6 skipped of 462 in 7.4 m, first run; replay unchanged (17 migrations) | - |
+| T569 | ADR `0070`, `CLAUDE.md`, this ledger, the refactor log, baseline metrics | `docs/`, `CLAUDE.md` | Low | Low | 0.4h | done | T568 | - | - | - |
+| T570 | After the merge: headers on production; the enforced CSP walked signed in (sync, realtime, a transfer, an import) in the owner's browser; an installed iPhone app checked for the insets | - | High | Med | 0.3h | pending | merge | - | - | - |
+
+**Notes on execution:**
+- **Two CSP headers became one.** The enforced `frame-ancestors 'none'` header and the report-only policy both carried `frame-ancestors`; renaming the second would have left two enforced policies, so the first was folded in.
+- **The lockfile was edited by hand.** `npm install --package-lock-only` also rewrote 70 lines of optional-dependency entries; it was reverted and only the name and licence lines changed.
+- **A negative control reset two files.** Restoring after the safe-area control with `git checkout` put `Navbar.tsx` and `Modal.tsx` back to `HEAD`, dropping their uncommitted inset classes; both were re-applied and the spec re-run before the full suite.
+- **The footer and the nav overlap by 1 px**, with or without insets: the nav is 65 px and the footer's margin 4rem. The spec allows it.
+
 ## Phase 93 - The redundant SELECT policies are dropped; transfer_funds takes the user from the session, beside its old signature: T555-T562 (2026-10-06)
 
 ADR `0069`, amending ADRs `0023`, `0063` and `0067`. Branch `phase-93-db-cleanup-migrations`, cut from `main` at `f44d3e4`; commit `2eeb20c`, docs `11b4f23`, hash backfill `28cc4e8`; merged into `main` as `4744845` (PR #43); Vercel `dpl_DvgAksLjtYP9hEQnPN3ZprPsPWcS` READY in `icn1`, entry JS and CSS byte-identical to the local build of `main`. `main` CI on the merge (run `37385248145`) passed every job with no flaky test in 239 s end to end, 22 s of it the merge job (454 passed, 2 skipped, unit 1030). The drift workflow on `main` (run `37385367893`) found no drift with all 17 migrations. **On the pull request's CI:** the pull request's run `37378623941` passed every job in 299 s, 454 passed and 2 skipped with no flaky test, unit 1030. Approved explicitly by the user as the P1 items ADR `0067` scheduled. Two migrations; **the owner applies them before the merge** (ADR `0069`, "Order of release").

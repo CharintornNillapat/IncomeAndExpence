@@ -4,6 +4,47 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
+## Phase 94 - The Content Security Policy is enforced; the viewport covers the screen with safe-area insets; the package has its name and a licence: T563-T570 (2026-10-06)
+
+ADR `0070`. The CSP had been report-only since Phase 92, which protects nothing; the package was still `react-example` with no licence file; and the installed iOS app drew under the status bar with no way to move clear of it.
+
+**Changed**
+- **`vercel.json`:** one enforced `Content-Security-Policy`, the Phase 92 policy unchanged (it already holds `frame-ancestors 'none'`), in place of a frames-only enforced header and the report-only one.
+- **`viewport-fit=cover`**, and each edge clears its inset:
+  - the header pads the top inset;
+  - `body` pads the sides;
+  - the footer's margin matches the nav's bottom expression, and is now `md:mb-0` instead of `sm:mb-0`, since the nav shows up to `md`;
+  - a bottom sheet pads the bottom inset;
+  - the toast adds the bottom and right insets from `md`;
+  - `<main>`'s minimum height subtracts the top inset.
+- **Metadata:** package `finlife-tracker` with `"license": "MIT"`; an MIT `LICENSE`; the README rewritten from the current code (it described the Phase 42 app).
+- **Tests:**
+  - `unit/security-headers.test.ts` reads the enforced policy and refuses a second or report-only CSP header (+1);
+  - `tests/safe-area.spec.ts` (new, Chromium only) emulates insets in portrait and landscape.
+- **Docs:** ADR `0070`, `CLAUDE.md` (the headers section, a safe-area UI limit, suite sizes, two Do NOTs), the ledger, this log, baseline metrics.
+
+**Gate:**
+- Lint clean. Unit 1031/1031 in 39 files. Playwright 456 passed + 6 skipped of 462 in 7.4 m, first run, no flaky test.
+- **CSP walk on `dist/` with the enforced headers:** Quick Add, every tab, a CSV export and a sign-in attempt.
+  - 0 violations in Chromium, Firefox and WebKit.
+  - The service worker controlled the page.
+  - The sign-in request reached Supabase (`400`, wrong password).
+  - **Negative control:** without the Supabase origins in `connect-src`, WebKit blocked that request and the walk reported it.
+- **The built bundle's only connection origin is the Supabase project.** The inline script's hash in `dist/index.html` equals the policy's.
+- **Safe-area negative control:** without the header's and the sheet's insets the spec fails "Expected: >= 47, Received: 0".
+- **Drift replay:** unchanged, 17 migrations (no file under `supabase/` changed).
+- **Bundle** (gzip -9 on both sides, main from production): entry JS 190,069 / 54,595 to 190,318 / 54,638 B (+249 / +43); CSS 50,639 / 9,750 to 51,218 / 9,845 (+579 / +95). All of it is the inset classes.
+
+**Still open**
+- **After the merge (T570):**
+  - the headers on production;
+  - the enforced CSP walked signed in (sync, realtime, a transfer, an import), which needs the owner's session;
+  - an installed iPhone app checked for the insets.
+
+  Rollback for the CSP is renaming the header back to `-Report-Only`.
+- **From Phase 93:** drop the 20260909 `transfer_funds` signature (not before about 2026-10-13).
+- **Owner:** privacy notice and account deletion (a decision first), leaked password protection, a screen reader pass, the four `USD` wallets.
+
 ## Phase 93 - The redundant SELECT policies are dropped; transfer_funds takes the user from the session, beside its old signature: T555-T562 (2026-10-06, commit `2eeb20c`, docs `11b4f23`, merge `4744845`)
 
 ADR `0069`. ADR `0067` scheduled two database changes: dropping the two "view system and their own" SELECT policies, and taking `transfer_funds`' user from the session instead of an argument.

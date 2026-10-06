@@ -1098,6 +1098,17 @@ The entry's growth is the ledger action itself, which lives with the other ledge
 
 **Intermittent local failures:** 6 in 1,071 full-suite runs (3 full runs). All were timeouts: a Firefox `goto`, a Firefox context close, and four WebKit clicks waiting for "stable". No assertion failed. See audit 005 finding 3 for the control runs.
 
+## Phase 94 (CSP enforced, viewport-fit=cover, package metadata) - delta against Phase 93
+
+**Bundle** (gzip -9 on both sides; Phase 93 from the production assets, which are byte-identical to its build): entry `index` JS 190,069 / 54,595 to 190,318 / 54,638 B raw / gzip (+249 / +43), CSS 50,639 / 9,750 to 51,218 / 9,845 (+579 / +95). All from the safe-area inset classes. Phase 93's own gzip figure above (54,775) used another compressor setting, so compare like with like.
+
+| Suite | Files | Tests | Runs | Result |
+|---|---|---|---|---|
+| Vitest (`unit/`) | 39 | 1031 | 1031 | 1031/1031 (enforced-CSP header test +1) |
+| Playwright (local, 4 workers) | 32 | 154 | 462 | 456 passed + 6 skipped of 462 in 7.4 m, first run (`safe-area.spec.ts` +2 tests, Chromium only) |
+
+Schema unchanged: 17 migrations, 7 policies, 16 functions, 64 function grants.
+
 ## Phase 93 (redundant SELECT policies dropped, transfer_funds from the session) - delta against Phase 92
 
 **Bundle:** entry `index` 190,084 / 54,778 to 190,069 / 54,775 B raw / gzip (-15 / -3: no `p_user_id` in the transfer call). All 42 JS and CSS files 1,416,889 / 423,354 to 1,416,874 / 423,385 (gzip +31 from changed chunk hashes).
