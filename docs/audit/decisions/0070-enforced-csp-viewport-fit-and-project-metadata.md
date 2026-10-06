@@ -1,6 +1,6 @@
 # 0070: The Content Security Policy is enforced; the viewport covers the screen with safe-area insets; the package has its name and a licence
 
-**Status:** Accepted. Implemented on branch `phase-94-enforce-csp-and-metadata` (commit `204f2cd`, docs `f0b121e`), draft PR #45. Not merged yet.
+**Status:** Accepted. Released: commit `204f2cd`, docs `f0b121e`, hash backfill `a5ed754`, merged into `main` as `35f5fe4` (PR #45); Vercel `dpl_BnXVbW4UWcPdsAuFCFGn5WBqv3vX` READY in `icn1`.
 - **Amends** ADR `0068`: its report-only policy becomes the enforced one, and its viewport gains `viewport-fit=cover`.
 - **Amends** ADR `0041` and ADR `0060`: the toast's desktop corner and `<main>`'s minimum height now account for the safe-area insets.
 
@@ -81,6 +81,20 @@ On every device without insets each `env()` is 0 and nothing moves.
 - **Gate:** in the refactor log.
 - **On CI:** the pull request's run `37392537330` passed every job in 303 s, 456 passed and 6 skipped with no flaky test, unit 1031. The drift workflow on the branch (`37392536742`) found no drift with all 17 migrations, as `schema_drift_reader`.
 - **On the Vercel preview** (`dpl_87w3VXTjnjhDxhtNn8Lkv8mT2YeL`): one enforced `Content-Security-Policy` as configured, no report-only header, and the new viewport.
+
+## Release (2026-10-06)
+
+- **Merge:** PR #45 merged into `main` as `35f5fe4`, whose tree is identical to `a5ed754`. Vercel `dpl_BnXVbW4UWcPdsAuFCFGn5WBqv3vX` is READY in production (`icn1`). Its `index-D8evBrR4.js` (190,318 B), `index-13I3Hmli.css` (51,218 B) and the four vendor chunks are byte-identical to the local build of `main`, and it serves `viewport-fit=cover`.
+- **Headers on production:** one enforced `Content-Security-Policy` exactly as configured and no report-only header, on the page and on `/api/classify` alike (a guest `POST {}` answered `400` from `sin1::icn1`, `total` 4.4 ms), beside `X-Frame-Options: DENY`, `nosniff`, the referrer policy and Vercel's HSTS.
+- **The enforced CSP on production, as a guest,** in Chromium, Firefox and WebKit:
+  - the walk: Quick Add with a formula, every tab, a CSV export, and a sign-in attempt;
+  - 0 violations in each browser;
+  - the sign-in request reached Supabase (`400`, wrong password);
+  - in a separate check of 3 loads per browser, the service worker was active and controlling in 9 of 9. The walk's single first load found Chromium's worker installed but not yet controlling, as a first visit can.
+- **CI:** `main` CI on the merge (run `37393741851`) passed every job with no flaky test in 265 s end to end, 17 s of it the merge job (unit 1031; 456 passed, 6 skipped).
+- **Still to do, by the owner (T571):**
+  - signed-in sync and realtime under the enforced policy, walked in a signed-in browser with the console open;
+  - an installed iPhone app checked for the notch and the home indicator.
 
 ## Consequences
 

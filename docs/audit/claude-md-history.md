@@ -67,10 +67,11 @@ Nothing here is an instruction. When a figure here disagrees with a rule in `CLA
 - **The PWA toast sits above the mobile nav (ADR `0041`):** Released in `517aee8` (PR #14).
 - **The toast is `z-45` (ADR `0042`):** Released in `7e2daa9` (PR #15, Vercel `dpl_8vuPfAZLQkzY3dpuuXUSbXarHomX`), and confirmed on production with the same probe.
 
-## Response headers: frames refused, the CSP report-only (ADR `0068`)
+## Response headers: frames refused, the CSP enforced (ADR `0068`, `0070`)
 
 - **The hash test:** Nothing local serves these headers; a walk of `dist/` served with them, in all three browsers, found no violation.
 - **Release:** Released in `d05ff4d` (PR #42, Vercel `dpl_BrRs1ym5isR91twq4JDxBhDwuwFi`). On production every header is served; a guest walk in all three browsers found 0 violations; `Server-Timing` is unchanged (`total` 0.4 to 4.5 ms against 0.5 to 4.5 ms, ADR `0051`). Signed-in sync is not yet walked.
+- **Release (Phase 94, ADR `0070`):** The enforced policy released in `35f5fe4` (PR #45, Vercel `dpl_BnXVbW4UWcPdsAuFCFGn5WBqv3vX`). On production one enforced CSP is served on the page and on `/api/classify`, with no report-only header; a guest walk in all three browsers found 0 violations and its sign-in request reached Supabase; the service worker controlled 9 of 9 loads. Signed-in sync is not yet walked under it.
 
 ## Testing
 

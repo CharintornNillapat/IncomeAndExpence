@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 94 - The Content Security Policy is enforced; the viewport covers the screen with safe-area insets; the package has its name and a licence: T563-T570 (2026-10-06, commit `204f2cd`, docs `f0b121e`, draft PR #45)
+## Phase 94 - The Content Security Policy is enforced; the viewport covers the screen with safe-area insets; the package has its name and a licence: T563-T571 (2026-10-06, commit `204f2cd`, docs `f0b121e`, merge `35f5fe4`)
 
 ADR `0070`. The CSP had been report-only since Phase 92, which protects nothing; the package was still `react-example` with no licence file; and the installed iOS app drew under the status bar with no way to move clear of it.
 
@@ -36,10 +36,17 @@ ADR `0070`. The CSP had been report-only since Phase 92, which protects nothing;
 - **On CI:** the pull request's run `37392537330` passed every job in 303 s, 456 passed and 6 skipped with no flaky test, unit 1031. Drift workflow on the branch (`37392536742`): no drift. The Vercel preview serves the enforced policy, and blocks Vercel's own preview toolbar script (`vercel.live`), which production does not inject.
 - **Bundle** (gzip -9 on both sides, main from production): entry JS 190,069 / 54,595 to 190,318 / 54,638 B (+249 / +43); CSS 50,639 / 9,750 to 51,218 / 9,845 (+579 / +95). All of it is the inset classes.
 
+**Release:**
+- PR #45 merged into `main` as `35f5fe4`. Vercel `dpl_BnXVbW4UWcPdsAuFCFGn5WBqv3vX` is READY in production (`icn1`). Its `index-D8evBrR4.js` (190,318 B), `index-13I3Hmli.css` (51,218 B) and vendor chunks are byte-identical to the local build of `main`.
+- **T570:**
+  - one enforced CSP and no report-only header, on the page and on `/api/classify`;
+  - the guest walk on production found 0 violations in all three browsers, and its sign-in request reached Supabase;
+  - the service worker was active and controlling in 9 of 9 loads.
+- `main` CI on the merge (run `37393741851`) passed every job with no flaky test in 265 s end to end, 17 s of it the merge job (152 + 2 tests per browser: 456 passed, 6 skipped).
+
 **Still open**
-- **After the merge (T570):**
-  - the headers on production;
-  - the enforced CSP walked signed in (sync, realtime, a transfer, an import), which needs the owner's session;
+- **Owner (T571):**
+  - signed-in sync and realtime under the enforced CSP, walked with the console open;
   - an installed iPhone app checked for the insets.
 
   Rollback for the CSP is renaming the header back to `-Report-Only`.
