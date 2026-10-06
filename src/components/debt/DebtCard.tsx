@@ -48,7 +48,7 @@ function dueTag(debt: Debt, planItem?: DebtPlanItem): { text: string; className:
  * but the menu.
  */
 export const DebtCard: React.FC<DebtCardProps> = React.memo(({ debt, planItem, onOpenRepay, onSettle, onEdit, onDelete }) => {
-  // A paid-off debt is 100% whatever its stored remainder, and so is one with nothing borrowed (ADR 0079).
+  // A paid-off debt is 100% whatever its stored remainder, and so is one with nothing borrowed (ADR 0079, 0080).
   const remaining = debt.isSettled ? 0 : debt.remainingAmount;
   const repaid = debt.totalAmount - remaining;
   const percent = payoffPercent(debt.totalAmount, remaining, 100);

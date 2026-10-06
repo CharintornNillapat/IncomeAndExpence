@@ -40,8 +40,8 @@ export function requiredMonthly(debt: Debt, today: string): number | null {
 /**
  * The share of what was borrowed that is paid off, in percent, unclamped
  * (ADR 0079). With nothing borrowed there is no share, so it is
- * `ifNothingBorrowed`: the Debt payoff page reads such a debt as 100% and the
- * Dashboard as 0%, and each caller passes its own.
+ * `ifNothingBorrowed`: one debt reads 100% wherever it is shown (ADR 0080),
+ * while `useDebts`' total reads 0% when nothing is borrowed across all debts.
  */
 export function payoffPercent(total: number, remaining: number, ifNothingBorrowed: number): number {
   return total > 0 ? ((total - remaining) / total) * 100 : ifNothingBorrowed;
