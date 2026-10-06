@@ -4,6 +4,31 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
+## Phase 98 - Install scripts are an allow-list; the advisors re-read; the Do NOT list keeps what is stated nowhere else; the slow local runs are the machine: T595-T600 (2026-10-06, build `ab357f9`, docs `03133a6`, draft PR #49)
+
+ADR `0074`. Build and documentation hygiene; no change to `src/`, no migration.
+
+**Changed**
+- **`package.json`:** `"allowScripts": { "esbuild": false }`, written by `npm deny-scripts esbuild`. Vite uses esbuild's JavaScript API; the script only re-linked the command-line shim.
+- **`CLAUDE.md`:**
+  - a "Known Constraints" rule for install scripts;
+  - the advisors line (eleven `SECURITY DEFINER` signatures, read again 2026-10-06);
+  - the Do NOT list from 133 rules to 37, removing only rules a parent section states, with a heading sentence saying so.
+- **Docs:** ADR `0074` (with the 96-row table of removed rules and the sentences that carry them), the ledger, this log, baseline metrics.
+
+**Gate:**
+- Lint clean. Unit 1061/1061 in 41 files. Playwright 462 passed + 6 skipped of 468 in 10.7 m, first run, no failure.
+- **Install:** `npm ci` from clean prints no install-script warning; the build on it is byte-identical to production's Phase 97 files (10 of 10).
+- **Drift replay:** unchanged, 18 migrations.
+- **On CI:** the pull request's run `37431460824` passed every job in 285 s, 462 passed and 6 skipped with no flaky test, unit 1061, and its eight `npm ci` installs on Linux printed no install-script warning; the drift workflow on the branch (`37431460417`) found no drift with all 18 migrations.
+- **On the preview:** the Vercel preview (`dpl_6gw57CuAxfUDaaRTc85WNfSYaLcE`, READY in `icn1`) installs and goes straight to `npm run build`, without the four `npm warn install-scripts` lines Phase 97's production build printed there.
+- **Timing:** local per-spec time is 1.5 to 3.3 times CI's for the same code, evenly; CI went 323, 304, 285 s over Phases 95 to 97. The slow local runs are the machine.
+
+**Still open**
+- **From Phase 93:** drop the 20260909 `transfer_funds` signature (not before about 2026-10-13).
+- **Owner:** delete a throwaway account on production end to end; T571 (the signed-in walk, an installed iPhone app).
+- **Watched:** `public.transactions` against 100,000 rows (ADR `0073`).
+
 ## Phase 97 - Every account's data exports as one JSON file; the erasure cascade needs no index yet; Node 24.x: T588-T594 (2026-10-06, commit `b860bbe`, docs `71c9e15`, merge `73d705f`)
 
 ADR `0073`. PDPA's portability right, before ADR `0072`'s erasure: the app exported transactions and the diary, never the rest, and never soft-deleted rows.

@@ -1098,6 +1098,23 @@ The entry's growth is the ledger action itself, which lives with the other ledge
 
 **Intermittent local failures:** 6 in 1,071 full-suite runs (3 full runs). All were timeouts: a Firefox `goto`, a Firefox context close, and four WebKit clicks waiting for "stable". No assertion failed. See audit 005 finding 3 for the control runs.
 
+## Phase 98 (install scripts, CLAUDE.md, run time) - delta against Phase 97
+
+**Bundle:** unchanged; the build on a clean `npm ci` is byte-identical to production's Phase 97 files.
+
+**CLAUDE.md:** 798 lines / 161,676 B to 705 / 147,454 B (the Do NOT list 133 rules to 37).
+
+| Suite | Files | Tests | Runs | Result |
+|---|---|---|---|---|
+| Vitest (`unit/`) | 41 | 1061 | 1061 | 1061/1061; 84.5 s cold after `npm ci`, then 42.9 and 42.8 s |
+| Playwright (local, 4 workers) | 32 | 156 | 468 | 462 passed + 6 skipped of 468 in 10.7 m, first run, no failure |
+
+| Playwright time | Phase 97 local | Phase 98 local | `main` CI (Phase 97 merge) |
+|---|---|---|---|
+| Wall | 11.1 min | 10.7 min | 285 s |
+| Summed test time | 2,543 s | 2,412 s | 1,219 s |
+| Per spec, against CI | 1.5 to 3.0 times | 1.5 to 3.3 times | 1 |
+
 ## Phase 97 (whole-account export, cascade check) - delta against Phase 96
 
 **Bundle** (gzip -9 on both sides; Phase 96 from the production assets): entry `index` JS 190,913 / 54,813 to 190,954 / 54,830 B raw / gzip (+41 / +17); new `accountExport` chunk 2,282 / 946; `AccountModal` 12,409 / 3,994 to 14,184 / 4,463 (+1,775 / +469); `DiaryView` 14,494 / 5,106 to 14,277 / 4,989 (-217 / -117); CSS 51,229 / 9,852 unchanged.
