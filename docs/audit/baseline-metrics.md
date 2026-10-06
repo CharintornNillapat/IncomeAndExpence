@@ -1098,6 +1098,15 @@ The entry's growth is the ledger action itself, which lives with the other ledge
 
 **Intermittent local failures:** 6 in 1,071 full-suite runs (3 full runs). All were timeouts: a Firefox `goto`, a Firefox context close, and four WebKit clicks waiting for "stable". No assertion failed. See audit 005 finding 3 for the control runs.
 
+## Phase 102 (legacy transfer_funds refuses) - delta against Phase 101
+
+**Database (replay):** 19 migrations, from 18; `SECURITY DEFINER` functions `authenticated` may execute: 10, from 11 signatures. **Bundle:** no client change.
+
+| Suite | Files | Tests | Runs | Result |
+|---|---|---|---|---|
+| Vitest (`unit/`) | 42 | 1080 | 1080 | 1080/1080 (+3: the Phase 102 probe before, after, and failing on the old schema) |
+| Playwright (local, 4 workers) | 32 | 158 | 474 | 468 passed, 6 skipped of 474 (8.9 m), no failure |
+
 ## Phase 101 (strict mode) - delta against Phase 100
 
 **Bundle:** all 51 files in `dist/assets/` and `index.html` byte-identical to production's files of the same name, so no size changed.

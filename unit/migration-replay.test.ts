@@ -47,7 +47,7 @@ afterAll(async () => {
 describe('every migration, from empty', () => {
   it('applies in file order, starting from the baseline', () => {
     expect(migrationFiles()[0]).toBe(BASELINE);
-    expect(migrationFiles()).toHaveLength(18);
+    expect(migrationFiles()).toHaveLength(19);
   });
 
   it('builds the eight tables and what the live project holds', () => {
@@ -258,10 +258,38 @@ describe('the probes against the schema the migrations build', () => {
     expect(after).toEqual(before);
   }, 60_000);
 
-  it('Phase 93, after its migrations: passes against every file', async () => {
-    const { rows, before, after } = await runProbe('20261006_phase93.probe.sql', migrationFiles(), true);
+  // Its section 4 checks that the 20260909 signature still moves money, which
+  // Phase 102 ends on purpose; the Phase 102 probe checks the refusal instead.
+  const upTo101 = () => migrationFiles().filter(file => !file.includes('_phase102_'));
+
+  it('Phase 93, after its migrations: passes against every file up to Phase 102', async () => {
+    const { rows, before, after } = await runProbe('20261006_phase93.probe.sql', upTo101(), true);
     expect(rows).toContainEqual({ result: 'PHASE 93 PROBE OK' });
     expect(after).toEqual(before);
+  }, 60_000);
+
+  it('Phase 102, before its migration: applies it, passes and rolls back', async () => {
+    const { rows, before, after } = await runProbe('20261006_phase102.probe.sql', upTo101(), false);
+    expect(rows).toContainEqual({ result: 'PHASE 102 PROBE OK' });
+    expect(after).toEqual(before);
+  }, 60_000);
+
+  it('Phase 102, after its migration: passes against every file', async () => {
+    const { rows, before, after } = await runProbe('20261006_phase102.probe.sql', migrationFiles(), true);
+    expect(rows).toContainEqual({ result: 'PHASE 102 PROBE OK' });
+    expect(after).toEqual(before);
+  }, 60_000);
+
+  it('Phase 102: the probe fails on the schema before it, with the migration left out', async () => {
+    const probeDb = await createDatabase();
+    try {
+      await applyMigrations(probeDb, upTo101());
+      await expect(probeDb.exec(inlineProbe('20261006_phase102.probe.sql', { applied: true }))).rejects.toThrow(
+        /the old signature is still security definer/
+      );
+    } finally {
+      await probeDb.close();
+    }
   }, 60_000);
 
   const upTo95 = () => migrationFiles().filter(file => !file.includes('_phase96_'));

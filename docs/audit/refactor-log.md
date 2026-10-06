@@ -4,6 +4,29 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
+## Phase 102 - The 20260909 `transfer_funds` signature refuses every call, now, rather than being dropped: T621-T628 (2026-10-06, code `0b036d4`, docs `0871b15`, probe fix `f23832c`, draft PR #53)
+
+ADR `0078`. A build cached from before Phase 93 now gets "OUTDATED_CLIENT: Please reload the app to continue." from a transfer, instead of an atomic transfer today or, after a drop, the legacy non-atomic one. Not applied to live yet.
+
+**Changed**
+- **`supabase/migrations/20261006_phase102_deprecate_legacy_transfer_funds.sql` (new):** the 20260909 signature's body only raises (P0001); `SECURITY INVOKER`, `search_path = ''`; parameters, defaults, return type and grants unchanged.
+- **`supabase/tests/20261006_phase102.probe.sql` (new).**
+- **`unit/migration-replay.test.ts`:** three Phase 102 tests; Phase 93's after-run up to Phase 102; 19 migrations.
+- **Docs:** ADR `0078`; `CLAUDE.md`'s two-signature paragraph, the advisors' accepted list (ten functions), Done in Phase 102, the drop's condition, the unit count.
+
+**Gate:**
+- Lint clean. Unit 1080/1080 in 42 files. Playwright 468 passed, 6 skipped of 474 (8.9 m), no failure.
+- **Controls** (each fails the Phase 102 test on its intended assertion): a drop instead fails "the 20260909 signature is gone"; `SECURITY DEFINER` kept fails "still security definer"; `errcode = '42883'` fails "did not refuse A's own transfer"; `authenticated` revoked fails "would get 42501".
+- **Probe fix (T628):** The probe hashes the session body with carriage returns removed, as `supabase/catalog.sql` does (`03b469921a7c0d01909608cb8c6a53d7`, the same on live and in a replay), not the raw `md5(prosrc)`.
+- **On CI:** the pull request's first run (`37470255332`) failed two unit tests, the Phase 102 probe before and after, because it pinned the raw md5 of a body that holds carriage returns on Windows and live but not on CI's Linux checkout (T628); after the fix, run `37470710876` passed every job in 269 s, 468 passed and 6 skipped with no flaky test, unit 1080. Before the apply, the drift workflow on the branch (`37470252617`) reports exactly the three expected rows: the 20260909 signature as live has it (`security definer`, the old body), as the repo has it (`search_path=""`, the refusal), and the missing history row `phase102_deprecate_legacy_transfer_funds`.
+- **Replay:** 19 migrations; ten `SECURITY DEFINER` functions `authenticated` may execute, from eleven.
+- **Bundle:** no client change.
+
+**Still open**
+- **Owner:** apply the migration (dry-run probe, migration, history insert, after-apply probe), then the drift workflow.
+- **Later:** drop the 20260909 signature once no pre-Phase 93 build can be running.
+- **Owner:** a throwaway account on production (export, delete, restore); T571; leaked password protection.
+
 ## Phase 101 - Both TypeScript configs are `strict`; `tsconfig.parity.json` is gone: T615-T620 (2026-10-06, code `30609b4`, docs `2322ecc`, merge `313bbde`)
 
 ADR `0077`. Null and undefined are now checked in the app, its tests and the Vercel functions; nothing that ships changed.

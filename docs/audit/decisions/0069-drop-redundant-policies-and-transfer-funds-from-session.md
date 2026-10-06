@@ -4,6 +4,7 @@
 - **Amends** ADR `0063`: the baseline leaves out the two policies, as it already left out the one Phase 58s dropped, and the replay prelude gains a grant.
 - **Amends** ADR `0067`: its two scheduled findings, P1 and S2a, are done.
 - **Amends** ADR `0023`'s rule that the user comes from `auth.uid()` only, which `transfer_funds` (older than ADR `0023`) did not follow.
+- **Amended by** ADR `0078`: the 20260909 signature is not dropped yet; it refuses every call (`OUTDATED_CLIENT`) and is `SECURITY INVOKER`, and the drop waits until no build from before this phase can be running.
 
 **Date:** 2026-10-06
 
