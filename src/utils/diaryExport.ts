@@ -1,4 +1,5 @@
 import { todayIsoDate } from './date';
+import { saveJsonFile } from './accountExport';
 import { DiaryEntry } from '../types';
 
 /**
@@ -25,14 +26,5 @@ export function exportDiaryToJson(diaryEntries: DiaryEntry[]): void {
     entries: activeEntries,
   };
 
-  const jsonStr = JSON.stringify(exportPayload, null, 2);
-  const blob = new Blob([jsonStr], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.setAttribute('href', url);
-  link.setAttribute('download', `holistic_diary_export_${todayIsoDate()}.json`);
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
+  saveJsonFile(exportPayload, `holistic_diary_export_${todayIsoDate()}.json`);
 }
