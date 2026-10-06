@@ -4,6 +4,40 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
+## Phase 97 - Every account's data exports as one JSON file; the erasure cascade needs no index yet; Node 24.x: T588-T594 (2026-10-06, commit `b860bbe`, docs `71c9e15`, draft PR #48)
+
+ADR `0073`. PDPA's portability right, before ADR `0072`'s erasure: the app exported transactions and the diary, never the rest, and never soft-deleted rows.
+
+**Changed**
+- **`src/utils/accountExport.ts`:**
+  - `buildAccountExport` writes the six slices with soft-deleted rows, a header (`format`, `version`, `exportedAt`, `source`, `currency`, `counts`), each row through its type's field list, timestamps as `toISOString()`, rows by id.
+  - `saveJsonFile` makes the download; `diaryExport.ts` uses it instead of its own copy.
+- **`AccountModal`:** an "Export your data" section for a guest and an account. Signed in, it refuses while a load runs or after one failed a read. Delete account's copy points to it, not to the Transactions CSV.
+- **`scripts/bench-cascade-delete.mjs`:** times the erasure's cascade with and without the five foreign-key indexes. No migration (below).
+- **Node `24.x`** in `package.json` and the lockfile root; CI's `setup-node` steps run 24.
+- **Tests:**
+  - `unit/account-export.test.ts` (8);
+  - `authenticated-ledger.test.tsx` +3;
+  - `account-and-mobile-nav.spec.ts` +1 (a guest's download, read back).
+- **Docs:** ADR `0073`, `CLAUDE.md` (runtime, structure, an Accounts bullet, the advisors' foreign keys, suite sizes, a Do NOT), the ledger, this log, baseline metrics.
+
+**Gate:**
+- Lint clean. Unit 1061/1061 in 41 files. Playwright 462 passed + 6 skipped of 468 in 11.1 m, first run, no failure.
+- **Negative controls:**
+  - the export without its failed-load refusal fails 1;
+  - rows written with a spread fail 1 (an undeclared `access_token` reaches the file);
+  - no sort fails 1;
+  - no timestamp rewrite fails 2.
+- **Cascade** (live's shape 1 / 3 ms; a heavy account alone 36 / 28 ms; with 100k other rows 756 / 21 ms; with 500k 3,777 / 26 ms (without / with the five indexes, PGlite, median of 3)): no index until `public.transactions` passes 100,000 rows.
+- **On CI:** the pull request's run `37419198793` passed every job in 269 s on Node 24.21, 462 passed and 6 skipped with no flaky test, unit 1061; the drift workflow on the branch (`37419198799`) found no drift with all 18 migrations.
+- **Drift replay:** unchanged, 18 migrations.
+- **Bundle** (gzip -9 against production `main`): entry JS 190,913 / 54,813 to 190,954 / 54,830 B (+41 / +17: the new chunk's name in the preload map); a new lazy `accountExport` chunk, 2,282 / 946, shared by `AccountModal` (12,409 / 3,994 to 14,184 / 4,463) and `DiaryView` (14,494 / 5,106 to 14,277 / 4,989, its own download code gone); CSS unchanged.
+
+**Still open**
+- **Owner:** delete a throwaway account on production end to end; T571 (the signed-in walk, an installed iPhone app).
+- **From Phase 93:** drop the 20260909 `transfer_funds` signature (not before about 2026-10-13).
+- **Watched:** `public.transactions` against 100,000 rows (ADR `0073`).
+
 ## Phase 96 - Account deletion erases the whole account, the one hard delete: T580-T587 (2026-10-06, commit `9272c4b`, docs `75b968e`, merge `73878b4`)
 
 ADR `0072`. A signed-in person had no way to erase their account, which Thailand's PDPA entitles them to. Everything else stays soft-deleted.

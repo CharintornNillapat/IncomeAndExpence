@@ -3,6 +3,7 @@ import {
   AlertCircle,
   CheckCircle2,
   Cloud,
+  Download,
   KeyRound,
   Laptop,
   Lock,
@@ -24,7 +25,8 @@ import { supabase } from '../../lib/supabase';
 import { Button } from '../ui/Button';
 import { LABEL_CLASS, inputClass } from '../../utils/formStyles';
 import { describeUserAgent } from '../../utils/userAgent';
-import { formatLocalDateTime } from '../../utils/date';
+import { formatLocalDateTime, todayIsoDate } from '../../utils/date';
+import { buildAccountExport, saveJsonFile } from '../../utils/accountExport';
 import type { AuthSession } from '../../types';
 
 interface AccountModalProps {
@@ -174,12 +176,17 @@ const AccountModalBody: React.FC<Omit<AccountModalProps, 'isOpen'>> = ({ onClose
             <ProfileSection />
             <PasswordSection />
           </div>
-          <DeleteAccountSection
-            onDeleted={() =>
-              setDeletedNotice('Your account and everything in it were deleted. This device is in guest mode now.')
-            }
-          />
         </>
+      )}
+
+      <ExportDataSection />
+
+      {isAuthenticated && (
+        <DeleteAccountSection
+          onDeleted={() =>
+            setDeletedNotice('Your account and everything in it were deleted. This device is in guest mode now.')
+          }
+        />
       )}
 
       <ConfirmDialog
@@ -349,6 +356,68 @@ const SessionsSection: React.FC = () => {
   );
 };
 
+/**
+ * Whole-account export (Phase 97, ADR 0073), for a guest and a signed-in
+ * account alike. It writes what state holds, so it refuses while a cloud load
+ * is running or after one failed a read: a backup missing a table, taken just
+ * before a delete, would lose that table for good.
+ */
+const ExportDataSection: React.FC = () => {
+  const { isAuthenticated, isSyncing, syncError, wallets, transactions, debts, categories, keywordRules, diaryEntries } =
+    useFinanceState();
+  const [error, setError] = useState<string | null>(null);
+  const { value: success, flash: flashSuccess, clear: clearSuccess } = useTransientFlash<string | null>(null, 5000);
+
+  const handleExport = () => {
+    clearSuccess();
+    setError(null);
+    if (isAuthenticated && isSyncing) {
+      setError('Your data is still loading. Export again when the sync has finished.');
+      return;
+    }
+    if (isAuthenticated && syncError) {
+      setError('Your data could not all be loaded, so the file would be incomplete. Use Sync now, then export again.');
+      return;
+    }
+    const fileName = `finlife-export-${todayIsoDate()}.json`;
+    try {
+      const file = buildAccountExport(
+        { wallets, transactions, debts, categories, keywordRules, diaryEntries },
+        { signedIn: isAuthenticated, exportedAt: new Date() }
+      );
+      saveJsonFile(file, fileName);
+    } catch (err) {
+      console.error('[Export All Data Failed]', err);
+      setError('Could not create the file. Nothing was saved.');
+      return;
+    }
+    flashSuccess(`Saved ${fileName}.`);
+  };
+
+  return (
+    <section id="account-export" className="rounded-xl border border-line p-4 sm:p-5 space-y-3">
+      <div className="flex items-center gap-2">
+        <Download className="w-4 h-4 text-fg-secondary" />
+        <h3 className="text-sm font-bold text-fg">Export your data</h3>
+      </div>
+      <p className="text-xs text-fg-secondary leading-relaxed">
+        {isAuthenticated
+          ? 'Downloads everything in your account as one JSON file: wallets, transactions, debts, categories, smart rules and diary entries, deleted items included. Your email, password and sign-in are not in it.'
+          : 'Downloads everything stored in this browser as one JSON file: wallets, transactions, debts, categories, smart rules and diary entries, deleted items included.'}
+      </p>
+      <FormFeedback success={success} error={error} />
+      <Button
+        id="account-export-btn"
+        variant="secondary"
+        onClick={handleExport}
+        icon={<Download className="w-3.5 h-3.5" />}
+      >
+        <span>Export all data (JSON)</span>
+      </Button>
+    </section>
+  );
+};
+
 /** The phrase the person types before an account can be deleted; the server checks it too (ADR 0072). */
 const DELETE_PHRASE = 'DELETE';
 
@@ -389,7 +458,7 @@ const DeleteAccountSection: React.FC<{ onDeleted: () => void }> = ({ onDeleted }
       </div>
       <p className="text-xs text-fg-secondary leading-relaxed">
         Deletes your account and your sign-in, with every wallet, transaction, debt, category, smart rule and diary entry
-        in it. Every device is signed out. This cannot be undone. To keep a copy, export a CSV from Transactions first.
+        in it. Every device is signed out. This cannot be undone. To keep a copy, export all your data above first.
       </p>
       <Button
         id="account-delete-btn"

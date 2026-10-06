@@ -2117,6 +2117,81 @@ describe('the Account & Security modal (ADR 0024)', () => {
   });
 });
 
+describe('exporting all of the account\'s data (Phase 97, ADR 0073)', () => {
+  /*
+   * The export writes whatever state holds, so it must refuse when state is
+   * not the whole account: a load still running or one that failed a read.
+   * A backup that silently missed a table is worse than none before a delete.
+   */
+  const saved: Blob[] = [];
+  const realCreate = URL.createObjectURL;
+  const realRevoke = URL.revokeObjectURL;
+  const readBlob = (blob: Blob) =>
+    new Promise<string>((resolve) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.readAsText(blob);
+    });
+  const open = () => showUi!(<AccountModal isOpen onClose={() => showUi!(null)} onRequestSignIn={() => {}} />);
+  const exportButton = () => screen.findByRole('button', { name: 'Export all data (JSON)' });
+
+  beforeEach(() => {
+    installLedgerRpcs();
+    saved.length = 0;
+    URL.createObjectURL = vi.fn((blob: Blob) => {
+      saved.push(blob);
+      return 'blob:finlife-export';
+    });
+    URL.revokeObjectURL = vi.fn();
+  });
+  afterEach(() => {
+    URL.createObjectURL = realCreate;
+    URL.revokeObjectURL = realRevoke;
+  });
+
+  it('downloads every cloud row, a deleted one included, and no sign-in detail', async () => {
+    const kept = await expense(200);
+    const gone = await expense(35);
+    await landed(gone.txId);
+    expect((await actions().softDeleteTransaction(gone.txId!)).success).toBe(true);
+
+    open();
+    fireEvent.click(await exportButton());
+    await waitFor(() => expect(saved).toHaveLength(1));
+    const text = await readBlob(saved[0]);
+    const file = JSON.parse(text);
+
+    expect(file.source).toBe('account');
+    expect(file.wallets).toHaveLength(state().wallets.length);
+    expect(file.categories).toHaveLength(state().categories.length);
+    expect(file.transactions.map((t: { id: string }) => t.id).sort()).toEqual([kept.txId, gone.txId].sort());
+    expect(file.transactions.find((t: { id: string }) => t.id === gone.txId).isDeleted).toBe(true);
+    expect(text).not.toContain('harness@example.com');
+    expect(text).not.toMatch(/token/i);
+    expect(await screen.findByText(/Saved finlife-export-\d{4}-\d{2}-\d{2}\.json/)).toBeTruthy();
+  });
+
+  it('refuses while the last cloud load failed a read, and says what to do', async () => {
+    fake.state.failures.set('debts:select', { message: 'network down' });
+    await actions().refreshFromCloud();
+    await waitFor(() => expect(state().syncError).toContain('debts'));
+
+    open();
+    fireEvent.click(await exportButton());
+    expect(await screen.findByText(/could not all be loaded/)).toBeTruthy();
+    expect(saved).toHaveLength(0);
+  });
+
+  it('says so when the browser cannot make the file', async () => {
+    URL.createObjectURL = vi.fn(() => {
+      throw new Error('quota exceeded');
+    });
+    open();
+    fireEvent.click(await exportButton());
+    expect(await screen.findByText(/could not create the file/i)).toBeTruthy();
+  });
+});
+
 describe('deleting the account (Phase 96, ADR 0072)', () => {
   /*
    * `delete_user_account` removes the auth user, and every table cascades

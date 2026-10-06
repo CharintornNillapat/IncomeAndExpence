@@ -1,3 +1,4 @@
+import fs from 'fs';
 import { test, expect } from '@playwright/test';
 import { gotoTab, addQuickTransaction, seedLedger, SAMPLE_WALLETS } from './helpers';
 
@@ -95,6 +96,26 @@ test.describe('Account & Security on desktop', () => {
     await expect(page.locator('#account-status-card')).toContainText('Guest mode');
     await expect(page.locator('#account-delete')).toHaveCount(0);
     await expect(page.locator('#account-delete-btn')).toHaveCount(0);
+  });
+
+  // Phase 97 (ADR 0073): a guest can take everything this browser holds as
+  // one JSON file. The signed-in export, and its refusal after a failed load,
+  // are in unit/authenticated-ledger.test.tsx.
+  test('exports everything this browser holds as one JSON file', async ({ page }) => {
+    await addQuickTransaction(page, 'E2E whole export');
+    await page.locator('#navbar-account-btn').click();
+
+    const download = page.waitForEvent('download');
+    await page.locator('#account-export-btn').click();
+    const file = await download;
+    expect(file.suggestedFilename()).toMatch(/^finlife-export-\d{4}-\d{2}-\d{2}\.json$/);
+    await expect(page.locator('#account-export')).toContainText(`Saved ${file.suggestedFilename()}.`);
+
+    const data = JSON.parse(fs.readFileSync((await file.path()) as string, 'utf-8'));
+    expect(data).toMatchObject({ format: 'finlife-tracker-export', version: 1, source: 'this-device', currency: 'THB' });
+    expect(data.counts.wallets).toBe(3);
+    expect(data.transactions.map((t: { description: string }) => t.description)).toEqual(['E2E whole export']);
+    expect(data.exportedAt).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
   });
 
   test('its Sign in button hands over to the sign-in modal', async ({ page }) => {
