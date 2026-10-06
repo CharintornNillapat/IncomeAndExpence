@@ -1081,6 +1081,24 @@ Approved explicitly by the user, planned and approved before any code was writte
 - **One negative control was redone** because the first attempt produced malformed TypeScript that the dev server still served — the tests failed, but possibly for the wrong reason.
 - **No flakes.** Phase 44's `wallets.spec.ts` webkit flake has now not reproduced across three consecutive phases; still watched rather than closed.
 
+## Phase 100 - The backup schemas parse to exactly their types, checked by `tsc`; the architecture at Phase 100: T608-T613 (2026-10-06)
+
+ADR `0076`, amending ADR `0075`. Branch `phase-100-type-parity-and-milestone`, cut from `main` at `961165d`. Approved explicitly by the user (scope: replace the restore's type assertion with a compile-time check that each schema equals its type, negative type-level checks, the gate, a milestone ADR). No migration, and no change to what the app does.
+
+| # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
+|---|---|---|---|---|---|---|---|---|---|---|
+| T608 | `Equal` and `schemaOf<T>()`: a schema must parse to exactly `T`; the error names the field a side lacks | `src/utils/schemaParity.ts` | High | Low | 0.4h | done | - | - | - | - |
+| T609 | Every row schema and the file schema wrapped in `schemaOf`; the `as AccountExport` cast removed | `src/utils/accountExport.ts` | High | Low | 0.2h | done | T608 | - | - | `accountExport` chunk, see the log |
+| T610 | A strict pass for nullability (the root config has `strictNullChecks` off), run by `npm run lint` | `tsconfig.parity.json`, `tsconfig.json`, `package.json` | Med | Low | 0.2h | done | T609 | - | - | - |
+| T611 | Negative checks: one matching schema, six drifts under `@ts-expect-error`; six controls on the real code | `unit/schema-parity.check.ts` | High | Low | 0.4h | done | T610 | - | controls: a new `Wallet` field fails 34 (4 in the parity files, naming `pinned`); `Debt.dueDate` nullable fails 2 (strict pass only); a new `AccountExport` header field fails 3; a new `FoodQuality` member fails 2; the schema making `rawInput` required fails 2; `schemaOf` made to always pass leaves all 6 `@ts-expect-error` lines unused | - |
+| T612 | Gate: lint, unit, Playwright, drift replay, bundle | - | High | Low | 0.3h | done | T611 | - | lint clean; unit 1077/1077 in 42 files; Playwright 468 passed, 6 skipped of 474 (8.8 m), no failure; replay 18 migrations | - |
+| T613 | ADR `0076` with the architecture at Phase 100, ADR `0075`'s amendment line, `CLAUDE.md`, this ledger, the refactor log, baseline metrics | `docs/`, `CLAUDE.md` | Low | Low | 0.5h | done | T612 | - | - | - |
+
+**Notes on execution:**
+- **The names in the request** (`AccountBackupSchema`, `AccountBackup`) are `BackupSchema` and `AccountExport` in the code; kept.
+- **Assignability alone would not have done it:** without the cast, `result.data` already assigned to `AccountExport`, and a schema missing an optional field still would.
+- **The root config could not see nullability.** Measured before writing anything: of five drifts it caught four and missed a field turning nullable; `--strict` caught all five. Hence the strict pass, scoped to the parity files rather than the whole app.
+
 ## Phase 99 - A backup restores into a guest's browser, by replacement, after a strict check; three specs intercept requests: T601-T607 (2026-10-06)
 
 ADR `0075`, extending ADR `0073`. Branch `phase-99-doc-alignment-and-data-restore`, cut from `main` at `7f64c16`; commit `0e7f4fe`, docs `f5b64e0`, hash backfill `b99b6c0`; merged into `main` as `59e2807` (PR #50); Vercel `dpl_8ikvp4XEBhbHjprSD1mYj63um3b5` READY in `icn1`. `Main` CI on the merge (run `37442373083`) passed every job with no flaky test in 275 s end to end, 24 s of it the merge job (unit 1077; 468 passed, 6 skipped). **On the pull request's CI:** the pull request's run `37440867655` passed every job in 267 s, 468 passed and 6 skipped with no flaky test, unit 1077; the drift workflow on the branch (`37440866209`) found no drift with all 18 migrations. Approved explicitly by the user (scope: the intercepting-spec count, a restore with strict Zod checks and a confirmation, signed in "atomically apply or warn"). Signed in, the restore warns and refuses (no migration); the schema is unchanged.

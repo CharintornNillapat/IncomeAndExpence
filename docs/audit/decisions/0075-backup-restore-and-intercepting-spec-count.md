@@ -3,6 +3,7 @@
 **Status:** Accepted. Released: commit `0e7f4fe`, docs `f5b64e0`, hash backfill `b99b6c0`, merged into `main` as `59e2807` (PR #50); Vercel `dpl_8ikvp4XEBhbHjprSD1mYj63um3b5` READY in `icn1`. No migration: the schema is unchanged.
 - **Extends** ADR `0073`: the export's file can be read back.
 - **Settles** the count of request-intercepting specs, on which CLAUDE.md's Testing section and its Do NOT list disagreed.
+- **Amended by** ADR `0076`: `tsc` now holds each restore schema to its type, so the second edit a new field needs is enforced (see Consequences).
 
 **Date:** 2026-10-06
 
