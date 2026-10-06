@@ -1,6 +1,6 @@
 # 0072: Account deletion erases the whole account, the one hard delete
 
-**Status:** Accepted. Implemented on branch `phase-96-pdpa-account-deletion`. Not merged yet. **The owner applies the migration before the merge** (see "Order of release").
+**Status:** Accepted. Implemented on branch `phase-96-pdpa-account-deletion` (commit `9272c4b`, docs `75b968e`), draft PR #47. Not merged yet. **The owner applies the migration before the merge** (see "Order of release").
 - **Amends** the soft-delete rule (ADR `0016`, CLAUDE.md "Data Integrity"): an account's erasure deletes its rows for good.
 - **Amends** ADR `0024`'s note that the app never writes to the `auth` schema: this one function deletes the caller's `auth.users` row.
 
@@ -93,6 +93,7 @@ Stated so the claim is not larger than the code:
   - without the phrase gate, the dialog test fails.
 - **`tests/account-and-mobile-nav.spec.ts`, +1:** a guest's Account & Security has no Delete account section, in all three browsers. No spec signs in, so the signed-in flow is in the unit suite: a spec that faked Supabase's auth and data APIs would be the request-intercepting spec CLAUDE.md rules out when a unit test reaches the same code.
 - **Gate:** in the refactor log.
+- **On CI:** the pull request's run `37406934324` passed every job in 300 s, 459 passed and 6 skipped with no flaky test, unit 1050.
 
 ## Consequences
 

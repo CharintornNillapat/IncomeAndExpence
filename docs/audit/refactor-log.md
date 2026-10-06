@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 96 - Account deletion erases the whole account, the one hard delete: T580-T587 (2026-10-06)
+## Phase 96 - Account deletion erases the whole account, the one hard delete: T580-T587 (2026-10-06, commit `9272c4b`, docs `75b968e`, draft PR #47)
 
 ADR `0072`. A signed-in person had no way to erase their account, which Thailand's PDPA entitles them to. Everything else stays soft-deleted.
 
@@ -33,6 +33,7 @@ ADR `0072`. A signed-in person had no way to erase their account, which Thailand
   - deleting wallets instead of the auth user fails it at "3 a row of account A survived";
   - the client without its sign-out fails 2 tests;
   - the dialog without its phrase gate fails 1.
+- **On CI:** the pull request's run `37406934324` passed every job in 300 s, 459 passed and 6 skipped with no flaky test, unit 1050.
 - **Drift replay:** 18 migrations; expects 17 functions and 68 function grants. Live differs until the owner applies the file (T587), as designed.
 - **Bundle** (gzip -9 against production `main`): entry JS 190,322 / 54,636 to 190,913 / 54,813 B (+591 / +177: `deleteAccount` and the dialog's field); the lazy `AccountModal` chunk 10,631 / 3,550 to 12,409 / 3,994 (+1,778 / +444); CSS unchanged.
 
