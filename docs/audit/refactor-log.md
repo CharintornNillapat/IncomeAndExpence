@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 100 - The backup schemas parse to exactly their types, checked by `tsc`; the architecture at Phase 100: T608-T614 (2026-10-06, code `95525fb`, docs `5c474ea`, test fix `955e74b`, draft PR #51)
+## Phase 100 - The backup schemas parse to exactly their types, checked by `tsc`; the architecture at Phase 100: T608-T614 (2026-10-06, code `95525fb`, docs `5c474ea`, test fix `955e74b`, merge `c3af6f7`)
 
 ADR `0076`. The restore's schemas are now held to the types the export writes; no change to what the app does.
 
@@ -22,6 +22,10 @@ ADR `0076`. The restore's schemas are now held to the types the export writes; n
 - **On CI:** the pull request's first run (`37447199860`) failed on one unit test, `proxy-contract.test.ts`'s Server-Timing sum (94.6 against 94.60000000000001, a rounding the test did not allow for; T614); after the fix, run `37447478059` passed every job in 297 s, 468 passed and 6 skipped with no flaky test, unit 1077, the strict pass included; the drift workflow on the branch (`37447199821`) found no drift: live matches all 18 migrations.
 - **Drift replay:** unchanged, 18 migrations.
 - **Bundle** (gzip -9 against production `main`): entry JS the same size, 191,652 / 55,091 B; `accountExport` 5,694 / 2,210 to 5,740 / 2,225 B (+46 / +15: the `schemaOf` calls); `AccountModal` 16,414 / 5,167 to 16,414 / 5,169 (only the hashed chunk names it imports changed); CSS and the vendor chunks unchanged. `schemaParity.ts` has no chunk of its own: its one runtime function is inlined into `accountExport`, and its types emit nothing.
+
+**Release:**
+- PR #51 merged into `main` as `c3af6f7`, whose tree is identical to `b0a3ae6`. Vercel `dpl_CHtSQ9Fa3eJUwQrEpwmtovmwjzCa` is READY in production (`icn1`); a function answers from `icn1`. It serves the files built on the branch, by their content-hashed names: the entry script `index-BO4OG9j-.js` (191,652 B) and `accountExport-B2Kz8P_P.js` (5,740 B, with `schemaOf`); `AccountModal` is 16,414 B.
+- `main` CI on the merge (run `37456205706`) passed every job with no flaky test in 262 s end to end, 20 s of it the merge job (unit 1077; 468 passed, 6 skipped).
 
 **Still open**
 - **From Phase 93:** drop the 20260909 `transfer_funds` signature (not before about 2026-10-13).
