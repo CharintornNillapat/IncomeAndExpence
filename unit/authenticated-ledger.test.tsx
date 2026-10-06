@@ -2192,6 +2192,29 @@ describe('exporting all of the account\'s data (Phase 97, ADR 0073)', () => {
   });
 });
 
+describe('restoring a backup while signed in (Phase 99, ADR 0075)', () => {
+  /*
+   * Signed in, the cloud is the record: a restore into this device's state
+   * would be replaced by the next load, so it is refused, and the modal says
+   * why instead of offering the file picker.
+   */
+  beforeEach(() => installLedgerRpcs());
+
+  it('refuses, says to sign out first, and changes nothing', () => {
+    const before = state().wallets;
+    const result = actions().restoreBackup({ wallets: [], transactions: [], debts: [], categories: [], keywordRules: [], diaryEntries: [] });
+    expect(result).toEqual({ success: false, error: expect.stringMatching(/^Sign out first/) });
+    expect(state().wallets).toBe(before);
+  });
+
+  it('offers no import in the modal, and says why', async () => {
+    showUi!(<AccountModal isOpen onClose={() => showUi!(null)} onRequestSignIn={() => {}} />);
+    expect(await screen.findByText(/Restoring a backup works in guest mode/)).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Import backup (JSON)' })).toBeNull();
+    expect(document.getElementById('account-import-input')).toBeNull();
+  });
+});
+
 describe('deleting the account (Phase 96, ADR 0072)', () => {
   /*
    * `delete_user_account` removes the auth user, and every table cascades

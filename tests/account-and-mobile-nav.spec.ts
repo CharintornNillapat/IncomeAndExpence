@@ -118,6 +118,50 @@ test.describe('Account & Security on desktop', () => {
     expect(data.exportedAt).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
   });
 
+  // Phase 99 (ADR 0075): that file restores in guest mode, replacing what the
+  // browser holds after a confirmation. File checks and the signed-in refusal
+  // are in unit/account-export.test.ts and unit/authenticated-ledger.test.tsx.
+  test('restores a backup exported here, replacing what was added since, and keeps it after a reload', async ({ page }) => {
+    await addQuickTransaction(page, 'E2E kept by the backup');
+    await page.locator('#navbar-account-btn').click();
+    const download = page.waitForEvent('download');
+    await page.locator('#account-export-btn').click();
+    const backupPath = (await (await download).path()) as string;
+    await page.locator('#account-modal-close-btn').click();
+    await addQuickTransaction(page, 'E2E added after the backup');
+
+    await page.locator('#navbar-account-btn').click();
+    await page.locator('#account-import-input').setInputFiles(backupPath);
+    const dialog = page.getByRole('dialog', { name: "Replace this browser's data with the backup?" });
+    await expect(dialog).toContainText('3 wallets, 1 transaction,');
+    await expect(dialog).toContainText('This browser holds 2 transactions now');
+    await dialog.getByRole('button', { name: 'Replace with backup' }).click();
+    await expect(page.locator('#account-export')).toContainText('Restored the backup from');
+    await page.locator('#account-modal-close-btn').click();
+
+    for (const reload of [false, true]) {
+      if (reload) await page.reload();
+      await gotoTab(page, 'transactions');
+      await expect(page.getByText('E2E kept by the backup', { exact: true })).toHaveCount(1);
+      await expect(page.getByText('E2E added after the backup', { exact: true })).toHaveCount(0);
+    }
+  });
+
+  test('refuses a file that is not a backup, and changes nothing', async ({ page }) => {
+    await addQuickTransaction(page, 'E2E survives a bad file');
+    await page.locator('#navbar-account-btn').click();
+    await page.locator('#account-import-input').setInputFiles({
+      name: 'notes.json',
+      mimeType: 'application/json',
+      buffer: Buffer.from('{"hello":"world"}'),
+    });
+    await expect(page.locator('#account-export')).toContainText('This file cannot be restored');
+    await expect(page.getByRole('dialog', { name: "Replace this browser's data with the backup?" })).toHaveCount(0);
+    await page.locator('#account-modal-close-btn').click();
+    await gotoTab(page, 'transactions');
+    await expect(page.getByText('E2E survives a bad file', { exact: true })).toHaveCount(1);
+  });
+
   test('its Sign in button hands over to the sign-in modal', async ({ page }) => {
     await page.locator('#navbar-account-btn').click();
     await page.locator('#account-signin-btn').click();
