@@ -30,12 +30,12 @@ test.describe('Safe-area insets', () => {
     await expect(mobileNav(page)).toHaveCSS('padding-bottom', '34px');
 
     // At the end of the page the footer's margin keeps it out from under the
-    // nav. 1px is the nav's top border, which overlapped before insets too.
+    // nav, its 1px top border included (ADR 0071).
     await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
     await expect(async () => {
       const footer = (await page.locator('footer').boundingBox())!;
       const nav = (await mobileNav(page).boundingBox())!;
-      expect(footer.y + footer.height).toBeLessThanOrEqual(nav.y + 1);
+      expect(footer.y + footer.height).toBeLessThanOrEqual(nav.y);
     }).toPass();
     await page.evaluate(() => window.scrollTo(0, 0));
 

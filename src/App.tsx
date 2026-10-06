@@ -364,8 +364,10 @@ const MainApp: React.FC = () => {
       {/* PWA Service Worker Update / Offline Prompt */}
       <ReloadPrompt />
 
-      {/* Footer (with safe bottom margin on mobile) */}
-      <footer className="border-t border-line bg-surface-1 py-6 mt-6 sm:mt-12 mb-[calc(4rem+env(safe-area-inset-bottom,0.5rem))] md:mb-0 text-center text-xs text-fg-secondary transition-control duration-200">
+      {/* Footer. Below `md` its bottom margin is the mobile nav's height: a
+          52px tab, 12px of padding and a 1px top border (4rem + 1px), plus the
+          nav's own safe-area expression (ADR 0070, 0071). */}
+      <footer className="border-t border-line bg-surface-1 py-6 mt-6 sm:mt-12 mb-[calc(4rem+1px+env(safe-area-inset-bottom,0.5rem))] md:mb-0 text-center text-xs text-fg-secondary transition-control duration-200">
         <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
           <p>FinLife Tracker · Track money and daily habits</p>
         </div>
