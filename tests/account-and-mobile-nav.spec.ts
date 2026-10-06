@@ -86,6 +86,17 @@ test.describe('Account & Security on desktop', () => {
     await expect(page.locator('#account-status-card')).toContainText('Guest mode');
   });
 
+  // Phase 96 (ADR 0072): deleting an account needs one. A guest has nothing in
+  // the cloud to erase, so the action is not offered at all, rather than shown
+  // and refused. The signed-in confirmation flow is in
+  // unit/authenticated-ledger.test.tsx, since no spec signs in.
+  test('offers a guest no Delete account action', async ({ page }) => {
+    await page.locator('#navbar-account-btn').click();
+    await expect(page.locator('#account-status-card')).toContainText('Guest mode');
+    await expect(page.locator('#account-delete')).toHaveCount(0);
+    await expect(page.locator('#account-delete-btn')).toHaveCount(0);
+  });
+
   test('its Sign in button hands over to the sign-in modal', async ({ page }) => {
     await page.locator('#navbar-account-btn').click();
     await page.locator('#account-signin-btn').click();

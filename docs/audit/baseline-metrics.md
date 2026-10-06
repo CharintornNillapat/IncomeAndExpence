@@ -1098,6 +1098,21 @@ The entry's growth is the ledger action itself, which lives with the other ledge
 
 **Intermittent local failures:** 6 in 1,071 full-suite runs (3 full runs). All were timeouts: a Firefox `goto`, a Firefox context close, and four WebKit clicks waiting for "stable". No assertion failed. See audit 005 finding 3 for the control runs.
 
+## Phase 96 (account deletion) - delta against Phase 95
+
+**Bundle** (gzip -9 on both sides; Phase 95 from the production assets): entry `index` JS 190,322 / 54,636 to 190,913 / 54,813 B raw / gzip (+591 / +177); `AccountModal` chunk 10,631 / 3,550 to 12,409 / 3,994 (+1,778 / +444); CSS 51,229 / 9,852 unchanged.
+
+| Suite | Files | Tests | Runs | Result |
+|---|---|---|---|---|
+| Vitest (`unit/`) | 40 | 1050 | 1050 | 1050/1050 (Phase 96 probe 2 ways, signed-in deletion 6) |
+| Playwright (local, 4 workers) | 32 | 155 | 465 | 458 passed + 1 failed + 6 skipped of 465 in 11.8 m, first run; the failure (WebKit, `account-and-mobile-nav` "lowering a balance") is the ADR `0058` painting stall: its trace's last screencast frame is 0.8 s into the 15 s click wait, and it passed 10 of 10 alone |
+
+| Schema (replayed) | Phase 95 | Phase 96 |
+|---|---|---|
+| Migrations | 17 | 18 |
+| Functions | 16 | 17 (`delete_user_account`) |
+| Function grants | 64 | 68 |
+
 ## Phase 95 (CSP violation reports, footer margin, Node engines) - delta against Phase 94
 
 **Bundle** (gzip -9 on both sides; Phase 94 from the production assets): entry `index` JS 190,318 / 54,642 to 190,322 / 54,636 B raw / gzip (+4 / -6), CSS 51,218 / 9,849 to 51,229 / 9,852 (+11 / +3). The footer's margin class only; `api/csp-report.ts` is a function, not in the bundle.

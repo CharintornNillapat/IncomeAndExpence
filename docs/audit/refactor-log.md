@@ -4,6 +4,44 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
+## Phase 96 - Account deletion erases the whole account, the one hard delete: T580-T587 (2026-10-06, commit `9272c4b`, docs `75b968e`, draft PR #47)
+
+ADR `0072`. A signed-in person had no way to erase their account, which Thailand's PDPA entitles them to. Everything else stays soft-deleted.
+
+**Changed**
+- **`20261006_phase96_delete_user_account.sql`:** `delete_user_account(p_confirm)`, `SECURITY DEFINER`, `authenticated` only.
+  - It runs `delete from auth.users where id = auth.uid()`, and every table follows by `ON DELETE CASCADE`: the six ledger tables, `profiles`, `ai_request_counts`, and the account's sessions and identities.
+  - No session is 42501; any phrase but exactly `DELETE` is 22023, with nothing changed.
+  - It returns the account's row counts.
+- **Client:** `deleteAccount` calls it, then `signOut()`, which clears this device.
+  - A missing function or a refusal stays signed in with the reason.
+  - An error with no SQLSTATE runs `verifySession()`, since the delete may have committed.
+- **UI:**
+  - `AccountModal` has a Delete account section, signed in only;
+  - `ConfirmDialog` takes `confirmPhrase`, a labelled field that keeps Confirm disabled until the phrase is exact;
+  - on success the modal stays open on guest mode with a notice.
+- **Tests:**
+  - the Phase 96 probe, run before and after its migration;
+  - `authenticated-ledger.test.tsx` +6;
+  - `account-and-mobile-nav.spec.ts` +1 (a guest has no Delete account).
+- **Docs:** ADR `0072`, `CLAUDE.md` (the exception to the soft-delete rule, a Phase 96 migration section, the Accounts bullet, suite sizes, a Do NOT), the ledger, this log, baseline metrics.
+
+**Gate:**
+- Lint clean. Unit 1050/1050 in 40 files. Playwright 458 passed + 1 failed + 6 skipped of 465 in 11.8 m, first run; the failure (WebKit, `account-and-mobile-nav` "lowering a balance") is the ADR `0058` painting stall: its trace's last screencast frame is 0.8 s into the 15 s click wait, and it passed 10 of 10 alone.
+- **Negative controls:**
+  - the migration without its phrase check fails the probe at "2 a call with no phrase was not refused";
+  - deleting wallets instead of the auth user fails it at "3 a row of account A survived";
+  - the client without its sign-out fails 2 tests;
+  - the dialog without its phrase gate fails 1.
+- **On CI:** the pull request's run `37406934324` passed every job in 300 s, 459 passed and 6 skipped with no flaky test, unit 1050.
+- **Drift replay:** 18 migrations; expects 17 functions and 68 function grants. Live differs until the owner applies the file (T587), as designed.
+- **Bundle** (gzip -9 against production `main`): entry JS 190,322 / 54,636 to 190,913 / 54,813 B (+591 / +177: `deleteAccount` and the dialog's field); the lazy `AccountModal` chunk 10,631 / 3,550 to 12,409 / 3,994 (+1,778 / +444); CSS unchanged.
+
+**Still open**
+- **Owner, before the merge (T587):** the probe with the migration inlined, the migration with its history row, the probe again, then the drift workflow by hand.
+- **Owner (T571):** the signed-in walk under the enforced CSP; an installed iPhone app.
+- **From Phase 93:** drop the 20260909 `transfer_funds` signature (not before about 2026-10-13).
+
 ## Phase 95 - CSP violations are reported to /api/csp-report; the footer clears the nav exactly; Node 22 or later: T572-T579 (2026-10-06, commit `57c7a06`, docs `c8c2934`, merge `a632c3e`)
 
 ADR `0071`. The enforced policy (ADR `0070`) had no report endpoint, so a blocked request was invisible to anyone but the visitor.

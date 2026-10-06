@@ -12,6 +12,7 @@ import {
   Save,
   ShieldCheck,
   Smartphone,
+  Trash2,
   User as UserIcon,
 } from 'lucide-react';
 import { Modal } from '../Modal';
@@ -63,6 +64,7 @@ const AccountModalBody: React.FC<Omit<AccountModalProps, 'isOpen'>> = ({ onClose
 
   const [isConfirmingSignOut, setIsConfirmingSignOut] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
+  const [deletedNotice, setDeletedNotice] = useState<string | null>(null);
   const { value: syncFeedback, flash: flashSyncFeedback } = useTransientFlash<string | null>(null, 3500);
 
   const handleManualSync = async () => {
@@ -154,6 +156,17 @@ const AccountModalBody: React.FC<Omit<AccountModalProps, 'isOpen'>> = ({ onClose
         </div>
       )}
 
+      {deletedNotice && (
+        <div
+          id="account-deleted-notice"
+          role="status"
+          className="p-3 bg-income-tint border border-income-line text-income rounded-lg text-xs font-semibold flex items-center gap-2"
+        >
+          <CheckCircle2 className="w-4 h-4 shrink-0" />
+          <span>{deletedNotice}</span>
+        </div>
+      )}
+
       {isAuthenticated && (
         <>
           <SessionsSection />
@@ -161,6 +174,11 @@ const AccountModalBody: React.FC<Omit<AccountModalProps, 'isOpen'>> = ({ onClose
             <ProfileSection />
             <PasswordSection />
           </div>
+          <DeleteAccountSection
+            onDeleted={() =>
+              setDeletedNotice('Your account and everything in it were deleted. This device is in guest mode now.')
+            }
+          />
         </>
       )}
 
@@ -325,6 +343,76 @@ const SessionsSection: React.FC = () => {
         onClose={() => {
           setConfirming(null);
           setRevokeError(null);
+        }}
+      />
+    </section>
+  );
+};
+
+/** The phrase the person types before an account can be deleted; the server checks it too (ADR 0072). */
+const DELETE_PHRASE = 'DELETE';
+
+/**
+ * Account deletion (Phase 96, ADR 0072): the one hard delete. The account, its
+ * sign-in and every row go for good, so the confirmation asks for the phrase
+ * typed, not a click. On success this device is signed out and cleared; the
+ * section unmounts with the rest of the signed-in view, and the modal stays
+ * open on guest mode with a notice.
+ */
+const DeleteAccountSection: React.FC<{ onDeleted: () => void }> = ({ onDeleted }) => {
+  const { deleteAccount } = useFinanceActions();
+  const [isConfirming, setIsConfirming] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleConfirm = async () => {
+    setIsDeleting(true);
+    setError(null);
+    try {
+      const result = await deleteAccount(DELETE_PHRASE);
+      if (!result.success) {
+        setError(result.error ?? 'Could not delete your account');
+        return;
+      }
+      setIsConfirming(false);
+      onDeleted();
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  return (
+    <section id="account-delete" className="rounded-xl border border-danger-line p-4 sm:p-5 space-y-3">
+      <div className="flex items-center gap-2">
+        <Trash2 className="w-4 h-4 text-expense" />
+        <h3 className="text-sm font-bold text-fg">Delete account</h3>
+      </div>
+      <p className="text-xs text-fg-secondary leading-relaxed">
+        Deletes your account and your sign-in, with every wallet, transaction, debt, category, smart rule and diary entry
+        in it. Every device is signed out. This cannot be undone. To keep a copy, export a CSV from Transactions first.
+      </p>
+      <Button
+        id="account-delete-btn"
+        variant="danger"
+        onClick={() => setIsConfirming(true)}
+        icon={<Trash2 className="w-3.5 h-3.5" />}
+      >
+        <span>Delete account</span>
+      </Button>
+
+      <ConfirmDialog
+        isOpen={isConfirming}
+        title="Delete your account for good?"
+        description="Your account, your sign-in and all of your data will be erased from the cloud and from this browser. Nothing can be recovered afterwards."
+        confirmText="Delete account"
+        confirmPhrase={DELETE_PHRASE}
+        isDestructive
+        isLoading={isDeleting}
+        error={error}
+        onConfirm={handleConfirm}
+        onClose={() => {
+          setIsConfirming(false);
+          setError(null);
         }}
       />
     </section>

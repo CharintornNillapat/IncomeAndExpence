@@ -2117,6 +2117,106 @@ describe('the Account & Security modal (ADR 0024)', () => {
   });
 });
 
+describe('deleting the account (Phase 96, ADR 0072)', () => {
+  /*
+   * `delete_user_account` removes the auth user, and every table cascades
+   * from it; the SQL probe proves that. This proves the client's half: the
+   * phrase reaches the server, a success signs this device out and clears it,
+   * and anything else leaves the person signed in and told why.
+   */
+  const deleteCalls: Record<string, unknown>[] = [];
+  beforeEach(() => {
+    deleteCalls.length = 0;
+    installLedgerRpcs();
+    fake.state.rpcs.set('delete_user_account', (args) => {
+      deleteCalls.push(args);
+      return args.p_confirm === 'DELETE'
+        ? { data: { deleted: true, rows: { wallets: 2, transactions: 1 } }, error: null }
+        : { data: null, error: { message: 'ACCOUNT_DELETE_NOT_CONFIRMED', code: '22023' } };
+    });
+  });
+
+  it('sends the phrase, then signs this device out and clears it', async () => {
+    expect((await expense(200)).success).toBe(true);
+    await waitFor(() => expect(state().transactions).toHaveLength(1));
+
+    expect(await actions().deleteAccount('DELETE')).toEqual({ success: true });
+    expect(deleteCalls).toEqual([{ p_confirm: 'DELETE' }]);
+    expect(fake.state.signOuts).toEqual(['local']);
+    await waitFor(() => {
+      expect(state().isAuthenticated).toBe(false);
+      expect(state().transactions).toHaveLength(0);
+      expect(state().wallets.map((w) => w.id)).not.toContain(WALLET);
+    });
+  });
+
+  it('stays signed in, and says why, when the server refuses', async () => {
+    const result = await actions().deleteAccount('delete');
+    expect(result.success).toBe(false);
+    expect(result.error).toBe('ACCOUNT_DELETE_NOT_CONFIRMED');
+    expect(fake.state.signOuts).toEqual([]);
+    expect(state().isAuthenticated).toBe(true);
+  });
+
+  it('deletes nothing and stays signed in without the migration', async () => {
+    fake.state.rpcs.delete('delete_user_account');
+    const result = await actions().deleteAccount('DELETE');
+    expect(result).toEqual({ success: false, error: expect.stringMatching(/database update.*Nothing was deleted/) });
+    expect(fake.state.signOuts).toEqual([]);
+    expect(state().isAuthenticated).toBe(true);
+  });
+
+  it('asks the auth server after a lost response, and signs out when the account is gone', async () => {
+    fake.state.lostResponses.add('delete_user_account');
+    fake.state.userError = new AuthApiError('User from sub claim in JWT does not exist', 403, 'user_not_found');
+    const before = fake.state.getUserCalls;
+
+    const result = await actions().deleteAccount('DELETE');
+    expect(result.success).toBe(false);
+    expect(result.error).toMatch(/could not confirm/);
+    expect(deleteCalls).toHaveLength(1); // it committed; only the answer was lost
+    expect(fake.state.getUserCalls).toBeGreaterThan(before);
+    await waitFor(() => expect(state().isAuthenticated).toBe(false));
+  });
+
+  it('only deletes after the phrase is typed exactly, then shows guest mode with a notice', async () => {
+    showUi!(<AccountModal isOpen onClose={() => showUi!(null)} onRequestSignIn={() => {}} />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Delete account' }));
+
+    const input = (await screen.findByLabelText('Type DELETE to confirm')) as HTMLInputElement;
+    const dialogs = screen.getAllByRole('dialog');
+    const confirm = Array.from(dialogs[dialogs.length - 1].querySelectorAll('button')).find(
+      (b) => b.textContent === 'Delete account'
+    )!;
+    expect(confirm.disabled).toBe(true);
+    fireEvent.change(input, { target: { value: 'delete' } });
+    expect(confirm.disabled).toBe(true);
+    fireEvent.change(input, { target: { value: 'DELETE' } });
+    expect(confirm.disabled).toBe(false);
+    expect(deleteCalls).toEqual([]);
+
+    fireEvent.click(confirm);
+    expect(await screen.findByText(/Your account and everything in it were deleted/)).toBeTruthy();
+    expect(deleteCalls).toEqual([{ p_confirm: 'DELETE' }]);
+    expect(state().isAuthenticated).toBe(false);
+    expect(screen.getByText('Guest mode - this device only')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Delete account' })).toBeNull();
+  });
+
+  it('keeps the dialog open with the server\'s reason when the delete fails', async () => {
+    fake.state.rpcs.set('delete_user_account', () => ({ data: null, error: { message: 'permission denied', code: '42501' } }));
+    showUi!(<AccountModal isOpen onClose={() => showUi!(null)} onRequestSignIn={() => {}} />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Delete account' }));
+    fireEvent.change(await screen.findByLabelText('Type DELETE to confirm'), { target: { value: 'DELETE' } });
+    const dialogs = screen.getAllByRole('dialog');
+    fireEvent.click(Array.from(dialogs[dialogs.length - 1].querySelectorAll('button')).find((b) => b.textContent === 'Delete account')!);
+
+    expect(await screen.findByText('permission denied')).toBeTruthy();
+    expect(state().isAuthenticated).toBe(true);
+    expect(screen.getByLabelText('Type DELETE to confirm')).toBeTruthy();
+  });
+});
+
 describe('a device signed out from another device (ADR 0024, amended)', () => {
   /*
    * "Sign out other devices" revokes the other sessions' refresh tokens on the
