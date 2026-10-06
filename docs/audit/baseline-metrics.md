@@ -1098,6 +1098,22 @@ The entry's growth is the ledger action itself, which lives with the other ledge
 
 **Intermittent local failures:** 6 in 1,071 full-suite runs (3 full runs). All were timeouts: a Firefox `goto`, a Firefox context close, and four WebKit clicks waiting for "stable". No assertion failed. See audit 005 finding 3 for the control runs.
 
+## Phase 97 (whole-account export, cascade check) - delta against Phase 96
+
+**Bundle** (gzip -9 on both sides; Phase 96 from the production assets): entry `index` JS 190,913 / 54,813 to 190,954 / 54,830 B raw / gzip (+41 / +17); new `accountExport` chunk 2,282 / 946; `AccountModal` 12,409 / 3,994 to 14,184 / 4,463 (+1,775 / +469); `DiaryView` 14,494 / 5,106 to 14,277 / 4,989 (-217 / -117); CSS 51,229 / 9,852 unchanged.
+
+| Suite | Files | Tests | Runs | Result |
+|---|---|---|---|---|
+| Vitest (`unit/`) | 41 | 1061 | 1061 | 1061/1061 (export 8, signed-in export 3) |
+| Playwright (local, 4 workers) | 32 | 156 | 468 | 462 passed + 6 skipped of 468 in 11.1 m, first run, no failure |
+
+| Erasure cascade (PGlite, median of 3) | Transactions | Without the five indexes | With them |
+|---|---|---|---|
+| Live's shape | 206 | 1 ms | 3 ms |
+| Heavy account alone | 20,000 | 36 ms | 28 ms |
+| Heavy + 100k other rows | 120,000 | 756 ms | 21 ms |
+| Heavy + 500k other rows | 520,000 | 3,777 ms | 26 ms |
+
 ## Phase 96 (account deletion) - delta against Phase 95
 
 **Bundle** (gzip -9 on both sides; Phase 95 from the production assets): entry `index` JS 190,322 / 54,636 to 190,913 / 54,813 B raw / gzip (+591 / +177); `AccountModal` chunk 10,631 / 3,550 to 12,409 / 3,994 (+1,778 / +444); CSS 51,229 / 9,852 unchanged.

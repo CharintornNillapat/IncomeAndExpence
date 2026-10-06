@@ -37,7 +37,7 @@ Skip the full workflow for typos, copy tweaks and doc-only edits.
 - **Styling**: Tailwind CSS ^4.1.14 (`@tailwindcss/vite` ^4.1.14, `@import "tailwindcss"`, semantic design tokens from `DESIGN.md`)
 - **Database & Auth**: Supabase (`@supabase/supabase-js` ^2.112.4)
 - **Testing**: Playwright ^1.50.1 (`@playwright/test`)
-- **Runtime**: Node.js 22 or later (`engines` in `package.json`, ADR `0071`); CI runs 22, and Vercel resolves the open range to its newest major for the functions
+- **Runtime**: Node.js 24 (`"engines": { "node": "24.x" }` in `package.json` and the lockfile root, ADR `0073`); CI runs 24 and Vercel runs the functions on 24. The next major is a commit that changes both
 - **Key Libraries**: `framer-motion` ^13.1.1, `lucide-react` ^0.546.0, `mathjs` ^15.2.0 (`mathjs/number`), `zod` ^4.5.4, `papaparse` ^5.7.0, `react-swipeable` ^7.0.2
 
 ## Project Structure
@@ -50,7 +50,7 @@ Skip the full workflow for typos, copy tweaks and doc-only edits.
 ├── supabase/replay/     # prelude.sql: the Supabase platform's stand-in for replaying migrations in PGlite
 ├── supabase/ops/        # SQL that is not a migration: the Phase 87 history backfill, the Phase 90 drift reader role
 ├── supabase/catalog.sql # what the schema is made of, one row per object (the drift check's both sides)
-├── scripts/             # check-node-globals.mjs, schema-drift.mjs, migration-history.mjs, lib/ (Node tooling, not shipped)
+├── scripts/             # check-node-globals.mjs, schema-drift.mjs, migration-history.mjs, bench-cascade-delete.mjs (ADR 0073), lib/ (Node tooling, not shipped)
 ├── src/
 │   ├── components/      # Reusable UI components, modals, and navigation
 │   │   ├── account/     # AccountModal (Account & Security) + GuestDataNotice (ADR 0024)
@@ -65,7 +65,7 @@ Skip the full workflow for typos, copy tweaks and doc-only edits.
 │   ├── lib/             # Supabase client setup (supabase.ts)
 │   ├── selectors/       # Pure money rules (ADR 0028): ledger, timeRange, wallets, debts, display, adjustments, categories, pagination
 │   ├── utils/           # Pure helpers: currency, date, mathEvaluator, smartMatcher,
-│   │                    # expressInput, jevClassifier, zodSchemas, csvExchange, walletIcons, identityPalette, identityColorMigration
+│   │                    # expressInput, jevClassifier, zodSchemas, csvExchange, accountExport, walletIcons, identityPalette, identityColorMigration
 │   ├── views/           # Route views lazy-loaded via React.lazy in App.tsx
 │   ├── App.tsx          # Root shell with gesture handlers and tab navigation
 │   ├── main.tsx         # Application entry point
@@ -512,7 +512,7 @@ Without it, `FinanceContext` falls back to the legacy non-atomic path (three sep
 
 ### Supabase's advisors (ADR `0067`)
 Triaged on 2026-10-05; none needs a database fix now. When they are read again, compare with these decisions first:
-- **Accepted:** the nine `SECURITY DEFINER` functions `authenticated` may execute (they are the API; each takes the user from `auth.uid()`); `ai_request_counts` with row-level security and no policy (ADR `0049`); five unindexed foreign keys (soft deletes only, every read filters by `user_id`; revisit with a hard delete or a query by those columns); three unused indexes (tables of a few rows).
+- **Accepted:** the nine `SECURITY DEFINER` functions `authenticated` may execute (they are the API; each takes the user from `auth.uid()`); `ai_request_counts` with row-level security and no policy (ADR `0049`); five unindexed foreign keys (every read filters by `user_id`; the account erasure's cascade through them was measured in Phase 97, ADR `0073`: none at live's size, 3.8 s at 520,000 transactions in PGlite; add the indexes when `public.transactions` passes 100,000 rows, after re-running `node scripts/bench-cascade-delete.mjs`); three unused indexes (tables of a few rows).
 - **Done in Phase 93 (ADR `0069`):** `20261006_phase93_drop_redundant_select_policies.sql` drops the "view system and their own" SELECT policies on `categories` and `keyword_rules` (no row has `user_id is null`), leaving 7 policies; the `transfer_funds` overload without `p_user_id` (above). Probe: `supabase/tests/20261006_phase93.probe.sql`, which the unit suite also runs on the live shape (both policies put back).
 - **Still scheduled:** dropping the 20260909 `transfer_funds(p_user_id, ...)` signature once older builds have reloaded; the advisor lists it (S2a) until then.
 - **Owner:** leaked password protection in the Auth settings, if the plan offers it.
@@ -558,6 +558,10 @@ Rules that are load-bearing:
 - **Opening balances are ledger rows (F7).** Every user-created wallet with a non-zero opening gets an ADJUSTMENT "Opening balance" of the signed amount - `create_wallet` signed in (replayable on the per-form key `AddWalletForm` arms), a local row as a guest. A credit card may open negative; nothing else may. **The starter wallets open at ฿0.00** (ADR `0040`), so they write no opening row and need no exemption, and a fresh context still has no transactions.
 - **A CSV repayment names its debt (F8).** The export writes a `Debt` column; the importer resolves it against live debts and marks a repayment with no, an unknown or an ambiguous debt invalid; `commitBulkImport` applies ADR `0016`'s guard **in aggregate** (two rows that each fit can overpay together) before anything moves, and the server re-checks under its lock. `import_transactions` still accepts a debtless repayment, for cached older clients only.
 - **Delete account erases the account** (Phase 96, ADR `0072`). `AccountModal`'s `#account-delete` section, signed in only, opens a `ConfirmDialog` with `confirmPhrase="DELETE"`: Confirm stays disabled until `#confirm-phrase-input` holds the phrase exactly. `deleteAccount` calls `delete_user_account`, then `signOut()`, which clears this device; the modal stays open on guest mode with `#account-deleted-notice`. A refusal or a missing function stays signed in with the reason; an error with no SQLSTATE runs `verifySession()`, since the delete may have committed. A guest is offered no Delete account action (`account-and-mobile-nav.spec.ts`); the signed-in flow is tested in `authenticated-ledger.test.tsx`, since no spec signs in.
+- **Export all data takes everything out as one JSON file** (Phase 97, ADR `0073`). `AccountModal`'s `#account-export` section, for a guest and an account alike: `buildAccountExport` (`src/utils/accountExport.ts`) writes the six slices, soft-deleted rows included, as `finlife-export-YYYY-MM-DD.json`.
+  - **Each row goes through its type's field list** (`{ [K in keyof Required<T>]: ... }`), so nothing a type does not declare reaches the file, and a new field fails `tsc` until it is listed. No email, name, token or session is in it, and no template (device only).
+  - **Timestamps are written with `toISOString()`; calendar days are written as stored, never parsed.** Rows are sorted by id.
+  - **Signed in, it refuses while a load runs or after one failed a read** (`syncError`): the file would miss a table, and it may be the last copy before a delete.
 - **The Security tab is gone.** `AccountModal` is the fourth shell-level lazy modal (ADR `0010`'s latch); `#navbar-account-btn` and the mobile More sheet open it. `ActiveTab` has six members.
 - **The PWA toast (`ReloadPrompt`) sits above the mobile nav** (ADR `0041`, audit 013 finding 1). Below `md` it is `bottom-[calc(5rem+env(safe-area-inset-bottom,0.5rem))]`: the nav is 65px plus the inset, the centre Quick Add's top is 66px up, so it clears both by 14px. From `md` it sits 1.25rem from the bottom and right edges plus their safe-area insets (ADR `0070`).
   - **It is `z-45`: above the header and the nav, under every sheet and dialog** (ADR `0042`). At `z-50` it tied with `Modal` and won on DOM order, covering the More sheet's Debt payoff, Daily diary and Categories rows at 390 and the Transactions page's Add dialog at every width. `tests/toast-layering.spec.ts` checks it with `elementFromPoint` against the real toast.
@@ -584,7 +588,7 @@ Rules that are load-bearing:
 ## Testing
 Two suites, with a hard boundary between them — see "Unit tests" below for why the boundary is pinned from both sides.
 - **Framework**: Playwright with Chromium, Firefox, and WebKit projects.
-- **Suite size**: 155 tests across 32 spec files, run on all three browsers = **465 test runs**: 459 must pass, and 6 are skipped by design (`layout-stability.spec.ts`'s load test measures layout shift, which only Chromium reports; `safe-area.spec.ts`'s two tests emulate insets, which only Chromium can).
+- **Suite size**: 156 tests across 32 spec files, run on all three browsers = **468 test runs**: 462 must pass, and 6 are skipped by design (`layout-stability.spec.ts`'s load test measures layout shift, which only Chromium reports; `safe-area.spec.ts`'s two tests emulate insets, which only Chromium can).
 - **Location**: `tests/*.spec.ts` (`transaction`, `wallets`, `diary`, `theme`, `wallet-forms`, `debts`, `soft-delete`, `keywords`, `categories`, `csv`, `auth`, `date-boundary`, `storage-persistence`, `presets`, `jev-classify`, `express-input`, `transfer-preview`, `debt-repayment`, `smart-rules`, `voice-input`, `csv-classify`, `insights`, `account-and-mobile-nav`, `transaction-edit`, `wallets-page`, `debts-page`, `diary-page`, `categories-page`, `toast-layering`, `layout-stability`, `ios-field-zoom`, `safe-area`), with shared helpers in `tests/helpers.ts`.
 - **Never edit files while a run is in flight.** `playwright.config.ts`'s `webServer` is `npm run dev` — a live Vite dev server — so writing to `src/` mid-run HMRs the app under test and produces failures that do not reproduce in isolation. This cost a wasted baseline in Phase 39.
 - **A second webServer, port 3100** (ADR `0042`): `vite --mode pwa-dev`, where `vite.config.ts` turns on vite-plugin-pwa's `devOptions`, so a development service worker registers and the real PWA toast appears. Only `toast-layering.spec.ts` uses it, through its own `baseURL`; every other spec stays on 3000, where no toast can cover a control. The mode writes `dev-dist/` (gitignored). Check 3100 for a stale server before a local run, as for 3000. Do not turn `devOptions` on for `npm run dev`.
@@ -608,7 +612,7 @@ Two suites, with a hard boundary between them — see "Unit tests" below for why
   - `--user 1001` is the runner's user: the checkout stays writable and Firefox gets a `$HOME` it owns. Do not switch to root without setting `HOME: /root`.
 
 ## Unit tests: what the browser cannot reach
-`npm run test:unit` runs Vitest over **`unit/`**: 1050 tests in 40 files, ~40 s (ADR `0021`, extended by `0022`, `0023`, `0024`, `0026`, `0027`, `0028`, `0029`, `0030`, `0031`, `0032`, `0033`, `0034`, `0035`, `0036`, `0037`, `0038`, `0039`, `0040`, `0041`, `0042`, `0043`, `0045`, `0047`, `0049`, `0050`, `0052`, `0053`, `0054`, `0055`, `0056`, `0057`, `0058`, `0059`, `0063`, `0064`, `0065`, `0066`, `0067`, `0068`, `0069`, `0070`, `0071` and `0072`). It exists because four phases in a row closed with a coverage hole for the same structural reason, not because E2E coverage was thin.
+`npm run test:unit` runs Vitest over **`unit/`**: 1061 tests in 41 files, ~40 s (ADR `0021`, extended by `0022`, `0023`, `0024`, `0026`, `0027`, `0028`, `0029`, `0030`, `0031`, `0032`, `0033`, `0034`, `0035`, `0036`, `0037`, `0038`, `0039`, `0040`, `0041`, `0042`, `0043`, `0045`, `0047`, `0049`, `0050`, `0052`, `0053`, `0054`, `0055`, `0056`, `0057`, `0058`, `0059`, `0063`, `0064`, `0065`, `0066`, `0067`, `0068`, `0069`, `0070`, `0071`, `0072` and `0073`). It exists because four phases in a row closed with a coverage hole for the same structural reason, not because E2E coverage was thin.
 - **The directory is `unit/`, not `tests/unit/`, and that is load-bearing.** Two default globs collide. Vitest's default `include` is `**/*.{test,spec}.?(c|m)[jt]s?(x)`, which collects all 22 Playwright specs. Playwright's default `testMatch` is `**/*.@(spec|test).?(c|m)[jt]s?(x)` — note `@(spec|test)` — which collects `*.test.ts` as readily as `*.spec.ts`. So the boundary is pinned three times: a directory `testDir: './tests'` cannot see, an explicit `include` in `vitest.config.ts`, and an explicit `testMatch: '**/*.spec.ts'` in `playwright.config.ts`. The last is redundant today **on purpose** — it makes a future move of the unit tests under `tests/` read as the breaking change it is.
 - **`vitest.config.ts` is its own file, never a `test` key on `vite.config.ts`.** `vite build` does not read it, which makes zero production bundle impact structural rather than a matter of discipline.
 - **`environment: 'node'` is the default; the two DOM suites opt in per file** with a `// @vitest-environment jsdom` docblock. The pure-module suites never touch jsdom's `AbortSignal`, `fetch` or timer surfaces, which differ from Node's in ways that fail about the environment rather than the code.
@@ -652,6 +656,7 @@ Refer to `.env.example`:
 - Do NOT bypass the Zod schemas in `src/utils/zodSchemas.ts` on any write path.
 - Do NOT perform hard deletions on financial records; update `isDeleted: true` instead. Account deletion (`delete_user_account`, ADR `0072`) is the one exception.
 - Do NOT let `delete_user_account` take an account id, run without the exact `DELETE` phrase, or get a client-side fallback; and do NOT add a table holding an account's data without `ON DELETE CASCADE` from `auth.users` and a place in the Phase 96 probe's count (ADR `0072`).
+- Do NOT write an export row with a spread or let it carry a field its type does not declare, parse a calendar day in it, or let a signed-in export run while a load is running or after one failed a read (ADR `0073`).
 - Do NOT hardcode production API credentials in `src/lib/supabase.ts` or commit them to version control.
 - Do NOT modify the `DISABLE_HMR` handling in `vite.config.ts`.
 - Do NOT add redundant state management libraries (Redux, Zustand); use `FinanceContext` and the domain hooks.

@@ -1081,6 +1081,26 @@ Approved explicitly by the user, planned and approved before any code was writte
 - **One negative control was redone** because the first attempt produced malformed TypeScript that the dev server still served — the tests failed, but possibly for the wrong reason.
 - **No flakes.** Phase 44's `wallets.spec.ts` webkit flake has now not reproduced across three consecutive phases; still watched rather than closed.
 
+## Phase 97 - Every account's data exports as one JSON file; the erasure cascade needs no index yet; Node 24.x: T588-T594 (2026-10-06)
+
+ADR `0073`, amending ADR `0067`, `0071` and `0072`. Branch `phase-97-account-export-and-cascade-check`, cut from `main` at `8a5da0b`. Approved explicitly by the user (scope: the whole-account export, the cascade benchmark with a migration only on measurable overhead, Node `24.x`). No migration; the schema is unchanged.
+
+| # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
+|---|---|---|---|---|---|---|---|---|---|---|
+| T588 | `buildAccountExport`: six slices with soft-deleted rows, a field list per type, timestamps as `toISOString()`, rows by id; `saveJsonFile`, which the diary export now uses | `src/utils/accountExport.ts`, `src/utils/diaryExport.ts` | High | Low | 0.5h | done | - | - | 8 unit tests | - |
+| T589 | `AccountModal`'s "Export your data" section for a guest and an account; refuses while a signed-in load runs or after one failed a read; Delete account points to it | `src/components/account/AccountModal.tsx` | High | Low | 0.4h | done | T588 | - | +3 harness tests | AccountModal chunk, see the log |
+| T590 | Tests: export unit (8), signed-in export (+3), guest download in all three browsers (+1 spec test); four negative controls | `unit/account-export.test.ts`, `unit/authenticated-ledger.test.tsx`, `tests/account-and-mobile-nav.spec.ts` | High | Low | 0.5h | done | T589 | - | controls: no refusal fails 1, a spread fails 1, no sort fails 1, no timestamp rewrite fails 2 | unit +11, E2E +1 |
+| T591 | Cascade benchmark in PGlite, with and without indexes on the five foreign keys; live's sizes and `authenticated`'s timeout, read-only | `scripts/bench-cascade-delete.mjs` | Med | Low | 0.5h | done | - | - | live's shape 1 / 3 ms; a heavy account alone 36 / 28 ms; with 100k other rows 756 / 21 ms; with 500k 3,777 / 26 ms (without / with the five indexes, PGlite, median of 3); live 2 accounts, 103 transactions, `statement_timeout=8s` | no migration |
+| T592 | `"engines": { "node": "24.x" }` in `package.json` and the lockfile root; CI's four `setup-node` steps to 24 | `package.json`, `package-lock.json`, `.github/workflows/` | Low | Low | 0.1h | done | - | - | `npm ci --dry-run` clean; workflow-hardening 12/12 | - |
+| T593 | Gate: lint, unit, Playwright, bundle | - | High | Low | 0.3h | done | T592 | - | lint clean; unit 1061/1061 in 41 files; Playwright 462 passed + 6 skipped of 468 in 11.1 m, first run, no failure | - |
+| T594 | ADR `0073`, `CLAUDE.md`, this ledger, the refactor log, baseline metrics | `docs/`, `CLAUDE.md` | Low | Low | 0.4h | done | T593 | - | - | - |
+
+**Notes on execution:**
+- **The export refuses an incomplete state.** It writes what the app holds, and signed in that is only the whole account after a clean load. It may be the copy someone keeps before deleting the account, so a missing table must stop it, not thin it.
+- **No migration, by the benchmark:** at live's size the indexes change nothing (1 ms against 3 ms). The cost appears only at about a thousand times live's rows, and ADR `0073` sets the trigger: 100,000 rows in `public.transactions`.
+- **A heredoc ate the spec's regex backslashes** (`\d` became `d`), and the new test failed on its own pattern in all three browsers. Fixed with the editor; a known trap with Bash heredocs.
+- **WebKit's "page behind Quick Add is inert" test failed 1 time in 30** during the spec's runs (1 of 10, then 20 of 20). Quick Add and `Modal` are untouched here.
+
 ## Phase 96 - Account deletion erases the whole account, the one hard delete: T580-T587 (2026-10-06)
 
 ADR `0072`, amending ADR `0016`'s soft-delete rule and ADR `0024`. Branch `phase-96-pdpa-account-deletion`, cut from `main` at `b8095b0`; commit `9272c4b`, docs `75b968e`, hash backfill `5f4371f`; merged into `main` as `73878b4` (PR #47); Vercel `dpl_7hebLp296RsBVmXpQSuG8tmGdSBm` READY in `icn1`, entry JS, CSS, the `AccountModal` chunk and vendor chunks byte-identical to the local build of `main`. `Main` CI on the merge (run `37416264478`) passed every job with no flaky test in 304 s end to end, 16 s of it the merge job (unit 1050; 459 passed, 6 skipped). **On the pull request's CI:** the pull request's run `37406934324` passed every job in 300 s, 459 passed and 6 skipped with no flaky test, unit 1050. Approved explicitly by the user; the owner chose to delete the whole account (the `auth.users` row, which every table cascades from) over the app's rows only. One migration; **the owner applies it before the merge** (ADR `0072`, "Order of release").
