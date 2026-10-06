@@ -338,6 +338,18 @@
   }
 
   /*
+   * ADR 0070: the viewport is `viewport-fit=cover`, so on a phone with a notch
+   * or rounded corners the page draws under them. In landscape the body keeps
+   * the header, the page and the footer clear of the side insets. The top and
+   * bottom insets belong to the elements on those edges: the header, the
+   * mobile nav, a bottom sheet, the toast and the footer's margin.
+   */
+  body {
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+
+  /*
    * Spec section 7 (ADR 0029): one visible focus style for every control
    * reached by keyboard. Fields keep their own `focus:ring-2 ring-focus` in the
    * same violet, because they already drop the outline for it.

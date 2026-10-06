@@ -29,7 +29,8 @@ function directives(policy: string): Map<string, string[]> {
   );
 }
 
-const reportOnly = directives(header('Content-Security-Policy-Report-Only') ?? '');
+// ADR 0070: the policy is enforced, as one header that also refuses frames.
+const csp = directives(header('Content-Security-Policy') ?? '');
 
 describe('vercel.json headers (ADR 0068)', () => {
   it('keeps the functions in icn1 (ADR 0051) and applies one header set to every path', () => {
@@ -42,26 +43,31 @@ describe('vercel.json headers (ADR 0068)', () => {
     expect(header('X-Content-Type-Options')).toBe('nosniff');
     expect(header('Referrer-Policy')).toBe('strict-origin-when-cross-origin');
     expect(header('X-Frame-Options')).toBe('DENY');
-    expect(header('Content-Security-Policy')).toBe("frame-ancestors 'none'");
+    expect(csp.get('frame-ancestors')).toEqual(["'none'"]);
+  });
+
+  it('enforces the content security policy, in one header (ADR 0070)', () => {
+    expect(headerList.filter((h) => h.key === 'Content-Security-Policy')).toHaveLength(1);
+    expect(header('Content-Security-Policy-Report-Only')).toBeUndefined();
   });
 
   it('allows the inline theme script by its hash, and no other inline script', () => {
     const inline = [...indexHtml.matchAll(/<script>([\s\S]*?)<\/script>/g)].map((m) => m[1]);
     expect(inline).toHaveLength(1);
     const hash = `'sha256-${createHash('sha256').update(inline[0]).digest('base64')}'`;
-    expect(reportOnly.get('script-src')).toEqual(["'self'", hash]);
+    expect(csp.get('script-src')).toEqual(["'self'", hash]);
   });
 
   it('allows no inline style or eval anywhere in the policy', () => {
-    const all = [...reportOnly.values()].flat();
+    const all = [...csp.values()].flat();
     expect(all).not.toContain("'unsafe-inline'");
     expect(all).not.toContain("'unsafe-eval'");
-    expect(reportOnly.get('default-src')).toEqual(["'self'"]);
-    expect(reportOnly.get('object-src')).toEqual(["'none'"]);
+    expect(csp.get('default-src')).toEqual(["'self'"]);
+    expect(csp.get('object-src')).toEqual(["'none'"]);
   });
 
   it('connects to one Supabase project, over https and wss', () => {
-    const connect = reportOnly.get('connect-src') ?? [];
+    const connect = csp.get('connect-src') ?? [];
     expect(connect[0]).toBe("'self'");
     const hosts = connect.slice(1).map((u) => new URL(u));
     expect(hosts.map((u) => u.protocol)).toEqual(['https:', 'wss:']);
@@ -73,7 +79,8 @@ describe('vercel.json headers (ADR 0068)', () => {
 describe('index.html viewport (ADR 0068)', () => {
   it('lets a person zoom', () => {
     const viewport = indexHtml.match(/<meta name="viewport" content="([^"]*)"/)?.[1] ?? '';
-    expect(viewport).toBe('width=device-width, initial-scale=1.0');
+    // viewport-fit=cover since ADR 0070; still no maximum-scale or user-scalable.
+    expect(viewport).toBe('width=device-width, initial-scale=1.0, viewport-fit=cover');
   });
 });
 
