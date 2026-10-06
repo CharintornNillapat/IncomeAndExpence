@@ -1,6 +1,6 @@
 # 0073: Every account's data exports as one JSON file; the erasure cascade needs no index yet; Node 24.x
 
-**Status:** Accepted. Implemented on branch `phase-97-account-export-and-cascade-check`. Not merged yet. No migration: the schema is unchanged.
+**Status:** Accepted. Implemented on branch `phase-97-account-export-and-cascade-check` (commit `b860bbe`, docs `71c9e15`), draft PR #48. Not merged yet. No migration: the schema is unchanged.
 - **Amends** ADR `0072`: Delete account points to the new export, not to the Transactions CSV.
 - **Amends** ADR `0067`'s accepted "five unindexed foreign keys": the hard delete it named as the reason to revisit now exists, and is measured below.
 - **Amends** ADR `0071`'s Node range: `>=22.0.0` becomes `24.x`.
@@ -78,6 +78,7 @@
   - no timestamp rewrite (2).
 - **`tests/account-and-mobile-nav.spec.ts`, +1:** a guest's export in all three browsers downloads `finlife-export-YYYY-MM-DD.json` holding the three starter wallets and the transaction just added, with `source: "this-device"` and an `exportedAt` in `toISOString()` form. It intercepts nothing.
 - **Gate:** in the refactor log.
+- **On CI:** the pull request's run `37419198793` passed every job in 269 s on Node 24.21, 462 passed and 6 skipped with no flaky test, unit 1061; the drift workflow on the branch (`37419198799`) found no drift with all 18 migrations.
 
 ## Consequences
 
