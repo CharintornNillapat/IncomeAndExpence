@@ -1,7 +1,7 @@
 import React from 'react';
 import { Check, CreditCard, Pencil, Trash2 } from 'lucide-react';
 import { Debt } from '../../types';
-import type { DebtPlanItem } from '../../selectors/debts';
+import { payoffPercent, type DebtPlanItem } from '../../selectors/debts';
 import { formatShortDate } from '../../utils/date';
 import { Badge } from '../ui/Badge';
 import { Button } from '../ui/Button';
@@ -48,10 +48,10 @@ function dueTag(debt: Debt, planItem?: DebtPlanItem): { text: string; className:
  * but the menu.
  */
 export const DebtCard: React.FC<DebtCardProps> = React.memo(({ debt, planItem, onOpenRepay, onSettle, onEdit, onDelete }) => {
-  // `DebtPayoffCard`'s figure: a paid-off debt is 100% whatever its stored remainder.
+  // A paid-off debt is 100% whatever its stored remainder, and so is one with nothing borrowed (ADR 0079).
   const remaining = debt.isSettled ? 0 : debt.remainingAmount;
   const repaid = debt.totalAmount - remaining;
-  const percent = debt.totalAmount > 0 ? (repaid / debt.totalAmount) * 100 : 100;
+  const percent = payoffPercent(debt.totalAmount, remaining, 100);
   const tag = dueTag(debt, planItem);
 
   return (

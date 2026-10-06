@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { monthsLeft, requiredMonthly, isOverdue, sortByDueDate, debtPlan, monthlySurplus } from '../src/selectors/debts';
+import { monthsLeft, requiredMonthly, isOverdue, sortByDueDate, debtPlan, monthlySurplus, payoffPercent } from '../src/selectors/debts';
 import { buildLookupMap } from '../src/utils/mapUtils';
 import type { Category, Debt, Transaction } from '../src/types';
 
@@ -145,5 +145,40 @@ describe('L5: the surplus is income minus spending over the past 30 days (L1, L2
       tx({ type: 'TRANSFER', amount: 7000, transactionDate: '2026-09-10' }),
     ];
     expect(monthlySurplus(rows, TODAY, buildLookupMap(CATEGORIES))).toBe(7999.5);
+  });
+});
+
+describe('payoffPercent: the share of what was borrowed that is paid off (ADR 0079)', () => {
+  it('is (total - remaining) / total, as a percentage', () => {
+    expect(payoffPercent(10000, 4500, 0)).toBe(((10000 - 4500) / 10000) * 100);
+    expect(payoffPercent(10000, 10000, 0)).toBe(0);
+    expect(payoffPercent(10000, 0, 0)).toBe(100);
+  });
+
+  it('is not clamped: ProgressBar clamps its bar, and a printed figure clamps itself', () => {
+    // The add-debt form permits remaining > total, and a reversed repayment is uncapped (ADR 0016).
+    expect(payoffPercent(1000, 1500, 0)).toBe(-50);
+    expect(payoffPercent(1000, -500, 0)).toBe(150);
+  });
+
+  it('returns the caller\'s own figure when nothing was borrowed, whatever is owed', () => {
+    // No database check stops a zero total, and a restored backup can carry one.
+    expect(payoffPercent(0, 0, 100)).toBe(100);
+    expect(payoffPercent(0, 250, 100)).toBe(100);
+    expect(payoffPercent(0, 250, 0)).toBe(0);
+    expect(payoffPercent(-10, 0, 7)).toBe(7);
+  });
+
+  it('gives exactly the figures of the four inline formulas it replaces', () => {
+    const pairs: Array<[number, number]> = [
+      [10000, 4500], [28254.21, 22577], [13173.7, 13173.7], [9403.3, 0.01], [0.03, 0.01], [1000, 1500], [999999999.99, 123456.78],
+    ];
+    for (const [total, remaining] of pairs) {
+      const repaid = total - remaining;
+      // DebtCard and useDebts: repaid first, then the share.
+      expect(Object.is(payoffPercent(total, remaining, 100), total > 0 ? (repaid / total) * 100 : 100)).toBe(true);
+      // DebtPayoffCard and TransactionForm: the difference inline.
+      expect(Object.is(payoffPercent(total, remaining, 0), total > 0 ? ((total - remaining) / total) * 100 : 0)).toBe(true);
+    }
   });
 });
