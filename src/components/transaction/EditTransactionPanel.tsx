@@ -7,7 +7,7 @@ import { txTypeMetaFor } from './txTypeMeta';
 import { systemCategoryLabel } from '../../selectors/display';
 import { safeEvaluateMath } from '../../utils/mathEvaluator';
 import { APP_CURRENCY_SYMBOL, formatCurrencyAmount } from '../../utils/currency';
-import { roundToCents } from '../../utils/money';
+import { MAX_AMOUNT, MAX_AMOUNT_ERROR, roundToCents } from '../../utils/money';
 import { ERROR_BANNER_CLASS, LABEL_TEXT_CLASS, OPTION_CLASS, inputClass, selectClass } from '../../utils/formStyles';
 
 interface WriteResult {
@@ -125,6 +125,8 @@ export const EditTransactionPanel: React.FC<EditTransactionPanelProps> = ({ tx, 
   const problem: string | null = (() => {
     if (moneyEditable) {
       if (amount === null || !(amount > 0)) return 'Enter an amount greater than zero';
+      // The save's own cap (ADR 0086): Save stays off instead of failing.
+      if (amount > MAX_AMOUNT) return MAX_AMOUNT_ERROR;
       if (isTransfer && (!draft.destinationWalletId || draft.destinationWalletId === draft.walletId)) {
         return 'Choose two different wallets';
       }
@@ -159,6 +161,8 @@ export const EditTransactionPanel: React.FC<EditTransactionPanelProps> = ({ tx, 
 
   const update = (changes: Partial<Draft>) => {
     setStatus(null);
+    // A refused save's message described the draft that was sent (ADR 0086).
+    setError(null);
     setDraft((previous) => ({ ...previous, ...changes }));
   };
 

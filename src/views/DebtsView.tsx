@@ -52,13 +52,16 @@ export const DebtsView: React.FC = () => {
   const [isSettlingDebt, setIsSettlingDebt] = useState<boolean>(false);
   const [settleDebtError, setSettleDebtError] = useState<string | null>(null);
 
-  // New Debt Form State
+  // New Debt Form State. Every figure starts empty, with an example in its
+  // placeholder (ADR 0086, audit finding 12): the form used to open on
+  // ฿5,000, 4.5%, ฿200 and 2026-12-31, so a name and Save added a debt
+  // nobody owed, with a due date that ages into overdue.
   const [debtName, setDebtName] = useState<string>('');
-  const [totalAmount, setTotalAmount] = useState<number>(5000);
-  const [remainingAmount, setRemainingAmount] = useState<number>(5000);
-  const [interestRate, setInterestRate] = useState<number>(4.5);
-  const [minimumPayment, setMinimumPayment] = useState<number>(200);
-  const [dueDate, setDueDate] = useState<string>('2026-12-31');
+  const [totalText, setTotalText] = useState<string>('');
+  const [remainingText, setRemainingText] = useState<string>('');
+  const [interestText, setInterestText] = useState<string>('');
+  const [minimumText, setMinimumText] = useState<string>('');
+  const [dueDate, setDueDate] = useState<string>('');
 
   const findDebt = (id: string | null) => (id ? debts.find((d) => d.id === id) ?? null : null);
   const debtToDelete = findDebt(debtToDeleteId);
@@ -138,20 +141,31 @@ export const DebtsView: React.FC = () => {
     onSuccess: () => {
       setIsAddDebtOpen(false);
       setDebtName('');
+      setTotalText('');
+      setRemainingText('');
+      setInterestText('');
+      setMinimumText('');
+      setDueDate('');
     },
   });
 
-  const handleCreateDebt = (e: React.FormEvent) =>
-    submitCreateDebt(e, () =>
+  // A blank optional field is absent; a blank total is 0, which `DebtSchema` refuses.
+  const optionalNumber = (text: string) => (text.trim() === '' ? undefined : Number(text));
+  const handleCreateDebt = (e: React.FormEvent) => {
+    const totalAmount = Number(totalText) || 0;
+    const remaining = Number(remainingText) || 0;
+    return submitCreateDebt(e, () =>
       addDebt({
         name: debtName.trim(),
         totalAmount,
-        remainingAmount: remainingAmount > 0 ? remainingAmount : totalAmount,
-        interestRate,
-        minimumPayment,
-        dueDate,
+        // Blank (or 0) owes the whole total, as before.
+        remainingAmount: remaining > 0 ? remaining : totalAmount,
+        interestRate: optionalNumber(interestText),
+        minimumPayment: optionalNumber(minimumText),
+        dueDate: dueDate || undefined,
       })
     );
+  };
 
   // T38: routes through the same generic addTransaction path every other
   // TransactionForm consumer uses. addTransaction itself decrements the
@@ -280,11 +294,11 @@ export const DebtsView: React.FC = () => {
                 step="0.01"
                 min="1"
                 required
-                value={totalAmount}
+                value={totalText}
+                placeholder="e.g. 120000"
                 onChange={(e) => {
-                  const val = parseFloat(e.target.value) || 0;
-                  setTotalAmount(val);
-                  setRemainingAmount(val);
+                  setTotalText(e.target.value);
+                  setRemainingText(e.target.value);
                 }}
                 className={inputClass('subtle')}
               />
@@ -299,8 +313,9 @@ export const DebtsView: React.FC = () => {
                 type="number"
                 step="0.01"
                 min="0"
-                value={remainingAmount}
-                onChange={(e) => setRemainingAmount(parseFloat(e.target.value) || 0)}
+                value={remainingText}
+                placeholder="e.g. 80000"
+                onChange={(e) => setRemainingText(e.target.value)}
                 className={inputClass('subtle')}
               />
             </div>
@@ -316,8 +331,9 @@ export const DebtsView: React.FC = () => {
                 type="number"
                 step="0.1"
                 min="0"
-                value={interestRate}
-                onChange={(e) => setInterestRate(parseFloat(e.target.value) || 0)}
+                value={interestText}
+                placeholder="e.g. 4.5"
+                onChange={(e) => setInterestText(e.target.value)}
                 className={inputClass('subtle')}
               />
             </div>
@@ -331,8 +347,9 @@ export const DebtsView: React.FC = () => {
                 type="number"
                 step="1"
                 min="0"
-                value={minimumPayment}
-                onChange={(e) => setMinimumPayment(parseFloat(e.target.value) || 0)}
+                value={minimumText}
+                placeholder="e.g. 3000"
+                onChange={(e) => setMinimumText(e.target.value)}
                 className={inputClass('subtle')}
               />
             </div>

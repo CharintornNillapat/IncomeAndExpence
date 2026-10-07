@@ -4,6 +4,31 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
+## Phase 110 - One amount cap, checked in the field; refused saves clear on edit; the Add Debt form starts empty; sign-out clears cached insights; one h1 per page; a Permissions-Policy: T672-T678 (2026-10-07, code `128f2bb`, docs `b0eeb5f`, PR #61)
+
+ADR `0086`. The owner's brief: audit findings 9, 10, 12, 13, 16 and 20.
+
+**Changed**
+- **`utils/money.ts`:** `MAX_AMOUNT` and `MAX_AMOUNT_ERROR`, used by every schema and the backup file; `DebtSchema` gains the cap. **`evaluateAmountInput`** refuses an amount over it after rounding; so does the edit panel's check.
+- **`TransactionForm`, `WalletTransferForm`, `EditTransactionPanel`:** a refused save's message clears on an amount edit (any edit in the panel).
+- **`DebtsView`:** the Add Debt form's figures are text that starts empty, with example placeholders; a blank Remaining owes the total; every field resets after a save.
+- **`resetToGuestState`:** removes every `pf_insights::` key.
+- **`Navbar`:** the brand is a `<p>`.
+- **`vercel.json`:** `Permissions-Policy`.
+- **Tests:** +16 unit (`inline-math-seed` +6, `stale-errors` 2, `debts-page` +3, `ledger-guards` +1, `security-headers` +1, `dialog-names` 3); five specs updated (`debts`, `soft-delete`, `debts-page`, `debt-repayment` fill what the form used to; `theme` checks the brand and one `h1`).
+- **Docs:** ADR `0086`; `CLAUDE.md`'s amount, sign-out, headers, dialog, Add Debt and suite-size lines.
+
+**Gate:**
+- Lint clean; unit 1241/1241 in 51 files; Playwright 476 passed, 1 failed, 6 skipped of 483 (8.3 m): the WebKit `jev-classify` flake that also fails on `main` (2 in 20; see the notes); schema drift run `37628303036`: no drift, 19 migrations.
+- **Red first:** the 11 tests of changed behaviour failed on the unfixed code; the dialog scan's negative control failed on an untitled `EditDebtModal`.
+- **Bundle:** all app JS +515 / +193 B gzip; the entry +206 / +83 (the cap and the eviction); cold start still three scripts.
+
+**Changed on purpose**
+- **Saving a debt now needs a total typed in.** A spec that creates one fills it.
+- **An amount over ฿999,999,999.99 is refused in the field**, before Save, with the same message the save would give.
+
+---
+
 ## Phase 109 - Every category path keeps an entry's own type; overdrafts warn in the entry form; wallets below zero are not "no money": T665-T671 (2026-10-07, code `e3476a3`, docs `96be360`, merge `a56cb20`)
 
 ADR `0085`. The owner's brief: close finding 3's remaining paths, and findings 4, 8 and 11; leave the live rows under Balance Adjustment as they are.

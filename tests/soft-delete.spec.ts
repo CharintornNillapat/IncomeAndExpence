@@ -91,6 +91,8 @@ test.describe('Soft-delete lifecycle', () => {
 
     const debtName = `E2E SoftDelete Debt ${Date.now().toString().slice(-6)}`;
     await page.locator('#new-debt-name').fill(debtName);
+    // The form starts empty since ADR 0086; a total is the one figure it needs.
+    await page.locator('#new-debt-total').fill('5000');
     await page.locator('#save-new-debt-btn').click();
 
     const card = page.locator('div[id^="debt-card-"]').filter({ hasText: debtName });

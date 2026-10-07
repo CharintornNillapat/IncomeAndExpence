@@ -82,6 +82,13 @@ describe('evaluateAmountInput: the field rules, without state', () => {
     ['5-10', null, true, 'Amount must be greater than zero'],
     ['abc', null, false, 'Invalid characters in calculation'],
     ['1..2', null, false, 'Incomplete or malformed math expression'],
+    // Phase 110 (ADR 0086, finding 9): the save's own cap, on the rounded amount.
+    ['999999999.99', 999999999.99, false, null],
+    ['999999999.994', 999999999.99, false, null],
+    ['999999999.995', null, false, "Amount can't be over ฿999,999,999.99"],
+    ['1000000000', null, false, "Amount can't be over ฿999,999,999.99"],
+    ['999999999+1', null, true, "Amount can't be over ฿999,999,999.99"],
+    ['99999999999999999', null, false, "Amount can't be over ฿999,999,999.99"],
   ])('%j gives amount %j, a calculation %j and error %j', (raw, amount, hasCalculation, err) => {
     const result = evaluateAmountInput(raw);
     expect(result.amount).toBe(amount);

@@ -359,6 +359,13 @@ const LEDGER_STORAGE_KEYS = [
   'pf_device_fingerprint',
 ] as const;
 
+// ADR 0086 (audit finding 13): `insightsClient.ts` caches each month's verdict
+// under `pf_insights::<user id>::<month>`, with the account's category names
+// in it, so sign-out removes every key with this prefix as well. The card's
+// own fold (`pf_insights_collapsed`) is a device preference and stays.
+// `unit/ledger-guards.test.tsx` checks the prefix against the cache's reader.
+const INSIGHTS_CACHE_PREFIX = 'pf_insights::';
+
 // Shape returned by `create_wallet` (ADR 0024). `transaction` is the opening
 // row, null for a zero opening.
 interface CreateWalletResult {
@@ -894,6 +901,15 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
         // Storage can be unavailable (private mode); the in-memory reset below
         // still holds.
       }
+    }
+    try {
+      // Collected first: removing while walking by index skips keys.
+      const cached = Array.from({ length: localStorage.length }, (_, i) => localStorage.key(i)).filter(
+        (key): key is string => key?.startsWith(INSIGHTS_CACHE_PREFIX) === true
+      );
+      for (const key of cached) localStorage.removeItem(key);
+    } catch {
+      // As above.
     }
 
     setIsAuthenticated(false);

@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { formatCurrencyAmount } from './currency';
+import { MAX_AMOUNT, MAX_AMOUNT_ERROR } from './money';
 
 // ADR 0068: zod compiles object schemas with `new Function` when the page
 // allows it, and probes for that once. The CSP allows no eval, so the probe
@@ -24,7 +25,7 @@ export function formatZodIssues(error: z.ZodError): string {
 export const TransactionSchema = z.object({
   amount: z
     .number()
-    .refine((n) => Math.abs(n) <= 999999999.99, 'Amount too large'),
+    .refine((n) => Math.abs(n) <= MAX_AMOUNT, MAX_AMOUNT_ERROR),
   rawInput: z.string().optional(),
   type: z.enum(['INCOME', 'EXPENSE', 'TRANSFER', 'ADJUSTMENT', 'DEBT_REPAYMENT']),
   description: z.string().min(1, 'Description is required').max(255),
@@ -70,7 +71,7 @@ export const WalletSchema = z.object({
   name: z.string().min(1, 'Wallet name is required').max(100),
   type: z.enum(['CASH', 'BANK_ACCOUNT', 'CREDIT_CARD', 'E_WALLET', 'INVESTMENT', 'SAVINGS']),
   currency: z.literal('THB'),
-  initialBalance: z.number().refine((n) => Math.abs(n) <= 999999999.99, 'Initial balance too large'),
+  initialBalance: z.number().refine((n) => Math.abs(n) <= MAX_AMOUNT, `Initial balance can't be over ${formatCurrencyAmount(MAX_AMOUNT)}`),
   color: z.string().optional(),
   icon: z.string().optional(),
 }).refine(
@@ -97,7 +98,7 @@ export const WalletEditSchema = z.object({
 
 export const DebtSchema = z.object({
   name: z.string().min(1, 'Debt title is required').max(100),
-  totalAmount: z.number().positive('Total debt amount must be positive'),
+  totalAmount: z.number().positive('Total debt amount must be positive').max(MAX_AMOUNT, MAX_AMOUNT_ERROR),
   remainingAmount: z.number().min(0, 'Remaining debt cannot be negative'),
   interestRate: z.number().min(0).max(100).optional(),
   minimumPayment: z.number().min(0).optional(),
@@ -121,7 +122,7 @@ export const DebtSchema = z.object({
  */
 export const DebtEditSchema = z.object({
   name: z.string().trim().min(1, 'Debt title is required').max(100),
-  totalAmount: z.number().positive('Total debt amount must be positive').max(999999999.99, 'Amount too large'),
+  totalAmount: z.number().positive('Total debt amount must be positive').max(MAX_AMOUNT, MAX_AMOUNT_ERROR),
   interestRate: z.number().min(0).max(100).optional(),
   minimumPayment: z.number().min(0).optional(),
   dueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be in YYYY-MM-DD format').optional(),
@@ -167,7 +168,7 @@ export const KeywordMappingSchema = z.object({
 export const PresetSchema = z.object({
   name: z.string().trim().min(1, 'Template name is required').max(60, 'Template name is too long'),
   type: z.enum(['INCOME', 'EXPENSE']),
-  amount: z.number().positive('Amount must be greater than 0').max(999999999.99, 'Amount too large'),
+  amount: z.number().positive('Amount must be greater than 0').max(MAX_AMOUNT, MAX_AMOUNT_ERROR),
   description: z.string().trim().min(1, 'Description is required').max(255),
   categoryId: z.string().optional(),
   walletId: z.string().optional(),

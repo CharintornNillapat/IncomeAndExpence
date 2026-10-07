@@ -46,6 +46,11 @@ describe('vercel.json headers (ADR 0068)', () => {
     expect(csp.get('frame-ancestors')).toEqual(["'none'"]);
   });
 
+  it('turns off the camera and location, and keeps the microphone for this origin alone (ADR 0086)', () => {
+    // The note field's dictation needs the microphone (ADR 0018); nothing uses the rest.
+    expect(header('Permissions-Policy')).toBe('camera=(), geolocation=(), microphone=(self)');
+  });
+
   it('sends violations to /api/csp-report through report-uri alone (ADR 0071)', () => {
     expect(csp.get('report-uri')).toEqual(['/api/csp-report']);
     expect(existsSync(resolve(ROOT, 'api/csp-report.ts'))).toBe(true);

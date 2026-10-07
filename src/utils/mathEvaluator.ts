@@ -1,3 +1,5 @@
+import { MAX_AMOUNT, MAX_AMOUNT_ERROR } from './money';
+
 export interface MathEvaluationResult {
   isValid: boolean;
   value: number | null;
@@ -164,6 +166,12 @@ export function evaluateAmountInput(raw: string): AmountInputEvaluation {
   if (result.isValid && result.value !== null) {
     if (result.value <= 0) {
       return { amount: null, formattedValue: '', hasCalculation, error: 'Amount must be greater than zero' };
+    }
+    // The save's own cap, on the amount rounded to cents (ADR 0086), so the
+    // field refuses what the save would, and a figure too large for a double
+    // to hold in cents is never offered.
+    if (result.value > MAX_AMOUNT) {
+      return { amount: null, formattedValue: '', hasCalculation, error: MAX_AMOUNT_ERROR };
     }
     return { amount: result.value, formattedValue: result.formattedValue, hasCalculation, error: null };
   }

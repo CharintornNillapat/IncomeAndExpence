@@ -1098,6 +1098,15 @@ The entry's growth is the ledger action itself, which lives with the other ledge
 
 **Intermittent local failures:** 6 in 1,071 full-suite runs (3 full runs). All were timeouts: a Firefox `goto`, a Firefox context close, and four WebKit clicks waiting for "stable". No assertion failed. See audit 005 finding 3 for the control runs.
 
+## Phase 110 (amount cap, stale errors, empty debt form, insights eviction, one h1, Permissions-Policy) - delta against Phase 109
+
+**Bundle** (gzip -9 on both sides; Phase 109 built from a `main` worktree with `.env` at `a7a3d1f`, all app JS 879,108 / 266,940, as Phase 109 recorded). All app JS to 879,623 / 267,133 B (+515 / +193), 40 files. Entry `index` 194,203 / 55,982 to 194,409 / 56,065; `DebtsView` 17,093 / 5,183 to 17,250 / 5,214; `InlineMathInput` 6,241 / 2,387 to 6,322 / 2,408; `TransactionForm` 26,232 / 8,560 to 26,255 / 8,574; `TransactionsView` 35,010 / 11,117 to 35,052 / 11,136; `TransferFundsModal` 6,815 / 2,793 to 6,844 / 2,811. Cold start: still three scripts.
+
+| Suite | Files | Tests | Runs | Result |
+|---|---|---|---|---|
+| Vitest (`unit/`) | 51 | 1241 | 1241 | 1241/1241 (+6 `inline-math-seed`, +2 `stale-errors.test.tsx`, +3 `debts-page`, +1 `ledger-guards`, +1 `security-headers`, +3 `dialog-names.test.tsx`) |
+| Playwright (local, 4 workers) | 33 | 161 | 483 | 476 passed, 1 failed, 6 skipped of 483 (8.3 m): the `jev-classify` WebKit flake, 2 in 20 on `main` too |
+
 ## Phase 109 (category integrity, overdraft warning, wallet caption) - delta against Phase 108
 
 **Bundle** (gzip -9 on both sides; Phase 108 built from a `main` worktree with `.env` at `4c43be5`, all app JS 877,885 / 266,520, as Phase 108 recorded). All app JS to 879,108 / 266,940 B (+1,223 / +420), 40 files. Entry `index` 193,876 / 55,858 to 194,203 / 55,982 (the `addTransaction` and import guards, `overdraftBy`); `TransactionForm` 25,725 / 8,445 to 26,232 / 8,560; `TransactionsView` 34,711 / 11,015 to 35,010 / 11,117 (the edit panel and the import preview); `walletFormStyles` 394 / 313 to 517 / 380. Cold start: still three scripts.

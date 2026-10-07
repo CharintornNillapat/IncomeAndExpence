@@ -8,7 +8,10 @@ test.describe('Navigation & Theme E2E Tests', () => {
 
   test('should load the dashboard and verify primary brand elements', async ({ page }) => {
     await expect(page).toHaveTitle(/FinLife/i);
-    await expect(page.getByRole('heading', { name: /FinLife Tracker/i })).toBeVisible();
+    await expect(page.getByRole('banner').getByText('FinLife Tracker', { exact: true })).toBeVisible();
+    // ADR 0086: the brand is not a heading; the view's own title is the page's one h1.
+    await expect(page.locator('h1')).toHaveCount(1);
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText(/^Good (morning|afternoon|evening)/);
     await expect(page.locator('#navbar-theme-toggle-btn')).toBeVisible();
     await expect(page.locator('#navbar-quick-add-btn')).toBeVisible();
   });

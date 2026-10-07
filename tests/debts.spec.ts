@@ -20,13 +20,16 @@ test.describe('Debt payoff lifecycle', () => {
   test('create a debt, apply a partial repayment, then fully settle it', async ({ page }) => {
     await gotoTab(page, 'debts');
 
-    // 1. Create a debt goal, accepting the form's own defaults (5,000 total /
-    // remaining, 4.5% APR, 200 minimum payment) aside from a unique name.
+    // 1. Create a debt goal: 5,000 total and remaining, 4.5% APR, 200 minimum
+    // payment. The form starts empty since ADR 0086, so each is filled.
     await page.locator('#open-add-debt-btn').click();
     const debtName = `E2E Payoff Goal ${Date.now().toString().slice(-6)}`;
     const nameInput = page.locator('#new-debt-name');
     await expect(nameInput).toBeVisible();
     await nameInput.fill(debtName);
+    await page.locator('#new-debt-total').fill('5000');
+    await page.locator('#new-debt-interest').fill('4.5');
+    await page.locator('#new-debt-min-payment').fill('200');
     await page.locator('#save-new-debt-btn').click();
 
     const card = page.locator('div[id^="debt-card-"]').filter({ hasText: debtName });

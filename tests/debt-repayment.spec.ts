@@ -17,10 +17,14 @@ import { gotoTab } from './helpers';
  * parser exactly as typing in it by hand does (ADR `0013`).
  */
 
-/** Creates a debt goal from the Add Debt form and returns its card locator. */
+/**
+ * Creates a debt goal from the Add Debt form and returns its card locator.
+ * ฿5,000 with a ฿200 minimum unless told otherwise: the form's own defaults
+ * until it started empty (ADR 0086), kept here so the figures below hold.
+ */
 async function createDebt(
   page: Page,
-  { total, minimum }: { total?: string; minimum?: string } = {}
+  { total = '5000', minimum = '200' }: { total?: string; minimum?: string } = {}
 ) {
   await page.locator('#open-add-debt-btn').click();
 
@@ -31,8 +35,8 @@ async function createDebt(
 
   // Total writes Remaining too (they are bound in DebtsView), so it must be
   // filled before any explicit Remaining value would be.
-  if (total) await page.locator('#new-debt-total').fill(total);
-  if (minimum) await page.locator('#new-debt-min-payment').fill(minimum);
+  await page.locator('#new-debt-total').fill(total);
+  await page.locator('#new-debt-min-payment').fill(minimum);
 
   await page.locator('#save-new-debt-btn').click();
 
@@ -90,7 +94,7 @@ test.describe('Debt payoff chips and live preview', () => {
     const card = await createDebt(page);
     await openRepay(page, card);
 
-    // 200 is the Add Debt form's own default minimum payment.
+    // 200 is `createDebt`'s default minimum payment.
     await page.locator('#repay-payoff-minimum').click();
 
     await expect(amountField(page)).toHaveValue('200');
@@ -199,7 +203,7 @@ test.describe('Debt payoff chips and live preview', () => {
   });
 
   test('the minimum chip is hidden when the minimum exceeds what is left', async ({ page }) => {
-    // Total 100 with the default 200 minimum: paying the "minimum" would
+    // Total 100 with `createDebt`'s 200 minimum: paying the "minimum" would
     // overshoot, so the chip would just duplicate "Pay in full".
     const card = await createDebt(page, { total: '100' });
     await openRepay(page, card);

@@ -223,7 +223,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
   /** The last expression the note parser pushed, so an unchanged parse is not re-seeded on every keystroke. */
   const lastSeededExprRef = React.useRef<string | null>(null);
 
-  const { isSubmitting, error: submitError, handleSubmit: submitTransaction } = useSubmitHandler({
+  const { isSubmitting, error: submitError, setError: setSubmitError, handleSubmit: submitTransaction } = useSubmitHandler({
     defaultErrorMessage: 'Failed to save transaction',
     onSuccess: () => {
       setDescription('');
@@ -249,7 +249,11 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
     setAmount(val);
     setRawAmountInput(raw);
     setIsAmountValid(valid);
-  }, []);
+    // A refused save's message described the amount that was sent; a new one
+    // makes it stale (ADR 0086, audit finding 10). Typing, a chip and a seed
+    // from the note all arrive here.
+    setSubmitError(null);
+  }, [setSubmitError]);
 
   const handleAmountUserEdit = React.useCallback(() => {
     userTouchedRef.current.amount = true;
