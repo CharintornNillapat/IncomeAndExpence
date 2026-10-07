@@ -8,16 +8,7 @@ import { Presence } from './components/ui/motion';
 import { AuthModal } from './components/AuthModal';
 import { ReloadPrompt } from './components/ReloadPrompt';
 import { isInsideHorizontalScroller, isZoomedIn } from './utils/swipeGuard';
-
-// Ordered tab hierarchy for native-like swipe gestures
-const TABS_ORDER: ActiveTab[] = [
-  'dashboard',
-  'transactions',
-  'wallets',
-  'debts',
-  'diary',
-  'categories',
-];
+import { TAB_ORDER, tabFromHash, urlForTab } from './utils/tabRoute';
 
 // Lazy-loaded route views for optimized bundle size & code splitting
 const DashboardView = lazy(() => import('./views/DashboardView').then(m => ({ default: m.DashboardView })));
@@ -40,7 +31,8 @@ const AddWalletModal = lazy(() => import('./components/wallet/AddWalletModal').t
 const AccountModal = lazy(() => import('./components/account/AccountModal').then(m => ({ default: m.AccountModal })));
 
 const MainApp: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<ActiveTab>('dashboard');
+  // ADR 0088: the tab is in the URL's hash, so a refresh or a bookmark opens it.
+  const [activeTab, setActiveTab] = useState<ActiveTab>(() => tabFromHash(window.location.hash));
   const [direction, setDirection] = useState<number>(0);
   const [isQuickAddOpen, setIsQuickAddOpen] = useState<boolean>(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
@@ -104,33 +96,46 @@ const MainApp: React.FC = () => {
   // each still depends on `activeTab` (it reads the current tab to compute
   // `direction`), so identity only changes when the tab actually changes,
   // not on every unrelated re-render of MainApp.
-  const handleTabChange = useCallback(
+  const showTab = useCallback(
     (newTab: ActiveTab) => {
-      const currentIndex = TABS_ORDER.indexOf(activeTab);
-      const newIndex = TABS_ORDER.indexOf(newTab);
-      if (currentIndex !== -1 && newIndex !== -1 && currentIndex !== newIndex) {
-        setDirection(newIndex > currentIndex ? 1 : -1);
-      }
+      const currentIndex = TAB_ORDER.indexOf(activeTab);
+      const newIndex = TAB_ORDER.indexOf(newTab);
+      if (currentIndex !== newIndex) setDirection(newIndex > currentIndex ? 1 : -1);
       setActiveTab(newTab);
     },
     [activeTab]
   );
 
+  // ADR 0088 (audit finding 14): every move to another tab is a history entry,
+  // so Back and Forward walk between tabs instead of leaving the app. Opening
+  // the tab already open adds none.
+  const handleTabChange = useCallback(
+    (newTab: ActiveTab) => {
+      if (newTab !== activeTab) {
+        window.history.pushState(null, '', urlForTab(newTab, window.location.pathname, window.location.search));
+      }
+      showTab(newTab);
+    },
+    [activeTab, showTab]
+  );
+
+  // Back, Forward and a hash typed into the address bar (a fragment navigation
+  // fires `popstate` too) show the tab the URL now names.
+  useEffect(() => {
+    const onPopState = () => showTab(tabFromHash(window.location.hash));
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, [showTab]);
+
   const handleNextTab = useCallback(() => {
-    const currentIndex = TABS_ORDER.indexOf(activeTab);
-    if (currentIndex < TABS_ORDER.length - 1) {
-      setDirection(1);
-      setActiveTab(TABS_ORDER[currentIndex + 1]);
-    }
-  }, [activeTab]);
+    const currentIndex = TAB_ORDER.indexOf(activeTab);
+    if (currentIndex < TAB_ORDER.length - 1) handleTabChange(TAB_ORDER[currentIndex + 1]);
+  }, [activeTab, handleTabChange]);
 
   const handlePrevTab = useCallback(() => {
-    const currentIndex = TABS_ORDER.indexOf(activeTab);
-    if (currentIndex > 0) {
-      setDirection(-1);
-      setActiveTab(TABS_ORDER[currentIndex - 1]);
-    }
-  }, [activeTab]);
+    const currentIndex = TAB_ORDER.indexOf(activeTab);
+    if (currentIndex > 0) handleTabChange(TAB_ORDER[currentIndex - 1]);
+  }, [activeTab, handleTabChange]);
 
   const handleNavigate = useCallback(
     (tab: string) => handleTabChange(tab as ActiveTab),

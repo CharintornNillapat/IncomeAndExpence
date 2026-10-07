@@ -1081,6 +1081,25 @@ Approved explicitly by the user, planned and approved before any code was writte
 - **One negative control was redone** because the first attempt produced malformed TypeScript that the dev server still served — the tests failed, but possibly for the wrong reason.
 - **No flakes.** Phase 44's `wallets.spec.ts` webkit flake has now not reproduced across three consecutive phases; still watched rather than closed.
 
+## Phase 112 - The open tab lives in the URL's hash; `/api/insights` serves accounts only; both proxies cap the body: T685-T690 (2026-10-07)
+
+ADR `0088`, closing audit findings 14 and 6 and amending ADR `0020`, `0032` and `0046`. Branch `phase-112-routing-and-ai-proxy-guard`, cut from `main` at `bad64ea`; code `9ad6faa`, docs `9a1d2f2`; draft PR #63.
+
+| # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
+|---|---|---|---|---|---|---|---|---|---|---|
+| T685 | Finding 14: `tabRoute.ts` (`#/<tab>`, the Dashboard bare), `handleTabChange` pushes a history entry, `popstate` shows the URL's tab | `src/utils/tabRoute.ts`, `src/App.tsx`, `unit/tab-route.test.ts`, `tests/routing.spec.ts` | High | Med | 0.6h | done | - | `9ad6faa` | the 4 routing tests failed against `main`'s `App.tsx` | +1 unit file, +1 spec (4) |
+| T686 | Finding 6: `/api/insights` answers a guest 401, before keys, count and body | `api/insights.ts`, `unit/proxy-contract.test.ts` | High | Low | 0.3h | done | - | `9ad6faa` | guest refusal, its `Server-Timing` and its count failed first | - |
+| T687 | The client sends a guest no insights request; the card's sign-in note | `src/utils/insightsClient.ts`, `src/components/dashboard/SpendingInsightsCard.tsx`, `unit/proxy-auth-client.test.ts` | Med | Low | 0.3h | done | T686 | `9ad6faa` | 2 client tests failed first; undoing the check fails the card's guest test | +2 tests |
+| T688 | `readBody` with a 64 KB cap in both proxies (413), in the parity list; the largest valid bodies fit | `api/classify.ts`, `api/insights.ts`, `unit/proxy-parity.test.ts`, `unit/proxy-contract.test.ts` | Med | Low | 0.3h | done | - | `9ad6faa` | 4 cap tests failed first | +8 tests (6 contract, 2 parity) |
+| T689 | The insights model path moves from the guest spec to a signed-in unit test; `insights.spec.ts` 8 tests to 2 | `unit/insights-card.test.tsx`, `tests/insights.spec.ts` | Med | Low | 0.4h | done | T687 | `9ad6faa` | 7/7 | +7 unit, -6 spec |
+| T690 | Gate, bundle against `main`, ADR `0088`, `CLAUDE.md`, this ledger, the refactor log, baseline metrics | `docs/`, `CLAUDE.md` | Med | Low | 0.4h | done | T685-T689 | docs | lint clean; unit 1284/1284 in 55 files; Playwright 470 passed, 6 skipped, 1 failed of 477 (8.2 m): a WebKit painting stall (ADR `0058`) in the new insights test; schema drift run `37644947758`: no drift, 19 migrations | all app JS +276 B gzip |
+
+**Notes on execution:**
+- **"Settings" in the brief is no tab:** Account & Security is a dialog (ADR `0024`); the sixth tab is Categories.
+- **A hash, not a path:** a path needs a `vercel.json` rewrite for a deep link's first load, and `CLAUDE.md` asks for production `Server-Timing` before and after any key there.
+- **Six insights E2E tests drove the model path as a guest.** With guests no longer sent, they would have tested nothing; no spec signs in, so they moved to `unit/insights-card.test.tsx`.
+- **WebKit stalls (ADR `0058`):** the new insights test stalled once in the full run, and the two new specs on WebKit 15 times over stalled twice in 90 (the insights test and the routing test). In all three the click waited on "visible, enabled and stable", and the trace's screencast stopped within 0.3 s of the click with no frame after it. The same unchanged specs (`transaction`, `wallets-page`) on WebKit 10 times over passed 100 of 100 on both the branch and `main`, and `main`'s insights spec passed 120 of 120, so nothing measured ties the stall to this phase's code. Not seen on CI's Linux WebKit before.
+
 ## Phase 111 - A classification armed during StrictMode's re-run is re-armed; a debt's months left are its payment dates; a new password needs 8 characters: T679-T684 (2026-10-07)
 
 ADR `0087`, superseding spec L4's `monthsLeft` and amending ADR `0011` and `0024`. Branch `phase-111-input-race-and-audit-cleanups`, cut from `main` at `ece2219`; code `394b588`, docs `6f02dd3`, hash backfill `d13315f`; merged into `main` as `7fb5a5a` (PR #62); Vercel `dpl_FnjqjmuSp1yGgQ1wWv57XSCG3JWW` READY in `icn1`. The pull request's CI (run `37638363177`) passed every job. `main` CI on the merge (run `37641867830`) passed every test job on its first attempt (unit 1250; 477 passed, 6 skipped, no flaky test), but GitHub never created its "Merge the E2E reports" job, so the run reads as failed; two re-run requests got HTTP 500. The six shard blobs, merged locally with `playwright merge-reports`, give 477 expected, 6 skipped, 0 unexpected, 0 flaky.

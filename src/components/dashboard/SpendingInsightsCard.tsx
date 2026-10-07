@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ChartLine, RefreshCw, ChevronDown, ChevronUp, WifiOff } from 'lucide-react';
+import { ChartLine, RefreshCw, ChevronDown, ChevronUp, WifiOff, LogIn } from 'lucide-react';
 import type { Category, Transaction } from '../../types';
 import { buildSpendingSummary, hasEnoughData, renderInsight } from '../../utils/spendingSummary';
 import { fetchInsight, readCachedVerdict } from '../../utils/insightsClient';
@@ -63,6 +63,8 @@ export const SpendingInsightsCard: React.FC<SpendingInsightsCardProps> = ({
   const [fromModel, setFromModel] = useState<boolean>(
     () => readCachedVerdict(userId, summary.month)?.fromModel ?? false
   );
+  // A guest's summary is always local (ADR 0088), and says so differently.
+  const [signInNeeded, setSignInNeeded] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState<boolean>(readCollapsed);
 
@@ -82,6 +84,7 @@ export const SpendingInsightsCard: React.FC<SpendingInsightsCardProps> = ({
     const result = await fetchInsight(summary, userId);
     setLines(renderInsight(summary, result.verdict));
     setFromModel(result.fromModel);
+    setSignInNeeded(result.signInNeeded === true);
     setIsGenerating(false);
   };
 
@@ -154,7 +157,16 @@ export const SpendingInsightsCard: React.FC<SpendingInsightsCardProps> = ({
                 ))}
               </div>
 
-              {!fromModel && (
+              {!fromModel && signInNeeded && (
+                <p
+                  data-testid="insights-signin-note"
+                  className="flex items-center gap-1.5 text-[11px] font-medium text-fg-muted"
+                >
+                  <LogIn className="w-3 h-3 shrink-0" />
+                  Written on this device. Sign in for a summary from Jev.
+                </p>
+              )}
+              {!fromModel && !signInNeeded && (
                 <p
                   data-testid="insights-offline-note"
                   className="flex items-center gap-1.5 text-[11px] font-medium text-fg-muted"

@@ -4,6 +4,30 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
+## Phase 112 - The open tab lives in the URL's hash; `/api/insights` serves accounts only; both proxies cap the body: T685-T690 (2026-10-07, code `9ad6faa`, docs `9a1d2f2`, PR #63)
+
+ADR `0088`. The owner's brief: audit finding 14 (no URL per view) and finding 6 (guests spending TypeSafe credits).
+
+**Changed**
+- **`src/utils/tabRoute.ts` (new):** `TAB_ORDER` (moved from `App.tsx`), `tabFromHash`, `urlForTab`. **`App.tsx`:** the tab starts from the hash; `handleTabChange` pushes `#/<tab>` (the bare path for the Dashboard) for a move to another tab, and the swipe goes through it; a `popstate` listener shows the URL's tab.
+- **`api/insights.ts`:** a guest is 401 "Sign in to use insights." after the missing-key 404, before the count; the quota call no longer branches on a guest.
+- **Both proxies:** `MAX_BODY_BYTES` (64 KB) and `readBody` (413 on a declared or real body over it, 400 on bad JSON) in place of `req.json()`; both in the parity test's `SHARED` list.
+- **`insightsClient.fetchInsight`:** checks `authorizationHeader()` before anything else and returns the local verdict with `signInNeeded` for a guest. **`SpendingInsightsCard`:** the `insights-signin-note` for it.
+- **Tests:** `unit/tab-route.test.ts`, `tests/routing.spec.ts` (4), `unit/insights-card.test.tsx` (7), `unit/proxy-contract.test.ts` (an endpoint table that says who serves guests, the guest refusal, the cap), `unit/proxy-auth-client.test.ts`, `tests/insights.spec.ts` (8 to 2).
+- **Docs:** ADR `0088`; `CLAUDE.md`'s caller check, body cap, firewall, insights, tab routing, mocking and suite lines.
+
+**Gate:**
+- Lint clean; unit 1284/1284 in 55 files; Playwright 470 passed, 6 skipped, 1 failed of 477 (8.2 m): a WebKit painting stall (ADR `0058`) in the new insights test; schema drift run `37644947758`: no drift, 19 migrations.
+- **Red first:** the routing spec failed 4 of 4 against `main`'s `App.tsx`; `tab-route` before its module existed; 7 contract and 2 client tests before the proxies and client changed.
+- **WebKit stalls (ADR `0058`):** the new insights test stalled once in the full run, and the two new specs on WebKit 15 times over stalled twice in 90 (the insights test and the routing test). In all three the click waited on "visible, enabled and stable", and the trace's screencast stopped within 0.3 s of the click with no frame after it. The same unchanged specs (`transaction`, `wallets-page`) on WebKit 10 times over passed 100 of 100 on both the branch and `main`, and `main`'s insights spec passed 120 of 120, so nothing measured ties the stall to this phase's code. Not seen on CI's Linux WebKit before.
+- **Bundle:** all app JS +826 / +276 B gzip; the entry +456 / +182 (the routing); `DashboardView` +370 / +101 (the card's note); cold start still three scripts.
+
+**Changed on purpose**
+- **Back moves between tabs** instead of leaving the app; a refresh keeps the tab.
+- **A guest's insights are always the device's own,** with a line saying signing in adds Jev's.
+
+---
+
 ## Phase 111 - A classification armed during StrictMode's re-run is re-armed; a debt's months left are its payment dates; a new password needs 8 characters: T679-T684 (2026-10-07, code `394b588`, docs `6f02dd3`, merge `7fb5a5a`)
 
 ADR `0087`. The owner's brief: the WebKit `jev-classify` flake, audit finding 7 (debt months left) and finding 5 (password floor).

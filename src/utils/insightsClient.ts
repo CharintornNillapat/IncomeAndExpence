@@ -33,6 +33,8 @@ export interface InsightVerdict {
   verdict: InsightsResponse;
   /** `false` when the local rule chose it - the card marks this quietly, never as an error. */
   fromModel: boolean;
+  /** Set for a guest, whom the proxy refuses (ADR 0088): the card says signing in adds Jev's. */
+  signInNeeded?: true;
 }
 
 // Sign-out removes every key with this prefix (`FinanceContext`'s
@@ -89,16 +91,25 @@ export async function fetchInsight(
 ): Promise<InsightVerdict> {
   const local: InsightVerdict = { verdict: selectLocalPattern(summary), fromModel: false };
 
-  // Latched off, or a summary with nothing in it the server would accept.
-  if (insightsUnavailable || summary.categories.length === 0) return local;
+  // A summary with nothing in it the server would accept.
+  if (summary.categories.length === 0) return local;
+
+  // ADR 0088 (audit finding 6): the proxy serves accounts only, so a guest is
+  // not sent at all. `authorizationHeader` never throws, and for a guest with
+  // no stored session it loads nothing (ADR 0083).
+  const auth = await authorizationHeader();
+  if (!auth.Authorization) return { ...local, signInNeeded: true };
+
+  // Latched off, or offline.
+  if (insightsUnavailable) return local;
   if (typeof navigator !== 'undefined' && navigator.onLine === false) return local;
 
   try {
     const res = await fetch(INSIGHTS_ENDPOINT, {
       method: 'POST',
-      // Signed in, the access token; a guest sends none (ADR 0032). A refused
-      // token is a 401, which falls to the local verdict below without latching.
-      headers: { 'Content-Type': 'application/json', ...(await authorizationHeader()) },
+      // The access token. A refused one is a 401, which falls to the local
+      // verdict below without latching.
+      headers: { 'Content-Type': 'application/json', ...auth },
       // The summary and nothing else. See `SpendingSummary` for what is
       // deliberately absent; a test asserts this body carries no ledger text.
       body: JSON.stringify({ summary }),
