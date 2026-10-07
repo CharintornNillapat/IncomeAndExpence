@@ -1083,7 +1083,7 @@ Approved explicitly by the user, planned and approved before any code was writte
 
 ## Phase 113 - The title names the open tab; Back closes the top dialog: T691-T695 (2026-10-08)
 
-ADR `0089`, completing audit finding 14 and amending ADR `0043` and `0088`. Branch `phase-113-navigation-and-modal-history`, cut from `main` at `6aabb4e`; code `c8afa5a`, docs `9952c1c`; draft PR #64.
+ADR `0089`, completing audit finding 14 and amending ADR `0043` and `0088`. Branch `phase-113-navigation-and-modal-history`, cut from `main` at `6aabb4e`; code `c8afa5a`, docs `9952c1c`, hash backfill `aac958f`; merged into `main` as `4f1fcf1` (PR #64); Vercel `dpl_5GCKHvTMPwwjsT9KReqwX5uEko5M` READY in `icn1`. The pull request's CI (run `37699782711`) passed every job. `main` CI on the merge (run `37701073935`) passed every job on its first attempt in 259 s end to end, the merge job included: unit 1296; 486 passed, 6 skipped, no flaky test. The local WebKit painting stall (ADR `0058`) did not show on CI's Linux WebKit.
 
 | # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
 |---|---|---|---|---|---|---|---|---|---|---|

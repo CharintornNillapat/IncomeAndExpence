@@ -4,9 +4,14 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 113 - The title names the open tab; Back closes the top dialog: T691-T695 (2026-10-08, code `c8afa5a`, docs `9952c1c`, PR #64)
+## Phase 113 - The title names the open tab; Back closes the top dialog: T691-T695 (2026-10-08, code `c8afa5a`, docs `9952c1c`, merge `4f1fcf1`)
 
 ADR `0089`. The owner's brief: a title per tab, Back closing dialogs, and the WebKit stall in the Phase 112 specs.
+
+**Release:**
+- The pull request's CI (run `37699782711`, on `aac958f`) passed every job.
+- PR #64 merged into `main` as `4f1fcf1`, whose tree is identical to `aac958f`. Vercel `dpl_5GCKHvTMPwwjsT9KReqwX5uEko5M` is READY in production, region `icn1`; production serves the entry `index-DPoZmqcL.js`, the same hash as a local build of `main`, with the dialog history entry and the tab titles in it.
+- `main` CI on the merge (run `37701073935`) passed every job on its first attempt in 259 s end to end, the merge job included: unit 1296; 486 passed, 6 skipped, no flaky test. The local WebKit painting stall (ADR `0058`) did not show on CI's Linux WebKit.
 
 **Changed**
 - **`tabRoute.ts`:** `titleForTab`. **`App.tsx`:** sets `document.title` on each tab; `handleTabChange` replaces a dialog's entry instead of pushing.
