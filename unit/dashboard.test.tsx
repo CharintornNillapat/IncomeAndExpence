@@ -185,7 +185,8 @@ describe('acceptance check 4: L4 figures and the L5 banner', () => {
     const onReview = vi.fn();
     render(<DebtWarningBanner plan={plan} onReviewPlan={onReview} />);
     const note = screen.getByRole('note');
-    expect(note.textContent).toContain('SPayLater needs ฿4,391.23 a month to be cleared by Jan 1, 2027');
+    // Four payment dates to 1 Jan 2027 (ADR 0087), still more than the surplus.
+    expect(note.textContent).toContain('SPayLater needs ฿3,293.43 a month to be cleared by Jan 1, 2027');
     expect(note.textContent).toContain('surplus of ฿3,106.78');
     expect(note.textContent).not.toContain('—');
     fireEvent.click(within(note).getByRole('button', { name: 'Review plan' }));
@@ -200,7 +201,7 @@ describe('acceptance check 4: L4 figures and the L5 banner', () => {
   it('marks only the debt that needs more than the surplus', () => {
     render(<DebtPayoffCard plan={debtPlan(debts, TODAY, 3106.78)} paid={5677.21} total={28254.21} progressPercent={20.1} onOpenDebts={() => {}} />);
     const needed = screen.getAllByText(/\/ month needed/);
-    expect(needed.map((el) => el.textContent)).toEqual(['฿4,391.23 / month needed', '฿522.41 / month needed']);
+    expect(needed.map((el) => el.textContent)).toEqual(['฿3,293.43 / month needed', '฿494.91 / month needed']);
     expect(needed[0].className).toContain('text-pending');
     expect(needed[1].className).not.toContain('text-pending');
     expect(screen.getByText(/due Jan 1, 2027/)).toBeTruthy();

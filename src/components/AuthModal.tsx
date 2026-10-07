@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { isSupabaseConfigured, loadSupabase } from '../lib/supabase';
-import { AuthLoginSchema, formatZodIssues } from '../utils/zodSchemas';
+import { AuthLoginSchema, AuthSignUpSchema, PASSWORD_MIN_LENGTH, formatZodIssues } from '../utils/zodSchemas';
 import { Lock, Mail, User as UserIcon, AlertCircle, CheckCircle2, ArrowRight, X, KeyRound } from 'lucide-react';
 import { Modal } from './Modal';
 import { LABEL_TEXT_CLASS } from '../utils/formStyles';
@@ -56,7 +56,9 @@ export const AuthModal: React.FC<AuthModalProps> = React.memo(({ isOpen, onClose
     const validation =
       mode === 'forgot'
         ? AuthLoginSchema.pick({ email: true }).safeParse(credentials)
-        : AuthLoginSchema.safeParse(credentials);
+        : mode === 'signup'
+          ? AuthSignUpSchema.safeParse(credentials)
+          : AuthLoginSchema.safeParse(credentials);
 
     if (!validation.success) {
       setErrorMessage(formatZodIssues(validation.error));
@@ -234,13 +236,21 @@ export const AuthModal: React.FC<AuthModalProps> = React.memo(({ isOpen, onClose
                 id="auth-password-input"
                 type="password"
                 required
-                minLength={6}
+                // The floor is for a new password only (ADR 0087): an older,
+                // shorter one must still sign in.
+                minLength={mode === 'signup' ? PASSWORD_MIN_LENGTH : undefined}
+                aria-describedby={mode === 'signup' ? 'auth-password-hint' : undefined}
                 placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="w-full pl-9 pr-3 py-2.5 bg-surface-2 border border-line-input rounded-lg text-sm text-fg placeholder:text-fg-muted focus:outline-none focus:ring-2 focus:ring-focus"
               />
             </div>
+            {mode === 'signup' && (
+              <p id="auth-password-hint" className="text-xs text-fg-muted">
+                At least {PASSWORD_MIN_LENGTH} characters
+              </p>
+            )}
           </div>
         )}
 
