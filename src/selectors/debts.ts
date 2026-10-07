@@ -38,13 +38,15 @@ export function requiredMonthly(debt: Debt, today: string): number | null {
 }
 
 /**
- * The share of what was borrowed that is paid off, in percent, unclamped
- * (ADR 0079). With nothing borrowed there is no share, so it is
- * `ifNothingBorrowed`: one debt reads 100% wherever it is shown (ADR 0080),
+ * The share of what was borrowed that is paid off, in percent (ADR 0079),
+ * clamped to 0 to 100 (ADR 0084): a debt owing more than it borrowed (a row
+ * from before the Add Debt check, or a reversed overpayment, ADR 0016) reads
+ * 0%, never a negative share. With nothing borrowed there is no share, so it
+ * is `ifNothingBorrowed`: one debt reads 100% wherever it is shown (ADR 0080),
  * and so does `useDebts`' total over debts that borrowed nothing (ADR 0081).
  */
 export function payoffPercent(total: number, remaining: number, ifNothingBorrowed: number): number {
-  return total > 0 ? ((total - remaining) / total) * 100 : ifNothingBorrowed;
+  return total > 0 ? Math.min(100, Math.max(0, ((total - remaining) / total) * 100)) : ifNothingBorrowed;
 }
 
 /** Nearest due date first; debts with no due date last, in their given order. Returns a new array. */

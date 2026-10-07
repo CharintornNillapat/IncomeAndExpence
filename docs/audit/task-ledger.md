@@ -1081,6 +1081,23 @@ Approved explicitly by the user, planned and approved before any code was writte
 - **One negative control was redone** because the first attempt produced malformed TypeScript that the dev server still served — the tests failed, but possibly for the wrong reason.
 - **No flakes.** Phase 44's `wallets.spec.ts` webkit flake has now not reproduced across three consecutive phases; still watched rather than closed.
 
+## Phase 108 - The entry form offers its type's categories; a new debt cannot owe more than it borrowed; a payoff share is 0 to 100: T660-T664 (2026-10-07)
+
+ADR `0084`, amending ADR `0013`, `0035` and `0079`. Branch `phase-108-audit-data-correctness-fixes`, cut from `main` at `66fdb51`; code `738d667`, docs `d79f5e2`; draft PR #59.
+
+| # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
+|---|---|---|---|---|---|---|---|---|---|---|
+| T660 | Audit findings 1 and 3: the Category select lists the entry type's categories and starts on the first, derived during render; red first with name-ordered categories | `src/components/TransactionForm.tsx`, `unit/transaction-form-category.test.tsx` | High | Low | 0.5h | done | - | `738d667` | 3 of 3 failed on the unfiltered form (six options, Balance Adjustment submitted) | +3 tests |
+| T661 | Finding 2: `DebtSchema` refuses remaining > total, in the Add Debt form's words; red first through the form | `src/utils/zodSchemas.ts`, `unit/debts-page.test.tsx` | High | Low | 0.3h | done | - | `738d667` | the schema and form tests failed first | +3 tests |
+| T662 | Finding 2: `payoffPercent` clamps to 0 to 100 for every screen; Repaid and `paidTarget` floor at 0; the form's own clamp deleted | `src/selectors/debts.ts`, `src/components/debt/DebtCard.tsx`, `src/hooks/useDebts.ts`, `src/components/TransactionForm.tsx`, `unit/selectors-debts.test.ts`, `unit/debts-page.test.tsx` | Med | Low | 0.3h | done | - | `738d667` | card read "−20.0% paid" and a negative Repaid, then 0.0% and ฿0.00 | +1 test |
+| T663 | Live, read-only counts: rows filed under a movement category, debts owing more than borrowed | - | Med | Low | 0.1h | done | - | - | 5 EXPENSE (2 accounts) and 2 INCOME (1 account) under ADJUSTMENT; 1 of 3 live debts over | - |
+| T664 | Gate, bundle against `main` in a worktree, ADR `0084`, `CLAUDE.md`, this ledger, the refactor log, baseline metrics | `docs/`, `CLAUDE.md` | Med | Low | 0.4h | done | T660-T662 | `d79f5e2` | lint clean; unit 1204/1204 in 47 files; Playwright 477 passed, 6 skipped of 483 (7.7 m); schema drift run `37605664566`: no drift, 19 migrations | all app JS +45 B gzip |
+
+**Notes on execution:**
+- **`AUDIT.md` is not in the repository**; the findings were taken from the brief.
+- **A weak assertion caught before it counted:** "−20.0% paid" contains "0.0% paid", so the card test reads the element's exact text.
+- **Not fixed here, recorded in ADR `0084`:** `EditTransactionPanel` and the CSV import preview still list every category; the seven live rows are not refiled.
+
 ## Phase 107 - A guest's load fetches no supabase-js; a timing test checks what happened, not how fast; spinners stop under reduced motion: T653-T659 (2026-10-07)
 
 ADR `0083`, amending ADR `0024`, `0050` and `0082`. Branch `phase-107-stability-and-supabase-lazy-prototype`, cut from `main` at `60b03a3`; code `75f00e5`, docs `8dc7e5f`, hash backfill `0efa7a5`; merged into `main` as `2fb855c` (PR #58); Vercel `dpl_FCGb2hWJtCajfdPySSL8kGt5aADQ` READY in `icn1`. The pull request's CI (run `37597751229`) passed every job. `Main` CI on the merge (run `37598495653`) passed every job in 265 s end to end, 18 s of it the merge job (unit 1197; 477 passed, 6 skipped, no flaky test). On production a guest load fetched no Supabase code and opening Sign In fetched the chunk.

@@ -26,8 +26,9 @@ function categoryOf(tx: Transaction, categories?: CategoryLookup): Category | un
 }
 
 /**
- * A live EXPENSE, unless it was filed under a movement category - the category
- * select is unfiltered, so an EXPENSE can carry "Debt Repayment". A transfer,
+ * A live EXPENSE, unless it was filed under a movement category - stored rows
+ * do (the entry form's select was unfiltered before ADR 0084, and an edit or a
+ * CSV import still is), so an EXPENSE can carry "Debt Repayment". A transfer,
  * a repayment and an adjustment are never spending, whatever their sign.
  */
 export function isSpending(tx: Transaction, categories?: CategoryLookup): boolean {

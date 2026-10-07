@@ -1098,6 +1098,15 @@ The entry's growth is the ledger action itself, which lives with the other ledge
 
 **Intermittent local failures:** 6 in 1,071 full-suite runs (3 full runs). All were timeouts: a Firefox `goto`, a Firefox context close, and four WebKit clicks waiting for "stable". No assertion failed. See audit 005 finding 3 for the control runs.
 
+## Phase 108 (entry categories by type, debt bounds) - delta against Phase 107
+
+**Bundle** (gzip -9 on both sides; Phase 107 built from a `main` worktree with `.env` at `66fdb51`, all app JS 877,619 / 266,475, as Phase 107 recorded). All app JS to 877,885 / 266,520 B (+266 / +45), 40 files. Entry `index` 193,689 / 55,840 to 193,876 / 55,858 (`DebtSchema`'s refine); `TransactionForm` 25,696 / 8,432 to 25,725 / 8,445; `DebtsView` 17,081 / 5,174 to 17,093 / 5,180; `useDebts` 921 / 505 to 933 / 516; `ProgressBar` 1,724 / 960 to 1,750 / 964 (`payoffPercent`'s clamp). Every other difference is a gzip byte or two from a renamed import. Cold start: still three scripts.
+
+| Suite | Files | Tests | Runs | Result |
+|---|---|---|---|---|
+| Vitest (`unit/`) | 47 | 1204 | 1204 | 1204/1204 (+3 `transaction-form-category.test.tsx`, +4 `debts-page.test.tsx`, one pin changed in `selectors-debts.test.ts`) |
+| Playwright (local, 4 workers) | 33 | 161 | 483 | 477 passed, 6 skipped of 483 (7.7 m), no failure |
+
 ## Phase 107 (supabase-js on demand) - delta against Phase 106
 
 **Bundle** (gzip -9 on both sides; Phase 106 built from a `main` worktree with `.env`, entry `index-S7OwAc0d.js`, the one production serves). **A guest's cold start:** JS 638,136 / 179,535 to 412,253 / 121,416 B (−225,883 / −58,119, −32.4%), four files to three; with CSS 691,013 / 189,673 to 465,159 / 131,563 (−225,854 / −58,110, −30.6%). Entry `index` 192,536 / 55,413 to 193,689 / 55,840 (the loader); `index.css` 52,877 / 10,138 to 52,906 / 10,147. `vendor-supabase` (227,036 / 58,546 to 228,140 / 58,955) loads on demand: a signed-in load fetches 180,371 B of JS in all, 836 more than before. All app JS 875,762 / 265,840 to 877,619 / 266,475 B. `sw.js` 4,181 / 1,588.

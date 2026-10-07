@@ -50,7 +50,8 @@ function dueTag(debt: Debt, planItem?: DebtPlanItem): { text: string; className:
 export const DebtCard: React.FC<DebtCardProps> = React.memo(({ debt, planItem, onOpenRepay, onSettle, onEdit, onDelete }) => {
   // A paid-off debt is 100% whatever its stored remainder, and so is one with nothing borrowed (ADR 0079, 0080).
   const remaining = debt.isSettled ? 0 : debt.remainingAmount;
-  const repaid = debt.totalAmount - remaining;
+  // Never negative: a debt can owe more than it borrowed (ADR 0084).
+  const repaid = Math.max(0, debt.totalAmount - remaining);
   const percent = payoffPercent(debt.totalAmount, remaining, 100);
   const tag = dueTag(debt, planItem);
 

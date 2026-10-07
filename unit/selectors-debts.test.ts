@@ -155,10 +155,10 @@ describe('payoffPercent: the share of what was borrowed that is paid off (ADR 00
     expect(payoffPercent(10000, 0, 0)).toBe(100);
   });
 
-  it('is not clamped: ProgressBar clamps its bar, and a printed figure clamps itself', () => {
-    // The add-debt form permits remaining > total, and a reversed repayment is uncapped (ADR 0016).
-    expect(payoffPercent(1000, 1500, 0)).toBe(-50);
-    expect(payoffPercent(1000, -500, 0)).toBe(150);
+  it('is clamped to 0 to 100, so no screen prints a negative or an overflowing share (ADR 0084)', () => {
+    // A row from before the Add Debt check, or a reversed overpayment (ADR 0016, uncapped).
+    expect(payoffPercent(1000, 1500, 0)).toBe(0);
+    expect(payoffPercent(1000, -500, 0)).toBe(100);
   });
 
   it('returns the caller\'s own figure when nothing was borrowed, whatever is owed', () => {
@@ -171,7 +171,7 @@ describe('payoffPercent: the share of what was borrowed that is paid off (ADR 00
 
   it('gives exactly the figures of the four inline formulas it replaces', () => {
     const pairs: Array<[number, number]> = [
-      [10000, 4500], [28254.21, 22577], [13173.7, 13173.7], [9403.3, 0.01], [0.03, 0.01], [1000, 1500], [999999999.99, 123456.78],
+      [10000, 4500], [28254.21, 22577], [13173.7, 13173.7], [9403.3, 0.01], [0.03, 0.01], [999999999.99, 123456.78],
     ];
     for (const [total, remaining] of pairs) {
       const repaid = total - remaining;
