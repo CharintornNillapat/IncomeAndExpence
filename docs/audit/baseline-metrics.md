@@ -1098,6 +1098,15 @@ The entry's growth is the ledger action itself, which lives with the other ledge
 
 **Intermittent local failures:** 6 in 1,071 full-suite runs (3 full runs). All were timeouts: a Firefox `goto`, a Firefox context close, and four WebKit clicks waiting for "stable". No assertion failed. See audit 005 finding 3 for the control runs.
 
+## Phase 109 (category integrity, overdraft warning, wallet caption) - delta against Phase 108
+
+**Bundle** (gzip -9 on both sides; Phase 108 built from a `main` worktree with `.env` at `4c43be5`, all app JS 877,885 / 266,520, as Phase 108 recorded). All app JS to 879,108 / 266,940 B (+1,223 / +420), 40 files. Entry `index` 193,876 / 55,858 to 194,203 / 55,982 (the `addTransaction` and import guards, `overdraftBy`); `TransactionForm` 25,725 / 8,445 to 26,232 / 8,560; `TransactionsView` 34,711 / 11,015 to 35,010 / 11,117 (the edit panel and the import preview); `walletFormStyles` 394 / 313 to 517 / 380. Cold start: still three scripts.
+
+| Suite | Files | Tests | Runs | Result |
+|---|---|---|---|---|
+| Vitest (`unit/`) | 49 | 1225 | 1225 | 1225/1225 (+8 `ledger-guards`, +3 `transactions-page`, +3 `csv-import-categories.test.tsx`, +5 `overdraft-warning.test.tsx`, +1 `dashboard`, +1 `wallets-page`) |
+| Playwright (local, 4 workers) | 33 | 161 | 483 | 477 passed, 6 skipped of 483 (8.0 m), no failure |
+
 ## Phase 108 (entry categories by type, debt bounds) - delta against Phase 107
 
 **Bundle** (gzip -9 on both sides; Phase 107 built from a `main` worktree with `.env` at `66fdb51`, all app JS 877,619 / 266,475, as Phase 107 recorded). All app JS to 877,885 / 266,520 B (+266 / +45), 40 files. Entry `index` 193,689 / 55,840 to 193,876 / 55,858 (`DebtSchema`'s refine); `TransactionForm` 25,696 / 8,432 to 25,725 / 8,445; `DebtsView` 17,081 / 5,174 to 17,093 / 5,180; `useDebts` 921 / 505 to 933 / 516; `ProgressBar` 1,724 / 960 to 1,750 / 964 (`payoffPercent`'s clamp). Every other difference is a gzip byte or two from a renamed import. Cold start: still three scripts.
