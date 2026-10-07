@@ -1083,7 +1083,7 @@ Approved explicitly by the user, planned and approved before any code was writte
 
 ## Phase 105 - The amount field's arithmetic is the app's own parser, not mathjs; the debt summaries read 100% when nothing is borrowed: T640-T645 (2026-10-07)
 
-ADR `0081`, amending ADR `0010` and `0080`. Branch `phase-105-lightweight-math-and-summary-fix`, cut from `main` at `9f00a68`; code `11197ee`, docs `9546e57`; draft PR #56. Finding 6 of `AGY_AUDIT300926.md`, and the owner's decision that the summaries read 100% for debts that borrowed nothing.
+ADR `0081`, amending ADR `0010` and `0080`. Branch `phase-105-lightweight-math-and-summary-fix`, cut from `main` at `9f00a68`; code `11197ee`, docs `9546e57`, hash backfill `b43e8d2`; merged into `main` as `47f3949` (PR #56); Vercel `dpl_EU8geC3hBk9HQUgxD8hoYBEfieVD` READY in `icn1`. The pull request's CI (run `37565429195`) passed every job. `Main` CI on the merge (run `37565903987`) passed every job in 326 s end to end, 23 s of it the merge job (unit 1169; 468 passed, 6 skipped, no flaky test). Finding 6 of `AGY_AUDIT300926.md`, and the owner's decision that the summaries read 100% for debts that borrowed nothing.
 
 | # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
 |---|---|---|---|---|---|---|---|---|---|---|

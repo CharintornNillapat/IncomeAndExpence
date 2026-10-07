@@ -1,6 +1,6 @@
 # 0081: The amount field's arithmetic is the app's own parser, not mathjs; the debt summaries read 100% when nothing is borrowed
 
-**Status:** Accepted. Code `11197ee`, docs `9546e57`, draft PR #56; not merged.
+**Status:** Accepted. Released: code `11197ee`, docs `9546e57`, hash backfill `b43e8d2`, merged into `main` as `47f3949` (PR #56); Vercel `dpl_EU8geC3hBk9HQUgxD8hoYBEfieVD` READY in `icn1`. No migration.
 - **Amends** ADR `0010`: the deferred shell modals no longer carry `vendor-math`, which is gone; they keep deferring the entry forms' chunks.
 - **Amends** ADR `0080`: `useDebts().metrics.progressPercent` reads 100 when there are debts and none borrowed anything, as each debt's card does.
 - **Closes** finding 6 of `AGY_AUDIT300926.md` (the 2026-09-30 architecture audit).

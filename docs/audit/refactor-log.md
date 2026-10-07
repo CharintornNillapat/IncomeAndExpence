@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 105 - The amount field's arithmetic is the app's own parser, not mathjs; the debt summaries read 100% when nothing is borrowed: T640-T645 (2026-10-07, code `11197ee`, docs `9546e57`, PR #56)
+## Phase 105 - The amount field's arithmetic is the app's own parser, not mathjs; the debt summaries read 100% when nothing is borrowed: T640-T645 (2026-10-07, code `11197ee`, docs `9546e57`, merge `47f3949`)
 
 ADR `0081`. Finding 6 of the 2026-09-30 architecture audit (`AGY_AUDIT300926.md`), and the owner's decision on ADR `0080`'s open question.
 
@@ -27,6 +27,11 @@ ADR `0081`. Finding 6 of the 2026-09-30 architecture audit (`AGY_AUDIT300926.md`
 **Deliberately not done**
 - **Percent and power in the amount field:** no operator key offers them, and mathjs's percent read differently by position. Add them back as their own decision, with one meaning each.
 - **mathjs's grouping of an unwritten product after a division:** refused, not reproduced.
+
+**Release:**
+- The pull request's CI (run `37565429195`, on `b43e8d2`) passed every job.
+- PR #56 merged into `main` as `47f3949`, whose tree is identical to `b43e8d2`. Vercel `dpl_EU8geC3hBk9HQUgxD8hoYBEfieVD` is READY in production, region `icn1`; `/api/classify` answers from `icn1` (`X-Vercel-Id: sin1::icn1::...`), production serves the entry `index-Br-KQ4vK.js`, the same hash as a local build of `47f3949`, and its `sw.js` precaches no `vendor-math`.
+- `main` CI on the merge (run `37565903987`) passed every job in 326 s end to end, 23 s of it the merge job (unit 1169; 468 passed, 6 skipped, no flaky test).
 
 ---
 
