@@ -143,13 +143,26 @@ describe('fetchInsight', () => {
     expect(sentHeaders().Authorization).toBe('Bearer access-abc');
   });
 
-  it('sends no Authorization header at all for a guest', async () => {
-    const { insights } = await load({ configured: true, token: null });
+  // ADR 0088: the proxy refuses a guest, so a guest's wrap-up is written on the
+  // device without asking, and says that signing in adds Jev's.
+  it.each([
+    ['a guest', { configured: true, token: null }],
+    ['a build with no Supabase', { configured: false }],
+  ] as const)('sends no request at all for %s, and marks the verdict as needing a sign-in', async (_label, options) => {
+    const { insights } = await load(options);
     replyWith(200, { pattern: 'STEADY', focus: null, confidence: 0.8 });
 
-    await insights.fetchInsight(SUMMARY, 'guest');
+    const result = await insights.fetchInsight(SUMMARY, 'guest');
 
-    expect(sentHeaders()).not.toHaveProperty('Authorization');
+    expect(fetchStub).not.toHaveBeenCalled();
+    expect(result).toMatchObject({ fromModel: false, signInNeeded: true });
+  });
+
+  it('marks nothing as needing a sign-in while signed in, even when the answer falls back', async () => {
+    const { insights } = await load({ configured: true, token: 'access-abc' });
+    replyWith(503);
+
+    expect((await insights.fetchInsight(SUMMARY, 'user-1')).signInNeeded).toBeUndefined();
   });
 
   it('falls back to the local verdict on a refused sign-in, and asks again next time', async () => {

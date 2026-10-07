@@ -392,6 +392,34 @@ async function checkCaller(req: Request, timings: Timings): Promise<Response | C
   return { token };
 }
 
+// --- Body cap (ADR 0088) -------------------------------------------------------
+// Copied in both proxies, like the caller check. The largest body either
+// validator accepts is under 60 KB, Thai at three bytes a character included;
+// `unit/proxy-contract.test.ts` builds it.
+const MAX_BODY_BYTES = 64 * 1024;
+
+/**
+ * Reads the JSON body, refusing one over `MAX_BODY_BYTES` with 413: a declared
+ * `Content-Length` before anything is read, and the bytes themselves after.
+ * ponytail: a body sent without a length is read whole (Vercel's own 4.5 MB
+ * limit) before it is measured; read the stream in chunks if that cost shows.
+ */
+async function readBody(req: Request): Promise<{ body: unknown } | Response> {
+  if (Number(req.headers.get('Content-Length')) > MAX_BODY_BYTES) return json({ error: 'Body is too large.' }, 413);
+  let bytes: ArrayBuffer;
+  try {
+    bytes = await req.arrayBuffer();
+  } catch {
+    return json({ error: 'Body must be valid JSON.' }, 400);
+  }
+  if (bytes.byteLength > MAX_BODY_BYTES) return json({ error: 'Body is too large.' }, 413);
+  try {
+    return { body: JSON.parse(new TextDecoder().decode(bytes)) };
+  } catch {
+    return json({ error: 'Body must be valid JSON.' }, 400);
+  }
+}
+
 // --- Per-account limit (ADR 0049) --------------------------------------------
 // Copied in `insights.ts` for the same reason as the caller check. Both
 // proxies count against one `consume_ai_quota()` row per account, so a
@@ -563,14 +591,10 @@ async function handle(req: Request, timings: Timings): Promise<Response> {
   const limited = token === null ? null : await timed(timings, 'quota', () => checkQuota(token));
   if (limited) return limited;
 
-  let body: unknown;
-  try {
-    body = await req.json();
-  } catch {
-    return json({ error: 'Body must be valid JSON.' }, 400);
-  }
+  const read = await readBody(req);
+  if (read instanceof Response) return read;
 
-  const validated = validate(body);
+  const validated = validate(read.body);
   if (typeof validated === 'string') {
     return json({ error: validated }, 400);
   }

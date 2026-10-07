@@ -52,6 +52,8 @@ const insights = read('api/insights.ts');
 const SHARED = [
   // Responses and request parsing the checks use.
   'json', 'isPlainObject', 'FORBIDDEN_KEYS', 'MAX_CATEGORIES', 'MAX_CATEGORY_NAME_LENGTH',
+  // The body cap (ADR 0088).
+  'MAX_BODY_BYTES', 'readBody',
   // Server-Timing (ADR 0050).
   'Timings', 'timed', 'serverTimingHeader',
   // The caller and token check (ADR 0032, 0064) and the key set prefetch (ADR 0065).

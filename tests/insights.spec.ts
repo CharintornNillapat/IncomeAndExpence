@@ -2,37 +2,30 @@ import { test, expect, type Page, type Route } from '@playwright/test';
 import { addQuickTransaction } from './helpers';
 
 /**
- * Monthly spending insights (ADR 0020).
+ * Monthly spending insights (ADR 0020), as a guest sees them.
  *
- * NETWORK MOCKING. This is the **third** spec permitted to intercept
- * requests, after `jev-classify.spec.ts` and `csv-classify.spec.ts`. The rule
- * is a principle rather than a file count: every intercepting spec fulfils
- * every response locally, so the suite spends no TypeSafe credits and needs
- * no API key, on CI or on a laptop that happens to have one exported.
+ * Since Phase 112 (ADR 0088) `/api/insights` serves accounts only, and the
+ * client sends a guest nothing: a guest's wrap-up is written on the device.
+ * No spec signs in, so the model path (the payload's privacy, the rendered
+ * verdict, the cache, Refresh, a 429) is `unit/insights-card.test.tsx`.
  *
- * Note what is NOT mocked in the fallback test: `npm run dev` does not serve
- * `api/`, so with no route handler `/api/insights` 404s, the client latches
- * off, and the card renders a locally-chosen verdict. That path is the reason
- * the card has no error state at all.
+ * NETWORK MOCKING. This spec still intercepts `/api/insights`, to count the
+ * requests a guest makes, which must be none. The rule is a principle rather
+ * than a file count: every intercepting spec fulfils every response locally,
+ * so the suite spends no TypeSafe credits and needs no API key.
  */
 
 const INSIGHTS_ROUTE = '**/api/insights';
 
-interface MockVerdict {
-  pattern: 'CATEGORY_SPIKE' | 'IMPROVED_SAVING' | 'NEW_RECURRING' | 'STEADY';
-  focus: string | null;
-  confidence: number;
-}
-
-async function mockInsights(page: Page, verdict: MockVerdict) {
-  const state = { count: 0, bodies: [] as string[] };
+/** Counts requests to the proxy, answering any that come as the model would. */
+async function countInsightsRequests(page: Page) {
+  const state = { count: 0 };
   await page.route(INSIGHTS_ROUTE, async (route: Route) => {
     state.count += 1;
-    state.bodies.push(route.request().postData() ?? '');
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify(verdict),
+      body: JSON.stringify({ pattern: 'STEADY', focus: null, confidence: 0.9 }),
     });
   });
   return state;
@@ -51,136 +44,23 @@ test.describe('Monthly spending insights', () => {
     await page.goto('/');
   });
 
-  test('the card offers a trigger and makes no request until it is pressed', async ({ page }) => {
-    const calls = await mockInsights(page, { pattern: 'STEADY', focus: null, confidence: 0.9 });
-    await seedSpending(page, 'zzzidle');
+  test("a guest's summary is written on this device, with no request, and says signing in adds Jev", async ({ page }) => {
+    const calls = await countInsightsRequests(page);
+    await seedSpending(page, 'zzzguest');
 
     await expect(card(page)).toBeVisible();
-    await expect(page.locator('#insights-generate-btn')).toBeVisible();
-
-    // Nothing is spent before the user asks for it.
-    expect(calls.count).toBe(0);
-    await expect(page.getByTestId('insights-body')).toHaveCount(0);
-  });
-
-  test('the payload carries aggregates only, never ledger content', async ({ page }) => {
-    const calls = await mockInsights(page, { pattern: 'STEADY', focus: null, confidence: 0.9 });
-
-    const marker = `zzzsecret${Date.now().toString().slice(-6)}`;
-    await seedSpending(page, marker);
-
-    await page.locator('#insights-generate-btn').click();
-    await expect(page.getByTestId('insights-body')).toBeVisible();
-
-    expect(calls.count).toBe(1);
-    const body = calls.bodies[0];
-
-    // The privacy guarantee, made executable. If a future change starts
-    // sending raw rows, this fails.
-    expect(body).not.toContain(marker);
-    expect(body).not.toContain('Main Checking');
-    expect(body).not.toMatch(/"(walletId|categoryId|transactionId|userId|id)"\s*:/);
-    expect(body).not.toMatch(/\btx-[a-z0-9-]+/i);
-    expect(body).not.toMatch(/\bcat-[a-z-]+/i);
-
-    // ...and it does carry what the model actually needs.
-    const parsed = JSON.parse(body) as { summary: { month: string; categories: unknown[] } };
-    expect(parsed.summary.month).toMatch(/^\d{4}-\d{2}$/);
-    expect(parsed.summary.categories.length).toBeGreaterThan(0);
-  });
-
-  test('a mocked verdict renders sentences carrying the ledger figures', async ({ page }) => {
-    await mockInsights(page, { pattern: 'STEADY', focus: 'Food & Dining', confidence: 0.91 });
-    await seedSpending(page, 'zzzfigures');
-
     await page.locator('#insights-generate-btn').click();
 
     const body = page.getByTestId('insights-body');
     await expect(body).toBeVisible();
-
-    // 320 + 180 = 500, formatted by the app, never by the model.
+    // 320 + 180 = 500, formatted by the app.
     await expect(body).toContainText('฿500.00');
-    await expect(body).toContainText(/spent/i);
-
-    // A model-sourced verdict is not marked as an offline summary.
+    await expect(page.getByTestId('insights-signin-note')).toHaveText('Written on this device. Sign in for a summary from Jev.');
     await expect(page.getByTestId('insights-offline-note')).toHaveCount(0);
-  });
-
-  test('the verdict is cached, so the same month costs one request', async ({ page }) => {
-    const calls = await mockInsights(page, { pattern: 'STEADY', focus: null, confidence: 0.9 });
-    await seedSpending(page, 'zzzcached');
-
-    await page.locator('#insights-generate-btn').click();
-    await expect(page.getByTestId('insights-body')).toBeVisible();
-    expect(calls.count).toBe(1);
-
-    await page.reload();
-
-    // Seeded straight from the cache: rendered with no press and no request.
-    await expect(page.getByTestId('insights-body')).toBeVisible();
-    await expect(page.locator('#insights-generate-btn')).toHaveCount(0);
-    expect(calls.count).toBe(1);
-  });
-
-  test('refresh bypasses the cache and issues exactly one more request', async ({ page }) => {
-    const calls = await mockInsights(page, { pattern: 'STEADY', focus: null, confidence: 0.9 });
-    await seedSpending(page, 'zzzrefresh');
-
-    await page.locator('#insights-generate-btn').click();
-    await expect(page.getByTestId('insights-body')).toBeVisible();
-    expect(calls.count).toBe(1);
-
-    await page.locator('#insights-refresh-btn').click();
-    await expect(page.getByTestId('insights-body')).toBeVisible();
-    await expect.poll(() => calls.count).toBe(2);
-  });
-
-  test('with no endpoint the card falls back locally and shows no error', async ({ page }) => {
-    // Deliberately no mock - the dev server does not serve `api/`, so this is
-    // the genuine offline / unconfigured-deployment path.
-    await seedSpending(page, 'zzzoffline');
-
-    await page.locator('#insights-generate-btn').click();
-
-    const body = page.getByTestId('insights-body');
-    await expect(body).toBeVisible();
-    await expect(body).toContainText('฿500.00');
-
-    // Marked as locally generated - a provenance note, not a failure.
-    await expect(page.getByTestId('insights-offline-note')).toBeVisible();
-
-    // And nothing anywhere reads as an error.
     await expect(card(page)).not.toContainText(/error|failed|unavailable|something went wrong/i);
-  });
 
-  // A 429 (the guests' firewall rule, ADR 0046, or the per-account limit, ADR
-  // 0049) falls back like any failure, but unlike a 404 it does not switch the
-  // card off: Refresh asks again.
-  test('a 429 falls back to the local summary, and Refresh asks again', async ({ page }) => {
-    let calls = 0;
-    await page.route(INSIGHTS_ROUTE, async (route: Route) => {
-      calls += 1;
-      await route.fulfill({
-        status: 429,
-        contentType: 'application/json',
-        headers: { 'Retry-After': '30' },
-        body: JSON.stringify({ error: 'Too many requests.' }),
-      });
-    });
-    await seedSpending(page, 'zzzlimited');
-
-    await page.locator('#insights-generate-btn').click();
-
-    const body = page.getByTestId('insights-body');
-    await expect(body).toBeVisible();
-    await expect(body).toContainText('฿500.00');
-    await expect(page.getByTestId('insights-offline-note')).toBeVisible();
-    await expect(card(page)).not.toContainText(/error|failed|unavailable|too many|something went wrong/i);
-    expect(calls).toBe(1);
-
-    await page.locator('#insights-refresh-btn').click();
-    await expect.poll(() => calls).toBe(2);
-    await expect(body).toContainText('฿500.00');
+    // The summary is on screen, so the one request it could have made is over.
+    expect(calls.count).toBe(0);
   });
 
   test('collapsing the card persists across a reload', async ({ page }) => {
