@@ -1081,6 +1081,26 @@ Approved explicitly by the user, planned and approved before any code was writte
 - **One negative control was redone** because the first attempt produced malformed TypeScript that the dev server still served — the tests failed, but possibly for the wrong reason.
 - **No flakes.** Phase 44's `wallets.spec.ts` webkit flake has now not reproduced across three consecutive phases; still watched rather than closed.
 
+## Phase 109 - Every category path keeps an entry's own type; overdrafts warn in the entry form; wallets below zero are not "no money": T665-T671 (2026-10-07)
+
+ADR `0085`, completing ADR `0084` and amending `0014`, `0019` and `0042`. Branch `phase-109-category-hardening-and-wallet-hygiene`, cut from `main` at `4c43be5`; code `e3476a3`, docs `96be360`; draft PR #60.
+
+| # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
+|---|---|---|---|---|---|---|---|---|---|---|
+| T665 | `addTransaction` refuses an EXPENSE/INCOME under a category of another type, placed after the replay check and before the key | `src/context/FinanceContext.tsx`, `unit/ledger-guards.test.tsx` | High | Low | 0.3h | done | - | `e3476a3` | 6 of 7 failed first (the adjustment/repayment control passed, as it should) | +7 tests |
+| T666 | `commitBulkImport` drops a category of another type; the preview's picker, eligibility, Jev chip and note follow the row's type | `src/context/FinanceContext.tsx`, `src/components/transaction/ImportCsvModal.tsx`, `unit/ledger-guards.test.tsx`, `unit/csv-import-categories.test.tsx` | High | Low | 0.6h | done | - | `e3476a3` | all 4 failed first | +4 tests |
+| T667 | `EditTransactionPanel` lists the draft type's categories plus the row's own; a type switch clears and restores it | `src/components/transaction/EditTransactionPanel.tsx`, `unit/transactions-page.test.tsx` | High | Low | 0.4h | done | - | `e3476a3` | all 3 failed first | +3 tests |
+| T668 | Finding 4: `overdraftBy` (credit cards exempt); a non-blocking warning in the entry form, and the transfer form on the same function | `src/selectors/wallets.ts`, `src/components/TransactionForm.tsx`, `src/components/wallet/WalletTransferForm.tsx`, `unit/overdraft-warning.test.tsx` | Med | Low | 0.5h | done | - | `e3476a3` | all failed first | +5 tests |
+| T669 | Finding 8: `emptyWalletsCaption` gives the total below zero on the Dashboard and the Wallets page | `src/components/wallet/walletFormStyles.ts`, `src/components/dashboard/WalletsSection.tsx`, `src/components/wallet/WalletList.tsx`, `unit/dashboard.test.tsx`, `unit/wallets-page.test.tsx` | Med | Low | 0.2h | done | - | `e3476a3` | both failed first | +2 tests |
+| T670 | Finding 11: "Receiving Wallet" in Income mode | `src/components/TransactionForm.tsx` | Low | Low | 0.1h | done | - | `e3476a3` | failed first | (in T668's file) |
+| T671 | Gate, screenshots at 390 px light and dark, bundle against `main`, ADR `0085`, `CLAUDE.md`, this ledger, the refactor log, baseline metrics | `docs/`, `CLAUDE.md` | Med | Low | 0.5h | done | T665-T670 | `96be360` | lint clean; unit 1225/1225 in 49 files; Playwright 477 passed, 6 skipped of 483 (8.0 m); schema drift run `37615542975`: no drift, 19 migrations | all app JS +420 B gzip |
+
+**Notes on execution:**
+- **A confirmation dialog for finding 4 was weighed and not built:** the starter wallets open at ฿0.00 (ADR `0040`), so a new account's first expense would always stop to ask, and ADR `0014` keeps overdraft non-blocking.
+- **The import's "Classified N of M" note had counted a type-mismatched answer as applied or to confirm**, though it was neither; it counts only answers of the row's type now.
+- **Two test faults fixed before the code:** a quote that broke a test file, and a text query that matched the live region as well as the note.
+- **The first caption screenshot showed the starter wallets:** the page's own writer saved over the seeded ones on reload; the seed moved into an init script.
+
 ## Phase 108 - The entry form offers its type's categories; a new debt cannot owe more than it borrowed; a payoff share is 0 to 100: T660-T664 (2026-10-07)
 
 ADR `0084`, amending ADR `0013`, `0035` and `0079`. Branch `phase-108-audit-data-correctness-fixes`, cut from `main` at `66fdb51`; code `738d667`, docs `d79f5e2`, hash backfill `abaaa33`; merged into `main` as `6945dd2` (PR #59); Vercel `dpl_AqbswJZF6GrDhtbqVokhK7Ct7gNF` READY in `icn1`. The pull request's CI (run `37607374050`) passed every job. `Main` CI on the merge (run `37612914498`) passed every job on its first attempt in 270 s end to end, 19 s of it the merge job (unit 1204; 477 passed, 6 skipped, no flaky test). Production serves the entry `index-CXsVs4wG.js`, a local build's, with `DebtSchema`'s new message in it.

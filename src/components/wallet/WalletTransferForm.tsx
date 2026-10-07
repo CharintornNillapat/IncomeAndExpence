@@ -6,6 +6,7 @@ import { useIdempotencyKey } from '../../hooks/useIdempotencyKey';
 import { Wallet } from '../../types';
 import { APP_CURRENCY_SYMBOL, formatCurrencyAmount } from '../../utils/currency';
 import { roundToCents } from '../../utils/money';
+import { overdraftBy } from '../../selectors/wallets';
 import { evaluateAmountInput } from '../../utils/mathEvaluator';
 import { todayIsoDate } from '../../utils/date';
 import { getWalletIcon } from '../../utils/walletIcons';
@@ -223,7 +224,8 @@ export const WalletTransferForm: React.FC<WalletTransferFormProps> = ({
     hasPreview && sourceWallet ? roundToCents(sourceWallet.balance - (transferAmount as number)) : null;
   const destAfter =
     hasPreview && destWallet ? roundToCents(destWallet.balance + (transferAmount as number)) : null;
-  const isOverdrawn = sourceAfter !== null && sourceAfter < 0;
+  // A credit card owes by design, so taking it further below zero is no overdraft (ADR 0085).
+  const overdrawnBy = sourceAfter !== null && sourceWallet ? overdraftBy(sourceWallet, sourceAfter) : 0;
 
   /*
    * Selecting the wallet that currently sits on the other side swaps the two
@@ -349,17 +351,15 @@ export const WalletTransferForm: React.FC<WalletTransferFormProps> = ({
         />
       </div>
 
-      {/* Warn, never block: a CREDIT_CARD wallet legitimately carries a negative
-          balance, so `canSubmit` deliberately ignores this (ADR `0014`). */}
-      {isOverdrawn && sourceAfter !== null && (
+      {/* Warn, never block: `canSubmit` deliberately ignores this (ADR `0014`). */}
+      {overdrawnBy > 0 && (
         <div
           data-testid="transfer-overdraft-warning"
           className="flex items-center gap-2 rounded-lg border border-pending-line bg-pending-tint p-3 text-xs font-medium text-pending"
         >
           <AlertTriangle className="w-4 h-4 shrink-0 text-pending" />
           <span>
-            This overdraws <strong>{sourceWallet?.name}</strong> by{' '}
-            {formatCurrencyAmount(Math.abs(sourceAfter))}.
+            This overdraws <strong>{sourceWallet?.name}</strong> by {formatCurrencyAmount(overdrawnBy)}.
           </span>
         </div>
       )}

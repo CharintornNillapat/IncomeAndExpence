@@ -129,6 +129,13 @@ describe('the allocation bar at ฿0', () => {
     expect(screen.getByRole('img', { name: 'Share of money by wallet: Kept 100.0%' })).toBeTruthy();
     expect(screen.queryByText('No money in your wallets yet')).toBeNull();
   });
+
+  // Phase 109 (ADR 0085, audit finding 8).
+  it('gives the total when no wallet is above zero and they add up to less', () => {
+    mount({ wallets: [walletRow({ id: 'a', name: 'Cash', balance: 0 }), walletRow({ id: 'b', name: 'Bank', balance: -300.5 })] });
+    expect(screen.queryByText('No money in your wallets yet')).toBeNull();
+    expect(screen.getAllByText(`Your wallets add up to ${formatCurrencyAmount(-300.5)}`)).toHaveLength(1);
+  });
 });
 
 describe('one render path per width', () => {

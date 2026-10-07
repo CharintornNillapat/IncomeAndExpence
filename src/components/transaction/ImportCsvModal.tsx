@@ -135,8 +135,9 @@ export const ImportCsvModal: React.FC<ImportCsvModalProps> = ({ isOpen, onClose 
 
   /**
    * A row is eligible when it is valid and its `categoryName` does not resolve
-   * to a live category. That covers both "no Category column" and "names a
-   * category you do not have" - in either case the row was going to commit
+   * to a live category of the row's own type. That covers "no Category
+   * column", "names a category you do not have" and, since ADR 0085, "names
+   * one of another type" - in each case the row was going to commit
    * uncategorized, so filling it can only improve on the status quo.
    */
   const isEligibleForCategorization = useCallback(
@@ -145,7 +146,7 @@ export const ImportCsvModal: React.FC<ImportCsvModalProps> = ({ isOpen, onClose 
       if (row.categoryId) return false;
       if (!row.categoryName) return true;
       const named = row.categoryName.trim().toLowerCase();
-      return !categories.some((c) => !c.isDeleted && c.name.trim().toLowerCase() === named);
+      return !categories.some((c) => !c.isDeleted && c.type === row.type && c.name.trim().toLowerCase() === named);
     },
     [categories]
   );
@@ -255,10 +256,14 @@ export const ImportCsvModal: React.FC<ImportCsvModalProps> = ({ isOpen, onClose 
 
     setRowSuggestions(result.suggestions);
 
-    const autoFilled = Array.from(result.suggestions.values()).filter((s) => s.strength === 'AUTO_FILL').length;
+    // Only an answer of the row's own type is applied or offered (ADR 0085),
+    // so only those are counted.
+    const rowTypes = new Map(importPreview.rows.map((r) => [r.rowIndex, r.type]));
+    const fitting = Array.from(result.suggestions).filter(([rowIndex, s]) => s.type === rowTypes.get(rowIndex));
+    const autoFilled = fitting.filter(([, s]) => s.strength === 'AUTO_FILL').length;
     const note =
-      `Classified ${result.suggestions.size} of ${uncategorizedRows.length}: ${autoFilled} applied, ` +
-      `${result.suggestions.size - autoFilled} to confirm. ${result.attempted} request${result.attempted === 1 ? '' : 's'} sent.` +
+      `Classified ${fitting.length} of ${uncategorizedRows.length}: ${autoFilled} applied, ` +
+      `${fitting.length - autoFilled} to confirm. ${result.attempted} request${result.attempted === 1 ? '' : 's'} sent.` +
       // ADR 0052: the rate limit asked for longer than the importer waits.
       (result.rateLimited ? ' Stopped early: the rate limit asked for a wait of over a minute, so the rest stay blank.' : '');
     setClassifyNote(note);
@@ -546,7 +551,9 @@ export const ImportCsvModal: React.FC<ImportCsvModalProps> = ({ isOpen, onClose 
                             <option value="" className={OPTION_CLASS}>
                               Uncategorized
                             </option>
-                            {activeCategoriesForForm.map((c) => (
+                            {/* The row's own type only (ADR 0085): its type decides the
+                                money's direction, so another type's category would be dropped. */}
+                            {activeCategoriesForForm.filter((c) => c.type === row.type).map((c) => (
                               <option key={c.id} value={c.id} className={OPTION_CLASS}>
                                 {c.name}
                               </option>
@@ -554,9 +561,11 @@ export const ImportCsvModal: React.FC<ImportCsvModalProps> = ({ isOpen, onClose 
                           </select>
                           {(() => {
                             const suggestion = rowSuggestions.get(row.rowIndex);
-                            if (!suggestion) return null;
-                            // Applied: report it. Not applied (mid-confidence,
-                            // or a type disagreement): offer it as one click.
+                            // A category of another type is never offered (ADR 0085):
+                            // the commit would drop it, so the click would do nothing.
+                            if (!suggestion || suggestion.type !== row.type) return null;
+                            // Applied: report it. Not applied (mid-confidence): offer
+                            // it as one click.
                             if (row.categoryId === suggestion.categoryId) {
                               return (
                                 <span

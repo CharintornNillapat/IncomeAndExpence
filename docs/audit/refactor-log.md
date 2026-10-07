@@ -4,6 +4,32 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
+## Phase 109 - Every category path keeps an entry's own type; overdrafts warn in the entry form; wallets below zero are not "no money": T665-T671 (2026-10-07, code `e3476a3`, docs `96be360`, PR #60)
+
+ADR `0085`. The owner's brief: close finding 3's remaining paths, and findings 4, 8 and 11; leave the live rows under Balance Adjustment as they are.
+
+**Changed**
+- **`addTransaction`:** refuses an EXPENSE or INCOME under a category of another type.
+- **`commitBulkImport`:** drops a category of another type (the row imports uncategorized). **`ImportCsvModal`:** the picker lists the row type's categories; a cell of another type counts as none; a Jev answer of another type is not offered; the note counts only answers of the row's type.
+- **`EditTransactionPanel`:** the draft type's categories plus the row's own while its type is unchanged.
+- **`overdraftBy`** in `selectors/wallets.ts`; the entry form's overdraft warning; the transfer form's warning no longer fires for a credit card.
+- **`emptyWalletsCaption`** on the Dashboard's Wallets card and the Wallets page.
+- **`TransactionForm`:** "Receiving Wallet" in Income mode.
+- **Tests:** +21 (`ledger-guards` +8, `transactions-page` +3, `csv-import-categories` 3, `overdraft-warning` 5, `dashboard` +1, `wallets-page` +1).
+- **Docs:** ADR `0085`; `CLAUDE.md`'s category, overdraft, CSV import, `AllocationBar` and suite-size lines.
+
+**Gate:**
+- Lint clean; unit 1225/1225 in 49 files; Playwright 477 passed, 6 skipped of 483 (8.0 m); schema drift run `37615542975`: no drift, 19 migrations.
+- **Red first:** every new test failed on the unfixed code, except the control that an adjustment and a repayment on their own categories are accepted.
+- **Seen running** (Chromium, 390 px, light and dark): the warning reads "This overdraws Main Checking by ฿60.00." under the fields; the caption reads "Your wallets add up to −฿1,200.00"; Income mode reads "Receiving Wallet" and drops the warning. The one console error was the dev server's 404 for `/api/insights`, which `npm run dev` does not serve.
+- **Bundle:** all app JS +1,223 / +420 B gzip; the entry +327 / +124 (the two guards); cold start still three scripts.
+
+**Changed on purpose**
+- **A new account's first expense shows the warning**, since its wallets open at ฿0.00. It is true, and it blocks nothing.
+- **A transfer out of a credit card no longer warns.**
+
+---
+
 ## Phase 108 - The entry form offers its type's categories; a new debt cannot owe more than it borrowed; a payoff share is 0 to 100: T660-T664 (2026-10-07, code `738d667`, docs `d79f5e2`, merge `6945dd2`)
 
 ADR `0084`. The owner's brief: fix the live audit's findings 1, 2 and 3 before more coverage or bundle work.

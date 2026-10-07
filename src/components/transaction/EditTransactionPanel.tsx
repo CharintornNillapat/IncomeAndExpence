@@ -103,9 +103,18 @@ export const EditTransactionPanel: React.FC<EditTransactionPanelProps> = ({ tx, 
     () => wallets.filter((w) => !w.isDeleted || w.id === tx.walletId || w.id === tx.destinationWalletId),
     [wallets, tx.walletId, tx.destinationWalletId]
   );
+  /*
+   * The draft type's own live categories (ADR 0085, audit finding 3), plus
+   * the row's own category while its type is unchanged, so a row filed before
+   * the filter (an expense under Balance Adjustment) still shows and keeps
+   * what it holds when only its note is edited.
+   */
   const categoryOptions = useMemo(
-    () => categories.filter((c) => !c.isDeleted || c.id === tx.categoryId),
-    [categories, tx.categoryId]
+    () =>
+      categories.filter(
+        (c) => (!c.isDeleted && c.type === draft.type) || (c.id === tx.categoryId && draft.type === tx.type)
+      ),
+    [categories, draft.type, tx.categoryId, tx.type]
   );
 
   const amountTouched = draft.amountText.trim() !== String(tx.amount);
@@ -162,7 +171,11 @@ export const EditTransactionPanel: React.FC<EditTransactionPanelProps> = ({ tx, 
           : walletOptions.find((w) => !w.isDeleted && w.id !== draft.walletId)?.id ?? '';
       update({ type, categoryId: '', destinationWalletId: to });
     } else {
-      update({ type, destinationWalletId: '' });
+      // A category of the old type goes; back on the row's own type, its own
+      // category returns (ADR 0085).
+      const keeps = categories.find((c) => c.id === draft.categoryId)?.type === type;
+      const categoryId = keeps ? draft.categoryId : type === tx.type ? tx.categoryId ?? '' : '';
+      update({ type, categoryId, destinationWalletId: '' });
     }
   };
 
