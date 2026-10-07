@@ -1083,7 +1083,7 @@ Approved explicitly by the user, planned and approved before any code was writte
 
 ## Phase 109 - Every category path keeps an entry's own type; overdrafts warn in the entry form; wallets below zero are not "no money": T665-T671 (2026-10-07)
 
-ADR `0085`, completing ADR `0084` and amending `0014`, `0019` and `0042`. Branch `phase-109-category-hardening-and-wallet-hygiene`, cut from `main` at `4c43be5`; code `e3476a3`; draft PR.
+ADR `0085`, completing ADR `0084` and amending `0014`, `0019` and `0042`. Branch `phase-109-category-hardening-and-wallet-hygiene`, cut from `main` at `4c43be5`; code `e3476a3`, docs `96be360`; draft PR #60.
 
 | # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
 |---|---|---|---|---|---|---|---|---|---|---|
@@ -1093,7 +1093,7 @@ ADR `0085`, completing ADR `0084` and amending `0014`, `0019` and `0042`. Branch
 | T668 | Finding 4: `overdraftBy` (credit cards exempt); a non-blocking warning in the entry form, and the transfer form on the same function | `src/selectors/wallets.ts`, `src/components/TransactionForm.tsx`, `src/components/wallet/WalletTransferForm.tsx`, `unit/overdraft-warning.test.tsx` | Med | Low | 0.5h | done | - | `e3476a3` | all failed first | +5 tests |
 | T669 | Finding 8: `emptyWalletsCaption` gives the total below zero on the Dashboard and the Wallets page | `src/components/wallet/walletFormStyles.ts`, `src/components/dashboard/WalletsSection.tsx`, `src/components/wallet/WalletList.tsx`, `unit/dashboard.test.tsx`, `unit/wallets-page.test.tsx` | Med | Low | 0.2h | done | - | `e3476a3` | both failed first | +2 tests |
 | T670 | Finding 11: "Receiving Wallet" in Income mode | `src/components/TransactionForm.tsx` | Low | Low | 0.1h | done | - | `e3476a3` | failed first | (in T668's file) |
-| T671 | Gate, screenshots at 390 px light and dark, bundle against `main`, ADR `0085`, `CLAUDE.md`, this ledger, the refactor log, baseline metrics | `docs/`, `CLAUDE.md` | Med | Low | 0.5h | done | T665-T670 | docs | lint clean; unit 1225/1225 in 49 files; Playwright 477 passed, 6 skipped of 483 (8.0 m); schema drift run `37615542975`: no drift, 19 migrations | all app JS +420 B gzip |
+| T671 | Gate, screenshots at 390 px light and dark, bundle against `main`, ADR `0085`, `CLAUDE.md`, this ledger, the refactor log, baseline metrics | `docs/`, `CLAUDE.md` | Med | Low | 0.5h | done | T665-T670 | `96be360` | lint clean; unit 1225/1225 in 49 files; Playwright 477 passed, 6 skipped of 483 (8.0 m); schema drift run `37615542975`: no drift, 19 migrations | all app JS +420 B gzip |
 
 **Notes on execution:**
 - **A confirmation dialog for finding 4 was weighed and not built:** the starter wallets open at ฿0.00 (ADR `0040`), so a new account's first expense would always stop to ask, and ADR `0014` keeps overdraft non-blocking.

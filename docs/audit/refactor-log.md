@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 109 - Every category path keeps an entry's own type; overdrafts warn in the entry form; wallets below zero are not "no money": T665-T671 (2026-10-07, code `e3476a3`)
+## Phase 109 - Every category path keeps an entry's own type; overdrafts warn in the entry form; wallets below zero are not "no money": T665-T671 (2026-10-07, code `e3476a3`, docs `96be360`, PR #60)
 
 ADR `0085`. The owner's brief: close finding 3's remaining paths, and findings 4, 8 and 11; leave the live rows under Balance Adjustment as they are.
 
