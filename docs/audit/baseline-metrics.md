@@ -1098,6 +1098,15 @@ The entry's growth is the ledger action itself, which lives with the other ledge
 
 **Intermittent local failures:** 6 in 1,071 full-suite runs (3 full runs). All were timeouts: a Firefox `goto`, a Firefox context close, and four WebKit clicks waiting for "stable". No assertion failed. See audit 005 finding 3 for the control runs.
 
+## Phase 111 (classifier re-arm, debt payment dates, password floor) - delta against Phase 110
+
+**Bundle** (gzip -9 on both sides; Phase 110 built from a `main` worktree with `.env` at `ece2219`, all app JS 879,623 / 267,133, as Phase 110 recorded). All app JS to 880,228 / 267,385 B (+605 / +252), 40 files. Entry `index` 194,409 / 56,065 to 194,746 / 56,178 (the password schemas and the eager `AuthModal`); `TransactionForm` 26,255 / 8,574 to 26,359 / 8,608 (the classifier); `ProgressBar` 1,750 / 966 to 1,889 / 1,058 (the chunk that holds `selectors/debts`); `AccountModal` 16,358 / 5,132 to 16,383 / 5,155. Cold start: still three scripts.
+
+| Suite | Files | Tests | Runs | Result |
+|---|---|---|---|---|
+| Vitest (`unit/`) | 53 | 1250 | 1250 | 1250/1250 (+2 `classifier-strict-mode.test.tsx`, +4 `auth-password.test.tsx`, +3 `selectors-debts`) |
+| Playwright (local, 4 workers) | 33 | 161 | 483 | 477 passed, 6 skipped of 483 (8.1 m), no failure; `jev-classify.spec.ts` on WebKit 90/90 |
+
 ## Phase 110 (amount cap, stale errors, empty debt form, insights eviction, one h1, Permissions-Policy) - delta against Phase 109
 
 **Bundle** (gzip -9 on both sides; Phase 109 built from a `main` worktree with `.env` at `a7a3d1f`, all app JS 879,108 / 266,940, as Phase 109 recorded). All app JS to 879,623 / 267,133 B (+515 / +193), 40 files. Entry `index` 194,203 / 55,982 to 194,409 / 56,065; `DebtsView` 17,093 / 5,183 to 17,250 / 5,214; `InlineMathInput` 6,241 / 2,387 to 6,322 / 2,408; `TransactionForm` 26,232 / 8,560 to 26,255 / 8,574; `TransactionsView` 35,010 / 11,117 to 35,052 / 11,136; `TransferFundsModal` 6,815 / 2,793 to 6,844 / 2,811. Cold start: still three scripts.

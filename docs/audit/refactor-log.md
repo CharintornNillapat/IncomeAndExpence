@@ -4,6 +4,29 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
+## Phase 111 - A classification armed during StrictMode's re-run is re-armed; a debt's months left are its payment dates; a new password needs 8 characters: T679-T684 (2026-10-07, code `394b588`)
+
+ADR `0087`. The owner's brief: the WebKit `jev-classify` flake, audit finding 7 (debt months left) and finding 5 (password floor).
+
+**Changed**
+- **`useDescriptionClassifier`:** keeps the armed text (`armedRef`) until it is answered or cleared; its effect, declared after `classify`, re-arms it and returns `cancelPending`.
+- **`monthsLeft`:** the monthly payment dates from today up to and including the due date, a month-end date falling on a shorter month's last day, at least one.
+- **`zodSchemas`:** `PASSWORD_MIN_LENGTH`, `NewPasswordSchema`, `AuthSignUpSchema`; `AuthLoginSchema` checks only that a password was typed. **`AuthModal`:** sign-up validates with it, sets `minLength` 8 and shows the hint; sign-in has no `minLength`. **`AccountModal`:** Change Password uses `NewPasswordSchema`.
+- **Tests:** `unit/classifier-strict-mode.test.tsx` (2), `unit/auth-password.test.tsx` (4), `unit/selectors-debts.test.ts` (+3, figures moved), `unit/dashboard.test.tsx` (figures), `tests/auth.spec.ts` (the password test).
+- **Docs:** ADR `0087`; `CLAUDE.md`'s L4, classifier and password lines; Phase 110's ledger note corrected.
+
+**Gate:**
+- Lint clean; unit 1250/1250 in 53 files; Playwright 477 passed, 6 skipped of 483 (8.1 m), no failure; `jev-classify.spec.ts` on WebKit 90/90 (10 repeats of the file); schema drift run `37636339326`: no drift, 19 migrations.
+- **Red first:** the StrictMode test sent no request before the fix; the `monthsLeft`, figure and password tests all failed first.
+- **The flake in the browser:** a diagnostic that counted classify requests failed 2 in 80 before (no request either time) and passed 120 of 120 after; the real test failed 1 in 40 before and passed 60 of 60 after. The diagnostic was deleted.
+- **Bundle:** all app JS +605 / +252 B gzip; the entry +337 / +113 (the sign-in dialog is eager); cold start still three scripts.
+
+**Changed on purpose**
+- **"Needed / month" falls** for most debts: a debt due 31 December, seen on 6 October, now needs a third of what it did.
+- **Signing in no longer checks a length**; creating an account and changing a password need 8 characters.
+
+---
+
 ## Phase 110 - One amount cap, checked in the field; refused saves clear on edit; the Add Debt form starts empty; sign-out clears cached insights; one h1 per page; a Permissions-Policy: T672-T678 (2026-10-07, code `128f2bb`, docs `b0eeb5f`, merge `ecf9a31`)
 
 ADR `0086`. The owner's brief: audit findings 9, 10, 12, 13, 16 and 20.

@@ -1081,6 +1081,25 @@ Approved explicitly by the user, planned and approved before any code was writte
 - **One negative control was redone** because the first attempt produced malformed TypeScript that the dev server still served — the tests failed, but possibly for the wrong reason.
 - **No flakes.** Phase 44's `wallets.spec.ts` webkit flake has now not reproduced across three consecutive phases; still watched rather than closed.
 
+## Phase 111 - A classification armed during StrictMode's re-run is re-armed; a debt's months left are its payment dates; a new password needs 8 characters: T679-T684 (2026-10-07)
+
+ADR `0087`, superseding spec L4's `monthsLeft` and amending ADR `0011` and `0024`. Branch `phase-111-input-race-and-audit-cleanups`, cut from `main` at `ece2219`; code `394b588`; draft PR.
+
+| # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
+|---|---|---|---|---|---|---|---|---|---|---|
+| T679 | Diagnose the WebKit flake: the page snapshot re-read (the note was there), a request-counting diagnostic, the cause in the classifier's unmount cleanup | - | High | Low | 0.8h | done | - | - | diagnostic 2 failures in 80, both with no request sent | - |
+| T680 | `useDescriptionClassifier` re-arms the armed text on an effect re-run, red first under `StrictMode` | `src/hooks/useDescriptionClassifier.ts`, `unit/classifier-strict-mode.test.tsx` | High | Low | 0.4h | done | T679 | `394b588` | failed first (no request); after: diagnostic 120/120, the real test 60/60 on WebKit | +2 tests |
+| T681 | Finding 7: `monthsLeft` counts the monthly payment dates to the due date; the spec example recounted | `src/selectors/debts.ts`, `unit/selectors-debts.test.ts`, `unit/dashboard.test.tsx` | High | Low | 0.4h | done | - | `394b588` | all failed first | +3 tests |
+| T682 | Finding 5: `NewPasswordSchema` (8) for sign-up and Change Password; sign-in checks only that one was typed | `src/utils/zodSchemas.ts`, `src/components/AuthModal.tsx`, `src/components/account/AccountModal.tsx`, `unit/auth-password.test.tsx`, `tests/auth.spec.ts` | High | Low | 0.4h | done | - | `394b588` | all 4 failed first | +4 tests |
+| T683 | Correct Phase 110's record of the flake ("the note was lost") | `docs/audit/task-ledger.md` | Low | Low | 0.1h | done | T679 | docs | - | - |
+| T684 | Gate, bundle against `main`, ADR `0087`, `CLAUDE.md`, this ledger, the refactor log, baseline metrics | `docs/`, `CLAUDE.md` | Med | Low | 0.4h | done | T680-T682 | docs | lint clean; unit 1250/1250 in 53 files; Playwright 477 passed, 6 skipped of 483 (8.1 m), no failure; `jev-classify.spec.ts` on WebKit 90/90 (10 repeats of the file); schema drift run `37636339326`: no drift, 19 migrations | all app JS +252 B gzip |
+
+**Notes on execution:**
+- **Phase 110 misread the failure.** Its note said the Note field was empty; the line after the textbox in the page snapshot was the placeholder, and the value followed it. The brief for this phase took that over ("drops fast-typed notes"). The real failure was a classification never sent, which the request-counting diagnostic showed.
+- **A trace hid it:** 135 of 135 passed with `--trace=retain-on-failure`; without one it failed 1 in 40.
+- **Phase 95 met the same failure** ("WebKit, jev-classify mid-confidence chip") and put it down to load after 100 clean repeats.
+- **The password floor would have locked people out** had it been applied as the brief's one schema stood: sign-in and sign-up shared it.
+
 ## Phase 110 - One amount cap, checked in the field; refused saves clear on edit; the Add Debt form starts empty; sign-out clears cached insights; one h1 per page; a Permissions-Policy: T672-T678 (2026-10-07)
 
 ADR `0086`, amending ADR `0024`, `0035`, `0043`, `0068` and `0081`. Branch `phase-110-form-hygiene-and-a11y-polish`, cut from `main` at `a7a3d1f`; code `128f2bb`, docs `b0eeb5f`, hash backfill `d85805a`; merged into `main` as `ecf9a31` (PR #61); Vercel `dpl_7VSiyAZmpdMsWoGFKpqsypCitVkF` READY in `icn1`. The pull request's CI (run `37630697225`) passed every job. `Main` CI on the merge (run `37632567551`) passed every job on its first attempt in 271 s end to end, 20 s of it the merge job (unit 1241; 477 passed, 6 skipped, no flaky test: the local WebKit `jev-classify` flake did not show on CI's Linux WebKit). Production serves the entry `index-B7KE9-HC.js`, a local build's, with the cap's message in it, and sends `Permissions-Policy: camera=(), geolocation=(), microphone=(self)`.
@@ -1096,7 +1115,7 @@ ADR `0086`, amending ADR `0024`, `0035`, `0043`, `0068` and `0081`. Branch `phas
 | T678 | Gate, the WebKit flake compared with `main`, bundle against `main`, ADR `0086`, `CLAUDE.md`, this ledger, the refactor log, baseline metrics | `docs/`, `CLAUDE.md` | Med | Low | 0.5h | done | T672-T677 | `b0eeb5f` | lint clean; unit 1241/1241 in 51 files; Playwright 476 passed, 1 failed, 6 skipped of 483 (8.3 m): the WebKit `jev-classify` flake that also fails on `main` (2 in 20; see the notes); schema drift run `37628303036`: no drift, 19 migrations | all app JS +193 B gzip |
 
 **Notes on execution:**
-- **One WebKit failure in the full run, not this phase's:** `jev-classify.spec.ts` "applying a suggestion counts as an explicit pick and offers a rule" failed once. Repeated 10 times on the branch it failed once; 20 times on `main` (a worktree), twice. In every failure the Note field was empty in the page snapshot: the fill was lost, so nothing was classified. Recorded for a later phase.
+- **One WebKit failure in the full run, not this phase's:** `jev-classify.spec.ts` "applying a suggestion counts as an explicit pick and offers a rule" failed once. Repeated 10 times on the branch it failed once; 20 times on `main` (a worktree), twice. Recorded for a later phase. (Corrected in Phase 111, ADR `0087`: first written here as an empty Note field, a misread snapshot. The note held its text; no classification was ever sent, because StrictMode's effect re-run cancelled the armed timer.)
 - **The audit found every dialog already named**; the new tests pin it, and their negative control shows they can fail.
 - **The due date was a fixed 2026-12-31 default**, outside the brief's three figures; it is empty too, since it would have aged into an overdue debt.
 
