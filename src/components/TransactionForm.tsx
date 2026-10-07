@@ -16,6 +16,7 @@ import { parseExpressInput } from '../utils/expressInput';
 import { evaluateAmountInput, safeEvaluateMath } from '../utils/mathEvaluator';
 import { roundToCents } from '../utils/money';
 import { payoffPercent } from '../selectors/debts';
+import { overdraftBy } from '../selectors/wallets';
 import { APP_CURRENCY_SYMBOL, formatCurrencyAmount } from '../utils/currency';
 import { todayIsoDate } from '../utils/date';
 import { LABEL_TEXT_CLASS, OPTION_CLASS, ERROR_BANNER_CLASS } from '../utils/formStyles';
@@ -546,6 +547,20 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
   const settlesExactly = plannedPayment > 0 && projectedRemaining === 0 && overpayment === 0;
 
   /*
+   * ADR 0085 (audit finding 4): money leaving a wallet that is not a credit
+   * card warns when it takes the wallet below zero, as the transfer form does.
+   * `addTransaction`'s own source arithmetic for an EXPENSE or a repayment.
+   * It warns and never blocks (ADR 0014): `canSubmit` does not read it. A
+   * dialog was not chosen because the starter wallets open at ฿0.00 (ADR
+   * 0040), so a new account's first expense would always stop to ask.
+   */
+  const fromWallet = wallets.find((w) => w.id === walletId);
+  const overdrawnBy =
+    fromWallet && plannedPayment > 0 && (type === 'EXPENSE' || type === 'DEBT_REPAYMENT')
+      ? overdraftBy(fromWallet, roundToCents(fromWallet.balance - plannedPayment))
+      : 0;
+
+  /*
    * ADR 0016: an overpayment now blocks submission rather than warning.
    *
    * The `repayTargetDebt !== null` test is not defensive padding. On a
@@ -919,8 +934,9 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
         <div className={`grid grid-cols-1 gap-4 ${presetDebtId ? '' : 'sm:grid-cols-2'}`}>
           {/* Source Wallet */}
           <div className="flex flex-col gap-1.5">
+            {/* Income lands in this wallet (audit finding 11). */}
             <label htmlFor={walletSelectId} className={LABEL_TEXT_CLASS}>
-              Paying Wallet
+              {type === 'INCOME' ? 'Receiving Wallet' : 'Paying Wallet'}
             </label>
             <select
               id={walletSelectId}
@@ -1027,6 +1043,18 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
             </div>
           )}
         </div>
+
+        {overdrawnBy > 0 && fromWallet && (
+          <p
+            data-testid={`${idBase}-overdraft-warning`}
+            className="flex items-start gap-1.5 text-[11px] font-medium rounded-lg border border-pending-line bg-pending-tint text-pending px-2.5 py-2 -mt-2"
+          >
+            <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-px" />
+            <span>
+              This overdraws <strong>{fromWallet.name}</strong> by {formatCurrencyAmount(overdrawnBy)}.
+            </span>
+          </p>
+        )}
 
         {/* 4. Date Picker */}
         <div className="flex flex-col gap-1.5">

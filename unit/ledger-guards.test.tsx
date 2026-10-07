@@ -636,3 +636,66 @@ describe('a guest CSV repayment names its debt (F8, ADR 0024)', () => {
     expect(state().transactions).toHaveLength(0);
   });
 });
+
+// Phase 109 (ADR 0085, audit finding 3): an expense or an income is filed
+// under a category of its own type, so it counts where it should (L1).
+describe('a category of another type is refused (ADR 0085)', () => {
+  const add = (type: 'EXPENSE' | 'INCOME', categoryId: string, idempotencyKey?: string) =>
+    actions().addTransaction({
+      amount: 60, type, categoryId, walletId: WALLET_MAIN, description: 'Lunch', transactionDate: TODAY, idempotencyKey,
+    });
+
+  it.each([
+    ['EXPENSE', 'cat-adjust', "An expense can't be filed under Balance Adjustment"],
+    ['EXPENSE', 'cat-debt', "An expense can't be filed under Debt Repayment"],
+    ['EXPENSE', 'cat-salary', "An expense can't be filed under Primary Salary"],
+    ['INCOME', 'cat-adjust', "Income can't be filed under Balance Adjustment"],
+    ['INCOME', 'cat-food', "Income can't be filed under Food & Dining"],
+  ] as const)('%s under %s moves nothing and says why', async (type, categoryId, error) => {
+    const result = await call(() => add(type, categoryId));
+    expect(result).toEqual({ success: false, error });
+    expect(state().transactions).toHaveLength(0);
+    expect(wallet(WALLET_MAIN).balance).toBe(2500);
+  });
+
+  it('accepts a category of its own type, and a refusal leaks no key', async () => {
+    expect((await call(() => add('EXPENSE', 'cat-adjust', 'key-1'))).success).toBe(false);
+    const result = await call(() => add('EXPENSE', 'cat-food', 'key-1'));
+    expect(result.success).toBe(true);
+    expect(wallet(WALLET_MAIN).balance).toBe(2440);
+    await tick();
+    expect((await call(() => add('INCOME', 'cat-salary'))).success).toBe(true);
+  });
+
+  it('leaves a balance adjustment and a repayment on their own categories alone', async () => {
+    const adjust = await call(() =>
+      actions().addTransaction({ amount: -40, type: 'ADJUSTMENT', categoryId: 'cat-adjust', walletId: WALLET_MAIN, description: 'Fix', transactionDate: TODAY }),
+    );
+    expect(adjust.success).toBe(true);
+    await tick();
+    expect((await call(() => repay({ categoryId: 'cat-debt' }))).success).toBe(true);
+  });
+});
+
+describe('a CSV row keeps only a category of its own type (ADR 0085)', () => {
+  const row = (rowIndex: number, type: 'EXPENSE' | 'INCOME', category: { categoryName?: string; categoryId?: string }) => ({
+    rowIndex, date: TODAY, walletName: 'Main Checking', amount: 10, type, description: `row ${rowIndex}`, isValid: true, ...category,
+  });
+
+  it('imports a row named or picked under another type uncategorized, and keeps a matching one', async () => {
+    const result = await call(() =>
+      actions().commitBulkImport([
+        row(1, 'EXPENSE', { categoryName: 'Balance Adjustment' }),
+        row(2, 'EXPENSE', { categoryId: 'cat-salary' }),
+        row(3, 'INCOME', { categoryName: 'Groceries' }),
+        row(4, 'EXPENSE', { categoryName: 'food & dining' }),
+        row(5, 'INCOME', { categoryId: 'cat-freelance' }),
+      ]),
+    );
+    expect(result).toMatchObject({ success: true, insertedCount: 5 });
+    const byNote = (n: number) => state().transactions.find((t) => t.description === `row ${n}`)!;
+    expect([1, 2, 3].map((n) => byNote(n).categoryId)).toEqual([undefined, undefined, undefined]);
+    expect(byNote(4).categoryId).toBe('cat-food');
+    expect(byNote(5).categoryId).toBe('cat-freelance');
+  });
+});

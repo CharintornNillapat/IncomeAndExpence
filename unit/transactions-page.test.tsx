@@ -251,6 +251,45 @@ describe('the panel edits a live row (Phase 58b, ADR 0033)', () => {
     expect((screen.getByRole('button', { name: 'Save changes' }) as HTMLButtonElement).disabled).toBe(false);
   });
 
+  // Phase 109 (ADR 0085, audit finding 3).
+  const categoryValues = () => Array.from((field('tx-edit-category') as HTMLSelectElement).options).map((o) => o.value);
+
+  it("lists the row type's categories only, with No category", async () => {
+    mount([tx({ type: 'INCOME', amount: 900, categoryId: 'cat-salary', description: 'Pay' })]);
+    fireEvent.click(rowButtons()[0]);
+    await screen.findByRole('dialog');
+    expect(categoryValues()).toEqual(['', 'cat-salary', 'cat-freelance']);
+    expect(field('tx-edit-category')!.value).toBe('cat-salary');
+  });
+
+  it("keeps a legacy row's own category, so saving its note leaves it as it was", async () => {
+    mount([tx({ type: 'EXPENSE', amount: 60, categoryId: 'cat-adjust', description: 'Old lunch' })]);
+    fireEvent.click(rowButtons()[0]);
+    const dialog = await screen.findByRole('dialog');
+    expect(categoryValues()).toEqual(['', 'cat-food', 'cat-groceries', 'cat-transport', 'cat-shopping', 'cat-housing', 'cat-adjust']);
+    expect(field('tx-edit-category')!.value).toBe('cat-adjust');
+
+    fireEvent.change(field('tx-edit-description')!, { target: { value: 'Old lunch, noodles' } });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Save changes' }));
+    expect(await within(dialog).findByText('Changes saved')).toBeTruthy();
+    // Written by the batched writer, 250 ms later.
+    const stored = () => JSON.parse(localStorage.getItem('pf_transactions') ?? '[]')[0];
+    await waitFor(() => expect(stored().description).toBe('Old lunch, noodles'));
+    expect(stored().categoryId).toBe('cat-adjust');
+  });
+
+  it("switching type clears a category of the old type, and switching back restores the row's own", async () => {
+    mount([tx({ type: 'EXPENSE', amount: 60, categoryId: 'cat-food', description: 'Lunch' })]);
+    fireEvent.click(rowButtons()[0]);
+    await screen.findByRole('dialog');
+    fireEvent.click(document.getElementById('tx-edit-type-income')!);
+    expect(categoryValues()).toEqual(['', 'cat-salary', 'cat-freelance']);
+    expect(field('tx-edit-category')!.value).toBe('');
+
+    fireEvent.click(document.getElementById('tx-edit-type-expense')!);
+    expect(field('tx-edit-category')!.value).toBe('cat-food');
+  });
+
   it("offers only a repayment's note and date", async () => {
     // A fresh guest has no debt since ADR 0040, so the one it names is seeded.
     seedGuestLedger({ debts: [SAMPLE_STUDENT_LOAN] });

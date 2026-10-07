@@ -341,4 +341,21 @@ describe('Wallets section', () => {
     );
     expect(screen.getAllByText('No money in your wallets yet')).toHaveLength(1);
   });
+
+  // Phase 109 (ADR 0085, audit finding 8): wallets below zero are not empty.
+  it('gives the total, not "no money", when the wallets add up to less than zero', () => {
+    const owing = WALLET_LIST.map((w, i) => ({ ...w, balance: i === 0 ? -1200 : 0 }));
+    render(
+      <WalletsSection
+        wallets={owing}
+        shares={walletShares(owing)}
+        onTransfer={() => {}}
+        onAddWallet={() => {}}
+        onManageWallets={() => {}}
+        onOpenWallet={() => {}}
+      />
+    );
+    expect(screen.queryByText('No money in your wallets yet')).toBeNull();
+    expect(screen.getAllByText(`Your wallets add up to ${MINUS}฿1,200.00`)).toHaveLength(1);
+  });
 });

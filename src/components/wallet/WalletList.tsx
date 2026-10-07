@@ -6,7 +6,7 @@ import { Money } from '../ui/Money';
 import { AllocationBar } from '../ui/AllocationBar';
 import { Button } from '../ui/Button';
 import { getWalletIcon } from '../../utils/walletIcons';
-import { walletTypeLabel } from './walletFormStyles';
+import { emptyWalletsCaption, walletTypeLabel } from './walletFormStyles';
 
 interface WalletListProps {
   /** Active wallets (`useWallets().wallets`), in their stored order. */
@@ -52,7 +52,7 @@ export const WalletList: React.FC<WalletListProps> = ({
       {wallets.length > 0 && (
         <AllocationBar
           label="Share of money by wallet"
-          emptyCaption="No money in your wallets yet"
+          emptyCaption={emptyWalletsCaption(wallets)}
           segments={wallets.map((wallet) => ({
             id: wallet.id,
             label: wallet.name,

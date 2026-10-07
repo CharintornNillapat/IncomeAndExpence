@@ -2122,6 +2122,19 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       return { success: true, txId: existingTx.id };
     }
 
+    // ADR 0085 (audit finding 3): an expense or an income is filed under a
+    // category of its own type. Balance Adjustment and Debt Repayment have
+    // types of their own, so neither can hold one, and spending (L1) counts
+    // every expense written here. Every form already offers only its type's
+    // categories; this stops any other caller. Placed like the repayment
+    // guard below: after the replay check, before the key is taken.
+    if ((data.type === 'EXPENSE' || data.type === 'INCOME') && data.categoryId) {
+      const category = categoriesRef.current.find((c) => c.id === data.categoryId);
+      if (category && category.type !== data.type) {
+        return { success: false, error: `${data.type === 'EXPENSE' ? 'An expense' : 'Income'} can't be filed under ${category.name}` };
+      }
+    }
+
     // ADR 0016: a repayment may not exceed what is actually owed. Zod proves
     // `debtId` is present for a DEBT_REPAYMENT; it cannot prove the debt still
     // resolves, nor that the payment fits inside the remaining balance - the
@@ -2993,9 +3006,13 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       const categoryById = row.categoryId
         ? categoriesRef.current.find((c) => c.id === row.categoryId && !c.isDeleted)
         : undefined;
-      const cat =
+      const named =
         categoryById ??
         (row.categoryName ? categoryMapByName.get(row.categoryName.trim().toLowerCase()) : undefined);
+      // ADR 0085: a category of another type is dropped and the row imports
+      // uncategorized. The row's type decides which way the money moves, so
+      // it wins, as it does over the classifier (ADR 0019).
+      const cat = named && named.type === row.type ? named : undefined;
 
       // F8 (ADR 0024): a repayment pays off the debt the preview resolved. One
       // whose debt has since been deleted is skipped, like a missing wallet. A

@@ -40,6 +40,15 @@ export function walletActivity(transactions: Transaction[], walletId: string): T
 }
 
 /** The sum of every active wallet's balance. A credit card's negative balance counts. */
+/**
+ * How far `after` takes a wallet below zero, or 0 (ADR 0085). A credit card
+ * owes by design, so it is never overdrawn. Every form that moves money out
+ * of a wallet warns with this and never blocks on it (ADR 0014).
+ */
+export function overdraftBy(wallet: Pick<Wallet, 'type'>, after: number): number {
+  return wallet.type !== 'CREDIT_CARD' && after < 0 ? roundToCents(-after) : 0;
+}
+
 export function walletTotal(wallets: Wallet[]): number {
   let total = 0;
   for (const wallet of wallets) if (isActiveWallet(wallet)) total += Number(wallet.balance || 0);
