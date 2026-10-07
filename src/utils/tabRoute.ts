@@ -26,3 +26,18 @@ export function tabFromHash(hash: string): ActiveTab {
 export function urlForTab(tab: ActiveTab, pathname: string, search: string): string {
   return tab === 'dashboard' ? `${pathname}${search}` : `#/${tab}`;
 }
+
+// The navigation's own labels (`Navbar`, `MobileBottomNav`).
+const TAB_LABELS: Record<ActiveTab, string> = {
+  dashboard: 'Dashboard',
+  transactions: 'Transactions',
+  wallets: 'Wallets',
+  debts: 'Debt payoff',
+  diary: 'Daily diary',
+  categories: 'Categories',
+};
+
+/** The document title for a tab (ADR 0089): the app's name alone for the Dashboard. */
+export function titleForTab(tab: ActiveTab): string {
+  return tab === 'dashboard' ? 'FinLife Tracker' : `${TAB_LABELS[tab]} · FinLife Tracker`;
+}

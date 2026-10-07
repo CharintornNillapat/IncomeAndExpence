@@ -2,6 +2,7 @@ import React, { useId, useLayoutEffect, useRef } from 'react';
 import { X } from 'lucide-react';
 import { IconButton } from './ui/IconButton';
 import { Presence } from './ui/motion';
+import { closeDialogEntry, dialogEntryOf, isLiveDialogEntry, isOwnTraversal, openDialogEntry } from '../utils/modalHistory';
 
 // Phase 67 (ADR 0043, spec section 10 item 12): what a keyboard can reach
 // inside a dialog. Read at keydown time, so a field that appears later counts.
@@ -298,6 +299,37 @@ export const Modal: React.FC<ModalProps> = ({
     document.addEventListener('keydown', handleTab, true);
     return () => document.removeEventListener('keydown', handleTab, true);
   }, [isOpen]);
+
+  // Phase 113 (ADR 0089): the dialog has a history entry of its own while it
+  // is open, so Back closes it (the listener below) rather than changing the
+  // tab under it. A real close takes the entry off a microtask later
+  // (modalHistory). StrictMode's effect re-run opens over the entry its own
+  // cleanup just closed, so it replaces that entry rather than adding one.
+  const historyToken = useRef<string | null>(null);
+  useLayoutEffect(() => {
+    if (!isOpen) return;
+    const token = openDialogEntry();
+    historyToken.current = token;
+    return () => closeDialogEntry(token);
+  }, [isOpen]);
+
+  // Back, like Escape, closes only the top dialog, through the same onClose,
+  // so focus returns to the opener as it does on Escape. Landing on another
+  // open dialog's entry (the one under this) is a Back; landing on a closed
+  // dialog's entry is a Forward that modalHistory steps back off, and a
+  // traversal the app made itself (a closed dialog's entry coming off) is
+  // neither: both are ignored here.
+  useLayoutEffect(() => {
+    if (!isOpen) return;
+    const handlePopState = (e: PopStateEvent) => {
+      if (isOwnTraversal(e) || !isTopDialog()) return;
+      const landed = dialogEntryOf(e.state);
+      if (landed === historyToken.current || (landed !== null && !isLiveDialogEntry(landed))) return;
+      onClose();
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [isOpen, onClose]);
 
   // Escape-to-close was missing from every hand-rolled modal (none of them
   // wired a keydown listener); wiring it once here is a genuine gap fix.

@@ -8,7 +8,8 @@ import { Presence } from './components/ui/motion';
 import { AuthModal } from './components/AuthModal';
 import { ReloadPrompt } from './components/ReloadPrompt';
 import { isInsideHorizontalScroller, isZoomedIn } from './utils/swipeGuard';
-import { TAB_ORDER, tabFromHash, urlForTab } from './utils/tabRoute';
+import { TAB_ORDER, tabFromHash, titleForTab, urlForTab } from './utils/tabRoute';
+import { dialogEntryOf } from './utils/modalHistory';
 
 // Lazy-loaded route views for optimized bundle size & code splitting
 const DashboardView = lazy(() => import('./views/DashboardView').then(m => ({ default: m.DashboardView })));
@@ -112,12 +113,22 @@ const MainApp: React.FC = () => {
   const handleTabChange = useCallback(
     (newTab: ActiveTab) => {
       if (newTab !== activeTab) {
-        window.history.pushState(null, '', urlForTab(newTab, window.location.pathname, window.location.search));
+        const url = urlForTab(newTab, window.location.pathname, window.location.search);
+        // ADR 0089: a tab change from inside a dialog (Quick Add's Repay
+        // debt, the More sheet) takes the closing dialog's entry, so Back
+        // returns to the tab the dialog was opened on.
+        if (dialogEntryOf(window.history.state) !== null) window.history.replaceState(null, '', url);
+        else window.history.pushState(null, '', url);
       }
       showTab(newTab);
     },
     [activeTab, showTab]
   );
+
+  // ADR 0089: the title names the tab, for history entries and bookmarks.
+  useEffect(() => {
+    document.title = titleForTab(activeTab);
+  }, [activeTab]);
 
   // Back, Forward and a hash typed into the address bar (a fragment navigation
   // fires `popstate` too) show the tab the URL now names.
