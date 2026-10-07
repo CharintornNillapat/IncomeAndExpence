@@ -1,6 +1,6 @@
 # 0086: One amount cap, checked in the field; refused saves clear on edit; the Add Debt form starts empty; sign-out clears cached insights; one h1 per page; a Permissions-Policy
 
-**Status:** Accepted. Code `128f2bb`, docs `b0eeb5f`, draft PR #61; not merged. No migration.
+**Status:** Accepted. Released: code `128f2bb`, docs `b0eeb5f`, hash backfill `d85805a`, merged into `main` as `ecf9a31` (PR #61); Vercel `dpl_7VSiyAZmpdMsWoGFKpqsypCitVkF` READY in `icn1`, sending the `Permissions-Policy`. No migration.
 - **Amends** ADR `0081` (the amount field): it refuses an amount over the cap.
 - **Amends** ADR `0024` (F5, sign-out clears the device): the insights cache goes too.
 - **Amends** ADR `0035` (Debt payoff page): the Add Debt form has no default figures.

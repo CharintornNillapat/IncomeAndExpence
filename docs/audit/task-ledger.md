@@ -1083,7 +1083,7 @@ Approved explicitly by the user, planned and approved before any code was writte
 
 ## Phase 110 - One amount cap, checked in the field; refused saves clear on edit; the Add Debt form starts empty; sign-out clears cached insights; one h1 per page; a Permissions-Policy: T672-T678 (2026-10-07)
 
-ADR `0086`, amending ADR `0024`, `0035`, `0043`, `0068` and `0081`. Branch `phase-110-form-hygiene-and-a11y-polish`, cut from `main` at `a7a3d1f`; code `128f2bb`, docs `b0eeb5f`; draft PR #61.
+ADR `0086`, amending ADR `0024`, `0035`, `0043`, `0068` and `0081`. Branch `phase-110-form-hygiene-and-a11y-polish`, cut from `main` at `a7a3d1f`; code `128f2bb`, docs `b0eeb5f`, hash backfill `d85805a`; merged into `main` as `ecf9a31` (PR #61); Vercel `dpl_7VSiyAZmpdMsWoGFKpqsypCitVkF` READY in `icn1`. The pull request's CI (run `37630697225`) passed every job. `Main` CI on the merge (run `37632567551`) passed every job on its first attempt in 271 s end to end, 20 s of it the merge job (unit 1241; 477 passed, 6 skipped, no flaky test: the local WebKit `jev-classify` flake did not show on CI's Linux WebKit). Production serves the entry `index-B7KE9-HC.js`, a local build's, with the cap's message in it, and sends `Permissions-Policy: camera=(), geolocation=(), microphone=(self)`.
 
 | # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
 |---|---|---|---|---|---|---|---|---|---|---|

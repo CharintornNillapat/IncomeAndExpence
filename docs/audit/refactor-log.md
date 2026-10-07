@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 110 - One amount cap, checked in the field; refused saves clear on edit; the Add Debt form starts empty; sign-out clears cached insights; one h1 per page; a Permissions-Policy: T672-T678 (2026-10-07, code `128f2bb`, docs `b0eeb5f`, PR #61)
+## Phase 110 - One amount cap, checked in the field; refused saves clear on edit; the Add Debt form starts empty; sign-out clears cached insights; one h1 per page; a Permissions-Policy: T672-T678 (2026-10-07, code `128f2bb`, docs `b0eeb5f`, merge `ecf9a31`)
 
 ADR `0086`. The owner's brief: audit findings 9, 10, 12, 13, 16 and 20.
 
@@ -26,6 +26,11 @@ ADR `0086`. The owner's brief: audit findings 9, 10, 12, 13, 16 and 20.
 **Changed on purpose**
 - **Saving a debt now needs a total typed in.** A spec that creates one fills it.
 - **An amount over ฿999,999,999.99 is refused in the field**, before Save, with the same message the save would give.
+
+**Release:**
+- The pull request's CI (run `37630697225`, on `d85805a`) passed every job.
+- PR #61 merged into `main` as `ecf9a31`, whose tree is identical to `d85805a`. Vercel `dpl_7VSiyAZmpdMsWoGFKpqsypCitVkF` is READY in production, region `icn1`; `/api/classify` answers from `icn1`; production serves the entry `index-B7KE9-HC.js`, the same hash as a local build of the branch, with "Amount can't be over" in it, and every response carries `Permissions-Policy: camera=(), geolocation=(), microphone=(self)` beside `X-Frame-Options: DENY`.
+- `main` CI on the merge (run `37632567551`) passed every job on its first attempt in 271 s end to end, 20 s of it the merge job (unit 1241; 477 passed, 6 skipped, no flaky test: the local WebKit `jev-classify` flake did not show on CI's Linux WebKit).
 
 ---
 
