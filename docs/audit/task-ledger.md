@@ -1083,7 +1083,7 @@ Approved explicitly by the user, planned and approved before any code was writte
 
 ## Phase 111 - A classification armed during StrictMode's re-run is re-armed; a debt's months left are its payment dates; a new password needs 8 characters: T679-T684 (2026-10-07)
 
-ADR `0087`, superseding spec L4's `monthsLeft` and amending ADR `0011` and `0024`. Branch `phase-111-input-race-and-audit-cleanups`, cut from `main` at `ece2219`; code `394b588`; draft PR.
+ADR `0087`, superseding spec L4's `monthsLeft` and amending ADR `0011` and `0024`. Branch `phase-111-input-race-and-audit-cleanups`, cut from `main` at `ece2219`; code `394b588`, docs `6f02dd3`; draft PR #62.
 
 | # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
 |---|---|---|---|---|---|---|---|---|---|---|
@@ -1091,8 +1091,8 @@ ADR `0087`, superseding spec L4's `monthsLeft` and amending ADR `0011` and `0024
 | T680 | `useDescriptionClassifier` re-arms the armed text on an effect re-run, red first under `StrictMode` | `src/hooks/useDescriptionClassifier.ts`, `unit/classifier-strict-mode.test.tsx` | High | Low | 0.4h | done | T679 | `394b588` | failed first (no request); after: diagnostic 120/120, the real test 60/60 on WebKit | +2 tests |
 | T681 | Finding 7: `monthsLeft` counts the monthly payment dates to the due date; the spec example recounted | `src/selectors/debts.ts`, `unit/selectors-debts.test.ts`, `unit/dashboard.test.tsx` | High | Low | 0.4h | done | - | `394b588` | all failed first | +3 tests |
 | T682 | Finding 5: `NewPasswordSchema` (8) for sign-up and Change Password; sign-in checks only that one was typed | `src/utils/zodSchemas.ts`, `src/components/AuthModal.tsx`, `src/components/account/AccountModal.tsx`, `unit/auth-password.test.tsx`, `tests/auth.spec.ts` | High | Low | 0.4h | done | - | `394b588` | all 4 failed first | +4 tests |
-| T683 | Correct Phase 110's record of the flake ("the note was lost") | `docs/audit/task-ledger.md` | Low | Low | 0.1h | done | T679 | docs | - | - |
-| T684 | Gate, bundle against `main`, ADR `0087`, `CLAUDE.md`, this ledger, the refactor log, baseline metrics | `docs/`, `CLAUDE.md` | Med | Low | 0.4h | done | T680-T682 | docs | lint clean; unit 1250/1250 in 53 files; Playwright 477 passed, 6 skipped of 483 (8.1 m), no failure; `jev-classify.spec.ts` on WebKit 90/90 (10 repeats of the file); schema drift run `37636339326`: no drift, 19 migrations | all app JS +252 B gzip |
+| T683 | Correct Phase 110's record of the flake ("the note was lost") | `docs/audit/task-ledger.md` | Low | Low | 0.1h | done | T679 | `6f02dd3` | - | - |
+| T684 | Gate, bundle against `main`, ADR `0087`, `CLAUDE.md`, this ledger, the refactor log, baseline metrics | `docs/`, `CLAUDE.md` | Med | Low | 0.4h | done | T680-T682 | `6f02dd3` | lint clean; unit 1250/1250 in 53 files; Playwright 477 passed, 6 skipped of 483 (8.1 m), no failure; `jev-classify.spec.ts` on WebKit 90/90 (10 repeats of the file); schema drift run `37636339326`: no drift, 19 migrations | all app JS +252 B gzip |
 
 **Notes on execution:**
 - **Phase 110 misread the failure.** Its note said the Note field was empty; the line after the textbox in the page snapshot was the placeholder, and the value followed it. The brief for this phase took that over ("drops fast-typed notes"). The real failure was a classification never sent, which the request-counting diagnostic showed.

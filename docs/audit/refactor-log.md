@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 111 - A classification armed during StrictMode's re-run is re-armed; a debt's months left are its payment dates; a new password needs 8 characters: T679-T684 (2026-10-07, code `394b588`)
+## Phase 111 - A classification armed during StrictMode's re-run is re-armed; a debt's months left are its payment dates; a new password needs 8 characters: T679-T684 (2026-10-07, code `394b588`, docs `6f02dd3`, PR #62)
 
 ADR `0087`. The owner's brief: the WebKit `jev-classify` flake, audit finding 7 (debt months left) and finding 5 (password floor).
 
