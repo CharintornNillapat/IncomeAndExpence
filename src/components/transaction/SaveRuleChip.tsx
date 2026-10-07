@@ -1,4 +1,3 @@
-import { motion } from 'framer-motion';
 import { Check, Tag, X } from 'lucide-react';
 import { IconButton } from '../ui/IconButton';
 
@@ -15,6 +14,8 @@ interface SaveRuleChipProps {
   error?: string | null;
   onSave?: () => void;
   onDismiss?: () => void;
+  /** Set by `Presence` while the chip plays its exit (ADR 0082). */
+  'data-leaving'?: boolean;
 }
 
 /**
@@ -41,17 +42,15 @@ export function SaveRuleChip({
   error,
   onSave,
   onDismiss,
+  'data-leaving': leaving,
 }: SaveRuleChipProps) {
   const saved = status === 'saved';
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: -4 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -4 }}
-      transition={{ duration: 0.15 }}
+    <div
+      data-leaving={leaving}
       data-testid="tx-save-rule"
-      className={`mt-2 flex flex-col gap-1.5 rounded-lg border px-3 py-2 ${
+      className={`motion-chip mt-2 flex flex-col gap-1.5 rounded-lg border px-3 py-2 ${
         saved
           ? 'border-income-line bg-income-tint'
           : 'border-line bg-surface-2'
@@ -111,6 +110,6 @@ export function SaveRuleChip({
       {error && !saved && (
         <p className="text-[11px] font-medium text-expense">{error}</p>
       )}
-    </motion.div>
+    </div>
   );
 }

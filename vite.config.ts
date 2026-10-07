@@ -86,15 +86,8 @@ export default defineConfig(({ mode }) => {
             ) {
               return 'vendor-react';
             }
-            if (
-              id.includes('node_modules/framer-motion/') ||
-              id.includes('node_modules/motion-dom/') ||
-              id.includes('node_modules/motion-utils/') ||
-              id.includes('node_modules/tslib/')
-            ) {
-              return 'vendor-motion';
-            }
-            if (id.includes('node_modules/@supabase/')) {
+            // tslib's one user since framer-motion went is supabase-js (ADR 0082).
+            if (id.includes('node_modules/@supabase/') || id.includes('node_modules/tslib/')) {
               return 'vendor-supabase';
             }
             if (id.includes('node_modules/lucide-react/')) {

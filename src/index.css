@@ -389,6 +389,59 @@
   transition-duration: var(--tw-duration, var(--default-transition-duration));
 }
 
+/*
+ * Phase 106 (ADR 0082): the tweens framer-motion used to run, with the same
+ * values. Each plays on mount; `Presence` (`ui/motion.tsx`) marks a leaving
+ * element `data-leaving` and unmounts it when the exit is over. The exit
+ * keeps its last frame (`forwards`) until then. Ease-out is framer's
+ * `easeOut`, cubic-bezier(0, 0, 0.58, 1).
+ */
+@keyframes motion-fade-in {
+  from { opacity: 0; }
+}
+@keyframes motion-fade-out {
+  to { opacity: 0; }
+}
+@keyframes motion-rise-in {
+  from { opacity: 0; transform: translateY(24px); }
+}
+@keyframes motion-rise-out {
+  to { opacity: 0; transform: translateY(24px); }
+}
+/* `--page-dir` (on <main>) is 1 forward, -1 back, 0 for neither; the leaving
+   page reads it live, as framer's `custom` gave the exit the latest direction. */
+@keyframes motion-page-in {
+  from { opacity: 0; transform: translateX(calc(var(--page-dir, 0) * 48px)); }
+}
+@keyframes motion-page-out {
+  to { opacity: 0; transform: translateX(calc(var(--page-dir, 0) * -48px)); }
+}
+@keyframes motion-drop-in {
+  from { opacity: 0; transform: translateY(-4px); }
+}
+@keyframes motion-drop-out {
+  to { opacity: 0; transform: translateY(-4px); }
+}
+
+.motion-scrim { animation: motion-fade-in 200ms ease-out; }
+.motion-scrim[data-leaving] { animation: motion-fade-out 200ms ease-out forwards; }
+.motion-sheet { animation: motion-rise-in 200ms ease-out; }
+.motion-scrim[data-leaving] .motion-sheet { animation: motion-rise-out 200ms ease-out forwards; }
+.motion-page { animation: motion-page-in 200ms ease-out; }
+.motion-page[data-leaving] { animation: motion-page-out 200ms ease-out forwards; }
+.motion-chip { animation: motion-drop-in 150ms ease-out; }
+.motion-chip[data-leaving] { animation: motion-drop-out 150ms ease-out forwards; }
+
+/* `Presence` and `slidePill` skip their part too; nothing is left to move. */
+@media (prefers-reduced-motion: reduce) {
+  .motion-scrim,
+  .motion-sheet,
+  .motion-page,
+  .motion-chip {
+    animation: none !important;
+  }
+}
+
 @layer utilities {
   /* Hide scrollbar for Chrome, Safari and Opera */
   .no-scrollbar::-webkit-scrollbar {

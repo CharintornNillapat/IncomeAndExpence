@@ -1,5 +1,4 @@
 import React, { useState, useId } from 'react';
-import { AnimatePresence } from 'framer-motion';
 import { ArrowRight, AlertCircle, Mic, Tags, CheckCircle2 } from 'lucide-react';
 import { InlineMathInput } from './InlineMathInput';
 import { Wallet, Category, TransactionType, Preset } from '../types';
@@ -21,6 +20,7 @@ import { APP_CURRENCY_SYMBOL, formatCurrencyAmount } from '../utils/currency';
 import { todayIsoDate } from '../utils/date';
 import { LABEL_TEXT_CLASS, OPTION_CLASS, ERROR_BANNER_CLASS } from '../utils/formStyles';
 import { SegmentedControl } from './ui/SegmentedControl';
+import { Presence } from './ui/motion';
 import { Button } from './ui/Button';
 import { ProgressBar } from './ui/ProgressBar';
 
@@ -770,7 +770,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
           label, and anything below the floor is silent. Non-blocking by
           construction: the form stays usable and submittable while this sits here.
         */}
-        <AnimatePresence>
+        <Presence exitMs={150}>
           {suggestion && suggestion.strength === 'SUGGEST' && (
             <CategorySuggestionChip
               key={suggestion.categoryId}
@@ -780,7 +780,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
               onDismiss={dismissSuggestion}
             />
           )}
-        </AnimatePresence>
+        </Presence>
       </div>
 
       {/* 2. Amount - pre-filled from the note above, always editable, and still
@@ -992,7 +992,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
                 The confirmation outranks the offer because saving makes the
                 offer's own conditions false - see `savedRule` above.
               */}
-              <AnimatePresence mode="wait">
+              <Presence exitMs={150}>
                 {savedRule ? (
                   <SaveRuleChip
                     key="rule-saved"
@@ -1013,7 +1013,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
                     onDismiss={handleDismissRule}
                   />
                 ) : null}
-              </AnimatePresence>
+              </Presence>
             </div>
           )}
         </div>

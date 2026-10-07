@@ -1,5 +1,5 @@
-import { useId } from 'react';
-import { motion } from 'framer-motion';
+import { useLayoutEffect, useRef } from 'react';
+import { slidePill } from './motion';
 
 export type SegmentedControlSize = 'sm' | 'md';
 
@@ -41,12 +41,11 @@ const SIZE_CLASS: Record<SegmentedControlSize, string> = {
  * T48: pill-in-tray switcher shared by the dashboard period filter, the
  * transaction-type toggle, and the auth mode tabs - same tray/pill markup at
  * each, only option count, label text, and container layout differing. The
- * active pill is a `layoutId`-animated sibling behind the label rather than
- * an instant background-class swap, so switching options slides the pill
- * across (a 200 ms tween since Phase 53b, not a spring). `layoutId` is namespaced with `useId()` so multiple controls
- * mounted at once (e.g. the dashboard period filter and the quick-add
- * transaction-type toggle it renders alongside) never share a layout
- * animation.
+ * active pill is a sibling behind the label rather than an instant
+ * background-class swap, so switching options slides the pill across (a
+ * 200 ms tween since Phase 53b, not a spring). Since Phase 106 (ADR 0082) the
+ * slide is `slidePill`, from the button selected before, within this control
+ * only; framer-motion's `layoutId` did it until then.
  *
  * Phase 56 (spec 4.6, ADR 0029): a bordered card-coloured tray, the selected
  * option on `control-active` in bold, and the selection exposed in ARIA -
@@ -62,8 +61,16 @@ export function SegmentedControl<T extends string>({
   mode = 'pressed',
   ariaLabel,
 }: SegmentedControlProps<T>) {
-  const instanceId = useId();
   const isTabs = mode === 'tabs';
+  const buttons = useRef(new Map<T, HTMLButtonElement>());
+  const previous = useRef(value);
+
+  useLayoutEffect(() => {
+    if (previous.current === value) return;
+    const button = buttons.current.get(value);
+    slidePill(button?.querySelector<HTMLElement>('[data-pill]'), buttons.current.get(previous.current));
+    previous.current = value;
+  }, [value]);
 
   return (
     <div
@@ -76,6 +83,10 @@ export function SegmentedControl<T extends string>({
         return (
           <button
             key={option.value}
+            ref={(el) => {
+              if (el) buttons.current.set(option.value, el);
+              else buttons.current.delete(option.value);
+            }}
             id={option.id}
             type="button"
             role={isTabs ? 'tab' : undefined}
@@ -91,11 +102,7 @@ export function SegmentedControl<T extends string>({
             }`.trim()}
           >
             {isActive && (
-              <motion.span
-                layoutId={`${instanceId}-pill`}
-                className="absolute inset-0 z-0 bg-control-active rounded-button"
-                transition={{ duration: 0.2, ease: 'easeOut' }}
-              />
+              <span data-pill className="absolute inset-0 z-0 bg-control-active rounded-button" />
             )}
             <span className="relative z-10">{option.label}</span>
           </button>

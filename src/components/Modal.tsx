@@ -1,7 +1,7 @@
-import React, { useEffect, useId, useLayoutEffect, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import React, { useId, useLayoutEffect, useRef } from 'react';
 import { X } from 'lucide-react';
 import { IconButton } from './ui/IconButton';
+import { Presence } from './ui/motion';
 
 // Phase 67 (ADR 0043, spec section 10 item 12): what a keyboard can reach
 // inside a dialog. Read at keydown time, so a field that appears later counts.
@@ -257,7 +257,10 @@ export const Modal: React.FC<ModalProps> = ({
   // runs: OverflowMenu closes on Tab and unmounts the item that had focus.
   // Between the first and last control the browser moves focus itself; only
   // the two ends and a focus that has left the panel are steered here.
-  useEffect(() => {
+  // A layout effect, like the focus above (Phase 106, ADR 0082): a key pressed
+  // as soon as focus is inside must find the listener, and a passive effect
+  // ran a task later, which lost an Escape on WebKit about one time in ten.
+  useLayoutEffect(() => {
     if (!isOpen) return;
     const handleTab = (e: KeyboardEvent) => {
       if (e.key !== 'Tab' || e.defaultPrevented || !isTopDialog()) return;
@@ -300,7 +303,8 @@ export const Modal: React.FC<ModalProps> = ({
   // wired a keydown listener); wiring it once here is a genuine gap fix.
   // Only the top dialog answers, and it marks the event handled, so the sheet
   // under a confirmation stays open whichever listener the browser calls first.
-  useEffect(() => {
+  // A layout effect for the same reason as the Tab trap's.
+  useLayoutEffect(() => {
     if (!isOpen) return;
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key !== 'Escape' || e.defaultPrevented || !isTopDialog()) return;
@@ -312,14 +316,10 @@ export const Modal: React.FC<ModalProps> = ({
   }, [isOpen, onClose]);
 
   return (
-    <AnimatePresence>
+    <Presence>
       {isOpen && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.2 }}
-          className="fixed inset-0 z-50 bg-scrim flex items-end sm:items-center justify-center p-0 sm:p-4"
+        <div
+          className="motion-scrim fixed inset-0 z-50 bg-scrim flex items-end sm:items-center justify-center p-0 sm:p-4"
           onClick={(e) => {
             if (closeOnBackdropClick && e.target === e.currentTarget) onClose();
           }}
@@ -329,7 +329,7 @@ export const Modal: React.FC<ModalProps> = ({
               the global :focus-visible outline is turned off on it alone; it
               would otherwise ring the whole dialog, and the dialog is already
               the only thing on screen above the scrim. */}
-          <motion.div
+          <div
             ref={panelRef}
             tabIndex={-1}
             id={panelId}
@@ -337,11 +337,7 @@ export const Modal: React.FC<ModalProps> = ({
             aria-modal="true"
             aria-labelledby={resolvedTitleId}
             aria-label={!resolvedTitleId ? ariaLabel : undefined}
-            initial={{ y: 24, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: 24, opacity: 0 }}
-            transition={{ duration: 0.2, ease: 'easeOut' }}
-            className={`bg-surface-1 rounded-t-xl sm:rounded-lg w-full ${maxWidthClassName} max-h-[92vh] sm:max-h-[90vh] pb-[env(safe-area-inset-bottom)] sm:pb-0 flex flex-col shadow-modal border border-line overflow-hidden focus-visible:outline-none ${panelClassName}`}
+            className={`motion-sheet bg-surface-1 rounded-t-xl sm:rounded-lg w-full ${maxWidthClassName} max-h-[92vh] sm:max-h-[90vh] pb-[env(safe-area-inset-bottom)] sm:pb-0 flex flex-col shadow-modal border border-line overflow-hidden focus-visible:outline-none ${panelClassName}`}
           >
             {showMobileHandle && (
               <div className="sm:hidden pt-3 pb-1 flex justify-center cursor-pointer shrink-0" onClick={onClose}>
@@ -378,9 +374,9 @@ export const Modal: React.FC<ModalProps> = ({
                 {footer}
               </div>
             )}
-          </motion.div>
-        </motion.div>
+          </div>
+        </div>
       )}
-    </AnimatePresence>
+    </Presence>
   );
 };

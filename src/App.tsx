@@ -1,10 +1,10 @@
 import React, { useState, useCallback, useEffect, lazy, Suspense } from 'react';
-import { motion, AnimatePresence, Transition } from 'framer-motion';
 import { useSwipeable, SwipeEventData } from 'react-swipeable';
 import { FinanceProvider } from './context/FinanceContext';
 import { Navbar, ActiveTab } from './components/Navbar';
 import { MobileBottomNav } from './components/MobileBottomNav';
 import { ViewLoadingFallback } from './components/ViewLoadingFallback';
+import { Presence } from './components/ui/motion';
 import { AuthModal } from './components/AuthModal';
 import { ReloadPrompt } from './components/ReloadPrompt';
 import { isInsideHorizontalScroller, isZoomedIn } from './utils/swipeGuard';
@@ -38,28 +38,6 @@ const TransferFundsModal = lazy(() => import('./components/wallet/TransferFundsM
 const AddWalletModal = lazy(() => import('./components/wallet/AddWalletModal').then(m => ({ default: m.AddWalletModal })));
 // ADR 0024: what used to be the Security tab. Same deferred, latched mounting.
 const AccountModal = lazy(() => import('./components/account/AccountModal').then(m => ({ default: m.AccountModal })));
-
-// Page slide animation variants for smooth forward/backward transitions
-const pageVariants = {
-  enter: (direction: number) => ({
-    x: direction > 0 ? 48 : direction < 0 ? -48 : 0,
-    opacity: 0,
-  }),
-  center: {
-    x: 0,
-    opacity: 1,
-  },
-  exit: (direction: number) => ({
-    x: direction > 0 ? -48 : direction < 0 ? 48 : 0,
-    opacity: 0,
-  }),
-};
-
-// DESIGN.md MOTION 1: a 200 ms tween, no spring overshoot (Phase 53b).
-const pageTransition: Transition = {
-  duration: 0.2,
-  ease: 'easeOut',
-};
 
 const MainApp: React.FC = () => {
   const [activeTab, setActiveTab] = useState<ActiveTab>('dashboard');
@@ -325,25 +303,20 @@ const MainApp: React.FC = () => {
           exit tween empties it. As `flex-1` alone it sat at the bottom of the
           screen until the Dashboard arrived and pushed it off, most of the
           desktop load's layout shift (Phase 84, ADR 0060). */}
+      {/* `--page-dir` steers the tab slide (`motion-page`, ADR 0082): the new
+          page comes in from 48px on the side it lies, the old one leaves
+          toward the other, both over 200 ms. */}
       <main
         {...swipeHandlers}
+        style={{ '--page-dir': direction } as React.CSSProperties}
         className="flex-1 min-h-[calc(100dvh-3.5rem-env(safe-area-inset-top))] md:min-h-[calc(100dvh-4rem-env(safe-area-inset-top))] max-w-7xl w-full mx-auto px-4 pt-4 pb-24 md:px-10 md:pt-8 md:pb-12 overflow-x-hidden touch-pan-y"
       >
         <Suspense fallback={<ViewLoadingFallback view={activeTab} />}>
-          <AnimatePresence mode="wait" custom={direction}>
-            <motion.div
-              key={activeTab}
-              custom={direction}
-              variants={pageVariants}
-              initial="enter"
-              animate="center"
-              exit="exit"
-              transition={pageTransition}
-              className="w-full"
-            >
+          <Presence>
+            <div key={activeTab} className="motion-page w-full">
               {renderActiveView()}
-            </motion.div>
-          </AnimatePresence>
+            </div>
+          </Presence>
         </Suspense>
       </main>
 
