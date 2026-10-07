@@ -97,9 +97,6 @@ export default defineConfig(({ mode }) => {
             if (id.includes('node_modules/@supabase/')) {
               return 'vendor-supabase';
             }
-            if (id.includes('node_modules/mathjs/')) {
-              return 'vendor-math';
-            }
             if (id.includes('node_modules/lucide-react/')) {
               return 'vendor-icons';
             }

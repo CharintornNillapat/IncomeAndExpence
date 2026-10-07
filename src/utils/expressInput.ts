@@ -33,13 +33,13 @@ export interface ExpressParseResult {
  * The leading `(?:^|\s)` is load-bearing: requiring a whitespace boundary is
  * what stops `7-11`, `Tx-123` and `iphone15` from being harvested as amounts.
  */
-const TRAILING_RE = /(?:^|\s)((?:[0-9(][0-9.,+\-*/%^() ]*)?[0-9)])\s*(?:฿|บาท|thb|baht)?$/i;
+const TRAILING_RE = /(?:^|\s)((?:[0-9(][0-9.,+\-*/() ]*)?[0-9)])\s*(?:฿|บาท|thb|baht)?$/i;
 
 /** Leading anchor - preserves the shape `smartMatcher` has always recognized ("1200 ค่าไฟ"). */
-const LEADING_RE = /^(?:฿\s*)?((?:[0-9(][0-9.,+\-*/%^() ]*)?[0-9)])\s+(\S[\s\S]*)$/i;
+const LEADING_RE = /^(?:฿\s*)?((?:[0-9(][0-9.,+\-*/() ]*)?[0-9)])\s+(\S[\s\S]*)$/i;
 
 /** The whole note is nothing but an expression ("60", "120/4"). */
-const WHOLE_RE = /^((?:[0-9(][0-9.,+\-*/%^() ]*)?[0-9)])\s*(?:฿|บาท|thb|baht)?$/i;
+const WHOLE_RE = /^((?:[0-9(][0-9.,+\-*/() ]*)?[0-9)])\s*(?:฿|บาท|thb|baht)?$/i;
 
 /** At or above this, a trailing number is an id or a timestamp, not money. */
 const MAX_PLAUSIBLE_AMOUNT = 1e9;

@@ -28,7 +28,7 @@ const DiaryView = lazy(() => import('./views/DiaryView').then(m => ({ default: m
 const CategoriesView = lazy(() => import('./views/CategoriesView').then(m => ({ default: m.CategoriesView })));
 
 // ADR 0010: deferred shell modals. Each is unreachable until its trigger is
-// clicked, and (Quick Add, Transfer) uniquely reaches `vendor-math` - lazy
+// clicked, and (Quick Add, Transfer) reaches the entry forms' chunks - lazy
 // importing keeps that weight off the initial critical path. See the ADR for
 // why a bare `React.lazy` swap alone is insufficient (and would break the
 // exit animation / delayed-close flash) and why `AuthModal`/`ReloadPrompt`

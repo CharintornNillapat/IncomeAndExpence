@@ -1098,6 +1098,15 @@ The entry's growth is the ledger action itself, which lives with the other ledge
 
 **Intermittent local failures:** 6 in 1,071 full-suite runs (3 full runs). All were timeouts: a Firefox `goto`, a Firefox context close, and four WebKit clicks waiting for "stable". No assertion failed. See audit 005 finding 3 for the control runs.
 
+## Phase 105 (own arithmetic parser, ฿0 summary) - delta against Phase 104
+
+**Bundle** (gzip -9 on both sides; Phase 104 is the build whose entry production serves, `index-Ck3vA7lB.js`): all app JS 1,380,029 / 417,344 to 1,004,186 / 307,785 B (−375,843 / −109,559), 42 to 41 files. `vendor-math` (375,725 / 109,561) is gone; `InlineMathInput`, which now holds the parser, 5,680 / 2,134 to 6,241 / 2,386; entry `index` 191,656 / 55,089 to 191,611 / 55,071; `vendor-react` 194,329 / 60,402 to 193,822 / 60,257. Every other change is a hashed chunk name. `sw.js` 4,289 / 1,613 to 4,236 / 1,598 B; precache 59 to 58 entries (1,304.12 KiB).
+
+| Suite | Files | Tests | Runs | Result |
+|---|---|---|---|---|
+| Vitest (`unit/`) | 43 | 1169 | 1169 | 1169/1169 (+83 in `math-evaluator.test.ts`, one pin changed) |
+| Playwright (local, 4 workers) | 32 | 158 | 474 | 468 passed, 6 skipped of 474 (8.2 m), no failure |
+
 ## Phase 104 (฿0 debt, fonts cache, date helpers) - delta against Phase 103
 
 **Bundle** (gzip -9 on both sides; Phase 103 is the build whose entry production serves, `index-DhnQcc5z.js`): the app's JS is unchanged apart from hashed chunk names, entry `index` 191,656 B raw either way, all JS 1,380,027 to 1,380,029 B raw. **Service worker:** `sw.js` 4,761 / 1,765 to 4,289 / 1,613 B; the Workbox runtime 21,863 / 7,462 to 15,112 / 5,228 B (−6,751 / −2,234), as the expiration and cacheable-response plugins go with the font routes. Precache 59 entries.

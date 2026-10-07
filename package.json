@@ -24,7 +24,6 @@
     "@supabase/supabase-js": "^2.112.4",
     "framer-motion": "^13.1.1",
     "lucide-react": "^0.546.0",
-    "mathjs": "^15.2.0",
     "papaparse": "^5.7.0",
     "react": "^19.0.1",
     "react-dom": "^19.0.1",

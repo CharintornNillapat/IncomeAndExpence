@@ -40,8 +40,9 @@ export const useDebts = () => {
     const totalTarget = liveDebts.reduce((sum, d) => sum + d.totalAmount, 0);
     const remainingTarget = liveDebts.reduce((sum, d) => sum + (d.isSettled ? 0 : d.remainingAmount), 0);
     const paidTarget = totalTarget - remainingTarget;
-    // No debts tracked reads as 0% paid off, not 100% (ADR 0079).
-    const progressPercent = payoffPercent(totalTarget, remainingTarget, 0);
+    // Debts with nothing borrowed read as paid off, as each card does; no
+    // debts at all reads 0%, which no screen shows (ADR 0081).
+    const progressPercent = payoffPercent(totalTarget, remainingTarget, liveDebts.length > 0 ? 100 : 0);
 
     return {
       totalTarget,

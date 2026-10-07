@@ -17,8 +17,8 @@ import { authorizationHeader } from '../lib/supabase';
  *
  * Deliberately uses plain `fetch` rather than `@typesafe-ai/sdk`: the SDK is a
  * 209 kB Node package, and adding any dependency here would mean touching
- * `vite.config.ts`'s `manualChunks` and risking the `vendor-math` deferral that
- * ADR 0010 bought.
+ * `vite.config.ts`'s `manualChunks` and risking the deferral of the entry
+ * forms that ADR 0010 bought.
  */
 
 const CLASSIFY_ENDPOINT = '/api/classify';
