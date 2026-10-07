@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { TAB_ORDER, tabFromHash, urlForTab } from '../src/utils/tabRoute';
+import { TAB_ORDER, tabFromHash, titleForTab, urlForTab } from '../src/utils/tabRoute';
 
 /**
  * Phase 112 (ADR 0088, audit finding 14): the open tab lives in the URL's
@@ -44,5 +44,21 @@ describe('urlForTab', () => {
       const url = urlForTab(tab, '/', '');
       expect(tabFromHash(url.startsWith('#') ? url : '')).toBe(tab);
     }
+  });
+});
+
+describe('titleForTab', () => {
+  it('is the app name alone for the Dashboard', () => {
+    expect(titleForTab('dashboard')).toBe('FinLife Tracker');
+  });
+
+  it.each([
+    ['transactions', 'Transactions · FinLife Tracker'],
+    ['wallets', 'Wallets · FinLife Tracker'],
+    ['debts', 'Debt payoff · FinLife Tracker'],
+    ['diary', 'Daily diary · FinLife Tracker'],
+    ['categories', 'Categories · FinLife Tracker'],
+  ] as const)('names %s by its navigation label', (tab, title) => {
+    expect(titleForTab(tab)).toBe(title);
   });
 });

@@ -4,6 +4,28 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
+## Phase 113 - The title names the open tab; Back closes the top dialog: T691-T695 (2026-10-08, code `c8afa5a`, docs `9952c1c`, PR #64)
+
+ADR `0089`. The owner's brief: a title per tab, Back closing dialogs, and the WebKit stall in the Phase 112 specs.
+
+**Changed**
+- **`tabRoute.ts`:** `titleForTab`. **`App.tsx`:** sets `document.title` on each tab; `handleTabChange` replaces a dialog's entry instead of pushing.
+- **`src/utils/modalHistory.ts` (new):** `openDialogEntry`, `closeDialogEntry`, `dialogEntryOf`, `isLiveDialogEntry`, `isOwnTraversal`; a module `popstate` listener that marks the app's own traversals, steps back off a dead entry and pushes a waiting dialog's entry.
+- **`Modal`:** a layout effect that opens and closes the dialog's entry, and one that closes the top dialog on a `popstate` that is neither the app's own nor a landing on a dead entry.
+- **Tests:** `unit/modal-history.test.tsx` (6), `unit/tab-route.test.ts` (+6), `tests/routing.spec.ts` (+5).
+- **Docs:** ADR `0089`; `CLAUDE.md`'s Modal, routing, suite and unit lines.
+
+**Gate:**
+- Lint clean; unit 1296/1296 in 56 files; Playwright, first run 485 passed, 6 skipped, 1 failed of 492 (7.1 m): a WebKit click in the unchanged `transaction.spec.ts` waiting on "stable", with no trace kept; second run 486 passed, 6 skipped, no failure (11.6 m, traces on); schema drift run `37697554162`: no drift, 19 migrations.
+- **Red first:** the title, Back and hand-off tests; the release control; the own-traversal control.
+- **WebKit:** the two Phase 112 specs (11 tests now) passed 330 of 330 on WebKit before any change, so no spec was changed for the stall. The first full run's one failure (the `transaction` spec's Clear search click) had the stall's shape; that spec and `wallets-page` passed 100 of 100 on WebKit on this branch, as on `main` in Phase 112, and the second full run was clean.
+- **Bundle:** the entry 195,202 / 56,546 to 196,817 / 57,060 B (+1,615 / +485 gzip); no other chunk changed; cold start still three scripts.
+
+**Changed on purpose**
+- **Back closes an open dialog** before it changes the tab, and the title names the tab.
+
+---
+
 ## Phase 112 - The open tab lives in the URL's hash; `/api/insights` serves accounts only; both proxies cap the body: T685-T690 (2026-10-07, code `9ad6faa`, docs `9a1d2f2`, merge `3952704`)
 
 ADR `0088`. The owner's brief: audit finding 14 (no URL per view) and finding 6 (guests spending TypeSafe credits).
