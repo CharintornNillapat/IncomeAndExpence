@@ -1,6 +1,6 @@
 # 0083: A guest's load fetches no supabase-js; a timing test checks what happened, not how fast; spinners stop under reduced motion
 
-**Status:** Accepted. Draft; not merged.
+**Status:** Accepted. Code `75f00e5`, docs `8dc7e5f`, draft PR #58; not merged.
 - **Amends** ADR `0024` (sessions): a session is resumed by a client that loads at boot only when one may exist.
 - **Amends** ADR `0050` (Server-Timing tests): "no round trip" is a fetch that did not happen.
 - **Amends** ADR `0082`: `animate-spin` and `animate-pulse` stop under `prefers-reduced-motion` too.

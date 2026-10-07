@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 107 - A guest's load fetches no supabase-js; a timing test checks what happened, not how fast; spinners stop under reduced motion: T653-T659 (2026-10-07, PR pending)
+## Phase 107 - A guest's load fetches no supabase-js; a timing test checks what happened, not how fast; spinners stop under reduced motion: T653-T659 (2026-10-07, code `75f00e5`, docs `8dc7e5f`, PR #58)
 
 ADR `0083`. The owner's brief: fix the wall-clock unit test, stop the spinners under reduced motion, and prototype deferring supabase-js for a guest, measured and tested. The prototype held, so it ships.
 
