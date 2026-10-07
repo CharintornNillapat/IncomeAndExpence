@@ -1081,6 +1081,25 @@ Approved explicitly by the user, planned and approved before any code was writte
 - **One negative control was redone** because the first attempt produced malformed TypeScript that the dev server still served — the tests failed, but possibly for the wrong reason.
 - **No flakes.** Phase 44's `wallets.spec.ts` webkit flake has now not reproduced across three consecutive phases; still watched rather than closed.
 
+## Phase 110 - One amount cap, checked in the field; refused saves clear on edit; the Add Debt form starts empty; sign-out clears cached insights; one h1 per page; a Permissions-Policy: T672-T678 (2026-10-07)
+
+ADR `0086`, amending ADR `0024`, `0035`, `0043`, `0068` and `0081`. Branch `phase-110-form-hygiene-and-a11y-polish`, cut from `main` at `a7a3d1f`; code `128f2bb`; draft PR.
+
+| # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
+|---|---|---|---|---|---|---|---|---|---|---|
+| T672 | Finding 9: `MAX_AMOUNT`/`MAX_AMOUNT_ERROR` in `utils/money.ts`, in every schema (`DebtSchema` newly capped) and in `evaluateAmountInput` after rounding; the edit panel's check | `src/utils/money.ts`, `src/utils/mathEvaluator.ts`, `src/utils/zodSchemas.ts`, `src/utils/accountExport.ts`, `src/components/transaction/EditTransactionPanel.tsx`, `unit/inline-math-seed.test.tsx` | High | Low | 0.4h | done | - | `128f2bb` | 4 of 6 failed first (`99999999999999999` evaluated to 100000000000000080); the two under the cap passed, as they should | +6 tests |
+| T673 | Finding 10: a refused save's message clears on an amount edit (entry and transfer forms) and on any panel edit | `src/components/TransactionForm.tsx`, `src/components/wallet/WalletTransferForm.tsx`, `src/components/transaction/EditTransactionPanel.tsx`, `unit/stale-errors.test.tsx` | Med | Low | 0.3h | done | - | `128f2bb` | both failed first | +2 tests |
+| T674 | Finding 12: the Add Debt form starts empty with example placeholders, the due date too; resets after a save; four specs fill the total they relied on | `src/views/DebtsView.tsx`, `unit/debts-page.test.tsx`, `tests/debts.spec.ts`, `tests/soft-delete.spec.ts`, `tests/debts-page.spec.ts`, `tests/debt-repayment.spec.ts` | Med | Low | 0.4h | done | - | `128f2bb` | all 3 failed first | +3 tests |
+| T675 | Finding 13: `resetToGuestState` removes every `pf_insights::` key, checked against the cache's own reader | `src/context/FinanceContext.tsx`, `src/utils/insightsClient.ts`, `unit/ledger-guards.test.tsx` | High | Low | 0.2h | done | - | `128f2bb` | failed first | +1 test |
+| T676 | Finding 16: the brand is a `<p>`, one `h1` per page; every `<Modal>` named, pinned by a parser scan with a negative control | `src/components/Navbar.tsx`, `tests/theme.spec.ts`, `unit/dialog-names.test.tsx` | Med | Low | 0.4h | done | - | `128f2bb` | the audit found no unnamed dialog; the scan failed with `EditDebtModal`'s title removed | +3 tests |
+| T677 | Finding 20: `Permissions-Policy: camera=(), geolocation=(), microphone=(self)` | `vercel.json`, `unit/security-headers.test.ts` | Med | Low | 0.1h | done | - | `128f2bb` | failed first | +1 test |
+| T678 | Gate, the WebKit flake compared with `main`, bundle against `main`, ADR `0086`, `CLAUDE.md`, this ledger, the refactor log, baseline metrics | `docs/`, `CLAUDE.md` | Med | Low | 0.5h | done | T672-T677 | docs | lint clean; unit 1241/1241 in 51 files; Playwright 476 passed, 1 failed, 6 skipped of 483 (8.3 m): the WebKit `jev-classify` flake that also fails on `main` (2 in 20; see the notes); schema drift run `37628303036`: no drift, 19 migrations | all app JS +193 B gzip |
+
+**Notes on execution:**
+- **One WebKit failure in the full run, not this phase's:** `jev-classify.spec.ts` "applying a suggestion counts as an explicit pick and offers a rule" failed once. Repeated 10 times on the branch it failed once; 20 times on `main` (a worktree), twice. In every failure the Note field was empty in the page snapshot: the fill was lost, so nothing was classified. Recorded for a later phase.
+- **The audit found every dialog already named**; the new tests pin it, and their negative control shows they can fail.
+- **The due date was a fixed 2026-12-31 default**, outside the brief's three figures; it is empty too, since it would have aged into an overdue debt.
+
 ## Phase 109 - Every category path keeps an entry's own type; overdrafts warn in the entry form; wallets below zero are not "no money": T665-T671 (2026-10-07)
 
 ADR `0085`, completing ADR `0084` and amending `0014`, `0019` and `0042`. Branch `phase-109-category-hardening-and-wallet-hygiene`, cut from `main` at `4c43be5`; code `e3476a3`, docs `96be360`, hash backfill `051be94`; merged into `main` as `a56cb20` (PR #60); Vercel `dpl_5jMynMGDcXQiRJwGjMHCXq7HPUAT` READY in `icn1`. The pull request's CI (run `37617539132`) passed every job. `Main` CI on the merge (run `37622948029`) passed every job on its first attempt in 278 s end to end, 20 s of it the merge job (unit 1225; 477 passed, 6 skipped, no flaky test). Production serves the entry `index-DqSd57Br.js`, a local build's, with `addTransaction`'s new refusal in it.
