@@ -22,7 +22,7 @@ import { ConfirmDialog } from '../ui/ConfirmDialog';
 import { useFinanceActions, useFinanceState } from '../../context/FinanceContext';
 import { useSubmitHandler } from '../../hooks/useSubmitHandler';
 import { useTransientFlash } from '../../hooks/useTransientFlash';
-import { supabase } from '../../lib/supabase';
+import { loadSupabase } from '../../lib/supabase';
 import { Button } from '../ui/Button';
 import { LABEL_CLASS, inputClass } from '../../utils/formStyles';
 import { describeUserAgent } from '../../utils/userAgent';
@@ -591,7 +591,7 @@ const ProfileSection: React.FC = () => {
     if (!nameInput.trim()) return;
     clearSuccess();
     return handleSubmit(e, async () => {
-      const { error: updateError } = await supabase.auth.updateUser({ data: { name: nameInput.trim() } });
+      const { error: updateError } = await (await loadSupabase()).auth.updateUser({ data: { name: nameInput.trim() } });
       if (updateError) throw updateError;
     });
   };
@@ -649,7 +649,7 @@ const PasswordSection: React.FC = () => {
       return;
     }
     return handleSubmit(e, async () => {
-      const { error: updateError } = await supabase.auth.updateUser({ password: newPassword });
+      const { error: updateError } = await (await loadSupabase()).auth.updateUser({ password: newPassword });
       if (updateError) throw updateError;
     });
   };

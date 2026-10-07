@@ -432,12 +432,17 @@
 .motion-chip { animation: motion-drop-in 150ms ease-out; }
 .motion-chip[data-leaving] { animation: motion-drop-out 150ms ease-out forwards; }
 
-/* `Presence` and `slidePill` skip their part too; nothing is left to move. */
+/* `Presence` and `slidePill` skip their part too; nothing is left to move.
+   The spinners and the listening pulse stop as well (Phase 107, ADR 0083):
+   each sits beside text that says what is happening ("Syncing", "Listening")
+   or in a disabled button, so the still icon loses no information. */
 @media (prefers-reduced-motion: reduce) {
   .motion-scrim,
   .motion-sheet,
   .motion-page,
-  .motion-chip {
+  .motion-chip,
+  .animate-spin,
+  .animate-pulse {
     animation: none !important;
   }
 }

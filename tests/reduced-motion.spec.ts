@@ -49,6 +49,20 @@ async function runSteps(page: Page) {
   await gotoTab(page, 'transactions');
 }
 
+/** What a spinner and a pulse run, read from the app's own stylesheet (ADR 0083). */
+function busyAnimations(page: Page) {
+  return page.evaluate(() =>
+    ['animate-spin', 'animate-pulse'].map((name) => {
+      const el = document.createElement('span');
+      el.className = name;
+      document.body.append(el);
+      const ran = getComputedStyle(el).animationName;
+      el.remove();
+      return ran;
+    }),
+  );
+}
+
 const ALL = [
   'motion-page-in',
   'slide',
@@ -63,6 +77,7 @@ test('the page, the period pill and a dialog animate on their changes', async ({
   await recordMotion(page);
   await runSteps(page);
   await expect.poll(() => page.evaluate(() => window.__motion)).toEqual(expect.arrayContaining(ALL));
+  expect(await busyAnimations(page)).toEqual(['spin', 'pulse']);
 });
 
 test.describe('with reduced motion', () => {
@@ -72,5 +87,8 @@ test.describe('with reduced motion', () => {
     await recordMotion(page);
     await runSteps(page);
     expect(await page.evaluate(() => window.__motion)).toEqual([]);
+    // The spinners and the listening pulse stop too; each sits beside text
+    // that says what is happening, or in a disabled button (ADR 0083).
+    expect(await busyAnimations(page)).toEqual(['none', 'none']);
   });
 });

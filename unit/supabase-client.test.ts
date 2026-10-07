@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, afterEach } from 'vitest';
-import { supabase, onDataApiUnauthorized } from '../src/lib/supabase';
+import { describe, it, expect, vi, afterEach, beforeAll } from 'vitest';
+import { supabase, onDataApiUnauthorized, loadSupabase } from '../src/lib/supabase';
 
 /**
  * The 401 signal (ADR 0024, amended).
@@ -19,6 +19,11 @@ function respondWith(status: number, body: unknown) {
 }
 
 const JWT_EXPIRED = { code: 'PGRST303', message: 'JWT expired', details: null, hint: null };
+
+// The client is made on first need since ADR 0083; `supabase` is a live binding.
+beforeAll(async () => {
+  await loadSupabase();
+});
 
 afterEach(() => {
   vi.unstubAllGlobals();

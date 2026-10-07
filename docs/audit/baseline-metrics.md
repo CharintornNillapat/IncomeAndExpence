@@ -1098,6 +1098,17 @@ The entry's growth is the ledger action itself, which lives with the other ledge
 
 **Intermittent local failures:** 6 in 1,071 full-suite runs (3 full runs). All were timeouts: a Firefox `goto`, a Firefox context close, and four WebKit clicks waiting for "stable". No assertion failed. See audit 005 finding 3 for the control runs.
 
+## Phase 107 (supabase-js on demand) - delta against Phase 106
+
+**Bundle** (gzip -9 on both sides; Phase 106 built from a `main` worktree with `.env`, entry `index-S7OwAc0d.js`, the one production serves). **A guest's cold start:** JS 638,136 / 179,535 to 412,253 / 121,416 B (−225,883 / −58,119, −32.4%), four files to three; with CSS 691,013 / 189,673 to 465,159 / 131,563 (−225,854 / −58,110, −30.6%). Entry `index` 192,536 / 55,413 to 193,689 / 55,840 (the loader); `index.css` 52,877 / 10,138 to 52,906 / 10,147. `vendor-supabase` (227,036 / 58,546 to 228,140 / 58,955) loads on demand: a signed-in load fetches 180,371 B of JS in all, 836 more than before. All app JS 875,762 / 265,840 to 877,619 / 266,475 B. `sw.js` 4,181 / 1,588.
+
+**Timing** (Chromium, 150 ms RTT, 1.6 Mbps, medians; the project's requests aborted): guest first paint 1,368 to 1,080 ms; a cold signed-in load's first paint 1,364 to 1,076 ms and client ready 1,275 to 1,888 ms; warm (service worker) client ready 12 to 21 ms.
+
+| Suite | Files | Tests | Runs | Result |
+|---|---|---|---|---|
+| Vitest (`unit/`) | 46 | 1197 | 1197 | 1197/1197 (+15 `supabase-lazy.test.ts`, +3 `supabase-lazy-provider.test.tsx`) |
+| Playwright (local, 4 workers) | 33 | 161 | 483 | 477 passed, 6 skipped of 483 (7.0 m), no failure (+1 in `auth.spec.ts`) |
+
 ## Phase 106 (CSS motion, no framer-motion) - delta against Phase 105
 
 **Bundle** (gzip -9 on both sides; Phase 105 built from a `main` worktree with `.env`, entry `index-Br-KQ4vK.js`, the one production serves). **Cold start** (the files `index.html` loads): JS 766,022 / 221,296 to 638,136 / 179,535 B (−127,886 / −41,761, −18.9%), five files to four; with CSS 817,251 / 231,148 to 691,013 / 189,673 (−126,238 / −41,475, −17.9%). `vendor-motion` (129,389 / 42,296) is gone; entry `index` 191,611 / 55,071 to 192,536 / 55,413 (`Presence`, `slidePill`); `vendor-supabase` 226,458 / 58,353 to 227,036 / 58,546 (`tslib`); `index.css` 51,229 / 9,852 to 52,877 / 10,138 (the keyframes); every lazy chunk that imported framer-motion 36 B smaller. All app JS 1,004,186 / 307,785 to 875,762 / 265,840 B (−128,424 / −41,945), 41 to 40 files. `sw.js` 4,236 / 1,598 to 4,181 / 1,592; precache 58 to 57 entries (1,180.22 KiB).

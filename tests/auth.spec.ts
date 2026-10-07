@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { gotoTab } from './helpers';
 
 /**
  * `AuthModal.handleAuth` checks `isSupabaseConfigured` before anything else:
@@ -73,4 +74,27 @@ test.describe('Auth modal', () => {
     const isValid = await passwordInput.evaluate((el: HTMLInputElement) => el.validity.valid);
     expect(isValid).toBe(false);
   });
+});
+
+/**
+ * Phase 107 (ADR 0083): a guest's load fetches no Supabase code and makes no
+ * Supabase request. The dev server serves supabase-js as its own module
+ * (`@supabase_supabase-js`), so a static import of it anywhere in the app's
+ * graph shows here as a request, as `vendor-supabase` would in production.
+ * Opening Sign In loads it, but only with Supabase settings, which CI has
+ * not, so that half is the unit suite's (`supabase-lazy.test.ts`).
+ */
+test('a guest load asks nothing of Supabase, code or network', async ({ page }) => {
+  const asked: string[] = [];
+  page.on('request', (request) => {
+    // The library or the project, not the app's own `src/lib/supabase.ts`.
+    if (/@supabase|\.supabase\.co/i.test(request.url())) asked.push(request.url());
+  });
+
+  await page.goto('/');
+  await expect(page.locator('#time-filter-week')).toBeVisible();
+  await page.locator('#time-filter-week').click();
+  await gotoTab(page, 'transactions');
+
+  expect(asked).toEqual([]);
 });
