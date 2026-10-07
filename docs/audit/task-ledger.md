@@ -1083,7 +1083,7 @@ Approved explicitly by the user, planned and approved before any code was writte
 
 ## Phase 111 - A classification armed during StrictMode's re-run is re-armed; a debt's months left are its payment dates; a new password needs 8 characters: T679-T684 (2026-10-07)
 
-ADR `0087`, superseding spec L4's `monthsLeft` and amending ADR `0011` and `0024`. Branch `phase-111-input-race-and-audit-cleanups`, cut from `main` at `ece2219`; code `394b588`, docs `6f02dd3`; draft PR #62.
+ADR `0087`, superseding spec L4's `monthsLeft` and amending ADR `0011` and `0024`. Branch `phase-111-input-race-and-audit-cleanups`, cut from `main` at `ece2219`; code `394b588`, docs `6f02dd3`, hash backfill `d13315f`; merged into `main` as `7fb5a5a` (PR #62); Vercel `dpl_FnjqjmuSp1yGgQ1wWv57XSCG3JWW` READY in `icn1`. The pull request's CI (run `37638363177`) passed every job. `main` CI on the merge (run `37641867830`) passed every test job on its first attempt (unit 1250; 477 passed, 6 skipped, no flaky test), but GitHub never created its "Merge the E2E reports" job, so the run reads as failed; two re-run requests got HTTP 500. The six shard blobs, merged locally with `playwright merge-reports`, give 477 expected, 6 skipped, 0 unexpected, 0 flaky.
 
 | # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
 |---|---|---|---|---|---|---|---|---|---|---|

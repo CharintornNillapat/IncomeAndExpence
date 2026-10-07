@@ -1,6 +1,6 @@
 # 0087: A classification armed during StrictMode's re-run is re-armed; a debt's months left are its payment dates; a new password needs 8 characters
 
-**Status:** Accepted. Code `394b588`, docs `6f02dd3`, draft PR #62; not merged. No migration.
+**Status:** Accepted. Released: code `394b588`, docs `6f02dd3`, hash backfill `d13315f`, merged into `main` as `7fb5a5a` (PR #62); Vercel `dpl_FnjqjmuSp1yGgQ1wWv57XSCG3JWW` READY in `icn1`. No migration.
 - **Supersedes** spec L4's `monthsLeft` (ADR `0028`), by the owner's decision (audit finding 7).
 - **Amends** ADR `0011` (the classifier's debounce and abort): the unmount cleanup re-arms on an effect re-run.
 - **Amends** ADR `0024`'s sign-in form (audit finding 5).

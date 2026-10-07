@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 111 - A classification armed during StrictMode's re-run is re-armed; a debt's months left are its payment dates; a new password needs 8 characters: T679-T684 (2026-10-07, code `394b588`, docs `6f02dd3`, PR #62)
+## Phase 111 - A classification armed during StrictMode's re-run is re-armed; a debt's months left are its payment dates; a new password needs 8 characters: T679-T684 (2026-10-07, code `394b588`, docs `6f02dd3`, merge `7fb5a5a`)
 
 ADR `0087`. The owner's brief: the WebKit `jev-classify` flake, audit finding 7 (debt months left) and finding 5 (password floor).
 
@@ -20,6 +20,11 @@ ADR `0087`. The owner's brief: the WebKit `jev-classify` flake, audit finding 7 
 - **Red first:** the StrictMode test sent no request before the fix; the `monthsLeft`, figure and password tests all failed first.
 - **The flake in the browser:** a diagnostic that counted classify requests failed 2 in 80 before (no request either time) and passed 120 of 120 after; the real test failed 1 in 40 before and passed 60 of 60 after. The diagnostic was deleted.
 - **Bundle:** all app JS +605 / +252 B gzip; the entry +337 / +113 (the sign-in dialog is eager); cold start still three scripts.
+
+**Release:**
+- The pull request's CI (run `37638363177`, on `d13315f`) passed every job.
+- PR #62 merged into `main` as `7fb5a5a`, whose tree is identical to `d13315f`. Vercel `dpl_FnjqjmuSp1yGgQ1wWv57XSCG3JWW` is READY in production, region `icn1`; `/api/classify` answers from `icn1`; production serves the entry `index-BE9PY45-.js`, the same hash as a local build of `main`, with the sign-up hint ("At least ", 8, " characters") and "Enter your password" in it.
+- `main` CI on the merge (run `37641867830`) passed every test job on its first attempt (unit 1250; 477 passed, 6 skipped, no flaky test), but GitHub never created its "Merge the E2E reports" job, so the run reads as failed; two re-run requests got HTTP 500. The six shard blobs, merged locally with `playwright merge-reports`, give 477 expected, 6 skipped, 0 unexpected, 0 flaky. The local WebKit `jev-classify` flake has not shown on CI.
 
 **Changed on purpose**
 - **"Needed / month" falls** for most debts: a debt due 31 December, seen on 6 October, now needs a third of what it did.
