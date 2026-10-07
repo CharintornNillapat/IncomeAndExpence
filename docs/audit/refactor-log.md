@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 110 - One amount cap, checked in the field; refused saves clear on edit; the Add Debt form starts empty; sign-out clears cached insights; one h1 per page; a Permissions-Policy: T672-T678 (2026-10-07, code `128f2bb`)
+## Phase 110 - One amount cap, checked in the field; refused saves clear on edit; the Add Debt form starts empty; sign-out clears cached insights; one h1 per page; a Permissions-Policy: T672-T678 (2026-10-07, code `128f2bb`, docs `b0eeb5f`, PR #61)
 
 ADR `0086`. The owner's brief: audit findings 9, 10, 12, 13, 16 and 20.
 

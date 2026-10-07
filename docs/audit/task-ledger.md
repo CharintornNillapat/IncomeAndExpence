@@ -1083,7 +1083,7 @@ Approved explicitly by the user, planned and approved before any code was writte
 
 ## Phase 110 - One amount cap, checked in the field; refused saves clear on edit; the Add Debt form starts empty; sign-out clears cached insights; one h1 per page; a Permissions-Policy: T672-T678 (2026-10-07)
 
-ADR `0086`, amending ADR `0024`, `0035`, `0043`, `0068` and `0081`. Branch `phase-110-form-hygiene-and-a11y-polish`, cut from `main` at `a7a3d1f`; code `128f2bb`; draft PR.
+ADR `0086`, amending ADR `0024`, `0035`, `0043`, `0068` and `0081`. Branch `phase-110-form-hygiene-and-a11y-polish`, cut from `main` at `a7a3d1f`; code `128f2bb`, docs `b0eeb5f`; draft PR #61.
 
 | # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
 |---|---|---|---|---|---|---|---|---|---|---|
@@ -1093,7 +1093,7 @@ ADR `0086`, amending ADR `0024`, `0035`, `0043`, `0068` and `0081`. Branch `phas
 | T675 | Finding 13: `resetToGuestState` removes every `pf_insights::` key, checked against the cache's own reader | `src/context/FinanceContext.tsx`, `src/utils/insightsClient.ts`, `unit/ledger-guards.test.tsx` | High | Low | 0.2h | done | - | `128f2bb` | failed first | +1 test |
 | T676 | Finding 16: the brand is a `<p>`, one `h1` per page; every `<Modal>` named, pinned by a parser scan with a negative control | `src/components/Navbar.tsx`, `tests/theme.spec.ts`, `unit/dialog-names.test.tsx` | Med | Low | 0.4h | done | - | `128f2bb` | the audit found no unnamed dialog; the scan failed with `EditDebtModal`'s title removed | +3 tests |
 | T677 | Finding 20: `Permissions-Policy: camera=(), geolocation=(), microphone=(self)` | `vercel.json`, `unit/security-headers.test.ts` | Med | Low | 0.1h | done | - | `128f2bb` | failed first | +1 test |
-| T678 | Gate, the WebKit flake compared with `main`, bundle against `main`, ADR `0086`, `CLAUDE.md`, this ledger, the refactor log, baseline metrics | `docs/`, `CLAUDE.md` | Med | Low | 0.5h | done | T672-T677 | docs | lint clean; unit 1241/1241 in 51 files; Playwright 476 passed, 1 failed, 6 skipped of 483 (8.3 m): the WebKit `jev-classify` flake that also fails on `main` (2 in 20; see the notes); schema drift run `37628303036`: no drift, 19 migrations | all app JS +193 B gzip |
+| T678 | Gate, the WebKit flake compared with `main`, bundle against `main`, ADR `0086`, `CLAUDE.md`, this ledger, the refactor log, baseline metrics | `docs/`, `CLAUDE.md` | Med | Low | 0.5h | done | T672-T677 | `b0eeb5f` | lint clean; unit 1241/1241 in 51 files; Playwright 476 passed, 1 failed, 6 skipped of 483 (8.3 m): the WebKit `jev-classify` flake that also fails on `main` (2 in 20; see the notes); schema drift run `37628303036`: no drift, 19 migrations | all app JS +193 B gzip |
 
 **Notes on execution:**
 - **One WebKit failure in the full run, not this phase's:** `jev-classify.spec.ts` "applying a suggestion counts as an explicit pick and offers a rule" failed once. Repeated 10 times on the branch it failed once; 20 times on `main` (a worktree), twice. In every failure the Note field was empty in the page snapshot: the fill was lost, so nothing was classified. Recorded for a later phase.
