@@ -1,4 +1,3 @@
-import { motion } from 'framer-motion';
 import { Tags, X } from 'lucide-react';
 import { IconButton } from '../ui/IconButton';
 import type { JevSuggestion } from '../../utils/jevClassifier';
@@ -9,6 +8,8 @@ interface CategorySuggestionChipProps {
   idPrefix: string;
   onApply: () => void;
   onDismiss: () => void;
+  /** Set by `Presence` while the chip plays its exit (ADR 0082). */
+  'data-leaving'?: boolean;
 }
 
 /**
@@ -28,15 +29,13 @@ export function CategorySuggestionChip({
   idPrefix,
   onApply,
   onDismiss,
+  'data-leaving': leaving,
 }: CategorySuggestionChipProps) {
   return (
-    <motion.div
-      initial={{ opacity: 0, y: -4 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -4 }}
-      transition={{ duration: 0.15 }}
+    <div
+      data-leaving={leaving}
       data-testid="tx-category-suggestion"
-      className="mt-2 flex items-center gap-2 rounded-lg border border-line bg-surface-2 px-3 py-2"
+      className="motion-chip mt-2 flex items-center gap-2 rounded-lg border border-line bg-surface-2 px-3 py-2"
     >
       <Tags className="h-3.5 w-3.5 shrink-0 text-fg-muted" />
 
@@ -66,6 +65,6 @@ export function CategorySuggestionChip({
       >
         <X className="h-3.5 w-3.5" />
       </IconButton>
-    </motion.div>
+    </div>
   );
 }

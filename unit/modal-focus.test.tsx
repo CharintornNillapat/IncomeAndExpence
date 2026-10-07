@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest';
-import React, { useState } from 'react';
+import React, { useLayoutEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { render, cleanup, fireEvent, screen, waitFor } from '@testing-library/react';
 import { Modal } from '../src/components/Modal';
@@ -545,6 +545,55 @@ describe('Modal isolates the page in the commit that shows the dialog', () => {
       container.remove();
       g.IS_REACT_ACT_ENVIRONMENT = before;
     }
+  });
+});
+
+// Phase 106 (ADR 0082): focus lands in a layout effect, so a test (or a fast
+// keyboard) can press a key the moment it sees focus inside. On WebKit an
+// Escape sent right after `toBeFocused` was lost about one time in ten: the
+// listeners were passive effects, which run a task later. A sibling's layout
+// effect runs after the dialog's and before any passive one, so it presses
+// keys in exactly that gap.
+describe('Modal answers keys from the commit that moves focus in', () => {
+  const press = (key: string, shiftKey = false) =>
+    document.activeElement!.dispatchEvent(new KeyboardEvent('keydown', { key, shiftKey, bubbles: true, cancelable: true }));
+
+  function InTheSameCommit({ run }: { run: () => void }) {
+    useLayoutEffect(run, [run]);
+    return null;
+  }
+
+  it('closes on an Escape pressed before any passive effect has run', () => {
+    const onClose = vi.fn();
+    const run = () => {
+      press('Escape');
+    };
+    render(
+      <>
+        <Modal isOpen onClose={onClose} title="Details">
+          <input aria-label="Name" />
+        </Modal>
+        <InTheSameCommit run={run} />
+      </>,
+    );
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('wraps a Shift+Tab pressed before any passive effect has run', () => {
+    let landed: string | null = null;
+    const run = () => {
+      press('Tab', true);
+      landed = document.activeElement?.getAttribute('aria-label') ?? null;
+    };
+    render(
+      <>
+        <Modal isOpen onClose={() => {}} title="Details">
+          <input aria-label="Name" />
+        </Modal>
+        <InTheSameCommit run={run} />
+      </>,
+    );
+    expect(landed).toBe('Name');
   });
 });
 

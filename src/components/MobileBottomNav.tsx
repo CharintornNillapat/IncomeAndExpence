@@ -1,5 +1,4 @@
-import React, { useState } from 'react';
-import { motion } from 'framer-motion';
+import React, { useLayoutEffect, useRef, useState } from 'react';
 import {
   LayoutDashboard,
   ArrowLeftRight,
@@ -14,6 +13,7 @@ import {
 } from 'lucide-react';
 import { ActiveTab } from './Navbar';
 import { Modal } from './Modal';
+import { slidePill } from './ui/motion';
 
 interface MobileBottomNavProps {
   activeTab: ActiveTab;
@@ -63,11 +63,7 @@ const SlotBody: React.FC<{ icon: React.FC<{ className?: string }>; label: string
 }) => (
   <>
     {isActive && (
-      <motion.div
-        layoutId="mobileActiveTabPill"
-        className="absolute inset-x-1 inset-y-1 bg-brand-tint rounded-lg -z-10"
-        transition={{ duration: 0.2, ease: 'easeOut' }}
-      />
+      <div data-pill className="absolute inset-x-1 inset-y-1 bg-brand-tint rounded-lg -z-10" />
     )}
     <Icon
       className={`w-5 h-5 transition-control duration-150 ${
@@ -93,6 +89,21 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = React.memo(({
   const [isMoreOpen, setIsMoreOpen] = useState(false);
   const isMoreActive = MORE_TAB_IDS.has(activeTab);
 
+  // The pill slides from the slot selected before (ADR 0082); moving between
+  // the tabs under More keeps it on More, so it does not move.
+  const slot = isMoreActive ? 'more' : activeTab;
+  const navRef = useRef<HTMLElement>(null);
+  const previousSlot = useRef(slot);
+  useLayoutEffect(() => {
+    if (previousSlot.current === slot) return;
+    const nav = navRef.current;
+    slidePill(
+      nav?.querySelector<HTMLElement>(`[data-slot="${slot}"] [data-pill]`),
+      nav?.querySelector<HTMLElement>(`[data-slot="${previousSlot.current}"]`),
+    );
+    previousSlot.current = slot;
+  }, [slot]);
+
   const renderTab = (item: NavItemConfig) => {
     const isActive = activeTab === item.id;
     return (
@@ -100,6 +111,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = React.memo(({
         key={item.id}
         id={`mobile-nav-tab-${item.id}`}
         data-testid={`mobile-nav-tab-${item.id}`}
+        data-slot={item.id}
         aria-current={isActive ? 'page' : undefined}
         aria-label={item.label}
         type="button"
@@ -114,6 +126,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = React.memo(({
   return (
     <>
       <nav
+        ref={navRef}
         aria-label="Mobile Navigation"
         className="md:hidden fixed bottom-0 left-0 right-0 w-full z-40 bg-surface-1/95 backdrop-blur-md border-t border-line pb-[env(safe-area-inset-bottom,0.5rem)]"
       >
@@ -144,6 +157,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = React.memo(({
             aria-haspopup="dialog"
             aria-expanded={isMoreOpen}
             data-active={isMoreActive ? 'true' : undefined}
+            data-slot="more"
             onClick={() => setIsMoreOpen(true)}
             className={slotClass(isMoreActive)}
           >
