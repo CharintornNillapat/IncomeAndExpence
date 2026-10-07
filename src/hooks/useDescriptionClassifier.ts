@@ -35,6 +35,8 @@ export function useDescriptionClassifier(categories: Category[]) {
   const seqRef = useRef(0);
   /** Normalized descriptions the user has explicitly waved off this session. */
   const dismissedRef = useRef<Set<string>>(new Set());
+  /** The text armed and not yet answered or cleared, re-armed by the effect below (ADR 0087). */
+  const armedRef = useRef<string | null>(null);
 
   const candidates = useMemo(() => toClassifyCandidates(categories), [categories]);
 
@@ -62,10 +64,9 @@ export function useDescriptionClassifier(categories: Category[]) {
     }
   }, []);
 
-  useEffect(() => cancelPending, [cancelPending]);
-
   /** Drop any in-flight work and hide the current suggestion. */
   const clear = useCallback(() => {
+    armedRef.current = null;
     cancelPending();
     // Invalidate any response still in flight that beat the abort.
     seqRef.current += 1;
@@ -91,9 +92,11 @@ export function useDescriptionClassifier(categories: Category[]) {
       const currentCandidates = candidatesRef.current;
 
       if (!isClassifierWorthTrying(text, currentCandidates)) {
+        armedRef.current = null;
         setSuggestion(null);
         return;
       }
+      armedRef.current = text;
 
       timerRef.current = setTimeout(() => {
         const controller = new AbortController();
@@ -102,6 +105,7 @@ export function useDescriptionClassifier(categories: Category[]) {
         void classifyDescription(text, currentCandidates, controller.signal).then((response) => {
           // A newer keystroke has already superseded this request.
           if (seq !== seqRef.current) return;
+          armedRef.current = null;
 
           const next = toSuggestion(response, categoriesRef.current);
           if (next && dismissedRef.current.has(next.categoryId + '##' + next.categoryName)) {
@@ -114,6 +118,19 @@ export function useDescriptionClassifier(categories: Category[]) {
     },
     [cancelPending]
   );
+
+  /*
+   * An unmount cancels the timer and any request in flight. In development
+   * StrictMode also runs this cleanup on every new component, then the effect
+   * again, a task after mount: a note typed in between was armed, cancelled
+   * here, and never armed again, so no suggestion came (ADR 0087, the WebKit
+   * flake in `jev-classify.spec.ts`). The re-run arms it again; a real
+   * unmount has no re-run.
+   */
+  useEffect(() => {
+    if (armedRef.current !== null) classify(armedRef.current);
+    return cancelPending;
+  }, [classify, cancelPending]);
 
   return { suggestion, classify, clear, dismiss } as const;
 }

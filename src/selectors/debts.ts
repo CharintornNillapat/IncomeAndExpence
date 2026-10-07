@@ -10,16 +10,31 @@ import { isActiveDebt } from './wallets';
  * "Today" is an argument; dates are compared as ISO strings.
  */
 
+/** Days in a calendar month (`month` 1 to 12), without a `Date`. */
+function daysInMonth(year: number, month: number): number {
+  if (month === 2) return year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0) ? 29 : 28;
+  return [4, 6, 9, 11].includes(month) ? 30 : 31;
+}
+
 /**
- * Full months left before the due month: `max(1, months between the two
- * calendar months - 1)`. The day of the month plays no part on either side,
- * and a debt due this month, next month or in the past has one month left -
- * so an overdue debt needs its whole remainder.
+ * The monthly payment dates from today up to and including the due date
+ * (ADR 0087, audit finding 7): today, a month from today, and so on. A date
+ * past the end of a shorter month falls on its last day (31 January, then
+ * 28 February). At least one, so a debt due today or overdue needs its whole
+ * remainder.
+ *
+ * Spec L4 was `max(1, months between the calendar months - 1)`, which dropped
+ * a month and ignored the day: a debt due 31 December, seen on 6 October,
+ * had one month left, not three, and asked for three times the payment.
  */
 export function monthsLeft(dueDate: string, today: string): number {
-  const [dueYear, dueMonth] = dueDate.split('-').map(Number);
-  const [year, month] = today.split('-').map(Number);
-  return Math.max(1, (dueYear - year) * 12 + (dueMonth - month) - 1);
+  const [dueYear, dueMonth, dueDay] = dueDate.split('-').map(Number);
+  const [year, month, day] = today.split('-').map(Number);
+  const months = (dueYear - year) * 12 + (dueMonth - month);
+  // The payment date in the due month comes after the due day: that month's is missed.
+  const paymentDay = Math.min(day, daysInMonth(dueYear, dueMonth));
+  const fullMonths = months - (dueDay < paymentDay ? 1 : 0);
+  return Math.max(1, fullMonths + 1);
 }
 
 /** Past its due date and still owed. Not overdue on the due date itself. */

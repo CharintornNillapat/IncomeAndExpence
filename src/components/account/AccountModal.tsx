@@ -25,6 +25,7 @@ import { useTransientFlash } from '../../hooks/useTransientFlash';
 import { loadSupabase } from '../../lib/supabase';
 import { Button } from '../ui/Button';
 import { LABEL_CLASS, inputClass } from '../../utils/formStyles';
+import { NewPasswordSchema, PASSWORD_MIN_LENGTH, formatZodIssues } from '../../utils/zodSchemas';
 import { describeUserAgent } from '../../utils/userAgent';
 import { formatLocalDateTime, todayIsoDate } from '../../utils/date';
 import { buildAccountExport, parseAccountBackup, saveJsonFile, type AccountExport } from '../../utils/accountExport';
@@ -640,8 +641,10 @@ const PasswordSection: React.FC = () => {
     e.preventDefault();
     clearSuccess();
     setError(null);
-    if (newPassword.length < 6) {
-      setError('Password must be at least 6 characters long.');
+    // The sign-up floor (ADR 0087).
+    const chosen = NewPasswordSchema.safeParse(newPassword);
+    if (!chosen.success) {
+      setError(formatZodIssues(chosen.error));
       return;
     }
     if (newPassword !== confirmPassword) {
@@ -668,7 +671,7 @@ const PasswordSection: React.FC = () => {
             type="password"
             value={newPassword}
             onChange={(e) => setNewPassword(e.target.value)}
-            placeholder="Min 6 characters"
+            placeholder={`At least ${PASSWORD_MIN_LENGTH} characters`}
             className={inputClass('plain')}
           />
         </div>

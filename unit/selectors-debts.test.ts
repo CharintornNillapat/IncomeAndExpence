@@ -9,8 +9,11 @@ import type { Category, Debt, Transaction } from '../src/types';
  * actually has left over.
  *
  * The first two cases are the spec's own worked example, computed on
- * 2026-09-28: SPayLater (฿13,173.70, 3 full months left) needs ฿4,391.23 a
- * month, and SEasy Cash (฿9,403.30, 18 months) needs ฿522.41.
+ * 2026-09-28. Since ADR 0087 a month left is a monthly payment date from
+ * today up to the due date: SPayLater (฿13,173.70, due 2027-01-15) has four
+ * (Sep 28, Oct 28, Nov 28, Dec 28) and needs ฿3,293.43 a month; SEasy Cash
+ * (฿9,403.30, due 2028-04-10) has 19 and needs ฿494.91. The spec's own
+ * figures (3 and 18 months, ฿4,391.23 and ฿522.41) left a payment date out.
  *
  * Pure module, no clock: "today" is an argument. All dates are ISO strings
  * compared as strings, so no timezone is involved.
@@ -33,29 +36,48 @@ function debt(overrides: Partial<Debt> & Pick<Debt, 'id' | 'remainingAmount'>): 
 const SPAY = debt({ id: 'spay', name: 'SPayLater', remainingAmount: 13173.7, dueDate: '2027-01-15' });
 const SEASY = debt({ id: 'seasy', name: 'SEasy Cash', remainingAmount: 9403.3, dueDate: '2028-04-10' });
 
-describe('L4: monthsLeft counts the full months before the due month', () => {
-  it('matches the spec example', () => {
-    expect(monthsLeft('2027-01-15', TODAY)).toBe(3);
-    expect(monthsLeft('2028-04-10', TODAY)).toBe(18);
+describe('L4 (ADR 0087): monthsLeft counts the monthly payment dates from today to the due date', () => {
+  it('matches the spec example, recounted', () => {
+    expect(monthsLeft('2027-01-15', TODAY)).toBe(4);
+    expect(monthsLeft('2028-04-10', TODAY)).toBe(19);
   });
 
-  it('never drops below one, whether due this month, next month, or already past', () => {
+  it("gives the audit's case about three months, not one", () => {
+    // 6 Oct, 6 Nov and 6 Dec all fall before 31 Dec.
+    expect(monthsLeft('2026-12-31', '2026-10-06')).toBe(3);
+  });
+
+  it("counts a payment date that falls on the due date, and not one a day after", () => {
+    expect(monthsLeft('2026-12-06', '2026-10-06')).toBe(3);
+    expect(monthsLeft('2026-12-05', '2026-10-06')).toBe(2);
+    expect(monthsLeft('2026-10-31', TODAY)).toBe(2);
+    expect(monthsLeft('2026-11-01', TODAY)).toBe(2);
+    expect(monthsLeft('2026-12-01', TODAY)).toBe(3);
+  });
+
+  it('is one when due today, later this month, or already past', () => {
+    expect(monthsLeft(TODAY, TODAY)).toBe(1);
     expect(monthsLeft('2026-09-30', TODAY)).toBe(1);
-    expect(monthsLeft('2026-10-31', TODAY)).toBe(1);
-    expect(monthsLeft('2026-11-01', TODAY)).toBe(1);
-    expect(monthsLeft('2026-12-01', TODAY)).toBe(2);
     expect(monthsLeft('2025-01-01', TODAY)).toBe(1);
   });
 
-  it('ignores the day of the month on both sides', () => {
-    expect(monthsLeft('2027-01-01', '2026-09-01')).toBe(monthsLeft('2027-01-31', '2026-09-30'));
+  it("moves a month-end payment date to a shorter month's last day", () => {
+    // From 31 January the next date is 28 February (29 in a leap year).
+    expect(monthsLeft('2027-02-28', '2027-01-31')).toBe(2);
+    expect(monthsLeft('2027-02-27', '2027-01-31')).toBe(1);
+    expect(monthsLeft('2028-02-29', '2028-01-31')).toBe(2);
+    expect(monthsLeft('2028-02-28', '2028-01-31')).toBe(1);
+  });
+
+  it('crosses a year', () => {
+    expect(monthsLeft('2027-03-15', '2026-11-20')).toBe(4);
   });
 });
 
 describe('L4: required per month', () => {
   it('matches the spec example to the cent', () => {
-    expect(requiredMonthly(SPAY, TODAY)).toBe(4391.23);
-    expect(requiredMonthly(SEASY, TODAY)).toBe(522.41);
+    expect(requiredMonthly(SPAY, TODAY)).toBe(3293.43);
+    expect(requiredMonthly(SEASY, TODAY)).toBe(494.91);
   });
 
   it('asks for the whole remainder once a debt is overdue', () => {
@@ -88,8 +110,9 @@ describe('sortByDueDate (spec section 6.4)', () => {
 describe('L5: the plan against what is left over', () => {
   it('totals the required payments and names the shortfall', () => {
     const plan = debtPlan([SPAY, SEASY], TODAY, 3000);
-    expect(plan.totalRequired).toBe(4913.64);
-    expect(plan.shortfall).toBe(1913.64);
+    // ฿3,293.43 + ฿494.91 since ADR 0087.
+    expect(plan.totalRequired).toBe(3788.34);
+    expect(plan.shortfall).toBe(788.34);
     expect(plan.showWarning).toBe(true);
     expect(plan.items.map((i) => [i.debt.id, i.exceedsSurplus])).toEqual([
       ['spay', true],

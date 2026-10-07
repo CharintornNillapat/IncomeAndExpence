@@ -64,15 +64,24 @@ test.describe('Auth modal', () => {
     expect(isValid).toBe(false);
   });
 
-  test('native validation enforces the 6-character password minimum', async ({ page }) => {
+  // ADR 0087 (audit finding 5): a new password needs 8 characters; signing in
+  // asks only for one, so an account made under the old 6-character floor
+  // still signs in.
+  test('native validation asks a new password for 8 characters, and signing in for none', async ({ page }) => {
     await page.locator('#navbar-signin-btn').click();
-
     await page.locator('#auth-email-input').fill('valid@example.com');
     const passwordInput = page.locator('#auth-password-input');
-    await passwordInput.fill('abc');
+    const isValid = () => passwordInput.evaluate((el: HTMLInputElement) => el.validity.valid);
 
-    const isValid = await passwordInput.evaluate((el: HTMLInputElement) => el.validity.valid);
-    expect(isValid).toBe(false);
+    await passwordInput.fill('six666');
+    expect(await isValid()).toBe(true);
+
+    await page.locator('#auth-tab-signup').click();
+    await passwordInput.fill('seven77');
+    expect(await isValid()).toBe(false);
+    await expect(page.locator('#auth-password-hint')).toHaveText('At least 8 characters');
+    await passwordInput.fill('eight888');
+    expect(await isValid()).toBe(true);
   });
 });
 

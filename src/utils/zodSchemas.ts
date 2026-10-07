@@ -174,7 +174,18 @@ export const PresetSchema = z.object({
   walletId: z.string().optional(),
 });
 
+/**
+ * Phase 111 (ADR 0087, audit finding 5): a password someone chooses needs 8
+ * characters, at sign-up and in Change Password. Signing in checks only that
+ * one was typed, so an account made under the old 6-character floor can still
+ * sign in; the auth server decides whether it is right.
+ */
+export const PASSWORD_MIN_LENGTH = 8;
+export const NewPasswordSchema = z.string().min(PASSWORD_MIN_LENGTH, `Password must be at least ${PASSWORD_MIN_LENGTH} characters`);
+
 export const AuthLoginSchema = z.object({
   email: z.string().email('Invalid email address'),
-  password: z.string().min(6, 'Password must be at least 6 characters'),
+  password: z.string().min(1, 'Enter your password'),
 });
+
+export const AuthSignUpSchema = AuthLoginSchema.extend({ password: NewPasswordSchema });
