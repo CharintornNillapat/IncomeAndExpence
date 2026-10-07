@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 106 - framer-motion is gone; CSS keyframes, `Presence` and one Web Animations call run the motion, which now honours reduced motion: T646-T652 (2026-10-07, PR pending)
+## Phase 106 - framer-motion is gone; CSS keyframes, `Presence` and one Web Animations call run the motion, which now honours reduced motion: T646-T652 (2026-10-07, code `c595339`, docs `52134be`, PR #57)
 
 ADR `0082`. The owner asked for an audit of the eight framer-motion call sites and a prototype on the segmented control and a dialog, and for the migration if it held with no visual or test regression. It held, so all eight moved: the prototype alone would have saved nothing, since `App.tsx` and `MobileBottomNav` kept `vendor-motion` on the cold start.
 

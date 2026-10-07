@@ -1,6 +1,6 @@
 # 0082: framer-motion is gone; CSS keyframes, `Presence` and one Web Animations call run the app's motion, which now honours reduced motion
 
-**Status:** Accepted. Draft; not merged.
+**Status:** Accepted. Code `c595339`, docs `52134be`, draft PR #57; not merged.
 - **Amends** ADR `0043`: `Modal`'s Tab trap and Escape listener are layout effects, registered in the commit that moves focus in.
 - **Amends** ADR `0026` and `0029` (the motion rules): the tweens keep their values and run without a library.
 - **Keeps** ADR `0010`: the deferred shell modals still mount on first open and keep their exit animation.
