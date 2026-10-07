@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 108 - The entry form offers its type's categories; a new debt cannot owe more than it borrowed; a payoff share is 0 to 100: T660-T664 (2026-10-07, code `738d667`)
+## Phase 108 - The entry form offers its type's categories; a new debt cannot owe more than it borrowed; a payoff share is 0 to 100: T660-T664 (2026-10-07, code `738d667`, docs `d79f5e2`, PR #59)
 
 ADR `0084`. The owner's brief: fix the live audit's findings 1, 2 and 3 before more coverage or bundle work.
 

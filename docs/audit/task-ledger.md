@@ -1083,7 +1083,7 @@ Approved explicitly by the user, planned and approved before any code was writte
 
 ## Phase 108 - The entry form offers its type's categories; a new debt cannot owe more than it borrowed; a payoff share is 0 to 100: T660-T664 (2026-10-07)
 
-ADR `0084`, amending ADR `0013`, `0035` and `0079`. Branch `phase-108-audit-data-correctness-fixes`, cut from `main` at `66fdb51`; code `738d667`; draft PR.
+ADR `0084`, amending ADR `0013`, `0035` and `0079`. Branch `phase-108-audit-data-correctness-fixes`, cut from `main` at `66fdb51`; code `738d667`, docs `d79f5e2`; draft PR #59.
 
 | # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
 |---|---|---|---|---|---|---|---|---|---|---|
@@ -1091,7 +1091,7 @@ ADR `0084`, amending ADR `0013`, `0035` and `0079`. Branch `phase-108-audit-data
 | T661 | Finding 2: `DebtSchema` refuses remaining > total, in the Add Debt form's words; red first through the form | `src/utils/zodSchemas.ts`, `unit/debts-page.test.tsx` | High | Low | 0.3h | done | - | `738d667` | the schema and form tests failed first | +3 tests |
 | T662 | Finding 2: `payoffPercent` clamps to 0 to 100 for every screen; Repaid and `paidTarget` floor at 0; the form's own clamp deleted | `src/selectors/debts.ts`, `src/components/debt/DebtCard.tsx`, `src/hooks/useDebts.ts`, `src/components/TransactionForm.tsx`, `unit/selectors-debts.test.ts`, `unit/debts-page.test.tsx` | Med | Low | 0.3h | done | - | `738d667` | card read "−20.0% paid" and a negative Repaid, then 0.0% and ฿0.00 | +1 test |
 | T663 | Live, read-only counts: rows filed under a movement category, debts owing more than borrowed | - | Med | Low | 0.1h | done | - | - | 5 EXPENSE (2 accounts) and 2 INCOME (1 account) under ADJUSTMENT; 1 of 3 live debts over | - |
-| T664 | Gate, bundle against `main` in a worktree, ADR `0084`, `CLAUDE.md`, this ledger, the refactor log, baseline metrics | `docs/`, `CLAUDE.md` | Med | Low | 0.4h | done | T660-T662 | docs | lint clean; unit 1204/1204 in 47 files; Playwright 477 passed, 6 skipped of 483 (7.7 m); schema drift run `37605664566`: no drift, 19 migrations | all app JS +45 B gzip |
+| T664 | Gate, bundle against `main` in a worktree, ADR `0084`, `CLAUDE.md`, this ledger, the refactor log, baseline metrics | `docs/`, `CLAUDE.md` | Med | Low | 0.4h | done | T660-T662 | `d79f5e2` | lint clean; unit 1204/1204 in 47 files; Playwright 477 passed, 6 skipped of 483 (7.7 m); schema drift run `37605664566`: no drift, 19 migrations | all app JS +45 B gzip |
 
 **Notes on execution:**
 - **`AUDIT.md` is not in the repository**; the findings were taken from the brief.

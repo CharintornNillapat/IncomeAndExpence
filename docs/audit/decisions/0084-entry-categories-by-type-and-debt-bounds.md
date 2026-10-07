@@ -1,6 +1,6 @@
 # 0084: The entry form offers its type's own categories; a new debt cannot owe more than it borrowed; a payoff share is 0 to 100
 
-**Status:** Accepted. Draft PR; not merged. No migration.
+**Status:** Accepted. Code `738d667`, docs `d79f5e2`, draft PR #59; not merged. No migration.
 - **Amends** ADR `0013` (express entry): the Category select is filtered by the entry type, and its first option is the default.
 - **Amends** ADR `0079` (`payoffPercent`): the share is clamped to 0 to 100.
 - **Amends** ADR `0035` (Debt payoff page): `DebtSchema` refuses `remainingAmount > totalAmount`, as `DebtEditSchema` refuses the reverse.
