@@ -1081,6 +1081,25 @@ Approved explicitly by the user, planned and approved before any code was writte
 - **One negative control was redone** because the first attempt produced malformed TypeScript that the dev server still served — the tests failed, but possibly for the wrong reason.
 - **No flakes.** Phase 44's `wallets.spec.ts` webkit flake has now not reproduced across three consecutive phases; still watched rather than closed.
 
+## Phase 107 - A guest's load fetches no supabase-js; a timing test checks what happened, not how fast; spinners stop under reduced motion: T653-T659 (2026-10-07)
+
+ADR `0083`, amending ADR `0024`, `0050` and `0082`. Branch `phase-107-stability-and-supabase-lazy-prototype`, cut from `main` at `60b03a3`; draft PR pending.
+
+| # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
+|---|---|---|---|---|---|---|---|---|---|---|
+| T653 | The wall-clock ceiling becomes the absent key-set fetch, step order and the sum within `total`; shown under 30 ms of simulated load, with a negative control | `unit/proxy-contract.test.ts` | Med | Low | 0.3h | done | - | pending | old: 30.7 ms against 15, failed; new: passed, and failed without its first request | - |
+| T654 | Spinners and the listening pulse stop under reduced motion, red first in the browser | `src/index.css`, `tests/reduced-motion.spec.ts` | Med | Low | 0.2h | done | - | pending | failed in all three browsers, then passed | - |
+| T655 | Audit: the five importers, every `FinanceContext` call site's guard (only `signOut` reachable as a guest), the two value imports from supabase-js, the library's storage key | - | High | Low | 0.5h | done | - | pending | - | - |
+| T656 | `loadSupabase`, `whenSupabaseLoads`, `sessionMayExist`, the early start and the cross-tab load, red first | `src/lib/supabase.ts`, `unit/supabase-lazy.test.ts` | High | Med | 0.6h | done | T655 | pending | 13 of 14 failed on the eager module | +15 tests |
+| T657 | `FinanceContext`, `AuthModal`, `AccountModal` on the lazy client; the harness mocks updated; the provider's guest load tested with two negative controls | `src/context/FinanceContext.tsx`, `src/components/AuthModal.tsx`, `src/components/account/AccountModal.tsx`, `unit/supabase-lazy-provider.test.tsx`, `unit/authenticated-ledger.test.tsx`, `unit/supabase-client.test.ts`, `unit/proxy-auth-client.test.ts` | High | Med | 0.7h | done | T656 | pending | both controls failed; the signed-in harness passes | +3 tests |
+| T658 | Measure: bundle against `main` built in a worktree, throttled timing cold and warm; the guest-load spec with an eager-import control | `tests/auth.spec.ts` | High | Low | 0.6h | done | T657 | pending | guest cold start −58,119 B gzip; first paint −288 ms | +1 test |
+| T659 | Gate, ADR `0083`, `CLAUDE.md`, this ledger, the refactor log, baseline metrics | `docs/`, `CLAUDE.md` | Med | Low | 0.5h | done | T658 | pending | lint clean; unit 1197/1197 in 46 files; Playwright 477 passed, 6 skipped of 483 (7.0 m); schema drift run `37596767545`: no drift, 19 migrations | - |
+
+**Notes on execution:**
+- **The first guest-load spec matched the app's own `src/lib/supabase.ts`** by the word "supabase"; it now matches the library (`@supabase`) and the project (`.supabase.co`).
+- **No spec signs in**, and CI has no Supabase settings, so the signed-in flows (resumption, eviction, refresh, sign-out) are the unit harness's, as ADR `0022` set; the browser covers the guest side and the timing run covered a stored session against a blocked project.
+- **The first spec draft used a wrong navbar id** and timed out; it uses `gotoTab` now.
+
 ## Phase 106 - framer-motion is gone; CSS keyframes, `Presence` and one Web Animations call run the motion, which now honours reduced motion: T646-T652 (2026-10-07)
 
 ADR `0082`, amending ADR `0043`, `0026` and `0029`. Branch `phase-106-motion-audit-and-prototype`, cut from `main` at `aa72a75`; code `c595339`, docs `52134be`, hash backfill `2e6dc02`; merged into `main` as `a9bcc90` (PR #57); Vercel `dpl_BNrUCWehafnBRR8xUKfrzYzEDAbU` READY in `icn1`. The pull request's CI (run `37582253715`) passed every job. `Main` CI on the merge (run `37593240851`) passed every job in 276 s end to end, 18 s of it the merge job (unit 1179; 474 passed, 6 skipped, no flaky test). The owner's brief: audit framer-motion's eight call sites, prototype the segmented control and a dialog without it, measure, check reduced motion and WebKit, and migrate if nothing regresses.

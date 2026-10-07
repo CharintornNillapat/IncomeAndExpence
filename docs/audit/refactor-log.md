@@ -4,6 +4,31 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
+## Phase 107 - A guest's load fetches no supabase-js; a timing test checks what happened, not how fast; spinners stop under reduced motion: T653-T659 (2026-10-07, PR pending)
+
+ADR `0083`. The owner's brief: fix the wall-clock unit test, stop the spinners under reduced motion, and prototype deferring supabase-js for a guest, measured and tested. The prototype held, so it ships.
+
+**Changed**
+- **`src/lib/supabase.ts`:** supabase-js is imported only in `loadSupabase()`; `supabase` is a live binding; `whenSupabaseLoads`, `sessionMayExist`, the early start on a device with a session, the cross-tab `storage` listener, and copies of the two auth error checks.
+- **`FinanceContext`:** the auth listener starts through `whenSupabaseLoads`; the error checks come from `lib/supabase`; `signOut` without a client clears the device only.
+- **`AuthModal`:** starts the load on opening and awaits it on submit. **`AccountModal`:** awaits it before `updateUser`.
+- **`src/index.css`:** `animate-spin` and `animate-pulse` off under reduced motion.
+- **`unit/proxy-contract.test.ts`:** "no round trip" is the absent key-set fetch, plus step order and the sum within `total`; the 15 ms ceiling is gone.
+- **Tests:** `unit/supabase-lazy.test.ts` (15), `unit/supabase-lazy-provider.test.tsx` (3), a guest-load test in `tests/auth.spec.ts`, the spinner check in `tests/reduced-motion.spec.ts`; three unit files' set-up for the lazy client.
+- **Docs:** ADR `0083`; `CLAUDE.md`'s motion rules, a lazy-client section under Accounts, the harness note, a no-ceiling rule for timing tests, suite sizes and ADR list.
+
+**Gate:**
+- Lint clean; unit 1197/1197 in 46 files; Playwright 477 passed, 6 skipped of 483 (7.0 m); schema drift run `37596767545`: no drift, 19 migrations.
+- **Red first:** the loader's tests failed 13 of 14 on the eager module; the spinner check failed in all three browsers before the rule.
+- **Negative controls:** loading at every boot and starting the listener only at boot each failed the provider tests; an eager `import '@supabase/supabase-js'` in `main.tsx` failed the guest-load spec; the timing test without its first request failed on the key-set URL. With 30 ms of busy work in the token check, the old assertion failed (30.7 ms) and the new one passed.
+- **Bundle:** guest cold start −58,119 B gzip of JS (−32.4%); details in ADR `0083` and baseline metrics.
+- **Timing:** throttled Chromium, first paint −288 ms for a guest and for a cold signed-in load; a cold signed-in client ready +613 ms, +9 ms with the service worker's precache (ADR `0083`).
+
+**Changed on purpose**
+- **A signed-in device with no precache gets its client later:** the chunk's request waits for the entry instead of riding beside it.
+
+---
+
 ## Phase 106 - framer-motion is gone; CSS keyframes, `Presence` and one Web Animations call run the motion, which now honours reduced motion: T646-T652 (2026-10-07, code `c595339`, docs `52134be`, merge `a9bcc90`)
 
 ADR `0082`. The owner asked for an audit of the eight framer-motion call sites and a prototype on the segmented control and a dialog, and for the migration if it held with no visual or test regression. It held, so all eight moved: the prototype alone would have saved nothing, since `App.tsx` and `MobileBottomNav` kept `vendor-motion` on the cold start.
