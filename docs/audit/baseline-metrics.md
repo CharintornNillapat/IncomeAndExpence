@@ -1098,6 +1098,15 @@ The entry's growth is the ledger action itself, which lives with the other ledge
 
 **Intermittent local failures:** 6 in 1,071 full-suite runs (3 full runs). All were timeouts: a Firefox `goto`, a Firefox context close, and four WebKit clicks waiting for "stable". No assertion failed. See audit 005 finding 3 for the control runs.
 
+## Phase 112 (tabs in the URL, insights for accounts, body cap) - delta against Phase 111
+
+**Bundle** (gzip level 9 in Node on both sides; `main` at `bad64ea` built in a worktree with `.env`). All app JS 880,228 / 267,043 to 881,054 / 267,319 B (+826 / +276), 40 files. Entry `index` 194,746 / 56,364 to 195,202 / 56,546 (`tabRoute` and the history listener); `DashboardView` 23,018 / 7,330 to 23,388 / 7,431 (the insights card's note and the client's guest check). Cold start: still three scripts. (Node's level-9 gzip reads 267,043 for the same `main` that Phase 111 recorded as 267,385 with `gzip -9`; both sides here use Node.)
+
+| Suite | Files | Tests | Runs | Result |
+|---|---|---|---|---|
+| Vitest (`unit/`) | 55 | 1284 | 1284 | 1284/1284 (+17 `tab-route`, +7 `insights-card`, +6 contract, +2 client, +2 parity) |
+| Playwright (local, 4 workers) | 34 | 159 | 477 | 470 passed, 6 skipped, 1 failed (8.2 m): a WebKit painting stall, ADR `0058` |
+
 ## Phase 111 (classifier re-arm, debt payment dates, password floor) - delta against Phase 110
 
 **Bundle** (gzip -9 on both sides; Phase 110 built from a `main` worktree with `.env` at `ece2219`, all app JS 879,623 / 267,133, as Phase 110 recorded). All app JS to 880,228 / 267,385 B (+605 / +252), 40 files. Entry `index` 194,409 / 56,065 to 194,746 / 56,178 (the password schemas and the eager `AuthModal`); `TransactionForm` 26,255 / 8,574 to 26,359 / 8,608 (the classifier); `ProgressBar` 1,750 / 966 to 1,889 / 1,058 (the chunk that holds `selectors/debts`); `AccountModal` 16,358 / 5,132 to 16,383 / 5,155. Cold start: still three scripts.
