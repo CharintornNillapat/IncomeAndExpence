@@ -4,6 +4,29 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
+## Phase 108 - The entry form offers its type's categories; a new debt cannot owe more than it borrowed; a payoff share is 0 to 100: T660-T664 (2026-10-07, code `738d667`)
+
+ADR `0084`. The owner's brief: fix the live audit's findings 1, 2 and 3 before more coverage or bundle work.
+
+**Changed**
+- **`TransactionForm`:** the Category select lists `categories.filter(c => c.type === type)`; `shownCategoryId` (derived during render) is what it shows and submits; the payoff block's own clamp is gone.
+- **`DebtSchema`:** a `superRefine` refusing remaining > total, on `remainingAmount`.
+- **`payoffPercent`:** clamped to 0 to 100. **`DebtCard`** Repaid and **`useDebts`** `paidTarget` floor at 0.
+- **`selectors/ledger.ts`:** `isSpending`'s comment says where a mis-filed row still comes from.
+- **Tests:** `unit/transaction-form-category.test.tsx` (3), `unit/debts-page.test.tsx` (+4), `unit/selectors-debts.test.ts` (the clamp).
+- **Docs:** ADR `0084`; `CLAUDE.md`'s express-entry, payoff, smart-rule and suite-size lines.
+
+**Gate:**
+- Lint clean; unit 1204/1204 in 47 files; Playwright 477 passed, 6 skipped of 483 (7.7 m); schema drift run `37605664566`: no drift, 19 migrations.
+- **Red first:** all seven new or changed assertions failed on the unfixed code.
+- **Bundle:** all app JS +266 / +45 B gzip; the entry +187 / +18 (the schema's refine); cold start still three scripts.
+- **Live (read-only counts):** 5 EXPENSE rows in 2 accounts and 2 INCOME rows in 1 account under Balance Adjustment; 1 of 3 live debts owes more than it borrowed.
+
+**Changed on purpose**
+- **An untouched expense on a signed-in account goes to the first expense category by name**, not Balance Adjustment, so it counts as spending.
+
+---
+
 ## Phase 107 - A guest's load fetches no supabase-js; a timing test checks what happened, not how fast; spinners stop under reduced motion: T653-T659 (2026-10-07, code `75f00e5`, docs `8dc7e5f`, merge `2fb855c`)
 
 ADR `0083`. The owner's brief: fix the wall-clock unit test, stop the spinners under reduced motion, and prototype deferring supabase-js for a guest, measured and tested. The prototype held, so it ships.
