@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 105 - The amount field's arithmetic is the app's own parser, not mathjs; the debt summaries read 100% when nothing is borrowed: T640-T645 (2026-10-07, PR pending)
+## Phase 105 - The amount field's arithmetic is the app's own parser, not mathjs; the debt summaries read 100% when nothing is borrowed: T640-T645 (2026-10-07, code `11197ee`, docs `9546e57`, PR #56)
 
 ADR `0081`. Finding 6 of the 2026-09-30 architecture audit (`AGY_AUDIT300926.md`), and the owner's decision on ADR `0080`'s open question.
 

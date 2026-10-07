@@ -1083,16 +1083,16 @@ Approved explicitly by the user, planned and approved before any code was writte
 
 ## Phase 105 - The amount field's arithmetic is the app's own parser, not mathjs; the debt summaries read 100% when nothing is borrowed: T640-T645 (2026-10-07)
 
-ADR `0081`, amending ADR `0010` and `0080`. Branch `phase-105-lightweight-math-and-summary-fix`, cut from `main` at `9f00a68`; draft PR pending. Finding 6 of `AGY_AUDIT300926.md`, and the owner's decision that the summaries read 100% for debts that borrowed nothing.
+ADR `0081`, amending ADR `0010` and `0080`. Branch `phase-105-lightweight-math-and-summary-fix`, cut from `main` at `9f00a68`; code `11197ee`, docs `9546e57`; draft PR #56. Finding 6 of `AGY_AUDIT300926.md`, and the owner's decision that the summaries read 100% for debts that borrowed nothing.
 
 | # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
 |---|---|---|---|---|---|---|---|---|---|---|
-| T640 | Trace: one `evaluate` call is mathjs's only use; the keys are `+ - * / ( )`; no test types `%` or `^`; mathjs's percent, modulo and bracket-product readings probed | - | Med | Low | 0.3h | done | - | pending | - | - |
-| T641 | Pin mathjs's figures and the new refusals in `unit/math-evaluator.test.ts`, red first for `%`, `^` and the note | `unit/math-evaluator.test.ts` | High | Low | 0.3h | done | T640 | pending | 8 failed on the mathjs code, 70 passed on it | +83 tests |
-| T642 | `evaluateArithmetic` replaces mathjs; `%`/`^` leave the checks and the note anchors; compared with mathjs on 1,000,000 random strings, then the unwritten products mathjs grouped its own way refused | `src/utils/mathEvaluator.ts`, `src/utils/expressInput.ts` | High | Med | 0.8h | done | T641 | pending | no differing figure; 3,169 refusals | - |
-| T643 | Remove `mathjs` and the `vendor-math` rule | `package.json`, `package-lock.json`, `vite.config.ts`, `src/App.tsx`, `src/utils/jevClassifier.ts` | High | Low | 0.1h | done | T642 | pending | build clean; no `mathjs` left in `dist/` | all JS −375,843 / −109,559 B |
-| T644 | ฿0 summary: the pin reads 100%, red first; `useDebts` passes 100 when there are debts | `unit/debts-page.test.tsx`, `src/hooks/useDebts.ts`, `src/selectors/debts.ts` | Med | Low | 0.1h | done | - | pending | failed on the unchanged hook, then passed | - |
-| T645 | Gate, ADR `0081`, `CLAUDE.md`, this ledger, the refactor log, baseline metrics | `docs/`, `CLAUDE.md` | Med | Low | 0.4h | done | T643, T644 | pending | lint clean; unit 1169/1169 in 43 files; Playwright 468 passed, 6 skipped of 474 (8.2 m); schema drift run `37564628998`: no drift, 19 migrations | - |
+| T640 | Trace: one `evaluate` call is mathjs's only use; the keys are `+ - * / ( )`; no test types `%` or `^`; mathjs's percent, modulo and bracket-product readings probed | - | Med | Low | 0.3h | done | - | `11197ee` | - | - |
+| T641 | Pin mathjs's figures and the new refusals in `unit/math-evaluator.test.ts`, red first for `%`, `^` and the note | `unit/math-evaluator.test.ts` | High | Low | 0.3h | done | T640 | `11197ee` | 8 failed on the mathjs code, 70 passed on it | +83 tests |
+| T642 | `evaluateArithmetic` replaces mathjs; `%`/`^` leave the checks and the note anchors; compared with mathjs on 1,000,000 random strings, then the unwritten products mathjs grouped its own way refused | `src/utils/mathEvaluator.ts`, `src/utils/expressInput.ts` | High | Med | 0.8h | done | T641 | `11197ee` | no differing figure; 3,169 refusals | - |
+| T643 | Remove `mathjs` and the `vendor-math` rule | `package.json`, `package-lock.json`, `vite.config.ts`, `src/App.tsx`, `src/utils/jevClassifier.ts` | High | Low | 0.1h | done | T642 | `11197ee` | build clean; no `mathjs` left in `dist/` | all JS −375,843 / −109,559 B |
+| T644 | ฿0 summary: the pin reads 100%, red first; `useDebts` passes 100 when there are debts | `unit/debts-page.test.tsx`, `src/hooks/useDebts.ts`, `src/selectors/debts.ts` | Med | Low | 0.1h | done | - | `11197ee` | failed on the unchanged hook, then passed | - |
+| T645 | Gate, ADR `0081`, `CLAUDE.md`, this ledger, the refactor log, baseline metrics | `docs/`, `CLAUDE.md` | Med | Low | 0.4h | done | T643, T644 | `9546e57` | lint clean; unit 1169/1169 in 43 files; Playwright 468 passed, 6 skipped of 474 (8.2 m); schema drift run `37564628998`: no drift, 19 migrations | - |
 
 **Notes on execution:**
 - **The first comparison run was not random enough:** its generator multiplied past 2^53 and repeated itself, so its 202 differences were one string. Replaced by mulberry32 (762,500 distinct strings) before any figure was taken.
