@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { APP_CURRENCY } from './currency';
+import { MAX_AMOUNT, MAX_AMOUNT_ERROR } from './money';
 import { schemaOf } from './schemaParity';
 import type { Category, DiaryEntry, Debt, KeywordRule, Transaction, Wallet } from '../types';
 
@@ -130,7 +131,7 @@ const id = z.string().min(1).max(100);
 const text = z.string().max(10_000);
 const timestamp = z.iso.datetime();
 const day = z.iso.date();
-const money = z.number().finite().refine((n) => Math.abs(n) <= 999_999_999.99, 'Amount too large');
+const money = z.number().finite().refine((n) => Math.abs(n) <= MAX_AMOUNT, MAX_AMOUNT_ERROR);
 const TX_TYPES = ['INCOME', 'EXPENSE', 'TRANSFER', 'ADJUSTMENT', 'DEBT_REPAYMENT'] as const;
 
 const WalletRow = schemaOf<Wallet>()(z.strictObject({

@@ -14,6 +14,8 @@ const studentLoan = (page: Page) => page.locator('div[id^="debt-card-"]').filter
 async function addDebt(page: Page, name: string, dueDate: string) {
   await page.locator('#open-add-debt-btn').click();
   await page.locator('#new-debt-name').fill(name);
+  // The form starts empty since ADR 0086; a total is the one figure it needs.
+  await page.locator('#new-debt-total').fill('5000');
   await page.locator('#new-debt-due-date').fill(dueDate);
   await page.locator('#save-new-debt-btn').click();
   await expect(page.locator('div[id^="debt-card-"]').filter({ hasText: name })).toBeVisible();

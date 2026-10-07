@@ -114,9 +114,11 @@ export const Navbar: React.FC<NavbarProps> = React.memo(({ activeTab, setActiveT
           </div>
         </div>
 
-        <h1 className="hidden xl:block text-base font-semibold text-fg tracking-tight whitespace-nowrap shrink-0">
+        {/* The brand, not a heading (ADR 0086, audit finding 16): each view's
+            PageHeader is the page's one h1. */}
+        <p className="hidden xl:block text-base font-semibold text-fg tracking-tight whitespace-nowrap shrink-0">
           FinLife Tracker
-        </h1>
+        </p>
 
         <nav
           aria-label="Desktop Navigation"

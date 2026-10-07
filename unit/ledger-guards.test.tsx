@@ -10,6 +10,7 @@ import {
 } from '../src/context/FinanceContext';
 import type { TransactionEdit } from '../src/types';
 import { seedGuestLedger, SAMPLE_WALLETS, SAMPLE_STUDENT_LOAN } from './fixtures/guestLedger';
+import { readCachedVerdict } from '../src/utils/insightsClient';
 
 /**
  * Phase 44's coverage gap (ADR 0021).
@@ -697,5 +698,32 @@ describe('a CSV row keeps only a category of its own type (ADR 0085)', () => {
     expect([1, 2, 3].map((n) => byNote(n).categoryId)).toEqual([undefined, undefined, undefined]);
     expect(byNote(4).categoryId).toBe('cat-food');
     expect(byNote(5).categoryId).toBe('cat-freelance');
+  });
+});
+
+// Phase 110 (ADR 0086, audit finding 13): the monthly insight is cached per
+// account and month, and holds the account's category names, so sign-out
+// clears it with the ledger (F5, ADR 0024).
+describe('sign-out clears the cached monthly insights too (ADR 0086)', () => {
+  const verdict = JSON.stringify({ verdict: { pattern: 'STEADY', focusCategory: 'Food & Dining' }, fromModel: true });
+
+  it('removes every cached month of every account, and keeps the theme and the card fold', async () => {
+    localStorage.setItem('pf_insights::user-a::2026-09', verdict);
+    localStorage.setItem('pf_insights::user-a::2026-10', verdict);
+    localStorage.setItem('pf_insights::user-b::2026-10', verdict);
+    localStorage.setItem('pf_insights_collapsed', 'true');
+    localStorage.setItem('finlife_theme_preference', 'dark');
+    // The keys are the cache's own: its reader finds them.
+    expect(readCachedVerdict('user-a', '2026-10')).not.toBeNull();
+
+    await call(() => actions().signOut());
+
+    expect(readCachedVerdict('user-a', '2026-09')).toBeNull();
+    expect(readCachedVerdict('user-a', '2026-10')).toBeNull();
+    expect(readCachedVerdict('user-b', '2026-10')).toBeNull();
+    const keys = Array.from({ length: localStorage.length }, (_, i) => localStorage.key(i)!);
+    expect(keys.filter((k) => k.startsWith('pf_insights::'))).toEqual([]);
+    expect(localStorage.getItem('pf_insights_collapsed')).toBe('true');
+    expect(localStorage.getItem('finlife_theme_preference')).toBe('dark');
   });
 });

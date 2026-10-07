@@ -35,6 +35,8 @@ export interface InsightVerdict {
   fromModel: boolean;
 }
 
+// Sign-out removes every key with this prefix (`FinanceContext`'s
+// `INSIGHTS_CACHE_PREFIX`, ADR 0086): a verdict names the account's categories.
 function cacheKey(userId: string, month: string): string {
   return `pf_insights::${userId}::${month}`;
 }

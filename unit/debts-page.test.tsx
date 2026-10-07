@@ -394,3 +394,39 @@ describe('DebtSchema: a new debt (ADR 0084)', () => {
     expect(parse({ name: '' }).success).toBe(false);
   });
 });
+
+// Phase 110 (ADR 0086, audit finding 12): the Add Debt form starts empty.
+describe('the Add Debt form', () => {
+  const field = (id: string) => byId(id) as HTMLInputElement;
+  const FIELDS = ['new-debt-total', 'new-debt-remaining', 'new-debt-interest', 'new-debt-min-payment', 'new-debt-due-date'];
+
+  it('opens with every figure empty, each with an example in its placeholder', () => {
+    mount();
+    fireEvent.click(byId('open-add-debt-btn')!);
+    for (const id of FIELDS) expect(field(id).value).toBe('');
+    for (const id of FIELDS.filter((id) => id !== 'new-debt-due-date')) expect(field(id).placeholder).toMatch(/^e\.g\. /);
+    expect(field('new-debt-total').required).toBe(true);
+  });
+
+  it('adds nothing on a name alone', async () => {
+    mount();
+    fireEvent.click(byId('open-add-debt-btn')!);
+    fireEvent.change(field('new-debt-name'), { target: { value: 'Card' } });
+    fireEvent.click(byId('save-new-debt-btn')!);
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(cardIds()).toEqual([]);
+  });
+
+  it('with a total only, owes all of it, interest-free, with no due date', async () => {
+    mount();
+    fireEvent.click(byId('open-add-debt-btn')!);
+    fireEvent.change(field('new-debt-name'), { target: { value: 'Card' } });
+    fireEvent.change(field('new-debt-total'), { target: { value: '3000' } });
+    fireEvent.click(byId('save-new-debt-btn')!);
+    await waitFor(() => expect(cardIds()).toHaveLength(1));
+    const card = byId(`debt-card-${cardIds()[0]}`)!;
+    expect(card.textContent).toContain(`Still owed${formatCurrencyAmount(3000)}`);
+    expect(within(card).getByText('Interest-free')).toBeTruthy();
+    expect(within(card).getAllByText('No due date').length).toBeGreaterThan(0);
+  });
+});

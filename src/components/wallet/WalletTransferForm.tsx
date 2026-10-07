@@ -194,7 +194,7 @@ export const WalletTransferForm: React.FC<WalletTransferFormProps> = ({
   const [amountSeed, setAmountSeed] = useState<{ key: number; value: string }>({ key: 0, value: '' });
   const { idempotencyKey: transferKey, rotateIdempotencyKey } = useIdempotencyKey();
 
-  const { isSubmitting: isTransferring, error: transferError, handleSubmit: submitTransfer } = useSubmitHandler({
+  const { isSubmitting: isTransferring, error: transferError, setError: setTransferError, handleSubmit: submitTransfer } = useSubmitHandler({
     defaultErrorMessage: 'Failed to complete transfer',
     onSuccess: () => {
       // Clear the armed amount immediately so the form cannot be resubmitted.
@@ -260,6 +260,7 @@ export const WalletTransferForm: React.FC<WalletTransferFormProps> = ({
     setTransferAmount(amount);
     setTransferRaw(value);
     setTransferValid(amount !== null);
+    setTransferError(null);
   };
 
   const handleExecuteTransfer = (e: React.FormEvent) => {
@@ -377,6 +378,8 @@ export const WalletTransferForm: React.FC<WalletTransferFormProps> = ({
             setTransferAmount(val);
             setTransferRaw(raw);
             setTransferValid(valid);
+            // A new amount makes a refused transfer's message stale (ADR 0086).
+            setTransferError(null);
           }}
         />
         {!isTransferring && sourceWallet && sourceWallet.balance > 0 && (

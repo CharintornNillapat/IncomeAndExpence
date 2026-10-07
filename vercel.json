@@ -8,6 +8,7 @@
         { "key": "X-Content-Type-Options", "value": "nosniff" },
         { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
         { "key": "X-Frame-Options", "value": "DENY" },
+        { "key": "Permissions-Policy", "value": "camera=(), geolocation=(), microphone=(self)" },
         {
           "key": "Content-Security-Policy",
           "value": "default-src 'self'; script-src 'self' 'sha256-Qt/gP52oJ1SB16xTzeSKZeBIsrPslMjtRK3Jjvo60fg='; style-src 'self'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://rmpnzlcufeioxmgoocpt.supabase.co wss://rmpnzlcufeioxmgoocpt.supabase.co; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; report-uri /api/csp-report"
