@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 106 - framer-motion is gone; CSS keyframes, `Presence` and one Web Animations call run the motion, which now honours reduced motion: T646-T652 (2026-10-07, code `c595339`, docs `52134be`, PR #57)
+## Phase 106 - framer-motion is gone; CSS keyframes, `Presence` and one Web Animations call run the motion, which now honours reduced motion: T646-T652 (2026-10-07, code `c595339`, docs `52134be`, merge `a9bcc90`)
 
 ADR `0082`. The owner asked for an audit of the eight framer-motion call sites and a prototype on the segmented control and a dialog, and for the migration if it held with no visual or test regression. It held, so all eight moved: the prototype alone would have saved nothing, since `App.tsx` and `MobileBottomNav` kept `vendor-motion` on the cold start.
 
@@ -33,6 +33,11 @@ ADR `0082`. The owner asked for an audit of the eight framer-motion call sites a
 
 **Seen and left**
 - **`unit/proxy-contract.test.ts`'s Server-Timing bound** failed once in a full unit run (28.8 ms against 15 ms for a local token check) and passed alone three times: a wall-clock check under the suite's load.
+
+**Release:**
+- The pull request's CI (run `37582253715`, on `2e6dc02`) passed every job.
+- PR #57 merged into `main` as `a9bcc90`, whose tree is identical to `2e6dc02`. Vercel `dpl_BNrUCWehafnBRR8xUKfrzYzEDAbU` is READY in production, region `icn1`; `/api/classify` answers from `icn1` (`X-Vercel-Id: sin1::icn1::...`), and production serves the entry `index-S7OwAc0d.js`, the same hash as a local build of `a9bcc90`, with four cold-start scripts and no `vendor-motion`.
+- `main` CI on the merge (run `37593240851`) passed every job in 276 s end to end, 18 s of it the merge job (unit 1179; 474 passed, 6 skipped, no flaky test).
 
 ---
 

@@ -1083,7 +1083,7 @@ Approved explicitly by the user, planned and approved before any code was writte
 
 ## Phase 106 - framer-motion is gone; CSS keyframes, `Presence` and one Web Animations call run the motion, which now honours reduced motion: T646-T652 (2026-10-07)
 
-ADR `0082`, amending ADR `0043`, `0026` and `0029`. Branch `phase-106-motion-audit-and-prototype`, cut from `main` at `aa72a75`; code `c595339`, docs `52134be`; draft PR #57. The owner's brief: audit framer-motion's eight call sites, prototype the segmented control and a dialog without it, measure, check reduced motion and WebKit, and migrate if nothing regresses.
+ADR `0082`, amending ADR `0043`, `0026` and `0029`. Branch `phase-106-motion-audit-and-prototype`, cut from `main` at `aa72a75`; code `c595339`, docs `52134be`, hash backfill `2e6dc02`; merged into `main` as `a9bcc90` (PR #57); Vercel `dpl_BNrUCWehafnBRR8xUKfrzYzEDAbU` READY in `icn1`. The pull request's CI (run `37582253715`) passed every job. `Main` CI on the merge (run `37593240851`) passed every job in 276 s end to end, 18 s of it the merge job (unit 1179; 474 passed, 6 skipped, no flaky test). The owner's brief: audit framer-motion's eight call sites, prototype the segmented control and a dialog without it, measure, check reduced motion and WebKit, and migrate if nothing regresses.
 
 | # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
 |---|---|---|---|---|---|---|---|---|---|---|
