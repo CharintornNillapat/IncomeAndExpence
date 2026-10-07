@@ -1083,7 +1083,7 @@ Approved explicitly by the user, planned and approved before any code was writte
 
 ## Phase 108 - The entry form offers its type's categories; a new debt cannot owe more than it borrowed; a payoff share is 0 to 100: T660-T664 (2026-10-07)
 
-ADR `0084`, amending ADR `0013`, `0035` and `0079`. Branch `phase-108-audit-data-correctness-fixes`, cut from `main` at `66fdb51`; code `738d667`, docs `d79f5e2`; draft PR #59.
+ADR `0084`, amending ADR `0013`, `0035` and `0079`. Branch `phase-108-audit-data-correctness-fixes`, cut from `main` at `66fdb51`; code `738d667`, docs `d79f5e2`, hash backfill `abaaa33`; merged into `main` as `6945dd2` (PR #59); Vercel `dpl_AqbswJZF6GrDhtbqVokhK7Ct7gNF` READY in `icn1`. The pull request's CI (run `37607374050`) passed every job. `Main` CI on the merge (run `37612914498`) passed every job on its first attempt in 270 s end to end, 19 s of it the merge job (unit 1204; 477 passed, 6 skipped, no flaky test). Production serves the entry `index-CXsVs4wG.js`, a local build's, with `DebtSchema`'s new message in it.
 
 | # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
 |---|---|---|---|---|---|---|---|---|---|---|

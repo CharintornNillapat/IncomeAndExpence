@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 108 - The entry form offers its type's categories; a new debt cannot owe more than it borrowed; a payoff share is 0 to 100: T660-T664 (2026-10-07, code `738d667`, docs `d79f5e2`, PR #59)
+## Phase 108 - The entry form offers its type's categories; a new debt cannot owe more than it borrowed; a payoff share is 0 to 100: T660-T664 (2026-10-07, code `738d667`, docs `d79f5e2`, merge `6945dd2`)
 
 ADR `0084`. The owner's brief: fix the live audit's findings 1, 2 and 3 before more coverage or bundle work.
 
@@ -24,6 +24,11 @@ ADR `0084`. The owner's brief: fix the live audit's findings 1, 2 and 3 before m
 
 **Changed on purpose**
 - **An untouched expense on a signed-in account goes to the first expense category by name**, not Balance Adjustment, so it counts as spending.
+
+**Release:**
+- The pull request's CI (run `37607374050`, on `abaaa33`) passed every job.
+- PR #59 merged into `main` as `6945dd2`, whose tree is identical to `abaaa33`. Vercel `dpl_AqbswJZF6GrDhtbqVokhK7Ct7gNF` is READY in production, region `icn1`; `/api/classify` answers from `icn1`, and production serves the entry `index-CXsVs4wG.js`, the same hash as a local build of the branch, with three cold-start scripts; the entry holds `DebtSchema`'s "Remaining can't be more than the total amount".
+- `main` CI on the merge (run `37612914498`) passed every job on its first attempt in 270 s end to end, 19 s of it the merge job (unit 1204; 477 passed, 6 skipped, no flaky test).
 
 ---
 
