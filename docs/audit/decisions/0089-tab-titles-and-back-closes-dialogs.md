@@ -1,6 +1,6 @@
 # 0089: The title names the open tab; Back closes the top dialog
 
-**Status:** Accepted. Code `c8afa5a`, draft PR; not merged. No migration.
+**Status:** Accepted. Code `c8afa5a`, docs `9952c1c`, draft PR #64; not merged. No migration.
 - **Completes** audit finding 14 (ADR `0088`): a history entry and a bookmark now carry the tab's name.
 - **Amends** ADR `0043` (what closes a dialog: Back joins Escape and the close button) and ADR `0088` (a tab change from inside a dialog replaces the dialog's history entry).
 

@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 113 - The title names the open tab; Back closes the top dialog: T691-T695 (2026-10-08, code `c8afa5a`)
+## Phase 113 - The title names the open tab; Back closes the top dialog: T691-T695 (2026-10-08, code `c8afa5a`, docs `9952c1c`, PR #64)
 
 ADR `0089`. The owner's brief: a title per tab, Back closing dialogs, and the WebKit stall in the Phase 112 specs.
 

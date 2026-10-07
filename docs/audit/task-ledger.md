@@ -1083,7 +1083,7 @@ Approved explicitly by the user, planned and approved before any code was writte
 
 ## Phase 113 - The title names the open tab; Back closes the top dialog: T691-T695 (2026-10-08)
 
-ADR `0089`, completing audit finding 14 and amending ADR `0043` and `0088`. Branch `phase-113-navigation-and-modal-history`, cut from `main` at `6aabb4e`; code `c8afa5a`; draft PR.
+ADR `0089`, completing audit finding 14 and amending ADR `0043` and `0088`. Branch `phase-113-navigation-and-modal-history`, cut from `main` at `6aabb4e`; code `c8afa5a`, docs `9952c1c`; draft PR #64.
 
 | # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
 |---|---|---|---|---|---|---|---|---|---|---|
