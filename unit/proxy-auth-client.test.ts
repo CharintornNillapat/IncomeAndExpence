@@ -38,6 +38,8 @@ async function load(options: { configured: boolean; token?: string | null; sessi
   vi.resetModules();
 
   const lib = await import('../src/lib/supabase');
+  // A device that has the client (ADR 0083); a guest without one is in supabase-lazy.test.ts.
+  await lib.loadSupabase();
   const getSession = vi.spyOn(lib.supabase.auth, 'getSession');
   if (options.sessionThrows) {
     getSession.mockRejectedValue(new Error('storage blocked'));

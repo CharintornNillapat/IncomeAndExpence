@@ -270,9 +270,18 @@ const fake = vi.hoisted(() => {
   return { USER_ID, session, state, client };
 });
 
-vi.mock('../src/lib/supabase', () => ({
+// The real module's auth error checks; the client is the fake, already
+// "loaded", and a session always may exist, as on a signed-in device (ADR 0083).
+vi.mock('../src/lib/supabase', async (importActual) => ({
+  ...(await importActual<typeof import('../src/lib/supabase')>()),
   isSupabaseConfigured: true,
   supabase: fake.client,
+  loadSupabase: async () => fake.client,
+  whenSupabaseLoads: (listener: (client: unknown) => void) => {
+    listener(fake.client);
+    return () => {};
+  },
+  sessionMayExist: () => true,
   onDataApiUnauthorized: (listener: () => void) => {
     fake.state.unauthorized.add(listener);
     return () => {

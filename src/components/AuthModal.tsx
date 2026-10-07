@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { supabase, isSupabaseConfigured } from '../lib/supabase';
+import React, { useEffect, useState } from 'react';
+import { isSupabaseConfigured, loadSupabase } from '../lib/supabase';
 import { AuthLoginSchema, formatZodIssues } from '../utils/zodSchemas';
 import { Lock, Mail, User as UserIcon, AlertCircle, CheckCircle2, ArrowRight, X, KeyRound } from 'lucide-react';
 import { Modal } from './Modal';
@@ -30,6 +30,13 @@ export const AuthModal: React.FC<AuthModalProps> = React.memo(({ isOpen, onClose
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
+  // Phase 107 (ADR 0083): a guest's first load does not fetch supabase-js.
+  // Opening this dialog starts it, so it is there before the form is filled;
+  // the provider's auth listener starts as soon as it arrives.
+  useEffect(() => {
+    if (isOpen && isSupabaseConfigured) void loadSupabase().catch(() => {});
+  }, [isOpen]);
+
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage(null);
@@ -59,6 +66,9 @@ export const AuthModal: React.FC<AuthModalProps> = React.memo(({ isOpen, onClose
     setLoading(true);
 
     try {
+      const supabase = await loadSupabase().catch(() => {
+        throw new Error('Could not reach the server. Check your connection and try again.');
+      });
       if (mode === 'signup') {
         const { data, error } = await supabase.auth.signUp({
           email: email.trim(),

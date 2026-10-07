@@ -741,12 +741,18 @@ describe.each(ENDPOINTS)('$name Server-Timing', ({ name, handler, body, answers 
 
   it('a check with the keys already held has no desc and takes no round trip', async () => {
     await signedIn();
+    upstream.mockClear();
 
     const t = timingsOf(await signedIn());
 
     expect(t.auth.desc).toBeUndefined();
-    expect(t.auth.dur).toBeLessThan(20 - SLACK_MS);
+    // No round trip is a fetch that did not happen, not a figure under 15 ms:
+    // a local check under a loaded runner once took 28.8 ms (ADR 0083). The
+    // steps still finish in order, each within the whole.
+    expect(upstream.mock.calls.map(([url]) => url)).not.toContain(jwksUrl());
+    expect(Object.keys(t)).toEqual(['auth', 'quota', 'ai', 'total']);
     expect(t.quota.dur).toBeGreaterThanOrEqual(30 - SLACK_MS);
+    expect(t.total.dur).toBeGreaterThanOrEqual(t.auth.dur + t.quota.dur + t.ai.dur - 0.2);
   });
 
   it("a guest's answer has only ai and total", async () => {

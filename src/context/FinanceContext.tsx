@@ -16,8 +16,17 @@ import {
   Preset,
 } from '../types';
 import type { AccountData } from '../utils/accountExport';
-import { isAuthApiError, isAuthSessionMissingError } from '@supabase/supabase-js';
-import { supabase, isSupabaseConfigured, onDataApiUnauthorized } from '../lib/supabase';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import {
+  supabase,
+  isSupabaseConfigured,
+  onDataApiUnauthorized,
+  loadSupabase,
+  whenSupabaseLoads,
+  sessionMayExist,
+  isAuthApiError,
+  isAuthSessionMissingError,
+} from '../lib/supabase';
 import {
   TransactionSchema,
   WalletSchema,
@@ -1107,9 +1116,11 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     }
 
     let authSubscription: { unsubscribe: () => void } | null = null;
+    let cancelled = false;
 
-    const setupAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
+    const setupAuth = async (client: SupabaseClient) => {
+      const { data: { session } } = await client.auth.getSession();
+      if (cancelled) return;
       if (session?.user) {
         setIsAuthenticated(true);
         setCurrentUser({
@@ -1125,7 +1136,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
         setIsAuthenticated(false);
       }
 
-      const { data } = supabase.auth.onAuthStateChange(async (event, newSession) => {
+      const { data } = client.auth.onAuthStateChange(async (event, newSession) => {
         // F5 (ADR 0024): signed out - here or remotely - clears this device.
         // Only this event: a guest's INITIAL_SESSION also has no session, and
         // resetting on it would wipe a guest ledger on every page load.
@@ -1151,9 +1162,21 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       authSubscription = data.subscription;
     };
 
-    setupAuth();
+    // Phase 107 (ADR 0083): the client loads at boot only when a session may
+    // exist. A guest's load skips it, and this listener starts whenever it
+    // does load: the sign-in dialog opening, another tab signing in.
+    if (!sessionMayExist()) setIsAuthenticated(false);
+    const stopWaiting = whenSupabaseLoads((client) => void setupAuth(client));
+    if (sessionMayExist()) {
+      loadSupabase().catch((err) => {
+        console.error('[Supabase Load Error]', err);
+        if (!cancelled) setSyncError('Could not reach the server');
+      });
+    }
 
     return () => {
+      cancelled = true;
+      stopWaiting();
       if (authSubscription) authSubscription.unsubscribe();
     };
   }, [loadSupabaseData, resetToGuestState]);
@@ -1165,7 +1188,8 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
   // library drops its own session locally regardless, and a shared device is
   // the case this exists for.
   const signOut = useCallback(async (options?: { everywhere?: boolean }) => {
-    if (isSupabaseConfigured) {
+    // No client means no session was ever resumed or started here (ADR 0083).
+    if (isSupabaseConfigured && supabase) {
       const { error } = await supabase.auth.signOut({ scope: options?.everywhere ? 'global' : 'local' });
       if (error) console.error('[Sign Out Failed]', error);
     }
