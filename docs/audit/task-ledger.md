@@ -1083,7 +1083,7 @@ Approved explicitly by the user, planned and approved before any code was writte
 
 ## Phase 104 - A debt with nothing borrowed reads 100% everywhere; the Google Fonts cache goes; the date helpers stay in one module: T634-T639 (2026-10-06)
 
-ADR `0080`, amending ADR `0079`. Branch `phase-104-debt-zero-and-audit-cleanups`, cut from `main` at `be76c8a`; code `1f53d5d`, docs `4d06ae8`; draft PR #55. The owner's decision on the ฿0 debt (100% everywhere), and findings 10 and 11 of `AGY_AUDIT300926.md`.
+ADR `0080`, amending ADR `0079`. Branch `phase-104-debt-zero-and-audit-cleanups`, cut from `main` at `be76c8a`; code `1f53d5d`, docs `4d06ae8`, hash backfill `3c91084`; merged into `main` as `53d3c98` (PR #55); Vercel `dpl_9B3t1Y8CGnN5F5R3ERx5PBxNNxh7` READY in `icn1`. The pull request's CI (run `37488597975`) passed every job. `Main` CI on the merge (run `37489813461`) passed every job in 285 s end to end, 19 s of it the merge job (unit 1086; 468 passed, 6 skipped, no flaky test). The owner's decision on the ฿0 debt (100% everywhere), and findings 10 and 11 of `AGY_AUDIT300926.md`.
 
 | # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
 |---|---|---|---|---|---|---|---|---|---|---|

@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 104 - A debt with nothing borrowed reads 100% everywhere; the Google Fonts cache goes; the date helpers stay in one module: T634-T639 (2026-10-06, code `1f53d5d`, docs `4d06ae8`, PR #55)
+## Phase 104 - A debt with nothing borrowed reads 100% everywhere; the Google Fonts cache goes; the date helpers stay in one module: T634-T639 (2026-10-06, code `1f53d5d`, docs `4d06ae8`, merge `53d3c98`)
 
 ADR `0080`. The owner's decision on ADR `0079`'s open question, plus findings 10 and 11 of the 2026-09-30 architecture audit (`AGY_AUDIT300926.md`).
 
@@ -27,6 +27,14 @@ ADR `0080`. The owner's decision on ADR `0079`'s open question, plus findings 10
 **Deliberately not done**
 - **The summaries' 0% for a ledger of only ฿0 debts:** that is a share of everything borrowed; changing it is a separate decision.
 - **Deleting the two empty font caches on installed copies:** nothing ever filled them.
+
+**Release:**
+- The pull request's CI (run `37488597975`, on `3c91084`) passed every job.
+- PR #55 merged into `main` as `53d3c98`, whose tree is identical to `3c91084`. Vercel `dpl_9B3t1Y8CGnN5F5R3ERx5PBxNNxh7` is READY in production, region `icn1`; `/api/classify` answers from `icn1` (`X-Vercel-Id: sin1::icn1::...`), production serves the entry `index-Ck3vA7lB.js`, the same hash as a local build of `53d3c98`, and its `sw.js` has no Google Fonts route.
+- `main` CI on the merge (run `37489813461`) passed every job in 285 s end to end, 19 s of it the merge job (unit 1086; 468 passed, 6 skipped, no flaky test).
+
+**Still open**
+- **Owner:** whether the summaries (`useDebts().metrics`) read 100% rather than 0% for a ledger whose only debts have nothing borrowed (ADR `0080`).
 
 ---
 
