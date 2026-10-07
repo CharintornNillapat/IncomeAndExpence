@@ -1083,7 +1083,7 @@ Approved explicitly by the user, planned and approved before any code was writte
 
 ## Phase 112 - The open tab lives in the URL's hash; `/api/insights` serves accounts only; both proxies cap the body: T685-T690 (2026-10-07)
 
-ADR `0088`, closing audit findings 14 and 6 and amending ADR `0020`, `0032` and `0046`. Branch `phase-112-routing-and-ai-proxy-guard`, cut from `main` at `bad64ea`; code `9ad6faa`, docs `9a1d2f2`; draft PR #63.
+ADR `0088`, closing audit findings 14 and 6 and amending ADR `0020`, `0032` and `0046`. Branch `phase-112-routing-and-ai-proxy-guard`, cut from `main` at `bad64ea`; code `9ad6faa`, docs `9a1d2f2`, hash backfill `9c6e560`; merged into `main` as `3952704` (PR #63); Vercel `dpl_4rQ6N9YyNYri9hDxd4xY14oTeHCP` READY in `icn1`. The pull request's CI (run `37648133676`) passed every job. `main` CI on the merge (run `37692551123`) passed every job on its first attempt in 288 s end to end, the merge job included: unit 1284; 471 passed, 6 skipped, no flaky test. The local WebKit painting stall (ADR `0058`) did not show on CI's Linux WebKit.
 
 | # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
 |---|---|---|---|---|---|---|---|---|---|---|

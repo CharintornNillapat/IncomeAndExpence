@@ -1,6 +1,6 @@
 # 0088: The open tab lives in the URL's hash; `/api/insights` serves accounts only; both proxies cap the body
 
-**Status:** Accepted. Code `9ad6faa`, docs `9a1d2f2`, draft PR #63; not merged. No migration.
+**Status:** Accepted. Released: code `9ad6faa`, docs `9a1d2f2`, hash backfill `9c6e560`, merged into `main` as `3952704` (PR #63); Vercel `dpl_4rQ6N9YyNYri9hDxd4xY14oTeHCP` READY in `icn1`. No migration.
 - **Closes** audit findings 14 (no URL per view) and 6 (guests spending TypeSafe credits through `/api/insights`).
 - **Amends** ADR `0020` (the insights card's guest path), `0032` (who may call the proxies) and `0046` (the guests' firewall rule now protects `/api/classify` alone in practice).
 

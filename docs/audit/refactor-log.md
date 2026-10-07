@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 112 - The open tab lives in the URL's hash; `/api/insights` serves accounts only; both proxies cap the body: T685-T690 (2026-10-07, code `9ad6faa`, docs `9a1d2f2`, PR #63)
+## Phase 112 - The open tab lives in the URL's hash; `/api/insights` serves accounts only; both proxies cap the body: T685-T690 (2026-10-07, code `9ad6faa`, docs `9a1d2f2`, merge `3952704`)
 
 ADR `0088`. The owner's brief: audit finding 14 (no URL per view) and finding 6 (guests spending TypeSafe credits).
 
@@ -21,6 +21,12 @@ ADR `0088`. The owner's brief: audit finding 14 (no URL per view) and finding 6 
 - **Red first:** the routing spec failed 4 of 4 against `main`'s `App.tsx`; `tab-route` before its module existed; 7 contract and 2 client tests before the proxies and client changed.
 - **WebKit stalls (ADR `0058`):** the new insights test stalled once in the full run, and the two new specs on WebKit 15 times over stalled twice in 90 (the insights test and the routing test). In all three the click waited on "visible, enabled and stable", and the trace's screencast stopped within 0.3 s of the click with no frame after it. The same unchanged specs (`transaction`, `wallets-page`) on WebKit 10 times over passed 100 of 100 on both the branch and `main`, and `main`'s insights spec passed 120 of 120, so nothing measured ties the stall to this phase's code. Not seen on CI's Linux WebKit before.
 - **Bundle:** all app JS +826 / +276 B gzip; the entry +456 / +182 (the routing); `DashboardView` +370 / +101 (the card's note); cold start still three scripts.
+
+**Release:**
+- The pull request's CI (run `37648133676`, on `9c6e560`) passed every job.
+- PR #63 merged into `main` as `3952704`, whose tree is identical to `9c6e560`. Vercel `dpl_4rQ6N9YyNYri9hDxd4xY14oTeHCP` is READY in production, region `icn1`; production serves the entry `index-y9uYSK8p.js`, the same hash as a local build of `main`, with the `popstate` listener in it.
+- On production, from `icn1`: a guest's `POST {}` to `/api/insights` is 401 `{"error":"Sign in to use insights."}` with `Server-Timing: total` only; a 70 KB body to `/api/classify` is 413 `{"error":"Body is too large."}`; a guest's `{}` to `/api/classify` is still 400.
+- `main` CI on the merge (run `37692551123`) passed every job on its first attempt in 288 s end to end, the merge job included: unit 1284; 471 passed, 6 skipped, no flaky test. The local WebKit painting stall (ADR `0058`) did not show on CI's Linux WebKit.
 
 **Changed on purpose**
 - **Back moves between tabs** instead of leaving the app; a refresh keeps the tab.
