@@ -1,6 +1,6 @@
 # 0085: Every category path keeps an entry's own type; overdrafts warn in the entry form; wallets below zero are not "no money"
 
-**Status:** Accepted. Code `e3476a3`, docs `96be360`, draft PR #60; not merged. No migration.
+**Status:** Accepted. Released: code `e3476a3`, docs `96be360`, hash backfill `051be94`, merged into `main` as `a56cb20` (PR #60); Vercel `dpl_5jMynMGDcXQiRJwGjMHCXq7HPUAT` READY in `icn1`. No migration.
 - **Completes** ADR `0084` (audit finding 3): the edit panel, the CSV import and `addTransaction` follow the entry form.
 - **Amends** ADR `0019` (CSV import): a suggestion of another type is no longer offered, and a category of another type is dropped at commit.
 - **Amends** ADR `0014` (overdraft warns, never blocks): a credit card is never overdrawn, and the entry form warns too.

@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 109 - Every category path keeps an entry's own type; overdrafts warn in the entry form; wallets below zero are not "no money": T665-T671 (2026-10-07, code `e3476a3`, docs `96be360`, PR #60)
+## Phase 109 - Every category path keeps an entry's own type; overdrafts warn in the entry form; wallets below zero are not "no money": T665-T671 (2026-10-07, code `e3476a3`, docs `96be360`, merge `a56cb20`)
 
 ADR `0085`. The owner's brief: close finding 3's remaining paths, and findings 4, 8 and 11; leave the live rows under Balance Adjustment as they are.
 
@@ -27,6 +27,11 @@ ADR `0085`. The owner's brief: close finding 3's remaining paths, and findings 4
 **Changed on purpose**
 - **A new account's first expense shows the warning**, since its wallets open at ฿0.00. It is true, and it blocks nothing.
 - **A transfer out of a credit card no longer warns.**
+
+**Release:**
+- The pull request's CI (run `37617539132`, on `051be94`) passed every job.
+- PR #60 merged into `main` as `a56cb20`, whose tree is identical to `051be94`. Vercel `dpl_5jMynMGDcXQiRJwGjMHCXq7HPUAT` is READY in production, region `icn1`; `/api/classify` answers from `icn1`, and production serves the entry `index-DqSd57Br.js`, the same hash as a local build of the branch, with three cold-start scripts; the entry holds the "can't be filed under" refusal.
+- `main` CI on the merge (run `37622948029`) passed every job on its first attempt in 278 s end to end, 20 s of it the merge job (unit 1225; 477 passed, 6 skipped, no flaky test).
 
 ---
 

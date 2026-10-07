@@ -1083,7 +1083,7 @@ Approved explicitly by the user, planned and approved before any code was writte
 
 ## Phase 109 - Every category path keeps an entry's own type; overdrafts warn in the entry form; wallets below zero are not "no money": T665-T671 (2026-10-07)
 
-ADR `0085`, completing ADR `0084` and amending `0014`, `0019` and `0042`. Branch `phase-109-category-hardening-and-wallet-hygiene`, cut from `main` at `4c43be5`; code `e3476a3`, docs `96be360`; draft PR #60.
+ADR `0085`, completing ADR `0084` and amending `0014`, `0019` and `0042`. Branch `phase-109-category-hardening-and-wallet-hygiene`, cut from `main` at `4c43be5`; code `e3476a3`, docs `96be360`, hash backfill `051be94`; merged into `main` as `a56cb20` (PR #60); Vercel `dpl_5jMynMGDcXQiRJwGjMHCXq7HPUAT` READY in `icn1`. The pull request's CI (run `37617539132`) passed every job. `Main` CI on the merge (run `37622948029`) passed every job on its first attempt in 278 s end to end, 20 s of it the merge job (unit 1225; 477 passed, 6 skipped, no flaky test). Production serves the entry `index-DqSd57Br.js`, a local build's, with `addTransaction`'s new refusal in it.
 
 | # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
 |---|---|---|---|---|---|---|---|---|---|---|
