@@ -1083,7 +1083,7 @@ Approved explicitly by the user, planned and approved before any code was writte
 
 ## Phase 112 - The open tab lives in the URL's hash; `/api/insights` serves accounts only; both proxies cap the body: T685-T690 (2026-10-07)
 
-ADR `0088`, closing audit findings 14 and 6 and amending ADR `0020`, `0032` and `0046`. Branch `phase-112-routing-and-ai-proxy-guard`, cut from `main` at `bad64ea`; code `9ad6faa`; draft PR.
+ADR `0088`, closing audit findings 14 and 6 and amending ADR `0020`, `0032` and `0046`. Branch `phase-112-routing-and-ai-proxy-guard`, cut from `main` at `bad64ea`; code `9ad6faa`, docs `9a1d2f2`; draft PR #63.
 
 | # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
 |---|---|---|---|---|---|---|---|---|---|---|

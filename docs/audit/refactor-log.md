@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 112 - The open tab lives in the URL's hash; `/api/insights` serves accounts only; both proxies cap the body: T685-T690 (2026-10-07, code `9ad6faa`)
+## Phase 112 - The open tab lives in the URL's hash; `/api/insights` serves accounts only; both proxies cap the body: T685-T690 (2026-10-07, code `9ad6faa`, docs `9a1d2f2`, PR #63)
 
 ADR `0088`. The owner's brief: audit finding 14 (no URL per view) and finding 6 (guests spending TypeSafe credits).
 
