@@ -1081,6 +1081,23 @@ Approved explicitly by the user, planned and approved before any code was writte
 - **One negative control was redone** because the first attempt produced malformed TypeScript that the dev server still served — the tests failed, but possibly for the wrong reason.
 - **No flakes.** Phase 44's `wallets.spec.ts` webkit flake has now not reproduced across three consecutive phases; still watched rather than closed.
 
+## Phase 113 - The title names the open tab; Back closes the top dialog: T691-T695 (2026-10-08)
+
+ADR `0089`, completing audit finding 14 and amending ADR `0043` and `0088`. Branch `phase-113-navigation-and-modal-history`, cut from `main` at `6aabb4e`; code `c8afa5a`; draft PR.
+
+| # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
+|---|---|---|---|---|---|---|---|---|---|---|
+| T691 | `titleForTab` and the title effect in `App.tsx` | `src/utils/tabRoute.ts`, `src/App.tsx`, `unit/tab-route.test.ts`, `tests/routing.spec.ts` | Med | Low | 0.2h | done | - | `c8afa5a` | title tests failed first | +6 unit, +1 spec |
+| T692 | `modalHistory.ts` and `Modal`: an entry per dialog, Back closes the top one, a close by other means takes its entry off, hand-offs replace | `src/utils/modalHistory.ts`, `src/components/Modal.tsx`, `unit/modal-history.test.tsx`, `tests/routing.spec.ts` | High | Med | 1.0h | done | - | `c8afa5a` | Back and hand-off tests failed first; controls fail without the release | +6 unit, +4 spec |
+| T693 | A tab change from inside a dialog replaces its entry | `src/App.tsx` | Med | Low | 0.1h | done | T692 | `c8afa5a` | the Repay debt spec | - |
+| T694 | The landing of the app's own `back()` closed the next dialog opened before it landed (8 CSV import unit tests): marked as own, and a waiting dialog's entry is pushed once it lands | `src/utils/modalHistory.ts`, `src/components/Modal.tsx`, `unit/modal-history.test.tsx` | High | Med | 0.5h | done | T692 | `c8afa5a` | the race test fails without the check | +1 unit |
+| T695 | WebKit stall: measured, no spec change; gate, bundle, ADR `0089`, `CLAUDE.md`, the logs | `docs/`, `CLAUDE.md` | Med | Low | 0.5h | done | T691-T694 | docs | lint clean; unit 1296/1296 in 56 files; Playwright, first run 485 passed, 6 skipped, 1 failed of 492 (7.1 m): a WebKit click in the unchanged `transaction.spec.ts` waiting on "stable", with no trace kept; second run 486 passed, 6 skipped, no failure (11.6 m, traces on); schema drift run `37697554162`: no drift, 19 migrations | entry +485 B gzip |
+
+**Notes on execution:**
+- **StrictMode's re-run needed no code of its own:** a branch that kept the entry on a re-run was removed after a control showed the replace rule already covers it.
+- **A click does not focus a button in WebKit,** so the focus-return test opens Quick Add from the keyboard.
+- **WebKit:** the two Phase 112 specs (11 tests now) passed 330 of 330 on WebKit before any change, so no spec was changed for the stall. The first full run's one failure (the `transaction` spec's Clear search click) had the stall's shape; that spec and `wallets-page` passed 100 of 100 on WebKit on this branch, as on `main` in Phase 112, and the second full run was clean.
+
 ## Phase 112 - The open tab lives in the URL's hash; `/api/insights` serves accounts only; both proxies cap the body: T685-T690 (2026-10-07)
 
 ADR `0088`, closing audit findings 14 and 6 and amending ADR `0020`, `0032` and `0046`. Branch `phase-112-routing-and-ai-proxy-guard`, cut from `main` at `bad64ea`; code `9ad6faa`, docs `9a1d2f2`, hash backfill `9c6e560`; merged into `main` as `3952704` (PR #63); Vercel `dpl_4rQ6N9YyNYri9hDxd4xY14oTeHCP` READY in `icn1`. The pull request's CI (run `37648133676`) passed every job. `main` CI on the merge (run `37692551123`) passed every job on its first attempt in 288 s end to end, the merge job included: unit 1284; 471 passed, 6 skipped, no flaky test. The local WebKit painting stall (ADR `0058`) did not show on CI's Linux WebKit.

@@ -1098,6 +1098,15 @@ The entry's growth is the ledger action itself, which lives with the other ledge
 
 **Intermittent local failures:** 6 in 1,071 full-suite runs (3 full runs). All were timeouts: a Firefox `goto`, a Firefox context close, and four WebKit clicks waiting for "stable". No assertion failed. See audit 005 finding 3 for the control runs.
 
+## Phase 113 (tab titles, Back closes dialogs) - delta against Phase 112
+
+**Bundle** (gzip level 9 in Node on both sides; `main` at `6aabb4e` built in a worktree with `.env`). All app JS 881,054 / 267,319 to 882,669 / 267,804 B (+1,615 / +485), 40 files; only the entry `index` changed, 195,202 / 56,546 to 196,817 / 57,060 (`Modal` and `modalHistory`). Cold start: still three scripts.
+
+| Suite | Files | Tests | Runs | Result |
+|---|---|---|---|---|
+| Vitest (`unit/`) | 56 | 1296 | 1296 | 1296/1296 (+6 `modal-history`, +6 `tab-route`) |
+| Playwright (local, 4 workers) | 34 | 164 | 492 | first run 485 passed, 6 skipped, 1 failed (a WebKit click waiting on "stable"); second run 486 passed, 6 skipped |
+
 ## Phase 112 (tabs in the URL, insights for accounts, body cap) - delta against Phase 111
 
 **Bundle** (gzip level 9 in Node on both sides; `main` at `bad64ea` built in a worktree with `.env`). All app JS 880,228 / 267,043 to 881,054 / 267,319 B (+826 / +276), 40 files. Entry `index` 194,746 / 56,364 to 195,202 / 56,546 (`tabRoute` and the history listener); `DashboardView` 23,018 / 7,330 to 23,388 / 7,431 (the insights card's note and the client's guest check). Cold start: still three scripts. (Node's level-9 gzip reads 267,043 for the same `main` that Phase 111 recorded as 267,385 with `gzip -9`; both sides here use Node.)
