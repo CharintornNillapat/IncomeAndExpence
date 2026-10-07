@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 107 - A guest's load fetches no supabase-js; a timing test checks what happened, not how fast; spinners stop under reduced motion: T653-T659 (2026-10-07, code `75f00e5`, docs `8dc7e5f`, PR #58)
+## Phase 107 - A guest's load fetches no supabase-js; a timing test checks what happened, not how fast; spinners stop under reduced motion: T653-T659 (2026-10-07, code `75f00e5`, docs `8dc7e5f`, merge `2fb855c`)
 
 ADR `0083`. The owner's brief: fix the wall-clock unit test, stop the spinners under reduced motion, and prototype deferring supabase-js for a guest, measured and tested. The prototype held, so it ships.
 
@@ -26,6 +26,12 @@ ADR `0083`. The owner's brief: fix the wall-clock unit test, stop the spinners u
 
 **Changed on purpose**
 - **A signed-in device with no precache gets its client later:** the chunk's request waits for the entry instead of riding beside it.
+
+**Release:**
+- The pull request's CI (run `37597751229`, on `0efa7a5`) passed every job.
+- PR #58 merged into `main` as `2fb855c`, whose tree is identical to `0efa7a5`. Vercel `dpl_FCGb2hWJtCajfdPySSL8kGt5aADQ` is READY in production, region `icn1`; `/api/classify` answers from `icn1`, and production serves the entry `index-D2w_cPfc.js`, the same hash as a local build of `2fb855c`, with three cold-start scripts and no `vendor-supabase`.
+- **Production in a browser** (Chromium, service worker blocked so every request is the page's): a guest load requested nothing from Supabase, code or project; opening Sign In fetched `vendor-supabase--wUpN4Ei.js`, the merge's chunk, and still called nothing on the project. With the service worker allowed, a first visit's precache fetches the chunk itself.
+- `main` CI on the merge (run `37598495653`) passed every job in 265 s end to end, 18 s of it the merge job (unit 1197; 477 passed, 6 skipped, no flaky test).
 
 ---
 

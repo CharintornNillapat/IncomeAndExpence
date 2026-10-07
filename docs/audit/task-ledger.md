@@ -1083,7 +1083,7 @@ Approved explicitly by the user, planned and approved before any code was writte
 
 ## Phase 107 - A guest's load fetches no supabase-js; a timing test checks what happened, not how fast; spinners stop under reduced motion: T653-T659 (2026-10-07)
 
-ADR `0083`, amending ADR `0024`, `0050` and `0082`. Branch `phase-107-stability-and-supabase-lazy-prototype`, cut from `main` at `60b03a3`; code `75f00e5`, docs `8dc7e5f`; draft PR #58.
+ADR `0083`, amending ADR `0024`, `0050` and `0082`. Branch `phase-107-stability-and-supabase-lazy-prototype`, cut from `main` at `60b03a3`; code `75f00e5`, docs `8dc7e5f`, hash backfill `0efa7a5`; merged into `main` as `2fb855c` (PR #58); Vercel `dpl_FCGb2hWJtCajfdPySSL8kGt5aADQ` READY in `icn1`. The pull request's CI (run `37597751229`) passed every job. `Main` CI on the merge (run `37598495653`) passed every job in 265 s end to end, 18 s of it the merge job (unit 1197; 477 passed, 6 skipped, no flaky test). On production a guest load fetched no Supabase code and opening Sign In fetched the chunk.
 
 | # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
 |---|---|---|---|---|---|---|---|---|---|---|
