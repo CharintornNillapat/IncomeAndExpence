@@ -4,6 +4,38 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
+## Phase 106 - framer-motion is gone; CSS keyframes, `Presence` and one Web Animations call run the motion, which now honours reduced motion: T646-T652 (2026-10-07, PR pending)
+
+ADR `0082`. The owner asked for an audit of the eight framer-motion call sites and a prototype on the segmented control and a dialog, and for the migration if it held with no visual or test regression. It held, so all eight moved: the prototype alone would have saved nothing, since `App.tsx` and `MobileBottomNav` kept `vendor-motion` on the cold start.
+
+**Changed**
+- **`src/components/ui/motion.tsx` (new):** `Presence` (a keyed child kept for its exit, then the next one, as `AnimatePresence mode="wait"`), `slidePill` (`layoutId` for a selection pill, with the Web Animations API), `MOTION_MS`, `prefersReducedMotion`.
+- **`src/index.css`:** the `motion-*` keyframe classes with framer's values, off under `prefers-reduced-motion: reduce`.
+- **`Modal`:** `Presence` around the scrim (`motion-scrim`) and panel (`motion-sheet`); the Tab trap and Escape listener are layout effects.
+- **`App.tsx`:** the tab slide is `Presence` and `motion-page`, its direction `--page-dir` on `<main>`.
+- **`ui/SegmentedControl`, `MobileBottomNav`:** the pill is a plain element slid by `slidePill` from the button selected before.
+- **`TransactionForm`, `CategorySuggestionChip`, `SaveRuleChip`:** the chips are `motion-chip` inside `Presence` (150 ms).
+- **`package.json`, `package-lock.json`, `vite.config.ts`:** `framer-motion`, `motion-dom` and `motion-utils` removed; `vendor-motion` gone, `tslib` grouped with `vendor-supabase`.
+- **Tests:** `unit/motion.test.tsx` (8), two in `unit/modal-focus.test.tsx` (keys pressed in the commit that moves focus in), `tests/reduced-motion.spec.ts` (2 tests, 6 runs).
+- **Docs:** ADR `0082`; `CLAUDE.md`'s libraries, motion rules, `Modal`, `SegmentedControl`, the deferred-modal note, suite sizes and ADR list.
+
+**Gate:**
+- Lint clean. Unit 1179/1179 in 44 files. Playwright 474 passed, 6 skipped of 480 (7.5 m), no failure, no flaky test.
+- **Red first:** `unit/motion.test.tsx` before `motion.tsx` existed; the two key-timing tests on the passive listeners (`expected "vi.fn()" to be called 1 times, but got 0 times`; Shift+Tab stayed on Close). Two negative controls on `Presence` failed their tests.
+- **WebKit:** the two Escape tests (the reduced-motion spec and a one-off) lost an Escape 1 in 10 on the branch before the layout-effect fix and passed 30/30 after; the same steps on `main` passed 20/20.
+- **What a person sees:** `main` and the branch side by side in Chromium and WebKit after every tween: 8 of 10 screenshots identical, two Chromium ones off by at most 3 of 255 in 15 and 5 pixels of anti-aliased corner.
+- **Bundle:** cold start −41,761 B gzip of JS (−18.9%), −41,475 B with CSS; details in ADR `0082` and baseline metrics.
+- **Schema drift:** run `37580899818` (dispatched on `main` at `aa72a75`; this phase changes no migration) replayed 19 migrations and found no drift: "Live matches all 19 migrations".
+
+**Changed on purpose**
+- **Reduced motion is honoured:** framer-motion ignored it here (no `MotionConfig`).
+- **The suggestion chip waits for the old one:** framer's default mode drew both for 150 ms when Jev changed its suggestion.
+
+**Seen and left**
+- **`unit/proxy-contract.test.ts`'s Server-Timing bound** failed once in a full unit run (28.8 ms against 15 ms for a local token check) and passed alone three times: a wall-clock check under the suite's load.
+
+---
+
 ## Phase 105 - The amount field's arithmetic is the app's own parser, not mathjs; the debt summaries read 100% when nothing is borrowed: T640-T645 (2026-10-07, code `11197ee`, docs `9546e57`, merge `47f3949`)
 
 ADR `0081`. Finding 6 of the 2026-09-30 architecture audit (`AGY_AUDIT300926.md`), and the owner's decision on ADR `0080`'s open question.

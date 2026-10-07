@@ -1098,6 +1098,15 @@ The entry's growth is the ledger action itself, which lives with the other ledge
 
 **Intermittent local failures:** 6 in 1,071 full-suite runs (3 full runs). All were timeouts: a Firefox `goto`, a Firefox context close, and four WebKit clicks waiting for "stable". No assertion failed. See audit 005 finding 3 for the control runs.
 
+## Phase 106 (CSS motion, no framer-motion) - delta against Phase 105
+
+**Bundle** (gzip -9 on both sides; Phase 105 built from a `main` worktree with `.env`, entry `index-Br-KQ4vK.js`, the one production serves). **Cold start** (the files `index.html` loads): JS 766,022 / 221,296 to 638,136 / 179,535 B (−127,886 / −41,761, −18.9%), five files to four; with CSS 817,251 / 231,148 to 691,013 / 189,673 (−126,238 / −41,475, −17.9%). `vendor-motion` (129,389 / 42,296) is gone; entry `index` 191,611 / 55,071 to 192,536 / 55,413 (`Presence`, `slidePill`); `vendor-supabase` 226,458 / 58,353 to 227,036 / 58,546 (`tslib`); `index.css` 51,229 / 9,852 to 52,877 / 10,138 (the keyframes); every lazy chunk that imported framer-motion 36 B smaller. All app JS 1,004,186 / 307,785 to 875,762 / 265,840 B (−128,424 / −41,945), 41 to 40 files. `sw.js` 4,236 / 1,598 to 4,181 / 1,592; precache 58 to 57 entries (1,180.22 KiB).
+
+| Suite | Files | Tests | Runs | Result |
+|---|---|---|---|---|
+| Vitest (`unit/`) | 44 | 1179 | 1179 | 1179/1179 (+8 `motion.test.tsx`, +2 `modal-focus.test.tsx`) |
+| Playwright (local, 4 workers) | 33 | 160 | 480 | 474 passed, 6 skipped of 480 (7.5 m), no failure (+`reduced-motion.spec.ts`) |
+
 ## Phase 105 (own arithmetic parser, ฿0 summary) - delta against Phase 104
 
 **Bundle** (gzip -9 on both sides; Phase 104 is the build whose entry production serves, `index-Ck3vA7lB.js`): all app JS 1,380,029 / 417,344 to 1,004,186 / 307,785 B (−375,843 / −109,559), 42 to 41 files. `vendor-math` (375,725 / 109,561) is gone; `InlineMathInput`, which now holds the parser, 5,680 / 2,134 to 6,241 / 2,386; entry `index` 191,656 / 55,089 to 191,611 / 55,071; `vendor-react` 194,329 / 60,402 to 193,822 / 60,257. Every other change is a hashed chunk name. `sw.js` 4,289 / 1,613 to 4,236 / 1,598 B; precache 59 to 58 entries (1,304.12 KiB).
