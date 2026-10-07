@@ -39,7 +39,7 @@ export const useDebts = () => {
   const debtMetrics = useMemo(() => {
     const totalTarget = liveDebts.reduce((sum, d) => sum + d.totalAmount, 0);
     const remainingTarget = liveDebts.reduce((sum, d) => sum + (d.isSettled ? 0 : d.remainingAmount), 0);
-    const paidTarget = totalTarget - remainingTarget;
+    const paidTarget = Math.max(0, totalTarget - remainingTarget);
     // Debts with nothing borrowed read as paid off, as each card does; no
     // debts at all reads 0%, which no screen shows (ADR 0081).
     const progressPercent = payoffPercent(totalTarget, remainingTarget, liveDebts.length > 0 ? 100 : 0);

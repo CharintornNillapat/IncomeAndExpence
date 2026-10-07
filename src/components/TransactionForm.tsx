@@ -139,7 +139,9 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
   const [description, setDescription] = useState<string>('');
   const [type, setType] = useState<TransactionType>(presetType || 'EXPENSE');
   const [walletId, setWalletId] = useState<string>(presetWalletId || wallets[0]?.id || '');
-  const [categoryId, setCategoryId] = useState<string>(categories[0]?.id || '');
+  // The last category picked or matched, of any type. What the select shows
+  // and the form submits is `shownCategoryId` below.
+  const [categoryId, setCategoryId] = useState<string>('');
   const [debtId, setDebtId] = useState<string>(presetDebtId || activeDebts[0]?.id || debts[0]?.id || '');
   const [date, setDate] = useState<string>(todayIsoDate());
 
@@ -179,6 +181,18 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
       setWalletId(wallets[0].id);
     }
   }, [wallets, walletId]);
+
+  /*
+   * The Category select offers the entry type's own categories only (ADR
+   * 0084), so an expense can no longer be filed under Balance Adjustment or
+   * Debt Repayment, which no spending figure counts (L1); their types differ,
+   * so the type match leaves them out. Derived on render: switching type
+   * moves to the type's first category, and switching back returns to the
+   * one picked before. A signed-in account's list is ordered by name, so it
+   * used to start on "Balance Adjustment", which an expense then defaulted to.
+   */
+  const typeCategories = categories.filter((c) => c.type === type);
+  const shownCategoryId = typeCategories.some((c) => c.id === categoryId) ? categoryId : typeCategories[0]?.id ?? '';
 
   const [autoMatchedCategory, setAutoMatchedCategory] = useState<string | null>(null);
   const { value: isSubmitted, flash: flashSubmitted } = useTransientFlash(false, 2500);
@@ -459,7 +473,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
     const shouldSaveTemplate =
       !lockType && saveAsTemplate && (type === 'EXPENSE' || type === 'INCOME') && templateName.trim().length > 0;
     const finalCategoryId =
-      type === 'EXPENSE' || type === 'INCOME' || type === 'ADJUSTMENT' ? categoryId : type === 'DEBT_REPAYMENT' ? debtCategory?.id : undefined;
+      type === 'EXPENSE' || type === 'INCOME' || type === 'ADJUSTMENT' ? shownCategoryId : type === 'DEBT_REPAYMENT' ? debtCategory?.id : undefined;
 
     submitTransaction(e, async () => {
       const res = await onSubmitTransaction({
@@ -545,13 +559,9 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
 
   // `DebtCard`'s figure (ADR 0079) with its `isSettled ? 0 : remaining`
   // branch collapsed - `projectedRemaining` is already the post-payment
-  // figure, and a settled debt is zero by construction.
+  // figure, and a settled debt is zero by construction. Clamped to 0 to 100
+  // by `payoffPercent` itself (ADR 0084).
   const projectedPercent = repayTargetDebt ? payoffPercent(repayTargetDebt.totalAmount, projectedRemaining, 100) : 100;
-  // `ProgressBar` clamps its own bar; the printed number does not get that
-  // for free, and a debt created with remaining > total (the add-debt form
-  // permits it) would otherwise print a negative percentage beside a
-  // correctly-pinned bar.
-  const displayPercent = Math.min(100, Math.max(0, projectedPercent));
 
   /**
    * Pushes a value into the amount field without remounting it, and latches
@@ -592,9 +602,9 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
     // The human chose this category - not the matcher, not Jev's auto-fill.
     userTouchedRef.current.category &&
     ruleCandidateCategory !== null &&
-    // The category select is unfiltered, so an EXPENSE can be filed under an
-    // INCOME category. A rule built from that would flip the type on every
-    // future match, which is more than the user asked for.
+    // The pick is in state whatever the type; after a switch to the other
+    // type it is not the category shown (ADR 0084), and a rule built from it
+    // would flip the type on every future match.
     ruleCandidateCategory.type === type &&
     ruleKeyword.length >= MIN_RULE_KEYWORD_LENGTH &&
     ruleKeyword.length <= MAX_RULE_KEYWORD_LENGTH &&
@@ -869,7 +879,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
             <div className="flex items-center justify-between text-[11px] text-fg-secondary">
               <span>Payoff progress</span>
               <span className="font-bold text-fg">
-                {displayPercent.toFixed(1)}%
+                {projectedPercent.toFixed(1)}%
               </span>
             </div>
           </div>
@@ -965,7 +975,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
               <div className="relative">
                 <select
                   id={`${formId}-category`}
-                  value={categoryId}
+                  value={shownCategoryId}
                   onChange={(e) => {
                     setCategoryId(e.target.value);
                     setAutoMatchedCategory(null);
@@ -975,7 +985,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
                   }}
                   className="w-full text-sm rounded-lg border border-line-input px-3 py-2.5 bg-surface-2 text-fg focus:outline-none focus:ring-2 focus:ring-focus transition-control"
                 >
-                  {categories.map((c) => (
+                  {typeCategories.map((c) => (
                     <option key={c.id} value={c.id} className={OPTION_CLASS}>
                       {c.name}
                     </option>

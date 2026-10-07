@@ -3,7 +3,7 @@ import { describe, it, expect, beforeAll, afterAll, afterEach } from 'vitest';
 import { render, cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { FinanceProvider } from '../src/context/FinanceContext';
 import { DebtsView } from '../src/views/DebtsView';
-import { DebtEditSchema } from '../src/utils/zodSchemas';
+import { DebtEditSchema, DebtSchema } from '../src/utils/zodSchemas';
 import { formatCurrencyAmount, MINUS } from '../src/utils/currency';
 import { formatShortDate, shiftIsoDate, todayIsoDate } from '../src/utils/date';
 import { debtPlan, requiredMonthly } from '../src/selectors/debts';
@@ -170,6 +170,28 @@ describe('a debt card', () => {
     mount({ debts: [debtRow({ id: 'zero', name: 'Gift', totalAmount: 0, remainingAmount: 250 })] });
     expect(byId('debt-card-zero')!.textContent).toContain('100.0% paid');
     expect(screen.getByTestId('debt-summary-paid').textContent).toContain('Paid off100.0%');
+  });
+
+  it('reads a debt owing more than was borrowed as 0% paid and nothing repaid, never a negative (ADR 0084)', () => {
+    // A row from before the Add Debt check, or a reversed overpayment (ADR 0016).
+    mount({ debts: [debtRow({ id: 'over', name: 'Card', totalAmount: 1000, remainingAmount: 1200 })] });
+    const card = byId('debt-card-over')!;
+    expect(within(card).getByText('0.0% paid')).toBeTruthy();
+    expect(card.textContent).toContain(`Repaid${formatCurrencyAmount(0)}`);
+    expect(card.textContent).not.toContain(MINUS);
+    expect(screen.getByTestId('debt-summary-paid').textContent).toBe(`Paid off0.0%${formatCurrencyAmount(0)} repaid`);
+  });
+
+  it('refuses a new debt owing more than its total, and adds nothing (ADR 0084)', async () => {
+    mount();
+    fireEvent.click(byId('open-add-debt-btn')!);
+    fireEvent.change(byId('new-debt-name')!, { target: { value: 'Card' } });
+    fireEvent.change(byId('new-debt-total')!, { target: { value: '1000' } });
+    fireEvent.change(byId('new-debt-remaining')!, { target: { value: '1200' } });
+    fireEvent.click(byId('save-new-debt-btn')!);
+    await waitFor(() => expect(screen.getByText(`Remaining can't be more than the total amount (${formatCurrencyAmount(1000)})`)).toBeTruthy());
+    expect(cardIds()).toEqual([]);
+    expect(localStorage.getItem('pf_debts') ?? '[]').not.toContain('Card');
   });
 
   it('keeps Edit and Delete in its ⋯ menu, which holds nothing until opened', () => {
@@ -348,5 +370,27 @@ describe('DebtEditSchema', () => {
     expect(ok({ interestRate: undefined, minimumPayment: undefined, dueDate: undefined })).toBe(true);
     expect(ok({ dueDate: '2027-03-31' })).toBe(true);
     expect(ok({ dueDate: '31/03/2027' })).toBe(false);
+  });
+});
+
+describe('DebtSchema: a new debt (ADR 0084)', () => {
+  const base = { name: 'Car', totalAmount: 5000, remainingAmount: 5000 };
+  const parse = (data: object) => DebtSchema.safeParse({ ...base, ...data });
+
+  it('lets what is owed equal the total, and not a cent more', () => {
+    expect(parse({}).success).toBe(true);
+    expect(parse({ remainingAmount: 0 }).success).toBe(true);
+    const over = parse({ remainingAmount: 5000.01 });
+    expect(over.success).toBe(false);
+    expect(over.error!.issues[0]).toMatchObject({
+      path: ['remainingAmount'],
+      message: `Remaining can't be more than the total amount (${formatCurrencyAmount(5000)})`,
+    });
+  });
+
+  it('keeps its other bounds', () => {
+    expect(parse({ remainingAmount: -1 }).success).toBe(false);
+    expect(parse({ totalAmount: 0, remainingAmount: 0 }).success).toBe(false);
+    expect(parse({ name: '' }).success).toBe(false);
   });
 });

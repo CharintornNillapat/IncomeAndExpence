@@ -102,6 +102,16 @@ export const DebtSchema = z.object({
   interestRate: z.number().min(0).max(100).optional(),
   minimumPayment: z.number().min(0).optional(),
   dueDate: z.string().optional(),
+}).superRefine((data, ctx) => {
+  // DebtEditSchema's rule from the other side (ADR 0084): a new debt cannot
+  // owe more than it borrowed, or its card reads a negative share paid.
+  if (data.remainingAmount > data.totalAmount) {
+    ctx.addIssue({
+      code: 'custom',
+      message: `Remaining can't be more than the total amount (${formatCurrencyAmount(data.totalAmount)})`,
+      path: ['remainingAmount'],
+    });
+  }
 });
 
 /**
