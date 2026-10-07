@@ -1081,6 +1081,23 @@ Approved explicitly by the user, planned and approved before any code was writte
 - **One negative control was redone** because the first attempt produced malformed TypeScript that the dev server still served — the tests failed, but possibly for the wrong reason.
 - **No flakes.** Phase 44's `wallets.spec.ts` webkit flake has now not reproduced across three consecutive phases; still watched rather than closed.
 
+## Phase 105 - The amount field's arithmetic is the app's own parser, not mathjs; the debt summaries read 100% when nothing is borrowed: T640-T645 (2026-10-07)
+
+ADR `0081`, amending ADR `0010` and `0080`. Branch `phase-105-lightweight-math-and-summary-fix`, cut from `main` at `9f00a68`; draft PR pending. Finding 6 of `AGY_AUDIT300926.md`, and the owner's decision that the summaries read 100% for debts that borrowed nothing.
+
+| # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
+|---|---|---|---|---|---|---|---|---|---|---|
+| T640 | Trace: one `evaluate` call is mathjs's only use; the keys are `+ - * / ( )`; no test types `%` or `^`; mathjs's percent, modulo and bracket-product readings probed | - | Med | Low | 0.3h | done | - | pending | - | - |
+| T641 | Pin mathjs's figures and the new refusals in `unit/math-evaluator.test.ts`, red first for `%`, `^` and the note | `unit/math-evaluator.test.ts` | High | Low | 0.3h | done | T640 | pending | 8 failed on the mathjs code, 70 passed on it | +83 tests |
+| T642 | `evaluateArithmetic` replaces mathjs; `%`/`^` leave the checks and the note anchors; compared with mathjs on 1,000,000 random strings, then the unwritten products mathjs grouped its own way refused | `src/utils/mathEvaluator.ts`, `src/utils/expressInput.ts` | High | Med | 0.8h | done | T641 | pending | no differing figure; 3,169 refusals | - |
+| T643 | Remove `mathjs` and the `vendor-math` rule | `package.json`, `package-lock.json`, `vite.config.ts`, `src/App.tsx`, `src/utils/jevClassifier.ts` | High | Low | 0.1h | done | T642 | pending | build clean; no `mathjs` left in `dist/` | all JS −375,843 / −109,559 B |
+| T644 | ฿0 summary: the pin reads 100%, red first; `useDebts` passes 100 when there are debts | `unit/debts-page.test.tsx`, `src/hooks/useDebts.ts`, `src/selectors/debts.ts` | Med | Low | 0.1h | done | - | pending | failed on the unchanged hook, then passed | - |
+| T645 | Gate, ADR `0081`, `CLAUDE.md`, this ledger, the refactor log, baseline metrics | `docs/`, `CLAUDE.md` | Med | Low | 0.4h | done | T643, T644 | pending | lint clean; unit 1169/1169 in 43 files; Playwright 468 passed, 6 skipped of 474 (8.2 m); schema drift run `37564628998`: no drift, 19 migrations | - |
+
+**Notes on execution:**
+- **The first comparison run was not random enough:** its generator multiplied past 2^53 and repeated itself, so its 202 differences were one string. Replaced by mulberry32 (762,500 distinct strings) before any figure was taken.
+- **Matching mathjs found two rules the tests had not:** `5./2` (mathjs read `./` as an operator) and its grouping of `26/(53)7`; the first is matched, the second refused.
+
 ## Phase 104 - A debt with nothing borrowed reads 100% everywhere; the Google Fonts cache goes; the date helpers stay in one module: T634-T639 (2026-10-06)
 
 ADR `0080`, amending ADR `0079`. Branch `phase-104-debt-zero-and-audit-cleanups`, cut from `main` at `be76c8a`; code `1f53d5d`, docs `4d06ae8`, hash backfill `3c91084`; merged into `main` as `53d3c98` (PR #55); Vercel `dpl_9B3t1Y8CGnN5F5R3ERx5PBxNNxh7` READY in `icn1`. The pull request's CI (run `37488597975`) passed every job. `Main` CI on the merge (run `37489813461`) passed every job in 285 s end to end, 19 s of it the merge job (unit 1086; 468 passed, 6 skipped, no flaky test). The owner's decision on the ฿0 debt (100% everywhere), and findings 10 and 11 of `AGY_AUDIT300926.md`.

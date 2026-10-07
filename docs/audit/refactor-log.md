@@ -4,6 +4,32 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
+## Phase 105 - The amount field's arithmetic is the app's own parser, not mathjs; the debt summaries read 100% when nothing is borrowed: T640-T645 (2026-10-07, PR pending)
+
+ADR `0081`. Finding 6 of the 2026-09-30 architecture audit (`AGY_AUDIT300926.md`), and the owner's decision on ADR `0080`'s open question.
+
+**Changed**
+- **`src/utils/mathEvaluator.ts`:** `evaluateArithmetic`, a recursive-descent parser for `+ - * /`, unary signs, brackets and decimals, replaces `mathjs/number`'s `evaluate`. `%` and `^` leave the character check and the field's two operator tests; `(2)3` and `6/2(3)`, which mathjs grouped its own way, are refused.
+- **`src/utils/expressInput.ts`:** the three anchors drop `%` and `^`, matching the character check.
+- **`package.json` / `package-lock.json`:** `mathjs` and the seven packages only it used are gone.
+- **`vite.config.ts`:** the `vendor-math` chunk rule is gone. Comments in `App.tsx` and `jevClassifier.ts` no longer name it.
+- **`src/hooks/useDebts.ts`:** the summaries pass 100 for nothing borrowed when there are debts (0 with none); `selectors/debts.ts`'s comment says so.
+- **Unit:** `unit/math-evaluator.test.ts` (83 tests: mathjs's figures, the bracket products, the refusals, the messages, `%`/`^`, a note with a percent); the Debt payoff page's ฿0 pin reads "Paid off100.0%".
+- **Docs:** ADR `0081`; `CLAUDE.md`'s libraries, deferred-modal, calculation-input and payoff rules, unit count and ADR list.
+
+**Gate:**
+- Lint clean. Unit 1169/1169 in 43 files. Playwright 468 passed, 6 skipped of 474 (8.2 m), no failure, no flaky test.
+- **Red first:** the eight `%`/`^`/note tests failed on the mathjs code; the ฿0 summary pin failed on the unchanged hook (`'Paid off0.0%−฿250.00 repaid'`).
+- **Against mathjs:** a one-off run over 1,000,000 random strings (762,500 distinct) found no figure the parser gives that mathjs did not; 3,169 strings mathjs answered are now refused, all a number after a bracket or a bracket product after a division (ADR `0081`).
+- **Bundle:** all app JS −375,843 / −109,559 B (gzip -9); details in baseline metrics.
+- **Schema drift:** run `37564628998` (dispatched on `main` at `9f00a68`; this phase changes no migration) replayed 19 migrations and found no drift: "Live matches all 19 migrations".
+
+**Deliberately not done**
+- **Percent and power in the amount field:** no operator key offers them, and mathjs's percent read differently by position. Add them back as their own decision, with one meaning each.
+- **mathjs's grouping of an unwritten product after a division:** refused, not reproduced.
+
+---
+
 ## Phase 104 - A debt with nothing borrowed reads 100% everywhere; the Google Fonts cache goes; the date helpers stay in one module: T634-T639 (2026-10-06, code `1f53d5d`, docs `4d06ae8`, merge `53d3c98`)
 
 ADR `0080`. The owner's decision on ADR `0079`'s open question, plus findings 10 and 11 of the 2026-09-30 architecture audit (`AGY_AUDIT300926.md`).
