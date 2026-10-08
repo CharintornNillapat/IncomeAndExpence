@@ -4,9 +4,14 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 116 - The diary has contexts of its own, composed under FinanceProvider; one code for a missing function: T704-T707 (2026-10-08, code `1e2f13f`, docs `2673f32`, PR #67)
+## Phase 116 - The diary has contexts of its own, composed under FinanceProvider; one code for a missing function: T704-T707 (2026-10-08, code `1e2f13f`, docs `2673f32`, merge `aa02a30`)
 
 ADR `0092`. The owner's brief: move the diary out of `FinanceContext` without breaking a view, measure re-renders before and after, keep guest and cloud behaviour, and give the remaining missing-function paths the one code.
+
+**Release:**
+- The pull request's CI (run `37760829569`, on `e5858ac`) passed every job.
+- PR #67 merged into `main` as `aa02a30`, whose tree is identical to `e5858ac`. Vercel `dpl_CFUe5UcNpT2bEujEVbYiA71aZPy5` is READY in production, region `icn1`; production serves the entry `index-B8gRtQN0.js`, the same hash as a local build of `main`, with `DiaryContext` in it.
+- `main` CI on the merge (run `37770513796`) passed every job on its first attempt in 308 s end to end, the merge job included: unit 1306; 486 passed, 6 skipped, no flaky test. The local WebKit painting stall (ADR `0058`) did not show on CI's Linux WebKit.
 
 **Changed**
 - **`src/context/DiaryContext.tsx` (new):** `useDiaryEntriesState`, `useDiaryMutations` (the two writes, unchanged), `mapDiaryRow`, `DiaryProvider`, `useDiaryState`, `useDiaryActions`.

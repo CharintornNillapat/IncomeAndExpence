@@ -1,6 +1,6 @@
 # 0092: The diary has contexts of its own, composed under FinanceProvider; one code for a missing function
 
-**Status:** Accepted. Code `1e2f13f`, docs `2673f32`, draft PR #67; not merged. No migration; live drift run `37760655280`: no drift, 20 migrations.
+**Status:** Accepted. Released: code `1e2f13f`, docs `2673f32`, hash backfill `e5858ac`, merged into `main` as `aa02a30` (PR #67); Vercel `dpl_CFUe5UcNpT2bEujEVbYiA71aZPy5` READY in `icn1`. No migration; live drift run `37760655280`: no drift, 20 migrations.
 - **The first slice of** the AGY audit's finding 3 (the monolithic `FinanceContext`).
 - **Amends** ADR `0091`: `updateTransaction`, `deleteAccount` and the account seed report a missing function the same way.
 
@@ -51,6 +51,12 @@ The Dashboard and the diary still re-render on a diary save (they show it), and 
 - **`unit/backup-restore.test.tsx`:** its probe reads the diary's context too.
 - **Gate:** lint clean; unit, first run 1287 passed and 1 failed with one suite's setup timing out (93 s; the session list's 1 s lookup in `authenticated-ledger` and `migration-history`'s PGlite hook, each passing alone, the session test three times), second run 1306/1306 in 57 files (71 s); Playwright 484 passed, 6 skipped, 2 failed of 492 (19.4 m, traces on): both the WebKit painting stall on `gotoTab`'s tab click, and those two specs passed 140 of 140 on WebKit; no migration.
 - **WebKit:** both failures were `gotoTab`'s tab click waiting 15 s on "stable", traced with frames stopping within 0.6 s of it, in `csv-classify` and `debts-page`, which this phase does not change. Both clicks came after `settle` (ADR `0091`) had found nothing animating, so the stall happens with no tween running too. Per the owner's decision (ADR `0091`) they were repeated, not fixed: 140 of 140 on WebKit.
+
+## Release
+
+- PR #67 merged into `main` as `aa02a30`, whose tree is identical to `e5858ac`; the pull request's CI (run `37760829569`) passed every job.
+- Vercel `dpl_CFUe5UcNpT2bEujEVbYiA71aZPy5` is READY in production, region `icn1`; production serves the entry `index-B8gRtQN0.js`, the same hash as a local build of `main`, with `DiaryContext` in it.
+- `main` CI on the merge (run `37770513796`) passed every job on its first attempt in 308 s end to end, the merge job included: unit 1306; 486 passed, 6 skipped, no flaky test. The local WebKit painting stall (ADR `0058`) did not show on CI's Linux WebKit.
 
 ## Bundle
 

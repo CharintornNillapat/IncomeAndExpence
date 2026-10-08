@@ -1083,7 +1083,7 @@ Approved explicitly by the user, planned and approved before any code was writte
 
 ## Phase 116 - The diary has contexts of its own, composed under FinanceProvider; one code for a missing function: T704-T707 (2026-10-08)
 
-ADR `0092`, the first slice of the AGY audit's finding 3, amending ADR `0091`. Branch `phase-116-split-diary-context`, cut from `main` at `44f1a9f`; code `1e2f13f`, docs `2673f32`; draft PR #67. No migration; live drift run `37760655280`: no drift, 20 migrations.
+ADR `0092`, the first slice of the AGY audit's finding 3, amending ADR `0091`. Branch `phase-116-split-diary-context`, cut from `main` at `44f1a9f`; code `1e2f13f`, docs `2673f32`, hash backfill `e5858ac`; merged into `main` as `aa02a30` (PR #67); Vercel `dpl_CFUe5UcNpT2bEujEVbYiA71aZPy5` READY in `icn1`. The pull request's CI (run `37760829569`) passed every job. `main` CI on the merge (run `37770513796`) passed every job on its first attempt in 308 s end to end, the merge job included: unit 1306; 486 passed, 6 skipped, no flaky test. The local WebKit painting stall (ADR `0058`) did not show on CI's Linux WebKit. No migration; live drift run `37760655280`: no drift, 20 migrations.
 
 | # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
 |---|---|---|---|---|---|---|---|---|---|---|
