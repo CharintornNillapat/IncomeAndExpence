@@ -1,6 +1,6 @@
 # 0091: A signed-in ledger write is one database function or nothing; the test helpers wait for tweens to end
 
-**Status:** Accepted. Draft PR; not merged. No migration.
+**Status:** Accepted. Code `b59cc14`, docs `f08e132`, draft PR #66; not merged. No migration; live drift run `37732553429`: no drift, 20 migrations.
 - **Supersedes** the fallback parts of ADR `0022` (the import's insert-then-compensate) and ADR `0023` ("the legacy absolute-write paths remain only as the missing-function fallback"), and ADR `0024`'s fallback for `create_wallet`.
 - **Amends** ADR `0058` and `0089`: the shared test helpers wait for running animations before they click.
 

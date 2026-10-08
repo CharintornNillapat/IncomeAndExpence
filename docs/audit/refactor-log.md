@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 115 - A signed-in ledger write is one database function or nothing; the test helpers wait for tweens to end: T700-T703 (2026-10-08)
+## Phase 115 - A signed-in ledger write is one database function or nothing; the test helpers wait for tweens to end: T700-T703 (2026-10-08, code `b59cc14`, docs `f08e132`, PR #66)
 
 ADR `0091`. The owner's brief: remove the non-atomic fallback writes, fail fast with a structured error, and make the shared test helpers wait for animations before they click.
 
