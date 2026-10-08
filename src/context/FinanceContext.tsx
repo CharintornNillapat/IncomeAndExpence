@@ -10,7 +10,6 @@ import {
   WalletEdit,
   DebtEdit,
   Debt,
-  DiaryEntry,
   ImportRowValidation,
   TransactionType,
   Preset,
@@ -33,7 +32,6 @@ import {
   WalletEditSchema,
   DebtSchema,
   DebtEditSchema,
-  DiarySchema,
   KeywordMappingSchema,
   CategorySchema,
   PresetSchema,
@@ -49,6 +47,7 @@ import { isMovementCategory, SYSTEM_CATEGORY_COLOR } from '../selectors/ledger';
 import { dedupeCategoriesByName, withDefaultDescriptions } from '../utils/categoryUtils';
 import { migrateCategoryColors, migrateWalletColors } from '../utils/identityColorMigration';
 import { generateIdempotencyKey } from '../utils/ids';
+import { DiaryProvider, mapDiaryRow, useDiaryEntriesState, useDiaryMutations } from './DiaryContext';
 
 /**
  * Outcome of a validated write. Every mutating call reports failure this way
@@ -101,8 +100,8 @@ export interface FinanceStateContextType {
   // Debts
   debts: Debt[];
 
-  // Holistic Diary
-  diaryEntries: DiaryEntry[];
+  // The diary has contexts of its own since Phase 116 (ADR 0092):
+  // `useDiaryState()` and `useDiaryActions()` in `./DiaryContext`.
 
   // Filters
   showSoftDeleted: boolean;
@@ -231,10 +230,6 @@ export interface FinanceActionsContextType {
   editDebt: (debtId: string, details: DebtEdit) => Promise<MutationResult>;
   settleDebt: (debtId: string) => Promise<MutationResult>;
   deleteDebt: (debtId: string) => Promise<MutationResult>;
-
-  // Holistic Diary
-  upsertDiaryEntry: (entry: Omit<DiaryEntry, 'id' | 'userId' | 'createdAt' | 'updatedAt' | 'isDeleted'>) => Promise<MutationResult>;
-  deleteDiaryEntry: (id: string) => Promise<MutationResult>;
 
   // Filters & State helpers
   setShowSoftDeleted: (show: boolean) => void;
@@ -436,16 +431,14 @@ function isMissingRpcError(err: { code?: string; message?: string } | null): boo
  */
 class MissingLedgerFunction extends Error {}
 
-function databaseUpdateNeeded(): MutationResult {
-  return {
-    success: false,
-    code: 'DATABASE_UPDATE_NEEDED',
-    error: 'This needs the latest database update. Nothing was changed.',
-  };
+// Since Phase 116 (ADR 0092) every write a missing function stops returns this
+// code; `updateTransaction` and `deleteAccount` keep their own, more exact, text.
+function databaseUpdateNeeded(error = 'This needs the latest database update. Nothing was changed.'): MutationResult {
+  return { success: false, code: 'DATABASE_UPDATE_NEEDED', error };
 }
 
 /** What `seed_starter_account()` decided for an empty wallet read (ADR 0039). */
-type SeedOutcome = 'seeded' | 'not-new' | 'busy' | 'failed';
+type SeedOutcome = 'seeded' | 'not-new' | 'busy' | 'update-needed' | 'failed';
 
 // Shape returned by `update_transaction` (ADR 0033): the row, and the balance of
 // every wallet on either side of the edit.
@@ -644,7 +637,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
   const [presets, setPresets] = useState<Preset[]>(() => safeGetLocalStorage('pf_presets', []));
   const [transactions, setTransactions] = useState<Transaction[]>(() => safeGetLocalStorage('pf_transactions', []));
   const [debts, setDebts] = useState<Debt[]>(() => safeGetLocalStorage<Debt[]>('pf_debts', []));
-  const [diaryEntries, setDiaryEntries] = useState<DiaryEntry[]>(() => safeGetLocalStorage('pf_diary', []));
+  const { diaryEntries, setDiaryEntries, diaryEntriesRef } = useDiaryEntriesState(() => safeGetLocalStorage('pf_diary', []));
 
   const [showSoftDeleted, setShowSoftDeleted] = useState<boolean>(false);
 
@@ -720,7 +713,6 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
   const transactionsRef = useRef<Transaction[]>(transactions);
   const debtsRef = useRef<Debt[]>(debts);
   const categoriesRef = useRef<Category[]>(categories);
-  const diaryEntriesRef = useRef<DiaryEntry[]>(diaryEntries);
   const keywordRulesRef = useRef<KeywordRule[]>(keywordRules);
   const presetsRef = useRef<Preset[]>(presets);
 
@@ -736,9 +728,6 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
   useEffect(() => {
     categoriesRef.current = categories;
   }, [categories]);
-  useEffect(() => {
-    diaryEntriesRef.current = diaryEntries;
-  }, [diaryEntries]);
   useEffect(() => {
     keywordRulesRef.current = keywordRules;
   }, [keywordRules]);
@@ -958,6 +947,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
   //   'seeded'   - it seeded, and the reload it ran has the new rows;
   //   'not-new'  - the account was seeded before; carry on loading;
   //   'busy'     - a seed is already running in this tab, which will reload;
+  //   'update-needed' - the function is missing (ADR 0092); keep what is on screen;
   //   'failed'   - no answer worth trusting; keep what is on screen.
   const seedInitialUserAccount = useCallback(async (userId: string): Promise<SeedOutcome> => {
     if (isSeedingRef.current) return 'busy';
@@ -965,12 +955,11 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     try {
       const { data, error } = await supabase.rpc('seed_starter_account');
       if (error) {
-        console.error(
-          isMissingRpcError(error)
-            ? '[Seed] seed_starter_account is missing; the database needs the Phase 64 migration'
-            : '[Seed Error]',
-          error
-        );
+        if (isMissingRpcError(error)) {
+          console.error('[Seed] seed_starter_account is missing; the database needs the Phase 64 migration', error);
+          return 'update-needed';
+        }
+        console.error('[Seed Error]', error);
         return 'failed';
       }
       if ((data as { seeded?: boolean } | null)?.seeded !== true) return 'not-new';
@@ -1010,6 +999,11 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
         if (mappedWallets.length === 0) {
           const outcome = await seedInitialUserAccount(userId);
           if (outcome === 'seeded' || outcome === 'busy' || signedOutMeanwhile()) return;
+          if (outcome === 'update-needed') {
+            // No trailing period: the sync badge adds ". Tap to try again."
+            setSyncError('Setting up this account needs the latest database update');
+            return;
+          }
           if (outcome === 'failed') {
             setSyncError('Could not read wallets');
             return;
@@ -1098,21 +1092,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
 
       if (diaryErr) failedReads.push('diary_entries');
       if (!diaryErr && diaryData) {
-        setDiaryEntries(
-          diaryData.map((row) => ({
-            id: row.id,
-            userId: row.user_id,
-            date: row.date,
-            mood: row.mood,
-            workout: row.workout || false,
-            workoutNote: row.workout_note || undefined,
-            foodQuality: row.food_quality,
-            notes: row.notes || undefined,
-            isDeleted: row.is_deleted || false,
-            createdAt: row.created_at,
-            updatedAt: row.updated_at,
-          }))
-        );
+        setDiaryEntries(diaryData.map(mapDiaryRow));
       }
 
       // Only a clean load counts as a reload (ADR 0022). A load that read
@@ -1451,7 +1431,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     const { error } = await supabase.rpc('delete_user_account', { p_confirm: confirmation });
     if (error) {
       if (isMissingRpcError(error)) {
-        return { success: false, error: 'Account deletion needs a database update that has not been applied yet. Nothing was deleted.' };
+        return databaseUpdateNeeded('Account deletion needs a database update that has not been applied yet. Nothing was deleted.');
       }
       if (isUnknownOutcomeError(error)) {
         await verifySession();
@@ -2717,7 +2697,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       // could not be made atomic, so it waits for the migration instead.
       if (isMissingRpcError(error)) {
         await undo(false);
-        return { success: false, error: 'Editing needs the latest database update. Nothing was changed.' };
+        return databaseUpdateNeeded('Editing needs the latest database update. Nothing was changed.');
       }
       if (error.message === 'TRANSACTION_CHANGED') {
         await undo(true);
@@ -3143,112 +3123,15 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     }
   }, [isAuthenticated, markLocalWrite]);
 
-  // Holistic Diary CRUD
-  const upsertDiaryEntry = useCallback(async (
-    entryData: Omit<DiaryEntry, 'id' | 'userId' | 'createdAt' | 'updatedAt' | 'isDeleted'>
-  ): Promise<MutationResult> => {
-    const validation = DiarySchema.safeParse(entryData);
-    if (!validation.success) {
-      return { success: false, error: formatZodIssues(validation.error) };
-    }
-
-    if (isAuthenticated) {
-      const existing = diaryEntriesRef.current.find((e) => e.date === entryData.date && !e.isDeleted);
-      const { data: upserted, error } = existing
-        ? await supabase
-            .from('diary_entries')
-            .update({
-              mood: entryData.mood,
-              workout: entryData.workout,
-              workout_note: entryData.workoutNote || null,
-              food_quality: entryData.foodQuality,
-              notes: entryData.notes || null,
-              updated_at: new Date().toISOString(),
-            })
-            .eq('id', existing.id)
-            .select()
-            .single()
-        : await supabase
-            .from('diary_entries')
-            .insert({
-              user_id: currentUser.id,
-              date: entryData.date,
-              mood: entryData.mood,
-              workout: entryData.workout,
-              workout_note: entryData.workoutNote || null,
-              food_quality: entryData.foodQuality,
-              notes: entryData.notes || null,
-            })
-            .select()
-            .single();
-
-      if (error) {
-        return { success: false, error: error.message || 'Failed to save diary entry' };
-      }
-
-      markLocalWrite(existing?.id ?? upserted?.id);
-      await refreshFromCloud();
-    } else {
-      setDiaryEntries((prev) => {
-        const existingIdx = prev.findIndex((e) => e.date === entryData.date && !e.isDeleted);
-        if (existingIdx >= 0) {
-          const updated = [...prev];
-          updated[existingIdx] = {
-            ...updated[existingIdx],
-            ...entryData,
-            updatedAt: new Date().toISOString(),
-          };
-          return updated;
-        } else {
-          const newEntry: DiaryEntry = {
-            ...entryData,
-            id: `diary-${Date.now()}`,
-            userId: currentUser.id,
-            isDeleted: false,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-          };
-          return [newEntry, ...prev];
-        }
-      });
-    }
-
-    return { success: true };
-  }, [isAuthenticated, currentUser.id, refreshFromCloud, markLocalWrite]);
-
-  const deleteDiaryEntry = useCallback(async (id: string): Promise<MutationResult> => {
-    const previousDiaryEntries = diaryEntriesRef.current;
-
-    setDiaryEntries((prev) =>
-      prev.map((e) => (e.id === id ? { ...e, isDeleted: true, updatedAt: new Date().toISOString() } : e))
-    );
-
-    if (!isAuthenticated) {
-      return { success: true };
-    }
-
-    try {
-      markLocalWrite(id);
-      const { error } = await supabase
-        .from('diary_entries')
-        .update({ is_deleted: true, updated_at: new Date().toISOString() })
-        .eq('id', id);
-      if (error) throw error;
-      return { success: true };
-    } catch (err: unknown) {
-      console.error('[Delete Diary Entry Failed]', err);
-      setDiaryEntries(previousDiaryEntries);
-      const postgrestErr = err as { message?: string; details?: string; hint?: string };
-      return {
-        success: false,
-        error:
-          postgrestErr?.message ||
-          postgrestErr?.details ||
-          postgrestErr?.hint ||
-          (err instanceof Error ? err.message : 'Failed to delete diary entry'),
-      };
-    }
-  }, [isAuthenticated, markLocalWrite]);
+  // The diary's writes live in ./DiaryContext (Phase 116, ADR 0092).
+  const diaryActions = useDiaryMutations({
+    isAuthenticated,
+    currentUserId: currentUser.id,
+    markLocalWrite,
+    refreshFromCloud,
+    setDiaryEntries,
+    diaryEntriesRef,
+  });
 
   // Memoised so the provider only hands consumers a new object when something they
   // can actually observe has changed. Without this, every render of the provider
@@ -3273,7 +3156,6 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       presets,
       transactions,
       debts,
-      diaryEntries,
       showSoftDeleted,
     }),
     [
@@ -3288,7 +3170,6 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       presets,
       transactions,
       debts,
-      diaryEntries,
       showSoftDeleted,
     ]
   );
@@ -3298,8 +3179,9 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
   // the `useState` setter, so this object's identity survives a ledger write and
   // a consumer reading only actions does not re-render because of one.
   //
-  // `addTransaction`, `softDeleteTransaction`, `restoreTransaction`,
-  // `commitBulkImport`, and `upsertDiaryEntry` joined this half in T15.
+  // `addTransaction`, `softDeleteTransaction`, `restoreTransaction` and
+  // `commitBulkImport` joined this half in T15 (with `upsertDiaryEntry`, which
+  // has the diary's own context since Phase 116).
   //
   // `updateWallet` is deliberately absent from this object (T64): callers get
   // the narrow `deleteWallet`, `editWallet` and `setWalletArchived` instead,
@@ -3333,8 +3215,6 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       editDebt,
       settleDebt,
       deleteDebt,
-      upsertDiaryEntry,
-      deleteDiaryEntry,
       setShowSoftDeleted,
       refreshFromCloud,
     }),
@@ -3366,8 +3246,6 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       editDebt,
       settleDebt,
       deleteDebt,
-      upsertDiaryEntry,
-      deleteDiaryEntry,
       refreshFromCloud,
     ]
   );
@@ -3378,7 +3256,9 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
   return (
     <FinanceActionsContext.Provider value={actionsValue}>
       <FinanceStateContext.Provider value={stateValue}>
-        {children}
+        <DiaryProvider diaryEntries={diaryEntries} actions={diaryActions}>
+          {children}
+        </DiaryProvider>
       </FinanceStateContext.Provider>
     </FinanceActionsContext.Provider>
   );

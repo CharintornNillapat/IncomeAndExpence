@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Download } from 'lucide-react';
-import { useFinanceState, useFinanceActions } from '../context/FinanceContext';
+import { useFinanceState } from '../context/FinanceContext';
+import { useDiaryActions, useDiaryState } from '../context/DiaryContext';
 import { useTransientFlash } from '../hooks/useTransientFlash';
 import { DiaryEntryForm, DiaryEntryDraft } from '../components/diary/DiaryEntryForm';
 import { DiaryCalendar } from '../components/diary/DiaryCalendar';
@@ -25,8 +26,9 @@ interface DiaryViewProps {
  * entry; spending figures are L1's (`daySpending`), computed here once.
  */
 export const DiaryView: React.FC<DiaryViewProps> = ({ onOpenDayTransactions }) => {
-  const { diaryEntries, transactions, categories } = useFinanceState();
-  const { upsertDiaryEntry, deleteDiaryEntry } = useFinanceActions();
+  const { transactions, categories } = useFinanceState();
+  const { diaryEntries } = useDiaryState();
+  const { upsertDiaryEntry, deleteDiaryEntry } = useDiaryActions();
 
   const today = todayIsoDate();
   const yesterday = daysAgoIsoDate(1);

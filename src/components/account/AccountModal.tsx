@@ -20,6 +20,7 @@ import {
 import { Modal } from '../Modal';
 import { ConfirmDialog } from '../ui/ConfirmDialog';
 import { useFinanceActions, useFinanceState } from '../../context/FinanceContext';
+import { useDiaryState } from '../../context/DiaryContext';
 import { useSubmitHandler } from '../../hooks/useSubmitHandler';
 import { useTransientFlash } from '../../hooks/useTransientFlash';
 import { loadSupabase } from '../../lib/supabase';
@@ -370,8 +371,9 @@ const SessionsSection: React.FC = () => {
  * cloud is the record, so the section says why it offers no restore.
  */
 const ExportDataSection: React.FC = () => {
-  const { isAuthenticated, isSyncing, syncError, wallets, transactions, debts, categories, keywordRules, diaryEntries } =
+  const { isAuthenticated, isSyncing, syncError, wallets, transactions, debts, categories, keywordRules } =
     useFinanceState();
+  const { diaryEntries } = useDiaryState();
   const { restoreBackup } = useFinanceActions();
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState<AccountExport | null>(null);

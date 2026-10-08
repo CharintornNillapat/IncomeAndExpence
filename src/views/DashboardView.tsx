@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { useFinanceState } from '../context/FinanceContext';
+import { useDiaryState } from '../context/DiaryContext';
 import { useWallets } from '../hooks/useWallets';
 import { useDebts } from '../hooks/useDebts';
 import { PageHeader } from '../components/ui/PageHeader';
@@ -58,7 +59,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onOpenWallet,
   onOpenTransaction,
 }) => {
-  const { transactions, categories, diaryEntries, currentUser } = useFinanceState();
+  const { transactions, categories, currentUser } = useFinanceState();
+  const { diaryEntries } = useDiaryState();
   // `wallets` here is already the active set; `allWallets` still includes
   // deleted ones so historic rows can resolve their wallet name.
   const { wallets: activeWallets, allWallets } = useWallets();

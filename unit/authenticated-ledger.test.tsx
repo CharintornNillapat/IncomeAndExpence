@@ -3,6 +3,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { useState } from 'react';
 import { render, cleanup, waitFor, screen, fireEvent } from '@testing-library/react';
 import { AccountModal } from '../src/components/account/AccountModal';
+import { useDiaryActions, useDiaryState } from '../src/context/DiaryContext';
 import {
   FinanceProvider,
   useFinanceState,
@@ -347,13 +348,18 @@ function seed() {
   };
 }
 
-let latest: { state: FinanceStateContextType; actions: FinanceActionsContextType } | null = null;
+let latest: {
+  state: FinanceStateContextType;
+  actions: FinanceActionsContextType;
+  diary: ReturnType<typeof useDiaryState>;
+  diaryActions: ReturnType<typeof useDiaryActions>;
+} | null = null;
 
 /** Renders extra UI inside the one provider, for component tests (ADR 0024). */
 let showUi: ((node: React.ReactNode) => void) | null = null;
 
 function Probe() {
-  latest = { state: useFinanceState(), actions: useFinanceActions() };
+  latest = { state: useFinanceState(), actions: useFinanceActions(), diary: useDiaryState(), diaryActions: useDiaryActions() };
   const [ui, setUi] = useState<React.ReactNode>(null);
   showUi = setUi;
   return <>{ui}</>;
@@ -361,6 +367,9 @@ function Probe() {
 
 const state = () => latest!.state;
 const actions = () => latest!.actions;
+// The diary's own contexts (Phase 116, ADR 0092).
+const entries = () => latest!.diary.diaryEntries;
+const diaryWrite = () => latest!.diaryActions;
 const wallet = (id: string = WALLET) => state().wallets.find((w) => w.id === id);
 const serverWallet = (id: string) => fake.state.tables.wallets.find((w) => w.id === id)!;
 const debt = () => state().debts.find((d) => d.id === DEBT);
@@ -1369,8 +1378,12 @@ describe('a signed-in edit through update_transaction (ADR 0033)', () => {
 
     const result = await actions().updateTransaction(spent.txId!, editOf(spent.txId!, { amount: 250 }));
 
-    expect(result.success).toBe(false);
-    expect(result.error).toContain('latest database update');
+    // The code every missing ledger function returns (Phase 116, ADR 0092).
+    expect(result).toEqual({
+      success: false,
+      code: 'DATABASE_UPDATE_NEEDED',
+      error: 'Editing needs the latest database update. Nothing was changed.',
+    });
     expect(writes('wallets', 'update')).toHaveLength(0);
     expect(writes('transactions', 'update')).toHaveLength(0);
     await waitFor(() => {
@@ -1889,6 +1902,72 @@ describe('the server\'s aggregate guard on a CSV import (F8, ADR 0024)', () => {
   });
 });
 
+describe('the diary, signed in (Phase 116, ADR 0092)', () => {
+  /*
+   * The slice moved out of FinanceContext unchanged: these pin what it sends
+   * and what it shows, and pass against the code from before the move.
+   */
+  const ROW = {
+    id: 'diary-srv-1', user_id: fake.USER_ID, date: TODAY, mood: 3, workout: true, workout_note: 'Run',
+    food_quality: 'AVERAGE', notes: null, is_deleted: false,
+    created_at: '2026-09-26T00:00:00.000Z', updated_at: '2026-09-26T00:00:00.000Z',
+  };
+
+  it('loads the rows with the other tables, mapped', async () => {
+    fake.state.tables.diary_entries.push({ ...ROW });
+    await actions().refreshFromCloud();
+    await waitFor(() => expect(entries()).toEqual([{
+      id: 'diary-srv-1', userId: fake.USER_ID, date: TODAY, mood: 3, workout: true, workoutNote: 'Run',
+      foodQuality: 'AVERAGE', notes: undefined, isDeleted: false,
+      createdAt: '2026-09-26T00:00:00.000Z', updatedAt: '2026-09-26T00:00:00.000Z',
+    }]));
+  });
+
+  it('a new day is one insert under the account, then a reload shows it', async () => {
+    const result = await diaryWrite().upsertDiaryEntry({ date: TODAY, mood: 4, workout: false, foodQuality: 'HEALTHY', notes: 'Fine' });
+    expect(result).toEqual({ success: true });
+    expect(writes('diary_entries', 'insert')).toHaveLength(1);
+    expect(writes('diary_entries', 'insert')[0].payload).toEqual({
+      user_id: fake.USER_ID, date: TODAY, mood: 4, workout: false, workout_note: null, food_quality: 'HEALTHY', notes: 'Fine',
+    });
+    await waitFor(() => expect(entries().map((e) => [e.date, e.mood, e.notes])).toEqual([[TODAY, 4, 'Fine']]));
+  });
+
+  it('a day already logged is one update of that row', async () => {
+    fake.state.tables.diary_entries.push({ ...ROW });
+    await actions().refreshFromCloud();
+    await waitFor(() => expect(entries()).toHaveLength(1));
+
+    expect((await diaryWrite().upsertDiaryEntry({ date: TODAY, mood: 5, workout: true, foodQuality: 'HEALTHY' })).success).toBe(true);
+    expect(writes('diary_entries', 'insert')).toHaveLength(0);
+    const updates = writes('diary_entries', 'update');
+    expect(updates).toHaveLength(1);
+    expect(updates[0].payload).toMatchObject({ mood: 5, workout: true, workout_note: null, food_quality: 'HEALTHY', notes: null });
+    expect(updates[0].filters).toContainEqual(['eq', 'id', 'diary-srv-1']);
+    await waitFor(() => expect(entries()[0].mood).toBe(5));
+  });
+
+  it('a refused delete is rolled back, with the reason', async () => {
+    fake.state.tables.diary_entries.push({ ...ROW });
+    await actions().refreshFromCloud();
+    await waitFor(() => expect(entries()).toHaveLength(1));
+    fake.state.failures.set('diary_entries:update', { message: 'permission denied' });
+
+    const result = await diaryWrite().deleteDiaryEntry('diary-srv-1');
+    expect(result).toEqual({ success: false, error: 'permission denied' });
+    await waitFor(() => expect(entries()[0].isDeleted).toBe(false));
+  });
+
+  it('sign-out empties it', async () => {
+    fake.state.tables.diary_entries.push({ ...ROW });
+    await actions().refreshFromCloud();
+    await waitFor(() => expect(entries()).toHaveLength(1));
+
+    await fake.state.authCallback!('SIGNED_OUT', null);
+    await waitFor(() => expect(entries()).toEqual([]));
+  });
+});
+
 describe('sign-out leaves nothing behind (F5, ADR 0024)', () => {
   /*
    * `signOut` used to reset the user and the auth flag and nothing else: the
@@ -2223,7 +2302,11 @@ describe('deleting the account (Phase 96, ADR 0072)', () => {
   it('deletes nothing and stays signed in without the migration', async () => {
     fake.state.rpcs.delete('delete_user_account');
     const result = await actions().deleteAccount('DELETE');
-    expect(result).toEqual({ success: false, error: expect.stringMatching(/database update.*Nothing was deleted/) });
+    expect(result).toEqual({
+      success: false,
+      code: 'DATABASE_UPDATE_NEEDED',
+      error: 'Account deletion needs a database update that has not been applied yet. Nothing was deleted.',
+    });
     expect(fake.state.signOuts).toEqual([]);
     expect(state().isAuthenticated).toBe(true);
   });
@@ -2514,7 +2597,8 @@ describe("a new account's seed, through seed_starter_account (Phase 64, ADR 0039
 
   it('a missing function seeds nothing: there is no fallback to client inserts', async () => {
     remountEmpty(() => {});
-    await waitFor(() => expect(state().syncError).toBe('Could not read wallets'));
+    // Not "Could not read wallets": the read worked, the function is missing (Phase 116, ADR 0092).
+    await waitFor(() => expect(state().syncError).toBe('Setting up this account needs the latest database update'));
     await quietPeriod();
     expect(seedCalls()).toHaveLength(1);
     noClientInserts();
