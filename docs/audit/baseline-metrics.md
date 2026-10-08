@@ -1098,6 +1098,19 @@ The entry's growth is the ledger action itself, which lives with the other ledge
 
 **Intermittent local failures:** 6 in 1,071 full-suite runs (3 full runs). All were timeouts: a Firefox `goto`, a Firefox context close, and four WebKit clicks waiting for "stable". No assertion failed. See audit 005 finding 3 for the control runs.
 
+## Phase 117 (the re-render matrix, the smart rules' own contexts) - delta against Phase 116
+
+**Bundle** (gzip level 9 in Node on both sides; `main` at `f55432d` built in a worktree with `.env`). The entry 192,987 / 56,621 to 193,818 / 56,787 B (+831 / +166 gzip: `KeywordRulesContext` is in it); all app JS 879,417 / 267,658 to 880,341 / 267,904 (+924 / +246), 40 files; cold start still three scripts. `FinanceContext.tsx` 3,288 to 3,187 lines, `KeywordRulesContext.tsx` 192.
+
+**Re-renders** (`unit/rerender-matrix.test.tsx`, the six real views under one `FinanceProvider`, jsdom, three runs each side): before, every write but a diary save re-rendered Dashboard / Transactions / Wallets / Debts / Categories / Diary once each; after, a rule add or delete is 0 / 1 / 0 / 0 / 1 / 0 (the Transactions commit is the closed CSV import dialog). Every other row unchanged.
+
+**The helpers' wait** (`soft-delete.spec.ts` on WebKit, 240 runs a side: without `settle` 5 stalls (59, 59, 58, 59 of 60 per batch of ten repeats), with `main`'s `settle` 0 (60 of 60 four times)): kept.
+
+| Suite | Files | Tests | Runs | Result |
+|---|---|---|---|---|
+| Vitest (`unit/`) | 58 | 1314 | 1314 | 1314/1314 (+1 `rerender-matrix`, +7 `authenticated-ledger`) |
+| Playwright (local, 4 workers) | 34 | 164 | 492 | 486 passed, 6 skipped (14.4 m), with `settle`; without it 485 passed, 1 failed (12.5 m) |
+
 ## Phase 116 (the diary's own contexts, one missing-function code) - delta against Phase 115
 
 **Bundle** (gzip level 9 in Node on both sides; `main` at `44f1a9f` built in a worktree with `.env`). The entry 191,919 / 56,213 to 192,987 / 56,621 B (+1,068 / +408 gzip: `DiaryContext` and its two contexts are in it); all app JS 878,287 / 267,227 to 879,417 / 267,658 (+1,130 / +431), 40 files, the views that import the new hooks a few bytes each; cold start still three scripts. `FinanceContext.tsx` 3,408 to 3,288 lines, `DiaryContext.tsx` 228.
