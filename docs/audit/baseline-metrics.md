@@ -1098,6 +1098,17 @@ The entry's growth is the ledger action itself, which lives with the other ledge
 
 **Intermittent local failures:** 6 in 1,071 full-suite runs (3 full runs). All were timeouts: a Firefox `goto`, a Firefox context close, and four WebKit clicks waiting for "stable". No assertion failed. See audit 005 finding 3 for the control runs.
 
+## Phase 116 (the diary's own contexts, one missing-function code) - delta against Phase 115
+
+**Bundle** (gzip level 9 in Node on both sides; `main` at `44f1a9f` built in a worktree with `.env`). The entry 191,919 / 56,213 to 192,987 / 56,621 B (+1,068 / +408 gzip: `DiaryContext` and its two contexts are in it); all app JS 878,287 / 267,227 to 879,417 / 267,658 (+1,130 / +431), 40 files, the views that import the new hooks a few bytes each; cold start still three scripts. `FinanceContext.tsx` 3,408 to 3,288 lines, `DiaryContext.tsx` 228.
+
+**Re-renders** (React `Profiler`, the real views under one `FinanceProvider`, jsdom; three runs each, identical): a diary save re-rendered Dashboard / Daily diary / Transactions 1 / 1 / 1 before and 1 / 1 / 0 after; an expense 1 / 1 / 2 before and after.
+
+| Suite | Files | Tests | Runs | Result |
+|---|---|---|---|---|
+| Vitest (`unit/`) | 57 | 1306 | 1306 | 1306/1306 on the second run (+2 `diary-context`, +5 `authenticated-ledger`) |
+| Playwright (local, 4 workers) | 34 | 164 | 492 | 484 passed, 6 skipped, 2 failed: the WebKit painting stall |
+
 ## Phase 115 (no fallback writes, settled helper clicks) - delta against Phase 114
 
 **Bundle** (gzip level 9 in Node on both sides; `main` at `7a98597` built in a worktree with `.env`). The entry 196,820 / 57,066 to 191,919 / 56,213 B (-4,901 / -853 gzip; `FinanceContext` is in it); all app JS 883,188 / 268,070 to 878,287 / 267,227, 40 files, no other chunk changed; cold start still three scripts.

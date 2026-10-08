@@ -4,6 +4,28 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
+## Phase 116 - The diary has contexts of its own, composed under FinanceProvider; one code for a missing function: T704-T707 (2026-10-08)
+
+ADR `0092`. The owner's brief: move the diary out of `FinanceContext` without breaking a view, measure re-renders before and after, keep guest and cloud behaviour, and give the remaining missing-function paths the one code.
+
+**Changed**
+- **`src/context/DiaryContext.tsx` (new):** `useDiaryEntriesState`, `useDiaryMutations` (the two writes, unchanged), `mapDiaryRow`, `DiaryProvider`, `useDiaryState`, `useDiaryActions`.
+- **`FinanceContext.tsx`:** calls the two hooks, renders `DiaryProvider` inside its providers; `diaryEntries` and the two writes left its two context types; `databaseUpdateNeeded(error?)`; the seed's `'update-needed'`.
+- **Readers:** `DashboardView`, `DiaryView`, `AccountModal`'s export.
+- **Tests:** `unit/diary-context.test.tsx` (2), `unit/authenticated-ledger.test.tsx` (+5 for the diary signed in, 3 tightened to the code), `unit/backup-restore.test.tsx` (its probe).
+- **Docs:** ADR `0092`; `CLAUDE.md`'s structure, state, diary, missing-function, seed and unit lines.
+
+**Gate:**
+- Lint clean; unit, first run 1287 passed and 1 failed with one suite's setup timing out (93 s; the session list's 1 s lookup in `authenticated-ledger` and `migration-history`'s PGlite hook, each passing alone, the session test three times), second run 1306/1306 in 57 files (71 s); Playwright 484 passed, 6 skipped, 2 failed of 492 (19.4 m, traces on): both the WebKit painting stall on `gotoTab`'s tab click, and those two specs passed 140 of 140 on WebKit; no migration.
+- **Red first:** the re-render test against `main` (Transactions re-rendered on a diary save); the three missing-function tests.
+- **WebKit:** both failures were `gotoTab`'s tab click waiting 15 s on "stable", traced with frames stopping within 0.6 s of it, in `csv-classify` and `debts-page`, which this phase does not change. Both clicks came after `settle` (ADR `0091`) had found nothing animating, so the stall happens with no tween running too. Per the owner's decision (ADR `0091`) they were repeated, not fixed: 140 of 140 on WebKit.
+- **Bundle:** the entry 191,919 / 56,213 to 192,987 / 56,621 B (+1,068 / +408 gzip: `DiaryContext` and its two contexts are in it); all app JS 878,287 / 267,227 to 879,417 / 267,658 (+1,130 / +431), 40 files, the views that import the new hooks a few bytes each; cold start still three scripts. `FinanceContext.tsx` 3,408 to 3,288 lines, `DiaryContext.tsx` 228.
+
+**Changed on purpose**
+- **A diary save no longer re-renders the Transactions page,** and a missing seed function says so instead of "Could not read wallets".
+
+---
+
 ## Phase 115 - A signed-in ledger write is one database function or nothing; the test helpers wait for tweens to end: T700-T703 (2026-10-08, code `b59cc14`, docs `f08e132`, merge `4740498`)
 
 ADR `0091`. The owner's brief: remove the non-atomic fallback writes, fail fast with a structured error, and make the shared test helpers wait for animations before they click.
