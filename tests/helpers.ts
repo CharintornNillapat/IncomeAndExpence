@@ -8,6 +8,9 @@ import type { Debt, Wallet } from '../src/types';
  * 150 to 200 ms tween ran: a tab's slide, a dialog's entrance or exit. An
  * endless animation (a spinner while work runs) is left out. It polls on a
  * timer, not on animation frames, which a stalled page does not run.
+ * It does not prevent the stall (ADR 0092), but it makes it rarer: Phase 117's
+ * A/B on `soft-delete.spec.ts` (ADR 0093) had 5 stalls in 240 WebKit runs
+ * without it and none in 240 with it.
  */
 export async function settle(page: Page): Promise<void> {
   await page.waitForFunction(

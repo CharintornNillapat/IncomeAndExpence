@@ -3,6 +3,7 @@ import { describe, it, expect, afterEach } from 'vitest';
 import { render, cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { FinanceProvider, useFinanceState } from '../src/context/FinanceContext';
 import { useDiaryState } from '../src/context/DiaryContext';
+import { useKeywordRulesState } from '../src/context/KeywordRulesContext';
 import { AccountModal } from '../src/components/account/AccountModal';
 import { buildAccountExport } from '../src/utils/accountExport';
 import type { Category, Debt, DiaryEntry, KeywordRule, Preset, Transaction, Wallet } from '../src/types';
@@ -41,9 +42,9 @@ const BACKUP = JSON.stringify(
   buildAccountExport({ wallets, transactions, debts, categories, keywordRules, diaryEntries }, { signedIn: true, exportedAt: new Date(TS) })
 );
 
-let latest: (ReturnType<typeof useFinanceState> & ReturnType<typeof useDiaryState>) | null = null;
+let latest: (ReturnType<typeof useFinanceState> & ReturnType<typeof useDiaryState> & ReturnType<typeof useKeywordRulesState>) | null = null;
 function Probe() {
-  latest = { ...useFinanceState(), ...useDiaryState() };
+  latest = { ...useFinanceState(), ...useDiaryState(), ...useKeywordRulesState() };
   return null;
 }
 const state = () => latest!;

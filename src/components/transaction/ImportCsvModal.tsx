@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { Download, CheckCircle2, AlertCircle, Tags } from 'lucide-react';
 import { useFinanceActions, useFinanceState } from '../../context/FinanceContext';
+import { useKeywordRulesState } from '../../context/KeywordRulesContext';
 import { ImportPreviewSummary, ImportRowValidation } from '../../types';
 import { todayIsoDate } from '../../utils/date';
 import { formatCurrencyAmount } from '../../utils/currency';
@@ -37,7 +38,8 @@ interface ImportCsvModalProps {
  * its classification survive a close only through the explicit reset below.
  */
 export const ImportCsvModal: React.FC<ImportCsvModalProps> = ({ isOpen, onClose }) => {
-  const { wallets, categories, keywordRules, debts } = useFinanceState();
+  const { wallets, categories, debts } = useFinanceState();
+  const { keywordRules } = useKeywordRulesState();
   const { commitBulkImport } = useFinanceActions();
 
   // CSV Import State

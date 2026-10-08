@@ -4,7 +4,6 @@ import {
   AuthSession,
   Wallet,
   Category,
-  KeywordRule,
   Transaction,
   TransactionEdit,
   WalletEdit,
@@ -32,7 +31,6 @@ import {
   WalletEditSchema,
   DebtSchema,
   DebtEditSchema,
-  KeywordMappingSchema,
   CategorySchema,
   PresetSchema,
   formatZodIssues,
@@ -48,6 +46,13 @@ import { dedupeCategoriesByName, withDefaultDescriptions } from '../utils/catego
 import { migrateCategoryColors, migrateWalletColors } from '../utils/identityColorMigration';
 import { generateIdempotencyKey } from '../utils/ids';
 import { DiaryProvider, mapDiaryRow, useDiaryEntriesState, useDiaryMutations } from './DiaryContext';
+import {
+  DEFAULT_KEYWORD_RULES,
+  KeywordRulesProvider,
+  mapKeywordRuleRow,
+  useKeywordRuleMutations,
+  useKeywordRuleStore,
+} from './KeywordRulesContext';
 
 /**
  * Outcome of a validated write. Every mutating call reports failure this way
@@ -87,9 +92,9 @@ export interface FinanceStateContextType {
   wallets: Wallet[];
   totalNetWorth: number;
 
-  // Categories & Configurable Keyword Rules
+  // Categories. The smart rules have contexts of their own since Phase 117
+  // (ADR 0093): `useKeywordRulesState()` and `useKeywordRulesActions()`.
   categories: Category[];
-  keywordRules: KeywordRule[];
 
   // Transaction Templates ("quick presets")
   presets: Preset[];
@@ -167,8 +172,6 @@ export interface FinanceActionsContextType {
   addCategory: (data: { name: string; type: TransactionType; color: string; icon?: string; description?: string }) => Promise<MutationResult>;
   updateCategory: (id: string, updates: { name?: string; color?: string; icon?: string; description?: string }) => Promise<MutationResult>;
   deleteCategory: (id: string) => Promise<MutationResult>;
-  addKeywordRule: (keyword: string, categoryId: string) => Promise<MutationResult>;
-  deleteKeywordRule: (id: string) => Promise<MutationResult>;
 
   // Transaction Templates ("quick presets")
   addPreset: (data: {
@@ -605,13 +608,6 @@ const DEFAULT_STARTER_WALLETS: Wallet[] = [
   },
 ];
 
-const DEFAULT_KEYWORD_RULES: KeywordRule[] = [
-  { id: 'kw-1', userId: 'usr-guest-01', keyword: 'coffee', categoryId: 'cat-food', createdAt: new Date().toISOString() },
-  { id: 'kw-2', userId: 'usr-guest-01', keyword: 'groceries', categoryId: 'cat-groceries', createdAt: new Date().toISOString() },
-  { id: 'kw-3', userId: 'usr-guest-01', keyword: 'fuel', categoryId: 'cat-transport', createdAt: new Date().toISOString() },
-  { id: 'kw-4', userId: 'usr-guest-01', keyword: 'salary', categoryId: 'cat-salary', createdAt: new Date().toISOString() },
-];
-
 export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [currentUser, setCurrentUser] = useState<User>(() => safeGetLocalStorage('pf_user', DEFAULT_USER));
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
@@ -629,7 +625,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       )
     )
   );
-  const [keywordRules, setKeywordRules] = useState<KeywordRule[]>(() => safeGetLocalStorage('pf_keywords', DEFAULT_KEYWORD_RULES));
+  const { keywordRules, setKeywordRules, keywordRulesRef } = useKeywordRuleStore(() => safeGetLocalStorage('pf_keywords', DEFAULT_KEYWORD_RULES));
   // Local-only, like `sessions`: no `presets` table exists in the Supabase
   // migrations, so these never leave `localStorage` regardless of
   // `isAuthenticated` - unlike `categories`/`keywordRules`, which sync when
@@ -713,7 +709,6 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
   const transactionsRef = useRef<Transaction[]>(transactions);
   const debtsRef = useRef<Debt[]>(debts);
   const categoriesRef = useRef<Category[]>(categories);
-  const keywordRulesRef = useRef<KeywordRule[]>(keywordRules);
   const presetsRef = useRef<Preset[]>(presets);
 
   useEffect(() => {
@@ -728,9 +723,6 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
   useEffect(() => {
     categoriesRef.current = categories;
   }, [categories]);
-  useEffect(() => {
-    keywordRulesRef.current = keywordRules;
-  }, [keywordRules]);
   useEffect(() => {
     presetsRef.current = presets;
   }, [presets]);
@@ -1047,15 +1039,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
 
       if (krErr) failedReads.push('keyword_rules');
       if (!krErr && krData) {
-        setKeywordRules(
-          krData.map((row) => ({
-            id: row.id,
-            userId: row.user_id,
-            keyword: row.keyword,
-            categoryId: row.category_id,
-            createdAt: row.created_at,
-          }))
-        );
+        setKeywordRules(krData.map(mapKeywordRuleRow));
       }
 
       // 4. Debts
@@ -1854,95 +1838,6 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       };
     }
   }, [isAuthenticated, markLocalWrite]);
-
-  // Keyword rules CRUD
-  const addKeywordRule = useCallback(async (keyword: string, categoryId: string): Promise<MutationResult> => {
-    const validation = KeywordMappingSchema.safeParse({ keyword, categoryId });
-    if (!validation.success) {
-      return { success: false, error: formatZodIssues(validation.error) };
-    }
-    // The schema trims and lower-cases the keyword, so use its parsed output.
-    const cleaned = validation.data.keyword;
-
-    if (isAuthenticated) {
-      const { data, error } = await supabase
-        .from('keyword_rules')
-        .insert({
-          user_id: currentUser.id,
-          keyword: cleaned,
-          category_id: categoryId,
-        })
-        .select()
-        .single();
-
-      if (error || !data) {
-        return { success: false, error: error?.message || 'Failed to save keyword rule' };
-      }
-
-      setKeywordRules((prev) => [
-        {
-          id: data.id,
-          userId: data.user_id,
-          keyword: data.keyword,
-          categoryId: data.category_id,
-          createdAt: data.created_at,
-        },
-        ...prev,
-      ]);
-    } else {
-      const newRule: KeywordRule = {
-        id: `kr-${Date.now()}`,
-        userId: currentUser.id,
-        keyword: cleaned,
-        categoryId,
-        createdAt: new Date().toISOString(),
-      };
-      setKeywordRules((prev) => [newRule, ...prev]);
-    }
-
-    return { success: true };
-  }, [isAuthenticated, currentUser.id]);
-
-  // Hard delete, not soft: `KeywordRule` has no `isDeleted` field and no
-  // migration adds one - it is categorization config, not a financial record,
-  // so CLAUDE.md's soft-delete rule does not apply here.
-  const deleteKeywordRule = useCallback(async (id: string): Promise<MutationResult> => {
-    const previousIndex = keywordRulesRef.current.findIndex((r) => r.id === id);
-    const previousRule = previousIndex >= 0 ? keywordRulesRef.current[previousIndex] : undefined;
-
-    setKeywordRules((prev) => prev.filter((r) => r.id !== id));
-
-    if (!isAuthenticated) {
-      return { success: true };
-    }
-
-    try {
-      const { error } = await supabase.from('keyword_rules').delete().eq('id', id);
-      if (error) throw error;
-      return { success: true };
-    } catch (err: unknown) {
-      console.error('[Delete Keyword Rule Failed]', err);
-      // Local removal drops the row from the array rather than flipping a
-      // flag, so rollback re-inserts it at its original index instead of
-      // restoring a snapshot of the whole array.
-      if (previousRule) {
-        setKeywordRules((prev) => {
-          const next = [...prev];
-          next.splice(previousIndex, 0, previousRule);
-          return next;
-        });
-      }
-      const postgrestErr = err as { message?: string; details?: string; hint?: string };
-      return {
-        success: false,
-        error:
-          postgrestErr?.message ||
-          postgrestErr?.details ||
-          postgrestErr?.hint ||
-          (err instanceof Error ? err.message : 'Failed to delete keyword rule'),
-      };
-    }
-  }, [isAuthenticated]);
 
   // Preset (quick-template) CRUD. Local-only (see the `presets` state
   // declaration above) - hard delete, like keyword rules, since a template is
@@ -3123,6 +3018,14 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     }
   }, [isAuthenticated, markLocalWrite]);
 
+  // The smart rules' writes live in ./KeywordRulesContext (Phase 117, ADR 0093).
+  const keywordRuleActions = useKeywordRuleMutations({
+    isAuthenticated,
+    currentUserId: currentUser.id,
+    setKeywordRules,
+    keywordRulesRef,
+  });
+
   // The diary's writes live in ./DiaryContext (Phase 116, ADR 0092).
   const diaryActions = useDiaryMutations({
     isAuthenticated,
@@ -3152,7 +3055,6 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       wallets,
       totalNetWorth,
       categories,
-      keywordRules,
       presets,
       transactions,
       debts,
@@ -3166,7 +3068,6 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       wallets,
       totalNetWorth,
       categories,
-      keywordRules,
       presets,
       transactions,
       debts,
@@ -3200,8 +3101,6 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       addCategory,
       updateCategory,
       deleteCategory,
-      addKeywordRule,
-      deleteKeywordRule,
       addPreset,
       updatePreset,
       deletePreset,
@@ -3231,8 +3130,6 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       addCategory,
       updateCategory,
       deleteCategory,
-      addKeywordRule,
-      deleteKeywordRule,
       addPreset,
       updatePreset,
       deletePreset,
@@ -3257,7 +3154,9 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     <FinanceActionsContext.Provider value={actionsValue}>
       <FinanceStateContext.Provider value={stateValue}>
         <DiaryProvider diaryEntries={diaryEntries} actions={diaryActions}>
-          {children}
+          <KeywordRulesProvider keywordRules={keywordRules} actions={keywordRuleActions}>
+            {children}
+          </KeywordRulesProvider>
         </DiaryProvider>
       </FinanceStateContext.Provider>
     </FinanceActionsContext.Provider>

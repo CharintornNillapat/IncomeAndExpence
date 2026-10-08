@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Tag, Trash2 } from 'lucide-react';
-import { useFinanceActions, useFinanceState } from '../../context/FinanceContext';
+import { useFinanceState } from '../../context/FinanceContext';
+import { useKeywordRulesActions, useKeywordRulesState } from '../../context/KeywordRulesContext';
 import { useSubmitHandler } from '../../hooks/useSubmitHandler';
 import { matchSmartDescription } from '../../utils/smartMatcher';
 import { formatCurrencyAmount } from '../../utils/currency';
@@ -24,8 +25,9 @@ import { typeLabel } from './categoryLabels';
  * `keywords.spec.ts` and `smart-rules.spec.ts` use is kept.
  */
 export const SmartRulesPanel: React.FC = () => {
-  const { categories, keywordRules } = useFinanceState();
-  const { addKeywordRule, deleteKeywordRule } = useFinanceActions();
+  const { categories } = useFinanceState();
+  const { keywordRules } = useKeywordRulesState();
+  const { addKeywordRule, deleteKeywordRule } = useKeywordRulesActions();
 
   const activeCategories = useMemo(() => categories.filter((c) => !c.isDeleted), [categories]);
   const categoryMap = useMemo(() => buildLookupMap(categories), [categories]);

@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { render, cleanup, waitFor, screen, fireEvent } from '@testing-library/react';
 import { AccountModal } from '../src/components/account/AccountModal';
 import { useDiaryActions, useDiaryState } from '../src/context/DiaryContext';
+import { useKeywordRulesActions, useKeywordRulesState } from '../src/context/KeywordRulesContext';
 import {
   FinanceProvider,
   useFinanceState,
@@ -353,13 +354,22 @@ let latest: {
   actions: FinanceActionsContextType;
   diary: ReturnType<typeof useDiaryState>;
   diaryActions: ReturnType<typeof useDiaryActions>;
+  rules: ReturnType<typeof useKeywordRulesState>;
+  ruleActions: ReturnType<typeof useKeywordRulesActions>;
 } | null = null;
 
 /** Renders extra UI inside the one provider, for component tests (ADR 0024). */
 let showUi: ((node: React.ReactNode) => void) | null = null;
 
 function Probe() {
-  latest = { state: useFinanceState(), actions: useFinanceActions(), diary: useDiaryState(), diaryActions: useDiaryActions() };
+  latest = {
+    state: useFinanceState(),
+    actions: useFinanceActions(),
+    diary: useDiaryState(),
+    diaryActions: useDiaryActions(),
+    rules: useKeywordRulesState(),
+    ruleActions: useKeywordRulesActions(),
+  };
   const [ui, setUi] = useState<React.ReactNode>(null);
   showUi = setUi;
   return <>{ui}</>;
@@ -370,6 +380,9 @@ const actions = () => latest!.actions;
 // The diary's own contexts (Phase 116, ADR 0092).
 const entries = () => latest!.diary.diaryEntries;
 const diaryWrite = () => latest!.diaryActions;
+// The smart rules (Phase 117, ADR 0093).
+const rules = () => latest!.rules.keywordRules;
+const ruleWrite = () => latest!.ruleActions;
 const wallet = (id: string = WALLET) => state().wallets.find((w) => w.id === id);
 const serverWallet = (id: string) => fake.state.tables.wallets.find((w) => w.id === id)!;
 const debt = () => state().debts.find((d) => d.id === DEBT);
@@ -1965,6 +1978,82 @@ describe('the diary, signed in (Phase 116, ADR 0092)', () => {
 
     await fake.state.authCallback!('SIGNED_OUT', null);
     await waitFor(() => expect(entries()).toEqual([]));
+  });
+});
+
+describe('the smart rules, signed in (Phase 117, ADR 0093)', () => {
+  /*
+   * The slice moved out of FinanceContext unchanged: these pin what it sends
+   * and what it shows, and pass against the code from before the move.
+   */
+  const ROW = { id: 'kr-srv-1', user_id: fake.USER_ID, keyword: 'kibble', category_id: 'cat-food', created_at: '2026-09-26T00:00:00.000Z' };
+
+  it('loads the rows with the other tables, mapped', async () => {
+    fake.state.tables.keyword_rules.push({ ...ROW });
+    await actions().refreshFromCloud();
+    await waitFor(() => expect(rules()).toEqual([
+      { id: 'kr-srv-1', userId: fake.USER_ID, keyword: 'kibble', categoryId: 'cat-food', createdAt: '2026-09-26T00:00:00.000Z' },
+    ]));
+  });
+
+  it('a new rule is one insert under the account, cleaned, and the returned row is shown first', async () => {
+    fake.state.tables.keyword_rules.push({ ...ROW });
+    await actions().refreshFromCloud();
+    await waitFor(() => expect(rules()).toHaveLength(1));
+
+    expect(await ruleWrite().addKeywordRule('  Vet Bill ', 'cat-food')).toEqual({ success: true });
+    const inserts = writes('keyword_rules', 'insert');
+    expect(inserts).toHaveLength(1);
+    expect(inserts[0].payload).toEqual({ user_id: fake.USER_ID, keyword: 'vet bill', category_id: 'cat-food' });
+    await waitFor(() => expect(rules().map((r) => [r.keyword, r.id.startsWith('keyword_rules-srv-')])).toEqual([['vet bill', true], ['kibble', false]]));
+  });
+
+  it('a refused insert shows nothing and says why', async () => {
+    fake.state.failures.set('keyword_rules:insert', { message: 'permission denied' });
+    expect(await ruleWrite().addKeywordRule('kibble', 'cat-food')).toEqual({ success: false, error: 'permission denied' });
+    expect(rules()).toEqual([]);
+  });
+
+  it('a delete is one delete of that row', async () => {
+    fake.state.tables.keyword_rules.push({ ...ROW });
+    await actions().refreshFromCloud();
+    await waitFor(() => expect(rules()).toHaveLength(1));
+
+    expect(await ruleWrite().deleteKeywordRule('kr-srv-1')).toEqual({ success: true });
+    const deletes = writes('keyword_rules', 'delete');
+    expect(deletes).toHaveLength(1);
+    expect(deletes[0].filters).toEqual([['eq', 'id', 'kr-srv-1']]);
+    await waitFor(() => expect(rules()).toEqual([]));
+  });
+
+  it('a refused delete puts the rule back where it was, with the reason', async () => {
+    fake.state.tables.keyword_rules.push({ ...ROW }, { ...ROW, id: 'kr-srv-2', keyword: 'litter' }, { ...ROW, id: 'kr-srv-3', keyword: 'leash' });
+    await actions().refreshFromCloud();
+    await waitFor(() => expect(rules()).toHaveLength(3));
+    fake.state.failures.set('keyword_rules:delete', { message: 'permission denied' });
+
+    expect(await ruleWrite().deleteKeywordRule('kr-srv-2')).toEqual({ success: false, error: 'permission denied' });
+    await waitFor(() => expect(rules().map((r) => r.keyword)).toEqual(['kibble', 'litter', 'leash']));
+  });
+
+  it('a category a rule uses cannot be deleted', async () => {
+    fake.state.tables.categories.push({ id: 'cat-srv-pets', user_id: fake.USER_ID, name: 'Pets', type: 'EXPENSE', color: '#000000', is_system: false, is_deleted: false });
+    fake.state.tables.keyword_rules.push({ ...ROW, category_id: 'cat-srv-pets' });
+    await actions().refreshFromCloud();
+    await waitFor(() => expect(rules()).toHaveLength(1));
+
+    const result = await actions().deleteCategory('cat-srv-pets');
+    expect(result).toEqual({ success: false, error: 'This category is used by existing transactions or keyword rules and cannot be deleted' });
+    expect(writes('categories', 'update')).toHaveLength(0);
+  });
+
+  it('sign-out puts back the guest defaults', async () => {
+    fake.state.tables.keyword_rules.push({ ...ROW });
+    await actions().refreshFromCloud();
+    await waitFor(() => expect(rules()).toHaveLength(1));
+
+    await fake.state.authCallback!('SIGNED_OUT', null);
+    await waitFor(() => expect(rules().map((r) => r.keyword)).toEqual(['coffee', 'groceries', 'fuel', 'salary']));
   });
 });
 
