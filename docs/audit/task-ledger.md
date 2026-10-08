@@ -1081,6 +1081,21 @@ Approved explicitly by the user, planned and approved before any code was writte
 - **One negative control was redone** because the first attempt produced malformed TypeScript that the dev server still served — the tests failed, but possibly for the wrong reason.
 - **No flakes.** Phase 44's `wallets.spec.ts` webkit flake has now not reproduced across three consecutive phases; still watched rather than closed.
 
+## Phase 114 - The 20260909 transfer_funds signature is dropped; a screen reader hears the overdraft warning: T696-T699 (2026-10-08)
+
+ADR `0090`, completing ADR `0078`'s scheduled drop and amending ADR `0085`. Branch `phase-114-legacy-rpc-cleanup-and-a11y`, cut from `main` at `311e5cd`; draft PR. **The migration is not applied to live** (the apply was declined at the permission prompt).
+
+| # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
+|---|---|---|---|---|---|---|---|---|---|---|
+| T696 | Evidence for the drop, read-only: the logs since 2026-10-06 (no `OUTDATED_CLIENT`, no `rpc/transfer_funds` call after Phase 102), the sessions (both seen after Phase 93), live's two signatures | ADR `0090` | High | Low | 0.4h | done | - | code | 0 hits | - |
+| T697 | The drop migration and its probe; the Phase 93 and 102 probes stop before it | `supabase/migrations/20261008_phase114_drop_legacy_transfer_funds.sql`, `supabase/tests/20261008_phase114.probe.sql`, `unit/migration-replay.test.ts` | High | Med | 0.6h | done, **not applied to live** | T696 | code | the probe before, after, and failing without the migration | +3 unit; 20 migrations, 16 functions |
+| T698 | `OverdraftAnnouncer` in the entry and transfer forms | `src/components/wallet/OverdraftAnnouncer.tsx`, `src/components/TransactionForm.tsx`, `src/components/wallet/WalletTransferForm.tsx`, `unit/overdraft-warning.test.tsx`, `tests/transfer-preview.spec.ts` | Med | Low | 0.5h | done | - | code | both unit tests failed first; two controls fail | +2 unit; +266 B gzip |
+| T699 | Gate, bundle, ADR `0090`, `CLAUDE.md`, the logs | `docs/`, `CLAUDE.md` | Med | Low | 0.5h | done | T696-T698 | docs | lint clean; unit 1301/1301 in 56 files; Playwright, first run 485 passed, 6 skipped, 1 failed of 492 (9.2 m), second run 484 passed, 6 skipped, 2 failed (15.7 m, traces on): all three a WebKit click waiting on "stable" in specs this phase does not change, none with a form open; the local replay of all 20 migrations is clean | - |
+
+**Notes on execution:**
+- **The live probe and the apply were both declined at the permission prompt;** the owner then asked for the pending status to be recorded. Live is unchanged.
+- **WebKit:** the three failures were each a click that waited 15 s for "stable" (ADR `0058`): the Dashboard wallet card (`wallets-page`), the navbar's Quick Add (`jev-classify`) and the Wallets tab (`soft-delete`), each before any form was open, so neither announcer was on the page. The two traces kept show 3 screencast frames, the last within a second of the click, then none. Repeats on WebKit: `wallets-page` 120 of 120; `jev-classify` and `soft-delete` 149 of 150, the one failure the Transactions page's Show deleted checkbox, which moved during the 200 ms tab slide ("element is not stable" twice) and then stalled, as ADR `0089` expected.
+
 ## Phase 113 - The title names the open tab; Back closes the top dialog: T691-T695 (2026-10-08)
 
 ADR `0089`, completing audit finding 14 and amending ADR `0043` and `0088`. Branch `phase-113-navigation-and-modal-history`, cut from `main` at `6aabb4e`; code `c8afa5a`, docs `9952c1c`, hash backfill `aac958f`; merged into `main` as `4f1fcf1` (PR #64); Vercel `dpl_5GCKHvTMPwwjsT9KReqwX5uEko5M` READY in `icn1`. The pull request's CI (run `37699782711`) passed every job. `main` CI on the merge (run `37701073935`) passed every job on its first attempt in 259 s end to end, the merge job included: unit 1296; 486 passed, 6 skipped, no flaky test. The local WebKit painting stall (ADR `0058`) did not show on CI's Linux WebKit.
