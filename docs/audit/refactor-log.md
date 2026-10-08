@@ -4,9 +4,15 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 115 - A signed-in ledger write is one database function or nothing; the test helpers wait for tweens to end: T700-T703 (2026-10-08, code `b59cc14`, docs `f08e132`, PR #66)
+## Phase 115 - A signed-in ledger write is one database function or nothing; the test helpers wait for tweens to end: T700-T703 (2026-10-08, code `b59cc14`, docs `f08e132`, merge `4740498`)
 
 ADR `0091`. The owner's brief: remove the non-atomic fallback writes, fail fast with a structured error, and make the shared test helpers wait for animations before they click.
+
+**Release:**
+- The pull request's CI (run `37732702721`, on `6855c17`) passed every job.
+- PR #66 merged into `main` as `4740498`, whose tree is identical to `6855c17`. Vercel `dpl_2dxjHRvJWyZPebMruqEEmUNkrwJp` is READY in production, region `icn1`; production serves the entry `index-DGwwEBNO.js`, the same hash as a local build of `main`, with `databaseUpdateNeeded`'s message in it.
+- `main` CI on the merge (run `37734327821`) passed every job on its first attempt in 279 s end to end, the merge job included: unit 1299; 486 passed, 6 skipped, no flaky test. The local WebKit painting stall (ADR `0058`) did not show on CI's Linux WebKit.
+- **The owner's decision (2026-10-08): WebKit keeps its animations.** The WebKit project is not run with `reducedMotion: 'reduce'`: CI's Linux WebKit passes cleanly, and ADR `0058` records the Windows painting stall as a local limitation. A local WebKit failure that waits 15 s on "stable" and whose trace stops drawing frames is read as that stall, and repeated, not fixed in the app.
 
 **Changed**
 - **`FinanceContext.tsx`:** `MissingLedgerFunction` and `databaseUpdateNeeded()`; `MutationResult.code`; the fallbacks of `addTransaction`, `setTransactionDeleted`, `commitBulkImport` and `addWallet`, their compensation and `dbPayloads` removed (-346 lines).

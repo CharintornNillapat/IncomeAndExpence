@@ -1,6 +1,6 @@
 # 0091: A signed-in ledger write is one database function or nothing; the test helpers wait for tweens to end
 
-**Status:** Accepted. Code `b59cc14`, docs `f08e132`, draft PR #66; not merged. No migration; live drift run `37732553429`: no drift, 20 migrations.
+**Status:** Accepted. Released: code `b59cc14`, docs `f08e132`, hash backfill `6855c17`, merged into `main` as `4740498` (PR #66); Vercel `dpl_2dxjHRvJWyZPebMruqEEmUNkrwJp` READY in `icn1`. No migration; live drift run `37732553429`: no drift, 20 migrations.
 - **Supersedes** the fallback parts of ADR `0022` (the import's insert-then-compensate) and ADR `0023` ("the legacy absolute-write paths remain only as the missing-function fallback"), and ADR `0024`'s fallback for `create_wallet`.
 - **Amends** ADR `0058` and `0089`: the shared test helpers wait for running animations before they click.
 
@@ -33,8 +33,13 @@
   - **F6, rewritten** against `record_transaction` (gated and refused), keeps both of its cases: a reload that read nothing does not disarm the rollback, and a clean one still re-reads.
 - **Gate:** lint clean; unit 1299/1299 in 56 files; Playwright, first run 484 passed, 6 skipped, 2 failed of 492 (14.4 m), second run 485 passed, 6 skipped, 1 failed (12.6 m), traces on in both: all three the WebKit painting stall; no migration, and live holds all five functions.
 - **WebKit, measured:** with `settle` in the helpers, 3 stalls in 656 WebKit runs (the two full runs, 328, and the WebKit project twice over, 328, which had none), against 4 in about 600 in Phase 114: at rates this low the change is not measurable. All three were clicks the helpers do not make, each traced with frames stopping within 0.3 s of the click: Quick Add's submit and the rule chip's dismiss, with `motion-chip` and `data-leaving` elements in the snapshot (a chip's tween), and the Transactions panel's Restore. All came in three-browser runs. The stall is not fixed; the helpers' own clicks no longer land mid-tween.
+- **Release:** PR #66 merged into `main` as `4740498`, whose tree is identical to `6855c17`; the pull request's CI (run `37732702721`) passed every job. Vercel `dpl_2dxjHRvJWyZPebMruqEEmUNkrwJp` is READY in production, region `icn1`; production serves the entry `index-DGwwEBNO.js`, the same hash as a local build of `main`, with `databaseUpdateNeeded`'s message in it. `main` CI on the merge (run `37734327821`) passed every job on its first attempt in 279 s end to end, the merge job included: unit 1299; 486 passed, 6 skipped, no flaky test. The local WebKit painting stall (ADR `0058`) did not show on CI's Linux WebKit.
 - **Bundle:** the entry 196,820 / 57,066 to 191,919 / 56,213 B (-4,901 / -853 gzip; `FinanceContext` is in it); all app JS 883,188 / 268,070 to 878,287 / 267,227, 40 files, no other chunk changed; cold start still three scripts.
 
 ## Next, if the stall matters
+
+**The owner's decision (2026-10-08): WebKit keeps its animations.** The WebKit project is not run with `reducedMotion: 'reduce'`: CI's Linux WebKit passes cleanly, and ADR `0058` records the Windows painting stall as a local limitation. A local WebKit failure that waits 15 s on "stable" and whose trace stops drawing frames is read as that stall, and repeated, not fixed in the app.
+
+The option the owner declined, for the record:
 
 Running the WebKit project with `reducedMotion: 'reduce'` would remove every tween there, in every spec, not just in the helpers. It would also stop WebKit testing the app's motion (Chromium and Firefox still would), and `reduced-motion.spec.ts`'s motion-on group would have to say `no-preference` itself. It is a coverage decision for the owner, and it does not touch the stalls on a first click after a load.
