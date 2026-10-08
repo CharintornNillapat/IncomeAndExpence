@@ -64,8 +64,8 @@ const fake = vi.hoisted(() => {
     /**
      * RPC name → the server-side handler. An RPC with no handler answers as a
      * missing function (`PGRST202`), which is what a project without the
-     * Phase 51 migration returns - so every test that installs nothing runs
-     * the legacy fallback, exactly as it did before the RPCs existed.
+     * migration returns. Since Phase 115 (ADR 0091) a ledger write then fails
+     * with nothing written, so a test of a ledger write installs its RPCs.
      */
     rpcs: new Map<string, (args: Record<string, unknown>) => { data: unknown; error: { message: string; code?: string; details?: string } | null }>(),
     /**
@@ -778,41 +778,6 @@ describe('the harness', () => {
   });
 });
 
-describe('a signed-in debt repayment (F1)', () => {
-  /*
-   * The optimistic `setDebts` runs before the insert's `await`. By the time
-   * the remote debt write is built, the ref-mirror effect has moved
-   * `debtsRef.current` to the optimistic value — so re-reading it there and
-   * subtracting the payment again takes it off twice. Local state shows the
-   * right number and the realtime echo is suppressed, so it surfaces only on
-   * the next reload.
-   */
-
-  it('sends Supabase the remainder the user sees, not a second subtraction', async () => {
-    const result = await repay(1000);
-    expect(result.success).toBe(true);
-
-    const debtWrites = writes('debts', 'update');
-    expect(debtWrites).toHaveLength(1);
-    expect(debtWrites[0].payload).toMatchObject({ remaining_amount: 3500, is_settled: false });
-
-    // Local and remote agree — the whole point.
-    expect(debt()?.remainingAmount).toBe(3500);
-    expect(fake.state.tables.debts[0].remaining_amount).toBe(3500);
-
-    // The wallet side was already right; pin it so a fix cannot regress it.
-    expect(writes('wallets', 'update')[0].payload).toEqual({ balance: WALLET_OPENING - 1000 });
-  });
-
-  it('settles the debt remotely when the payment clears it exactly', async () => {
-    const result = await repay(DEBT_REMAINING);
-    expect(result.success).toBe(true);
-
-    expect(writes('debts', 'update')[0].payload).toMatchObject({ remaining_amount: 0, is_settled: true });
-    expect(debt()?.isSettled).toBe(true);
-  });
-});
-
 function importRow(overrides: Partial<ImportRowValidation> = {}): ImportRowValidation {
   return {
     rowIndex: 1,
@@ -826,67 +791,9 @@ function importRow(overrides: Partial<ImportRowValidation> = {}): ImportRowValid
   };
 }
 
-describe('a signed-in CSV import (F2)', () => {
-  /*
-   * The batch insert's `error` used to be discarded: the wallet deltas were
-   * written anyway and `insertedCount` reported every row. A rejected import
-   * still moved money, with no ledger rows to explain it.
-   */
-
-  it('moves no money when the batch insert is rejected', async () => {
-    fake.state.failures.set('transactions:insert', { message: 'insert rejected by RLS' });
-
-    const result = await actions().commitBulkImport([importRow({ amount: 300 })]);
-
-    expect(result.success).toBe(false);
-    expect(result.error).toContain('insert rejected by RLS');
-    expect(result.insertedCount).toBe(0);
-    // Not one balance write was attempted.
-    expect(writes('wallets', 'update')).toHaveLength(0);
-    expect(serverWallet(WALLET).balance).toBe(WALLET_OPENING);
-    expect(wallet()?.balance).toBe(WALLET_OPENING);
-  });
-
-  it('undoes a half-applied import when a balance write fails after the insert', async () => {
-    // A transfer touches two wallets. Savings is written first and lands;
-    // Cash is rejected. Savings must be put back and the rows soft-deleted.
-    fake.state.failures.set('wallets:update', { message: 'wallet write rejected', onlyId: CASH });
-
-    const result = await actions().commitBulkImport([
-      importRow({ type: 'TRANSFER', amount: 250, destinationWalletName: 'Cash' }),
-    ]);
-
-    expect(result.success).toBe(false);
-    expect(result.error).toContain('wallet write rejected');
-    expect(serverWallet(WALLET).balance).toBe(WALLET_OPENING);
-    expect(serverWallet(CASH).balance).toBe(CASH_OPENING);
-
-    // Soft-deleted, never hard-deleted: the row is still there.
-    const rows = fake.state.tables.transactions;
-    expect(rows).toHaveLength(1);
-    expect(rows[0].is_deleted).toBe(true);
-    expect(writes('transactions', 'delete')).toHaveLength(0);
-
-    // Local state is reloaded from the (restored) server.
-    await waitFor(() => expect(wallet()?.balance).toBe(WALLET_OPENING));
-  });
-
-  it('reports the rows it actually inserted and applies each delta once', async () => {
-    const result = await actions().commitBulkImport([
-      importRow({ rowIndex: 1, amount: 35.5 }),
-      importRow({ rowIndex: 2, amount: 64.5 }),
-      importRow({ rowIndex: 3, type: 'INCOME', amount: 1000 }),
-    ]);
-
-    expect(result).toMatchObject({ success: true, insertedCount: 3, totalAmount: 1100, skippedCount: 0 });
-    const walletWrites = writes('wallets', 'update');
-    expect(walletWrites).toHaveLength(1);
-    expect(walletWrites[0].payload).toEqual({ balance: WALLET_OPENING - 35.5 - 64.5 + 1000 });
-    await waitFor(() => expect(state().transactions).toHaveLength(3));
-  });
-});
-
 describe('a cloud reload that fails (F6)', () => {
+  beforeEach(() => installLedgerRpcs());
+
   /*
    * `cloudRevisionRef` is how an in-flight write learns that a reload landed
    * underneath it (T69): if the revision moved, the write's rollback snapshot
@@ -898,7 +805,7 @@ describe('a cloud reload that fails (F6)', () => {
 
   it('still rolls an in-flight write back when the reload under it read nothing', async () => {
     let releaseInsert!: () => void;
-    fake.state.gates.set('transactions:insert', new Promise<void>((resolve) => (releaseInsert = resolve)));
+    fake.state.gates.set('rpc:record_transaction', new Promise<void>((resolve) => (releaseInsert = resolve)));
 
     const pending = actions().addTransaction({
       amount: 200,
@@ -913,8 +820,8 @@ describe('a cloud reload that fails (F6)', () => {
     fake.state.failures.set('wallets:select', { message: 'network down' });
     await fake.state.authCallback!('SIGNED_IN', fake.session);
 
-    // Then the insert itself fails.
-    fake.state.failures.set('transactions:insert', { message: 'network down' });
+    // Then the write itself is refused.
+    fake.state.failures.set('rpc:record_transaction', { message: 'permission denied for function', code: '42501' });
     releaseInsert();
     const result = await pending;
 
@@ -929,7 +836,7 @@ describe('a cloud reload that fails (F6)', () => {
     // counts, so a write under it re-fetches rather than restoring a stale
     // snapshot (T69's original purpose).
     let releaseInsert!: () => void;
-    fake.state.gates.set('transactions:insert', new Promise<void>((resolve) => (releaseInsert = resolve)));
+    fake.state.gates.set('rpc:record_transaction', new Promise<void>((resolve) => (releaseInsert = resolve)));
 
     const pending = actions().addTransaction({
       amount: 200,
@@ -944,7 +851,7 @@ describe('a cloud reload that fails (F6)', () => {
     fake.state.tables.wallets[0].balance = 7777;
     await fake.state.authCallback!('SIGNED_IN', fake.session);
 
-    fake.state.failures.set('transactions:insert', { message: 'rejected' });
+    fake.state.failures.set('rpc:record_transaction', { message: 'permission denied for function', code: '42501' });
     releaseInsert();
     expect((await pending).success).toBe(false);
 
@@ -1132,15 +1039,82 @@ describe('a signed-in write through record_transaction (ADR 0023: F3, F4)', () =
   });
 });
 
-describe('a project without the Phase 51 migration', () => {
-  it('asks for record_transaction, then falls back to the legacy writes', async () => {
-    // No handler installed: the RPC answers PGRST202, as an unmigrated project does.
-    const result = await expense(200);
-    expect(result.success).toBe(true);
+describe('a project missing a ledger function (Phase 115, ADR 0091)', () => {
+  /*
+   * No handler installed: the function answers PGRST202, as a project without
+   * its migration does. There is no client-side fallback any more: the write
+   * asks for the function once, fails with DATABASE_UPDATE_NEEDED, writes no
+   * table, and the screen goes back to what it showed. The old fallback wrote
+   * absolute balances in several requests, which could debit one wallet and
+   * not credit the other.
+   */
+  const UPDATE_NEEDED = {
+    success: false,
+    code: 'DATABASE_UPDATE_NEEDED',
+    error: 'This needs the latest database update. Nothing was changed.',
+  };
+  function nothingWritten() {
+    for (const table of ['transactions', 'wallets', 'debts']) {
+      expect(writes(table, 'insert')).toHaveLength(0);
+      expect(writes(table, 'update')).toHaveLength(0);
+    }
+  }
 
+  it('an expense', async () => {
+    expect(await expense(200)).toEqual(UPDATE_NEEDED);
     expect(writes('rpc:record_transaction', 'rpc')).toHaveLength(1);
-    expect(writes('transactions', 'insert')).toHaveLength(1);
-    expect(writes('wallets', 'update')[0].payload).toEqual({ balance: WALLET_OPENING - 200 });
+    nothingWritten();
+    await waitFor(() => expect(wallet()?.balance).toBe(WALLET_OPENING));
+    expect(state().transactions).toHaveLength(0);
+  });
+
+  it('a debt repayment', async () => {
+    expect(await repay(1000)).toEqual(UPDATE_NEEDED);
+    nothingWritten();
+    await waitFor(() => expect(debt()?.remainingAmount).toBe(DEBT_REMAINING));
+    expect(wallet()?.balance).toBe(WALLET_OPENING);
+  });
+
+  it('a transfer', async () => {
+    const result = await actions().addTransaction({
+      amount: 250, type: 'TRANSFER', walletId: WALLET, destinationWalletId: CASH,
+      description: 'Move to cash', transactionDate: TODAY,
+    });
+    expect(result).toEqual(UPDATE_NEEDED);
+    expect(writes('rpc:transfer_funds', 'rpc')).toHaveLength(1);
+    nothingWritten();
+    await waitFor(() => expect(wallet()?.balance).toBe(WALLET_OPENING));
+    expect(wallet(CASH)?.balance).toBe(CASH_OPENING);
+  });
+
+  it('a delete and a restore', async () => {
+    installLedgerRpcs();
+    const added = await expense(200);
+    await landed(added.txId);
+    fake.state.rpcs.delete('set_transaction_deleted');
+    fake.state.calls.length = 0;
+
+    expect(await actions().softDeleteTransaction(added.txId!)).toEqual(UPDATE_NEEDED);
+    nothingWritten();
+    await waitFor(() => expect(state().transactions.find((t) => t.id === added.txId)?.isDeleted).toBe(false));
+    expect(wallet()?.balance).toBe(WALLET_OPENING - 200);
+  });
+
+  it('a CSV import', async () => {
+    const result = await actions().commitBulkImport([importRow({ amount: 300 })]);
+    expect(result).toEqual({ ...UPDATE_NEEDED, insertedCount: 0, totalAmount: 0, skippedCount: 0 });
+    nothingWritten();
+    expect(wallet()?.balance).toBe(WALLET_OPENING);
+  });
+
+  it('a new wallet', async () => {
+    const result = await actions().addWallet(
+      { name: 'Visa', type: 'CREDIT_CARD', currency: 'THB', color: '#e11d48', icon: 'credit_card' },
+      -5000,
+    );
+    expect(result).toEqual(UPDATE_NEEDED);
+    nothingWritten();
+    expect(state().wallets.some((w) => w.name === 'Visa')).toBe(false);
   });
 });
 
@@ -1729,25 +1703,6 @@ describe('a signed-in wallet through create_wallet (F7, ADR 0024)', () => {
     await waitFor(() => expect(state().wallets.filter((w) => w.name === 'Visa')).toHaveLength(1));
   });
 
-  it('falls back to a checked insert when the function is missing', async () => {
-    fake.state.rpcs.delete('create_wallet');
-    expect((await create(-5000)).success).toBe(true);
-
-    expect(writes('wallets', 'insert')).toHaveLength(1);
-    const openingRow = writes('transactions', 'insert')[0];
-    expect(openingRow.payload).toMatchObject({ type: 'ADJUSTMENT', amount: -5000, description: 'Opening balance' });
-  });
-
-  it('undoes the fallback wallet when its opening row is rejected', async () => {
-    fake.state.rpcs.delete('create_wallet');
-    fake.state.failures.set('transactions:insert', { message: 'row rejected' });
-
-    const result = await create(250);
-    expect(result.success).toBe(false);
-    // Soft-deleted, never hard-deleted, and gone from the screen.
-    expect(fake.state.tables.wallets.find((w) => w.name === 'Visa')?.is_deleted).toBe(true);
-    await waitFor(() => expect(state().wallets.some((w) => w.name === 'Visa' && !w.isDeleted)).toBe(false));
-  });
 });
 
 describe('a signed-in wallet edit and archive (Phase 59, ADR 0034)', () => {

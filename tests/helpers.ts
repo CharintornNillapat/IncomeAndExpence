@@ -2,6 +2,25 @@ import { expect, type Page } from '@playwright/test';
 import type { Debt, Wallet } from '../src/types';
 
 /**
+ * Waits until no finite animation or transition is running on the page
+ * (Phase 115, ADR 0091). Local WebKit on Windows sometimes stops painting
+ * (ADR 0058), and the stalls with a full trace began with a click while a
+ * 150 to 200 ms tween ran: a tab's slide, a dialog's entrance or exit. An
+ * endless animation (a spinner while work runs) is left out. It polls on a
+ * timer, not on animation frames, which a stalled page does not run.
+ */
+export async function settle(page: Page): Promise<void> {
+  await page.waitForFunction(
+    () =>
+      document
+        .getAnimations()
+        .every((a) => a.playState !== 'running' || a.effect?.getComputedTiming().iterations === Infinity),
+    undefined,
+    { polling: 50 },
+  );
+}
+
+/**
  * Navigates to a top-level tab and waits for its view to finish mounting.
  *
  * Every view in `App.tsx` is a `React.lazy` import, so clicking a tab kicks off
@@ -17,10 +36,14 @@ import type { Debt, Wallet } from '../src/types';
  * The previous `if (await tab.isVisible())` guard was a single non-retrying
  * probe - if the navbar had not painted yet it silently skipped the whole
  * block, so the test passed without asserting anything.
+ *
+ * It settles before the click and again once the view has slid in, so the
+ * spec's next click never lands mid-tween (ADR 0091).
  */
 export async function gotoTab(page: Page, tabId: string): Promise<void> {
   const tab = page.locator(`#nav-tab-${tabId}`);
   await expect(tab).toBeVisible();
+  await settle(page);
   await tab.click();
 
   // The active tab carries `aria-current="page"` (T31) - a semantic
@@ -31,6 +54,7 @@ export async function gotoTab(page: Page, tabId: string): Promise<void> {
 
   // Suspense fallback is removed once the lazy chunk has resolved.
   await expect(page.locator('#view-loading-fallback')).toHaveCount(0);
+  await settle(page);
 }
 
 const SEED_STAMP = new Date().toISOString();
@@ -147,6 +171,7 @@ export async function addQuickTransaction(
   description: string,
   amount = '150'
 ): Promise<void> {
+  await settle(page);
   await page.locator('#navbar-quick-add-btn').click();
 
   const modal = page.getByRole('dialog', { name: /Quick Record Transaction/i });
@@ -167,4 +192,5 @@ export async function addQuickTransaction(
 
   // The modal closing is the app's own confirmation that the write succeeded.
   await expect(modal).not.toBeVisible();
+  await settle(page);
 }
