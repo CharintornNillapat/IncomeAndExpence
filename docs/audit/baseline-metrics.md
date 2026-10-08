@@ -1098,6 +1098,16 @@ The entry's growth is the ledger action itself, which lives with the other ledge
 
 **Intermittent local failures:** 6 in 1,071 full-suite runs (3 full runs). All were timeouts: a Firefox `goto`, a Firefox context close, and four WebKit clicks waiting for "stable". No assertion failed. See audit 005 finding 3 for the control runs.
 
+## Phase 115 (no fallback writes, settled helper clicks) - delta against Phase 114
+
+**Bundle** (gzip level 9 in Node on both sides; `main` at `7a98597` built in a worktree with `.env`). The entry 196,820 / 57,066 to 191,919 / 56,213 B (-4,901 / -853 gzip; `FinanceContext` is in it); all app JS 883,188 / 268,070 to 878,287 / 267,227, 40 files, no other chunk changed; cold start still three scripts.
+
+| Suite | Files | Tests | Runs | Result |
+|---|---|---|---|---|
+| Vitest (`unit/`) | 56 | 1299 | 1299 | 1299/1299 (+6, -8 `authenticated-ledger`) |
+| Playwright (local, 4 workers) | 34 | 164 | 492 | first run 484 passed, 6 skipped, 2 failed; second run 485 passed, 6 skipped, 1 failed; all three the WebKit painting stall |
+| Playwright, WebKit project x2 | 34 | 164 | 328 | 322 passed, 6 skipped |
+
 ## Phase 114 (legacy transfer_funds dropped, overdraft announced) - delta against Phase 113
 
 **Bundle** (gzip level 9 in Node on both sides; `main` at `311e5cd` built in a worktree with `.env`). All app JS 882,669 / 267,804 to 883,188 / 268,070 B (+519 / +266 gzip), 40 files: the chunk the two forms share, named `InlineMathInput` before, is now named `OverdraftAnnouncer` and holds both (6,322 / 2,387 to 6,664 / 2,566); `TransactionForm` +81 / +39 and `TransferFundsModal` +84 / +28; the entry +3 / +6 (chunk names); cold start still three scripts.

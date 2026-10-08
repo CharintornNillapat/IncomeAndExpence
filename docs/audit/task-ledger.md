@@ -1081,6 +1081,21 @@ Approved explicitly by the user, planned and approved before any code was writte
 - **One negative control was redone** because the first attempt produced malformed TypeScript that the dev server still served — the tests failed, but possibly for the wrong reason.
 - **No flakes.** Phase 44's `wallets.spec.ts` webkit flake has now not reproduced across three consecutive phases; still watched rather than closed.
 
+## Phase 115 - A signed-in ledger write is one database function or nothing; the test helpers wait for tweens to end: T700-T703 (2026-10-08)
+
+ADR `0091`, superseding the fallback parts of ADR `0022`, `0023` and `0024` and amending ADR `0058` and `0089`. Branch `phase-115-deprecate-non-atomic-writes`, cut from `main` at `7a98597`; draft PR. No migration.
+
+| # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
+|---|---|---|---|---|---|---|---|---|---|---|
+| T700 | Five fallbacks removed: `transfer_funds`, `record_transaction`, `set_transaction_deleted`, `import_transactions`, `create_wallet` each fail with `DATABASE_UPDATE_NEEDED` and write nothing | `src/context/FinanceContext.tsx` | High | Med | 1.0h | done | - | code | the six new tests failed first | -346 lines; entry -853 B gzip |
+| T701 | The harness: the new group, F1, F2 and the `create_wallet` fallback tests removed, F6 against the RPC | `unit/authenticated-ledger.test.tsx` | High | Low | 0.5h | done | T700 | code | 107/107 | +6, -8 unit |
+| T702 | `settle` in `gotoTab` and `addQuickTransaction`; what animates after a load and a tab change, measured | `tests/helpers.ts` | Med | Low | 0.5h | done | - | code | **WebKit, measured:** with `settle` in the helpers, 3 stalls in 656 WebKit runs (the two full runs, 328, and the WebKit project twice over, 328, which had none), against 4 in about 600 in Phase 114: at rates this low the change is not measurable. All three were clicks the helpers do not make, each traced with frames stopping within 0.3 s of the click: Quick Add's submit and the rule chip's dismiss, with `motion-chip` and `data-leaving` elements in the snapshot (a chip's tween), and the Transactions panel's Restore. All came in three-browser runs. The stall is not fixed; the helpers' own clicks no longer land mid-tween | - |
+| T703 | Gate, bundle, ADR `0091`, `CLAUDE.md`, the logs | `docs/`, `CLAUDE.md` | Med | Low | 0.5h | done | T700-T702 | docs | lint clean; unit 1299/1299 in 56 files; Playwright, first run 484 passed, 6 skipped, 2 failed of 492 (14.4 m), second run 485 passed, 6 skipped, 1 failed (12.6 m), traces on in both: all three the WebKit painting stall; no migration, and live holds all five functions | - |
+
+**Notes on execution:**
+- **Live was read before the change:** all five functions exist, one signature each, and `authenticated` may execute every one, so no production write reaches the new result.
+- **After a load nothing animates** (WebKit and Chromium, 0 to 1000 ms); a tab change runs its transitions and slide for about 250 ms.
+
 ## Phase 114 - The 20260909 transfer_funds signature is dropped; a screen reader hears the overdraft warning: T696-T699 (2026-10-08)
 
 ADR `0090`, completing ADR `0078`'s scheduled drop and amending ADR `0085`. Branch `phase-114-legacy-rpc-cleanup-and-a11y`, cut from `main` at `311e5cd`; code `f5f5714`, docs `d7362dc`; hash backfill `de6d219`; merged into `main` as `8083134` (PR #65); Vercel `dpl_6S1n9FgGLKVBDSyvwGXvanDdyPqa` READY in `icn1`. Before the apply, live drift run `37717095534` showed only the pending drop (6 rows); the migration was then applied to live by the owner in the SQL editor, history row `20261008042722` (`owner, SQL editor`, 20 rows); read back: one `transfer_funds`, the session signature, body hash `03b469921a7c0d01909608cb8c6a53d7`, ten `SECURITY DEFINER` functions for `authenticated`; drift run `37727805224` (on `de6d219`) clean. The pull request's CI (run `37717215820`) passed every job. `main` CI on the merge (run `37727905611`) passed every job on its first attempt in 251 s end to end, the merge job included: unit 1301; 486 passed, 6 skipped, no flaky test. The local WebKit painting stall (ADR `0058`) did not show on CI's Linux WebKit.
