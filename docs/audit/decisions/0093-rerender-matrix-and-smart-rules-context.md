@@ -1,6 +1,6 @@
 # 0093: The re-render matrix across six views; the smart rules have contexts of their own; the helpers' animation wait stays
 
-**Status:** Accepted. Code `bbac429`, branch `phase-117-rerender-benchmarking`; not merged. No migration; live drift run `37798213404`: no drift, 20 migrations.
+**Status:** Accepted. Code `bbac429`, docs `28b5bd2`, draft PR #68; not merged. No migration; live drift run `37798213404`: no drift, 20 migrations.
 - **The second slice of** the AGY audit's finding 3 (the monolithic `FinanceContext`), after ADR `0092`'s diary.
 - **Confirms** ADR `0091`'s `settle`, with an A/B the brief's removal was measured against.
 

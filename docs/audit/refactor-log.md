@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 117 - The re-render matrix across six views; the smart rules have contexts of their own; the helpers' animation wait stays: T708-T711 (2026-10-08, code `bbac429`)
+## Phase 117 - The re-render matrix across six views; the smart rules have contexts of their own; the helpers' animation wait stays: T708-T711 (2026-10-08, code `bbac429`, docs `28b5bd2`, PR #68)
 
 ADR `0093`. The owner's brief: measure re-renders across all six views for four kinds of write, pick the next slice between the smart rules and the categories from the data, extract it as the diary was, and remove the helpers' animation wait.
 
