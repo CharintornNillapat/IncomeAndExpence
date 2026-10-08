@@ -47,7 +47,7 @@ afterAll(async () => {
 describe('every migration, from empty', () => {
   it('applies in file order, starting from the baseline', () => {
     expect(migrationFiles()[0]).toBe(BASELINE);
-    expect(migrationFiles()).toHaveLength(19);
+    expect(migrationFiles()).toHaveLength(20);
   });
 
   it('builds the eight tables and what the live project holds', () => {
@@ -57,12 +57,13 @@ describe('every migration, from empty', () => {
     ]);
     // The counts read from the live project on 2026-10-05, less Phase 93's
     // two SELECT policies, plus its transfer_funds overload (ADR 0069) and
-    // Phase 96's delete_user_account (ADR 0072).
+    // Phase 96's delete_user_account (ADR 0072), less the 20260909
+    // transfer_funds signature Phase 114 drops (ADR 0090).
     expect(count(catalog, 'column')).toBe(75);
     expect(count(catalog, 'constraint')).toBe(28);
     expect(count(catalog, 'index')).toBe(17);
     expect(count(catalog, 'policy')).toBe(7);
-    expect(count(catalog, 'function')).toBe(17);
+    expect(count(catalog, 'function')).toBe(16);
     expect(count(catalog, 'trigger')).toBe(2);
     expect(count(catalog, 'publication')).toBe(5);
   });
@@ -260,7 +261,9 @@ describe('the probes against the schema the migrations build', () => {
 
   // Its section 4 checks that the 20260909 signature still moves money, which
   // Phase 102 ends on purpose; the Phase 102 probe checks the refusal instead.
-  const upTo101 = () => migrationFiles().filter(file => !file.includes('_phase102_'));
+  // Phase 114 drops that signature, so both stop before it.
+  const upTo113 = () => migrationFiles().filter(file => !file.includes('_phase114_'));
+  const upTo101 = () => upTo113().filter(file => !file.includes('_phase102_'));
 
   it('Phase 93, after its migrations: passes against every file up to Phase 102', async () => {
     const { rows, before, after } = await runProbe('20261006_phase93.probe.sql', upTo101(), true);
@@ -274,8 +277,8 @@ describe('the probes against the schema the migrations build', () => {
     expect(after).toEqual(before);
   }, 60_000);
 
-  it('Phase 102, after its migration: passes against every file', async () => {
-    const { rows, before, after } = await runProbe('20261006_phase102.probe.sql', migrationFiles(), true);
+  it('Phase 102, after its migration: passes against every file up to Phase 114', async () => {
+    const { rows, before, after } = await runProbe('20261006_phase102.probe.sql', upTo113(), true);
     expect(rows).toContainEqual({ result: 'PHASE 102 PROBE OK' });
     expect(after).toEqual(before);
   }, 60_000);
@@ -286,6 +289,30 @@ describe('the probes against the schema the migrations build', () => {
       await applyMigrations(probeDb, upTo101());
       await expect(probeDb.exec(inlineProbe('20261006_phase102.probe.sql', { applied: true }))).rejects.toThrow(
         /the old signature is still security definer/
+      );
+    } finally {
+      await probeDb.close();
+    }
+  }, 60_000);
+
+  it('Phase 114, before its migration: applies it, passes and rolls back', async () => {
+    const { rows, before, after } = await runProbe('20261008_phase114.probe.sql', upTo113(), false);
+    expect(rows).toContainEqual({ result: 'PHASE 114 PROBE OK' });
+    expect(after).toEqual(before);
+  }, 60_000);
+
+  it('Phase 114, after its migration: passes against every file', async () => {
+    const { rows, before, after } = await runProbe('20261008_phase114.probe.sql', migrationFiles(), true);
+    expect(rows).toContainEqual({ result: 'PHASE 114 PROBE OK' });
+    expect(after).toEqual(before);
+  }, 60_000);
+
+  it('Phase 114: the probe fails on the schema before it, with the migration left out', async () => {
+    const probeDb = await createDatabase();
+    try {
+      await applyMigrations(probeDb, upTo113());
+      await expect(probeDb.exec(inlineProbe('20261008_phase114.probe.sql', { applied: true }))).rejects.toThrow(
+        /the 20260909 signature is still there/
       );
     } finally {
       await probeDb.close();

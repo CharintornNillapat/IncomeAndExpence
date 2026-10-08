@@ -4,6 +4,27 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
+## Phase 114 - The 20260909 transfer_funds signature is dropped; a screen reader hears the overdraft warning: T696-T699 (2026-10-08, code `f5f5714`, docs `d7362dc`, PR #65)
+
+ADR `0090`. The owner's brief: drop the old `transfer_funds` signature if the logs show no caller, and announce the overdraft warning without speaking on every keystroke.
+
+**Changed**
+- **`20261008_phase114_drop_legacy_transfer_funds.sql` (new):** drops `transfer_funds(p_user_id, ...)`, no cascade. Probe `20261008_phase114.probe.sql`. **Not applied to live:** drift run `37717095534` shows only the pending drop (6 rows).
+- **`wallet/OverdraftAnnouncer.tsx` (new):** a polite `sr-only` status region whose text is set during render when the paying wallet or its balance changes; used by `TransactionForm` and `WalletTransferForm`.
+- **Tests:** `unit/migration-replay.test.ts` (+3, and the Phase 93 and 102 probes stop before Phase 114), `unit/overdraft-warning.test.tsx` (+2), `tests/transfer-preview.spec.ts` (the region in the overdraft test).
+- **Docs:** ADR `0090`; `CLAUDE.md`'s transfer_funds, advisors, overdraft and unit lines.
+
+**Gate:**
+- Lint clean; unit 1301/1301 in 56 files; Playwright, first run 485 passed, 6 skipped, 1 failed of 492 (9.2 m), second run 484 passed, 6 skipped, 2 failed (15.7 m, traces on): all three a WebKit click waiting on "stable" in specs this phase does not change, none with a form open; the local replay of all 20 migrations is clean.
+- **Red first:** both announcer tests (no region); with the amount in the key both fail, and without the balance the sync check fails; the Phase 114 probe fails on the schema without the migration.
+- **WebKit:** the three failures were each a click that waited 15 s for "stable" (ADR `0058`): the Dashboard wallet card (`wallets-page`), the navbar's Quick Add (`jev-classify`) and the Wallets tab (`soft-delete`), each before any form was open, so neither announcer was on the page. The two traces kept show 3 screencast frames, the last within a second of the click, then none. Repeats on WebKit: `wallets-page` 120 of 120; `jev-classify` and `soft-delete` 149 of 150, the one failure the Transactions page's Show deleted checkbox, which moved during the 200 ms tab slide ("element is not stable" twice) and then stalled, as ADR `0089` expected.
+- **Bundle:** all app JS 882,669 / 267,804 to 883,188 / 268,070 B (+519 / +266 gzip), 40 files: the chunk the two forms share, named `InlineMathInput` before, is now named `OverdraftAnnouncer` and holds both (6,322 / 2,387 to 6,664 / 2,566); `TransactionForm` +81 / +39 and `TransferFundsModal` +84 / +28; the entry +3 / +6 (chunk names); cold start still three scripts.
+
+**Changed on purpose**
+- **A build that still sends `p_user_id` gets `PGRST202`** and the legacy transfer, once the migration is applied (ADR `0090` holds why that is accepted).
+
+---
+
 ## Phase 113 - The title names the open tab; Back closes the top dialog: T691-T695 (2026-10-08, code `c8afa5a`, docs `9952c1c`, merge `4f1fcf1`)
 
 ADR `0089`. The owner's brief: a title per tab, Back closing dialogs, and the WebKit stall in the Phase 112 specs.

@@ -81,6 +81,83 @@ describe('the entry form', () => {
   });
 });
 
+/**
+ * Phase 114 (ADR 0090): a screen reader hears the warning through a polite
+ * status region, when it appears and when the paying wallet or its balance
+ * changes, never on a keystroke that only moves the amount. A change to the
+ * region's text is what gets announced, so the tests count those.
+ */
+function watch(region: HTMLElement) {
+  let changes = 0;
+  const observer = new MutationObserver((records) => { changes += records.length; });
+  observer.observe(region, { childList: true, characterData: true, subtree: true });
+  return { changes: () => (changes += observer.takeRecords().length), stop: () => observer.disconnect() };
+}
+const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
+
+describe('the overdraft announcement', () => {
+  it('in the entry form: on appearance and a wallet change, not on each keystroke', async () => {
+    const view = render(
+      <FinanceProvider>
+        <TransactionForm idPrefix="t" wallets={[CASH, CARD]} categories={[FOOD, PAY]} onSubmitTransaction={vi.fn(async () => ({ success: true }))} />
+      </FinanceProvider>,
+    );
+    const note = (value: string) => fireEvent.change(document.querySelector('[id$="-desc"]')!, { target: { value } });
+    const region = screen.getByTestId('t-overdraft-announcer');
+    expect(region.getAttribute('role')).toBe('status');
+    expect(region.getAttribute('aria-live')).toBe('polite');
+    expect(region.textContent).toBe('');
+
+    note('lunch 500');
+    expect(region.textContent).toBe('');
+    note('lunch 600');
+    expect(region.textContent).toBe('This overdraws Cash by ฿100.00.');
+
+    const watcher = watch(region);
+    note('lunch 6000');
+    note('lunch 60000');
+    await settle();
+    expect(watcher.changes()).toBe(0);
+    expect(screen.getByTestId('t-overdraft-warning').textContent).toBe('This overdraws Cash by ฿59,500.00.');
+    watcher.stop();
+
+    // The balance changes under it (a sync): announced again, with the new figure.
+    view.rerender(
+      <FinanceProvider>
+        <TransactionForm idPrefix="t" wallets={[{ ...CASH, balance: 400 }, CARD]} categories={[FOOD, PAY]} onSubmitTransaction={vi.fn(async () => ({ success: true }))} />
+      </FinanceProvider>,
+    );
+    expect(screen.getByTestId('t-overdraft-announcer').textContent).toBe('This overdraws Cash by ฿59,600.00.');
+
+    // A credit card is never overdrawn: the region empties.
+    fireEvent.change(document.getElementById('t-wallet-select')!, { target: { value: 'wal-card' } });
+    expect(screen.getByTestId('t-overdraft-announcer').textContent).toBe('');
+  });
+
+  it('in the transfer form: on appearance, not while the amount grows', async () => {
+    const ids = { source: 'src', dest: 'dst', amount: 'xfer-amt', note: 'note', submit: 'xfer-submit', swap: 'swap', transferAll: 'xfer-all' };
+    render(
+      <FinanceProvider>
+        <WalletTransferForm wallets={[CASH, CARD]} ids={ids} tone="plain" onTransferred={() => {}} />
+      </FinanceProvider>,
+    );
+    const region = screen.getByTestId('transfer-overdraft-announcer');
+    expect(region.getAttribute('role')).toBe('status');
+    fireEvent.change(document.getElementById('src')!, { target: { value: 'wal-cash' } });
+    fireEvent.change(document.getElementById('xfer-amt')!, { target: { value: '700' } });
+    expect(region.textContent).toBe('This overdraws Cash by ฿200.00.');
+
+    const watcher = watch(region);
+    fireEvent.change(document.getElementById('xfer-amt')!, { target: { value: '7000' } });
+    await settle();
+    expect(watcher.changes()).toBe(0);
+    watcher.stop();
+
+    fireEvent.change(document.getElementById('xfer-amt')!, { target: { value: '70' } });
+    expect(region.textContent).toBe('');
+  });
+});
+
 describe('the transfer form', () => {
   const ids = { source: 'src', dest: 'dst', amount: 'xfer-amt', note: 'note', submit: 'xfer-submit', swap: 'swap', transferAll: 'xfer-all' };
 

@@ -132,6 +132,14 @@ test.describe('Transfer balance preview', () => {
 
     // The point of the test: still submittable.
     await expect(modal.locator('#execute-transfer-btn')).toBeEnabled();
+
+    // A screen reader hears it once (ADR 0090): a keystroke that only moves
+    // the amount leaves the status region as it was announced.
+    const announcer = modal.getByRole('status').filter({ hasText: 'overdraws' });
+    await expect(announcer).toHaveText('This overdraws Cash Wallet by ฿350.00.');
+    await modal.locator('#transfer-amount-math').pressSequentially('0');
+    await expect(warning).toContainText('฿4,850.00');
+    await expect(announcer).toHaveText('This overdraws Cash Wallet by ฿350.00.');
   });
 
   test('"Transfer all" fills the amount with the whole source balance', async ({ page }) => {
