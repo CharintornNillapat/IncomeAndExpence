@@ -1,6 +1,6 @@
 # 0090: The 20260909 transfer_funds signature is dropped; a screen reader hears the overdraft warning
 
-**Status:** Accepted. Code `f5f5714`, docs `d7362dc`, draft PR #65; not merged. **The migration is not applied to live:** the owner chose to apply it with read-only checks after, and the apply was declined at the permission prompt, so it waits for the owner (see "Release").
+**Status:** Accepted. Released: code `f5f5714`, docs `d7362dc`, hash backfill `de6d219`, merged into `main` as `8083134` (PR #65); Vercel `dpl_6S1n9FgGLKVBDSyvwGXvanDdyPqa` READY in `icn1`. The migration was applied to live by the owner in the SQL editor, history row `20261008042722` (`owner, SQL editor`, 20 rows); read back: one `transfer_funds`, the session signature, body hash `03b469921a7c0d01909608cb8c6a53d7`, ten `SECURITY DEFINER` functions for `authenticated`; drift run `37727805224` (on `de6d219`) clean.
 - **Completes** ADR `0078`'s scheduled drop and ADR `0067`'s last scheduled finding (S2a).
 - **Amends** ADR `0085`: the overdraft warning in the entry and transfer forms is announced.
 
@@ -44,6 +44,12 @@
 - **Bundle:** all app JS 882,669 / 267,804 to 883,188 / 268,070 B (+519 / +266 gzip), 40 files: the chunk the two forms share, named `InlineMathInput` before, is now named `OverdraftAnnouncer` and holds both (6,322 / 2,387 to 6,664 / 2,566); `TransactionForm` +81 / +39 and `TransferFundsModal` +84 / +28; the entry +3 / +6 (chunk names); cold start still three scripts.
 
 ## Release
+
+- **Applied:** the migration was applied to live by the owner in the SQL editor, history row `20261008042722` (`owner, SQL editor`, 20 rows); read back: one `transfer_funds`, the session signature, body hash `03b469921a7c0d01909608cb8c6a53d7`, ten `SECURITY DEFINER` functions for `authenticated`; drift run `37727805224` (on `de6d219`) clean. The drift run just before it (`37727678324`, on `main` at `311e5cd`, which lacked the file) failed as expected.
+- PR #65 merged into `main` as `8083134`, whose tree is identical to `de6d219`; the pull request's CI (run `37717215820`) passed every job. Vercel `dpl_6S1n9FgGLKVBDSyvwGXvanDdyPqa` is READY in production, region `icn1`; production serves the entry `index-DznKv4-r.js`, the same hash as a local build of `main`, and the `OverdraftAnnouncer` chunk with the announcement in it.
+- `main` CI on the merge (run `37727905611`) passed every job on its first attempt in 251 s end to end, the merge job included: unit 1301; 486 passed, 6 skipped, no flaky test. The local WebKit painting stall (ADR `0058`) did not show on CI's Linux WebKit.
+
+Before it was applied:
 
 - **The migration is not applied to live.** The owner chose to apply it and check with read-only queries after (a rolled-back probe on live was declined first); `apply_migration` was then declined at the permission prompt as well, so live still holds the Phase 102 stub, which refuses every call.
 - **Until it is applied, the drift check reports the difference.** Run `37717095534` on this branch, against live: 6 rows, the 20260909 signature and its 4 grants only in the database, and the `phase114_drop_legacy_transfer_funds` history row only in the repo. Nothing else differs.

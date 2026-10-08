@@ -4,12 +4,18 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 114 - The 20260909 transfer_funds signature is dropped; a screen reader hears the overdraft warning: T696-T699 (2026-10-08, code `f5f5714`, docs `d7362dc`, PR #65)
+## Phase 114 - The 20260909 transfer_funds signature is dropped; a screen reader hears the overdraft warning: T696-T699 (2026-10-08, code `f5f5714`, docs `d7362dc`, merge `8083134`)
 
 ADR `0090`. The owner's brief: drop the old `transfer_funds` signature if the logs show no caller, and announce the overdraft warning without speaking on every keystroke.
 
+**Release:**
+- The migration was applied to live by the owner in the SQL editor, history row `20261008042722` (`owner, SQL editor`, 20 rows); read back: one `transfer_funds`, the session signature, body hash `03b469921a7c0d01909608cb8c6a53d7`, ten `SECURITY DEFINER` functions for `authenticated`; drift run `37727805224` (on `de6d219`) clean.
+- The pull request's CI (run `37717215820`, on `de6d219`) passed every job.
+- PR #65 merged into `main` as `8083134`, whose tree is identical to `de6d219`. Vercel `dpl_6S1n9FgGLKVBDSyvwGXvanDdyPqa` is READY in production, region `icn1`; production serves the entry `index-DznKv4-r.js`, the same hash as a local build of `main`, and the `OverdraftAnnouncer` chunk with the announcement in it.
+- `main` CI on the merge (run `37727905611`) passed every job on its first attempt in 251 s end to end, the merge job included: unit 1301; 486 passed, 6 skipped, no flaky test. The local WebKit painting stall (ADR `0058`) did not show on CI's Linux WebKit.
+
 **Changed**
-- **`20261008_phase114_drop_legacy_transfer_funds.sql` (new):** drops `transfer_funds(p_user_id, ...)`, no cascade. Probe `20261008_phase114.probe.sql`. **Not applied to live:** drift run `37717095534` shows only the pending drop (6 rows).
+- **`20261008_phase114_drop_legacy_transfer_funds.sql` (new):** drops `transfer_funds(p_user_id, ...)`, no cascade. Probe `20261008_phase114.probe.sql`. Before the apply, drift run `37717095534` showed only the pending drop (6 rows); applied by the owner, drift run `37727805224` clean.
 - **`wallet/OverdraftAnnouncer.tsx` (new):** a polite `sr-only` status region whose text is set during render when the paying wallet or its balance changes; used by `TransactionForm` and `WalletTransferForm`.
 - **Tests:** `unit/migration-replay.test.ts` (+3, and the Phase 93 and 102 probes stop before Phase 114), `unit/overdraft-warning.test.tsx` (+2), `tests/transfer-preview.spec.ts` (the region in the overdraft test).
 - **Docs:** ADR `0090`; `CLAUDE.md`'s transfer_funds, advisors, overdraft and unit lines.
