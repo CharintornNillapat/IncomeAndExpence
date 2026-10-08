@@ -4,12 +4,12 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 114 - The 20260909 transfer_funds signature is dropped; a screen reader hears the overdraft warning: T696-T699 (2026-10-08)
+## Phase 114 - The 20260909 transfer_funds signature is dropped; a screen reader hears the overdraft warning: T696-T699 (2026-10-08, code `f5f5714`, docs `d7362dc`, PR #65)
 
 ADR `0090`. The owner's brief: drop the old `transfer_funds` signature if the logs show no caller, and announce the overdraft warning without speaking on every keystroke.
 
 **Changed**
-- **`20261008_phase114_drop_legacy_transfer_funds.sql` (new):** drops `transfer_funds(p_user_id, ...)`, no cascade. Probe `20261008_phase114.probe.sql`. **Not applied to live.**
+- **`20261008_phase114_drop_legacy_transfer_funds.sql` (new):** drops `transfer_funds(p_user_id, ...)`, no cascade. Probe `20261008_phase114.probe.sql`. **Not applied to live:** drift run `37717095534` shows only the pending drop (6 rows).
 - **`wallet/OverdraftAnnouncer.tsx` (new):** a polite `sr-only` status region whose text is set during render when the paying wallet or its balance changes; used by `TransactionForm` and `WalletTransferForm`.
 - **Tests:** `unit/migration-replay.test.ts` (+3, and the Phase 93 and 102 probes stop before Phase 114), `unit/overdraft-warning.test.tsx` (+2), `tests/transfer-preview.spec.ts` (the region in the overdraft test).
 - **Docs:** ADR `0090`; `CLAUDE.md`'s transfer_funds, advisors, overdraft and unit lines.

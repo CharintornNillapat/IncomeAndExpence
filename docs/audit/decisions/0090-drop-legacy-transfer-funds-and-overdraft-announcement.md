@@ -1,6 +1,6 @@
 # 0090: The 20260909 transfer_funds signature is dropped; a screen reader hears the overdraft warning
 
-**Status:** Accepted. Draft PR; not merged. **The migration is not applied to live:** the owner chose to apply it with read-only checks after, and the apply was declined at the permission prompt, so it waits for the owner (see "Release").
+**Status:** Accepted. Code `f5f5714`, docs `d7362dc`, draft PR #65; not merged. **The migration is not applied to live:** the owner chose to apply it with read-only checks after, and the apply was declined at the permission prompt, so it waits for the owner (see "Release").
 - **Completes** ADR `0078`'s scheduled drop and ADR `0067`'s last scheduled finding (S2a).
 - **Amends** ADR `0085`: the overdraft warning in the entry and transfer forms is announced.
 
@@ -46,5 +46,5 @@
 ## Release
 
 - **The migration is not applied to live.** The owner chose to apply it and check with read-only queries after (a rolled-back probe on live was declined first); `apply_migration` was then declined at the permission prompt as well, so live still holds the Phase 102 stub, which refuses every call.
-- **Until it is applied, the drift check reports the difference:** the 20260909 signature and its grants only in the database, and the `phase114_drop_legacy_transfer_funds` history row only in the repo. That is the whole of it; nothing else differs.
+- **Until it is applied, the drift check reports the difference.** Run `37717095534` on this branch, against live: 6 rows, the 20260909 signature and its 4 grants only in the database, and the `phase114_drop_legacy_transfer_funds` history row only in the repo. Nothing else differs.
 - **To apply it:** in the SQL editor, paste `supabase/migrations/20261008_phase114_drop_legacy_transfer_funds.sql`, run it, then run what `npm run migration:print-history -- supabase/migrations/20261008_phase114_drop_legacy_transfer_funds.sql` prints (ADR `0065`), and run the drift check from the Actions tab. Or `apply_migration` through the MCP with the name `phase114_drop_legacy_transfer_funds`. No client change depends on it, so before or after the merge both work; the weekly drift check fails from the merge until it is applied.
