@@ -17,6 +17,7 @@ import { evaluateAmountInput, safeEvaluateMath } from '../utils/mathEvaluator';
 import { roundToCents } from '../utils/money';
 import { payoffPercent } from '../selectors/debts';
 import { overdraftBy } from '../selectors/wallets';
+import { OverdraftAnnouncer } from './wallet/OverdraftAnnouncer';
 import { APP_CURRENCY_SYMBOL, formatCurrencyAmount } from '../utils/currency';
 import { todayIsoDate } from '../utils/date';
 import { LABEL_TEXT_CLASS, OPTION_CLASS, ERROR_BANNER_CLASS } from '../utils/formStyles';
@@ -1048,6 +1049,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
           )}
         </div>
 
+        <OverdraftAnnouncer wallet={fromWallet} overdrawnBy={overdrawnBy} testId={`${idBase}-overdraft-announcer`} />
         {overdrawnBy > 0 && fromWallet && (
           <p
             data-testid={`${idBase}-overdraft-warning`}

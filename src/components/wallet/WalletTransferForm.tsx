@@ -11,6 +11,7 @@ import { evaluateAmountInput } from '../../utils/mathEvaluator';
 import { todayIsoDate } from '../../utils/date';
 import { getWalletIcon } from '../../utils/walletIcons';
 import { InlineMathInput } from '../InlineMathInput';
+import { OverdraftAnnouncer } from './OverdraftAnnouncer';
 import { EmptyState } from '../ui/EmptyState';
 import { Button } from '../ui/Button';
 import {
@@ -353,6 +354,7 @@ export const WalletTransferForm: React.FC<WalletTransferFormProps> = ({
       </div>
 
       {/* Warn, never block: `canSubmit` deliberately ignores this (ADR `0014`). */}
+      <OverdraftAnnouncer wallet={sourceWallet} overdrawnBy={overdrawnBy} testId="transfer-overdraft-announcer" />
       {overdrawnBy > 0 && (
         <div
           data-testid="transfer-overdraft-warning"
