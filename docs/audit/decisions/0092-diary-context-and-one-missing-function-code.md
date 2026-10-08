@@ -1,6 +1,6 @@
 # 0092: The diary has contexts of its own, composed under FinanceProvider; one code for a missing function
 
-**Status:** Accepted. Draft PR; not merged. No migration.
+**Status:** Accepted. Code `1e2f13f`, docs `2673f32`, draft PR #67; not merged. No migration; live drift run `37760655280`: no drift, 20 migrations.
 - **The first slice of** the AGY audit's finding 3 (the monolithic `FinanceContext`).
 - **Amends** ADR `0091`: `updateTransaction`, `deleteAccount` and the account seed report a missing function the same way.
 

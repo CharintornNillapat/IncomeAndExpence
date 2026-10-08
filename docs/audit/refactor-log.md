@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 116 - The diary has contexts of its own, composed under FinanceProvider; one code for a missing function: T704-T707 (2026-10-08)
+## Phase 116 - The diary has contexts of its own, composed under FinanceProvider; one code for a missing function: T704-T707 (2026-10-08, code `1e2f13f`, docs `2673f32`, PR #67)
 
 ADR `0092`. The owner's brief: move the diary out of `FinanceContext` without breaking a view, measure re-renders before and after, keep guest and cloud behaviour, and give the remaining missing-function paths the one code.
 
