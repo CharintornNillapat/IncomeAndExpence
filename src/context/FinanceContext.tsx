@@ -58,6 +58,8 @@ import { generateIdempotencyKey } from '../utils/ids';
 export interface MutationResult {
   success: boolean;
   error?: string;
+  /** Set when a ledger function is missing from the database (ADR 0091). */
+  code?: 'DATABASE_UPDATE_NEEDED';
 }
 
 /**
@@ -416,12 +418,30 @@ const SESSION_CHECK_MIN_GAP_MS = 10_000;
 const SESSION_CHECK_INTERVAL_MS = 60_000;
 
 // True only when the RPC itself is absent, i.e. the migration has not been
-// applied yet. Deliberately narrow: any other database error must surface and
-// trigger a rollback rather than silently falling back to the legacy path.
+// applied yet. Deliberately narrow: any other database error is a failure of
+// its own and keeps its message.
 function isMissingRpcError(err: { code?: string; message?: string } | null): boolean {
   if (!err) return false;
   if (err.code === '42883' || err.code === 'PGRST202') return true;
   return (err.message || '').toLowerCase().includes('could not find the function');
+}
+
+/*
+ * Phase 115 (ADR 0091): a signed-in ledger write is one database function or
+ * nothing. When the function is missing (a project without its migration),
+ * the write fails here, before any table is touched; the client used to fall
+ * back to several absolute writes, which could debit one wallet without
+ * crediting the other. A write inside a try throws `MissingLedgerFunction`,
+ * so its catch rolls back as for any failure, then returns this.
+ */
+class MissingLedgerFunction extends Error {}
+
+function databaseUpdateNeeded(): MutationResult {
+  return {
+    success: false,
+    code: 'DATABASE_UPDATE_NEEDED',
+    error: 'This needs the latest database update. Nothing was changed.',
+  };
 }
 
 /** What `seed_starter_account()` decided for an empty wallet read (ADR 0039). */
@@ -1515,72 +1535,10 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
         return { success: true };
       }
 
-      if (!isMissingRpcError(rpcError)) {
-        console.error('[Create Wallet Failed]', rpcError);
-        if (isUnknownOutcomeError(rpcError)) await refreshFromCloud();
-        return { success: false, error: rpcError.message || 'Failed to create wallet' };
-      }
-      console.warn('[create_wallet RPC unavailable, using non-atomic fallback]', rpcError.message);
-
-      // Fallback for a project without the Phase 52 migration: the wallet,
-      // then its opening row - checked now, where it used to be discarded, and
-      // undone (soft-deleted, never hard-deleted) if the row is rejected.
-      const { data: inserted, error } = await supabase
-        .from('wallets')
-        .insert({
-          user_id: currentUser.id,
-          name: data.name,
-          type: data.type,
-          currency: data.currency,
-          balance: opening,
-          color: data.color,
-          icon: data.icon,
-          is_archived: false,
-          is_deleted: false,
-        })
-        .select()
-        .single();
-
-      if (error || !inserted) {
-        return { success: false, error: error?.message || 'Failed to create wallet' };
-      }
-      markLocalWrite(inserted.id);
-
-      if (opening !== 0) {
-        const { data: openingRow, error: rowError } = await supabase
-          .from('transactions')
-          .insert({
-            user_id: currentUser.id,
-            wallet_id: inserted.id,
-            amount: opening,
-            type: 'ADJUSTMENT',
-            description: 'Opening balance',
-            transaction_date: openingDate,
-            idempotency_key: `opening:${inserted.id}`,
-            is_deleted: false,
-            created_by: currentUser.id,
-          })
-          .select()
-          .single();
-
-        if (rowError) {
-          console.error('[Create Wallet Opening Row Failed]', rowError);
-          markLocalWrite(inserted.id);
-          const { error: undoError } = await supabase
-            .from('wallets')
-            .update({ is_deleted: true, updated_at: new Date().toISOString() })
-            .eq('id', inserted.id);
-          if (undoError) console.error('[Create Wallet Compensation Failed]', undoError);
-          return { success: false, error: rowError.message || 'Failed to record the opening balance' };
-        }
-        if (openingRow) {
-          const mappedRow = mapTransactionRow(openingRow);
-          markLocalWrite(mappedRow.id);
-          setTransactions((prev) => [mappedRow, ...prev]);
-        }
-      }
-
-      setWallets((prev) => [...prev, mapWalletRow(inserted)]);
+      if (isMissingRpcError(rpcError)) return databaseUpdateNeeded();
+      console.error('[Create Wallet Failed]', rpcError);
+      if (isUnknownOutcomeError(rpcError)) await refreshFromCloud();
+      return { success: false, error: rpcError.message || 'Failed to create wallet' };
     } else {
       const now = new Date().toISOString();
       const newWalletId = `w-${Date.now()}`;
@@ -2252,10 +2210,6 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       );
     }
 
-    // Track which remote writes committed so a mid-sequence failure can be undone.
-    let insertedTxId: string | null = null;
-    let sourceDebited = false;
-    let destCredited = false;
     // ADR 0023: set when a ledger RPC may have committed without telling us.
     let rpcOutcomeUnknown = false;
 
@@ -2277,48 +2231,40 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
             p_raw_input: data.rawInput || null,
           });
 
-          if (rpcError) {
-            // Only an unapplied migration falls through to the legacy path;
-            // every other error is a real failure and must roll back.
-            if (!isMissingRpcError(rpcError)) throw rpcError;
-            console.warn('[transfer_funds RPC unavailable, using non-atomic fallback]', rpcError.message);
-          } else {
-            const payload = rpcData as TransferFundsResult | null;
-            // A successful call that returned something unexpected must not fall
-            // through to the legacy path - the RPC may already have moved the
-            // money, and writing again would double-spend.
-            if (!payload?.transaction) {
-              throw new Error('transfer_funds returned an unexpected response');
-            }
-
-            const mapped = mapTransactionRow(payload.transaction);
-            const nextSourceBalance = Number(payload.source_balance);
-            const nextDestBalance = Number(payload.dest_balance);
-
-            // Replace rather than prepend: on an idempotent replay the row may
-            // already be present locally.
-            setTransactions((prev) => [mapped, ...prev.filter((t) => t.id !== mapped.id)]);
-
-            // Reconcile against the balances the database actually committed.
-            // This also corrects the optimistic debit when `reused` is true and
-            // no new money actually moved.
-            setWallets((prev) =>
-              prev.map((w) => {
-                if (w.id === sourceWallet.id && Number.isFinite(nextSourceBalance)) {
-                  return { ...w, balance: nextSourceBalance };
-                }
-                if (w.id === destWallet.id && Number.isFinite(nextDestBalance)) {
-                  return { ...w, balance: nextDestBalance };
-                }
-                return w;
-              })
-            );
-            markLocalWrite(mapped.id);
-            markLocalWrite(sourceWallet.id);
-            markLocalWrite(destWallet.id);
-
-            return { success: true, txId: mapped.id };
+          if (rpcError) throw isMissingRpcError(rpcError) ? new MissingLedgerFunction() : rpcError;
+          const payload = rpcData as TransferFundsResult | null;
+          // The RPC may already have moved the money: report it, never retry.
+          if (!payload?.transaction) {
+            throw new Error('transfer_funds returned an unexpected response');
           }
+
+          const mapped = mapTransactionRow(payload.transaction);
+          const nextSourceBalance = Number(payload.source_balance);
+          const nextDestBalance = Number(payload.dest_balance);
+
+          // Replace rather than prepend: on an idempotent replay the row may
+          // already be present locally.
+          setTransactions((prev) => [mapped, ...prev.filter((t) => t.id !== mapped.id)]);
+
+          // Reconcile against the balances the database actually committed.
+          // This also corrects the optimistic debit when `reused` is true and
+          // no new money actually moved.
+          setWallets((prev) =>
+            prev.map((w) => {
+              if (w.id === sourceWallet.id && Number.isFinite(nextSourceBalance)) {
+                return { ...w, balance: nextSourceBalance };
+              }
+              if (w.id === destWallet.id && Number.isFinite(nextDestBalance)) {
+                return { ...w, balance: nextDestBalance };
+              }
+              return w;
+            })
+          );
+          markLocalWrite(mapped.id);
+          markLocalWrite(sourceWallet.id);
+          markLocalWrite(destWallet.id);
+
+          return { success: true, txId: mapped.id };
         }
 
         const validCategoryId = data.categoryId && categoriesRef.current.some((c) => c.id === data.categoryId)
@@ -2328,107 +2274,42 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
         // Every other type is one atomic RPC (ADR 0023): the database locks the
         // wallet and debt, applies RELATIVE updates, re-checks the ADR 0016
         // overpayment guard under that lock, and replays on `clientKey`, so a
-        // retry after a lost response cannot write twice. Nothing below this
-        // block runs unless the function is missing.
-        if (data.type !== 'TRANSFER') {
-          markLocalWrite(sourceWallet.id);
-          if (targetDebt) markLocalWrite(targetDebt.id);
-          const { data: rpcData, error: rpcError } = await supabase.rpc('record_transaction', {
-            p_wallet_id: sourceWallet.id,
-            p_amount: data.amount,
-            p_type: data.type,
-            p_description: data.description,
-            p_transaction_date: data.transactionDate,
-            p_idempotency_key: clientKey,
-            p_category_id: validCategoryId,
-            p_debt_id: data.debtId || null,
-            p_raw_input: data.rawInput || null,
-          });
+        // retry after a lost response cannot write twice. A TRANSFER always has
+        // its destination by here (checked above), so it never reaches this.
+        markLocalWrite(sourceWallet.id);
+        if (targetDebt) markLocalWrite(targetDebt.id);
+        const { data: rpcData, error: rpcError } = await supabase.rpc('record_transaction', {
+          p_wallet_id: sourceWallet.id,
+          p_amount: data.amount,
+          p_type: data.type,
+          p_description: data.description,
+          p_transaction_date: data.transactionDate,
+          p_idempotency_key: clientKey,
+          p_category_id: validCategoryId,
+          p_debt_id: data.debtId || null,
+          p_raw_input: data.rawInput || null,
+        });
 
-          if (rpcError) {
-            if (!isMissingRpcError(rpcError)) {
-              if (isUnknownOutcomeError(rpcError)) rpcOutcomeUnknown = true;
-              throw rpcError;
-            }
-            console.warn('[record_transaction RPC unavailable, using non-atomic fallback]', rpcError.message);
-          } else {
-            const payload = rpcData as LedgerWriteResult | null;
-            // The RPC may already have committed; falling through to the legacy
-            // path would write a second time, and restoring the snapshot would
-            // hide a write that happened. Re-read instead.
-            if (!payload?.transaction) {
-              rpcOutcomeUnknown = true;
-              throw new Error('record_transaction returned an unexpected response');
-            }
-
-            const mapped = mapTransactionRow(payload.transaction);
-            markLocalWrite(mapped.id);
-            // Replace rather than prepend: a replay returns a row that may
-            // already be present locally.
-            setTransactions((prev) => [mapped, ...prev.filter((t) => t.id !== mapped.id)]);
-            adoptLedgerState(payload, { walletId: sourceWallet.id, debtId: targetDebt?.id ?? null });
-            return { success: true, txId: mapped.id };
-          }
+        if (rpcError) {
+          if (isMissingRpcError(rpcError)) throw new MissingLedgerFunction();
+          if (isUnknownOutcomeError(rpcError)) rpcOutcomeUnknown = true;
+          throw rpcError;
+        }
+        const payload = rpcData as LedgerWriteResult | null;
+        // The RPC may already have committed; restoring the snapshot would
+        // hide a write that happened. Re-read instead.
+        if (!payload?.transaction) {
+          rpcOutcomeUnknown = true;
+          throw new Error('record_transaction returned an unexpected response');
         }
 
-        const { data: insertedTx, error: txErr } = await supabase
-          .from('transactions')
-          .insert({
-            user_id: currentUser.id,
-            wallet_id: data.walletId,
-            destination_wallet_id: data.destinationWalletId || null,
-            category_id: validCategoryId,
-            debt_id: data.debtId || null,
-            amount: data.amount,
-            type: data.type,
-            description: data.description,
-            raw_input: data.rawInput || null,
-            transaction_date: data.transactionDate,
-            idempotency_key: clientKey,
-            is_deleted: false,
-            created_by: currentUser.id,
-          })
-          .select()
-          .single();
-
-        if (txErr) throw txErr;
-
-        let createdTxId = clientKey;
-        if (insertedTx) {
-          createdTxId = insertedTx.id;
-          insertedTxId = insertedTx.id;
-          const mapped = mapTransactionRow(insertedTx);
-          setTransactions((prev) => [mapped, ...prev]);
-          markLocalWrite(mapped.id);
-        }
-
-        // Update wallet balances in Supabase and check errors
-        if (sourceNewBalance !== null) {
-          markLocalWrite(sourceWallet.id);
-          const { error: wErr1 } = await supabase.from('wallets').update({ balance: sourceNewBalance }).eq('id', sourceWallet.id);
-          if (wErr1) throw wErr1;
-          sourceDebited = true;
-        }
-        if (destWallet && destNewBalance !== null) {
-          markLocalWrite(destWallet.id);
-          const { error: wErr2 } = await supabase.from('wallets').update({ balance: destNewBalance }).eq('id', destWallet.id);
-          if (wErr2) throw wErr2;
-          destCredited = true;
-        }
-
-        // Update debt in Supabase and check errors. Writes the value computed
-        // before any `setState` - never a post-`await` re-read of the ref.
-        if (targetDebt && debtNewRemaining !== null) {
-          markLocalWrite(targetDebt.id);
-          const { error: dErr } = await supabase.from('debts').update({
-            remaining_amount: debtNewRemaining,
-            is_settled: debtNewRemaining === 0,
-            updated_at: new Date().toISOString(),
-          }).eq('id', targetDebt.id);
-          if (dErr) throw dErr;
-        }
-
-        return { success: true, txId: createdTxId };
+        const mapped = mapTransactionRow(payload.transaction);
+        markLocalWrite(mapped.id);
+        // Replace rather than prepend: a replay returns a row that may
+        // already be present locally.
+        setTransactions((prev) => [mapped, ...prev.filter((t) => t.id !== mapped.id)]);
+        adoptLedgerState(payload, { walletId: sourceWallet.id, debtId: targetDebt?.id ?? null });
+        return { success: true, txId: mapped.id };
       } else {
         // Fields are mapped explicitly rather than spread, so caller-only keys
         // (e.g. the form's `date`) never leak into the persisted ledger row.
@@ -2484,6 +2365,8 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
         }
       }
 
+      if (err instanceof MissingLedgerFunction) return databaseUpdateNeeded();
+
       if (serverOverpayment && targetDebt) {
         const serverRemaining = Number(rpcFailure.details);
         return {
@@ -2492,32 +2375,6 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
             Number.isFinite(serverRemaining) ? serverRemaining : targetDebt.remainingAmount
           )} remaining on ${targetDebt.name}`,
         };
-      }
-
-      // Compensate any remote writes that already committed. The three writes are
-      // not a single database transaction, so a failure part-way through leaves the
-      // source debited with nothing credited unless we explicitly undo it.
-      if (isAuthenticated) {
-        try {
-          if (destCredited && destWallet) {
-            markLocalWrite(destWallet.id);
-            await supabase.from('wallets').update({ balance: destWallet.balance }).eq('id', destWallet.id);
-          }
-          if (sourceDebited) {
-            markLocalWrite(sourceWallet.id);
-            await supabase.from('wallets').update({ balance: sourceWallet.balance }).eq('id', sourceWallet.id);
-          }
-          if (insertedTxId) {
-            // Soft delete only - financial records are never hard deleted.
-            markLocalWrite(insertedTxId);
-            await supabase
-              .from('transactions')
-              .update({ is_deleted: true, updated_at: new Date().toISOString() })
-              .eq('id', insertedTxId);
-          }
-        } catch (compErr) {
-          console.error('[Add Transaction Compensation Failed]', compErr);
-        }
       }
 
       const postgrestErr = err as { message?: string; details?: string; hint?: string };
@@ -2679,16 +2536,6 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       return { success: true };
     }
 
-    // Track which remote writes committed so a mid-sequence failure can be
-    // undone precisely, mirroring `addTransaction`'s compensation pattern.
-    // Wallet balances are written FIRST and the `is_deleted` flag LAST: the
-    // flag is what makes the row count as active/inactive again, so a wallet
-    // write failing must leave the cloud row in its pre-change state with
-    // only the already-committed balance writes to compensate - not a
-    // flipped flag pointing at balances that were never actually written.
-    let sourceWalletUpdated = false;
-    let destWalletUpdated = false;
-    let debtUpdated = false;
     // ADR 0023: set when the RPC may have committed without telling us.
     let rpcOutcomeUnknown = false;
 
@@ -2697,8 +2544,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       // its debt, reverses or reapplies the effect as RELATIVE updates, and
       // flips the flag - or does nothing if the row is already in the asked-for
       // state, which is what makes a retried delete safe. The balances it
-      // returns replace the optimistic ones. The legacy sequence below runs
-      // only when the function is missing.
+      // returns replace the optimistic ones.
       markLocalWrite(id);
       if (sourceWallet) markLocalWrite(sourceWallet.id);
       if (destWallet) markLocalWrite(destWallet.id);
@@ -2709,66 +2555,24 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       });
 
       if (rpcError) {
-        if (!isMissingRpcError(rpcError)) {
-          if (isUnknownOutcomeError(rpcError)) rpcOutcomeUnknown = true;
-          throw rpcError;
-        }
-        console.warn('[set_transaction_deleted RPC unavailable, using non-atomic fallback]', rpcError.message);
-      } else {
-        const payload = rpcData as LedgerWriteResult | null;
-        if (!payload?.transaction) {
-          rpcOutcomeUnknown = true;
-          throw new Error('set_transaction_deleted returned an unexpected response');
-        }
-        const mapped = mapTransactionRow(payload.transaction);
-        setTransactions((prev) => prev.map((t) => (t.id === mapped.id ? mapped : t)));
-        adoptLedgerState(payload, {
-          walletId: tx.walletId,
-          destWalletId: tx.destinationWalletId ?? null,
-          debtId: targetDebt?.id ?? null,
-        });
-        return { success: true };
+        if (isMissingRpcError(rpcError)) throw new MissingLedgerFunction();
+        if (isUnknownOutcomeError(rpcError)) rpcOutcomeUnknown = true;
+        throw rpcError;
       }
-
-      if (sourceNewBal !== null && sourceWallet) {
-        markLocalWrite(sourceWallet.id);
-        const { error } = await supabase.from('wallets').update({ balance: sourceNewBal }).eq('id', sourceWallet.id);
-        if (error) throw error;
-        sourceWalletUpdated = true;
+      const payload = rpcData as LedgerWriteResult | null;
+      if (!payload?.transaction) {
+        rpcOutcomeUnknown = true;
+        throw new Error('set_transaction_deleted returned an unexpected response');
       }
-      if (destNewBal !== null && destWallet) {
-        markLocalWrite(destWallet.id);
-        const { error } = await supabase.from('wallets').update({ balance: destNewBal }).eq('id', destWallet.id);
-        if (error) throw error;
-        destWalletUpdated = true;
-      }
-
-      // Written with the wallet balances and before the `is_deleted` flag, for
-      // the reason the flag is written last: the flag is what makes the row
-      // count as active, so a balance or debt write failing must leave the
-      // cloud row in its pre-change state.
-      if (targetDebt && debtNewRemaining !== null) {
-        markLocalWrite(targetDebt.id);
-        const { error: debtError } = await supabase
-          .from('debts')
-          .update({
-            remaining_amount: debtNewRemaining,
-            is_settled: debtNewRemaining === 0,
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', targetDebt.id);
-        if (debtError) throw debtError;
-        debtUpdated = true;
-      }
-
-      markLocalWrite(id);
-      const { error: txError } = await supabase
-        .from('transactions')
-        .update({ is_deleted: deleted, updated_at: new Date().toISOString() })
-        .eq('id', id);
-      if (txError) throw txError;
-
+      const mapped = mapTransactionRow(payload.transaction);
+      setTransactions((prev) => prev.map((t) => (t.id === mapped.id ? mapped : t)));
+      adoptLedgerState(payload, {
+        walletId: tx.walletId,
+        destWalletId: tx.destinationWalletId ?? null,
+        debtId: targetDebt?.id ?? null,
+      });
       return { success: true };
+
     } catch (err: unknown) {
       console.error('[Set Transaction Deleted Failed]', err);
 
@@ -2778,33 +2582,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       setWallets(previousWallets);
       setDebts(previousDebts);
 
-      // Compensate any remote wallet or debt writes that already committed -
-      // the wallet writes, the debt write and the flag write are not a single
-      // database transaction, so a failure part-way through leaves a balance
-      // changed with nothing to reflect it unless explicitly undone.
-      try {
-        if (sourceWalletUpdated && sourceWallet) {
-          markLocalWrite(sourceWallet.id);
-          await supabase.from('wallets').update({ balance: sourceWallet.balance }).eq('id', sourceWallet.id);
-        }
-        if (destWalletUpdated && destWallet) {
-          markLocalWrite(destWallet.id);
-          await supabase.from('wallets').update({ balance: destWallet.balance }).eq('id', destWallet.id);
-        }
-        if (debtUpdated && targetDebt) {
-          markLocalWrite(targetDebt.id);
-          await supabase
-            .from('debts')
-            .update({
-              remaining_amount: targetDebt.remainingAmount,
-              is_settled: targetDebt.isSettled,
-              updated_at: new Date().toISOString(),
-            })
-            .eq('id', targetDebt.id);
-        }
-      } catch (compErr) {
-        console.error('[Set Transaction Deleted Compensation Failed]', compErr);
-      }
+      if (err instanceof MissingLedgerFunction) return databaseUpdateNeeded();
 
       // ADR 0023: the rollback above is a guess when the RPC may have
       // committed. Re-read; if that fails too (offline), the rollback stands
@@ -2981,7 +2759,6 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     );
 
     const newTxs: Transaction[] = [];
-    const dbPayloads: any[] = [];
     // The same rows in `import_transactions`' shape (ADR 0023): ids already
     // resolved, keyed by row index so the server can derive each row's key.
     const rpcRows: Record<string, unknown>[] = [];
@@ -3049,20 +2826,6 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       totalAmt += row.amount;
 
       if (isAuthenticated) {
-        dbPayloads.push({
-          user_id: currentUser.id,
-          wallet_id: sourceWallet.id,
-          destination_wallet_id: destWallet?.id || null,
-          category_id: cat?.id || null,
-          debt_id: repaidDebt?.id ?? null,
-          amount: row.amount,
-          type: row.type,
-          description: row.description,
-          transaction_date: row.date,
-          idempotency_key: `import-${Date.now()}-${row.rowIndex}`,
-          is_deleted: false,
-          created_by: currentUser.id,
-        });
         rpcRows.push({
           row_index: row.rowIndex,
           wallet_id: sourceWallet.id,
@@ -3123,134 +2886,51 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       }
     }
 
-    if (isAuthenticated && dbPayloads.length > 0) {
+    if (isAuthenticated && rpcRows.length > 0) {
       // One atomic RPC (ADR 0023): every row inserted and one RELATIVE update
       // per wallet, in a single database transaction, or nothing at all. It
       // replays on `importKey`, so retrying the same preview after a lost
       // response cannot import twice. A failure therefore has nothing to
-      // compensate. The legacy sequence below runs only when the function is
-      // missing.
+      // compensate.
       const { data: rpcData, error: rpcError } = await supabase.rpc('import_transactions', {
         p_import_key: importKey || generateIdempotencyKey(),
         p_rows: rpcRows,
       });
 
-      if (!rpcError || !isMissingRpcError(rpcError)) {
-        const payload = rpcData as ImportTransactionsResult | null;
-        if (rpcError || !Array.isArray(payload?.inserted_ids)) {
-          console.error('[Bulk Import Failed]', rpcError ?? payload);
-          // It may have committed. Re-read so the screen shows what the
-          // server holds; a retry of this preview replays rather than
-          // importing twice.
-          if (!rpcError || isUnknownOutcomeError(rpcError)) {
-            await refreshFromCloud();
-          }
-          // The server's aggregate guard, under its row lock: this client's
-          // debts were stale. The app formats the money, never SQL.
-          const overpaid = rpcError?.message === 'DEBT_OVERPAYMENT';
-          if (overpaid) await refreshFromCloud();
-          const serverRemaining = Number(rpcError?.details);
-          return {
-            success: false,
-            error: overpaid
-              ? importOverpaymentMessage(rpcError?.hint || 'this debt', Number.isFinite(serverRemaining) ? serverRemaining : 0)
-              : rpcError?.message || 'import_transactions returned an unexpected response',
-            insertedCount: 0,
-            totalAmount: 0,
-            skippedCount,
-          };
+      if (rpcError && isMissingRpcError(rpcError)) {
+        return { ...databaseUpdateNeeded(), insertedCount: 0, totalAmount: 0, skippedCount };
+      }
+      const payload = rpcData as ImportTransactionsResult | null;
+      if (rpcError || !Array.isArray(payload?.inserted_ids)) {
+        console.error('[Bulk Import Failed]', rpcError ?? payload);
+        // It may have committed. Re-read so the screen shows what the
+        // server holds; a retry of this preview replays rather than
+        // importing twice.
+        if (!rpcError || isUnknownOutcomeError(rpcError)) {
+          await refreshFromCloud();
         }
-
-        // The inserted rows arrive by reload, as they did before; their
-        // realtime echoes coalesce into at most one more.
-        await refreshFromCloud();
+        // The server's aggregate guard, under its row lock: this client's
+        // debts were stale. The app formats the money, never SQL.
+        const overpaid = rpcError?.message === 'DEBT_OVERPAYMENT';
+        if (overpaid) await refreshFromCloud();
+        const serverRemaining = Number(rpcError?.details);
         return {
-          success: true,
-          insertedCount: payload!.inserted_ids.length,
-          totalAmount: roundToCents(totalAmt),
+          success: false,
+          error: overpaid
+            ? importOverpaymentMessage(rpcError?.hint || 'this debt', Number.isFinite(serverRemaining) ? serverRemaining : 0)
+            : rpcError?.message || 'import_transactions returned an unexpected response',
+          insertedCount: 0,
+          totalAmount: 0,
           skippedCount,
         };
       }
-      console.warn('[import_transactions RPC unavailable, using non-atomic fallback]', rpcError.message);
 
-      // The inserted rows' realtime echoes are not suppressed: the explicit
-      // `refreshFromCloud()` below reloads this client's state regardless, and
-      // the debounced realtime handler coalesces the resulting burst of
-      // per-row events into at most one more reload rather than one per row.
-      // `.select('id')` is for compensation, not echo suppression.
-      //
-      // ADR 0022: a rejected insert returns before any balance write - it
-      // used to be discarded, so a failed import still moved money - and a
-      // balance write that fails after the insert is undone the way
-      // `addTransaction` undoes one. Balance writes here are absolute
-      // (`walletsRef` + delta) - which is why this is only the fallback for a
-      // project without ADR 0023's `import_transactions`.
-      let insertedIds: string[] = [];
-      let insertCommitted = false;
-      const writtenWallets: { id: string; previousBalance: number }[] = [];
-      try {
-        const { data: insertedRows, error: insertErr } = await supabase
-          .from('transactions')
-          .insert(dbPayloads)
-          .select('id');
-        if (insertErr) throw insertErr;
-        insertCommitted = true;
-        insertedIds = (insertedRows ?? []).map((row: { id: string }) => row.id);
-
-        // Sequential, not `Promise.all`: compensation needs to know exactly
-        // which writes landed before the one that failed.
-        for (const [wId, delta] of Object.entries(walletDeltas)) {
-          const targetW = walletsRef.current.find((w) => w.id === wId);
-          if (!targetW) continue;
-          markLocalWrite(wId);
-          const { error: walletErr } = await supabase
-            .from('wallets')
-            .update({ balance: roundToCents(targetW.balance + delta) })
-            .eq('id', wId);
-          if (walletErr) throw walletErr;
-          writtenWallets.push({ id: wId, previousBalance: targetW.balance });
-        }
-      } catch (err: unknown) {
-        console.error('[Bulk Import Failed]', err);
-
-        // Nothing to undo when the insert itself was rejected.
-        if (insertCommitted) {
-          try {
-            for (const w of writtenWallets) {
-              markLocalWrite(w.id);
-              const { error: restoreErr } = await supabase
-                .from('wallets')
-                .update({ balance: w.previousBalance })
-                .eq('id', w.id);
-              if (restoreErr) console.error('[Bulk Import Compensation Failed]', restoreErr);
-            }
-            // Soft delete only - financial records are never hard deleted.
-            if (insertedIds.length > 0) {
-              const { error: undoErr } = await supabase
-                .from('transactions')
-                .update({ is_deleted: true, updated_at: new Date().toISOString() })
-                .in('id', insertedIds);
-              if (undoErr) console.error('[Bulk Import Compensation Failed]', undoErr);
-            }
-          } catch (compErr) {
-            console.error('[Bulk Import Compensation Failed]', compErr);
-          }
-          await refreshFromCloud();
-        }
-
-        const postgrestErr = err as { message?: string; details?: string; hint?: string };
-        const detailedError =
-          postgrestErr?.message ||
-          postgrestErr?.details ||
-          postgrestErr?.hint ||
-          (err instanceof Error ? err.message : 'Database error');
-        return { success: false, error: detailedError, insertedCount: 0, totalAmount: 0, skippedCount };
-      }
-
+      // The inserted rows arrive by reload, as they did before; their
+      // realtime echoes coalesce into at most one more.
       await refreshFromCloud();
       return {
         success: true,
-        insertedCount: insertedIds.length,
+        insertedCount: payload!.inserted_ids.length,
         totalAmount: roundToCents(totalAmt),
         skippedCount,
       };

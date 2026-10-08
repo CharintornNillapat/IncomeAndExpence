@@ -4,6 +4,27 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
+## Phase 115 - A signed-in ledger write is one database function or nothing; the test helpers wait for tweens to end: T700-T703 (2026-10-08, code `b59cc14`, docs `f08e132`, PR #66)
+
+ADR `0091`. The owner's brief: remove the non-atomic fallback writes, fail fast with a structured error, and make the shared test helpers wait for animations before they click.
+
+**Changed**
+- **`FinanceContext.tsx`:** `MissingLedgerFunction` and `databaseUpdateNeeded()`; `MutationResult.code`; the fallbacks of `addTransaction`, `setTransactionDeleted`, `commitBulkImport` and `addWallet`, their compensation and `dbPayloads` removed (-346 lines).
+- **`tests/helpers.ts`:** `settle(page)`, called by `gotoTab` and `addQuickTransaction` before their click and after their change.
+- **Tests:** `unit/authenticated-ledger.test.tsx` (+6 for a missing function; F1, F2, two `create_wallet` fallback tests and the unmigrated-project test removed; F6 against `record_transaction`).
+- **Docs:** ADR `0091`; `CLAUDE.md`'s transfer, import, ledger-RPC, helper, harness and unit lines.
+
+**Gate:**
+- Lint clean; unit 1299/1299 in 56 files; Playwright, first run 484 passed, 6 skipped, 2 failed of 492 (14.4 m), second run 485 passed, 6 skipped, 1 failed (12.6 m), traces on in both: all three the WebKit painting stall; no migration, and live holds all five functions.
+- **Red first:** the six missing-function tests (the fallbacks wrote and reported success).
+- **WebKit, measured:** with `settle` in the helpers, 3 stalls in 656 WebKit runs (the two full runs, 328, and the WebKit project twice over, 328, which had none), against 4 in about 600 in Phase 114: at rates this low the change is not measurable. All three were clicks the helpers do not make, each traced with frames stopping within 0.3 s of the click: Quick Add's submit and the rule chip's dismiss, with `motion-chip` and `data-leaving` elements in the snapshot (a chip's tween), and the Transactions panel's Restore. All came in three-browser runs. The stall is not fixed; the helpers' own clicks no longer land mid-tween.
+- **Bundle:** the entry 196,820 / 57,066 to 191,919 / 56,213 B (-4,901 / -853 gzip; `FinanceContext` is in it); all app JS 883,188 / 268,070 to 878,287 / 267,227, 40 files, no other chunk changed; cold start still three scripts.
+
+**Changed on purpose**
+- **A missing ledger function refuses the write** instead of writing it in several requests; nothing on live is missing.
+
+---
+
 ## Phase 114 - The 20260909 transfer_funds signature is dropped; a screen reader hears the overdraft warning: T696-T699 (2026-10-08, code `f5f5714`, docs `d7362dc`, merge `8083134`)
 
 ADR `0090`. The owner's brief: drop the old `transfer_funds` signature if the logs show no caller, and announce the overdraft warning without speaking on every keystroke.
