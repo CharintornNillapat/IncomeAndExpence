@@ -1,6 +1,6 @@
 # 0096: Lint refuses an id from the time alone; CI runs the unit suite a second time, shuffled
 
-**Status:** Accepted. Code `5a78d83`, docs `eb678be`, on branch `phase-120-ci-resilience-and-lint-guards`, draft PR #71; not merged. No migration; live drift run `37917926856`: no drift, 20 migrations.
+**Status:** Accepted. Released: code `5a78d83`, docs `eb678be`, hash backfill `cd0af44`, merged into `main` as `f0eeda4` (PR #71); Vercel `dpl_4U417S313EEZHVgeLH4D1jHZ7goC` READY in `icn1`; `main` CI green, shuffled run included. No migration; live drift run `37917926856`: no drift, 20 migrations.
 - **Enforces** ADR `0095`'s rule (a new local record's id is `generateEntityId(prefix)`), until now written only in `CLAUDE.md`.
 - **Amends** ADR `0083`: a `findBy*` or `waitFor` waits up to 3 s by default, not Testing Library's 1 s.
 
@@ -47,3 +47,9 @@
 - **Playwright:** Playwright 484 passed, 6 skipped, 2 failed of 492 (12.6 m, 4 workers): the WebKit painting stall (ADR `0058`) on `csv-classify`'s Import CSV menu click and `diary`'s Save click, no assertion reached (the trace's last frame 107 and 80 ms into each click, none after), in specs this phase does not change; repeated per the owner's rule: both specs 120 of 120 on WebKit (`--repeat-each 10`).
 - **Schema:** no migration; live drift run `37917926856`: no drift, 20 migrations.
 - **Bundle:** unchanged. The `src/` edits are comments, and a build of the branch has the entry `index-CnVTLmA-.js`, the one production serves.
+
+## Release
+
+- PR #71 merged into `main` as `f0eeda4`, whose tree is identical to `a420a0c`. The pull request's CI (run `37918118514`, on `a420a0c`) passed every job: unit 1360/1360 in order and shuffled; 486 passed, 6 skipped, no flaky test.
+- Vercel `dpl_4U417S313EEZHVgeLH4D1jHZ7goC` is READY in production, region `icn1`; production serves the entry `index-CnVTLmA-.js`, the same hash as a local build of `main` and as Phase 119's release: the `src/` edits are comments.
+- `main` CI on the merge (run `37941158870`) passed every job on its first attempt in 338 s end to end, the merge job included: unit 1360/1360 in 61 files in order, then 1360/1360 shuffled (seed `1791554597690`); 486 passed, 6 skipped, no flaky test.
