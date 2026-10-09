@@ -1098,6 +1098,15 @@ The entry's growth is the ledger action itself, which lives with the other ledge
 
 **Intermittent local failures:** 6 in 1,071 full-suite runs (3 full runs). All were timeouts: a Firefox `goto`, a Firefox context close, and four WebKit clicks waiting for "stable". No assertion failed. See audit 005 finding 3 for the control runs.
 
+## Phase 119 (collision-free guest ids) - delta against Phase 118
+
+**Bundle** (`main` at `28473b4` built in a worktree with `.env`, gzip level 9 on both sides. The entry 194,599 / 56,884 to 194,826 / 56,963 B (+227 / +79 gzip: `generateEntityId` and its eight callers are in it); all app JS 881,167 / 268,064 to 881,394 / 268,083 (+227 / +19; other chunks' gzip moves a few bytes with the entry's hash), 40 files; cold start still three scripts.)
+
+| Suite | Files | Tests | Runs | Result |
+|---|---|---|---|---|
+| Vitest (`unit/`) | 60 | 1331 | 1331 | 1331/1331 (+11 `entity-ids`) |
+| Playwright (local, 4 workers) | 34 | 164 | 492 | 485 passed, 6 skipped, 1 failed (11.4 m): the WebKit painting stall; then 60 of 60 on WebKit |
+
 ## Phase 118 (the quick templates' own contexts) - delta against Phase 117
 
 **Bundle** (gzip level 9 in Node on both sides; `main` at `1dc83a1` built in a worktree with `.env`). The entry 193,818 / 56,787 to 194,599 / 56,884 B (+781 / +97 gzip: `TemplateContext` is in it); all app JS 880,341 / 267,904 to 881,167 / 268,064 (+826 / +160), 40 files; cold start still three scripts. `FinanceContext.tsx` 3,187 to 3,086 lines, `TemplateContext.tsx` 174.
