@@ -1083,14 +1083,14 @@ Approved explicitly by the user, planned and approved before any code was writte
 
 ## Phase 118 - The quick templates have contexts of their own: T712-T715 (2026-10-09)
 
-ADR `0094`, the third slice of the AGY audit's finding 3. Branch `phase-118-split-template-context`, cut from `main` at `1dc83a1`; code `0c12345`. No migration; live drift run `37883520114`: no drift, 20 migrations.
+ADR `0094`, the third slice of the AGY audit's finding 3. Branch `phase-118-split-template-context`, cut from `main` at `1dc83a1`; code `0c12345`, docs `37496f1`; draft PR #69. No migration; live drift run `37883520114`: no drift, 20 migrations.
 
 | # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
 |---|---|---|---|---|---|---|---|---|---|---|
 | T712 | The templates' parity tests: the three writes' checks, the batched writer, `applyPreset` and its fallbacks | `unit/template-context.test.tsx` | Med | Low | 0.4h | done | - | `0c12345` | 6/6 on the code before the move, then after | +6 unit |
 | T713 | The matrix: template writes reach no view, a new "template apply" row reaches all six | `unit/rerender-matrix.test.tsx` | Med | Low | 0.2h | done | - | `0c12345` | failed first on the template rows; passes three runs | - |
 | T714 | `TemplateContext.tsx`: the templates' state, ref, three writes and contexts, composed under `FinanceProvider`; `applyPreset` stays there; two readers and three tests on the new hooks | `src/context/TemplateContext.tsx`, `src/context/FinanceContext.tsx`, `src/components/QuickAddModal.tsx`, `src/components/TransactionForm.tsx`, `unit/authenticated-ledger.test.tsx`, `unit/backup-restore.test.tsx` | High | Med | 0.8h | done | T712, T713 | `0c12345` | lint clean; the parity and matrix tests pass | a template write: 6 views to 0; entry +97 B gzip |
-| T715 | Gate, bundle, ADR `0094`, `CLAUDE.md`, the logs | `docs/`, `CLAUDE.md` | Med | Low | 0.5h | done | T712-T714 | `0c12345` | lint clean; unit 1320/1320 in 59 files (41 s); Playwright 485 passed, 6 skipped, 1 failed of 492 (12.2 m): the WebKit painting stall on `csv-classify`'s Import CSV click (last frame 301 ms into it, none after), a spec this phase does not change, then 110 of 110 on WebKit; `presets.spec.ts` passed on all three browsers; no migration | - |
+| T715 | Gate, bundle, ADR `0094`, `CLAUDE.md`, the logs | `docs/`, `CLAUDE.md` | Med | Low | 0.5h | done | T712-T714 | `37496f1` | lint clean; unit 1320/1320 in 59 files (41 s); Playwright 485 passed, 6 skipped, 1 failed of 492 (12.2 m): the WebKit painting stall on `csv-classify`'s Import CSV click (last frame 301 ms into it, none after), a spec this phase does not change, then 110 of 110 on WebKit; `presets.spec.ts` passed on all three browsers; no migration | - |
 
 **Notes on execution:**
 - **No reorder action.** The brief listed add, update, delete and reorder; the app has no reorder, so three writes moved and none was added.

@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 118 - The quick templates have contexts of their own: T712-T715 (2026-10-09, code `0c12345`)
+## Phase 118 - The quick templates have contexts of their own: T712-T715 (2026-10-09, code `0c12345`, docs `37496f1`, PR #69)
 
 ADR `0094`. The owner's brief: move the templates out of `FinanceContext` as the diary and the rules were, keep them local only, keep the sign-out reset in `FinanceProvider`, and prove a template write re-renders none of the six views.
 

@@ -1,6 +1,6 @@
 # 0094: The quick templates have contexts of their own
 
-**Status:** Accepted. Code `0c12345`, branch `phase-118-split-template-context`; not merged. No migration; live drift run `37883520114`: no drift, 20 migrations.
+**Status:** Accepted. Code `0c12345`, docs `37496f1`, draft PR #69; not merged. No migration; live drift run `37883520114`: no drift, 20 migrations.
 - **The third slice of** the AGY audit's finding 3 (the monolithic `FinanceContext`), after ADR `0092`'s diary and ADR `0093`'s smart rules, and the candidate ADR `0093`'s matrix named.
 
 **Date:** 2026-10-09
