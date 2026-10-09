@@ -43,15 +43,16 @@ import { isMovementCategory, SYSTEM_CATEGORY_COLOR } from '../selectors/ledger';
 import { dedupeCategoriesByName, withDefaultDescriptions } from '../utils/categoryUtils';
 import { migrateCategoryColors, migrateWalletColors } from '../utils/identityColorMigration';
 import { generateEntityId, generateIdempotencyKey } from '../utils/ids';
-import { DiaryProvider, mapDiaryRow, useDiaryEntriesState, useDiaryMutations } from './DiaryContext';
+import { DiaryProvider, useDiaryEntriesState, useDiaryMutations } from './DiaryContext';
 import {
   DEFAULT_KEYWORD_RULES,
   KeywordRulesProvider,
-  mapKeywordRuleRow,
   useKeywordRuleMutations,
   useKeywordRuleStore,
 } from './KeywordRulesContext';
 import { TemplateProvider, useTemplateMutations, useTemplateStore } from './TemplateContext';
+import { mapDebtRow, mapTransactionRow, mapWalletRow, readCloudSlices, type SeedOutcome } from '../services/financeHydration';
+import { backupAsGuest } from '../services/financeBackup';
 
 /**
  * Outcome of a validated write. Every mutating call reports failure this way
@@ -246,64 +247,6 @@ function safeGetLocalStorage<T>(key: string, fallback: T): T {
 // any row change, so cross-device sync stays consistent at the cost of a refetch.
 const SYNCED_TABLES = ['wallets', 'transactions', 'debts', 'diary_entries', 'categories'] as const;
 
-// Maps a `transactions` row from Supabase (snake_case) to the domain type.
-function mapTransactionRow(row: any): Transaction {
-  return {
-    id: row.id,
-    userId: row.user_id,
-    walletId: row.wallet_id,
-    destinationWalletId: row.destination_wallet_id || undefined,
-    categoryId: row.category_id || undefined,
-    debtId: row.debt_id || undefined,
-    amount: parseFloat(row.amount) || 0,
-    type: row.type,
-    description: row.description,
-    rawInput: row.raw_input || undefined,
-    transactionDate: row.transaction_date,
-    idempotencyKey: row.idempotency_key || undefined,
-    isDeleted: row.is_deleted || false,
-    createdBy: row.created_by || row.user_id,
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
-  };
-}
-
-// Maps a `wallets` row from Supabase (snake_case) to the domain type.
-function mapWalletRow(row: any): Wallet {
-  return {
-    id: row.id,
-    userId: row.user_id,
-    name: row.name,
-    type: row.type,
-    currency: APP_CURRENCY,
-    balance: parseFloat(row.balance) || 0,
-    color: row.color || 'stone',
-    icon: row.icon || 'wallet',
-    isArchived: row.is_archived || false,
-    isDeleted: row.is_deleted || false,
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
-  };
-}
-
-// Maps a `debts` row from Supabase (snake_case) to the domain type.
-function mapDebtRow(row: any): Debt {
-  return {
-    id: row.id,
-    userId: row.user_id,
-    name: row.name,
-    totalAmount: parseFloat(row.total_amount) || 0,
-    remainingAmount: parseFloat(row.remaining_amount) || 0,
-    interestRate: row.interest_rate ? parseFloat(row.interest_rate) : undefined,
-    minimumPayment: row.minimum_payment ? parseFloat(row.minimum_payment) : undefined,
-    dueDate: row.due_date || undefined,
-    isSettled: row.is_settled || false,
-    isDeleted: row.is_deleted || false,
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
-  };
-}
-
 // Shape returned by the `transfer_funds` RPC.
 interface TransferFundsResult {
   reused: boolean;
@@ -426,9 +369,6 @@ class MissingLedgerFunction extends Error {}
 function databaseUpdateNeeded(error = 'This needs the latest database update. Nothing was changed.'): MutationResult {
   return { success: false, code: 'DATABASE_UPDATE_NEEDED', error };
 }
-
-/** What `seed_starter_account()` decided for an empty wallet read (ADR 0039). */
-type SeedOutcome = 'seeded' | 'not-new' | 'busy' | 'update-needed' | 'failed';
 
 // Shape returned by `update_transaction` (ADR 0033): the row, and the balance of
 // every wallet on either side of the edit.
@@ -951,116 +891,28 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
   // Fetch all user data from Supabase
   const loadSupabaseData = useCallback(async (userId: string) => {
     setIsSyncing(true);
-    // Tables whose read failed. A slice that did load still applies; a failed
-    // one keeps its current local value rather than being blanked.
-    const failedReads: string[] = [];
     // F5: a sign-out during this load makes every later slice stale.
     const epoch = authEpochRef.current;
     const signedOutMeanwhile = () => authEpochRef.current !== epoch;
     try {
-      // 1. Wallets
-      const { data: wData, error: wErr } = await supabase
-        .from('wallets')
-        .select('*')
-        .order('created_at', { ascending: true });
-      if (signedOutMeanwhile()) return;
-
-      if (wErr) failedReads.push('wallets');
-      if (!wErr && wData) {
-        const mappedWallets: Wallet[] = wData.map(mapWalletRow);
-
-        // An empty read may be a new account or a read without a session; only
-        // the server can tell (ADR 0039). Nothing is applied until it has.
-        if (mappedWallets.length === 0) {
-          const outcome = await seedInitialUserAccount(userId);
-          if (outcome === 'seeded' || outcome === 'busy' || signedOutMeanwhile()) return;
-          if (outcome === 'update-needed') {
-            // No trailing period: the sync badge adds ". Tap to try again."
-            setSyncError('Setting up this account needs the latest database update');
-            return;
-          }
-          if (outcome === 'failed') {
-            setSyncError('Could not read wallets');
-            return;
-          }
-        }
-        setWallets(mappedWallets);
-      }
-
-      // 2. Categories
-      const { data: cData, error: cErr } = await supabase
-        .from('categories')
-        .select('*')
-        .order('name', { ascending: true });
-      if (signedOutMeanwhile()) return;
-
-      if (cErr) failedReads.push('categories');
-      if (!cErr && cData && cData.length > 0) {
-        const mappedCategories: Category[] = cData.map((row) => ({
-          id: row.id,
-          userId: row.user_id,
-          name: row.name,
-          type: row.type,
-          icon: row.icon || 'tag',
-          color: row.color || 'stone',
-          // NULL (column never written) must map to `undefined`, not `''` -
-          // that is what makes the row eligible for the shipped default.
-          description: row.description ?? undefined,
-          isSystem: row.is_system || false,
-          isDeleted: row.is_deleted || false,
-        }));
-        setCategories(
-          withDefaultDescriptions(dedupeCategoriesByName(mappedCategories), DEFAULT_SYSTEM_CATEGORIES)
-        );
-      }
-
-      // 3. Keyword Rules
-      const { data: krData, error: krErr } = await supabase
-        .from('keyword_rules')
-        .select('*');
-      if (signedOutMeanwhile()) return;
-
-      if (krErr) failedReads.push('keyword_rules');
-      if (!krErr && krData) {
-        setKeywordRules(krData.map(mapKeywordRuleRow));
-      }
-
-      // 4. Debts
-      const { data: dData, error: dErr } = await supabase
-        .from('debts')
-        .select('*')
-        .order('created_at', { ascending: false });
-      if (signedOutMeanwhile()) return;
-
-      if (dErr) failedReads.push('debts');
-      if (!dErr && dData) {
-        setDebts(dData.map(mapDebtRow));
-      }
-
-      // 5. Transactions
-      const { data: txData, error: txErr } = await supabase
-        .from('transactions')
-        .select('*')
-        .order('transaction_date', { ascending: false })
-        .order('created_at', { ascending: false });
-      if (signedOutMeanwhile()) return;
-
-      if (txErr) failedReads.push('transactions');
-      if (!txErr && txData) {
-        setTransactions(txData.map(mapTransactionRow));
-      }
-
-      // 6. Diary Entries
-      const { data: diaryData, error: diaryErr } = await supabase
-        .from('diary_entries')
-        .select('*')
-        .order('date', { ascending: false });
-      if (signedOutMeanwhile()) return;
-
-      if (diaryErr) failedReads.push('diary_entries');
-      if (!diaryErr && diaryData) {
-        setDiaryEntries(diaryData.map(mapDiaryRow));
-      }
+      // The six reads, in order, live in `services/financeHydration.ts` (ADR
+      // 0097). Each slice that read is applied; a failed one keeps its current
+      // local value rather than being blanked. `null` means the load stopped
+      // early: signed out meanwhile, or the starter seed decided (and set
+      // `syncError` when it could not run).
+      const failedReads = await readCloudSlices(userId, {
+        signedOutMeanwhile,
+        seed: seedInitialUserAccount,
+        defaultCategories: DEFAULT_SYSTEM_CATEGORIES,
+        setWallets,
+        setCategories,
+        setKeywordRules,
+        setDebts,
+        setTransactions,
+        setDiaryEntries,
+        setSyncError,
+      });
+      if (failedReads === null) return;
 
       // Only a clean load counts as a reload (ADR 0022). A load that read
       // nothing is not new server truth, and bumping for it disarmed T69's
@@ -1229,10 +1081,9 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
   // undebounced, unsuppressed subscription:
   //   - `filter: user_id=eq.<id>` on every table, so this client's socket only
   //     ever receives change events for rows it owns. All 5 `SYNCED_TABLES`
-  //     carry a `user_id` column - confirmed via `mapWalletRow`/
-  //     `mapTransactionRow`/`mapDebtRow` above and the inline categories/
-  //     diary_entries mappings in `loadSupabaseData` below, every one of which
-  //     already reads `row.user_id` - and via `20260909_transfer_funds.sql`'s
+  //     carry a `user_id` column - confirmed via the row mappers in
+  //     `services/financeHydration.ts` (ADR 0097) and `mapDiaryRow`, every one
+  //     of which already reads `row.user_id` - and via `20260909_transfer_funds.sql`'s
   //     own schema comment for `wallets`/`transactions`. This repo has no
   //     tracked schema migration to check directly (see that file's header),
   //     so the client's own read/write columns are the available evidence.
@@ -1415,19 +1266,14 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     if (isAuthenticated) {
       return { success: false, error: 'Sign out first. A backup restores into this browser in guest mode, not into an account.' };
     }
-    // Rows from an account carry its uuid; on this device they are the guest's.
-    const asGuest = <T extends { userId?: string | null }>(rows: T[]): T[] => rows.map((row) => ({ ...row, userId: DEFAULT_USER.id }));
-    const walletIds = new Set(data.wallets.map((w) => w.id));
-    const categoryIds = new Set(data.categories.map((c) => c.id));
-    setWallets(asGuest(data.wallets));
-    setTransactions(asGuest(data.transactions));
-    setDebts(asGuest(data.debts));
-    setCategories(asGuest(data.categories));
-    setKeywordRules(asGuest(data.keywordRules));
-    setDiaryEntries(asGuest(data.diaryEntries));
-    setPresets((prev) =>
-      prev.filter((p) => (!p.walletId || walletIds.has(p.walletId)) && (!p.categoryId || categoryIds.has(p.categoryId)))
-    );
+    const restored = backupAsGuest(data, DEFAULT_USER.id);
+    setWallets(restored.wallets);
+    setTransactions(restored.transactions);
+    setDebts(restored.debts);
+    setCategories(restored.categories);
+    setKeywordRules(restored.keywordRules);
+    setDiaryEntries(restored.diaryEntries);
+    setPresets((prev) => prev.filter(restored.keepPreset));
     inFlightIdempotencyKeys.current.clear();
     return { success: true };
   }, [isAuthenticated]);
