@@ -1,6 +1,6 @@
 # 0096: Lint refuses an id from the time alone; CI runs the unit suite a second time, shuffled
 
-**Status:** Accepted. Code `5a78d83`, docs `eb678be`, on branch `phase-120-ci-resilience-and-lint-guards`; not merged. No migration; live drift run `37917926856`: no drift, 20 migrations.
+**Status:** Accepted. Code `5a78d83`, docs `eb678be`, on branch `phase-120-ci-resilience-and-lint-guards`, draft PR #71; not merged. No migration; live drift run `37917926856`: no drift, 20 migrations.
 - **Enforces** ADR `0095`'s rule (a new local record's id is `generateEntityId(prefix)`), until now written only in `CLAUDE.md`.
 - **Amends** ADR `0083`: a `findBy*` or `waitFor` waits up to 3 s by default, not Testing Library's 1 s.
 

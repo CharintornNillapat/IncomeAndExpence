@@ -1083,7 +1083,7 @@ Approved explicitly by the user, planned and approved before any code was writte
 
 ## Phase 120 - Lint refuses an id from the time alone; CI runs the unit suite again, shuffled: T720-T723 (2026-10-09)
 
-ADR `0096`. Branch `phase-120-ci-resilience-and-lint-guards`, cut from `main` at `37ba033`; code `5a78d83`, docs `eb678be`. No migration; live drift run `37917926856`: no drift, 20 migrations.
+ADR `0096`. Branch `phase-120-ci-resilience-and-lint-guards`, cut from `main` at `37ba033`; code `5a78d83`, docs `eb678be`; draft PR #71. No migration; live drift run `37917926856`: no drift, 20 migrations.
 
 | # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
 |---|---|---|---|---|---|---|---|---|---|---|
