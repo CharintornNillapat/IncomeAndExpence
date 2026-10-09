@@ -4,6 +4,19 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
+## Phase 121 - The cloud load's reads and the restore's row rewriting move to `src/services/`: T724-T727 (2026-10-09, code `9cec127`, docs `5563733`)
+
+ADR `0097`. The owner's brief: make `FinanceContext.tsx` readable by moving the cloud hydration and the backup restore's glue into `src/services/`, with no behaviour, state contract or test change.
+
+**Changed:**
+- **`src/services/financeHydration.ts`:** `readCloudSlices` (the six reads in their order, the sign-out epoch check after each, every slice through an injected setter) and the row mappers.
+- **`src/services/financeBackup.ts`:** `backupAsGuest`, the restore's guest-id rewrite and template filter.
+- **`FinanceContext.tsx`:** 3,090 to 2,936 lines; `loadSupabaseData` and `restoreBackup` call the two.
+
+**Why:** the provider was the largest file in `src/`, and the cloud load was its longest piece that holds no React state.
+
+**Not changed:** behaviour, the two contexts' shapes, the tests, the database. The entry grows 632 B (142 gzip).
+
 ## Phase 120 - Lint refuses an id from the time alone; CI runs the unit suite again, shuffled: T720-T723 (2026-10-09, code `5a78d83`, docs `eb678be`, merge `f0eeda4`)
 
 ADR `0096`. The owner's brief: enforce ADR `0095`'s id rule in `npm run lint`, add a shuffled unit run to CI, and make the whole suite pass shuffled.

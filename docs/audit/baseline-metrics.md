@@ -1098,6 +1098,17 @@ The entry's growth is the ledger action itself, which lives with the other ledge
 
 **Intermittent local failures:** 6 in 1,071 full-suite runs (3 full runs). All were timeouts: a Firefox `goto`, a Firefox context close, and four WebKit clicks waiting for "stable". No assertion failed. See audit 005 finding 3 for the control runs.
 
+## Phase 121 (the hydration and backup services) - delta against Phase 120
+
+**Bundle** (`main` at `a84dfff` built in a worktree with `.env`, gzip level 9 on both sides): the entry `index-CnVTLmA-.js` 194,826 / 56,963 B to `index-B8wLrv24.js` 195,458 / 57,105 (+632 / +142 gzip: the injected setters' property names and a second async function); all app JS 881,394 / 268,083 to 882,026 / 268,262 (+632 / +179), 40 files; cold start still three scripts.
+
+**Source:** `src/context/FinanceContext.tsx` 3,090 to 2,936 lines (-154); `src/services/financeHydration.ts` 212, `src/services/financeBackup.ts` 29.
+
+| Suite | Files | Tests | Runs | Result |
+|---|---|---|---|---|
+| Vitest (`unit/`) | 61 | 1360 | 1360 | 1360/1360 before (70 s) and after (41 s); shuffled 1360/1360 (63 s, seed `1791555857981`) |
+| Playwright (local, 4 workers) | 34 | 164 | 492 | 486 passed, 6 skipped, 0 failed (8.1 m), first run |
+
 ## Phase 120 (the safe id guard, the shuffled unit run) - delta against Phase 119
 
 **Bundle:** unchanged. The `src/` edits are comments; the branch builds the entry `index-CnVTLmA-.js`, the one production serves.
