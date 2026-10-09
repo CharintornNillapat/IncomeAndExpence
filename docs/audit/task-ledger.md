@@ -1081,6 +1081,22 @@ Approved explicitly by the user, planned and approved before any code was writte
 - **One negative control was redone** because the first attempt produced malformed TypeScript that the dev server still served — the tests failed, but possibly for the wrong reason.
 - **No flakes.** Phase 44's `wallets.spec.ts` webkit flake has now not reproduced across three consecutive phases; still watched rather than closed.
 
+## Phase 121 - The cloud load's reads and the restore's row rewriting move to `src/services/`: T724-T727 (2026-10-09)
+
+ADR `0097`. Branch `phase-121-finance-context-hygiene`, cut from `main` at `a84dfff`. No migration.
+
+| # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
+|---|---|---|---|---|---|---|---|---|---|---|
+| T724 | `readCloudSlices` and the row mappers (`mapWalletRow`, `mapTransactionRow`, `mapDebtRow`, the inline categories mapping as `mapCategoryRow`) to `src/services/financeHydration.ts`; the provider keeps `isSyncing`, the epoch, the clean-load bookkeeping, `syncError` and the seed | `src/services/financeHydration.ts`, `src/context/FinanceContext.tsx` | Med | Med | 0.4h | done | - | CODE | `authenticated-ledger` unchanged and green (failed read, thrown load, clean retry, seed outcomes, a load in flight at sign-out, F6) | `FinanceContext.tsx` -154 lines |
+| T725 | `backupAsGuest` (the guest-id rewrite and the template filter) to `src/services/financeBackup.ts`; the refusal when signed in and the slice replacement stay | `src/services/financeBackup.ts`, `src/context/FinanceContext.tsx` | Low | Low | 0.1h | done | - | CODE | `backup-restore` unchanged and green | - |
+| T726 | Bracketing gate: lint and unit before the edits, then lint, unit, shuffled unit, Playwright, drift replay and bundle after | - | High | Low | 0.3h | done | T724-T725 | - | lint clean; unit 1360/1360 in 61 files before the edits and after (41 s), shuffled 1360/1360 (seed `1791555857981`); Playwright 486 passed, 6 skipped, none failed, of 492 (8.1 m, 4 workers), first run; no migration: the local drift replay of 20 migrations ran, the live half did not (no `SUPABASE_DRIFT_DB_URL`, no Supabase MCP) | entry +632 / +142 gzip B |
+| T727 | ADR `0097`, `CLAUDE.md` (structure tree, the diary bullet's cloud load, a services bullet), the logs | `docs/`, `CLAUDE.md` | Med | Low | 0.3h | done | T726 | DOCS | - | - |
+
+**Notes on execution:**
+- **No test changed.** `git diff main -- unit tests` is empty; the signed-in harness's `vi.mock('../src/lib/supabase')` reaches the new module because every importer gets the mocked module.
+- **What stayed, on purpose:** the seed (a write, with its own in-flight ref and `isMissingRpcError`), the batched writer, the reset, the auth and realtime effects, and the restore's slice replacement. ADR `0097` says why for each.
+- **One timing difference, within a task:** the clean-load bookkeeping now runs a few microtasks after the last slice is set, when `readCloudSlices` resolves; no macrotask falls in between.
+
 ## Phase 120 - Lint refuses an id from the time alone; CI runs the unit suite again, shuffled: T720-T723 (2026-10-09)
 
 ADR `0096`. Branch `phase-120-ci-resilience-and-lint-guards`, cut from `main` at `37ba033`; code `5a78d83`, docs `eb678be`, hash backfill `cd0af44`; merged into `main` as `f0eeda4` (PR #71); Vercel `dpl_4U417S313EEZHVgeLH4D1jHZ7goC` READY in `icn1`. The pull request's CI (run `37918118514`, on `a420a0c`) passed every job: unit 1360/1360 in order and shuffled; 486 passed, 6 skipped, no flaky test. `main` CI on the merge (run `37941158870`) passed every job on its first attempt in 338 s end to end, the merge job included: unit 1360/1360 in 61 files in order, then 1360/1360 shuffled (seed `1791554597690`); 486 passed, 6 skipped, no flaky test. No migration; live drift run `37917926856`: no drift, 20 migrations.
