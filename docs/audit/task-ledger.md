@@ -1081,6 +1081,21 @@ Approved explicitly by the user, planned and approved before any code was writte
 - **One negative control was redone** because the first attempt produced malformed TypeScript that the dev server still served — the tests failed, but possibly for the wrong reason.
 - **No flakes.** Phase 44's `wallets.spec.ts` webkit flake has now not reproduced across three consecutive phases; still watched rather than closed.
 
+## Phase 122 - The Supabase advisors, read again after the legacy `transfer_funds` drop: T728-T731 (2026-10-10)
+
+ADR `0098`. Branch `phase-122-security-advisors-check`, cut from `main` at `f3e4a51`; docs `d163208`. Docs only; no migration.
+
+| # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
+|---|---|---|---|---|---|---|---|---|---|---|
+| T728 | Read the security and performance advisors (Supabase MCP `get_advisors`, project `rmpnzlcufeioxmgoocpt`) and sort each finding against ADR `0067` and `0074` | - | Med | Low | 0.2h | done | - | - | security 3 lints / 12 findings, performance 2 / 8; none new | `SECURITY DEFINER` findings 11 to 10 |
+| T729 | Read-only catalog checks: function `search_path`, `anon`/`PUBLIC` `EXECUTE`, RLS on every table, the policies' roles, `anon`'s table grants, the transaction count, the history count | - | Med | Low | 0.2h | done | T728 | - | 16 functions pinned, none for `anon`; 8 of 8 tables with RLS; 7 policies, all `authenticated`; 121 transactions; 20 history rows | - |
+| T730 | Live drift through `schema-drift.yml` on `main` | - | High | Low | 0.1h | done | - | - | run `37996758984`: no drift, 20 migrations, as `schema_drift_reader` | - |
+| T731 | ADR `0098`, `CLAUDE.md`'s advisors note, the logs; gate | `docs/`, `CLAUDE.md` | Med | Low | 0.3h | done | T728-T730 | `d163208` | lint clean; unit 1360/1360 in 61 files (67 s) | - |
+
+**Notes on execution:**
+- **Nothing was written to the database:** two advisor reads and four `SELECT` queries, plus the drift role's rolled-back read.
+- **The one observation is `anon`'s default table grants,** accepted in ADR `0098` section 3: RLS gives `anon` no row, and the drift catalog tracks the grants.
+
 ## Phase 121 - The cloud load's reads and the restore's row rewriting move to `src/services/`: T724-T727 (2026-10-09)
 
 ADR `0097`. Branch `phase-121-finance-context-hygiene`, cut from `main` at `a84dfff`; code `9cec127`, docs `5563733`, merged into `main` as `4454bf1` (PR #72). No migration.
