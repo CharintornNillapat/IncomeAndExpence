@@ -3,6 +3,7 @@ import type { DiaryEntry } from '../types';
 import type { MutationResult } from './FinanceContext';
 import { supabase } from '../lib/supabase';
 import { DiarySchema, formatZodIssues } from '../utils/zodSchemas';
+import { generateEntityId } from '../utils/ids';
 
 /*
  * Phase 116 (ADR 0092): the diary slice, the first one out of FinanceContext.
@@ -144,7 +145,7 @@ export function useDiaryMutations({
         } else {
           const newEntry: DiaryEntry = {
             ...entryData,
-            id: `diary-${Date.now()}`,
+            id: generateEntityId('diary'),
             userId: currentUserId,
             isDeleted: false,
             createdAt: new Date().toISOString(),

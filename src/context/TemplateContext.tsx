@@ -2,6 +2,7 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useR
 import type { Preset } from '../types';
 import type { MutationResult } from './FinanceContext';
 import { PresetSchema, formatZodIssues } from '../utils/zodSchemas';
+import { generateEntityId } from '../utils/ids';
 
 /*
  * Phase 118 (ADR 0094): the quick templates, the third slice out of
@@ -81,7 +82,7 @@ export function useTemplateMutations({
     }
 
     const newPreset: Preset = {
-      id: `preset-${Date.now()}`,
+      id: generateEntityId('preset'),
       userId: currentUserId,
       name: cleaned.name,
       type: cleaned.type,
