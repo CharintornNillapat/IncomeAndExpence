@@ -1083,14 +1083,14 @@ Approved explicitly by the user, planned and approved before any code was writte
 
 ## Phase 119 - A guest record's id is unique within one millisecond: T716-T719 (2026-10-09)
 
-ADR `0095`, fixing `main` CI after Phase 118 (run `37885529942`). Branch `phase-119-robust-guest-ids`, cut from `main` at `28473b4`; code `a26b103`. No migration; live drift run `37899237043`: no drift, 20 migrations.
+ADR `0095`, fixing `main` CI after Phase 118 (run `37885529942`). Branch `phase-119-robust-guest-ids`, cut from `main` at `28473b4`; code `a26b103`, docs `c23c996`; draft PR #70. No migration; live drift run `37899237043`: no drift, 20 migrations.
 
 | # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
 |---|---|---|---|---|---|---|---|---|---|---|
 | T716 | Frozen-clock tests: the helper, and two of each kind of guest record in one millisecond | `unit/entity-ids.test.tsx` | High | Low | 0.5h | done | - | `a26b103` | 11 failed first: the call sites on the old ids, the helper against a stub of the old format | +11 unit |
 | T717 | `generateEntityId(prefix)`: `<prefix>-<ms>-<12 hex>` from `crypto.getRandomValues`, `Math.random` without `crypto` | `src/utils/ids.ts` | High | Low | 0.2h | done | T716 | `a26b103` | 3/3 helper tests | - |
 | T718 | The eight call sites: wallets, categories, transactions, debts, rules, templates, diary, the guest CSV import's row ids and keys | `src/context/FinanceContext.tsx`, `src/context/KeywordRulesContext.tsx`, `src/context/TemplateContext.tsx`, `src/context/DiaryContext.tsx` | High | Med | 0.3h | done | T717 | `a26b103` | 11/11; `template-context` with a frozen clock 6/6 (failed before), unchanged 10 runs in 10 | entry +79 B gzip |
-| T719 | Gate, bundle, ADR `0095`, `CLAUDE.md`, the logs | `docs/`, `CLAUDE.md` | Med | Low | 0.5h | done | T716-T718 | `a26b103` | lint clean; unit 1331/1331 in 60 files (42 s); Playwright 485 passed, 6 skipped, 1 failed of 492 (11.4 m): the WebKit painting stall on `soft-delete`'s `gotoTab` click (last frame 234 ms before it, none after), then 60 of 60 on WebKit; no migration | - |
+| T719 | Gate, bundle, ADR `0095`, `CLAUDE.md`, the logs | `docs/`, `CLAUDE.md` | Med | Low | 0.5h | done | T716-T718 | `c23c996` | lint clean; unit 1331/1331 in 60 files (42 s); Playwright 485 passed, 6 skipped, 1 failed of 492 (11.4 m): the WebKit painting stall on `soft-delete`'s `gotoTab` click (last frame 234 ms before it, none after), then 60 of 60 on WebKit; no migration | - |
 
 **Notes on execution:**
 - **Eight sites, not seven:** the guest CSV import built its row ids and keys from `Date.now()` and the row index, so two imports in one millisecond collided. It now draws one `import-<ms>-<hex>` per import.

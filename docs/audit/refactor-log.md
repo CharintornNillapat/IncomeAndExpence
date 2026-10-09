@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 119 - A guest record's id is unique within one millisecond: T716-T719 (2026-10-09, code `a26b103`)
+## Phase 119 - A guest record's id is unique within one millisecond: T716-T719 (2026-10-09, code `a26b103`, docs `c23c996`, PR #70)
 
 ADR `0095`. The owner's brief: one collision-resistant id helper, all seven kinds of guest record on it, stored ids kept, frozen-clock tests, and `main` green again.
 

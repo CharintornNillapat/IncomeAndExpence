@@ -1,6 +1,6 @@
 # 0095: A guest record's id is unique within one millisecond
 
-**Status:** Accepted. Code `a26b103`, branch `phase-119-robust-guest-ids`; not merged. No migration; live drift run `37899237043`: no drift, 20 migrations.
+**Status:** Accepted. Code `a26b103`, docs `c23c996`, draft PR #70; not merged. No migration; live drift run `37899237043`: no drift, 20 migrations.
 - **Fixes** the failure of `main` CI after Phase 118 (ADR `0094`, Release): run `37885529942`.
 
 **Date:** 2026-10-09
