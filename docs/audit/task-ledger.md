@@ -1083,7 +1083,7 @@ Approved explicitly by the user, planned and approved before any code was writte
 
 ## Phase 123 - `anon` holds nothing on the ledger tables; the Auth settings are settled; `checkout` and `setup-node` move to v7: T732-T736 (2026-10-10)
 
-ADR `0099`. Branch `phase-123-security-finalization-and-ci-upkeep`, cut from `main` at `e42f26f`; code `da0effb`, docs `d6a399b`. Migration `20261010_phase123_revoke_client_table_grants.sql`, not yet applied to live.
+ADR `0099`. Branch `phase-123-security-finalization-and-ci-upkeep`, cut from `main` at `e42f26f`; code `da0effb`, docs `d6a399b`, hash backfill `2681c56`, merged into `main` as `baf2ab0` (PR #74). Migration `20261010_phase123_revoke_client_table_grants.sql` applied to live by the owner (history `20261009234928`); drift run `38006352360`: none, 21 migrations.
 
 | # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
 |---|---|---|---|---|---|---|---|---|---|---|

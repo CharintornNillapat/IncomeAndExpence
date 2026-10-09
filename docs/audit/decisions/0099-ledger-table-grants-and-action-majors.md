@@ -1,6 +1,6 @@
 # 0099: `anon` holds nothing on the ledger tables; the Auth settings are settled; `checkout` and `setup-node` move to v7
 
-**Status:** Accepted. Code `da0effb`, docs `d6a399b`, on branch `phase-123-security-finalization-and-ci-upkeep`; not merged. Migration `20261010_phase123_revoke_client_table_grants.sql`, not yet applied to live.
+**Status:** Accepted. Released: code `da0effb`, docs `d6a399b`, hash backfill `2681c56`, merged into `main` as `baf2ab0` (PR #74); production deployment READY in `icn1`. Migration `20261010_phase123_revoke_client_table_grants.sql` applied to live by the owner (history `20261009234928`); live drift run `38006352360`: none, 21 migrations.
 - **Amends** ADR `0098` section 3: `anon`'s default table grants, accepted there, are revoked.
 - **Amends** ADR `0067`: the leaked-password finding (S1) becomes an accepted tier constraint, and two pins move to a new major.
 - **Records** the owner's Auth settings against ADR `0087`.
@@ -82,3 +82,11 @@
 - **What a client role can do on every table is now stated in a migration, not inherited.** The default privileges still grant all seven to both roles on a new table; the rule in `CLAUDE.md` covers it.
 - **The owner applies the migration** in the SQL editor: probe inside `BEGIN ... ROLLBACK` first, then the file, then `npm run migration:print-history -- supabase/migrations/20261010_phase123_revoke_client_table_grants.sql` printed at that moment and run in the same tab. Then a drift run.
 - **No dashboard item is open.** The minimum is set, and leaked-password protection is a recorded tier constraint.
+
+## Release
+
+- **Before the merge:** the drift run on the branch with the migration not yet applied (`38003343769`) reported 25 rows, the twelve changed table grants from both sides and the missing history row, and nothing else. The owner then ran the probe, applied the migration in the SQL editor and recorded its history row (`20261009234928`, `owner, SQL editor`); the drift run after it (`38006352360`) found no drift, 21 migrations, as `schema_drift_reader`.
+- **Live, read back after the merge (read-only):** `anon` holds no privilege on the six ledger tables; `authenticated` holds `SELECT`, `INSERT`, `UPDATE` and `DELETE`; the history has 21 rows.
+- **Merge:** PR #74 merged into `main` as `baf2ab0`. The pull request's CI (run `38003343050`) passed every job on the new action pins.
+- **Production:** GitHub deployment `6973360117` on `baf2ab0` completed; it serves `index-B8wLrv24.js`, Phase 121's entry, as no `src/` file changed, and a guest `POST {}` to `/api/classify` answers 400 from `icn1`.
+- **`main` CI on the merge** (run `38006417250`, 5 m 33 s) passed every job on its first attempt: unit in order and shuffled (seed `1791589931102`); E2E 486 passed, 6 skipped, none failed or flaky.
