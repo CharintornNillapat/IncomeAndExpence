@@ -1083,7 +1083,7 @@ Approved explicitly by the user, planned and approved before any code was writte
 
 ## Phase 121 - The cloud load's reads and the restore's row rewriting move to `src/services/`: T724-T727 (2026-10-09)
 
-ADR `0097`. Branch `phase-121-finance-context-hygiene`, cut from `main` at `a84dfff`; code `9cec127`, docs `5563733`. No migration.
+ADR `0097`. Branch `phase-121-finance-context-hygiene`, cut from `main` at `a84dfff`; code `9cec127`, docs `5563733`, merged into `main` as `4454bf1` (PR #72). No migration.
 
 | # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
 |---|---|---|---|---|---|---|---|---|---|---|

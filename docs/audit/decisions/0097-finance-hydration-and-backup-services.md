@@ -1,6 +1,6 @@
 # 0097: The cloud load's reads and the restore's row rewriting move to `src/services/`
 
-**Status:** Accepted. Code `9cec127`, docs `5563733`, on branch `phase-121-finance-context-hygiene`; not merged. No migration.
+**Status:** Accepted. Released: code `9cec127`, docs `5563733`, hash backfill `165977a`, merged into `main` as `4454bf1` (PR #72); Vercel deployment READY in production, region `icn1`; `main` CI green, shuffled run included. No migration.
 - **Readability only.** No behaviour, state contract, test or fixture changes. Re-renders were settled by ADR `0093` and `0094`, and this phase does not touch them.
 
 **Date:** 2026-10-09
@@ -48,3 +48,10 @@ None added or changed. The move is covered by what already pins it: `authenticat
 - **Playwright:** 486 passed, 6 skipped by design, none failed, of 492 (8.1 m, 4 workers), on the first run; no spec repeated. Ports 3000 and 3100 were free before it.
 - **Schema:** no migration. `npm run schema:drift` replayed the 20 migrations from empty in PGlite and wrote the read-only live query (75 column, 28 constraint, 1 extension, 16 function, 64 function grant, 17 index, 7 policy, 5 publication, 8 table, 24 table grant, 2 trigger and 20 migration rows expected). **The live half was not run:** no `SUPABASE_DRIFT_DB_URL` here and no Supabase MCP. This phase changes no SQL, so live cannot have moved because of it.
 - **Bundle** (`main` at `a84dfff` built in a worktree with `.env`, gzip level 9 on both sides): the entry `index-CnVTLmA-.js` 194,826 / 56,963 B to `index-B8wLrv24.js` 195,458 / 57,105 (+632 / +142 gzip); all app JS 881,394 / 268,083 to 882,026 / 268,262 (+632 / +179), 40 files on both sides. The growth is the `deps` object's property names, which minification keeps, and the second async function; it is the price of the split, accepted.
+
+## Release
+
+- PR #72 merged into `main` as `4454bf1`. The pull request's CI (run `37945529649`, on `165977a`) passed.
+- Production deployment (GitHub deployment `6963957356`, on `4454bf1`) completed; production serves the entry `index-B8wLrv24.js`, the one the branch's build produced (+632 B, +142 B gzip), and a guest `POST {}` to `/api/classify` answers 400 from `icn1`.
+- `main` CI on the merge (run `37948807018`) passed every job on its first attempt in 5 m 51 s: unit 1360/1360 in 61 files in order, then 1360/1360 shuffled (seed `1791558273084`); E2E 486 passed, 6 skipped by design, none failed or flaky across the six shards.
+- Live schema drift was not re-run: no migration changed, and the live half needs `SUPABASE_DRIFT_DB_URL` (the weekly job covers it).
