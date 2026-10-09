@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 120 - Lint refuses an id from the time alone; CI runs the unit suite again, shuffled: T720-T723 (2026-10-09, code CODE, docs DOCS)
+## Phase 120 - Lint refuses an id from the time alone; CI runs the unit suite again, shuffled: T720-T723 (2026-10-09, code `5a78d83`, docs `eb678be`)
 
 ADR `0096`. The owner's brief: enforce ADR `0095`'s id rule in `npm run lint`, add a shuffled unit run to CI, and make the whole suite pass shuffled.
 

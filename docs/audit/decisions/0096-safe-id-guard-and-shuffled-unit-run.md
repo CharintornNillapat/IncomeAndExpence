@@ -1,6 +1,6 @@
 # 0096: Lint refuses an id from the time alone; CI runs the unit suite a second time, shuffled
 
-**Status:** Accepted. Branch `phase-120-ci-resilience-and-lint-guards`; not merged. No migration.
+**Status:** Accepted. Code `5a78d83`, docs `eb678be`, on branch `phase-120-ci-resilience-and-lint-guards`; not merged. No migration; live drift run `37917926856`: no drift, 20 migrations.
 - **Enforces** ADR `0095`'s rule (a new local record's id is `generateEntityId(prefix)`), until now written only in `CLAUDE.md`.
 - **Amends** ADR `0083`: a `findBy*` or `waitFor` waits up to 3 s by default, not Testing Library's 1 s.
 
@@ -45,5 +45,5 @@
 - **Lint:** clean.
 - **Unit:** 1360/1360 in 61 files (44 s); then **10 shuffled runs, 1360/1360 each** (44 to 76 s), seeds `1791540043982` to `1791540574440`.
 - **Playwright:** Playwright 484 passed, 6 skipped, 2 failed of 492 (12.6 m, 4 workers): the WebKit painting stall (ADR `0058`) on `csv-classify`'s Import CSV menu click and `diary`'s Save click, no assertion reached (the trace's last frame 107 and 80 ms into each click, none after), in specs this phase does not change; repeated per the owner's rule: both specs 120 of 120 on WebKit (`--repeat-each 10`).
-- **Schema:** no migration; drift DRIFT.
+- **Schema:** no migration; live drift run `37917926856`: no drift, 20 migrations.
 - **Bundle:** unchanged. The `src/` edits are comments, and a build of the branch has the entry `index-CnVTLmA-.js`, the one production serves.
