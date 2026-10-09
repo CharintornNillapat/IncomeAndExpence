@@ -1098,6 +1098,17 @@ The entry's growth is the ledger action itself, which lives with the other ledge
 
 **Intermittent local failures:** 6 in 1,071 full-suite runs (3 full runs). All were timeouts: a Firefox `goto`, a Firefox context close, and four WebKit clicks waiting for "stable". No assertion failed. See audit 005 finding 3 for the control runs.
 
+## Phase 118 (the quick templates' own contexts) - delta against Phase 117
+
+**Bundle** (gzip level 9 in Node on both sides; `main` at `1dc83a1` built in a worktree with `.env`). The entry 193,818 / 56,787 to 194,599 / 56,884 B (+781 / +97 gzip: `TemplateContext` is in it); all app JS 880,341 / 267,904 to 881,167 / 268,064 (+826 / +160), 40 files; cold start still three scripts. `FinanceContext.tsx` 3,187 to 3,086 lines, `TemplateContext.tsx` 174.
+
+**Re-renders** (`unit/rerender-matrix.test.tsx`, three runs): a template add, edit or delete re-rendered all six views once each; now 0 / 0 / 0 / 0 / 0 / 0. A template apply (a new row) reaches all six. Every other row unchanged.
+
+| Suite | Files | Tests | Runs | Result |
+|---|---|---|---|---|
+| Vitest (`unit/`) | 59 | 1320 | 1320 | 1320/1320 (+6 `template-context`) |
+| Playwright (local, 4 workers) | 34 | 164 | 492 | 485 passed, 6 skipped, 1 failed (12.2 m): the WebKit painting stall; then 110 of 110 on WebKit |
+
 ## Phase 117 (the re-render matrix, the smart rules' own contexts) - delta against Phase 116
 
 **Bundle** (gzip level 9 in Node on both sides; `main` at `f55432d` built in a worktree with `.env`). The entry 192,987 / 56,621 to 193,818 / 56,787 B (+831 / +166 gzip: `KeywordRulesContext` is in it); all app JS 879,417 / 267,658 to 880,341 / 267,904 (+924 / +246), 40 files; cold start still three scripts. `FinanceContext.tsx` 3,288 to 3,187 lines, `KeywordRulesContext.tsx` 192.
