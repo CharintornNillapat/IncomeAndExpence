@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 123 - `anon` holds nothing on the ledger tables; the Auth settings are settled; `checkout` and `setup-node` move to v7: T732-T736 (2026-10-10)
+## Phase 123 - `anon` holds nothing on the ledger tables; the Auth settings are settled; `checkout` and `setup-node` move to v7: T732-T736 (2026-10-10, code `da0effb`, docs `d6a399b`)
 
 ADR `0099`. The owner's brief: revoke `anon`'s default grants on the six ledger tables with a probe and the history statement, move the pinned actions to their newest majors, and record the Auth settings (minimum 8; leaked-password protection is Pro-only, so an accepted tier constraint).
 

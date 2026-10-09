@@ -1,6 +1,6 @@
 # 0099: `anon` holds nothing on the ledger tables; the Auth settings are settled; `checkout` and `setup-node` move to v7
 
-**Status:** Accepted. On branch `phase-123-security-finalization-and-ci-upkeep`; not merged. Migration `20261010_phase123_revoke_client_table_grants.sql`, not yet applied to live.
+**Status:** Accepted. Code `da0effb`, docs `d6a399b`, on branch `phase-123-security-finalization-and-ci-upkeep`; not merged. Migration `20261010_phase123_revoke_client_table_grants.sql`, not yet applied to live.
 - **Amends** ADR `0098` section 3: `anon`'s default table grants, accepted there, are revoked.
 - **Amends** ADR `0067`: the leaked-password finding (S1) becomes an accepted tier constraint, and two pins move to a new major.
 - **Records** the owner's Auth settings against ADR `0087`.
