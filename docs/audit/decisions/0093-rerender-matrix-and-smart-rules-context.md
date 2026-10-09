@@ -1,6 +1,6 @@
 # 0093: The re-render matrix across six views; the smart rules have contexts of their own; the helpers' animation wait stays
 
-**Status:** Accepted. Code `bbac429`, docs `28b5bd2`, draft PR #68; not merged. No migration; live drift run `37798213404`: no drift, 20 migrations.
+**Status:** Accepted. Released: code `bbac429`, docs `28b5bd2`, hash backfill `777c756`, merged into `main` as `fe7b319` (PR #68); Vercel `dpl_DRQAQ44H9TT8SwBF6PCR91mxCwiL` READY in `icn1`. No migration; live drift run `37798213404`: no drift, 20 migrations.
 - **The second slice of** the AGY audit's finding 3 (the monolithic `FinanceContext`), after ADR `0092`'s diary.
 - **Confirms** ADR `0091`'s `settle`, with an A/B the brief's removal was measured against.
 
@@ -63,6 +63,12 @@ Every other row is unchanged, but for one Transactions commit after a category w
 - **`unit/authenticated-ledger.test.tsx`, "the smart rules, signed in" (new, 7):** the load maps the rows; a new rule is one insert under the account, trimmed and lower-cased, shown first; a refused insert shows nothing and says why; a delete is one delete of that row; a refused delete puts the rule back at its index with the reason; a category a rule uses cannot be deleted; sign-out puts back the guest defaults. **All seven passed against the code before the move,** with the accessors reading the finance contexts, and pass after it on the new hooks.
 - **`unit/backup-restore.test.tsx`:** its probe reads the rules' context too.
 - **Gate:** lint clean; unit 1314/1314 in 58 files (54 s); Playwright on the tree that ships (with `settle`): 486 passed, 6 skipped, 0 failed of 492 (14.4 m, 4 workers). No migration; live drift run `37798213404`: no drift, 20 migrations.
+
+## Release
+
+- PR #68 merged into `main` as `fe7b319`, whose tree is identical to `777c756`; the pull request's CI (run `37800529963`) passed every job.
+- Vercel `dpl_DRQAQ44H9TT8SwBF6PCR91mxCwiL` is READY in production, region `icn1`; production serves the entry `index-CBflWzNQ.js`, the same hash as a local build of `main`, with `KeywordRulesContext` in it.
+- `main` CI on the merge (run `37882441943`) passed every job on its first attempt in 253 s end to end, the merge job included: unit 1314; 486 passed, 6 skipped, no flaky test. The local WebKit painting stall (ADR `0058`) did not show on CI's Linux WebKit.
 
 ## Bundle
 

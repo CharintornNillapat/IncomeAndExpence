@@ -4,9 +4,14 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 117 - The re-render matrix across six views; the smart rules have contexts of their own; the helpers' animation wait stays: T708-T711 (2026-10-08, code `bbac429`, docs `28b5bd2`, PR #68)
+## Phase 117 - The re-render matrix across six views; the smart rules have contexts of their own; the helpers' animation wait stays: T708-T711 (2026-10-08, code `bbac429`, docs `28b5bd2`, merge `fe7b319`)
 
 ADR `0093`. The owner's brief: measure re-renders across all six views for four kinds of write, pick the next slice between the smart rules and the categories from the data, extract it as the diary was, and remove the helpers' animation wait.
+
+**Release:**
+- The pull request's CI (run `37800529963`, on `777c756`) passed every job.
+- PR #68 merged into `main` as `fe7b319`, whose tree is identical to `777c756`. Vercel `dpl_DRQAQ44H9TT8SwBF6PCR91mxCwiL` is READY in production, region `icn1`; production serves the entry `index-CBflWzNQ.js`, the same hash as a local build of `main`, with `KeywordRulesContext` in it.
+- `main` CI on the merge (run `37882441943`) passed every job on its first attempt in 253 s end to end, the merge job included: unit 1314; 486 passed, 6 skipped, no flaky test. The local WebKit painting stall (ADR `0058`) did not show on CI's Linux WebKit.
 
 **Measured:**
 - **Before:** every write but a diary save re-rendered all six views once.

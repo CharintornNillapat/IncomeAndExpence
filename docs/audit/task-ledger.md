@@ -1083,7 +1083,7 @@ Approved explicitly by the user, planned and approved before any code was writte
 
 ## Phase 117 - The re-render matrix across six views; the smart rules have contexts of their own; the helpers' animation wait stays: T708-T711 (2026-10-08)
 
-ADR `0093`, the second slice of the AGY audit's finding 3. Branch `phase-117-rerender-benchmarking`, cut from `main` at `f55432d`; code `bbac429`, docs `28b5bd2`; draft PR #68. No migration; live drift run `37798213404`: no drift, 20 migrations. **The owner's decision (2026-10-08): `settle` stays,** on the A/B in T711.
+ADR `0093`, the second slice of the AGY audit's finding 3. Branch `phase-117-rerender-benchmarking`, cut from `main` at `f55432d`; code `bbac429`, docs `28b5bd2`, hash backfill `777c756`; merged into `main` as `fe7b319` (PR #68); Vercel `dpl_DRQAQ44H9TT8SwBF6PCR91mxCwiL` READY in `icn1`. The pull request's CI (run `37800529963`) passed every job. `main` CI on the merge (run `37882441943`) passed every job on its first attempt in 253 s end to end, the merge job included: unit 1314; 486 passed, 6 skipped, no flaky test. The local WebKit painting stall (ADR `0058`) did not show on CI's Linux WebKit. No migration; live drift run `37798213404`: no drift, 20 migrations. **The owner's decision (2026-10-08): `settle` stays,** on the A/B in T711.
 
 | # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
 |---|---|---|---|---|---|---|---|---|---|---|
