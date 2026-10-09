@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Plus } from 'lucide-react';
 import { useFinanceActions, useFinanceState } from '../context/FinanceContext';
+import { useKeywordRulesState } from '../context/KeywordRulesContext';
 import { useMediaQuery } from '../hooks/useMediaQuery';
 import { Category } from '../types';
 import { categoryGroups, categoryUsage, nextColor, usedColors } from '../selectors/categories';
@@ -27,7 +28,8 @@ type CategorySubTab = 'MANAGE' | 'RULES';
  * `SmartRulesPanel`.
  */
 export const CategoriesView: React.FC = () => {
-  const { categories, keywordRules, transactions } = useFinanceState();
+  const { categories, transactions } = useFinanceState();
+  const { keywordRules } = useKeywordRulesState();
   const { addCategory, updateCategory, deleteCategory } = useFinanceActions();
   const isWide = useMediaQuery('(min-width: 1024px)');
 

@@ -4,6 +4,23 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
+## Phase 117 - The re-render matrix across six views; the smart rules have contexts of their own; the helpers' animation wait stays: T708-T711 (2026-10-08, code `bbac429`, docs `28b5bd2`, PR #68)
+
+ADR `0093`. The owner's brief: measure re-renders across all six views for four kinds of write, pick the next slice between the smart rules and the categories from the data, extract it as the diary was, and remove the helpers' animation wait.
+
+**Measured:**
+- **Before:** every write but a diary save re-rendered all six views once.
+- **Needed versus noise:** all six read transactions and categories, so those writes are needed everywhere. Only the Categories page reads rules (5 needless re-renders a write), and no view reads templates (6).
+
+**Changed:**
+- **`src/context/KeywordRulesContext.tsx`** takes the rules' state, ref, defaults, row mapping and two writes, moved unchanged. `FinanceProvider` keeps the batched writer, the cloud load, the reset and restore, and `deleteCategory`'s in-use check through the ref.
+- **`keywordRules` and its two writes left the finance contexts,** with no compatibility copy. Five readers moved to `useKeywordRulesState()` / `useKeywordRulesActions()`.
+- **After:** a rule write re-renders the Categories page and the closed CSV import dialog only.
+
+**Not changed:** `tests/helpers.ts`. The removal of `settle` was built and measured: `soft-delete.spec.ts` on WebKit, 240 runs a side: without `settle` 5 stalls (59, 59, 58, 59 of 60 per batch of ten repeats), with `main`'s `settle` 0 (60 of 60 four times). The owner kept it.
+
+**Next:** templates, read by no view, local only.
+
 ## Phase 116 - The diary has contexts of its own, composed under FinanceProvider; one code for a missing function: T704-T707 (2026-10-08, code `1e2f13f`, docs `2673f32`, merge `aa02a30`)
 
 ADR `0092`. The owner's brief: move the diary out of `FinanceContext` without breaking a view, measure re-renders before and after, keep guest and cloud behaviour, and give the remaining missing-function paths the one code.
