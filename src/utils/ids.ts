@@ -12,6 +12,7 @@ export function generateIdempotencyKey(): string {
     return `idemp-${crypto.randomUUID()}`;
   }
   const rand = () => Math.random().toString(36).slice(2, 11);
+  // safe-id-ignore: two random parts follow the time
   return `idemp-${Date.now()}-${rand()}-${rand()}`;
 }
 
@@ -28,5 +29,5 @@ export function generateEntityId(prefix: string): string {
     for (let i = 0; i < bytes.length; i++) bytes[i] = Math.floor(Math.random() * 256);
   }
   const hex = Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
-  return `${prefix}-${Date.now()}-${hex}`;
+  return `${prefix}-${Date.now()}-${hex}`; // safe-id-ignore: the helper itself; 48 random bits follow the time
 }

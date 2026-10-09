@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, beforeAll, beforeEach, afterAll } from 'vitest';
 import { PGlite } from '@electric-sql/pglite';
 import { DEFAULT_CREATED_BY, historyInsert, resolveMigration, utcVersion } from '../scripts/lib/migrationHistory.mjs';
 
@@ -65,6 +65,12 @@ describe('resolveMigration', () => {
 });
 
 describe('historyInsert', () => {
+  // Each test starts from an empty history, so it holds in any order (ADR 0096).
+  beforeEach(async () => {
+    await db.exec('truncate supabase_migrations.schema_migrations');
+  });
+  const recordFile = () => run(historyInsert({ file: FILE, version: '20261005085237' }));
+
   it('records the file under its name without the date, at the version, as the owner in the SQL editor', async () => {
     expect(await run(historyInsert({ file: FILE, version: '20261005085237' }))).toEqual([
       { version: '20261005085237', name: 'wallet_default_thb', created_by: DEFAULT_CREATED_BY },
@@ -75,16 +81,19 @@ describe('historyInsert', () => {
   });
 
   it('inserts nothing when run again, and says so by returning no row', async () => {
+    await recordFile();
     expect(await run(historyInsert({ file: FILE, version: '20261005085237' }))).toEqual([]);
     expect(await history()).toHaveLength(1);
   });
 
   it('inserts nothing for a name already recorded at another time', async () => {
+    await recordFile();
     expect(await run(historyInsert({ file: FILE, version: '20261006000000' }))).toEqual([]);
     expect(await history()).toHaveLength(1);
   });
 
   it('inserts nothing at a version another file already holds', async () => {
+    await recordFile();
     expect(await run(historyInsert({ file: '20261005_phase88_quota_checks_session.sql', version: '20261005085237' }))).toEqual([]);
     expect(await history()).toHaveLength(1);
   });

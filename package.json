@@ -12,10 +12,12 @@
     "build": "vite build",
     "preview": "vite preview",
     "clean": "rm -rf dist server.js",
-    "lint": "npm run check:node-globals && tsc --noEmit && tsc -p api/tsconfig.json",
+    "lint": "npm run check:node-globals && npm run check:safe-ids && tsc --noEmit && tsc -p api/tsconfig.json",
     "check:node-globals": "node scripts/check-node-globals.mjs",
+    "check:safe-ids": "node scripts/check-safe-ids.mjs",
     "test": "playwright test",
     "test:unit": "vitest run",
+    "test:unit:shuffle": "vitest run --sequence.shuffle",
     "schema:drift": "node scripts/schema-drift.mjs",
     "migration:print-history": "node scripts/migration-history.mjs"
   },

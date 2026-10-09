@@ -117,76 +117,81 @@ const createLiveHistory = (target: Db) => target.exec(`
     ${LIVE_HISTORY.map(([v, n]) => `('${v}', '${n}')`).join(', ')};
 `);
 
-describe('the migration history backfill', () => {
-  const backfill = () => db.exec(readRepoFile('supabase', 'ops', '20261005_phase87_record_migration_history.sql'));
-  const names = async () =>
-    (await db.query<{ name: string }>('select name from supabase_migrations.schema_migrations order by name')).rows.map(r => r.name);
+// One scenario on the one replayed database, so it keeps its order under
+// `--sequence.shuffle` (ADR 0096): the backfill creates the history the
+// drift query reads, and each step reads the rows the one before it wrote.
+describe('the history, backfilled and then checked for drift', { shuffle: false }, () => {
+  describe('the migration history backfill', () => {
+    const backfill = () => db.exec(readRepoFile('supabase', 'ops', '20261005_phase87_record_migration_history.sql'));
+    const names = async () =>
+      (await db.query<{ name: string }>('select name from supabase_migrations.schema_migrations order by name')).rows.map(r => r.name);
 
-  beforeAll(async () => {
-    await createLiveHistory(db);
-  });
+    beforeAll(async () => {
+      await createLiveHistory(db);
+    });
 
-  it('records exactly the four missing files, so the history matched every Phase 87 file', async () => {
-    await backfill();
-    // Phase 87's thirteen; later files are recorded when they are applied.
-    const phase87Files = migrationFiles().filter(file => file < '20261005');
-    expect(phase87Files).toHaveLength(13);
-    expect(await names()).toEqual(phase87Files.map(migrationName).sort());
-  });
+    it('records exactly the four missing files, so the history matched every Phase 87 file', async () => {
+      await backfill();
+      // Phase 87's thirteen; later files are recorded when they are applied.
+      const phase87Files = migrationFiles().filter(file => file < '20261005');
+      expect(phase87Files).toHaveLength(13);
+      expect(await names()).toEqual(phase87Files.map(migrationName).sort());
+    });
 
-  it('inserts nothing when run again', async () => {
-    await backfill();
-    expect(await names()).toHaveLength(13);
-  });
+    it('inserts nothing when run again', async () => {
+      await backfill();
+      expect(await names()).toHaveLength(13);
+    });
 
-  it('marks what it backfilled', async () => {
-    const { rows } = await db.query<{ version: string; name: string }>(
-      "select version, name from supabase_migrations.schema_migrations where created_by like 'phase87 backfill%' order by version");
-    expect(rows).toEqual([
-      { version: '20260901000000', name: 'baseline_schema' },
-      { version: '20260909000000', name: 'transfer_funds' },
-      { version: '20261002000000', name: 'phase64_dedupe_categories' },
-      { version: '20261003000000', name: 'phase73_ai_request_quota' },
-    ]);
-  });
-});
-
-describe('the drift query', () => {
-  beforeAll(async () => {
-    // The files after Phase 87, recorded as a migration applied in the SQL
-    // editor is: with `npm run migration:print-history`'s statement (ADR 0065).
-    for (const file of migrationFiles().filter(f => f >= '20261005')) {
-      await db.exec(historyInsert({ file, version: `${file.slice(0, 8)}${String(migrationFiles().indexOf(file)).padStart(6, '0')}` }));
-    }
-  });
-
-  const drift = async () => {
-    const results = await db.exec(buildDriftCheck(expectedRows(catalog)));
-    return results[results.length - 1].rows as Array<CatalogRow & { side: string }>;
-  };
-
-  it('finds nothing on a database that matches the repo', async () => {
-    expect(await drift()).toEqual([]);
-  });
-
-  it('names an object the database lost and one the repo does not know', async () => {
-    await db.exec(`
-      begin;
-      drop policy "Users manage their own debts" on public.debts;
-      create index debts_name_idx on public.debts (name);
-      delete from supabase_migrations.schema_migrations where name = 'transfer_funds';
-    `);
-    try {
-      const rows = await drift();
-      expect(rows.map(r => `${r.side}: ${r.kind} ${r.name}`)).toEqual([
-        'only in the database: index debts_name_idx',
-        'only in the repo: migration transfer_funds',
-        'only in the repo: policy debts.Users manage their own debts',
+    it('marks what it backfilled', async () => {
+      const { rows } = await db.query<{ version: string; name: string }>(
+        "select version, name from supabase_migrations.schema_migrations where created_by like 'phase87 backfill%' order by version");
+      expect(rows).toEqual([
+        { version: '20260901000000', name: 'baseline_schema' },
+        { version: '20260909000000', name: 'transfer_funds' },
+        { version: '20261002000000', name: 'phase64_dedupe_categories' },
+        { version: '20261003000000', name: 'phase73_ai_request_quota' },
       ]);
-    } finally {
-      await db.exec('rollback;');
-    }
-    expect(await drift()).toEqual([]);
+    });
+  });
+
+  describe('the drift query', () => {
+    beforeAll(async () => {
+      // The files after Phase 87, recorded as a migration applied in the SQL
+      // editor is: with `npm run migration:print-history`'s statement (ADR 0065).
+      for (const file of migrationFiles().filter(f => f >= '20261005')) {
+        await db.exec(historyInsert({ file, version: `${file.slice(0, 8)}${String(migrationFiles().indexOf(file)).padStart(6, '0')}` }));
+      }
+    });
+
+    const drift = async () => {
+      const results = await db.exec(buildDriftCheck(expectedRows(catalog)));
+      return results[results.length - 1].rows as Array<CatalogRow & { side: string }>;
+    };
+
+    it('finds nothing on a database that matches the repo', async () => {
+      expect(await drift()).toEqual([]);
+    });
+
+    it('names an object the database lost and one the repo does not know', async () => {
+      await db.exec(`
+        begin;
+        drop policy "Users manage their own debts" on public.debts;
+        create index debts_name_idx on public.debts (name);
+        delete from supabase_migrations.schema_migrations where name = 'transfer_funds';
+      `);
+      try {
+        const rows = await drift();
+        expect(rows.map(r => `${r.side}: ${r.kind} ${r.name}`)).toEqual([
+          'only in the database: index debts_name_idx',
+          'only in the repo: migration transfer_funds',
+          'only in the repo: policy debts.Users manage their own debts',
+        ]);
+      } finally {
+        await db.exec('rollback;');
+      }
+      expect(await drift()).toEqual([]);
+    });
   });
 });
 

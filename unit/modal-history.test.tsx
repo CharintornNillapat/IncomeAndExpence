@@ -56,7 +56,10 @@ const dialog = (name: string) => screen.queryByRole('dialog', { name });
 
 let baseLength = 0;
 function start() {
-  history.replaceState(null, '', '/#/wallets');
+  // A push, not a replace: it drops the forward entries an earlier test's Back
+  // left, which `history.length` still counts, so the base is where we stand
+  // in any test order (ADR 0096).
+  history.pushState(null, '', '/#/wallets');
   baseLength = history.length;
   render(<Harness />);
 }

@@ -41,5 +41,8 @@ export default defineConfig({
     // Every suite either stubs `fetch` or mounts a provider that owns
     // module-level state; overlapping files in one process would leak both.
     isolate: true,
+
+    // Testing Library's wait bound, for every file (ADR 0096).
+    setupFiles: ['unit/setup.ts'],
   },
 });

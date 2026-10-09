@@ -218,8 +218,10 @@ describe('the form, from lg', () => {
     await waitFor(() => {
       const income = [...byId('category-group-income')!.querySelectorAll('li')].map((li) => li.textContent);
       expect(income.some((text) => text?.includes('Allowance'))).toBe(true);
+      // The form resets after the add resolves, in a later update than the
+      // list's, so it is waited for too (ADR 0096).
+      expect((byId('new-category-name') as HTMLInputElement).value).toBe('');
     });
-    expect((byId('new-category-name') as HTMLInputElement).value).toBe('');
     expect(byId('new-category-type-income')!.getAttribute('aria-pressed')).toBe('true');
     expect(swatch('new-category', IDENTITY_PALETTE[0].hex).disabled).toBe(true);
     expect(swatch('new-category', IDENTITY_PALETTE[1].hex).getAttribute('aria-pressed')).toBe('true');
