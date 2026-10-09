@@ -1083,14 +1083,14 @@ Approved explicitly by the user, planned and approved before any code was writte
 
 ## Phase 122 - The Supabase advisors, read again after the legacy `transfer_funds` drop: T728-T731 (2026-10-10)
 
-ADR `0098`. Branch `phase-122-security-advisors-check`, cut from `main` at `f3e4a51`. Docs only; no migration.
+ADR `0098`. Branch `phase-122-security-advisors-check`, cut from `main` at `f3e4a51`; docs `d163208`. Docs only; no migration.
 
 | # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
 |---|---|---|---|---|---|---|---|---|---|---|
 | T728 | Read the security and performance advisors (Supabase MCP `get_advisors`, project `rmpnzlcufeioxmgoocpt`) and sort each finding against ADR `0067` and `0074` | - | Med | Low | 0.2h | done | - | - | security 3 lints / 12 findings, performance 2 / 8; none new | `SECURITY DEFINER` findings 11 to 10 |
 | T729 | Read-only catalog checks: function `search_path`, `anon`/`PUBLIC` `EXECUTE`, RLS on every table, the policies' roles, `anon`'s table grants, the transaction count, the history count | - | Med | Low | 0.2h | done | T728 | - | 16 functions pinned, none for `anon`; 8 of 8 tables with RLS; 7 policies, all `authenticated`; 121 transactions; 20 history rows | - |
 | T730 | Live drift through `schema-drift.yml` on `main` | - | High | Low | 0.1h | done | - | - | run `37996758984`: no drift, 20 migrations, as `schema_drift_reader` | - |
-| T731 | ADR `0098`, `CLAUDE.md`'s advisors note, the logs; gate | `docs/`, `CLAUDE.md` | Med | Low | 0.3h | done | T728-T730 | - | lint clean; unit 1360/1360 in 61 files (67 s) | - |
+| T731 | ADR `0098`, `CLAUDE.md`'s advisors note, the logs; gate | `docs/`, `CLAUDE.md` | Med | Low | 0.3h | done | T728-T730 | `d163208` | lint clean; unit 1360/1360 in 61 files (67 s) | - |
 
 **Notes on execution:**
 - **Nothing was written to the database:** two advisor reads and four `SELECT` queries, plus the drift role's rolled-back read.

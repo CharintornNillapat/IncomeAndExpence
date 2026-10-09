@@ -1,6 +1,6 @@
 # 0098: The Supabase advisors, read again after the legacy `transfer_funds` drop: nothing new, live matches all 20 migrations
 
-**Status:** Accepted. Docs only, on branch `phase-122-security-advisors-check`; not merged. No migration, no code change. Live drift run `37996758984`: no drift, 20 migrations.
+**Status:** Accepted. Docs `d163208`, on branch `phase-122-security-advisors-check`; not merged. No migration, no code change. Live drift run `37996758984`: no drift, 20 migrations.
 - **Re-reads** ADR `0067`'s triage and ADR `0074`'s re-read, after Phase 102 (ADR `0078`) and Phase 114 (ADR `0090`) took the 20260909 `transfer_funds(p_user_id, ...)` signature off the list and then out of the database.
 
 **Date:** 2026-10-10
