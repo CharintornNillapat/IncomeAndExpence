@@ -1,6 +1,6 @@
 # 0095: A guest record's id is unique within one millisecond
 
-**Status:** Accepted. Code `a26b103`, docs `c23c996`, draft PR #70; not merged. No migration; live drift run `37899237043`: no drift, 20 migrations.
+**Status:** Accepted. Released: code `a26b103`, docs `c23c996`, hash backfill `47ff7b7`, merged into `main` as `b611b92` (PR #70); Vercel `dpl_7dsMyzXf64joxxYzWnmHyVmMuV13` READY in `icn1`; `main` CI green. No migration; live drift run `37899237043`: no drift, 20 migrations.
 - **Fixes** the failure of `main` CI after Phase 118 (ADR `0094`, Release): run `37885529942`.
 
 **Date:** 2026-10-09
@@ -32,6 +32,12 @@
 - **`unit/template-context.test.tsx`, the test that failed on `main`:** the same file with `Date.now()` frozen failed before and passes 6 of 6 now; the unchanged file passed 10 runs in 10.
 
 - **Gate:** lint clean; unit 1331/1331 in 60 files (42 s); Playwright 485 passed, 6 skipped, 1 failed of 492 (11.4 m, 4 workers). The failure was the WebKit painting stall (ADR `0058`) on `gotoTab`'s Transactions tab click in `soft-delete.spec.ts`, with no assertion reached: the trace's last frame came 234 ms before the click, and none after. Repeated per the owner's rule: 60 of 60 on WebKit. No migration; live drift run `37899237043`: no drift, 20 migrations.
+
+## Release
+
+- PR #70 merged into `main` as `b611b92`, whose tree is identical to `47ff7b7`; the pull request's CI (run `37900834311`) passed every job: 486 passed, 6 skipped, no flaky test.
+- Vercel `dpl_7dsMyzXf64joxxYzWnmHyVmMuV13` is READY in production, region `icn1`; production serves the entry `index-CnVTLmA-.js`, the same hash as a local build of `main`, with `generateEntityId` in it.
+- `main` CI on the merge (run `37901855209`) passed every job on its first attempt in 305 s end to end, the merge job included: unit 1331/1331 in 60 files; 486 passed, 6 skipped, no flaky test. **`main` is green again** after Phase 118's failed run `37885529942`.
 
 ## Bundle
 

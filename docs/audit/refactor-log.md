@@ -4,9 +4,14 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 119 - A guest record's id is unique within one millisecond: T716-T719 (2026-10-09, code `a26b103`, docs `c23c996`, PR #70)
+## Phase 119 - A guest record's id is unique within one millisecond: T716-T719 (2026-10-09, code `a26b103`, docs `c23c996`, merge `b611b92`)
 
 ADR `0095`. The owner's brief: one collision-resistant id helper, all seven kinds of guest record on it, stored ids kept, frozen-clock tests, and `main` green again.
+
+**Release:**
+- The pull request's CI (run `37900834311`, on `47ff7b7`) passed every job.
+- PR #70 merged into `main` as `b611b92`, whose tree is identical to `47ff7b7`. Vercel `dpl_7dsMyzXf64joxxYzWnmHyVmMuV13` is READY in production, region `icn1`; production serves the entry `index-CnVTLmA-.js`, the same hash as a local build of `main`, with `generateEntityId` in it.
+- `main` CI on the merge (run `37901855209`) passed every job on its first attempt in 305 s end to end, the merge job included: unit 1331/1331 in 60 files; 486 passed, 6 skipped, no flaky test. **`main` is green again** after Phase 118's failed run `37885529942`.
 
 **Changed:**
 - **`generateEntityId(prefix)`** in `src/utils/ids.ts`: `<prefix>-<ms>-<12 hex>`, 48 random bits from `crypto.getRandomValues`, `Math.random` without `crypto`.

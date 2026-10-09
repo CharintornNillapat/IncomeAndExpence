@@ -53,6 +53,8 @@ The matrix has no view-level noise left to remove. Everything still in `FinanceC
 - Vercel `dpl_7qc1sF8H7tGGqJNrLtChJT5XfwcB` is READY in production, region `icn1`; production serves the entry `index-DYwCP4F9.js`, the same hash as a local build of `main`, with `TemplateContext` in it.
 - **`main` CI on the merge (run `37885529942`) failed** in its `checks` job, so no browser job ran: 1319 of 1320 unit tests passed, and `template-context`'s "an edit is checked before it is applied" failed (a rename to a name another template uses was accepted). **Cause:** a guest template's id is `preset-${Date.now()}`; on CI's runner the test's two `addPreset` calls fell in one millisecond, so both templates got one id and the duplicate check (`p.id !== id`) skipped both. The pull request's run passed on timing. With `Date.now()` frozen the test fails every time locally. The id is older than this phase (moved unchanged), and six more guest ids are built the same way (wallets, categories, transactions, debts, rules, diary entries). Production is unaffected in practice: a person cannot create two of one kind in one millisecond.
 
+- **Resolved by ADR `0095`** (merged as `b611b92`, PR #70): every guest id now carries random bits, and `main` CI on that merge (run `37901855209`) passed every job.
+
 ## Bundle
 
 `main` at `1dc83a1` built in a worktree with `.env`, gzip level 9 on both sides. The entry 193,818 / 56,787 to 194,599 / 56,884 B (+781 / +97 gzip: `TemplateContext` is in it); all app JS 880,341 / 267,904 to 881,167 / 268,064 (+826 / +160), 40 files; `QuickAddModal` +17 and `TransactionForm` +17 gzip; cold start still three scripts. `FinanceContext.tsx` 3,187 to 3,086 lines, `TemplateContext.tsx` 174.

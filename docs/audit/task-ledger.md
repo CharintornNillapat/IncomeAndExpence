@@ -1083,7 +1083,7 @@ Approved explicitly by the user, planned and approved before any code was writte
 
 ## Phase 119 - A guest record's id is unique within one millisecond: T716-T719 (2026-10-09)
 
-ADR `0095`, fixing `main` CI after Phase 118 (run `37885529942`). Branch `phase-119-robust-guest-ids`, cut from `main` at `28473b4`; code `a26b103`, docs `c23c996`; draft PR #70. No migration; live drift run `37899237043`: no drift, 20 migrations.
+ADR `0095`, fixing `main` CI after Phase 118 (run `37885529942`). Branch `phase-119-robust-guest-ids`, cut from `main` at `28473b4`; code `a26b103`, docs `c23c996`, hash backfill `47ff7b7`; merged into `main` as `b611b92` (PR #70); Vercel `dpl_7dsMyzXf64joxxYzWnmHyVmMuV13` READY in `icn1`. The pull request's CI (run `37900834311`) passed every job. `main` CI on the merge (run `37901855209`) passed every job on its first attempt in 305 s end to end, the merge job included: unit 1331/1331 in 60 files; 486 passed, 6 skipped, no flaky test. **`main` is green again** after Phase 118's failed run `37885529942`. No migration; live drift run `37899237043`: no drift, 20 migrations.
 
 | # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
 |---|---|---|---|---|---|---|---|---|---|---|
