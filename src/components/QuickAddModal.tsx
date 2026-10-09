@@ -3,6 +3,7 @@ import { X } from 'lucide-react';
 import { TransactionForm } from './TransactionForm';
 import { Modal } from './Modal';
 import { useFinanceState, useFinanceActions } from '../context/FinanceContext';
+import { useTemplateActions, useTemplateState } from '../context/TemplateContext';
 import { formatCurrencyAmount } from '../utils/currency';
 import { activeWallets as selectActiveWallets } from '../selectors/wallets';
 
@@ -30,8 +31,10 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
   onRequestTransfer,
   onRequestRepayDebt,
 }) => {
-  const { wallets, categories, presets } = useFinanceState();
-  const { addTransaction, applyPreset, deletePreset } = useFinanceActions();
+  const { wallets, categories } = useFinanceState();
+  const { presets } = useTemplateState();
+  const { addTransaction, applyPreset } = useFinanceActions();
+  const { deletePreset } = useTemplateActions();
   const [presetError, setPresetError] = useState<string | null>(null);
 
   // Memoized so TransactionForm doesn't receive a new array identity on

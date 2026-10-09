@@ -11,7 +11,6 @@ import {
   Debt,
   ImportRowValidation,
   TransactionType,
-  Preset,
 } from '../types';
 import type { AccountData } from '../utils/accountExport';
 import type { SupabaseClient } from '@supabase/supabase-js';
@@ -32,7 +31,6 @@ import {
   DebtSchema,
   DebtEditSchema,
   CategorySchema,
-  PresetSchema,
   formatZodIssues,
 } from '../utils/zodSchemas';
 import { APP_CURRENCY, formatCurrencyAmount } from '../utils/currency';
@@ -53,6 +51,7 @@ import {
   useKeywordRuleMutations,
   useKeywordRuleStore,
 } from './KeywordRulesContext';
+import { TemplateProvider, useTemplateMutations, useTemplateStore } from './TemplateContext';
 
 /**
  * Outcome of a validated write. Every mutating call reports failure this way
@@ -96,8 +95,8 @@ export interface FinanceStateContextType {
   // (ADR 0093): `useKeywordRulesState()` and `useKeywordRulesActions()`.
   categories: Category[];
 
-  // Transaction Templates ("quick presets")
-  presets: Preset[];
+  // The quick templates have contexts of their own since Phase 118 (ADR 0094):
+  // `useTemplateState()` and `useTemplateActions()` in `./TemplateContext`.
 
   // Transactions
   transactions: Transaction[];
@@ -173,20 +172,8 @@ export interface FinanceActionsContextType {
   updateCategory: (id: string, updates: { name?: string; color?: string; icon?: string; description?: string }) => Promise<MutationResult>;
   deleteCategory: (id: string) => Promise<MutationResult>;
 
-  // Transaction Templates ("quick presets")
-  addPreset: (data: {
-    name: string;
-    type: 'INCOME' | 'EXPENSE';
-    amount: number;
-    description: string;
-    categoryId?: string;
-    walletId?: string;
-  }) => Promise<MutationResult>;
-  updatePreset: (
-    id: string,
-    updates: Partial<{ name: string; amount: number; description: string; categoryId: string; walletId: string }>
-  ) => Promise<MutationResult>;
-  deletePreset: (id: string) => Promise<MutationResult>;
+  // Transaction Templates: their writes are `useTemplateActions()` (ADR 0094);
+  // applying one is a ledger write, so it stays here.
   /** Applies a saved template as a brand-new transaction dated today (or `transactionDate`, if given), reusing `addTransaction` rather than duplicating its ledger/wallet-balance logic. */
   applyPreset: (id: string, transactionDate?: string) => Promise<{ success: boolean; error?: string; txId?: string }>;
 
@@ -630,7 +617,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
   // migrations, so these never leave `localStorage` regardless of
   // `isAuthenticated` - unlike `categories`/`keywordRules`, which sync when
   // authenticated. A template is a personal shortcut, not shared ledger data.
-  const [presets, setPresets] = useState<Preset[]>(() => safeGetLocalStorage('pf_presets', []));
+  const { presets, setPresets, presetsRef } = useTemplateStore(() => safeGetLocalStorage('pf_presets', []));
   const [transactions, setTransactions] = useState<Transaction[]>(() => safeGetLocalStorage('pf_transactions', []));
   const [debts, setDebts] = useState<Debt[]>(() => safeGetLocalStorage<Debt[]>('pf_debts', []));
   const { diaryEntries, setDiaryEntries, diaryEntriesRef } = useDiaryEntriesState(() => safeGetLocalStorage('pf_diary', []));
@@ -709,7 +696,6 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
   const transactionsRef = useRef<Transaction[]>(transactions);
   const debtsRef = useRef<Debt[]>(debts);
   const categoriesRef = useRef<Category[]>(categories);
-  const presetsRef = useRef<Preset[]>(presets);
 
   useEffect(() => {
     walletsRef.current = wallets;
@@ -723,9 +709,6 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
   useEffect(() => {
     categoriesRef.current = categories;
   }, [categories]);
-  useEffect(() => {
-    presetsRef.current = presets;
-  }, [presets]);
 
   // T16 (ADR 0003): batched localStorage writer. Each state-slice effect below
   // marks its key dirty in `pendingWritesRef` instead of writing immediately;
@@ -1839,87 +1822,6 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     }
   }, [isAuthenticated, markLocalWrite]);
 
-  // Preset (quick-template) CRUD. Local-only (see the `presets` state
-  // declaration above) - hard delete, like keyword rules, since a template is
-  // configuration, not a financial record `isDeleted` needs to protect.
-  const addPreset = useCallback(async (data: {
-    name: string;
-    type: 'INCOME' | 'EXPENSE';
-    amount: number;
-    description: string;
-    categoryId?: string;
-    walletId?: string;
-  }): Promise<MutationResult> => {
-    const validation = PresetSchema.safeParse(data);
-    if (!validation.success) {
-      return { success: false, error: formatZodIssues(validation.error) };
-    }
-    const cleaned = validation.data;
-    const isDuplicate = presetsRef.current.some(
-      (p) => p.name.trim().toLowerCase() === cleaned.name.toLowerCase()
-    );
-    if (isDuplicate) {
-      return { success: false, error: `A template named "${cleaned.name}" already exists` };
-    }
-
-    const newPreset: Preset = {
-      id: `preset-${Date.now()}`,
-      userId: currentUser.id,
-      name: cleaned.name,
-      type: cleaned.type,
-      amount: cleaned.amount,
-      description: cleaned.description,
-      categoryId: cleaned.categoryId,
-      walletId: cleaned.walletId,
-      createdAt: new Date().toISOString(),
-    };
-    setPresets((prev) => [newPreset, ...prev]);
-    return { success: true };
-  }, [currentUser.id]);
-
-  const updatePreset = useCallback(async (
-    id: string,
-    updates: Partial<{ name: string; amount: number; description: string; categoryId: string; walletId: string }>
-  ): Promise<MutationResult> => {
-    const existing = presetsRef.current.find((p) => p.id === id);
-    if (!existing) {
-      return { success: false, error: 'Template not found' };
-    }
-
-    let cleanedUpdates = updates;
-    if (updates.name !== undefined) {
-      const cleanedName = updates.name.trim();
-      if (!cleanedName) {
-        return { success: false, error: 'Template name is required' };
-      }
-      const isDuplicate = presetsRef.current.some(
-        (p) => p.id !== id && p.name.trim().toLowerCase() === cleanedName.toLowerCase()
-      );
-      if (isDuplicate) {
-        return { success: false, error: `A template named "${cleanedName}" already exists` };
-      }
-      cleanedUpdates = { ...updates, name: cleanedName };
-    }
-    if (updates.amount !== undefined && !(updates.amount > 0)) {
-      return { success: false, error: 'Amount must be greater than 0' };
-    }
-    if (updates.description !== undefined && !updates.description.trim()) {
-      return { success: false, error: 'Description is required' };
-    }
-
-    setPresets((prev) => prev.map((p) => (p.id === id ? { ...p, ...cleanedUpdates } : p)));
-    return { success: true };
-  }, []);
-
-  const deletePreset = useCallback(async (id: string): Promise<MutationResult> => {
-    const exists = presetsRef.current.some((p) => p.id === id);
-    if (!exists) {
-      return { success: false, error: 'Template not found' };
-    }
-    setPresets((prev) => prev.filter((p) => p.id !== id));
-    return { success: true };
-  }, []);
-
   // Transactions CRUD
   const addTransaction = useCallback(async (data: {
     amount: number;
@@ -3018,6 +2920,9 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     }
   }, [isAuthenticated, markLocalWrite]);
 
+  // The templates' writes live in ./TemplateContext (Phase 118, ADR 0094).
+  const templateActions = useTemplateMutations({ currentUserId: currentUser.id, setPresets, presetsRef });
+
   // The smart rules' writes live in ./KeywordRulesContext (Phase 117, ADR 0093).
   const keywordRuleActions = useKeywordRuleMutations({
     isAuthenticated,
@@ -3055,7 +2960,6 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       wallets,
       totalNetWorth,
       categories,
-      presets,
       transactions,
       debts,
       showSoftDeleted,
@@ -3068,7 +2972,6 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       wallets,
       totalNetWorth,
       categories,
-      presets,
       transactions,
       debts,
       showSoftDeleted,
@@ -3101,9 +3004,6 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       addCategory,
       updateCategory,
       deleteCategory,
-      addPreset,
-      updatePreset,
-      deletePreset,
       applyPreset,
       addTransaction,
       softDeleteTransaction,
@@ -3130,9 +3030,6 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       addCategory,
       updateCategory,
       deleteCategory,
-      addPreset,
-      updatePreset,
-      deletePreset,
       applyPreset,
       addTransaction,
       softDeleteTransaction,
@@ -3155,7 +3052,9 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       <FinanceStateContext.Provider value={stateValue}>
         <DiaryProvider diaryEntries={diaryEntries} actions={diaryActions}>
           <KeywordRulesProvider keywordRules={keywordRules} actions={keywordRuleActions}>
-            {children}
+            <TemplateProvider presets={presets} actions={templateActions}>
+              {children}
+            </TemplateProvider>
           </KeywordRulesProvider>
         </DiaryProvider>
       </FinanceStateContext.Provider>

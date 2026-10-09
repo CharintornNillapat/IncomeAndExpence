@@ -6,6 +6,7 @@ import { render, act, cleanup } from '@testing-library/react';
 import { FinanceProvider, useFinanceActions, useFinanceState } from '../src/context/FinanceContext';
 import { useDiaryActions } from '../src/context/DiaryContext';
 import { useKeywordRulesActions, useKeywordRulesState } from '../src/context/KeywordRulesContext';
+import { useTemplateActions, useTemplateState } from '../src/context/TemplateContext';
 import { DashboardView } from '../src/views/DashboardView';
 import { TransactionsView } from '../src/views/TransactionsView';
 import { WalletsView } from '../src/views/WalletsView';
@@ -41,6 +42,8 @@ let latest: {
   diaryActions: ReturnType<typeof useDiaryActions>;
   rules: ReturnType<typeof useKeywordRulesState>;
   ruleActions: ReturnType<typeof useKeywordRulesActions>;
+  templates: ReturnType<typeof useTemplateState>;
+  templateActions: ReturnType<typeof useTemplateActions>;
 } | null = null;
 function Probe() {
   latest = {
@@ -49,6 +52,8 @@ function Probe() {
     diaryActions: useDiaryActions(),
     rules: useKeywordRulesState(),
     ruleActions: useKeywordRulesActions(),
+    templates: useTemplateState(),
+    templateActions: useTemplateActions(),
   };
   return null;
 }
@@ -97,10 +102,12 @@ async function measure(): Promise<Record<string, Counts>> {
   await step('rule add', () => latest!.ruleActions.addKeywordRule('kibble', pets.id));
   const rule = latest!.rules.keywordRules.find((r) => r.keyword === 'kibble')!;
   await step('rule delete', () => latest!.ruleActions.deleteKeywordRule(rule.id));
-  await step('template add', () => latest!.actions.addPreset({ name: 'Coffee', type: 'EXPENSE', amount: 60, description: 'Coffee' }));
-  const preset = latest!.state.presets.find((p) => p.name === 'Coffee')!;
-  await step('template edit', () => latest!.actions.updatePreset(preset.id, { amount: 65 }));
-  await step('template delete', () => latest!.actions.deletePreset(preset.id));
+  await step('template add', () => latest!.templateActions.addPreset({ name: 'Coffee', type: 'EXPENSE', amount: 60, description: 'Coffee' }));
+  const preset = latest!.templates.presets.find((p) => p.name === 'Coffee')!;
+  await step('template edit', () => latest!.templateActions.updatePreset(preset.id, { amount: 65 }));
+  // Using a template is a ledger write (`applyPreset` through `addTransaction`).
+  await step('template apply', () => latest!.actions.applyPreset(preset.id));
+  await step('template delete', () => latest!.templateActions.deletePreset(preset.id));
   await step('diary save', () => latest!.diaryActions.upsertDiaryEntry({ date: todayIsoDate(), mood: 4, workout: false, foodQuality: 'HEALTHY' }));
   return rows;
 }
@@ -112,7 +119,7 @@ describe('the re-render matrix', () => {
     if (out) appendFileSync(out, JSON.stringify(rows) + '\n');
 
     // Every view shows transactions and category names, so those writes reach all six.
-    for (const write of ['transaction save', 'category add', 'category edit']) {
+    for (const write of ['transaction save', 'template apply', 'category add', 'category edit']) {
       for (const view of VIEWS) expect(rows[write][view], `${write}: ${view}`).toBeGreaterThan(0);
     }
     // Only the Categories page shows the rules (its usage counts). The one
@@ -120,6 +127,11 @@ describe('the re-render matrix', () => {
     // purpose (ADR 0031), whose preview applies the rules; the page does not render.
     for (const write of ['rule add', 'rule delete']) {
       expect(rows[write], write).toEqual({ dashboard: 0, transactions: 1, wallets: 0, debts: 0, categories: 1, diary: 0 });
+    }
+    // Phase 118 (ADR 0094): no view shows the templates, only the entry form
+    // and Quick Add, inside their dialogs.
+    for (const write of ['template add', 'template edit', 'template delete']) {
+      expect(rows[write], write).toEqual({ dashboard: 0, transactions: 0, wallets: 0, debts: 0, categories: 0, diary: 0 });
     }
     // Phase 116: a diary save reaches the Dashboard and the diary only.
     expect(rows['diary save']).toEqual({ dashboard: 1, transactions: 0, wallets: 0, debts: 0, categories: 0, diary: 1 });

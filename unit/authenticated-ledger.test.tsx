@@ -5,6 +5,7 @@ import { render, cleanup, waitFor, screen, fireEvent } from '@testing-library/re
 import { AccountModal } from '../src/components/account/AccountModal';
 import { useDiaryActions, useDiaryState } from '../src/context/DiaryContext';
 import { useKeywordRulesActions, useKeywordRulesState } from '../src/context/KeywordRulesContext';
+import { useTemplateActions, useTemplateState } from '../src/context/TemplateContext';
 import {
   FinanceProvider,
   useFinanceState,
@@ -356,6 +357,8 @@ let latest: {
   diaryActions: ReturnType<typeof useDiaryActions>;
   rules: ReturnType<typeof useKeywordRulesState>;
   ruleActions: ReturnType<typeof useKeywordRulesActions>;
+  templates: ReturnType<typeof useTemplateState>;
+  templateActions: ReturnType<typeof useTemplateActions>;
 } | null = null;
 
 /** Renders extra UI inside the one provider, for component tests (ADR 0024). */
@@ -369,6 +372,8 @@ function Probe() {
     diaryActions: useDiaryActions(),
     rules: useKeywordRulesState(),
     ruleActions: useKeywordRulesActions(),
+    templates: useTemplateState(),
+    templateActions: useTemplateActions(),
   };
   const [ui, setUi] = useState<React.ReactNode>(null);
   showUi = setUi;
@@ -2079,7 +2084,7 @@ describe('sign-out leaves nothing behind (F5, ADR 0024)', () => {
   async function withAccountData() {
     installLedgerRpcs();
     expect((await expense(200)).success).toBe(true);
-    expect((await actions().addPreset({ name: 'Payday template', type: 'INCOME', amount: 30000, description: 'Salary' })).success).toBe(true);
+    expect((await latest!.templateActions.addPreset({ name: 'Payday template', type: 'INCOME', amount: 30000, description: 'Salary' })).success).toBe(true);
     await waitFor(() => expect(state().transactions).toHaveLength(1));
     await writerSettled();
     expect(storageLeaks().length).toBeGreaterThan(0); // the precondition: it really was stored
@@ -2092,7 +2097,7 @@ describe('sign-out leaves nothing behind (F5, ADR 0024)', () => {
     await waitFor(() => {
       expect(state().isAuthenticated).toBe(false);
       expect(state().transactions).toHaveLength(0);
-      expect(state().presets).toHaveLength(0);
+      expect(latest!.templates.presets).toHaveLength(0);
       expect(state().wallets.map((w) => w.id)).not.toContain(WALLET);
       expect(state().debts.map((d) => d.id)).not.toContain(DEBT);
       expect(state().currentUser.id).not.toBe(fake.USER_ID);
@@ -2123,7 +2128,7 @@ describe('sign-out leaves nothing behind (F5, ADR 0024)', () => {
   it('does not let a write still queued at sign-out land afterwards', async () => {
     installLedgerRpcs();
     // Queued, not yet flushed: the batched writer holds it for 250 ms.
-    await actions().addPreset({ name: 'Payday template', type: 'INCOME', amount: 30000, description: 'Salary' });
+    await latest!.templateActions.addPreset({ name: 'Payday template', type: 'INCOME', amount: 30000, description: 'Salary' });
     await actions().signOut();
     await writerSettled();
     expect(storageLeaks()).toEqual([]);
@@ -2145,7 +2150,7 @@ describe('sign-out leaves nothing behind (F5, ADR 0024)', () => {
     await fake.state.authCallback!('TOKEN_REFRESHED', fake.session);
     await writerSettled();
     expect(state().transactions).toHaveLength(1);
-    expect(state().presets).toHaveLength(1);
+    expect(latest!.templates.presets).toHaveLength(1);
   });
 
   it('signs out everywhere with the global scope, and still clears this device', async () => {
