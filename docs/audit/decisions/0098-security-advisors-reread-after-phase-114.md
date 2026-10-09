@@ -1,6 +1,6 @@
 # 0098: The Supabase advisors, read again after the legacy `transfer_funds` drop: nothing new, live matches all 20 migrations
 
-**Status:** Accepted. Docs `d163208`, on branch `phase-122-security-advisors-check`; not merged. No migration, no code change. Live drift run `37996758984`: no drift, 20 migrations.
+**Status:** Accepted. Released: docs `d163208`, hash backfill `51ffd0d`, merged into `main` as `9d021aa` (PR #73); production deployment READY in `icn1`, serving Phase 121's entry. No migration, no code change. Live drift run `37996758984`: no drift, 20 migrations.
 - **Re-reads** ADR `0067`'s triage and ADR `0074`'s re-read, after Phase 102 (ADR `0078`) and Phase 114 (ADR `0090`) took the 20260909 `transfer_funds(p_user_id, ...)` signature off the list and then out of the database.
 
 **Date:** 2026-10-10
@@ -58,3 +58,9 @@ ADR `0067`'s P1 (two permissive SELECT policies) stays gone since Phase 93: live
 - **The advisor list is the decided list.** A later re-read compares with this ADR first: 10 `SECURITY DEFINER` findings, the rule-less `ai_request_counts`, the leaked-password switch, five unindexed foreign keys and three unused indexes. Anything else is new.
 - **The foreign-key trigger is far off:** 121 transactions against 100,000.
 - **Owner:** turn on leaked password protection, and set the 8-character password minimum in the Auth settings (ADR `0087`), if the plan allows.
+
+## Release
+
+- PR #73 merged into `main` as `9d021aa` on 2026-10-10.
+- Production deployment (GitHub deployment `6972580205`, on `9d021aa`) completed; it serves `index-B8wLrv24.js`, Phase 121's entry, as a docs-only change should, and a guest `POST {}` to `/api/classify` answers 400 from `icn1`.
+- `main` CI did not run on the merge: the workflow skips a push that touches only `docs/` and Markdown. The last `main` run of the code is Phase 121's (`37948807018`, green).

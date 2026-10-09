@@ -1083,7 +1083,7 @@ Approved explicitly by the user, planned and approved before any code was writte
 
 ## Phase 122 - The Supabase advisors, read again after the legacy `transfer_funds` drop: T728-T731 (2026-10-10)
 
-ADR `0098`. Branch `phase-122-security-advisors-check`, cut from `main` at `f3e4a51`; docs `d163208`. Docs only; no migration.
+ADR `0098`. Branch `phase-122-security-advisors-check`, cut from `main` at `f3e4a51`; docs `d163208`, hash backfill `51ffd0d`, merged into `main` as `9d021aa` (PR #73). Docs only; no migration.
 
 | # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
 |---|---|---|---|---|---|---|---|---|---|---|

@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 122 - The Supabase advisors, read again after the legacy `transfer_funds` drop: T728-T731 (2026-10-10, docs `d163208`)
+## Phase 122 - The Supabase advisors, read again after the legacy `transfer_funds` drop: T728-T731 (2026-10-10, docs `d163208`, merged `9d021aa`)
 
 ADR `0098`. The owner's brief: read the security and performance advisors, sort every finding into accepted or new, confirm that no function is exposed to `anon` and no `search_path` warning is left, and run the live drift check.
 
