@@ -1098,6 +1098,17 @@ The entry's growth is the ledger action itself, which lives with the other ledge
 
 **Intermittent local failures:** 6 in 1,071 full-suite runs (3 full runs). All were timeouts: a Firefox `goto`, a Firefox context close, and four WebKit clicks waiting for "stable". No assertion failed. See audit 005 finding 3 for the control runs.
 
+## Phase 120 (the safe id guard, the shuffled unit run) - delta against Phase 119
+
+**Bundle:** unchanged. The `src/` edits are comments; the branch builds the entry `index-CnVTLmA-.js`, the one production serves.
+
+| Suite | Files | Tests | Runs | Result |
+|---|---|---|---|---|
+| Vitest (`unit/`) | 61 | 1360 | 1360 | 1360/1360 (+29 `safe-ids-guard`), 44 s; shuffled 10 times, 1360/1360 each, 44 to 76 s |
+| Playwright (local, 4 workers) | 34 | 164 | 492 | 484 passed, 6 skipped, 2 failed (12.6 m): the WebKit painting stall; then 120 of 120 on WebKit |
+
+**CI:** the `checks` job runs the unit suite a second time, shuffled (about +50 s).
+
 ## Phase 119 (collision-free guest ids) - delta against Phase 118
 
 **Bundle** (`main` at `28473b4` built in a worktree with `.env`, gzip level 9 on both sides. The entry 194,599 / 56,884 to 194,826 / 56,963 B (+227 / +79 gzip: `generateEntityId` and its eight callers are in it); all app JS 881,167 / 268,064 to 881,394 / 268,083 (+227 / +19; other chunks' gzip moves a few bytes with the entry's hash), 40 files; cold start still three scripts.)

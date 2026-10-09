@@ -4,6 +4,19 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
+## Phase 120 - Lint refuses an id from the time alone; CI runs the unit suite again, shuffled: T720-T723 (2026-10-09, code CODE, docs DOCS)
+
+ADR `0096`. The owner's brief: enforce ADR `0095`'s id rule in `npm run lint`, add a shuffled unit run to CI, and make the whole suite pass shuffled.
+
+**Changed:**
+- **`scripts/check-safe-ids.mjs`**, a step of `npm run lint`: `${Date.now()}` as a template expression, or a string joined to `Date.now()`, is an error in `src/`. It reuses the Node globals guard's `maskSource`, and `// safe-id-ignore: <why>` covers the helper, the idempotency fallback and the transient `previewId`.
+- **CI's `checks` job** runs `npm run test:unit:shuffle` after the ordered run; the log prints the seed.
+- **Five tests that leaned on order or load:** each now sets up what it reads or waits for what it checks; `migration-replay`'s backfill and drift query keep their order as one block; `unit/setup.ts` sets Testing Library's wait bound to 3 s.
+
+**Why:** Phase 118's id bug passed its pull request on timing and failed on `main`; ADR `0095`'s rule was written down but not checked.
+
+**Not changed:** `src/` behaviour (comments only; the entry's hash is the same), the Playwright suite, the database.
+
 ## Phase 119 - A guest record's id is unique within one millisecond: T716-T719 (2026-10-09, code `a26b103`, docs `c23c996`, merge `b611b92`)
 
 ADR `0095`. The owner's brief: one collision-resistant id helper, all seven kinds of guest record on it, stored ids kept, frozen-clock tests, and `main` green again.
