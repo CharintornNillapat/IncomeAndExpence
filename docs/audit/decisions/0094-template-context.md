@@ -1,6 +1,6 @@
 # 0094: The quick templates have contexts of their own
 
-**Status:** Accepted. Code `0c12345`, docs `37496f1`, draft PR #69; not merged. No migration; live drift run `37883520114`: no drift, 20 migrations.
+**Status:** Accepted. Released: code `0c12345`, docs `37496f1`, hash backfill `3a2c5e7`, merged into `main` as `7414550` (PR #69); Vercel `dpl_7qc1sF8H7tGGqJNrLtChJT5XfwcB` READY in `icn1`. `main` CI on the merge failed on one unit test (Release, below). No migration; live drift run `37883520114`: no drift, 20 migrations.
 - **The third slice of** the AGY audit's finding 3 (the monolithic `FinanceContext`), after ADR `0092`'s diary and ADR `0093`'s smart rules, and the candidate ADR `0093`'s matrix named.
 
 **Date:** 2026-10-09
@@ -46,6 +46,12 @@ Applying a template is an expense, so it reaches every view, as a transaction sa
 ## After this slice
 
 The matrix has no view-level noise left to remove. Everything still in `FinanceContext` (wallets, transactions, debts, categories) is read by every view, so splitting it would save no re-render. A further split there is for readable code, not re-renders, and needs its own reason.
+
+## Release
+
+- PR #69 merged into `main` as `7414550`, whose tree is identical to `3a2c5e7`; the pull request's CI (run `37884912254`) passed every job.
+- Vercel `dpl_7qc1sF8H7tGGqJNrLtChJT5XfwcB` is READY in production, region `icn1`; production serves the entry `index-DYwCP4F9.js`, the same hash as a local build of `main`, with `TemplateContext` in it.
+- **`main` CI on the merge (run `37885529942`) failed** in its `checks` job, so no browser job ran: 1319 of 1320 unit tests passed, and `template-context`'s "an edit is checked before it is applied" failed (a rename to a name another template uses was accepted). **Cause:** a guest template's id is `preset-${Date.now()}`; on CI's runner the test's two `addPreset` calls fell in one millisecond, so both templates got one id and the duplicate check (`p.id !== id`) skipped both. The pull request's run passed on timing. With `Date.now()` frozen the test fails every time locally. The id is older than this phase (moved unchanged), and six more guest ids are built the same way (wallets, categories, transactions, debts, rules, diary entries). Production is unaffected in practice: a person cannot create two of one kind in one millisecond.
 
 ## Bundle
 

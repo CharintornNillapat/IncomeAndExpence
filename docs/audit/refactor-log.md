@@ -4,9 +4,14 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 118 - The quick templates have contexts of their own: T712-T715 (2026-10-09, code `0c12345`, docs `37496f1`, PR #69)
+## Phase 118 - The quick templates have contexts of their own: T712-T715 (2026-10-09, code `0c12345`, docs `37496f1`, merge `7414550`)
 
 ADR `0094`. The owner's brief: move the templates out of `FinanceContext` as the diary and the rules were, keep them local only, keep the sign-out reset in `FinanceProvider`, and prove a template write re-renders none of the six views.
+
+**Release:**
+- The pull request's CI (run `37884912254`, on `3a2c5e7`) passed every job.
+- PR #69 merged into `main` as `7414550`, whose tree is identical to `3a2c5e7`. Vercel `dpl_7qc1sF8H7tGGqJNrLtChJT5XfwcB` is READY in production, region `icn1`; production serves the entry `index-DYwCP4F9.js`, the same hash as a local build of `main`, with `TemplateContext` in it.
+- **`main` CI on the merge (run `37885529942`) failed** in its `checks` job, so no browser job ran: 1319 of 1320 unit tests passed, and `template-context`'s "an edit is checked before it is applied" failed (a rename to a name another template uses was accepted). **Cause:** a guest template's id is `preset-${Date.now()}`; on CI's runner the test's two `addPreset` calls fell in one millisecond, so both templates got one id and the duplicate check (`p.id !== id`) skipped both. The pull request's run passed on timing. With `Date.now()` frozen the test fails every time locally. The id is older than this phase (moved unchanged), and six more guest ids are built the same way (wallets, categories, transactions, debts, rules, diary entries). Production is unaffected in practice: a person cannot create two of one kind in one millisecond.
 
 **Changed:**
 - **`src/context/TemplateContext.tsx`** takes the templates' state, ref and three writes (`addPreset`, `updatePreset`, `deletePreset`), moved unchanged.
