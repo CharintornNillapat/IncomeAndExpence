@@ -1098,6 +1098,22 @@ The entry's growth is the ledger action itself, which lives with the other ledge
 
 **Intermittent local failures:** 6 in 1,071 full-suite runs (3 full runs). All were timeouts: a Firefox `goto`, a Firefox context close, and four WebKit clicks waiting for "stable". No assertion failed. See audit 005 finding 3 for the control runs.
 
+## Phase 123 (the ledger table grants, the action majors) - delta against Phase 122
+
+**No `src/` change:** the bundle is Phase 121's.
+
+| Measure | Phase 122 | Phase 123 |
+|---|---|---|
+| Migrations | 20 | 21 (not yet applied to live) |
+| `anon` table privileges on the six ledger tables | 7 each | none |
+| `authenticated` table privileges on them | 7 each | 4 each (`SELECT`, `INSERT`, `UPDATE`, `DELETE`) |
+| `actions/checkout`, `actions/setup-node` | v5.1.0, v5.0.0 | v7.0.1, v7.0.0 |
+
+| Suite | Files | Tests | Runs | Result |
+|---|---|---|---|---|
+| Vitest (`unit/`) | 61 | 1364 | 1364 | 1364/1364 (63 s); shuffled 1364/1364 (seed `1791586917386`) |
+| Playwright (local, 4 workers) | 34 | 164 | 492 | 486 passed, 6 skipped, 0 failed (9.6 m), first run |
+
 ## Phase 122 (the advisors re-read) - delta against Phase 121
 
 **No code change:** the bundle and source are Phase 121's.

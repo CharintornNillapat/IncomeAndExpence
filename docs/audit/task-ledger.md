@@ -1081,6 +1081,23 @@ Approved explicitly by the user, planned and approved before any code was writte
 - **One negative control was redone** because the first attempt produced malformed TypeScript that the dev server still served — the tests failed, but possibly for the wrong reason.
 - **No flakes.** Phase 44's `wallets.spec.ts` webkit flake has now not reproduced across three consecutive phases; still watched rather than closed.
 
+## Phase 123 - `anon` holds nothing on the ledger tables; the Auth settings are settled; `checkout` and `setup-node` move to v7: T732-T736 (2026-10-10)
+
+ADR `0099`. Branch `phase-123-security-finalization-and-ci-upkeep`, cut from `main` at `e42f26f`. Migration `20261010_phase123_revoke_client_table_grants.sql`, not yet applied to live.
+
+| # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
+|---|---|---|---|---|---|---|---|---|---|---|
+| T732 | The probe and the replay tests first, against the schema without the migration | `supabase/tests/20261010_phase123.probe.sql`, `unit/migration-replay.test.ts` | High | Low | 0.4h | done | - | - | failed first: `1 anon can select on wallets`, and the before-case on the missing file | unit +4 |
+| T733 | The migration: all seven privileges off `anon` on the six tables, `TRUNCATE`/`REFERENCES`/`TRIGGER` off `authenticated` | `supabase/migrations/20261010_phase123_revoke_client_table_grants.sql` | High | Med | 0.3h | done | T732 | - | the probe passes before and after it and rolls back; the negative control fails as it should; 21 migrations replay | migrations 20 to 21 |
+| T734 | `actions/checkout` v7.0.1 and `actions/setup-node` v7.0.0, by commit, after reading each major's notes | `.github/workflows/playwright.yml`, `.github/workflows/schema-drift.yml` | Med | Low | 0.3h | done | - | - | `workflow-hardening` 12/12 | - |
+| T735 | The Auth settings: minimum 8 done; leaked-password protection an accepted tier constraint | `CLAUDE.md`, ADR `0099` | Low | Low | 0.1h | done | - | - | - | - |
+| T736 | Gate, ADR `0099`, `CLAUDE.md`, the logs | `docs/`, `CLAUDE.md` | Med | Low | 0.4h | done | T732-T735 | - | lint clean; unit 1364/1364 in 61 files (63 s), shuffled 1364/1364 (seed `1791586917386`); Playwright 486 passed, 6 skipped, 0 failed of 492 (9.6 m, 4 workers), first run | - |
+
+**Notes on execution:**
+- **Wider than the brief, on purpose:** the brief named four privileges for `anon`; the migration takes all seven, and also takes the three `authenticated` never uses. `TRUNCATE` is not filtered by row-level security, and `profiles` already has this shape (Phase 58s).
+- **`setup-node` is pinned at v7.0.0, not v7.1.0:** v7.1.0 was two days old.
+- **Not applied to live:** the owner applies it in the SQL editor after its probe. Until then the drift check reports the twelve grants and the history row.
+
 ## Phase 122 - The Supabase advisors, read again after the legacy `transfer_funds` drop: T728-T731 (2026-10-10)
 
 ADR `0098`. Branch `phase-122-security-advisors-check`, cut from `main` at `f3e4a51`; docs `d163208`, hash backfill `51ffd0d`, merged into `main` as `9d021aa` (PR #73). Docs only; no migration.
