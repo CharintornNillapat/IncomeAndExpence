@@ -1098,6 +1098,22 @@ The entry's growth is the ledger action itself, which lives with the other ledge
 
 **Intermittent local failures:** 6 in 1,071 full-suite runs (3 full runs). All were timeouts: a Firefox `goto`, a Firefox context close, and four WebKit clicks waiting for "stable". No assertion failed. See audit 005 finding 3 for the control runs.
 
+## Phase 122 (the advisors re-read) - delta against Phase 121
+
+**No code change:** the bundle and source are Phase 121's.
+
+| Measure | Phase 98 (ADR `0074`) | Phase 122 (ADR `0098`) |
+|---|---|---|
+| Security advisor findings | 3 lints / 13 (11 `SECURITY DEFINER`) | 3 lints / 12 (10 `SECURITY DEFINER`) |
+| Performance advisor findings | 2 lints / 8 | 2 lints / 8 |
+| `public.transactions` rows (index trigger 100,000) | - | 121 |
+| Live drift | none | none (run `37996758984`, 20 migrations) |
+
+| Suite | Files | Tests | Runs | Result |
+|---|---|---|---|---|
+| Vitest (`unit/`) | 61 | 1360 | 1360 | 1360/1360 (67 s) |
+| Playwright | 34 | 164 | 492 | not run: no code change |
+
 ## Phase 121 (the hydration and backup services) - delta against Phase 120
 
 **Bundle** (`main` at `a84dfff` built in a worktree with `.env`, gzip level 9 on both sides): the entry `index-CnVTLmA-.js` 194,826 / 56,963 B to `index-B8wLrv24.js` 195,458 / 57,105 (+632 / +142 gzip: the injected setters' property names and a second async function); all app JS 881,394 / 268,083 to 882,026 / 268,262 (+632 / +179), 40 files; cold start still three scripts.

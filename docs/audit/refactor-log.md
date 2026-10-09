@@ -4,6 +4,21 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
+## Phase 122 - The Supabase advisors, read again after the legacy `transfer_funds` drop: T728-T731 (2026-10-10)
+
+ADR `0098`. The owner's brief: read the security and performance advisors, sort every finding into accepted or new, confirm that no function is exposed to `anon` and no `search_path` warning is left, and run the live drift check.
+
+**Found:**
+- **Security:** 3 lints, 12 findings: 10 `SECURITY DEFINER` functions for `authenticated`, one signature each (11 in ADR `0074`; the legacy `transfer_funds` is gone); `ai_request_counts` without a policy; leaked password protection off. All decided before.
+- **Performance:** 2 lints, 8 findings: five unindexed foreign keys (121 transactions against the 100,000 trigger) and three unused indexes. All decided before.
+- **Catalog:** 16 functions in `public`, every one with `search_path=public, pg_temp`, none executable by `anon` or `PUBLIC`; 8 tables, all with row-level security; 7 policies, all for `authenticated`.
+- **One observation, accepted:** `anon` keeps the platform's default grants on the six ledger tables, which reach no row under RLS and are tracked by the drift catalog.
+- **Live drift:** none (run `37996758984`, 20 migrations, as `schema_drift_reader`).
+
+**Changed:** ADR `0098`; `CLAUDE.md`'s advisors note (the re-read, the `anon` grants, the owner's switch still off).
+
+**Not changed:** code, tests, the database.
+
 ## Phase 121 - The cloud load's reads and the restore's row rewriting move to `src/services/`: T724-T727 (2026-10-09, code `9cec127`, docs `5563733`, merged `4454bf1`)
 
 ADR `0097`. The owner's brief: make `FinanceContext.tsx` readable by moving the cloud hydration and the backup restore's glue into `src/services/`, with no behaviour, state contract or test change.
