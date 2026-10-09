@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 121 - The cloud load's reads and the restore's row rewriting move to `src/services/`: T724-T727 (2026-10-09, code CODE, docs DOCS)
+## Phase 121 - The cloud load's reads and the restore's row rewriting move to `src/services/`: T724-T727 (2026-10-09, code `9cec127`, docs `5563733`)
 
 ADR `0097`. The owner's brief: make `FinanceContext.tsx` readable by moving the cloud hydration and the backup restore's glue into `src/services/`, with no behaviour, state contract or test change.
 

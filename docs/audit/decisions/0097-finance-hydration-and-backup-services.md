@@ -1,6 +1,6 @@
 # 0097: The cloud load's reads and the restore's row rewriting move to `src/services/`
 
-**Status:** Accepted. Branch `phase-121-finance-context-hygiene`; not merged. No migration.
+**Status:** Accepted. Code `9cec127`, docs `5563733`, on branch `phase-121-finance-context-hygiene`; not merged. No migration.
 - **Readability only.** No behaviour, state contract, test or fixture changes. Re-renders were settled by ADR `0093` and `0094`, and this phase does not touch them.
 
 **Date:** 2026-10-09

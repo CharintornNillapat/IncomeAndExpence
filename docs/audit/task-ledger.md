@@ -1083,14 +1083,14 @@ Approved explicitly by the user, planned and approved before any code was writte
 
 ## Phase 121 - The cloud load's reads and the restore's row rewriting move to `src/services/`: T724-T727 (2026-10-09)
 
-ADR `0097`. Branch `phase-121-finance-context-hygiene`, cut from `main` at `a84dfff`. No migration.
+ADR `0097`. Branch `phase-121-finance-context-hygiene`, cut from `main` at `a84dfff`; code `9cec127`, docs `5563733`. No migration.
 
 | # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
 |---|---|---|---|---|---|---|---|---|---|---|
-| T724 | `readCloudSlices` and the row mappers (`mapWalletRow`, `mapTransactionRow`, `mapDebtRow`, the inline categories mapping as `mapCategoryRow`) to `src/services/financeHydration.ts`; the provider keeps `isSyncing`, the epoch, the clean-load bookkeeping, `syncError` and the seed | `src/services/financeHydration.ts`, `src/context/FinanceContext.tsx` | Med | Med | 0.4h | done | - | CODE | `authenticated-ledger` unchanged and green (failed read, thrown load, clean retry, seed outcomes, a load in flight at sign-out, F6) | `FinanceContext.tsx` -154 lines |
-| T725 | `backupAsGuest` (the guest-id rewrite and the template filter) to `src/services/financeBackup.ts`; the refusal when signed in and the slice replacement stay | `src/services/financeBackup.ts`, `src/context/FinanceContext.tsx` | Low | Low | 0.1h | done | - | CODE | `backup-restore` unchanged and green | - |
+| T724 | `readCloudSlices` and the row mappers (`mapWalletRow`, `mapTransactionRow`, `mapDebtRow`, the inline categories mapping as `mapCategoryRow`) to `src/services/financeHydration.ts`; the provider keeps `isSyncing`, the epoch, the clean-load bookkeeping, `syncError` and the seed | `src/services/financeHydration.ts`, `src/context/FinanceContext.tsx` | Med | Med | 0.4h | done | - | `9cec127` | `authenticated-ledger` unchanged and green (failed read, thrown load, clean retry, seed outcomes, a load in flight at sign-out, F6) | `FinanceContext.tsx` -154 lines |
+| T725 | `backupAsGuest` (the guest-id rewrite and the template filter) to `src/services/financeBackup.ts`; the refusal when signed in and the slice replacement stay | `src/services/financeBackup.ts`, `src/context/FinanceContext.tsx` | Low | Low | 0.1h | done | - | `9cec127` | `backup-restore` unchanged and green | - |
 | T726 | Bracketing gate: lint and unit before the edits, then lint, unit, shuffled unit, Playwright, drift replay and bundle after | - | High | Low | 0.3h | done | T724-T725 | - | lint clean; unit 1360/1360 in 61 files before the edits and after (41 s), shuffled 1360/1360 (seed `1791555857981`); Playwright 486 passed, 6 skipped, none failed, of 492 (8.1 m, 4 workers), first run; no migration: the local drift replay of 20 migrations ran, the live half did not (no `SUPABASE_DRIFT_DB_URL`, no Supabase MCP) | entry +632 / +142 gzip B |
-| T727 | ADR `0097`, `CLAUDE.md` (structure tree, the diary bullet's cloud load, a services bullet), the logs | `docs/`, `CLAUDE.md` | Med | Low | 0.3h | done | T726 | DOCS | - | - |
+| T727 | ADR `0097`, `CLAUDE.md` (structure tree, the diary bullet's cloud load, a services bullet), the logs | `docs/`, `CLAUDE.md` | Med | Low | 0.3h | done | T726 | `5563733` | - | - |
 
 **Notes on execution:**
 - **No test changed.** `git diff main -- unit tests` is empty; the signed-in harness's `vi.mock('../src/lib/supabase')` reaches the new module because every importer gets the mocked module.
