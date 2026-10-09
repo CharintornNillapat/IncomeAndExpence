@@ -1081,6 +1081,22 @@ Approved explicitly by the user, planned and approved before any code was writte
 - **One negative control was redone** because the first attempt produced malformed TypeScript that the dev server still served — the tests failed, but possibly for the wrong reason.
 - **No flakes.** Phase 44's `wallets.spec.ts` webkit flake has now not reproduced across three consecutive phases; still watched rather than closed.
 
+## Phase 120 - Lint refuses an id from the time alone; CI runs the unit suite again, shuffled: T720-T723 (2026-10-09)
+
+ADR `0096`. Branch `phase-120-ci-resilience-and-lint-guards`, cut from `main` at `37ba033`; code `5a78d83`, docs `eb678be`; draft PR #71. No migration; live drift run `37917926856`: no drift, 20 migrations.
+
+| # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
+|---|---|---|---|---|---|---|---|---|---|---|
+| T720 | `scripts/check-safe-ids.mjs` in `npm run lint`: `${Date.now()}` as a template expression, or a string joined to it, is an error in `src/`; `// safe-id-ignore: <why>` on the three that are not ids or carry random bits | `scripts/check-safe-ids.mjs`, `package.json`, `src/utils/ids.ts`, `src/utils/csvExchange.ts`, `unit/safe-ids-guard.test.ts` | High | Low | 0.5h | done | - | `5a78d83` | 29/29; 17 failed with the rules emptied; an intentional violation in `src/` failed lint with both sites named, and passed once removed | +29 unit |
+| T721 | `npm run test:unit:shuffle` (`vitest run --sequence.shuffle`), a second unit step in CI's `checks` job | `package.json`, `.github/workflows/playwright.yml` | High | Low | 0.2h | done | - | `5a78d83` | the seed is printed and replays the order | about +50 s on `checks` |
+| T722 | The order and load bugs the shuffle found: `migration-history`'s shared table, `modal-history`'s history count, `migration-replay`'s backfill-then-drift sequence (kept in order, the one opt-out), `categories-page`'s form reset read one update early, Testing Library's 1 s wait bound | `unit/migration-history.test.ts`, `unit/modal-history.test.tsx`, `unit/migration-replay.test.ts`, `unit/categories-page.test.tsx`, `unit/setup.ts`, `vitest.config.ts` | High | Low | 0.6h | done | T721 | `5a78d83` | before: 8 of 10 shuffled runs failed (5 tests); under their seeds alone the three order-bug files failed before and pass after; the two load failures passed 3 of 3 alone; after: 10 shuffled runs, 0 failures | - |
+| T723 | Gate, ADR `0096`, `CLAUDE.md`, the logs | `docs/`, `CLAUDE.md` | Med | Low | 0.4h | done | T720-T722 | `eb678be` | lint clean; unit 1360/1360 in 61 files (44 s), then 10 shuffled runs 1360/1360 each (seeds `1791540043982` to `1791540574440`); Playwright 484 passed, 6 skipped, 2 failed of 492 (12.6 m, 4 workers): the WebKit painting stall (ADR `0058`) on `csv-classify`'s Import CSV menu click and `diary`'s Save click, no assertion reached (the trace's last frame 107 and 80 ms into each click, none after), in specs this phase does not change; repeated per the owner's rule: both specs 120 of 120 on WebKit (`--repeat-each 10`); no migration | - |
+
+**Notes on execution:**
+- **The shuffle earned its place before it merged:** eight of its first ten runs failed. Three were order bugs in the tests, two were load: none was in `src/`.
+- **One block keeps its order on purpose:** `migration-replay`'s backfill and drift query, one scenario on a database that takes up to a minute to replay.
+- **The bundle is unchanged:** the `src/` edits are comments; the branch builds the entry `index-CnVTLmA-.js`, as production serves.
+
 ## Phase 119 - A guest record's id is unique within one millisecond: T716-T719 (2026-10-09)
 
 ADR `0095`, fixing `main` CI after Phase 118 (run `37885529942`). Branch `phase-119-robust-guest-ids`, cut from `main` at `28473b4`; code `a26b103`, docs `c23c996`, hash backfill `47ff7b7`; merged into `main` as `b611b92` (PR #70); Vercel `dpl_7dsMyzXf64joxxYzWnmHyVmMuV13` READY in `icn1`. The pull request's CI (run `37900834311`) passed every job. `main` CI on the merge (run `37901855209`) passed every job on its first attempt in 305 s end to end, the merge job included: unit 1331/1331 in 60 files; 486 passed, 6 skipped, no flaky test. **`main` is green again** after Phase 118's failed run `37885529942`. No migration; live drift run `37899237043`: no drift, 20 migrations.

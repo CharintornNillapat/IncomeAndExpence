@@ -58,6 +58,14 @@ jobs:
       - name: Unit tests (Vitest)
         run: npm run test:unit
 
+      # Phase 120 (ADR 0096): the same suite again, its files and the tests in
+      # each in a random order. Phase 118's bug passed the pull request on
+      # timing and failed on `main`; a test that leans on order or timing is
+      # likelier to fail here, before the merge. The log prints the seed:
+      # `npx vitest run --sequence.shuffle --sequence.seed=<seed>` replays it.
+      - name: Unit tests, shuffled (Vitest)
+        run: npm run test:unit:shuffle
+
   e2e:
     name: E2E (${{ matrix.project }} ${{ matrix.shard }}/2)
     needs: checks

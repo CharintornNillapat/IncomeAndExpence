@@ -215,6 +215,7 @@ export function parseAndValidateTransactionCsv(
         });
 
         resolve({
+          // safe-id-ignore: names one transient preview, never stored (ADR 0095)
           previewId: `preview-${Date.now()}`,
           totalRows: dataRows.length,
           validRowsCount: validCount,
