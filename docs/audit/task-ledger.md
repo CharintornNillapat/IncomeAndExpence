@@ -1081,6 +1081,22 @@ Approved explicitly by the user, planned and approved before any code was writte
 - **One negative control was redone** because the first attempt produced malformed TypeScript that the dev server still served — the tests failed, but possibly for the wrong reason.
 - **No flakes.** Phase 44's `wallets.spec.ts` webkit flake has now not reproduced across three consecutive phases; still watched rather than closed.
 
+## Phase 119 - A guest record's id is unique within one millisecond: T716-T719 (2026-10-09)
+
+ADR `0095`, fixing `main` CI after Phase 118 (run `37885529942`). Branch `phase-119-robust-guest-ids`, cut from `main` at `28473b4`; code `a26b103`, docs `c23c996`; draft PR #70. No migration; live drift run `37899237043`: no drift, 20 migrations.
+
+| # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
+|---|---|---|---|---|---|---|---|---|---|---|
+| T716 | Frozen-clock tests: the helper, and two of each kind of guest record in one millisecond | `unit/entity-ids.test.tsx` | High | Low | 0.5h | done | - | `a26b103` | 11 failed first: the call sites on the old ids, the helper against a stub of the old format | +11 unit |
+| T717 | `generateEntityId(prefix)`: `<prefix>-<ms>-<12 hex>` from `crypto.getRandomValues`, `Math.random` without `crypto` | `src/utils/ids.ts` | High | Low | 0.2h | done | T716 | `a26b103` | 3/3 helper tests | - |
+| T718 | The eight call sites: wallets, categories, transactions, debts, rules, templates, diary, the guest CSV import's row ids and keys | `src/context/FinanceContext.tsx`, `src/context/KeywordRulesContext.tsx`, `src/context/TemplateContext.tsx`, `src/context/DiaryContext.tsx` | High | Med | 0.3h | done | T717 | `a26b103` | 11/11; `template-context` with a frozen clock 6/6 (failed before), unchanged 10 runs in 10 | entry +79 B gzip |
+| T719 | Gate, bundle, ADR `0095`, `CLAUDE.md`, the logs | `docs/`, `CLAUDE.md` | Med | Low | 0.5h | done | T716-T718 | `c23c996` | lint clean; unit 1331/1331 in 60 files (42 s); Playwright 485 passed, 6 skipped, 1 failed of 492 (11.4 m): the WebKit painting stall on `soft-delete`'s `gotoTab` click (last frame 234 ms before it, none after), then 60 of 60 on WebKit; no migration | - |
+
+**Notes on execution:**
+- **Eight sites, not seven:** the guest CSV import built its row ids and keys from `Date.now()` and the row index, so two imports in one millisecond collided. It now draws one `import-<ms>-<hex>` per import.
+- **No stored id is touched:** nothing parses an id or its prefix, so old and new ids sit side by side.
+- **Left as it is:** `csvExchange`'s transient `previewId`, never stored.
+
 ## Phase 118 - The quick templates have contexts of their own: T712-T715 (2026-10-09)
 
 ADR `0094`, the third slice of the AGY audit's finding 3. Branch `phase-118-split-template-context`, cut from `main` at `1dc83a1`; code `0c12345`, docs `37496f1`, hash backfill `3a2c5e7`; merged into `main` as `7414550` (PR #69); Vercel `dpl_7qc1sF8H7tGGqJNrLtChJT5XfwcB` READY in `icn1`. The pull request's CI (run `37884912254`) passed every job. **`main` CI on the merge (run `37885529942`) failed** in its `checks` job, so no browser job ran: 1319 of 1320 unit tests passed, and `template-context`'s "an edit is checked before it is applied" failed (a rename to a name another template uses was accepted). **Cause:** a guest template's id is `preset-${Date.now()}`; on CI's runner the test's two `addPreset` calls fell in one millisecond, so both templates got one id and the duplicate check (`p.id !== id`) skipped both. The pull request's run passed on timing. With `Date.now()` frozen the test fails every time locally. The id is older than this phase (moved unchanged), and six more guest ids are built the same way (wallets, categories, transactions, debts, rules, diary entries). Production is unaffected in practice: a person cannot create two of one kind in one millisecond. No migration; live drift run `37883520114`: no drift, 20 migrations.

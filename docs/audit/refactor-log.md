@@ -4,6 +4,18 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
+## Phase 119 - A guest record's id is unique within one millisecond: T716-T719 (2026-10-09, code `a26b103`, docs `c23c996`, PR #70)
+
+ADR `0095`. The owner's brief: one collision-resistant id helper, all seven kinds of guest record on it, stored ids kept, frozen-clock tests, and `main` green again.
+
+**Changed:**
+- **`generateEntityId(prefix)`** in `src/utils/ids.ts`: `<prefix>-<ms>-<12 hex>`, 48 random bits from `crypto.getRandomValues`, `Math.random` without `crypto`.
+- **Eight call sites** move to it: the seven kinds and the guest CSV import (one draw per import, then `-<row>` for each row's id and key).
+
+**Why:** a bare `Date.now()` id was shared by two records made in one millisecond; an edit or delete by id reached both. Phase 118's template test hit it on `main` CI.
+
+**Not changed:** stored ids (nothing parses one), signed-in ids (the database's), `csvExchange`'s transient `previewId`.
+
 ## Phase 118 - The quick templates have contexts of their own: T712-T715 (2026-10-09, code `0c12345`, docs `37496f1`, merge `7414550`)
 
 ADR `0094`. The owner's brief: move the templates out of `FinanceContext` as the diary and the rules were, keep them local only, keep the sign-out reset in `FinanceProvider`, and prove a template write re-renders none of the six views.

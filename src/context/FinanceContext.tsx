@@ -42,7 +42,7 @@ import { IDENTITY_COLORS } from '../utils/identityPalette';
 import { isMovementCategory, SYSTEM_CATEGORY_COLOR } from '../selectors/ledger';
 import { dedupeCategoriesByName, withDefaultDescriptions } from '../utils/categoryUtils';
 import { migrateCategoryColors, migrateWalletColors } from '../utils/identityColorMigration';
-import { generateIdempotencyKey } from '../utils/ids';
+import { generateEntityId, generateIdempotencyKey } from '../utils/ids';
 import { DiaryProvider, mapDiaryRow, useDiaryEntriesState, useDiaryMutations } from './DiaryContext';
 import {
   DEFAULT_KEYWORD_RULES,
@@ -1488,7 +1488,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       return { success: false, error: rpcError.message || 'Failed to create wallet' };
     } else {
       const now = new Date().toISOString();
-      const newWalletId = `w-${Date.now()}`;
+      const newWalletId = generateEntityId('w');
       const newWallet: Wallet = {
         ...data,
         id: newWalletId,
@@ -1669,7 +1669,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       markLocalWrite(inserted.id);
     } else {
       const newCategory: Category = {
-        id: `cat-${Date.now()}`,
+        id: generateEntityId('cat'),
         userId: currentUser.id,
         name: cleanedName,
         type: validation.data.type,
@@ -2091,7 +2091,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
         // Fields are mapped explicitly rather than spread, so caller-only keys
         // (e.g. the form's `date`) never leak into the persisted ledger row.
         const newTx: Transaction = {
-          id: `tx-${Date.now()}`,
+          id: generateEntityId('tx'),
           userId: currentUser.id,
           walletId: data.walletId,
           destinationWalletId: data.destinationWalletId,
@@ -2536,6 +2536,10 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     );
 
     const newTxs: Transaction[] = [];
+    // A guest import's rows: `tx-import-<ms>-<hex>-<row>`, keyed `import-<ms>-<hex>-<row>`.
+    // One draw per import, so two imports in one millisecond never share a row
+    // id or a key (ADR 0095); a re-import is still new rows (no dedupe, ADR 0019).
+    const guestImportKey = generateEntityId('import');
     // The same rows in `import_transactions`' shape (ADR 0023): ids already
     // resolved, keyed by row index so the server can derive each row's key.
     const rpcRows: Record<string, unknown>[] = [];
@@ -2616,7 +2620,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
         });
       } else {
         const tx: Transaction = {
-          id: `tx-import-${Date.now()}-${row.rowIndex}`,
+          id: `tx-${guestImportKey}-${row.rowIndex}`,
           userId: currentUser.id,
           walletId: sourceWallet.id,
           destinationWalletId: destWallet?.id,
@@ -2626,7 +2630,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
           type: row.type,
           description: row.description,
           transactionDate: row.date,
-          idempotencyKey: `import-${Date.now()}-${row.rowIndex}`,
+          idempotencyKey: `${guestImportKey}-${row.rowIndex}`,
           isDeleted: false,
           createdBy: currentUser.id,
           createdAt: new Date().toISOString(),
@@ -2777,7 +2781,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     } else {
       const newDebt: Debt = {
         ...data,
-        id: `debt-${Date.now()}`,
+        id: generateEntityId('debt'),
         userId: currentUser.id,
         isSettled: data.remainingAmount <= 0,
         isDeleted: false,

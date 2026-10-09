@@ -14,3 +14,19 @@ export function generateIdempotencyKey(): string {
   const rand = () => Math.random().toString(36).slice(2, 11);
   return `idemp-${Date.now()}-${rand()}-${rand()}`;
 }
+
+// A new local record's id (ADR 0095): `<prefix>-<ms>-<12 hex>`. The time keeps
+// ids readable and roughly ordered; the 48 random bits keep two records made in
+// the same millisecond apart (a `${Date.now()}` id alone gave both one id).
+// `crypto.getRandomValues`, unlike `randomUUID`, works outside a secure
+// context; Math.random covers a runtime with no `crypto` at all.
+export function generateEntityId(prefix: string): string {
+  const bytes = new Uint8Array(6);
+  if (typeof crypto !== 'undefined' && typeof crypto.getRandomValues === 'function') {
+    crypto.getRandomValues(bytes);
+  } else {
+    for (let i = 0; i < bytes.length; i++) bytes[i] = Math.floor(Math.random() * 256);
+  }
+  const hex = Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
+  return `${prefix}-${Date.now()}-${hex}`;
+}

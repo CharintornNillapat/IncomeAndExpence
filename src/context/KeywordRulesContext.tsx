@@ -3,6 +3,7 @@ import type { KeywordRule } from '../types';
 import type { MutationResult } from './FinanceContext';
 import { supabase } from '../lib/supabase';
 import { KeywordMappingSchema, formatZodIssues } from '../utils/zodSchemas';
+import { generateEntityId } from '../utils/ids';
 
 /*
  * Phase 117 (ADR 0093): the smart rules, the second slice out of
@@ -103,7 +104,7 @@ export function useKeywordRuleMutations({
       setKeywordRules((prev) => [mapKeywordRuleRow(data), ...prev]);
     } else {
       const newRule: KeywordRule = {
-        id: `kr-${Date.now()}`,
+        id: generateEntityId('kr'),
         userId: currentUserId,
         keyword: cleaned,
         categoryId,
