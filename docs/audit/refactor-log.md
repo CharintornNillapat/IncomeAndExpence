@@ -4,6 +4,19 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
+## Phase 118 - The quick templates have contexts of their own: T712-T715 (2026-10-09, code `0c12345`, docs `37496f1`, PR #69)
+
+ADR `0094`. The owner's brief: move the templates out of `FinanceContext` as the diary and the rules were, keep them local only, keep the sign-out reset in `FinanceProvider`, and prove a template write re-renders none of the six views.
+
+**Changed:**
+- **`src/context/TemplateContext.tsx`** takes the templates' state, ref and three writes (`addPreset`, `updatePreset`, `deletePreset`), moved unchanged.
+- **`FinanceProvider` keeps** the batched writer's `pf_presets`, the sign-out reset, the restore, and `applyPreset`, a ledger write that reads the templates through the ref.
+- **`presets` and the three writes left the finance contexts,** with no compatibility copy. `QuickAddModal` and `TransactionForm` moved to `useTemplateState()` / `useTemplateActions()`.
+
+**Measured:** a template add, edit or delete re-rendered all six views; now none. Applying a template still reaches all six.
+
+**Next:** the matrix has no view-level noise left. Splitting what remains would be for readability, not re-renders.
+
 ## Phase 117 - The re-render matrix across six views; the smart rules have contexts of their own; the helpers' animation wait stays: T708-T711 (2026-10-08, code `bbac429`, docs `28b5bd2`, merge `fe7b319`)
 
 ADR `0093`. The owner's brief: measure re-renders across all six views for four kinds of write, pick the next slice between the smart rules and the categories from the data, extract it as the diary was, and remove the helpers' animation wait.

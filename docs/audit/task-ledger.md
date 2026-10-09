@@ -1081,6 +1081,22 @@ Approved explicitly by the user, planned and approved before any code was writte
 - **One negative control was redone** because the first attempt produced malformed TypeScript that the dev server still served — the tests failed, but possibly for the wrong reason.
 - **No flakes.** Phase 44's `wallets.spec.ts` webkit flake has now not reproduced across three consecutive phases; still watched rather than closed.
 
+## Phase 118 - The quick templates have contexts of their own: T712-T715 (2026-10-09)
+
+ADR `0094`, the third slice of the AGY audit's finding 3. Branch `phase-118-split-template-context`, cut from `main` at `1dc83a1`; code `0c12345`, docs `37496f1`; draft PR #69. No migration; live drift run `37883520114`: no drift, 20 migrations.
+
+| # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
+|---|---|---|---|---|---|---|---|---|---|---|
+| T712 | The templates' parity tests: the three writes' checks, the batched writer, `applyPreset` and its fallbacks | `unit/template-context.test.tsx` | Med | Low | 0.4h | done | - | `0c12345` | 6/6 on the code before the move, then after | +6 unit |
+| T713 | The matrix: template writes reach no view, a new "template apply" row reaches all six | `unit/rerender-matrix.test.tsx` | Med | Low | 0.2h | done | - | `0c12345` | failed first on the template rows; passes three runs | - |
+| T714 | `TemplateContext.tsx`: the templates' state, ref, three writes and contexts, composed under `FinanceProvider`; `applyPreset` stays there; two readers and three tests on the new hooks | `src/context/TemplateContext.tsx`, `src/context/FinanceContext.tsx`, `src/components/QuickAddModal.tsx`, `src/components/TransactionForm.tsx`, `unit/authenticated-ledger.test.tsx`, `unit/backup-restore.test.tsx` | High | Med | 0.8h | done | T712, T713 | `0c12345` | lint clean; the parity and matrix tests pass | a template write: 6 views to 0; entry +97 B gzip |
+| T715 | Gate, bundle, ADR `0094`, `CLAUDE.md`, the logs | `docs/`, `CLAUDE.md` | Med | Low | 0.5h | done | T712-T714 | `37496f1` | lint clean; unit 1320/1320 in 59 files (41 s); Playwright 485 passed, 6 skipped, 1 failed of 492 (12.2 m): the WebKit painting stall on `csv-classify`'s Import CSV click (last frame 301 ms into it, none after), a spec this phase does not change, then 110 of 110 on WebKit; `presets.spec.ts` passed on all three browsers; no migration | - |
+
+**Notes on execution:**
+- **No reorder action.** The brief listed add, update, delete and reorder; the app has no reorder, so three writes moved and none was added.
+- **`applyPreset` stays in `FinanceProvider`:** it is a ledger write, and moving it would hand the template slice `addTransaction` and the wallet and category refs.
+- **The matrix has no view-level noise left.** What remains in `FinanceContext` is read by every view.
+
 ## Phase 117 - The re-render matrix across six views; the smart rules have contexts of their own; the helpers' animation wait stays: T708-T711 (2026-10-08)
 
 ADR `0093`, the second slice of the AGY audit's finding 3. Branch `phase-117-rerender-benchmarking`, cut from `main` at `f55432d`; code `bbac429`, docs `28b5bd2`, hash backfill `777c756`; merged into `main` as `fe7b319` (PR #68); Vercel `dpl_DRQAQ44H9TT8SwBF6PCR91mxCwiL` READY in `icn1`. The pull request's CI (run `37800529963`) passed every job. `main` CI on the merge (run `37882441943`) passed every job on its first attempt in 253 s end to end, the merge job included: unit 1314; 486 passed, 6 skipped, no flaky test. The local WebKit painting stall (ADR `0058`) did not show on CI's Linux WebKit. No migration; live drift run `37798213404`: no drift, 20 migrations. **The owner's decision (2026-10-08): `settle` stays,** on the A/B in T711.

@@ -2,8 +2,9 @@ import React, { useState, useId } from 'react';
 import { ArrowRight, AlertCircle, Mic, Tags, CheckCircle2 } from 'lucide-react';
 import { InlineMathInput } from './InlineMathInput';
 import { Wallet, Category, TransactionType, Preset } from '../types';
-import { useFinanceState, useFinanceActions } from '../context/FinanceContext';
+import { useFinanceState } from '../context/FinanceContext';
 import { useKeywordRulesActions, useKeywordRulesState } from '../context/KeywordRulesContext';
+import { useTemplateActions, useTemplateState } from '../context/TemplateContext';
 import { useSubmitHandler } from '../hooks/useSubmitHandler';
 import { useIdempotencyKey } from '../hooks/useIdempotencyKey';
 import { useTransientFlash } from '../hooks/useTransientFlash';
@@ -127,9 +128,10 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
   onSubmitTransaction,
 }) => {
   const formId = useId();
-  const { debts, presets } = useFinanceState();
+  const { debts } = useFinanceState();
+  const { presets } = useTemplateState();
   const { keywordRules } = useKeywordRulesState();
-  const { addPreset } = useFinanceActions();
+  const { addPreset } = useTemplateActions();
   const { addKeywordRule } = useKeywordRulesActions();
 
   const activeDebts = React.useMemo(

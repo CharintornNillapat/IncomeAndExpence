@@ -4,6 +4,7 @@ import { render, cleanup, fireEvent, screen, waitFor, within } from '@testing-li
 import { FinanceProvider, useFinanceState } from '../src/context/FinanceContext';
 import { useDiaryState } from '../src/context/DiaryContext';
 import { useKeywordRulesState } from '../src/context/KeywordRulesContext';
+import { useTemplateState } from '../src/context/TemplateContext';
 import { AccountModal } from '../src/components/account/AccountModal';
 import { buildAccountExport } from '../src/utils/accountExport';
 import type { Category, Debt, DiaryEntry, KeywordRule, Preset, Transaction, Wallet } from '../src/types';
@@ -42,9 +43,9 @@ const BACKUP = JSON.stringify(
   buildAccountExport({ wallets, transactions, debts, categories, keywordRules, diaryEntries }, { signedIn: true, exportedAt: new Date(TS) })
 );
 
-let latest: (ReturnType<typeof useFinanceState> & ReturnType<typeof useDiaryState> & ReturnType<typeof useKeywordRulesState>) | null = null;
+let latest: (ReturnType<typeof useFinanceState> & ReturnType<typeof useDiaryState> & ReturnType<typeof useKeywordRulesState> & ReturnType<typeof useTemplateState>) | null = null;
 function Probe() {
-  latest = { ...useFinanceState(), ...useDiaryState(), ...useKeywordRulesState() };
+  latest = { ...useFinanceState(), ...useDiaryState(), ...useKeywordRulesState(), ...useTemplateState() };
   return null;
 }
 const state = () => latest!;
