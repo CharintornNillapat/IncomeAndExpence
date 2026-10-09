@@ -47,7 +47,7 @@ afterAll(async () => {
 describe('every migration, from empty', () => {
   it('applies in file order, starting from the baseline', () => {
     expect(migrationFiles()[0]).toBe(BASELINE);
-    expect(migrationFiles()).toHaveLength(20);
+    expect(migrationFiles()).toHaveLength(21);
   });
 
   it('builds the eight tables and what the live project holds', () => {
@@ -84,6 +84,16 @@ describe('every migration, from empty', () => {
       .toEqual(['profiles.Users can view their own profile']);
     expect(catalog.find(r => r.kind === 'table grant' && r.name === 'profiles to authenticated')?.detail).toBe('SELECT');
     expect(catalog.find(r => r.kind === 'table grant' && r.name === 'profiles to anon')?.detail).toBe('none');
+  });
+
+  it('ends with anon holding nothing on any table, and authenticated only row privileges (Phase 123)', () => {
+    const grant = (name: string) => catalog.find(r => r.kind === 'table grant' && r.name === name)?.detail;
+    for (const tbl of ['wallets', 'transactions', 'debts', 'categories', 'diary_entries', 'keyword_rules']) {
+      expect(grant(`${tbl} to anon`)).toBe('none');
+      expect(grant(`${tbl} to authenticated`)).toBe('SELECT,INSERT,UPDATE,DELETE');
+    }
+    expect(catalog.filter(r => r.kind === 'table grant' && r.name.endsWith(' to anon')).map(r => r.detail))
+      .toEqual(Array(8).fill('none'));
   });
 });
 
@@ -318,6 +328,32 @@ describe('the probes against the schema the migrations build', () => {
       await applyMigrations(probeDb, upTo113());
       await expect(probeDb.exec(inlineProbe('20261008_phase114.probe.sql', { applied: true }))).rejects.toThrow(
         /the 20260909 signature is still there/
+      );
+    } finally {
+      await probeDb.close();
+    }
+  }, 60_000);
+
+  const upTo122 = () => migrationFiles().filter(file => !file.includes('_phase123_'));
+
+  it('Phase 123, before its migration: applies it, passes and rolls back', async () => {
+    const { rows, before, after } = await runProbe('20261010_phase123.probe.sql', upTo122(), false);
+    expect(rows).toContainEqual({ result: 'PHASE 123 PROBE OK' });
+    expect(after).toEqual(before);
+  }, 60_000);
+
+  it('Phase 123, after its migration: passes against every file', async () => {
+    const { rows, before, after } = await runProbe('20261010_phase123.probe.sql', migrationFiles(), true);
+    expect(rows).toContainEqual({ result: 'PHASE 123 PROBE OK' });
+    expect(after).toEqual(before);
+  }, 60_000);
+
+  it('Phase 123: the probe fails on the schema before it, with the migration left out', async () => {
+    const probeDb = await createDatabase();
+    try {
+      await applyMigrations(probeDb, upTo122());
+      await expect(probeDb.exec(inlineProbe('20261010_phase123.probe.sql', { applied: true }))).rejects.toThrow(
+        /anon can select on wallets/
       );
     } finally {
       await probeDb.close();

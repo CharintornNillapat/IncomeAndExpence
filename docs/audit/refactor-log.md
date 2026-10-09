@@ -4,6 +4,21 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
+## Phase 123 - `anon` holds nothing on the ledger tables; the Auth settings are settled; `checkout` and `setup-node` move to v7: T732-T736 (2026-10-10, code `da0effb`, docs `d6a399b`)
+
+ADR `0099`. The owner's brief: revoke `anon`'s default grants on the six ledger tables with a probe and the history statement, move the pinned actions to their newest majors, and record the Auth settings (minimum 8; leaked-password protection is Pro-only, so an accepted tier constraint).
+
+**Changed:**
+- **`supabase/migrations/20261010_phase123_revoke_client_table_grants.sql`** (the 21st): every privilege off `anon` on `wallets`, `transactions`, `debts`, `categories`, `diary_entries` and `keyword_rules`, and `TRUNCATE`, `REFERENCES` and `TRIGGER` off `authenticated`, which keeps the four row privileges. Probe `supabase/tests/20261010_phase123.probe.sql`; three replay tests and a catalog test in `unit/migration-replay.test.ts`.
+- **`.github/workflows/`:** `actions/checkout` v5.1.0 to v7.0.1 and `actions/setup-node` v5.0.0 to v7.0.0, by commit; the two artifact actions were already on their newest majors.
+- **`CLAUDE.md`:** the advisors note (the revoke, the tier constraint, the minimum), the new-table rule, the Phase 64 note on a read with no session, the pin example, the unit count.
+
+**Why:** a grant with no policy is one policy away from being live, and `TRUNCATE` is outside row-level security; the action majors were noted as due in ADR `0067`.
+
+**Not changed:** `src/`, the Playwright specs, the live database (the owner applies the migration).
+
+**Gate:** lint clean; unit 1364/1364 in 61 files (63 s), shuffled 1364/1364 (seed `1791586917386`); Playwright 486 passed, 6 skipped, 0 failed of 492 (9.6 m, 4 workers), first run; `npm run schema:drift` replays 21 migrations.
+
 ## Phase 122 - The Supabase advisors, read again after the legacy `transfer_funds` drop: T728-T731 (2026-10-10, docs `d163208`, merged `9d021aa`)
 
 ADR `0098`. The owner's brief: read the security and performance advisors, sort every finding into accepted or new, confirm that no function is exposed to `anon` and no `search_path` warning is left, and run the live drift check.
