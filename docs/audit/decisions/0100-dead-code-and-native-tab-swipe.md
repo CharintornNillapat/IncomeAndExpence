@@ -1,6 +1,6 @@
 # 0100: Dead code and an alias removed; the tab swipe is the app's own, and react-swipeable is gone
 
-**Status:** Accepted. Code `ec15847`, docs `aca4e3a`, on branch `phase-124-dead-code-and-dep-pruning`; not merged. No migration.
+**Status:** Accepted. Released: code `ec15847`, docs `aca4e3a`, hash backfill `464d044`, merged into `main` as `46a7737` (PR #75); production deployment READY in `icn1`, serving `index-BLSMm3p4.js`. No migration; live drift run `38013338535`: none, 21 migrations.
 - **Supersedes** the use of `react-swipeable` in `App.tsx` (the swipe since before ADR `0024`); ADR `0024`'s scroller guard and ADR `0068`'s zoom guard are unchanged and still decide first.
 - **Removes** `SectionHeader` (spec section 4, ADR `0029`), unused since Phase 62 (ADR `0037`).
 
@@ -72,3 +72,10 @@ react-swipeable sat in the entry chunk, because no `manualChunks` rule named it.
 - **One dependency fewer,** and 1.3 KB gzip off the entry chunk.
 - **The swipe's touch behaviour on a real phone is still unverified**, as it was with the library (ADR `0024`), and it is still the owner's open check. The rule is the library's own, but react-swipeable also read `touchmove`, and real hardware can deliver events differently from jsdom.
 - **A new field on `User` needs a reader.** The three removed ones had none since they were added.
+
+## Release
+
+- **Live drift on the branch** (run `38013338535`, as `schema_drift_reader`): no drift, all 21 migrations. This phase changes no SQL.
+- **Merge:** PR #75 merged into `main` as `46a7737`. The pull request's CI (run `38013338343`) passed every job.
+- **Production:** GitHub deployment `6974850450` on `46a7737` completed. It serves `index-BLSMm3p4.js`, the entry the branch built (191,674 B), which holds no `swipeable` text, and a guest `POST {}` to `/api/classify` answers 400 from `icn1`.
+- **`main` CI on the merge** (run `38016253756`, 5 m 32 s) passed all 8 jobs on its first attempt: unit in order and shuffled (seed `1791598546116`); E2E 486 passed, 6 skipped, none failed or flaky.

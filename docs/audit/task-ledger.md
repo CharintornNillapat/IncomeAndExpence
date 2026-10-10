@@ -1083,7 +1083,7 @@ Approved explicitly by the user, planned and approved before any code was writte
 
 ## Phase 124 - Dead code and an alias removed; the tab swipe is the app's own, and react-swipeable is gone: T737-T741 (2026-10-10)
 
-ADR `0100`. Branch `phase-124-dead-code-and-dep-pruning`, cut from `main` at `8ef7c65`; code `ec15847`, docs `aca4e3a`. No migration.
+ADR `0100`. Branch `phase-124-dead-code-and-dep-pruning`, cut from `main` at `8ef7c65`; code `ec15847`, docs `aca4e3a`, hash backfill `464d044`, merged into `main` as `46a7737` (PR #75). No migration; live drift run `38013338535`: none, 21 migrations.
 
 | # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
 |---|---|---|---|---|---|---|---|---|---|---|
