@@ -4,6 +4,22 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
+## Phase 124 - Dead code and an alias removed; the tab swipe is the app's own, and react-swipeable is gone: T737-T741 (2026-10-10)
+
+ADR `0100`. The owner's brief: make the five cuts of the 2026-10-10 over-engineering audit, keeping the swipe's 40px threshold, horizontal-dominance rule and guards, and test the touch logic.
+
+**Changed:**
+- **`src/hooks/useTabSwipe.ts`** (new, 45 lines): `onTouchStart`/`onTouchEnd` on `<main>`; at least 40px sideways and more sideways than vertical, left is the next tab, a second finger cancels; the scroller and zoom guards moved in from `App.tsx`. `react-swipeable` uninstalled.
+- **Removed:** `SectionHeader` (no caller since Phase 62), `User.role`/`UserRole`/`isEmailVerified`/`createdAt` (never read), `renderLocalInsight` (no caller), `WALLET_COLOR_PALETTE` (an alias of `IDENTITY_COLORS`).
+- **`unit/tab-swipe.test.tsx`** (new): eleven cases, run first against react-swipeable configured as `App.tsx` had it (all passed), then against the hook.
+- **`CLAUDE.md`:** the libraries line, the hooks line, the primitives list, the swipe bullet, the palette rule, the unit count.
+
+**Why:** dead code and a one-handler dependency in the entry chunk.
+
+**Not changed:** behaviour, the Playwright specs, the database.
+
+**Gate:** lint clean; build clean, entry 195,458 / 57,105 B to 191,674 / 55,793 B (-3,784 / -1,312 gzip); unit 1375/1375 in 62 files (41 s), shuffled 1375/1375 (seed `1791595131349`); Playwright 486 passed, 6 skipped, 0 failed of 492 (8.2 m, 4 workers), first run; `npm run schema:drift` replays 21 migrations.
+
 ## Phase 123 - `anon` holds nothing on the ledger tables; the Auth settings are settled; `checkout` and `setup-node` move to v7: T732-T736 (2026-10-10, code `da0effb`, docs `d6a399b`, merged `baf2ab0`)
 
 ADR `0099`. The owner's brief: revoke `anon`'s default grants on the six ledger tables with a probe and the history statement, move the pinned actions to their newest majors, and record the Auth settings (minimum 8; leaked-password protection is Pro-only, so an accepted tier constraint).
