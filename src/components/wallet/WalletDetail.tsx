@@ -15,7 +15,8 @@ import { APP_CURRENCY, APP_CURRENCY_SYMBOL } from '../../utils/currency';
 import { formatShortDate, toIsoDate } from '../../utils/date';
 import { ERROR_BANNER_CLASS, LABEL_CLASS, OPTION_CLASS, inputClass, selectClass } from '../../utils/formStyles';
 import { identityColorName } from '../../utils/identityPalette';
-import { WALLET_COLOR_PALETTE, WALLET_TYPE_OPTIONS, walletTypeLabel } from './walletFormStyles';
+import { WALLET_TYPE_OPTIONS, walletTypeLabel } from './walletFormStyles';
+import { IDENTITY_COLORS } from '../../utils/identityPalette';
 
 interface WalletDetailProps {
   wallet: Wallet;
@@ -208,9 +209,11 @@ const WalletDetailBody: React.FC<WalletDetailProps> = ({
           </div>
           <fieldset>
             <legend className={`${LABEL_CLASS} mb-1.5`}>Color</legend>
-            {/* A 28px swatch inside a 44px hit box, as in `AddWalletForm`. */}
+            {/* The twelve identity colours (audit 008), the Categories page's own.
+                A wallet on any other colour keeps it until another is picked.
+                A 28px swatch inside a 44px hit box, as in `AddWalletForm`. */}
             <div className="flex flex-wrap items-center gap-1">
-              {WALLET_COLOR_PALETTE.map((color) => (
+              {IDENTITY_COLORS.map((color) => (
                 <button
                   key={color}
                   type="button"

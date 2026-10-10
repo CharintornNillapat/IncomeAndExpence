@@ -13,9 +13,8 @@ interface PageHeaderProps {
 
 /**
  * Spec 4.2 (ADR 0029): a page's title and one-line description on the left,
- * its actions on the right, and no card around it. It replaces the carded
- * `SectionHeader` view by view in the page redesign, which keeps each view's
- * heading text (the Playwright suite finds several headings by name).
+ * its actions on the right, and no card around it. Each view kept its heading
+ * text when it moved here (the Playwright suite finds several headings by name).
  */
 export const PageHeader: React.FC<PageHeaderProps> = ({ title, description, actions, as: Heading = 'h1', className = '' }) => (
   <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${className}`.trim()}>

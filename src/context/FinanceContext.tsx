@@ -459,9 +459,6 @@ const DEFAULT_USER: User = {
   id: 'usr-guest-01',
   email: 'guest@finlife.local',
   name: 'FinLife User',
-  role: 'USER',
-  isEmailVerified: false,
-  createdAt: new Date().toISOString(),
 };
 
 /**
@@ -962,9 +959,6 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
           id: session.user.id,
           email: session.user.email || 'user@supabase.io',
           name: session.user.user_metadata?.name || session.user.email?.split('@')[0] || 'User',
-          role: 'USER',
-          isEmailVerified: !!session.user.email_confirmed_at,
-          createdAt: session.user.created_at,
         });
         await loadSupabaseData(session.user.id);
       } else {
@@ -985,9 +979,6 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
             id: newSession.user.id,
             email: newSession.user.email || 'user@supabase.io',
             name: newSession.user.user_metadata?.name || newSession.user.email?.split('@')[0] || 'User',
-            role: 'USER',
-            isEmailVerified: !!newSession.user.email_confirmed_at,
-            createdAt: newSession.user.created_at,
           });
           await loadSupabaseData(newSession.user.id);
         } else {

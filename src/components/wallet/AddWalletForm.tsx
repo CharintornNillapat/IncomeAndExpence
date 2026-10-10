@@ -14,7 +14,8 @@ import {
 } from '../../utils/formStyles';
 import { Button } from '../ui/Button';
 import { identityColorName } from '../../utils/identityPalette';
-import { WALLET_COLOR_PALETTE, WALLET_TYPE_OPTIONS } from './walletFormStyles';
+import { WALLET_TYPE_OPTIONS } from './walletFormStyles';
+import { IDENTITY_COLORS } from '../../utils/identityPalette';
 
 /**
  * Element ids are supplied by the caller rather than derived from a prefix:
@@ -59,7 +60,7 @@ export const AddWalletForm: React.FC<AddWalletFormProps> = ({
   const [walletName, setWalletName] = useState<string>('');
   const [walletType, setWalletType] = useState<WalletType>('BANK_ACCOUNT');
   const [initialBalance, setInitialBalance] = useState<number>(0);
-  const [walletColor, setWalletColor] = useState<string>(WALLET_COLOR_PALETTE[0]);
+  const [walletColor, setWalletColor] = useState<string>(IDENTITY_COLORS[0]);
 
   // Keeps the form open and populated when the write is rejected, so the user
   // can correct the input rather than losing it.
@@ -150,7 +151,7 @@ export const AddWalletForm: React.FC<AddWalletFormProps> = ({
         <label className={`${LABEL_CLASS} mb-1.5`}>Color</label>
         {/* A 28px swatch inside a 44px hit box; the selected one takes the focus ring, not a scale. */}
         <div className="flex flex-wrap items-center gap-1">
-          {WALLET_COLOR_PALETTE.map((c) => (
+          {IDENTITY_COLORS.map((c) => (
             <button
               key={c}
               type="button"
