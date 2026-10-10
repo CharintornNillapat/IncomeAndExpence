@@ -1081,6 +1081,23 @@ Approved explicitly by the user, planned and approved before any code was writte
 - **One negative control was redone** because the first attempt produced malformed TypeScript that the dev server still served — the tests failed, but possibly for the wrong reason.
 - **No flakes.** Phase 44's `wallets.spec.ts` webkit flake has now not reproduced across three consecutive phases; still watched rather than closed.
 
+## Phase 124 - Dead code and an alias removed; the tab swipe is the app's own, and react-swipeable is gone: T737-T741 (2026-10-10)
+
+ADR `0100`. Branch `phase-124-dead-code-and-dep-pruning`, cut from `main` at `8ef7c65`; code `ec15847`, docs `aca4e3a`. No migration.
+
+| # | Task | Files | Impact | Risk | Effort | Status | Blocked by | Commit | Gate result | Metric delta |
+|---|---|---|---|---|---|---|---|---|---|---|
+| T737 | The swipe's cases first, against react-swipeable as `App.tsx` configured it, then against the missing hook | `unit/tab-swipe.test.tsx` | High | Low | 0.4h | done | - | `ec15847` | 11/11 on react-swipeable; then failed: no `useTabSwipe` | unit +11 |
+| T738 | `useTabSwipe`: touch start and end on `<main>`, the 40px and dominance rule, a second finger cancels, the two guards; `App.tsx` uses it; `react-swipeable` uninstalled | `src/hooks/useTabSwipe.ts`, `src/App.tsx`, `package.json`, `package-lock.json` | High | Med | 0.4h | done | T737 | `ec15847` | 11/11 | deps -1; entry -3,784 / -1,312 gzip B |
+| T739 | `SectionHeader`, the unused `User` fields, `renderLocalInsight`, `WALLET_COLOR_PALETTE` | `src/components/ui/`, `src/types.ts`, `src/context/FinanceContext.tsx`, `src/utils/spendingSummary.ts`, `src/components/wallet/` | Med | Low | 0.3h | done | - | `ec15847` | lint clean (the `User` cut type-checks alone) | `src/` -100 / +15 outside the hook |
+| T740 | Gate: lint, build and bundle, unit in order and shuffled, Playwright, drift replay | - | High | Low | 0.4h | done | T737-T739 | - | lint and build clean; unit 1375/1375 in 62 files, shuffled 1375/1375 (seed `1791595131349`); Playwright 486 passed, 6 skipped, 0 failed of 492 (8.2 m), first run; 21 migrations replay | - |
+| T741 | ADR `0100`, `CLAUDE.md`, the logs | `docs/`, `CLAUDE.md` | Med | Low | 0.3h | done | T740 | `aca4e3a` | - | - |
+
+**Notes on execution:**
+- **Parity was run, not argued:** the eleven cases passed on react-swipeable before the package went, and the library harness was deleted with it.
+- **A stored `pf_user` with the old fields is harmless:** they are ignored and drop out at the next write.
+- **Not proven:** the swipe on a real phone, as before (ADR `0024`); it stays the owner's check.
+
 ## Phase 123 - `anon` holds nothing on the ledger tables; the Auth settings are settled; `checkout` and `setup-node` move to v7: T732-T736 (2026-10-10)
 
 ADR `0099`. Branch `phase-123-security-finalization-and-ci-upkeep`, cut from `main` at `e42f26f`; code `da0effb`, docs `d6a399b`, hash backfill `2681c56`, merged into `main` as `baf2ab0` (PR #74). Migration `20261010_phase123_revoke_client_table_grants.sql` applied to live by the owner (history `20261009234928`); drift run `38006352360`: none, 21 migrations.

@@ -263,9 +263,4 @@ export function hasEnoughData(summary: SpendingSummary): boolean {
   return summary.categories.length > 0 || summary.totals.income > 0;
 }
 
-/** Convenience for the card: verdict in, sentences out. */
-export function renderLocalInsight(summary: SpendingSummary): string[] {
-  return renderInsight(summary, selectLocalPattern(summary));
-}
-
 export type { InsightPattern };

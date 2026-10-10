@@ -1098,6 +1098,17 @@ The entry's growth is the ledger action itself, which lives with the other ledge
 
 **Intermittent local failures:** 6 in 1,071 full-suite runs (3 full runs). All were timeouts: a Firefox `goto`, a Firefox context close, and four WebKit clicks waiting for "stable". No assertion failed. See audit 005 finding 3 for the control runs.
 
+## Phase 124 (dead code, the tab swipe) - delta against Phase 123
+
+**Bundle** (`main` at `8ef7c65` and the branch, both built with the repo's `.env`, gzip level 9): the entry `index-B8wLrv24.js` 195,458 / 57,105 B to `index-BLSMm3p4.js` 191,674 / 55,793 (-3,784 / -1,312 gzip); all app JS 882,026 / 268,262 to 878,223 / 266,908 (-3,803 / -1,354), 40 files on both sides. react-swipeable was in the entry chunk.
+
+**Source and dependencies:** `src/` +60 / -100 lines (45 of the additions are `useTabSwipe`); runtime dependencies 8 to 7.
+
+| Suite | Files | Tests | Runs | Result |
+|---|---|---|---|---|
+| Vitest (`unit/`) | 62 | 1375 | 1375 | 1375/1375 (41 s); shuffled 1375/1375 (seed `1791595131349`) |
+| Playwright (local, 4 workers) | 34 | 164 | 492 | 486 passed, 6 skipped, 0 failed (8.2 m), first run |
+
 ## Phase 123 (the ledger table grants, the action majors) - delta against Phase 122
 
 **No `src/` change:** the bundle is Phase 121's.
