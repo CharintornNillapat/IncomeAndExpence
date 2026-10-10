@@ -1,6 +1,6 @@
 # 0100: Dead code and an alias removed; the tab swipe is the app's own, and react-swipeable is gone
 
-**Status:** Accepted. On branch `phase-124-dead-code-and-dep-pruning`; not merged. No migration.
+**Status:** Accepted. Code `ec15847`, docs `aca4e3a`, on branch `phase-124-dead-code-and-dep-pruning`; not merged. No migration.
 - **Supersedes** the use of `react-swipeable` in `App.tsx` (the swipe since before ADR `0024`); ADR `0024`'s scroller guard and ADR `0068`'s zoom guard are unchanged and still decide first.
 - **Removes** `SectionHeader` (spec section 4, ADR `0029`), unused since Phase 62 (ADR `0037`).
 

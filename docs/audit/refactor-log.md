@@ -4,7 +4,7 @@ Append-only, newest entry first. One entry per **shipped phase**, never per comm
 
 ---
 
-## Phase 124 - Dead code and an alias removed; the tab swipe is the app's own, and react-swipeable is gone: T737-T741 (2026-10-10)
+## Phase 124 - Dead code and an alias removed; the tab swipe is the app's own, and react-swipeable is gone: T737-T741 (2026-10-10, code `ec15847`, docs `aca4e3a`)
 
 ADR `0100`. The owner's brief: make the five cuts of the 2026-10-10 over-engineering audit, keeping the swipe's 40px threshold, horizontal-dominance rule and guards, and test the touch logic.
 
