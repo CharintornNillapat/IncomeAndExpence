@@ -74,7 +74,7 @@ Wallets and categories take their own colour from the muted identity palette in 
 |---|---|
 | Page title (h1) | 26px / 600 |
 | Card title (h2) | 17px / 600 |
-| Section label | 12 to 13px / 600, uppercase, 0.4px tracking, `fg-secondary` or `fg-muted` |
+| Section label | 12 to 13px / 600, uppercase, `tracking-wider` (0.05em), `fg-secondary` or `fg-muted` |
 | Body | 14px / 400 to 500 |
 | Caption | 12 to 13px, `fg-muted` |
 | Hero number (net worth) | 44px / 600, −1px tracking |
@@ -82,7 +82,7 @@ Wallets and categories take their own colour from the muted identity palette in 
 | Amount in a list row | 15px / 600 |
 
 ### Case
-- Uppercase is only for compact section labels, column headers and tickers.
+- Uppercase, with `tracking-wider`, is only for compact section labels, column headers and tickers.
   - Why: short labels above a number read as a legend, not as a sentence.
 - Everything else is sentence case: headings, buttons, helper text, empty states and loading text.
 
@@ -292,6 +292,7 @@ Five states. The first is for guests; the other four are for a signed-in user, c
 | Spec | App | Why |
 |---|---|---|
 | `--border-control` `#252B38` on inputs | Inputs keep `line-input` `#5E7092`; `#252B38` is `line-control`, for secondary buttons only | `#252B38` is 1.26:1 on a card, under WCAG 1.4.11's 3:1 for an input's edge. A button's label identifies it; an input has only its edge. |
+| Section label letter-spacing 0.4px | `tracking-wider` (0.05em, about 0.6px at 12px) | It is what the code's section labels and column headers use (`CashFlowCard.tsx:35`, `NetWorthCard.tsx:22`, `DebtSummaryCard.tsx:18`, `SmartRulesPanel.tsx:149`, `TransactionDrawer.tsx:97`, `WalletTransferForm.tsx:101`); recorded in Phase 125 so this file matches the code. The `tracking-wide` exceptions are a Backlog row in `docs/audit/task-ledger.md`. |
 | Header buttons and `IconButton` 40px | 44px | The app's 44px floor (section 4). The owner kept it for every control, header included (2026-09-28, ADR 0029). |
 | Editing row background `#1C1930`; selected wallet `#1C1930` with edge `#4B3F86` | `brand-soft` (`#1E1A33`) with the 3px `focus` edge, for both | Two near-identical violets would be two tokens for one meaning, and a selected row looks the same on every page. |
 | Header title "FinLife" | "FinLife Tracker" | `theme.spec.ts` finds the heading by that name. |

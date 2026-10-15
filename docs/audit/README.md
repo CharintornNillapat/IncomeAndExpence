@@ -1,46 +1,48 @@
-# `docs/audit/` — index
+# `docs/audit/`: index
 
-## What this is, and is not
+The working memory of the audit and refactor work: what is planned, what shipped, how it measured, and why each decision was made. The rules themselves live in `AGENTS.md` and `docs/contexts/`, not here.
 
-This directory is the **working memory** of an ongoing code audit and refactor of FinLife Tracker. It is evidential and historical: every claim carries a `path:line` citation, and files here accumulate over time rather than staying current the way `CLAUDE.md` does.
+## Reading order
 
-**This is not `src/context/`.** That is the app's single React context provider (`FinanceContext.tsx`). This directory is documentation about the codebase, unrelated to that file except as a subject of it. If you are looking for the app's state management, go to `src/context/FinanceContext.tsx`, not here.
+1. **`AGENTS.md`'s routing table**: which context file your task needs.
+2. **`task-ledger.md`**: what is next.
+3. Anything below only when the task calls for it.
 
-## Reading order for a new session
+## Live files
 
-1. `README.md` (this file) — orientation.
-2. `task-ledger.md` — what is next. This answers "what should I work on" without re-reading the whole audit.
-3. `audit-report.md` — the full findings, if you need the evidence behind a task.
-4. `decisions/` — only if a task references an ADR number.
-5. `refactor-log.md` — history, read only when asked what has already shipped.
-6. `baseline-metrics.md` — numbers, read only when asked to prove or disprove an improvement.
-7. `constraints-to-promote.md` — staging area, read only during a promotion pass into `CLAUDE.md`.
-
-## File responsibilities
-
-| File | Purpose | Written |
+| File | What it holds | Read it when |
 |---|---|---|
-| `audit-report.md` | Frozen findings A–H with corrections | Once, in Phase 0. Append-only resolution notes after |
-| `baseline-metrics.md` | Numbers, one column per phase | Phase 0, then appended after each phase's gate passes |
-| `task-ledger.md` | Ranked tasks + live status | The only file edited mid-phase |
-| `refactor-log.md` | One entry per shipped phase | Appended when a phase ships, never per commit |
-| `constraints-to-promote.md` | Staging area for `CLAUDE.md` rules | Appended opportunistically; drained in Phase 9 |
-| `decisions/NNNN-*.md` | ADRs for decisions with a live alternative | Written before the implementing task begins |
+| `task-ledger.md` | Tasks from Phase 125 on, their status, and the Backlog | Always, after the routing table |
+| `refactor-log.md` | One entry per shipped phase from Phase 125 on | Asked what has shipped recently |
+| `baseline-metrics.md` | How to measure, and the latest bundle and test figures | Shipping a phase, or proving a change |
+| `test-selector-contract.md` | Every id and `data-testid` the specs use today, and their hazards | Renaming, moving or removing an id |
+| `decisions/NNNN-*.md` | ADRs, one per decision with a live alternative | A rule or task names the ADR |
+
+## `archive/`: do not read
+
+**Never read a file inside `archive/` unless the user explicitly asks for historical research.** Archived files are never edited. It holds:
+
+- `task-ledger-phases-001-124.md` and `refactor-log-phases-001-124.md`: the ledger and log before Phase 125.
+- `baseline-metrics-phases-000-124.md`: every measured column before Phase 125.
+- `test-selector-log-phases-019-124.md`: how each selector was added, moved or retired.
+- `claude-monolith-v124.md` and `claude-md-history.md`: the pre-split `CLAUDE.md` and its release history.
+- `audit-report.md`, `perf-audit-report.md`, `ui-ux-audit-report.md`, `implementation-roadmap.md`, `spec-acceptance-2026-10-02.md`: the early audits and plans and the 2026-10-02 acceptance check, holding the findings older ADRs cite by letter or number.
+- `constraints-to-promote.md`: the old staging table (its open rows moved to the ledger's Backlog).
+- `AGY_AUDIT300926.md` and `SUGGESTS.md`: the Antigravity review of 2026-09-30.
 
 ## Update discipline
 
-- **`audit-report.md` is frozen after Phase 0.** Never delete a finding — it is the before-half of every before/after claim. The only edit permitted is appending a resolution note under a finding once its task ships.
-- **`task-ledger.md` is the only file touched mid-phase.** Flip a row to `in-progress` when started, fill `Commit` / `Gate result` / `Metric delta` when it lands.
-- **`baseline-metrics.md` never rewrites a column.** A regression must stay visible.
-- **`refactor-log.md` entries must include `Surprises` and `Deliberately not done`,** even when empty ("none"). These are the sections skipped under time pressure and the ones with the most long-term value.
-- **Do not create:** a `metrics-after.md` (it is a column, not a file), a `TODO.md` (duplicates the ledger), or per-file notes (they rot immediately and duplicate citations already in the audit).
+- **`task-ledger.md` is the only file edited mid-phase.** Flip a row to `in-progress` when started; fill `Commit` and `Gate result` when it lands.
+- **Every `refactor-log.md` entry has `Surprises` and `Deliberately not done`,** even when they say "none".
+- **`baseline-metrics.md` gains one section per shipped phase, at the top.** Never rewrite an archived column.
+- **Keep each live file short.** Past about 150 lines, move finished phases into a new file in `archive/`.
+- **An ADR is written before the task that implements it.**
+- **Do not create** a `TODO.md` (the Backlog is in the ledger) or per-file notes.
 
-## Relationship to `CLAUDE.md` and `README.md`
+## Relationship to the rule files
 
-The split is by tense and audience:
+- **`AGENTS.md` and `docs/contexts/*.md`**: the agent-facing contract, present tense. `CLAUDE.md` only imports `AGENTS.md`.
+- **`docs/audit/`** (here): the history and evidence behind it.
+- **`README.md`** (repo root): human onboarding.
 
-- **`CLAUDE.md`** — durable, agent-facing contract. Short, imperative, present tense, no history, no evidence. States what is true and forbidden, right now.
-- **`docs/audit/`** (here) — working memory. Long, evidential, historical.
-- **`README.md`** (repo root) — human onboarding: how to run, build, test.
-
-**Promotion rule: nothing enters `CLAUDE.md` until the code already complies.** A rule the code does not satisfy is worse than no rule — see `CLAUDE.md:53`'s `@/*` alias claim, which has zero actual usages anywhere in `src/` or `tests/`. Findings move from `constraints-to-promote.md` into `CLAUDE.md` only after their corresponding task has shipped and the gate has passed.
+**A rule enters `AGENTS.md` or a context file only once the code complies.** Until then it waits as a Backlog row in `task-ledger.md`.

@@ -83,3 +83,9 @@ ios/App/build/
 ios/App/Pods/
 ios/App/DerivedData/
 
+
+# Graphify knowledge graph outputs
+graphify-out/
+
+# Antigravity scratch folder
+.antigravity/

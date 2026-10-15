@@ -21,9 +21,9 @@ export default defineConfig({
      * MANDATORY, not a preference.
      *
      * Vitest's default `include` is `**\/*.{test,spec}.?(c|m)[jt]s?(x)`, which
-     * collects all 22 Playwright specs under `tests/`. Left at the default,
-     * `npm run test:unit` loads `tests/wallets.spec.ts` under Node and fails in
-     * twenty-two unrelated ways. The mirror-image trap lives in
+     * collects every Playwright spec under `tests/` (34 today). Left at the
+     * default, `npm run test:unit` loads `tests/wallets.spec.ts` under Node and
+     * fails once per spec, in ways unrelated to the code. The mirror-image trap lives in
      * `playwright.config.ts` — see the `testMatch` pin there.
      */
     include: ['unit/**/*.test.{ts,tsx}'],
