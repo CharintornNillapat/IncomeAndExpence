@@ -8,18 +8,18 @@ Status values: `todo`, `in-progress`, `done`, `dropped` (with a one-line reason)
 
 ## Phase 125 - ICM bootstrap: hierarchical context, the archive, herdr stages (docs only, ADR `0101`)
 
-Branch `phase-125-icm-bootstrap`. The archive renames are one commit (`7bed3d7`), everything else is the docs commit (`DOCS_SHA`).
+Branch `phase-125-icm-bootstrap`. The archive renames are one commit (`7bed3d7`), everything else is the docs commit (`ca1440f`).
 
 | # | Task | Files | Status | Commit | Gate result |
 |---|---|---|---|---|---|
-| T742 | Clean the root: ignore `.antigravity/`, archive the Antigravity audits, delete the stale local `HANDOFF.md` | `.gitignore`, `docs/audit/archive/` | done | DOCS_SHA | n/a (docs) |
-| T743 | Archive the task ledger and refactor log for Phases 1 to 124; start compact ones | `docs/audit/` | done | 7bed3d7, DOCS_SHA | n/a (docs) |
-| T744 | Fix doc drift in `README.md` and the config comments | `README.md`, `vitest.config.ts`, `playwright.config.ts` | done | DOCS_SHA | `npm run lint` clean; Playwright lists 492 in 34 files; Vitest collects 62 files |
-| T745 | Split `CLAUDE.md` into `AGENTS.md` and `docs/contexts/*.md`; archive the monolith | `CLAUDE.md`, `AGENTS.md`, `docs/contexts/` | done | DOCS_SHA | every named path and symbol resolves (scripted check) |
-| T746 | Archive the frozen audit files, the metrics and the selector log; new short metrics and selector contract; routing and pointer fixes | `docs/audit/`, `AGENTS.md`, `CLAUDE.md`, `DESIGN.md`, `README.md`, `docs/contexts/ui-and-e2e.md` | done | 7bed3d7, DOCS_SHA | `npm run lint` clean |
-| T747 | The herdr stages: `workflow/stages/{01_spec,02_build,03_review}/CONTEXT.md` and their `output/` folders | `workflow/stages/` | done | DOCS_SHA | n/a (docs) |
-| T748 | ADR `0101`; the ICM workflow section in `AGENTS.md`; the phase-branch rule | `docs/audit/decisions/0101-hierarchical-icm-context-and-herdr-stages.md`, `AGENTS.md` | done | DOCS_SHA | `npm run lint` clean |
-| T749 | Phase 125 bookkeeping: refactor-log entry, baseline-metrics section, the commits and hash backfill | `docs/audit/` | done | DOCS_SHA | n/a (docs) |
+| T742 | Clean the root: ignore `.antigravity/`, archive the Antigravity audits, delete the stale local `HANDOFF.md` | `.gitignore`, `docs/audit/archive/` | done | ca1440f | n/a (docs) |
+| T743 | Archive the task ledger and refactor log for Phases 1 to 124; start compact ones | `docs/audit/` | done | 7bed3d7, ca1440f | n/a (docs) |
+| T744 | Fix doc drift in `README.md` and the config comments | `README.md`, `vitest.config.ts`, `playwright.config.ts` | done | ca1440f | `npm run lint` clean; Playwright lists 492 in 34 files; Vitest collects 62 files |
+| T745 | Split `CLAUDE.md` into `AGENTS.md` and `docs/contexts/*.md`; archive the monolith | `CLAUDE.md`, `AGENTS.md`, `docs/contexts/` | done | ca1440f | every named path and symbol resolves (scripted check) |
+| T746 | Archive the frozen audit files, the metrics and the selector log; new short metrics and selector contract; routing and pointer fixes | `docs/audit/`, `AGENTS.md`, `CLAUDE.md`, `DESIGN.md`, `README.md`, `docs/contexts/ui-and-e2e.md` | done | 7bed3d7, ca1440f | `npm run lint` clean |
+| T747 | The herdr stages: `workflow/stages/{01_spec,02_build,03_review}/CONTEXT.md` and their `output/` folders | `workflow/stages/` | done | ca1440f | n/a (docs) |
+| T748 | ADR `0101`; the ICM workflow section in `AGENTS.md`; the phase-branch rule | `docs/audit/decisions/0101-hierarchical-icm-context-and-herdr-stages.md`, `AGENTS.md` | done | ca1440f | `npm run lint` clean |
+| T749 | Phase 125 bookkeeping: refactor-log entry, baseline-metrics section, the commits and hash backfill | `docs/audit/` | done | ca1440f | n/a (docs) |
 
 ## Backlog
 

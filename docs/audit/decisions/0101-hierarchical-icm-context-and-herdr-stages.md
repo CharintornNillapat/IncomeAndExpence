@@ -1,6 +1,6 @@
 # 0101: Hierarchical context, a quarantined archive, and herdr workflow stages
 
-**Status:** Accepted. Built on branch `phase-125-icm-bootstrap`: renames `7bed3d7`, docs `DOCS_SHA`, hash backfill to follow. Not yet merged. No code, test, config or schema change.
+**Status:** Accepted. Built on branch `phase-125-icm-bootstrap`: renames `7bed3d7`, docs `ca1440f`, hash backfill to follow. Not yet merged. No code, test, config or schema change.
 - **Supersedes** the single 175 KB `CLAUDE.md` as the agent contract (in force from the project's start to Phase 124). Its full text is kept as `docs/audit/archive/claude-monolith-v124.md`.
 - **Moves** the audit's history out of the live `docs/audit/` set into `docs/audit/archive/`. Every move is a `git mv` with its content unchanged.
 

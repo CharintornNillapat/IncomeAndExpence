@@ -19,7 +19,7 @@ ADR `NNNN`. <the brief, one or two sentences>
 
 ---
 
-## Phase 125 - ICM bootstrap: hierarchical context, the archive, herdr stages: T742-T749 (2026-10-15, renames `7bed3d7`, docs `DOCS_SHA`, branch `phase-125-icm-bootstrap`, not merged)
+## Phase 125 - ICM bootstrap: hierarchical context, the archive, herdr stages: T742-T749 (2026-10-15, renames `7bed3d7`, docs `ca1440f`, branch `phase-125-icm-bootstrap`, not merged)
 
 ADR `0101`. The owner's brief: prepare the repo for ICM under herdr (reviewer Claude Code, builder agy), first removing the context bloat, doc drift and dirty tree a read-only discovery pass found.
 
