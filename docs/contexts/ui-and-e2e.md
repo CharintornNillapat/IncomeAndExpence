@@ -1,0 +1,74 @@
+# UI, accessibility and the Playwright suite
+
+Read this before touching `src/components/`, `src/views/`, `src/index.css`, `App.tsx`, or `tests/`. **`DESIGN.md` is the design authority** (tokens, limits, the reasoning). `docs/design/finlife-redesign-spec.md` is history: read it only for a new redesign. This file lists the rules an edit most often breaks. For UI, copy, accessibility or mobile layout work, load the `antislop` core skill and the matching one (`antislop-ui`, `antislop-copywriting`, `antislop-human`, `antislop-layoutmobile`) during the work. Reasons live in the ADRs named in brackets.
+
+## Styling and type [0025, 0027, 0029, 0030]
+
+- **Semantic token classes only** (from `src/index.css`): surfaces `bg-canvas`, `bg-header`, `bg-surface-1..3`, `bg-control-active`; edges `border-line`, `border-line-control`, `border-line-strong`, `border-line-input`; text `text-fg`, `-secondary`, `-muted`, `-disabled`; `ring-focus`, `bg-brand-soft`, `bg-selected`/`text-on-selected`, `text-chip-text`, `border-danger-line`; hues `brand`, `income`, `expense`, `transfer`, `adjust`, `pending` (with `-tint`, `-fill`, `-line`); radii `rounded-card`, `-inner`, `-control`, `-button`.
+- **Never a raw palette class** (`stone-*`, `emerald-*`, ...), and never a `dark:` twin on a token (tokens flip with `.dark`). Data colours (a wallet's or category's own `color`) are exempt. After changing a token value run `node scripts/wcag-tokens.mjs`.
+- **One face, IBM Plex Sans Thai,** self-hosted, with a measured Latin fallback face [0060]. **Numbers are not monospace** (`body` sets `tabular-nums`); `font-mono` only on a `<code>` sample.
+- **Buttons are `ui/Button` and `ui/IconButton`,** never a re-typed class string. `Button` variants `primary` (one per area), `secondary`, `soft`, `danger`; sizes `md`, `lg`, `header`; `block`. It is `type="button"` unless `type="submit"`. `IconButton` requires `label` (aria-label and title); never name an icon button with `sr-only` text. `buttonClass()` styles a non-button.
+- **Form styles come from `src/utils/formStyles.ts`** where the field matches the shape; a genuinely different field stays inline (see the audited exceptions).
+- **Lookup maps:** `buildLookupMap(items)` (`utils/mapUtils.ts`) for an id-to-item map only.
+- **No decorative sparkle, star, wand or lightning icon** on a badge or note [0041]; use an icon that says what happened, or none.
+- **ADJUSTMENT is grey (`adjust`)**; only its sign comes from its direction, through `txTypeMetaFor` [0027].
+- **No em dash in user-facing text.**
+
+## UI limits (each was an audit finding) [0026, 0041, 0042]
+
+- **44 px minimum hit box** on every interactive element. Wrap a small visual in a 44 px box rather than growing it; use a negative margin where the box would push a row apart (`NavbarSyncBadge`). The entry form is held to it too [0041]. **Exempt by name:** operator keys, the +100/+500/+1,000 chips, the note's microphone, the shortcut row's text links.
+- **Blur only on the mobile bottom nav and a sticky table header.** Modal scrims are solid `bg-scrim`; panels are opaque.
+- **One layer order:** page content (open `OverflowMenu` `z-30`), sticky header and mobile nav `z-40`, PWA toast `z-45`, every `Modal` `z-50`. Never tie a new fixed element with `Modal`.
+- **One glow:** `shadow-quick-add` on the mobile centre Quick Add.
+- **Motion is 150 to 200 ms on hover, focus or a state change** [0082, 0083]. No `scale-*` for selection, no springs, no entrance animations, **no animation library**. A tween is a `motion-*` keyframe class; an element that must stay for its exit goes in `ui/motion.tsx`'s `Presence` (unmounts on a timer, never `animationend`); a pill slides with `slidePill`. Under `prefers-reduced-motion: reduce` nothing moves, including `animate-spin`/`animate-pulse`. Continuous motion only while real work runs, beside text saying so.
+- **Loading is a static outline** (`ViewLoadingFallback`), never a pulse or spinner.
+- **Nothing moves while the app loads** [0060]: `<main>` keeps its `min-h-[calc(100dvh-...)]` so the footer starts below the fold.
+- **Uppercase with `tracking-wider`** only for compact metric labels, column headers and tickers.
+- **Focus is one global `:focus-visible` rule** [0029]; never a control's own focus style. Fields keep `focus:ring-2 ring-focus`. A removed outline needs `focus-visible:ring-2 focus-visible:ring-focus`.
+- **`transition-control`, never `transition-colors` or `transition-all`,** on a focusable control [0030].
+- **The page zooms** [0068]: never add `maximum-scale` or `user-scalable=no`; size fields from the type scale, never `text-[Npx]` (the iOS 16 px rule works through `--text-xs`/`--text-sm`).
+- **Every edge clears its safe-area inset** [0070]: the header pads the top inset, `body` the sides, the mobile nav and footer margin the bottom, `Modal` the bottom below `sm`, `ReloadPrompt` bottom and right from `md`. A new fixed element takes its inset the same way.
+
+## Modals and dialogs [0043, 0047, 0058, 0059, 0086, 0089]
+
+- **Use `src/components/Modal.tsx`** for every dialog and bottom sheet; never hand-roll a backdrop, panel or exit tween. Give it a `title`, or a `titleId` naming the heading in a custom `header` (`unit/dialog-names.test.tsx`). The page's one `h1` is the view's `PageHeader`.
+- **Focus belongs to `Modal`:** it focuses the first reachable control on open (an `autoFocus` field keeps focus), traps Tab, closes the top dialog on Escape, and returns focus to the opener. Never add an open-time `focus()`, a Tab handler or a second Escape listener.
+- **Only the top dialog answers Tab and Escape** (a module-level stack). The Tab listener is capture-phase, Escape bubble-phase, both layout effects.
+- **The page behind the top dialog is `inert`,** marked on every element beside the path from the overlay to `<body>`, never on `#root` or an ancestor (Modal is not portalled). This happens in the commit that shows the dialog; the return-focus cleanup releases the background before focusing the opener.
+- **Back closes the top dialog** (`src/utils/modalHistory.ts`): each open Modal has its own history entry; a dialog closed another way removes it.
+- **`OverflowMenu`'s items exist only while open,** and it stops its own Escape. A spec asserting an action is absent opens the menu first.
+- **Shell modals** (`QuickAddModal`, `TransferFundsModal`, `AddWalletModal`, `AccountModal`) mount on first open behind `React.lazy` and a `hasOpened` latch that never resets [0010]. A bare `{isOpen && <Modal/>}` kills the exit tween.
+
+## Page contracts
+
+- **One render path per breakpoint** with `useMediaQuery`, never two copies hidden by CSS (the specs count hidden elements). Do not check such a page with a full-page screenshot.
+- **Dashboard** [0030]: every figure computed once in `DashboardView`; cards only lay out. Never give a Dashboard element another page's id prefix (`tx-row-`, `debt-card-`, `open-repay-modal-`, `settle-debt-`, `wallet-entity-`), never render its text twice, never put the total balance back in the header.
+- **Transactions** [0031, 0033, 0041]: rows are buttons; delete and restore live in the selected row's panel. The empty list says why ("No transactions yet" for a first run, else "No transactions match your current filters."). `TransactionRow`'s `dateText` is `sr-only`.
+- **Wallets** [0034]: master-detail, the one place a wallet is edited, adjusted, archived or deleted. Transfer and Add Wallet are shell modals. Never pass a click event into `onOpenTransfer(walletId?)`. The two transfer `<select>`s stay real, visible controls (`wallet-forms.spec.ts`).
+- **Debt payoff** [0035, 0086]: Edit and Delete in the card's ⋯ menu; repay and Mark as paid off on the card. The Add Debt form starts empty.
+- **Daily diary** [0036]: the form is keyed by date and entry id and starts from the day's entry; no mood picked means Save disabled; no future day.
+- **Categories** [0037]: three groups by type; System rows are locked; colours unique while any of the twelve is free (L9), repeated after; delete only an unused custom category. Never add a red, green, blue, cyan or amber swatch to `IDENTITY_PALETTE`.
+- **Routing** [0088, 0089]: the open tab is in the hash (`#/transactions`, bare for the Dashboard); `handleTabChange` pushes history, a tab change from inside a dialog replaces; `document.title` is `titleForTab(activeTab)`.
+- **Mobile nav** is five slots; the More sheet renders as a sibling of `<nav>`. The PWA toast sits above it below `md`. The tab swipe is `useTabSwipe` [0100]: 40 px, horizontal-dominant, a second finger cancels, no swipe from inside a horizontal scroller or while zoomed in.
+
+## Selector contract
+
+`docs/audit/test-selector-contract.md` lists every id and test id the specs use today. Keep them; moving one into `OverflowMenu` needs the menu-open step added to its spec, and a "count 0" assertion must never pass only because a menu is closed.
+
+**Spec-edit policy.** Editing a spec is allowed when an assertion **survives and only its locator moves**; forbidden when an assertion would be **deleted or weakened**. Spec edits ship in the same commit as the code change they follow from, and the full suite must be green immediately before and after.
+
+## Playwright suite (`tests/*.spec.ts`)
+
+- **164 tests in 34 specs on Chromium, Firefox and WebKit: 492 runs, 486 pass, 6 skip by design** (Chromium-only layout shift and safe-area emulation).
+- **Hermetic by principle:** every spec that intercepts a request fulfils every response locally, so no run spends TypeSafe credits. Three specs intercept (`jev-classify`, `csv-classify`, `insights`); a fourth is allowed only if no unit test can reach the code. `voice-input.spec.ts` uses an init-script stub, not interception. **No spec signs in**, but the dev server reads `.env`, so never add a spec that submits real credentials.
+- **Never edit `src/` while a run is in flight;** the web server is a live Vite dev server and HMR corrupts the run.
+- **Two web servers:** port 3000 (`npm run dev`) for every spec, port 3100 (`vite --mode pwa-dev`) for `toast-layering.spec.ts` only. Check both ports for stale servers before a local run (`reuseExistingServer` tests whatever answers). `tests/global-setup.ts` warms 3100.
+- **Use the helpers:** `gotoTab(page, tabId)`, `addQuickTransaction(page, description)`, `settle(page)`, and `seedLedger(page, { wallets?, debts? })` before `page.goto`. A fresh context has three ฿0.00 wallets, no debts and no transactions.
+- **No fixed waits** (`page.waitForTimeout`) and never `if (await locator.isVisible())`; assert the resulting state.
+- **Timeouts bound failures only;** do not raise one to absorb a cold server. Local runs use 4 workers, CI 2 per shard; do not raise local workers or add local retries without measuring.
+- **A WebKit click that waits 15 s for "stable" with a frozen screencast** is WebKit on Windows not painting [0058]: repeat it, never hide it with `reducedMotion`.
+- **Check dialog isolation by polling a read-only check,** and focus the background only once it is inert [0058].
+
+## CI: `.github/workflows/playwright.yml`
+
+`checks` (lint, unit in order and shuffled) gates six E2E jobs (three browsers × two shards) in Playwright's container image, then `merge-reports` builds `playwright-report-unified`. Docs-only pushes skip it. **Updating Playwright is two edits:** `package-lock.json` and `matrix.playwright`. Actions are pinned to a commit with the release in a comment, `permissions: {}` at the top and `contents: read` per job, `persist-credentials: false`, never `pull_request_target`; `unit/workflow-hardening.test.ts` enforces it. Never give two shards one blob name or run the merge job on `always()`.

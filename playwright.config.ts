@@ -11,11 +11,11 @@ export default defineConfig({
    * Playwright's DEFAULT `testMatch` is `**\/*.@(spec|test).?(c|m)[jt]s?(x)` —
    * note the `@(spec|test)`. It collects `*.test.ts` as readily as `*.spec.ts`,
    * so unit tests placed anywhere under `tests/` would be swept into the E2E
-   * run and silently break the 321-run contract. They live in `unit/` instead,
+   * run and silently break the 492-run contract. They live in `unit/` instead,
    * which `testDir` cannot see; this pin is the second lock, so a future
    * "let's tidy the unit tests under tests/" reads as the breaking change it
    * is rather than as housekeeping. The mirror-image trap (vitest's default
-   * `include` collecting all 22 specs here) is pinned in `vitest.config.ts`.
+   * `include` collecting every spec here) is pinned in `vitest.config.ts`.
    */
   testMatch: '**/*.spec.ts',
   /*

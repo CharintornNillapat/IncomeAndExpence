@@ -7,7 +7,7 @@
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-v4-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)
 ![Supabase](https://img.shields.io/badge/Supabase-Database%20%26%20Auth-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white)
 ![Vite](https://img.shields.io/badge/Vite-6-646CFF?style=for-the-badge&logo=vite&logoColor=white)
-![Playwright](https://img.shields.io/badge/Playwright-154%20E2E%20tests-2EAD33?style=for-the-badge&logo=playwright&logoColor=white)
+![Playwright](https://img.shields.io/badge/Playwright-164%20E2E%20tests-2EAD33?style=for-the-badge&logo=playwright&logoColor=white)
 ![License](https://img.shields.io/badge/License-MIT-blue?style=for-the-badge)
 
 **A personal finance tracker with a daily diary beside it.**
@@ -65,9 +65,13 @@ src/
 │   ├── wallet/, debt/, diary/, category/, account/
 │   └── TransactionForm.tsx   The one entry form for every add flow
 ├── context/
-│   └── FinanceContext.tsx    State, local fallback, Supabase sync
+│   ├── FinanceContext.tsx       State, local fallback, Supabase sync
+│   ├── DiaryContext.tsx         The diary's own state and writes
+│   ├── KeywordRulesContext.tsx  The smart rules' own state and writes
+│   └── TemplateContext.tsx      The quick templates' own state and writes
 ├── hooks/               useTransactions, useWallets, useDebts, useTheme, ...
 ├── selectors/           Pure money rules: spending, income, net worth, debt plans
+├── services/            The cloud load's reads and the backup restore, as plain functions
 ├── utils/               currency, dates, math evaluation, keyword matching, CSV, Zod schemas
 ├── views/               One lazy-loaded view per page
 └── types.ts
@@ -77,7 +81,8 @@ supabase/
 └── catalog.sql          What the drift check compares with the live project
 tests/                   Playwright specs
 unit/                    Vitest suites for what a browser test cannot reach
-docs/audit/              Decision records (ADRs), the task ledger and the refactor log
+docs/contexts/           The agent rules for each area, routed from AGENTS.md
+docs/audit/              Decision records (ADRs), the task ledger, the refactor log, metrics
 ```
 
 **Design notes**
@@ -100,10 +105,10 @@ docs/audit/              Decision records (ADRs), the task ledger and the refact
 
 | Area | Technology |
 | :--- | :--- |
-| UI | React 19, TypeScript 5.8, Tailwind CSS v4, Framer Motion, Lucide |
+| UI | React 19, TypeScript 5.8, Tailwind CSS v4 (motion is plain CSS keyframes), Lucide |
 | Build | Vite 6, `vite-plugin-pwa` |
 | Data and auth | Supabase (PostgreSQL, Realtime, Auth) |
-| Validation and parsing | Zod, mathjs (`mathjs/number`), PapaParse |
+| Validation and parsing | Zod, PapaParse, and the app's own arithmetic parser for amount fields |
 | Hosting | Vercel (functions in Seoul, `icn1`, beside the database) |
 | Testing | Playwright (Chromium, Firefox, WebKit), Vitest, PGlite for migration replay |
 
@@ -112,7 +117,7 @@ docs/audit/              Decision records (ADRs), the task ledger and the refact
 ## Local development
 
 ### 1. Prerequisites
-- Node.js 22 (the version CI runs) and npm.
+- Node.js 24 (`engines: 24.x`, the version CI and Vercel run) and npm.
 - A Supabase project, optional: without one the app runs on `localStorage`.
 
 ### 2. Install
@@ -133,7 +138,7 @@ VITE_SUPABASE_ANON_KEY=your-anon-key
 Without them the app runs in local storage mode: fully usable offline, with no sync between devices. `TYPESAFE_API_KEY` (no `VITE_` prefix, read only by the server functions) turns on AI classification; without it the app uses your keyword rules alone.
 
 ### 4. Database (for cloud sync)
-Apply every file in [`supabase/migrations/`](supabase/migrations/) in file-name order, starting with `20260901_baseline_schema.sql`. Each one runs safely on an empty project. Without the ledger functions the app falls back to separate table writes, where a failure part-way through can debit one wallet without crediting the other, so apply them before real use.
+Apply every file in [`supabase/migrations/`](supabase/migrations/) in file-name order, starting with `20260901_baseline_schema.sql`. Each one runs safely on an empty project. Signed-in ledger writes go only through these database functions, each one atomic: if a function is missing, the app refuses the write and changes nothing, so apply every migration before you use or deploy the app.
 
 To compare a project with the migrations, run `npm run schema:drift` and paste the query it prints into the SQL editor. It is read-only and returns only what differs.
 
@@ -148,9 +153,9 @@ Then open `http://localhost:3000`. The `api/` functions do not run under the Vit
 ## Testing
 
 ```bash
-npm run lint         # TypeScript for the app, the tests and the functions, plus a check for Node globals in src/
-npm run test:unit    # Vitest: 1031 tests in 39 files, including every migration replayed in PGlite
-npm test             # Playwright: 154 tests in 32 spec files on Chromium, Firefox and WebKit
+npm run lint         # TypeScript for the app, the tests and the functions, plus checks for Node globals and time-only ids in src/
+npm run test:unit    # Vitest: 1375 tests in 62 files, including every migration replayed in PGlite
+npm test             # Playwright: 164 tests in 34 spec files on Chromium, Firefox and WebKit (492 runs)
 npx playwright test tests/wallets.spec.ts --project=chromium   # one spec, one browser
 npx playwright install                                          # first run only: the browser engines
 ```
@@ -161,9 +166,11 @@ Playwright starts the dev server itself. CI runs lint and the unit tests first, 
 
 ## Documentation
 
-- [`docs/audit/decisions/`](docs/audit/decisions/): one decision record per change, numbered.
-- [`CLAUDE.md`](CLAUDE.md): the rules a contributor (human or agent) is expected to follow.
+- [`AGENTS.md`](AGENTS.md): the rules a contributor (human or agent) is expected to follow, with each domain's detail in [`docs/contexts/`](docs/contexts/).
 - [`DESIGN.md`](DESIGN.md): the design tokens and UI limits.
+- [`docs/audit/README.md`](docs/audit/README.md): where the task ledger, refactor log, metrics and selector contract live.
+- [`docs/audit/decisions/`](docs/audit/decisions/): one decision record per change, numbered.
+- [`docs/audit/archive/`](docs/audit/archive/): the history before Phase 125 (the old ledger, log, metrics and audits).
 
 ---
 

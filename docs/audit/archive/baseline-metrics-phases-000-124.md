@@ -1,0 +1,2060 @@
+# Baseline metrics
+
+Numbers are never rewritten — a regression must stay visible in its own column. Each phase appends one column after its verification gate passes, using the identical commands and scenarios listed here.
+
+**Environment:** Windows 11, Node v24.19.0, npm 11.17.0, Vite 6.4.3, Playwright 1.63.0. Captured 2026-09-17 at commit `1a02a4a`, clean working tree, `node_modules` already installed.
+
+**Final closeout column** ("Phase 29 closeout") captured 2026-09-19 at commit `91687df` (Phase 28's tip, the last `src/` change of the roadmap), same environment, same reproduction commands, clean working tree.
+
+## How to reproduce
+
+```powershell
+# Bundle size per chunk — always regenerate; do not read a stale dist/
+npm run clean
+npm run build
+
+# Type-check time — run 3x, discard the cold first run, record median of the rest
+npx tsc --noEmit --extendedDiagnostics
+
+# Playwright wall-clock — playwright.config.ts:68 sets reuseExistingServer: !CI,
+# so the number below includes a fresh `npm run dev` boot (no server was
+# pre-running for this baseline). A run against an already-warm dev server
+# will read faster; note which case applies when comparing later columns.
+npx playwright test --reporter=line
+
+# Source size
+find src tests -type f \( -name '*.ts' -o -name '*.tsx' \) | xargs wc -l | tail -1
+find src -type f \( -name '*.ts' -o -name '*.tsx' \) | xargs wc -l | sort -rn | head -13
+```
+
+## Bundle size per chunk
+
+| Chunk | Raw | Gzip |
+|---|---|---|
+| `index-DaRil9Rj.js` (entry) | 1,116.67 kB | 326.33 kB |
+| `DashboardView-*.js` | 47.09 kB | 9.91 kB |
+| `TransactionsView-*.js` | 27.50 kB | 7.00 kB |
+| `csvExchange-*.js` | 22.35 kB | 8.51 kB |
+| `SecurityView-*.js` | 19.11 kB | 4.09 kB |
+| `DiaryView-*.js` | 17.92 kB | 4.86 kB |
+| `DebtsView-*.js` | 17.45 kB | 3.83 kB |
+| `KeywordRulesView-*.js` | 8.34 kB | 2.29 kB |
+| `walletIcons-*.js` | 8.26 kB | 3.03 kB |
+| `WalletsView-*.js` | 7.53 kB | 1.96 kB |
+| `workbox-window.prod.es5-*.js` | 5.75 kB | 2.36 kB |
+| CSS (`index-DhReYCw7.css`) | 75.81 kB | 11.60 kB |
+| 7 icon micro-chunks (plus, arrow-up-right, arrow-down-left, credit-card, trash-2, landmark, receipt, useDebts) | 0.33–0.92 kB each | — |
+| PWA precache | 28 entries | 1,501.19 KiB |
+
+Vite's own warning, verbatim: *"(!) Some chunks are larger than 500 kB after minification. Consider: Using dynamic import() ... Use build.rollupOptions.output.manualChunks ..."* — this is the target for task T7.
+
+Build time: 22.61s. Two harmless Rollup warnings about `@__PURE__` comment placement in `node_modules/zod` — third-party, not actionable.
+
+### After T7 (`manualChunks`)
+
+Same command (`npm run clean && npm run build`), captured after adding `build.rollupOptions.output.manualChunks` to `vite.config.ts`. The entry chunk collapsed from 1,116.36 kB (the Phase-2 figure, itself ~unchanged from the Phase 0 baseline) to 165.39 kB — an 85% reduction — with the removed weight moved into 5 new vendor chunks:
+
+| Chunk | Raw | Gzip |
+|---|---|---|
+| `index-*.js` (entry, post-T7) | 165.39 kB | 45.72 kB |
+| `vendor-math-*.js` (`mathjs/number`) | 375.73 kB | 110.72 kB |
+| `vendor-supabase-*.js` (`@supabase/supabase-js` + sub-packages) | 226.44 kB | 58.66 kB |
+| `vendor-react-*.js` (`react` + `react-dom` + `scheduler`) | 194.33 kB | 60.68 kB |
+| `vendor-motion-*.js` (`framer-motion` + `motion-dom`/`motion-utils`/`tslib`) | 136.71 kB | 45.33 kB |
+| `vendor-icons-*.js` (`lucide-react`) | 25.98 kB | 5.63 kB |
+| `DashboardView-*.js` | 44.59 kB | 9.06 kB |
+| `TransactionsView-*.js` | 25.73 kB | 6.39 kB |
+| `csvExchange-*.js` | 22.02 kB | 8.31 kB |
+| `SecurityView-*.js` | 17.11 kB | 3.55 kB |
+| `DebtsView-*.js` | 17.09 kB | 3.59 kB |
+| `DiaryView-*.js` | 16.46 kB | 4.41 kB |
+| `KeywordRulesView-*.js` | 8.02 kB | 2.08 kB |
+| `walletIcons-*.js` | 7.03 kB | 2.58 kB |
+| `WalletsView-*.js` | 7.60 kB | 1.98 kB |
+| `workbox-window.prod.es5-*.js` | 5.75 kB | 2.36 kB |
+| `useDebts-*.js` | 0.83 kB | — |
+
+The 7 icon micro-chunks that existed pre-T7 (`plus`, `arrow-up-right`, `arrow-down-left`, `credit-card`, `trash-2`, `landmark`, `receipt`) are gone — those were Rollup's own default splitting for `lucide-react` modules shared by 2+ lazy chunks; `manualChunks`'s broader `node_modules/lucide-react/` match now consolidates all of them (plus every icon used only by the entry) into the single `vendor-icons` chunk.
+
+**Total JS bytes shipped is ~unchanged** (≈1,297 kB raw both before and after, computed by summing every `.js` chunk) — this task does not reduce what a cold, empty-cache visitor downloads in total. What it buys instead:
+- **Parse/eval on the critical path drops 85%**: the entry chunk is what must be fetched, parsed, and executed before the app can paint anything; that work shrank from 1,116 kB to 165 kB.
+- **Parallel fetching**: 5 vendor chunks + the entry chunk can be requested over HTTP/2 in parallel, instead of one monolithic blocking download.
+- **Cache stability across deploys**: vendor code (react, framer-motion, supabase-js, mathjs, lucide-react) now lives in chunks whose content hash only changes when that dependency's version changes — an app-code-only deploy no longer invalidates ~960 kB of vendor code a returning visitor already has cached. Previously every deploy re-downloaded the entire 1.09 MB entry chunk regardless of what changed.
+
+| Phase | Entry chunk (raw / gzip) | Build warning present? |
+|---|---|---|
+| **Phase 0 baseline** | 1,116.67 kB / 326.33 kB | Yes (no manualChunks) |
+| **Phase 2** (T1/T3, unrelated to bundling) | 1,116.36 kB / 326.11 kB | Yes (no manualChunks) |
+| **Phase 3 (T7)** | 165.39 kB / 45.72 kB | No — 5 vendor chunks + all view chunks now under 500 kB |
+| **Post-T24/T26/T27 (final audit, 2026-09-19, commit `8168d10`)** | 169.08 kB / 47.39 kB | No — 5 vendor chunks + all view chunks still under 500 kB |
+| **Phase 29 closeout (final, 2026-09-19, commit `91687df`)** | 176.93 kB / 49.69 kB | No — 5 vendor chunks + all view chunks still under 500 kB |
+| **Phase 37 closeout (final, 2026-09-20, commit `24e9ee6`)** | 158.93 kB / 44.81 kB | No — 8 vendor/shared chunks + all view chunks still under 500 kB |
+
+### Phase 37 closeout — final full chunk breakdown
+
+Captured via `npm run clean && npm run build`, same commands as every prior column, on the second audit pass's tip (Phases 32–37, T61–T78; no `src/` change lands in T78 itself). This is the roadmap's final column.
+
+The entry chunk **dropped** for the first time in this file's history — **180.57 kB → 158.93 kB (−21.64 kB, −12.0%)** — the net effect of Phase 36/T76 deferring `QuickAddModal`/`TransferFundsModal`/`AddWalletModal` behind `React.lazy` (each now its own small chunk: 1.15/4.10/3.15 kB) and pulling their dependency graph (`TransactionForm`, `useIdempotencyKey`, and transitively `vendor-math`) out of the entry tree along with them. `TransactionForm-*.js` (10.45 kB/3.28 kB gzip) and `useIdempotencyKey-*.js` (6.99 kB/2.43 kB gzip) are new standalone chunks that previously lived inside the entry; `vendor-math` (110.72 kB gzip) is no longer reachable from any eagerly-loaded module at all — see Phase 36's `refactor-log.md` entry for the network-level proof. `csvExchange-*.js` no longer exists as its own chunk — T77 split `exportDiaryToJson` into `diaryExport.ts` and Rollup folded the remaining `csvExchange.ts` (now single-consumer, `TransactionsView`) directly into `TransactionsView-*.js`, which grew accordingly (21.68 → 43.56 kB).
+
+| Chunk | Raw | Gzip |
+|---|---|---|
+| `index-*.js` (entry) | 158.93 kB | 44.81 kB |
+| `vendor-math-*.js` (`mathjs/number`, no longer on the critical path — see Phase 36) | 375.73 kB | 110.72 kB |
+| `vendor-supabase-*.js` (`@supabase/supabase-js` + sub-packages) | 226.44 kB | 58.66 kB |
+| `vendor-react-*.js` (`react` + `react-dom` + `scheduler`) | 194.33 kB | 60.68 kB |
+| `vendor-motion-*.js` (`framer-motion` + `motion-dom`/`motion-utils`/`tslib`) | 136.71 kB | 45.33 kB |
+| `vendor-icons-*.js` (`lucide-react`) | 28.06 kB | 6.14 kB |
+| `TransactionsView-*.js` (absorbed `csvExchange.ts`, Phase 36/T77) | 43.56 kB | 13.93 kB |
+| `DashboardView-*.js` | 42.44 kB | 9.06 kB |
+| `DiaryView-*.js` | 15.85 kB | 4.53 kB |
+| `SecurityView-*.js` | 15.30 kB | 3.56 kB |
+| `CategoriesView-*.js` | 13.15 kB | 3.47 kB |
+| `TransactionForm-*.js` (new — left the entry tree, Phase 36/T76) | 10.45 kB | 3.28 kB |
+| `DebtsView-*.js` | 9.63 kB | 3.07 kB |
+| `useIdempotencyKey-*.js` (new — left the entry tree, Phase 36/T76) | 6.99 kB | 2.43 kB |
+| `workbox-window.prod.es5-*.js` | 5.75 kB | 2.36 kB |
+| `WalletsView-*.js` | 4.77 kB | 1.78 kB |
+| `TransferFundsModal-*.js` (new lazy chunk, Phase 36/T76) | 4.10 kB | 1.76 kB |
+| `AddWalletModal-*.js` (new lazy chunk, Phase 36/T76) | 3.15 kB | 1.45 kB |
+| `TxCells-*.js` | 1.99 kB | 0.90 kB |
+| `ConfirmDialog-*.js` | 1.72 kB | 0.76 kB |
+| `Badge-*.js` | 1.19 kB | 0.57 kB |
+| `ProgressMeter-*.js` | 1.16 kB | 0.64 kB |
+| `QuickAddModal-*.js` (new lazy chunk, Phase 36/T76) | 1.15 kB | 0.65 kB |
+| `SectionHeader-*.js` | 0.82 kB | 0.48 kB |
+| `diaryExport-*.js` (new, Phase 36/T77 — split off `csvExchange.ts`) | 0.68 kB | 0.45 kB |
+| `smartMatcher-*.js` | 0.56 kB | 0.39 kB |
+| `EmptyState-*.js` | 0.54 kB | 0.32 kB |
+| `useSubmitHandler-*.js` | 0.46 kB | 0.33 kB |
+| `useTransientFlash-*.js` | 0.43 kB | 0.26 kB |
+| `useWallets-*.js` | 0.24 kB | 0.19 kB |
+| `walletIcons-*.js` | 0.23 kB | 0.19 kB |
+| `mapUtils-*.js` | 0.07 kB | 0.09 kB |
+| CSS (`index-*.css`) | 77.25 kB | 11.87 kB |
+| PWA precache | 41 entries | 1,507.21 KiB |
+
+**Whole-roadmap delta, Phase 0 baseline → Phase 37 closeout:** entry chunk **1,116.67 kB → 158.93 kB (−85.8% raw), 326.33 kB → 44.81 kB gzip (−86.3%)**. The two passes attacked different costs — the first (Phases 1–29) split vendor code out of a single monolithic bundle and eliminated render-storm/duplication issues; the second (Phases 32–36) fixed 2 money-affecting correctness bugs no test had caught, hardened 9 more write paths to the same rollback standard, removed the single largest remaining per-frame render cost (`AnimatedCounter`), and took the single largest vendor chunk (`vendor-math`, 110.72 kB gzip) off the critical path entirely.
+
+Verified via the standard audit sequence: `npm run lint` clean; `npm run build` emits 0 chunk-size warnings, build succeeds in 6.22s. (Full `CI=true npx playwright test` re-verified as part of this phase's own gate — see `task-ledger.md` Phase 37.)
+
+### Post-Phase-31 full chunk breakdown
+
+Captured via `npm run clean && npm run build`, same commands as every prior column, at commit `6c5d7df` (Phase 31's tip — the last `src/` change before Phase 32's audit pass, which adds no `src/` code). This column closes a gap: Phases 30 (category dedupe + Categories & Smart Rules hub, `CategoriesView.tsx`) and 31 (dashboard visual polish, `InlineMathInput` UX, mobile-ergonomics verification, Supabase migration) both shipped `src/` changes with no metrics capture, so this is the first column since Phase 29 closeout and folds two phases' delta together rather than one.
+
+The entry chunk grew **176.93 kB → 180.57 kB (+3.64 kB, +2.1%)** — expected: Phase 31's `InlineMathInput.tsx` quick-amount chips and dashboard `tabular-nums` polish (`T57`/`T58`) are entry-tree changes, not new code paths. `vendor-icons` grew **25.89 kB → 28.06 kB (+2.17 kB)** from the Categories & Smart Rules hub's additional icon usage. A new `CategoriesView-*.js` lazy chunk (13.07 kB / 3.43 kB gzip) did not exist in the Phase 29 column — it is the Phase 30 feature build. No chunk crosses Vite's 500 kB warning threshold; the build emits 0 chunk-size warnings, same as every column since Phase 3.
+
+| Chunk | Raw | Gzip |
+|---|---|---|
+| `index-*.js` (entry) | 180.57 kB | 50.46 kB |
+| `vendor-math-*.js` (`mathjs/number`) | 375.73 kB | 110.72 kB |
+| `vendor-supabase-*.js` (`@supabase/supabase-js` + sub-packages) | 226.44 kB | 58.66 kB |
+| `vendor-react-*.js` (`react` + `react-dom` + `scheduler`) | 194.33 kB | 60.68 kB |
+| `vendor-motion-*.js` (`framer-motion` + `motion-dom`/`motion-utils`/`tslib`) | 136.71 kB | 45.33 kB |
+| `vendor-icons-*.js` (`lucide-react`) | 28.06 kB | 6.14 kB |
+| `DashboardView-*.js` | 42.22 kB | 8.98 kB |
+| `csvExchange-*.js` | 22.02 kB | 8.31 kB |
+| `TransactionsView-*.js` | 21.68 kB | 5.90 kB |
+| `DiaryView-*.js` | 15.75 kB | 4.49 kB |
+| `SecurityView-*.js` | 15.24 kB | 3.53 kB |
+| `CategoriesView-*.js` (new, Phase 30) | 13.07 kB | 3.43 kB |
+| `DebtsView-*.js` | 9.24 kB | 2.90 kB |
+| `workbox-window.prod.es5-*.js` | 5.75 kB | 2.36 kB |
+| `WalletsView-*.js` | 4.62 kB | 1.73 kB |
+| `TxCells-*.js` | 1.99 kB | 0.90 kB |
+| `ConfirmDialog-*.js` | 1.61 kB | 0.73 kB |
+| `ProgressMeter-*.js` | 1.33 kB | 0.70 kB |
+| `Badge-*.js` | 1.19 kB | 0.57 kB |
+| `SectionHeader-*.js` | 0.82 kB | 0.48 kB |
+| `EmptyState-*.js` | 0.54 kB | 0.32 kB |
+| `walletIcons-*.js` | 0.23 kB | 0.19 kB |
+| CSS (`index-*.css`) | 77.22 kB | 11.87 kB |
+| PWA precache | 31 entries | 1,500.00 KiB |
+
+**`KeywordRulesView` is gone from this column** — Phase 30's Categories & Smart Rules hub folded the standalone keyword-rules view into `CategoriesView`, so its 7.03 kB chunk no longer exists as a separate entry; that surface area now lives inside the new `CategoriesView-*.js` chunk above.
+
+Verified via the standard audit sequence: `npm run build` emits 0 chunk-size warnings, build succeeds in 20.49s. (Full `CI=true npx playwright test` and `npm run lint` re-verified as part of this phase's own gate — see `task-ledger.md` Phase 32.)
+
+### Phase 29 closeout — final full chunk breakdown
+
+Captured via `npm run clean && npm run build`, same commands as every prior column, at commit `91687df` (Phase 28's tip — the last `src/` change before this closeout phase, which adds no `src/` code). The entry chunk grew **169.08 kB → 176.93 kB (+7.85 kB, +4.6%)** from the Post-T24/T26/T27 figure — the expected footprint of Phases 25–28's own new eagerly-loaded modules (`SectionHeader.tsx`, `Card.tsx`, `Badge.tsx`, `ProgressMeter.tsx`, `EmptyState.tsx`, `ConfirmDialog.tsx`, `SegmentedControl.tsx` are all imported from `TransactionForm`/`AuthModal`/other entry-tree components), not a regression to chase. `TxCells.tsx` — the one Phase 28 addition actually used only by lazy view chunks and `WalletPopupModal`/`DiaryEntryCard` (also entry-tree, via `App.tsx`'s unconditionally-rendered `WalletPopupModal`) — split into its own 1.99 kB/0.90 kB chunk rather than inflating the entry further. No chunk crosses Vite's 500 kB warning threshold; the build emits 0 chunk-size warnings, same as every column since Phase 3.
+
+| Chunk | Raw | Gzip |
+|---|---|---|
+| `index-*.js` (entry) | 176.93 kB | 49.69 kB |
+| `vendor-math-*.js` (`mathjs/number`) | 375.73 kB | 110.72 kB |
+| `vendor-supabase-*.js` (`@supabase/supabase-js` + sub-packages) | 226.44 kB | 58.66 kB |
+| `vendor-react-*.js` (`react` + `react-dom` + `scheduler`) | 194.33 kB | 60.68 kB |
+| `vendor-motion-*.js` (`framer-motion` + `motion-dom`/`motion-utils`/`tslib`) | 136.71 kB | 45.33 kB |
+| `vendor-icons-*.js` (`lucide-react`) | 25.89 kB | 5.67 kB |
+| `DashboardView-*.js` | 40.97 kB | 8.86 kB |
+| `TransactionsView-*.js` | 21.69 kB | 5.90 kB |
+| `csvExchange-*.js` | 22.02 kB | 8.31 kB |
+| `DiaryView-*.js` | 15.75 kB | 4.49 kB |
+| `SecurityView-*.js` | 15.24 kB | 3.54 kB |
+| `DebtsView-*.js` | 9.24 kB | 2.90 kB |
+| `KeywordRulesView-*.js` | 7.03 kB | 2.10 kB |
+| `workbox-window.prod.es5-*.js` | 5.75 kB | 2.36 kB |
+| `WalletsView-*.js` | 4.62 kB | 1.73 kB |
+| `TxCells-*.js` (new, Phase 28) | 1.99 kB | 0.90 kB |
+| `ConfirmDialog-*.js` (Phase 24) | 1.61 kB | 0.73 kB |
+| `ProgressMeter-*.js` (Phase 26) | 1.33 kB | 0.70 kB |
+| `Badge-*.js` (Phase 26) | 1.19 kB | 0.57 kB |
+| `SectionHeader-*.js` (Phase 25) | 0.82 kB | 0.48 kB |
+| `EmptyState-*.js` (Phase 26) | 0.54 kB | 0.32 kB |
+| `walletIcons-*.js` | 0.23 kB | 0.19 kB |
+| CSS (`index-*.css`) | 75.59 kB | 11.58 kB |
+| PWA precache | 31 entries | 1,485.61 KiB |
+
+**Per-view deltas versus the Post-T24/T26/T27 column** — all further decreases from Phase 28's cell-extraction, except `DashboardView` (unchanged in shape, `SegmentedControl` adoption is a wash) and the two new views absorbing the primitives they didn't have before: `TransactionsView` 23.48 → 21.69 kB (−7.6%, `TxCells` adoption removed more inline markup than the import added), `DebtsView` 10.67 → 9.24 kB (−13.4%), `KeywordRulesView` 7.28 → 7.03 kB (−3.4%), `DashboardView` 43.67 → 40.97 kB (−6.2%, `SegmentedControl` + `TxCells`-adjacent cleanup combined), `WalletsView` 4.94 → 4.62 kB (−6.5%), `DiaryView` 16.39 → 15.75 kB (−3.9%), `SecurityView` 15.56 → 15.24 kB (−2.1%). `Card.tsx`/`SectionHeader.tsx`/`Badge.tsx`/`ProgressMeter.tsx`/`ConfirmDialog.tsx` each split into their own micro-chunk (Phases 24–26) rather than inflating every view that imports them.
+
+Verified via the standard audit sequence: `npm run lint` clean; `CI=true npx playwright test` 87/87, 0 retries; build emits 0 chunk-size warnings.
+
+### Post-T24/T26/T27 full chunk breakdown
+
+Captured via `npm run clean && npm run build`, same commands as every prior column, at commit `8168d10` (the tip of the T24/T26/T27/T30 documentation-consolidation work). The entry chunk grew **165.39 kB → 169.08 kB (+3.69 kB, +2.2%)** from the Phase 3 (T7) figure — expected, not a regression to chase: `useSubmitHandler.ts`, `useIdempotencyKey.ts`, `useTransientFlash.ts`, `mapUtils.ts`, and `formStyles.ts` are new app-code modules imported by components that live in the entry chunk (`TransactionForm`, `AuthModal`, `InlineMathInput`, and the modal/hook plumbing in `App.tsx`'s eagerly-loaded tree), so their new logic necessarily lands there rather than in a vendor chunk. No chunk crosses Vite's 500 kB warning threshold; the build emits 0 chunk-size warnings, same as Phase 3.
+
+| Chunk | Raw | Gzip |
+|---|---|---|
+| `index-*.js` (entry) | 169.08 kB | 47.39 kB |
+| `vendor-math-*.js` (`mathjs/number`) | 375.73 kB | 110.72 kB |
+| `vendor-supabase-*.js` (`@supabase/supabase-js` + sub-packages) | 226.44 kB | 58.66 kB |
+| `vendor-react-*.js` (`react` + `react-dom` + `scheduler`) | 194.33 kB | 60.68 kB |
+| `vendor-motion-*.js` (`framer-motion` + `motion-dom`/`motion-utils`/`tslib`) | 136.71 kB | 45.33 kB |
+| `vendor-icons-*.js` (`lucide-react`) | 25.98 kB | 5.63 kB |
+| `DashboardView-*.js` | 43.67 kB | 8.84 kB |
+| `TransactionsView-*.js` | 23.48 kB | 6.03 kB |
+| `csvExchange-*.js` | 22.02 kB | 8.31 kB |
+| `DiaryView-*.js` | 16.39 kB | 4.45 kB |
+| `SecurityView-*.js` | 15.56 kB | 3.52 kB |
+| `DebtsView-*.js` | 10.67 kB | 3.07 kB |
+| `KeywordRulesView-*.js` | 7.28 kB | 2.03 kB |
+| `workbox-window.prod.es5-*.js` | 5.75 kB | 2.36 kB |
+| `walletIcons-*.js` | 6.01 kB | 2.34 kB |
+| `WalletsView-*.js` | 4.94 kB | 1.63 kB |
+| `useDebts-*.js` | 0.90 kB | 0.48 kB |
+| CSS (`index-*.css`) | 75.34 kB | 11.54 kB |
+| PWA precache | 26 entries | 1,484.29 KiB |
+
+**Per-view deltas versus the Phase 3 (T7) column, all decreases** — the T24 (shared `formStyles.ts`) and T26 (`buildLookupMap`) consolidations removed more inline duplication from these files than the new shared-module imports added back: `DebtsView` 17.09 → 10.67 kB (−37.6%), `SecurityView` 17.11 → 15.56 kB (−9.1%), `KeywordRulesView` 8.02 → 7.28 kB (−9.2%), `DiaryView` 16.46 → 16.39 kB (−0.4%), `TransactionsView` 25.73 → 23.48 kB (−8.7%), `DashboardView` 44.59 → 43.67 kB (−2.1%), `walletIcons` 7.03 → 6.01 kB (−14.5%), `WalletsView` 7.60 → 4.94 kB (−35.0%). The 5 vendor chunks and `vendor-icons`/`vendor-math`/`vendor-react`/`vendor-motion`/`vendor-supabase` are byte-identical to Phase 3 (third-party code, untouched by T24/T26/T27's app-code-only changes).
+
+Verified via the standard audit sequence (`npm run lint` clean; `CI=true npx playwright test` 87/87, 0 retries; `npm run preview` served `index.html` at HTTP 200 with every asset reference in the page resolving to a live 200).
+
+## Type-check time
+
+3 runs of `npx tsc --noEmit --extendedDiagnostics`:
+
+| Run | Total time | Files | Lines of TS | Memory |
+|---|---|---|---|---|
+| 1 (cold) | 3.08s | 373 | 9,164 | 271,187K |
+| 2 | 2.37s | — | — | — |
+| 3 | 2.44s | — | — | — |
+
+**Median of warm runs (2, 3): 2.40s.**
+
+| Phase | Median warm `tsc --noEmit` time | Files checked |
+|---|---|---|
+| **Phase 0 baseline** | 2.40s | 373 (excludes `tests/` — see finding H / C4) |
+| **Phase 29 closeout (final, 2026-09-19)** | 4.15s (3 runs: 2.70s cold, 4.18s/4.11s warm; median of the 2 warm runs) | 426 (includes `tests/`, per T4; +53 files since baseline from the 15 new UI/domain modules and shared hooks Phases 8–28 added) |
+
+The warm-run increase (2.40s → ~4.15s) tracks the file-count growth (373 → 426, +14%) plus this machine's own run-to-run variance (the 3 runs above ranged 2.70s–4.18s with no other process changes) more than any single phase's cost — no phase's own gate ever flagged a `tsc` regression in isolation. Read as "still well under 5s, still fast enough not to be a workflow complaint," not as a precise per-phase cost.
+
+## Playwright wall-clock
+
+```
+39 passed (1.2m)
+real 1m16.216s
+```
+
+Run included a fresh `npm run dev` server boot (no server was pre-warmed). All 39 runs green: 13 tests × {chromium, firefox, webkit}.
+
+| Phase | Wall-clock | Server state | Pass count |
+|---|---|---|---|
+| **Phase 0 baseline** | 1m16.2s | Cold boot (fresh `npm run dev`) | 39 / 39 |
+| **Phase 29 closeout (final, 2026-09-19)** | 5.5m (`CI=true`, 1 worker per `playwright.config.ts`) | Cold boot | 87 / 87, 0 retries |
+
+Not a like-for-like comparison with the Phase 0 row: the baseline ran all 39 (then-)existing tests with Playwright's default worker parallelism; the closeout figure runs the full current 87 (`CI=true` forces `workers: 1`, serially, per `playwright.config.ts` and `CLAUDE.md`'s CI-mode note) — slower per-run by design, not a performance regression. The like-for-like number is the pass count: 39/39 → 87/87, 0 retries, across 12 spec files instead of the original 5.
+
+## Source LOC
+
+```
+9,529 total (src + tests)
+```
+
+Top 12 files under `src/`:
+
+| File | Lines |
+|---|---|
+| `src/context/FinanceContext.tsx` | 1,589 |
+| `src/views/TransactionsView.tsx` | 576 |
+| `src/components/WalletPopupModal.tsx` | 525 |
+| `src/views/DiaryView.tsx` | 499 |
+| `src/views/SecurityView.tsx` | 467 |
+| `src/components/TransactionForm.tsx` | 417 |
+| `src/views/DebtsView.tsx` | 377 |
+| `src/components/AuthModal.tsx` | 309 |
+| `src/views/DashboardView.tsx` | 294 |
+| `src/App.tsx` | 254 |
+| `src/components/Navbar.tsx` | 246 |
+| `src/views/WalletsView.tsx` | 235 |
+
+| Phase | Total src+tests LOC | `FinanceContext.tsx` LOC |
+|---|---|---|
+| **Phase 0 baseline** | 9,529 | 1,589 |
+| **Phase 29 closeout (final, 2026-09-19)** | 11,261 | 1,855 |
+
+Top 12 files under `src/`, final:
+
+| File | Lines |
+|---|---|
+| `src/context/FinanceContext.tsx` | 1,855 |
+| `src/views/TransactionsView.tsx` | 557 |
+| `src/components/WalletPopupModal.tsx` | 475 |
+| `src/components/TransactionForm.tsx` | 458 |
+| `src/views/SecurityView.tsx` | 457 |
+| `src/views/DiaryView.tsx` | 407 |
+| `src/views/DashboardView.tsx` | 329 |
+| `src/views/DebtsView.tsx` | 306 |
+| `src/components/AuthModal.tsx` | 276 |
+| `src/App.tsx` | 273 |
+| `src/components/wallet/WalletTransferForm.tsx` | 226 |
+| `src/components/InlineMathInput.tsx` | 220 |
+
+**Both totals grew, and that is expected, not a regression to explain away.** `FinanceContext.tsx` (1,589 → 1,855, +16.7%) grew from Phase 13's context split (more type surface, not more logic), Phase 15's `repayDebtAtomic`/idempotency plumbing, and Phase 17's realtime-sync hardening — all additive correctness/architecture work, not duplication this roadmap was trying to remove. Total `src+tests` LOC (9,529 → 11,261, +18.2%) reflects 12 new characterization spec files (Phase 7) plus every new shared primitive/hook/domain-utility module this roadmap added (`Modal`, `SectionHeader`, `Card`, `Badge`, `ProgressMeter`, `EmptyState`, `ConfirmDialog`, `SegmentedControl`, `TxCells`, `txTypeMeta`, `mapUtils`, `formStyles`, `useSubmitHandler`, `useIdempotencyKey`, `useTransientFlash`, `TransferFundsModal`, `AddWalletModal`) — each one net-negative for the specific duplicated call sites it replaced (see each phase's own "Metric delta" column in `task-ledger.md` for the per-file shrinkage), but a net-positive line count once counted as new files. The roadmap's target was duplication and re-render cost, never raw line count.
+
+## Re-render counts (scenario replay)
+
+**Captured 2026-09-17, after Phase 4 (T1/T3/T7/T8 already shipped on `main` at commit `1e4381e`), on a throwaway branch `benchmark/re-render-metrics` that was never merged and no longer exists.**
+
+**What this column is and isn't:** this was captured *after* T1/T3/T8 already shipped, not before. Phase 0 deliberately kept zero `src/` edits (including on a disposable branch), and the instrumentation branch was never stood up before Phase 2/4 landed — a gap explicitly flagged in the Phase 2 and Phase 4 `refactor-log.md` entries. There is consequently **no true pre-refactor baseline to diff against**; that measurement opportunity is gone. What follows is a single **current-state** snapshot, read qualitatively (does this component re-render when its actual inputs are unchanged?) rather than as a before/after delta table. The "Phase 0 baseline" row is left as `not captured` — per this file's own rule, a column is never rewritten after the fact — and a new `Post-Phase-4` row holds the real numbers.
+
+### Method actually used
+
+1. Throwaway branch `benchmark/re-render-metrics`, off `main` at `1e4381e`.
+2. `App.tsx`: wrapped `<MainApp />` in `<Profiler id="app" onRender={...}>`, pushing `phase` onto `window.__commits` (method (a) — true DOM-commit count, **not** inflated by StrictMode; see caveat below).
+3. New file `src/_bench.ts` exporting `bump(name)`, which both calls `console.count(name)` (as originally specified) and increments `window.__rc[name]` (added for deterministic programmatic harvesting — parsing `console.count`'s printed text via `page.on('console', ...)` was the originally documented plan, but a plain counter object read via `page.evaluate()` is more reliable and equally lightweight/zero-dependency). `bump(<Name>)` was inserted as the first statement in: `MainApp`, `Navbar`, `MobileBottomNav`, `AuthModal`, `ReloadPrompt`, `QuickAddModal`, `DashboardView`, `TransactionForm`, `InlineMathInput`, `AnimatedCounter`, `WalletPopupModal`, `DiaryView`, `DiaryEntryCard`, `RecentTransactionsTable` — this doc's original target list plus `QuickAddModal`/`DiaryEntryCard` (both new components T1/T8 created, after the target list was written). `AddWalletForm`, `WalletTransferForm`, `SecurityView`, `KeywordRulesView` were instrumented in an earlier pass of this same measurement and confirmed to never fire during S1-S5 (none of the five scenarios visit the wallets/debts/security/keywords tabs), so the final pass omitted them.
+4. A temporary `tests/_benchmark.spec.ts` ran all five scenarios in one continuous Chromium session (only Chromium — this measurement doesn't need cross-browser coverage), snapshotting `window.__rc`/`window.__commits.length` before and after each scenario's action and diffing.
+5. **First attempt had a real flaw, caught and fixed before recording anything:** S4 typed into the diary notes field without first saving any diary entry. A fresh Playwright browser context has **zero** diary entries, so `DiaryEntryCard` showing 0 renders proved nothing — there was no card to (not) re-render. Fixed by saving one diary entry first (clicking `#save-diary-entry-btn`), asserting a card actually exists (`[id^="diary-card-"]` count > 0), *then* measuring whether editing the form re-renders that already-rendered card.
+6. Ran twice with the fix in place to confirm structural findings were reproducible, not measurement noise — see Findings.
+7. Working tree wiped with `git checkout -- . && git clean -fd` (nothing had been committed on the branch), switched back to `main`, deleted the branch with `git branch -D`.
+
+**StrictMode caveat:** `main.tsx` wraps the app in `<StrictMode>`, which deliberately double-invokes component function bodies in development to surface impure renders — every `__rc` count below is inflated roughly ×2 versus a production build. `commits` (the `Profiler`'s actual DOM-commit count) is **not** inflated the same way — React only commits to the DOM once per real update regardless of StrictMode's extra render-function calls. Read `__rc` numbers as "which components rendered, and in what proportion to each other," not as literal production counts; read `commits` as the closer proxy for real work.
+
+### Fixed scenarios (do not change these once a baseline exists — a changed scenario invalidates every prior column)
+
+- **S1 — Cold load.** `page.goto('/')` → dashboard painted.
+- **S2 — One write** (the headline number). From S1: open Quick Add → fill ฿150 + wallet + description → submit → modal closes.
+- **S3 — Typing.** From S1: type 12 characters into the `TransactionForm` description field.
+- **S4 — Diary keystroke.** Diary tab → save one diary entry (so the list is non-empty) → type into notes.
+- **S5 — Tab cycle.** dashboard → transactions → wallets → dashboard.
+
+| Phase | S1 | S2 | S3 | S4 | S5 |
+|---|---|---|---|---|---|
+| **Phase 0 baseline** | not captured | not captured | not captured | not captured | not captured |
+| **Post-Phase-4** | see below | see below | see below | see below | see below |
+
+### Results (run 2 of 2 with the S4 fix in place; run 1 was structurally identical — see Findings)
+
+Per-component `__rc` deltas during each scenario's action (a component absent from a scenario's row rendered **zero** times during that action — that absence is itself the signal for several rows below). `commits` is the `Profiler`'s DOM-commit count for the same window.
+
+| Component | S1 (cold load) | S2 (write) | S3 (typing, no submit) | S4 (diary keystroke) | S5 (tab cycle ×3) |
+|---|---|---|---|---|---|
+| `MainApp` | 2 | 4 | 4 | 0 | 6 |
+| `Navbar` | 2 | 6 | 4 | 0 | 6 |
+| `MobileBottomNav` | 2 | **0** | 0 | 0 | 6 |
+| `AuthModal` | 2 | 4 | 4 | 0 | 6 |
+| `ReloadPrompt` | 2 | 4 | 4 | 0 | 6 |
+| `QuickAddModal` | 2 | 6 | 4 | 0 | 6 |
+| `DashboardView` | 60 | 6 | 4 | 0 | 0 (unmounted mid-cycle, see notes) |
+| `RecentTransactionsTable` | 6 | 2 | 0 | 0 | 0 |
+| `TransactionForm` | 42 | 20 | 40 | 0 | 0 |
+| `InlineMathInput` | 32 | 24 | 40 | 0 | 0 |
+| `WalletPopupModal` | 2 | 6 | 4 | 0 | 0 |
+| `AnimatedCounter` | 590 (timing-dependent, see notes) | 636 (timing-dependent) | 100 (timing-dependent) | 0 | 6 |
+| `DiaryView` | 0 | 0 | 0 | 34 | 0 |
+| `DiaryEntryCard` | 0 | 0 | 0 | **0** | 0 |
+| *sanity: cards on screen before the S4 keystroke* | — | — | — | **1** | — |
+| **`commits` (Profiler)** | 52 | 69 | 32 | 17 | 3 |
+
+### Findings
+
+- **T1 confirmed directly: `MainApp`'s S2 delta (4) equals exactly its own open+close UI-state transitions (2 state changes × StrictMode's ×2) and nothing more.** Before T1, `MainApp` also subscribed to `useFinance()` for the write itself, which would have added a third re-render trigger on top of open/close. Post-T1, opening and closing the modal is the *only* thing that moves `MainApp` — the ledger write itself contributes zero additional `MainApp` renders.
+- **T2 confirmed directly: `MobileBottomNav` shows 0 renders during S2 (the write) but 6 during S5 (the tab cycle).** Same `React.memo`'d component, two different outcomes, because its only prop that matters (`activeTab`) is unchanged during a financial write but genuinely changes on every tab transition. This is memo working exactly as intended, not by accident.
+- **T8 confirmed directly, with the false-positive risk explicitly closed: `DiaryEntryCard` shows 0 renders during S4 while a real card is present on screen** (sanity row: 1 card existed before the keystroke), and `DiaryView` itself renders 34 times (≈ once per keystroke, doubled by StrictMode, for "S4 keystroke test" = 17 characters). Typing into the diary notes field re-renders the form but the **already-rendered, unrelated** entry-card row below it does zero work — the exact claim T8 made, now measured against a non-empty list rather than an accidentally-empty one.
+- **New finding, not on the task ledger: `DashboardView`, `AuthModal`, `ReloadPrompt`, and `QuickAddModal` are not wrapped in `React.memo`, so they re-render on every `MainApp` render regardless of whether their own props changed** — visible in S5, where `AuthModal`/`ReloadPrompt` (which take no data derived from the active tab at all) still render exactly 6 times, once per `MainApp` render, purely because they're unmemoized children of a re-rendering parent. T1/T3 fixed *why* `MainApp` re-renders (only on its own real UI-state changes now); they didn't add memoization to what `MainApp` renders inline. This is a legitimate, cheap follow-on (`React.memo` on `AuthModal` and `ReloadPrompt` specifically — both take stable/no props) that isn't currently on `task-ledger.md`. Recommend adding it as a new low-risk candidate task in a future pass.
+- **`AnimatedCounter`'s counts are not meaningfully comparable run-to-run** (236-596 across three runs for S1 alone) because it's driven by `requestAnimationFrame` ticks over a 0.8-1.4s duration, not by discrete state transitions — more simultaneously-animating instances (S1's cold load animates ~6 counters: navbar total, dashboard hero, 3 wallet cards, cashflow cards) and OS/browser frame-pacing variance both move this number. Its presence/absence per scenario is still informative; the magnitude is not.
+- `DashboardView`'s S5 delta shows 0 because the tab cycle's third step returns to `dashboard`, and by the time the final snapshot is taken the view has fully **remounted** (per ADR `0005`'s deliberate `key={activeTab}` unmount/remount design) rather than "re-rendered" in the `__rc` sense — a fresh mount calls `bump()` too, but the before/after diff across an unmount+remount cycle isn't cleanly captured by this instrumentation. Treat `DashboardView`'s S5 row as inconclusive rather than as evidence of zero work — a benchmark-methodology limitation, not a code finding.
+- `TransactionForm`/`InlineMathInput` in S3 (40/40 both runs, exactly) scale almost exactly 1:1 with the 18 characters typed (`pressSequentially`, doubled by StrictMode ≈ 36, plus a few mount/unmount renders ≈ 40) — expected, controlled-input behavior, not a regression. Unlike `AnimatedCounter`, these were identical across both runs, confirming they're driven by discrete keystroke events, not animation timing.
+- `commits` (true DOM commits, not StrictMode-inflated) tracks the `__rc` numbers proportionally across scenarios (S1 ~52, S2 ~69, S3 ~32, S4 17, S5 3) — S5's very low commit count (3, one per tab transition) versus its relatively high `__rc` deltas (6 across several components) is the clearest illustration of the StrictMode-inflation caveat above: 3 real DOM updates, each counted twice at the function-invocation level.
+
+**Reproducibility:** all findings above (the T1/T2/T8 confirmations and the new unmemoized-siblings finding) were identical in shape across both runs with the S4 fix in place. Only `AnimatedCounter`'s magnitude and `DashboardView`'s cold-load (S1) count varied between runs (both timing-sensitive, as noted).
+
+### Post-T34 (`Navbar` de-subscription) — S2 delta, `Navbar` row only
+
+**Method:** a lighter, targeted variant of the harness above, scoped to the one claim T34 makes (CLAUDE.md's "no component above view level subscribes to finance state" — `Navbar` was the one violation). Rather than the full `<Profiler>` + per-component `__rc` matrix (which required a throwaway branch that no longer exists), a single temporary counter was added directly to the top of `Navbar`'s function body — `window.__navbarFnCalls++` — incremented once per actual function-body execution (so a `React.memo` bail-out, which skips the call entirely, correctly reads as zero). The counter and its call site were never committed; both were removed before this phase's commit (`grep -rn "__navbarFnCalls" src/ tests/` returns nothing on the committed tree).
+
+Same S2 scenario as above (open Quick Add → fill amount/wallet/description → submit → modal closes), reset immediately after cold load so only the write itself is measured:
+
+| | `Navbar` function-body executions during S2 |
+|---|---|
+| **Pre-T34** (measured just now, on the pre-T34 committed `Navbar.tsx` restored via `git stash`) | 6 |
+| **Post-T34** (current tree) | 0 |
+
+The pre-T34 figure (6) matches the original Phase-4 baseline's `Navbar` S2 row exactly (see the table above), which is a useful cross-check that this lighter probe measures the same thing the original harness did, not an artifact of a different methodology. Post-T34, `Navbar` is `React.memo`'d and receives no props that change during a write, so it never re-executes — the write's effect is now confined to `NavbarSyncBadge` and `NavbarBalanceAndAuth` (the two new subscribing sub-components), which are expected and intended to re-render, being a small fraction of what `Navbar` used to render as one unmemoized whole.
+
+**Reproduction:** `git stash push -- src/components/Navbar.tsx` to restore the pre-T34 file, add one line at the top of the function body incrementing a `window` counter, run a temporary Playwright spec that resets the counter after `page.goto('/')` and reads it after one `addQuickTransaction` call, then `git checkout -- src/components/Navbar.tsx && git stash pop` to restore and discard the probe.
+
+
+## Phase 39 (Jev classification) — bundle delta, measured against a rebuild of HEAD
+
+**Why this is a section and not a column.** The entry-chunk figure carried forward in `refactor-log.md` Phase 36 (158.93 kB raw / 44.81 kB gzip) no longer describes HEAD: Phases 37–38 and the presets feature added app code, and HEAD now builds at **161.53 kB / 45.37 kB**. Differencing this phase against the documented number would have invented a +2.60 kB regression that this phase did not cause. So the baseline was re-measured directly instead.
+
+**Method.** `git stash push -u` the entire phase → `npm run clean && npm run build` → record → `git stash pop` → rebuild. Same machine, same Node (v24.19.0), same `node_modules`, clean tree both times, no dev server running.
+
+| Chunk | HEAD (stashed) | Phase 39 | Delta |
+|---|---|---|---|
+| entry `index-*.js` | 161.53 kB / 45.37 kB gzip | **161.53 kB / 45.37 kB gzip** | **0 / 0** |
+| `TransactionForm-*.js` (lazy) | 13.07 kB / 3.90 kB gzip | 17.65 kB / 5.53 kB gzip | +4.58 kB / +1.63 kB |
+| `vendor-math-*.js` | 375.73 kB / 110.72 kB gzip | 375.73 kB / 110.72 kB gzip | 0 / 0 |
+| vendor chunk count | 5 | 5 | 0 |
+| build time | 5.23 s | 17.75 s | *(cold cache after `clean`; not comparable)* |
+
+**Findings**
+
+- **The entry chunk is byte-identical.** Every byte of new client code (`jevClassifier.ts`, `useDescriptionClassifier.ts`, `CategorySuggestionChip.tsx`, the `TransactionForm` wiring) landed in the lazy `TransactionForm` chunk, confirmed by `grep -l '/api/classify' dist/assets/*.js` returning only `TransactionForm-*.js`. This is ADR `0010`'s deferral doing its job: `TransactionForm` is reachable only through `QuickAddModal`/`TransactionsView`/`DebtsView`, all behind `React.lazy`.
+- **`api/classify.ts` contributes zero bytes to the client**, because it never enters the Vite module graph — it is built by Vercel as a serverless function. Its only link to `src/` is an `import type`, which TypeScript erases.
+- **No new vendor chunk and no new dependency.** `grep -rl 'typesafe-ai' dist/` returns nothing; `vite.config.ts`'s `manualChunks` was not touched.
+- **The entry chunk references `vendor-math-*.js` in both builds.** This was checked specifically because it looks like an ADR `0010` regression and is not one — the identical reference exists in the stashed HEAD build. It is Vite's module-preload/dynamic-import map naming the chunk, not an eager import. ADR `0010`'s claim was always about requests at first paint, which this phase neither re-measured nor changed.
+
+**Test-suite size:** 129 → **144 runs** (43 → 48 tests, 14 → 15 spec files). Wall clock `npx playwright test --workers=4`: 3.4 m → 3.5 m.
+
+## Phase 40 (category descriptions) — bundle delta, measured against a rebuild of HEAD
+
+Same method as the Phase 39 section: `git stash push -u` the whole phase, `npm run clean && npm run build`, record, `git stash pop`, rebuild. Same machine, Node v24.19.0, same `node_modules`, clean tree both times, no dev server running. HEAD here is `2633af7`.
+
+| Chunk | HEAD (stashed) | Phase 40 | Delta |
+|---|---|---|---|
+| entry `index-*.js` | 161.53 kB / 45.37 kB gzip | **163.10 kB / 46.05 kB gzip** | **+1.57 kB / +0.68 kB** |
+| `CategoriesView-*.js` (lazy) | 14.20 kB / 3.76 kB gzip | 15.15 kB / 3.94 kB gzip | +0.95 kB / +0.18 kB |
+| `TransactionForm-*.js` (lazy) | 17.65 kB / 5.53 kB gzip | 17.77 kB / 5.57 kB gzip | +0.12 kB / +0.04 kB |
+| `vendor-math-*.js` | 375.73 kB / 110.72 kB gzip | 375.73 kB / 110.72 kB gzip | 0 / 0 |
+| vendor chunk count | 5 | 5 | 0 |
+| build time | 6.77 s | 6.39 s | — (both cold after `clean`) |
+
+**Findings**
+
+- **This is the first phase since 36 to move the entry chunk, and it does so on purpose.** `FinanceContext.tsx` is eager, so the nine `DEFAULT_SYSTEM_CATEGORIES` descriptions land on the critical path along with `withDefaultDescriptions` and the `description` mapping in three mutators. Confirmed by `grep -l 'Netflix or Spotify' dist/assets/*.js`, which resolves only to `index-*.js`.
+- **The cost was about double the pre-build estimate** (+~0.7 kB raw / +~0.3 kB gzip was predicted). Recorded as measured. The rejected alternative — a static hint map inside `api/classify.ts`, which would have cost the client zero bytes — was rejected on ownership grounds in ADR `0012`, not on size, so this is a known and accepted trade rather than an overrun.
+- **Everything else stayed lazy.** `grep -l '/api/classify' dist/assets/*.js` still resolves only to `TransactionForm-*.js`; the `CategoriesView` growth is the two textareas and their state, in a `React.lazy` view chunk.
+- **No new dependency and no new vendor chunk.** `grep -rl 'typesafe-ai' dist/` returns nothing and `manualChunks` is unmodified, so ADR `0010`'s `vendor-math` deferral is intact.
+- **`api/classify.ts` still contributes zero client bytes.** Its only link to `src/` remains an `import type`, which TypeScript erases; Vercel builds it as a serverless function outside the Vite graph.
+
+**Test-suite size:** 144 → **150 runs** (48 → 50 tests, 15 spec files unchanged). Wall clock `npx playwright test --workers=4`: 3.5 m → 4.1 m.
+
+## Phase 41 (express note entry) — bundle delta, measured against a rebuild of HEAD
+
+Same method as the Phase 39 and 40 sections: `git stash push -u` the whole phase, `npm run clean && npm run build`, record, `git stash pop`, rebuild. Same machine, Node v24.19.0, same `node_modules`, clean tree both times, no dev server running. HEAD here is `5a67726`.
+
+| Chunk | HEAD (stashed) | Phase 41 | Delta |
+|---|---|---|---|
+| entry `index-*.js` | 163.10 kB / 46.05 kB gzip | **163.30 kB / 46.11 kB gzip** | **+0.20 kB / +0.06 kB** |
+| `TransactionForm-*.js` (lazy) | 17.77 kB / 5.57 kB gzip | 17.90 kB / 5.84 kB gzip | +0.13 kB / +0.27 kB |
+| `QuickAddModal-*.js` (lazy) | 2.53 kB / 1.19 kB gzip | 2.60 kB / 1.22 kB gzip | +0.07 kB / +0.03 kB |
+| `index-*.css` | 77.68 kB / 11.93 kB gzip | 77.02 kB / 11.85 kB gzip | **−0.66 kB / −0.08 kB** |
+| `vendor-math-*.js` | 375.73 kB / 110.72 kB gzip | 375.73 kB / 110.72 kB gzip | 0 / 0 |
+| vendor chunk count | 5 | 5 | 0 |
+| build time | 16.04 s | 6.90 s | *(baseline was the session's first build, cold cache; not comparable)* |
+
+**Findings**
+
+- **The entry delta is `App.tsx` and nothing else.** `App.tsx` is eager, and it gained three `useCallback`s (`handleQuickAddTransfer`, `handleQuickAddRepayDebt`, `handleNavigateToDebts`) plus four JSX props. +0.20 kB raw is the whole cost of making the shortcut row reachable.
+- **The parser is entirely off the critical path.** `grep -l 'baht' dist/assets/*.js` resolves **only** to `TransactionForm-*.js`, so `expressInput.ts` ships inside the lazy chunk that ADR `0010` already defers. `grep -l '/api/classify' dist/assets/*.js` still resolves only to the same chunk.
+- **The `TransactionForm` chunk barely moved despite a large rewrite**, because the phase deleted roughly as much as it added: the destination-wallet select, its validity effect, the `destinationWalletOptions` memo, the TRANSFER submit/label/description branches, and the entire collapse block all came out. Gzip grew slightly more than raw (+0.27 vs +0.13 kB) — the new parser's regex literals compress worse than the repetitive Tailwind strings that were removed.
+- **The CSS shrank, which was not a goal.** The deleted collapse banner and "To Wallet" block took their utility classes out of the Tailwind scan with them.
+- **No new dependency and no new vendor chunk.** `manualChunks` is unmodified, so ADR `0010`'s `vendor-math` deferral (110.72 kB gzip, still the largest chunk in the build) is intact.
+
+**Test-suite size:** 150 → **165 runs** (50 → 55 tests, 15 → **16** spec files — the first new spec file since Phase 39). Wall clock `npx playwright test --workers=4`: 4.1 m → 4.5 m.
+
+## Phase 42 (visual transfer layout) — bundle delta, measured against a rebuild of HEAD
+
+Same method as the Phase 39–41 sections: `git stash push -u` the whole phase, `npm run clean && npm run build`, record, `git stash pop`, rebuild. Same machine, Node v24.19.0, same `node_modules`, clean tree both times, no dev server running. HEAD here is `84c4400`.
+
+| Chunk | HEAD (stashed) | Phase 42 | Delta |
+|---|---|---|---|
+| entry `index-*.js` | 163.30 kB / 46.11 kB gzip | **163.31 kB / 46.12 kB gzip** | **+0.01 kB / +0.01 kB** |
+| `TransferFundsModal-*.js` (lazy) | 4.10 kB / 1.76 kB gzip | 7.76 kB / 2.96 kB gzip | +3.66 kB / +1.20 kB |
+| `index-*.css` | 77.02 kB / 11.85 kB gzip | 77.82 kB / 11.98 kB gzip | +0.80 kB / +0.13 kB |
+| `vendor-math-*.js` | 375.73 kB / 110.72 kB gzip | 375.73 kB / 110.72 kB gzip | 0 / 0 |
+| vendor chunk count | 5 | 5 | 0 |
+| build time | 5.68 s | 5.26 s | — (both cold after `clean`) |
+
+**Findings**
+
+- **The whole redesign rides the lazy chunk.** `grep -l 'overdraws' dist/assets/*.js` resolves **only** to `TransferFundsModal-*.js` — the panels, the preview, the swap button and the warning all land behind ADR `0010`'s `hasOpened` latch, so none of it is on the critical path.
+- **The entry chunk moved 10 bytes, and that is the `roundToCents` extraction.** Moving a two-line function from a module-private definition into its own module was expected to be byte-neutral after minification; it is not quite, because it adds a module boundary inside the eager `FinanceContext` graph. Recorded as measured rather than rounded to "unchanged" — the honest figure is more useful than a tidy one.
+- **The CSS grew more in raw bytes than the JS chunk grew in gzip.** The two-panel grid, the amber overdraft banner and the circular swap button introduced utility classes the Tailwind scan had not previously emitted. This is the inverse of Phase 41, where deleting the collapse banner and the "To Wallet" block *shrank* the CSS by 0.66 kB.
+- **No new dependency and no new vendor chunk.** `manualChunks` is unmodified, so ADR `0010`'s `vendor-math` deferral (110.72 kB gzip, still the largest chunk) is intact.
+- **`TransferFundsModal-*.js` nearly doubled** (4.10 → 7.76 kB raw) and that is the expected shape of this phase: a plain stacked form became a two-panel layout with a preview, a warning, a swap control and an empty state. It remains the fourth-smallest chunk in the build.
+
+**Test-suite size:** 165 → **186 runs** (55 → 62 tests, 16 → **17** spec files). Wall clock `npx playwright test --workers=4`: 4.5 m → 4.3 m.
+
+## Phase 43 (debt payoff preview) — bundle delta, measured against a rebuild of HEAD
+
+Same method as the Phase 39–42 sections, with one change: the phase was already committed when the measurement ran, so instead of `git stash push -u` this built `fb56cf8` (the pre-phase HEAD) and `main` in turn — `checkout` → `npm run clean && npm run build` → record → `checkout` → rebuild. Same machine, Node v24.19.0, same `node_modules`, clean tree both times, no dev server running.
+
+| Chunk | HEAD (`fb56cf8`) | Phase 43 | Delta |
+|---|---|---|---|
+| entry `index-*.js` | 163.31 kB / 46.12 kB gzip | **163.35 kB / 46.14 kB gzip** | **+0.04 kB / +0.02 kB** |
+| `TransactionForm-*.js` (lazy) | 17.90 kB / 5.84 kB gzip | 21.30 kB / 6.63 kB gzip | +3.40 kB / +0.79 kB |
+| `ProgressMeter-*.js` (shared) | 1.16 kB / 0.64 kB gzip | 0.48 kB / 0.33 kB gzip | **−0.68 kB / −0.31 kB** |
+| `useDebts-*.js` (shared, **new**) | — | 0.73 kB / 0.42 kB gzip | +0.73 kB / +0.42 kB |
+| `DebtsView-*.js` (lazy) | 9.63 kB / 3.07 kB gzip | 9.66 kB / 3.08 kB gzip | +0.03 kB / +0.01 kB |
+| `index-*.css` | 77.82 kB / 11.98 kB gzip | 77.92 kB / 12.00 kB gzip | +0.10 kB / +0.02 kB |
+| `vendor-math-*.js` | 375.73 kB / 110.72 kB gzip | 375.73 kB / 110.72 kB gzip | 0 / 0 |
+| **all JS, summed** | 1325.35 kB / 389.52 kB gzip | 1328.98 kB / 390.52 kB gzip | +3.63 kB / +1.00 kB |
+| chunk count | 32 | 33 | **+1** |
+| vendor chunk count | 5 | 5 | 0 |
+| build time | 5.13 s | 5.21 s | — (both cold after `clean`) |
+
+**Findings**
+
+- **The feature rides the lazy chunk.** `grep -l 'more than this debt needs' dist/assets/*.js` resolves **only** to `TransactionForm-*.js`, which is already behind `React.lazy` at all three of its call sites. None of the payoff block is on the critical path.
+- **The entry chunk's +0.04 kB is not this phase's code.** Importing `ProgressMeter` into `TransactionForm` gave that module a second lazy importer, and Rollup re-partitioned the shared graph: `ProgressMeter-*.js` **shrank** by 0.68 kB and `useDebts` split out into a new chunk of its own. One extra chunk means one extra entry in the preload map the entry chunk carries. The plan predicted "entry chunk unchanged" — recorded as measured, with the cause identified rather than rounded away.
+- **A shared chunk got *smaller* because an import was added to it.** This is the first phase in this table where that happened, and it is the reason the **all JS, summed** row now exists: reading a single chunk's delta in isolation would have suggested +3.40 kB when the real cost across the build is +3.63 kB. Chunk sizes are a partitioning outcome, not a per-module cost.
+- **CSS barely moved** (+0.10 kB raw). The payoff block reuses the save-as-template block's container shell and the template chips' class verbatim, so almost every utility it needs was already in the scan. Compare Phase 42's +0.80 kB, where a new panel layout, an amber banner and a circular button all introduced fresh classes; the amber note here is the only genuinely new shape and it shares its palette with the transfer overdraft warning.
+- **No new dependency, no new vendor chunk.** `manualChunks` is unmodified, so ADR `0010`'s `vendor-math` deferral (110.72 kB gzip, still the largest chunk) is intact.
+
+**Test-suite size:** 186 → **210 runs** (62 → 70 tests, 17 → **18** spec files). Wall clock `npx playwright test --workers=4`: 4.3 m → 4.8 m.
+
+## Phase 44 (debt repayment integrity) — bundle delta, measured against a rebuild of HEAD
+
+Same method as Phase 43: the phase was already committed, so this built `b83ad93` (the pre-phase HEAD) and `main` in turn — `checkout` → `npm run clean && npm run build` → record → `checkout` → rebuild. Same machine, Node v24.19.0, same `node_modules`, clean tree both times, no dev server running.
+
+| Chunk | HEAD (`b83ad93`) | Phase 44 | Delta |
+|---|---|---|---|
+| entry `index-*.js` | 163.35 kB / 46.14 kB gzip | **164.29 kB / 46.32 kB gzip** | **+0.94 kB / +0.18 kB** |
+| `TransactionForm-*.js` (lazy) | 21.30 kB / 6.63 kB gzip | 21.39 kB / 6.64 kB gzip | +0.09 kB / +0.01 kB |
+| `index-*.css` | 77.92 kB / 12.00 kB gzip | 77.92 kB / 12.00 kB gzip | **0 / 0** |
+| `vendor-math-*.js` | 375.73 kB / 110.72 kB gzip | 375.73 kB / 110.72 kB gzip | 0 / 0 |
+| **all JS, summed** | 1328.98 kB / 390.52 kB gzip | 1330.01 kB / 390.71 kB gzip | +1.03 kB / +0.19 kB |
+| chunk count | 33 | 33 | 0 |
+| vendor chunk count | 5 | 5 | 0 |
+| build time | — | 5.75 s | not compared; the baseline build was the first after a checkout and its 19.11 s is a cold-cache artefact, not a signal |
+
+**Findings**
+
+- **This phase puts real weight on the critical path, and that is correct rather than a regression.** `grep -l 'remaining on' dist/assets/*.js` resolves **only** to the entry chunk. Phases 41–43 all rode lazy chunks because their code lived in `TransactionForm`; both of this phase's guards live in `FinanceContext`, which is eager by construction — it is the provider wrapping the app. +0.94 kB raw / +0.18 kB gzip is the price of enforcing an invariant at the layer that actually commits, and paying it in a lazy chunk instead would mean enforcing it somewhere a caller could bypass.
+- **The CSS did not move by a single byte** — the two builds produced an identical content hash (`index-Dwrjbfi7.css`). The constraint note reuses the amber palette and layout classes the warning it replaced already carried, so the Tailwind scan emitted nothing new. The first zero-delta CSS row in this table; compare Phase 42's +0.80 kB and Phase 43's +0.10 kB.
+- **The chunk set is unchanged**, unlike Phase 43 where adding a lazy importer re-partitioned a shared chunk and added one. Nothing here changes an import graph — both guards are additions inside modules that were already in the entry chunk.
+- **The summed-JS row (+1.03 kB) barely exceeds the entry row (+0.94 kB)**, which is the expected shape when a change is confined to already-eager modules plus a few lines in one lazy one. It is kept because Phase 43 proved a single chunk's delta can mislead.
+- **No new dependency, no new vendor chunk.** `manualChunks` unmodified; ADR `0010`'s `vendor-math` deferral (110.72 kB gzip) intact.
+
+**Test-suite size:** 210 → **225 runs** (70 → 75 tests, 18 spec files — one test inverted, five added, no new file). Wall clock `npx playwright test --workers=4`: 4.8 m → 5.2 m.
+
+**Stability note:** the first full run of this phase reported 224/225, with `wallets.spec.ts:9` failing on webkit — a spec this phase does not touch. It passed 3/3 in isolation and the suite re-ran clean at 225/225. Recorded as `--workers=4` contention flake rather than resolved; CI runs `workers: 1`.
+
+## Phase 45 (one-click smart rule capture) — bundle delta, measured against a rebuild of HEAD
+
+Same method as Phases 43 and 44: the phase was already committed, so this built `b54941b` (the pre-phase HEAD) and `main` in turn — `checkout` → `npm run clean && npm run build` → record → `checkout` → rebuild. Same machine, same `node_modules`, clean tree both times, no dev server running. The HEAD column reproduced Phase 44's recorded figures to the byte (1330.01 kB / 390.71 kB gzip summed), which is the check that the method has not drifted.
+
+| Chunk | HEAD (`b54941b`) | Phase 45 | Delta |
+|---|---|---|---|
+| entry `index-*.js` | 164.29 kB / 46.32 kB gzip | **164.29 kB / 46.33 kB gzip** | **0 / +0.01 kB** |
+| `TransactionForm-*.js` (lazy) | 21.39 kB / 6.64 kB gzip | 24.51 kB / 7.31 kB gzip | +3.12 kB / +0.67 kB |
+| `index-*.css` | 77.92 kB / 12.00 kB gzip | 77.92 kB / 12.00 kB gzip | **0 / 0** (identical hash `index-Dwrjbfi7.css`) |
+| `vendor-math-*.js` | 375.73 kB / 110.72 kB gzip | 375.73 kB / 110.72 kB gzip | 0 / 0 |
+| **all JS, summed** | 1330.01 kB / 390.71 kB gzip | 1333.13 kB / 391.39 kB gzip | +3.12 kB / +0.68 kB |
+| chunk count | 33 | 33 | 0 |
+| vendor chunk count | 5 | 5 | 0 |
+| build time | — | 5.27 s | not compared; the HEAD build's 16.84 s is a cold-cache artefact of being the first build after a checkout, as in Phase 44 |
+
+**Findings**
+
+- **The entry chunk did not move by a single raw byte.** This is the cleanest result in the table and it was predicted rather than discovered: `addKeywordRule` was already in the entry chunk via `FinanceContext`, and no eager module gained an import. Contrast Phase 44, whose guards lived in `FinanceContext` itself and cost +0.94 kB on the critical path. The +0.01 kB gzip delta is compression noise from a changed chunk filename in the preload map, not content.
+- **The whole feature rides the lazy chunk.** `grep -l 'Always file' dist/assets/*.js` resolves **only** to `TransactionForm-*.js`, which is behind `React.lazy` at all three of its call sites.
+- **`SaveRuleChip` did not get a chunk of its own,** so unlike Phase 43 nothing re-partitioned. It has exactly one importer, and Rollup folded it into that importer's chunk — 33 chunks before and after. The **all JS, summed** row (+3.12 kB) matching the single-chunk row (+3.12 kB) exactly is the arithmetic proof of that.
+- **The CSS content hash was identical again** — `index-Dwrjbfi7.css` in both builds, the second consecutive zero-byte CSS phase and the first time one has held while a *new component file* was added. The chip reuses `CategorySuggestionChip`'s container, text and button classes verbatim, and its emerald confirmation palette already existed on the ADR `0015` settle note. The only genuinely new utilities are `disabled:opacity-50` and `disabled:cursor-not-allowed`, both of which the scan already carried from elsewhere.
+- **No new dependency, no new vendor chunk.** `manualChunks` unmodified; ADR `0010`'s `vendor-math` deferral (110.72 kB gzip, still the largest chunk) intact. Two new `lucide-react` icons (`Tag`, `Check`) are part of the +3.12 kB.
+
+**Test-suite size:** 225 → **252 runs** (75 → 84 tests, 18 → **19** spec files — 9 added, none inverted or removed). Wall clock `npx playwright test --workers=4`: 5.2 m → 5.7 m.
+
+**Stability note:** the first full run passed 252/252 with no retries. Phase 44's `wallets.spec.ts` webkit flake at `--workers=4` did not reproduce here; it stays on the watch list rather than being declared resolved on one clean run.
+
+## Phase 46 (voice input for the omni note) — bundle delta, measured against a rebuild of HEAD
+
+Same method as Phases 43–45: built `446aafb` (the pre-phase HEAD) and `main` in turn — `checkout` → `npm run clean && npm run build` → record → `checkout` → rebuild. Same machine, same `node_modules`, clean tree both times, no dev server running. The HEAD column reproduced Phase 45's recorded figures exactly, which is the check that the method has not drifted.
+
+| Chunk | HEAD (`446aafb`) | Phase 46 | Delta |
+|---|---|---|---|
+| entry `index-*.js` | 164.29 kB / 46.33 kB gzip | **164.29 kB / 46.32 kB gzip** | **0 / -0.01 kB** |
+| `TransactionForm-*.js` (lazy) | 24.51 kB / 7.31 kB gzip | 27.85 kB / 8.44 kB gzip | +3.34 kB / +1.13 kB |
+| `vendor-icons-*.js` (**modulepreloaded**) | 29.79 kB | 30.16 kB | **+0.37 kB** |
+| `index-*.css` | 77.92 kB / 12.00 kB gzip | 78.48 kB / 12.09 kB gzip | +0.56 kB / +0.09 kB |
+| `vendor-math-*.js` | 375.73 kB / 110.72 kB gzip | 375.73 kB / 110.72 kB gzip | 0 / 0 |
+| **all JS, summed** | 1333.13 kB / 391.39 kB gzip | 1336.84 kB / 392.57 kB gzip | +3.71 kB / +1.18 kB |
+| chunk count | 33 | 33 | 0 |
+| vendor chunk count | 5 | 5 | 0 |
+| build time | 6.51 s | 6.00 s | both cold after `clean` |
+
+**Findings**
+
+- **The entry chunk did not move, and that is still not the same as "no critical-path cost."** The `Mic` icon went into `vendor-icons`, and `dist/index.html` carries `<link rel="modulepreload" href="/assets/vendor-icons-*.js">` — so its +0.37 kB is on the initial load. This is the second time reading only the rows expected to move would have produced a wrong claim (Phase 43 was the first, and the reason the summed row exists). It was caught by diffing **every** chunk until the +3.71 kB summed delta was fully accounted for: +3.34 in `TransactionForm`, +0.37 in `vendor-icons`, nothing anywhere else.
+- **The feature itself is entirely lazy.** `grep -l 'Microphone access is blocked' dist/assets/*.js` resolves **only** to `TransactionForm-*.js`. The hook has one importer and Rollup folded it into that importer's chunk — 33 chunks before and after, so unlike Phase 43 nothing re-partitioned.
+- **CSS moved for the first time in three phases** (+0.56 kB raw, +0.09 gzip). Phases 44 and 45 were byte-identical because they reused existing shells; this one introduces genuinely new shapes — an absolutely-positioned in-field button, the rose listening palette, `animate-pulse`, and the disabled-button states. The increase is the honest cost of a control that did not previously exist anywhere in the form.
+- **No new dependency.** `@types/dom-speech-recognition` was deliberately not installed; the hook declares the six members it touches. `manualChunks` unmodified and ADR `0010`'s `vendor-math` deferral (110.72 kB gzip) intact.
+
+**Test-suite size:** 252 → **276 runs** (84 → 92 tests, 19 → **20** spec files — 8 added, none removed or inverted). Wall clock `npx playwright test --workers=4`: 5.7 m → 6.3 m.
+
+**Stability note:** first full run clean at 276/276 with no retries. Phase 44's `wallets.spec.ts` webkit flake has now not reproduced across two consecutive phases; it stays on the watch list rather than being closed on that basis.
+
+## Phase 47 (batch CSV classification) — bundle delta, measured against a rebuild of HEAD
+
+Same method as Phases 43–46: built `0bfe7bf` (the pre-phase HEAD) and `main` in turn. Same machine, same `node_modules`, clean tree both times, no dev server running. The HEAD column reproduced Phase 46's recorded figures exactly.
+
+| Chunk | HEAD (`0bfe7bf`) | Phase 47 | Delta |
+|---|---|---|---|
+| entry `index-*.js` | 164.29 kB / 46.32 kB gzip | **164.37 kB / 46.35 kB gzip** | **+0.08 kB / +0.03 kB** |
+| `TransactionsView-*.js` (lazy) | 43.69 kB / 14.00 kB gzip | 49.93 kB / 15.81 kB gzip | +6.24 kB / +1.81 kB |
+| `TransactionForm-*.js` (lazy) | 27.85 kB / 8.44 kB gzip | 28.14 kB / 8.55 kB gzip | +0.29 kB / +0.11 kB |
+| `vendor-icons-*.js` (modulepreloaded) | 30.16 kB | 30.16 kB | **0** |
+| `index-*.css` | 78.48 kB / 12.09 kB gzip | 78.51 kB / 12.10 kB gzip | +0.03 kB / +0.01 kB |
+| **all JS, summed** | 1336.84 kB / 392.57 kB gzip | 1343.45 kB / 394.53 kB gzip | +6.61 kB / +1.96 kB |
+| chunk count | 33 | 33 | 0 |
+| vendor chunk count | 5 | 5 | 0 |
+| build time | 7.83 s | 7.08 s | both cold after `clean` |
+
+**Findings**
+
+- **The summed delta is fully accounted for by three rows**: `TransactionsView` +6.24, `TransactionForm` +0.29, entry +0.08 = **+6.61**, which is the summed-JS figure to the byte. That arithmetic is the check, not a coincidence — it is what proves nothing leaked into a chunk nobody looked at, the failure Phase 46 caught the hard way.
+- **The entry chunk moved, and correctly so.** +0.08 kB is the `categoryId` lookup in `commitBulkImport`, which lives in the eager `FinanceContext`. Enforcing it anywhere lazier would mean a caller could bypass it — the same reasoning Phase 44 recorded when its ledger guards cost +0.94 kB.
+- **The predicted re-partition did not occur.** `jevClassifier` gained a second lazy importer (`TransactionsView` alongside `TransactionForm`), which is precisely the shape that made Rollup re-partition a shared chunk in Phase 43. The plan flagged it as a thing to check; 33 chunks before and after, and `TransactionForm`'s +0.29 kB is the `classifyOnce` split being duplicated into its chunk rather than a new chunk appearing.
+- **`vendor-icons` did not move at all.** `Sparkles` was already in the bundle via `TransactionForm`, so the new usage was free — in contrast with Phase 46, where one new icon put +0.37 kB on the preloaded critical path.
+- **CSS moved by 0.03 kB.** The import UI reuses existing shells almost entirely; the progress bar's inline width is a style attribute, not a class.
+
+**Test-suite size:** 276 → **300 runs** (92 → 100 tests, 20 → **21** spec files — 8 added, none removed or edited). Wall clock `npx playwright test --workers=4`: 6.3 m → 6.6 m.
+
+**Stability note:** first full run clean at 300/300 with no retries. Phase 44's `wallets.spec.ts` webkit flake has not reproduced across three consecutive phases; it stays on the watch list rather than being closed.
+
+## Phase 48 (monthly spending insights) — bundle delta, measured against a rebuild of HEAD
+
+Same method as Phases 43–47: built `9ab4d5d` (the pre-phase HEAD) and `main` in turn. Same machine, same `node_modules`, clean tree both times, no dev server running. The HEAD column reproduced Phase 47's recorded figures exactly.
+
+| Chunk | HEAD (`9ab4d5d`) | Phase 48 | Delta |
+|---|---|---|---|
+| entry `index-*.js` | 164.37 kB / 46.35 kB gzip | **164.37 kB / 46.35 kB gzip** | **0 / 0** |
+| `DashboardView-*.js` (lazy) | 40.18 kB / 8.75 kB gzip | 47.83 kB / 11.26 kB gzip | +7.65 kB / +2.51 kB |
+| `vendor-icons-*.js` (**modulepreloaded**) | 30.16 kB / 6.56 kB gzip | 30.75 kB / 6.70 kB gzip | **+0.59 kB / +0.14 kB** |
+| `index-*.css` | 78.51 kB / 12.10 kB gzip | 78.56 kB / 12.12 kB gzip | +0.05 kB / +0.02 kB |
+| `vendor-math-*.js` | 375.73 kB / 110.72 kB gzip | 375.73 kB / 110.72 kB gzip | 0 / 0 |
+| **all JS, summed** | 1343.45 kB / 394.53 kB gzip | 1351.69 kB / 397.16 kB gzip | +8.24 kB / +2.63 kB |
+| chunk count | 33 | 33 | 0 |
+| vendor chunk count | 5 | 5 | 0 |
+| build time | 6.96 s | 7.05 s | both cold after `clean` |
+
+**Findings**
+
+- **"Entry chunk byte-identical" is again not the same as free.** Four new `lucide-react` icons (`RefreshCw`, `ChevronDown`, `ChevronUp`, `WifiOff`) landed in `vendor-icons`, which `dist/index.html` **modulepreloads** — so +0.59 kB is on the initial load. This is the second time in three phases; Phase 46 discovered it, and this phase's plan flagged it as a thing to check *before* building, which is why it was found rather than stumbled into. Reducible if it ever matters: the two chevrons could be one icon rotated.
+- **The summed delta is fully accounted for by two rows**: `DashboardView` +7.65 and `vendor-icons` +0.59 = **+8.24**, the summed-JS figure to the byte. Nothing leaked anywhere unexamined.
+- **The whole feature rides the lazy chunk.** `Monthly Spending Insights` and `Offline summary` both resolve **only** to `DashboardView-*.js`. `api/insights.ts` is a serverless function and is not in the client bundle at all.
+- **No re-partition.** Three new client modules with one importer each folded into `DashboardView`'s chunk; 33 chunks before and after.
+- **CSS moved 0.05 kB.** The card reuses `CategoryExpenseDistribution`'s shell verbatim; the skeleton's `animate-pulse` and widths are the only new utilities, and most were already in the scan.
+
+**Test-suite size:** 300 → **321 runs** (100 → 107 tests, 21 → **22** spec files — 7 added, none removed or edited). Wall clock `npx playwright test --workers=4`: 6.6 m → 8.2 m.
+
+**Stability note:** first full run clean at 321/321 with no retries. Phase 44's `wallets.spec.ts` webkit flake has not reproduced across four consecutive phases; it stays on the watch list rather than being closed.
+
+## Phase 49 (unit testing foundation) — bundle delta, measured against a rebuild of HEAD
+
+Same method as Phases 43–48: built `cd4772e` (the pre-phase HEAD) and `main` in turn. Same machine, same `node_modules`, clean tree both times, no dev server running. The HEAD column reproduced Phase 48's recorded figures exactly.
+
+This phase changes **no file under `src/` or `api/`** except `src/index.css`, and adds only devDependencies, so the JS expectation was byte-identical on every row rather than "small". It held.
+
+| Chunk | HEAD (`cd4772e`) | Phase 49 | Delta |
+|---|---|---|---|
+| entry `index-*.js` | 164.37 kB / 46.35 kB gzip | **164.37 kB / 46.35 kB gzip** | **0 / 0** |
+| `DashboardView-*.js` (lazy) | 47.83 kB / 11.26 kB gzip | 47.83 kB / 11.26 kB gzip | 0 / 0 |
+| `vendor-icons-*.js` (**modulepreloaded**) | 30.75 kB / 6.70 kB gzip | 30.75 kB / 6.70 kB gzip | **0 / 0** |
+| `TransactionForm-*.js` | 28.14 kB | 28.14 kB | 0 |
+| `TransactionsView-*.js` | 49.93 kB | 49.93 kB | 0 |
+| `vendor-math-*.js` | 375.73 kB / 110.72 kB gzip | 375.73 kB / 110.72 kB gzip | 0 / 0 |
+| **all JS, summed** | 1,351,704 B | 1,351,704 B | **0** |
+| `index-*.css` | 78.56 kB / 12.10 kB gzip | **77.63 kB / 11.98 kB gzip** | **−0.94 kB / −0.12 kB** |
+| chunk count | 33 | 33 | 0 |
+| vendor chunk count | 5 | 5 | 0 |
+| build time | 6.55 s | 6.55 s | both cold after `clean` |
+
+**Findings**
+
+- **Every JS row is identical to the byte, including `vendor-icons`.** Phases 46 and 48 both discovered that a byte-identical entry chunk is not the same as a free change, because new `lucide-react` icons land in the modulepreloaded vendor chunk. This phase adds no icons and no production module, so the summed-JS delta is a true zero — the strongest form this table can take, and the reason the CSS row stood out immediately.
+- **The CSS moved, and that is the phase's one production change.** The first measurement showed CSS **+246 B**, not zero. Tailwind v4's automatic content detection scans the whole repository: `isolate: true` in `vitest.config.ts` emitted `.isolate`, and the word "invert" in a sentence in ADR `0021` emitted `.invert`. Neither file renders anything.
+- **The leak was older than the phase.** `tests/helpers.ts`'s `bg-stone-900` string has been contributing since Phase 19, and `refactor-log.md` line 857 — prose quoting a **rejected** design suggestion — was the only reason the bare `.bg-stone-900\/90` utility existed in the bundle. Restricting Tailwind to `src/` and `index.html` removed 15 selectors totalling 935 B.
+- **All 15 removals were verified dead before the commit**, not assumed: none has an exact-token match anywhere in `src/` (`grow`, `p-8`, `shrink`, `static`, `transform` matched only as substrings of other utilities), the four `max-h-[…]` variants appear nowhere in the repo, and the `dark:bg-stone-900/90` variant that `TotalWealthHero.tsx:23` actually uses is still emitted. The full 321-run suite passed afterwards.
+- **Docs are an input to the production bundle.** That is the generalisable finding. Any ADR, log entry or config file naming a Tailwind-shaped token was shipping CSS to users. It is fixed at the class level rather than per-file, so writing `invert` in a future ADR costs nothing.
+
+**Test-suite size:** Playwright unchanged at **321 runs** (107 tests, 22 spec files — none added, edited or removed). Wall clock `npx playwright test --workers=4`: 8.2 m → **7.5 m**. New second suite: **99 unit tests across 4 files, 1.67 s** (`npm run test:unit`).
+
+**New metric — the unit suite.** Tracked separately because it is a different shape of measurement: it runs on one engine rather than three, in ~1.7 s rather than ~8 m, and it exists to cover what the browser suite structurally cannot rather than to duplicate it.
+
+| Suite | Files | Tests | Runs | Wall clock |
+|---|---|---|---|---|
+| Playwright (chromium/firefox/webkit) | 22 | 107 | 321 | 7.5 m |
+| Vitest (`unit/`) | 4 | 99 | 99 | 1.67 s |
+
+**Stability note:** first full run clean at 321/321 with no retries, and 99/99 on the unit suite. Phase 44's `wallets.spec.ts` webkit flake has now not reproduced across five consecutive phases; it stays on the watch list rather than being closed.
+
+## Phase 50 (signed-in write-path integrity) — bundle delta, measured against a rebuild of HEAD
+
+Same method as Phases 43–49: built `030a46a` (the pre-phase HEAD) in a scratch worktree and `main` in the repo, in turn. Same machine, same `node_modules` (junctioned), **same `.env`**. The HEAD column reproduced Phase 49's recorded figures exactly — entry 164,368 B, all JS 1,351,704 B.
+
+That last condition is new, and the first measurement is why. The first rebuild ran in a worktree with no `.env`; Vite inlines `VITE_SUPABASE_*` into the entry chunk, so the base came out at 164.18 kB and the entry delta at +1,270 B. With the untracked `.env` copied in, the base matched Phase 49 to the byte and the true delta is +1,081 B. **A worktree rebuild must carry the untracked env file**, or the entry row measures configuration rather than code.
+
+| Chunk | HEAD (`030a46a`) | Phase 50 | Delta |
+|---|---|---|---|
+| entry `index-*.js` | 164.37 kB / 46.35 kB gzip | **165.45 kB / 46.63 kB gzip** | **+1,081 B / +0.28 kB** |
+| `TransactionsView-*.js` (lazy) | 49.93 kB / 15.81 kB gzip | 50.56 kB / 15.98 kB gzip | +626 B / +0.17 kB |
+| `TransactionForm-*.js` (lazy) | 28.14 kB / 8.55 kB gzip | 28.15 kB / 8.56 kB gzip | +8 B |
+| `DashboardView-*.js` (lazy) | 47.83 kB / 11.27 kB gzip | 47.83 kB / 11.27 kB gzip | 0 |
+| `vendor-icons-*.js` (**modulepreloaded**) | 30.75 kB / 6.70 kB gzip | 30.75 kB / 6.70 kB gzip | **0** |
+| `vendor-supabase-*.js` (**modulepreloaded**) | 226.44 kB / 58.66 kB gzip | 226.44 kB / 58.66 kB gzip | 0 |
+| `vendor-math-*.js` | 375.73 kB / 110.72 kB gzip | 375.73 kB / 110.72 kB gzip | 0 |
+| **all JS, summed** | 1,351,704 B | 1,353,419 B | **+1,715 B** |
+| `index-*.css` | 77.63 kB / 11.98 kB gzip | 77.63 kB / 11.98 kB gzip | 0 |
+| chunk count | 33 | 33 | 0 |
+| PWA precache | 42 entries, 1,551.64 KiB | 42 entries, 1,553.32 KiB | +1.68 KiB |
+| build time | — | 5.45 s | after `clean` |
+
+**Findings**
+
+- **The entry cost is `FinanceContext` and nothing else.** `FinanceContext.tsx` is part of the entry chunk, not a lazy view, so F2's compensation path and F6's failed-read bookkeeping land on the critical path: +1,081 B raw, +0.28 kB gzip. No new dependency, no new icon — `vendor-icons` is byte-identical.
+- **`TransactionsView` +626 B** is the import in-flight guard, the commit-error banner and the rewritten copy. Lazy, behind the Transactions tab.
+- **`TransactionForm` +8 B is one export binding.** `batchClassifier` now imports `MIN_CLASSIFIABLE_LENGTH`, so the chunk that hosts `jevClassifier` re-exports it (`os as M`). Confirmed by diffing the chunk's `export{…}` list.
+- **30 of 33 JS chunks and the CSS are byte-identical.** `api/*.ts` changes do not reach the client bundle at all.
+
+**Test-suite size:** Playwright unchanged at **321 runs** (107 tests, 22 spec files — none added, edited or removed). Unit suite **99 -> 134 tests in 6 files** (`authenticated-ledger` 8 new, `proxy-contract` 26 new, `batch-classifier` 20 -> 21).
+
+| Suite | Files | Tests | Runs | Wall clock |
+|---|---|---|---|---|
+| Playwright (chromium/firefox/webkit) | 22 | 107 | 321 | 7.2 m |
+| Vitest (`unit/`) | 6 | 134 | 134 | ~3.1 s |
+
+**Stability note:** the Playwright gate was clean at 321/321 on the first attempt with no retries; Phase 44's `wallets.spec.ts` webkit flake has now not reproduced across six consecutive phases and stays on the watch list. **The unit suite had one flake, in this phase's own harness** - the fixture test failed 1 run in 12 when timed back to back, because `beforeEach` did not wait for the cloud load to finish. Fixed in `3d9399a` (0 failures in 30 runs). The unit wall clock rose 1.67 s -> ~3.1 s, mostly the second jsdom file's environment setup.
+
+## Phase 51 (atomic server-side ledger writes) — bundle delta, measured against a rebuild of HEAD
+
+Same method as Phases 43–50: built `2b60b51` (the pre-phase HEAD) in a scratch worktree and `main` in the repo, in turn. Same machine, same `node_modules` (junctioned), **same `.env`** (copied into the worktree, per Phase 50's finding). The HEAD column reproduced Phase 50's recorded figures exactly — entry 165,449 B, all JS 1,353,419 B, precache 1,553.32 KiB — so the method is still sound.
+
+| Chunk | HEAD (`2b60b51`) | Phase 51 | Delta |
+|---|---|---|---|
+| entry `index-*.js` | 165.45 kB / 46.54 kB gzip | **168.86 kB / 47.38 kB gzip** | **+3,407 B / +0.85 kB** |
+| `TransactionsView-*.js` (lazy) | 50.56 kB / 15.96 kB gzip | 50.62 kB / 15.99 kB gzip | +64 B |
+| `vendor-icons-*.js` (**modulepreloaded**) | 30.75 kB | 30.75 kB | **0** |
+| `vendor-supabase-*.js` (**modulepreloaded**) | 226.44 kB | 226.44 kB | 0 |
+| `vendor-math-*.js` | 375.73 kB | 375.73 kB | 0 |
+| **all JS, summed** | 1,353,419 B | 1,356,890 B | **+3,471 B** |
+| `index-*.css` | 77.63 kB | 77.63 kB | 0 |
+| chunk count | 33 | 33 | 0 |
+| PWA precache | 42 entries, 1,553.32 KiB | 42 entries, 1,556.71 KiB | +3.39 KiB |
+| build time | — | 5.1 s | after `clean`, warm (a first cold build took 47 s wall clock and is not representative) |
+
+Gzip figures in this table are `zlib` level 9 from a measurement script, not Vite's printed figures, so they differ from earlier tables by a few tens of bytes; the deltas are computed the same way on both sides.
+
+**Findings**
+
+- **The entry cost is `FinanceContext` and nothing else, again.** Three RPC branches, the unknown-outcome handling, `adoptLedgerState` and the reconnect listeners all live in the entry chunk: +3,407 B raw, +0.85 kB gzip. No new dependency; `vendor-supabase` is byte-identical because `.rpc()` was already in use for `transfer_funds`.
+- **`TransactionsView` +64 B** is the per-preview import key (`importKeyRef` and one `generateIdempotencyKey` call). The helper was already in the entry chunk, so nothing moved.
+- **31 of 33 JS chunks and the CSS are byte-identical.** The SQL migration and probe do not reach the bundle.
+
+**Test-suite size:** Playwright unchanged at **321 runs** (107 tests, 22 spec files — none added, edited or removed). Unit suite **134 -> 157 tests in 6 files** (`authenticated-ledger` 8 -> 31). Plus one SQL probe (15 assertion groups) that runs against the database, not in either suite.
+
+| Suite | Files | Tests | Runs | Wall clock |
+|---|---|---|---|---|
+| Playwright (chromium/firefox/webkit) | 22 | 107 | 321 | 7.2 m |
+| Vitest (`unit/`) | 6 | 157 | 157 | ~9.8 s |
+
+**Stability note:** the Playwright gate was clean at 321/321 on the first attempt with no retries; Phase 44's `wallets.spec.ts` webkit flake has now not reproduced across seven consecutive phases. The unit suite ran 11 times at its final shape without a failure. **The unit wall clock rose ~3.1 s -> ~9.8 s**, and that is the tests, not the environment: the six reconnect tests each spend a 400 ms debounce, and the three that prove an absence each add a 600 ms quiet period (~3.9 s together); the RPC tests' re-reads and `landed()` waits make up most of the rest.
+
+## Phase 52 (security, real sessions, mobile nav, F5/F7/F8) — bundle delta, measured against a rebuild of HEAD
+
+Same method as Phases 43–51: built `044b862` (the pre-phase HEAD) in a scratch worktree with the same `.env` and a junctioned `node_modules` (unlinked with `rmdir` afterwards), and `main` in the repo, in turn. The HEAD column reproduced Phase 51's recorded figures exactly — entry 168,856 B, all JS 1,356,890 B, precache 1,556.71 KiB. Gzip is `zlib` level 9 from the same measurement script as Phase 51.
+
+| Chunk | HEAD (`044b862`) | Phase 52 | Delta |
+|---|---|---|---|
+| entry `index-*.js` | 168,856 B / 47,383 B gzip | **176,314 B / 49,104 B gzip** | **+7,458 B / +1,721 B** |
+| `TransactionsView-*.js` (lazy) | 50,621 / 15,987 | 29,352 / 8,247 | −21,269 (papaparse moved out) |
+| `csvExchange-*.js` (lazy, **new**) | — | 22,257 / 8,413 | new: papaparse + the CSV module, shared by `TransactionsView` and `GuestDataNotice` |
+| `AccountModal-*.js` (lazy, **new**) | — | 12,893 / 3,780 | replaces `SecurityView` |
+| `SecurityView-*.js` | 15,298 / 3,553 | — | deleted |
+| `InlineMathInput-*.js` (lazy, **new**) | — | 7,162 / 2,486 | split out of `useIdempotencyKey-*.js` (7,302 → 226 B) |
+| `vendor-icons-*.js` (**modulepreloaded**) | 30,747 / 6,628 | 30,835 / 6,695 | +88 B (new icons, one removed) |
+| `vendor-supabase-*.js` (**modulepreloaded**) | 226,442 / 58,503 | 226,442 / 58,503 | 0 |
+| `vendor-math-*.js` | 375,725 / 110,526 | 375,725 / 110,526 | 0 |
+| **all JS, summed** | 1,356,890 B | 1,363,654 B | **+6,764 B** |
+| `index-*.css` | 77,627 / 11,769 | 78,908 / 11,861 | +1,281 B |
+| chunk count | 33 | 35 | +2 |
+| PWA precache | 42 entries, 1,556.71 KiB | 44 entries, 1,564.56 KiB | +7.85 KiB |
+| build time | — | 5.1 s | after `clean`, warm |
+
+**Findings**
+
+- **The entry cost is the provider and the shell.** `FinanceContext` gained `create_wallet`, CSV debts, `resetToGuestState`, `authEpochRef` and the session actions; the eager shell gained `GuestDataNotice` (inside `AuthModal`), the five-slot nav with its More sheet, the account button and the swipe guard. +7,458 B raw, +1.72 kB gzip — the largest entry increase since Phase 43, and all of it behaviour, not a dependency.
+- **Papaparse stayed off the critical path.** `GuestDataNotice` imports the CSV exporter on click, which pulled `csvExchange` (with papaparse) into its own lazy chunk; `grep` finds no papaparse in the entry chunk, and the modulepreload list is unchanged (react, motion, supabase, icons).
+- **Two re-partitions, both lazy.** The CSV split shrank `TransactionsView` by 21 KB; `AddWalletForm` importing `useIdempotencyKey` split `InlineMathInput` out of that hook's former shared chunk. Net JS +6,764 B.
+- **`vendor-supabase` is untouched** — lazy-loading it for guests is Phase 53.
+
+**Test-suite size:** Playwright **321 -> 357 runs** (119 tests, 23 spec files; `account-and-mobile-nav` new with 12 tests; no existing spec edited). Unit suite **157 -> 222 tests in 11 files** (5 new files; both ledger harnesses extended).
+
+| Suite | Files | Tests | Runs | Wall clock |
+|---|---|---|---|---|
+| Playwright (chromium/firefox/webkit) | 23 | 119 | 357 | 8.2 m |
+| Vitest (`unit/`) | 11 | 222 | 222 | ~19 s |
+
+**Stability note:** the Playwright gate was clean at 357/357 on the first attempt with no retries; Phase 44's `wallets.spec.ts` webkit flake has now not reproduced across eight consecutive phases. The unit wall clock rose ~10 s -> ~19 s, and it is the tests: the sign-out tests wait 400 ms for the batched writer so a leak has had time to land, and the account-modal tests render framer-motion dialogs in jsdom.
+
+## Phase 52 follow-up (T181, revoked-session eviction) — bundle delta against Phase 52's recorded figures
+
+Built on the working tree after `npm run build`; the "before" column is Phase 52's table above, not a fresh rebuild (the change is additive to two modules). Gzip is `zlib` level 9.
+
+| Chunk | Phase 52 | T181 | Delta |
+|---|---|---|---|
+| entry `index-*.js` | 176,314 B / 49,104 B gzip | 177,660 B / 49,572 B gzip | +1,346 B / +468 B |
+| `AccountModal-*.js` (lazy) | 12,893 / 3,780 | 12,946 / 3,812 | +53 B (confirmation copy) |
+| **all JS, summed** | 1,363,654 B | 1,365,069 B | +1,415 B |
+| chunk count | 35 | 35 | 0 |
+
+**Test-suite size:** unit **222 -> 243 tests in 12 files** (~27 s; the new harness tests' 600 ms quiet periods are most of the growth). Playwright unchanged at 357 runs.
+
+## Phase 53 baseline (T182, before the retheme) — measured at `2dce5d0`
+
+Clean `src/` (only `CLAUDE.md`, `DESIGN.md` and `anti-slop/` differ from HEAD). Built after `npm run clean`; gzip is `zlib` level 9, same script as Phases 51-52. The figures reproduce T181's recorded entry and all-JS totals exactly, so this is the "before" column for both 53a and 53b.
+
+| Chunk | Raw | Gzip |
+|---|---|---|
+| entry `index-*.js` | 177,660 B | 49,572 B |
+| `vendor-math-*.js` | 375,725 | 110,526 |
+| `vendor-supabase-*.js` (modulepreloaded) | 226,458 | 58,513 |
+| `vendor-react-*.js` (modulepreloaded) | 194,329 | 60,571 |
+| `vendor-motion-*.js` (modulepreloaded) | 136,712 | 45,216 |
+| `DashboardView-*.js` (lazy) | 47,954 | 11,250 |
+| `vendor-icons-*.js` (modulepreloaded) | 30,835 | 6,695 |
+| **all JS, summed** | **1,365,069 B** | 35 chunks |
+| `index-*.css` | 78,908 | 11,861 |
+| PWA precache | 44 entries, 1,565.94 KiB | |
+| build time | 16.7 s | after `clean`, cold |
+
+| Suite | Files | Tests | Runs | Wall clock |
+|---|---|---|---|---|
+| Playwright (chromium/firefox/webkit) | 23 | 119 | 357 | 7.9 m |
+| Vitest (`unit/`) | 12 | 243 | 243 | ~49 s |
+
+`npm run lint` clean. Playwright 357/357 on the first attempt with no retries. The unit wall clock (~49 s against ~27 s at T181) is environment time on this machine (66% of the run), not new tests.
+
+## Phase 53a (semantic design tokens) — delta against the T182 baseline above
+
+Built after `npm run clean`; gzip `zlib` level 9, same script.
+
+| Chunk | T182 baseline | Phase 53a | Delta |
+|---|---|---|---|
+| entry `index-*.js` | 177,660 B / 49,572 B gzip | 173,769 B / 49,057 B gzip | -3,891 B / -515 B |
+| `DashboardView-*.js` (lazy) | 47,954 / 11,250 | 42,504 / 10,605 | -5,450 B |
+| `TransactionsView-*.js` (lazy) | 29,352 / 8,249 | 26,411 / 7,857 | -2,941 B |
+| `TransactionForm-*.js` (lazy) | 28,195 / 8,558 | 25,525 / 8,287 | -2,670 B |
+| **all JS, summed** | 1,365,069 B | 1,341,862 B | **-23,207 B** |
+| `index-*.css` | 78,908 / 11,861 | 45,533 / 8,344 | **-33,375 B** |
+| chunk count | 35 | 35 | 0 |
+| PWA precache | 44 entries, 1,565.94 KiB | 44 entries, 1,510.64 KiB | -55.30 KiB |
+
+**Why it shrank:** a token class flips with the theme on its own, so the `dark:` half of nearly every colour pair was deleted, and the stone/emerald/rose/amber/indigo utility rules left the stylesheet.
+
+| Suite | Files | Tests | Runs | Wall clock |
+|---|---|---|---|---|
+| Playwright | 23 | 119 | 357 | 6.5 m |
+| Vitest (`unit/`) | 12 | 243 | 243 | ~49 s |
+
+## Phase 53b (antislop audit 001 remediation) — delta against Phase 53a
+
+Built with `npm run build`; gzip is `zlib` level 9, same script.
+
+| Chunk | Phase 53a | Phase 53b | Delta |
+|---|---|---|---|
+| entry `index-*.js` | 173,769 B / 49,057 B gzip | 174,297 B / 49,192 B gzip | +528 B / +135 B |
+| `vendor-motion-*.js` (modulepreloaded) | 136,712 / 45,216 | 129,389 / 42,453 | **-7,323 B** / -2,763 B |
+| `DashboardView-*.js` (lazy) | 42,504 / 10,605 | 41,385 / 10,149 | -1,119 B |
+| `TransactionsView-*.js` (lazy) | 26,411 / 7,857 | 26,770 / 7,914 | +359 B |
+| **all JS, summed** | 1,341,862 B | 1,335,407 B | **-6,455 B** |
+| `index-*.css` | 45,533 / 8,344 | 43,802 / 8,420 | -1,731 B |
+| `jetbrains-mono-latin-wght-normal-*.woff2` | - | 40,404 B | new, precached |
+| chunk count | 35 | 35 | 0 |
+| PWA precache | 44 entries, 1,510.64 KiB | 45 entries, 1,542.09 KiB | +31.45 KiB (the font, less the JS/CSS saved) |
+
+**Why:**
+- `vendor-motion` shrank because `whileHover`, `whileTap`, springs and the variant stagger left the app, so tree-shaking dropped the gesture and spring code they pulled in.
+- The entry grew by the sync badge's five states and the `syncError` plumbing, less `AnimatedCounter`.
+- The font is the phase's one real cost. It sits in the precache, not on any JS path, and `font-display: swap` means text never waits for it.
+
+| Suite | Files | Tests | Runs | Wall clock |
+|---|---|---|---|---|
+| Playwright | 23 | 119 | 357 | 4.9 m (final run of three, all green) |
+| Vitest (`unit/`) | 12 | 251 | 251 | ~50 s |
+
+## Phase 55 (redesign foundation and logic, CI) — delta against Phase 53b
+
+Built with `npm run build`. 55a was measured on its own commit (`97d2b4e`) before 55b's changes; gzip is `zlib` level 9 where given.
+
+| Chunk | Phase 53b | Phase 55a | Phase 55b | Delta (53b to 55b) |
+|---|---|---|---|---|
+| entry `index-*.js` | 174,297 B | 173,276 B | 173,497 B / 49,129 B gzip | -800 B |
+| **all JS, summed** | 1,335,407 B | 1,334,577 B | 1,335,397 B | -10 B |
+| `index-*.css` | 43,802 B | 46,984 B | 46,984 B / 8,961 B gzip | +3,182 B |
+| fonts (`woff2`, precached) | 40,404 B (1 file) | 120,532 B (8 files) | 120,532 B | +80,128 B |
+| JS chunks | 35 | - | 37 | +2 |
+| PWA precache | 45 entries, 1,542.09 KiB | 53 entries, 1,622.63 KiB | 54 entries, 1,623.43 KiB | +81.34 KiB |
+
+**Why:**
+- **The fonts are the phase's cost.** IBM Plex Sans Thai in four weights and two subsets replaces one JetBrains Mono file. A page fetches only the weight and subset combinations it renders (six on the dashboard, measured in the MCP pass), `font-display: swap` means text never waits, and every file is precached for offline use.
+- **The entry shrank** because the navbar no longer subscribes to or renders the total balance, and the `font-mono` classes left.
+- **CSS grew** by the new tokens, eight `@font-face` rules where there was one, and the utilities the new header uses.
+- **55b adds the selectors to shared chunks** (the dashboard, diary and insights all import `ledger`), about 820 B of JS in total.
+
+| Suite | Files | Tests | Runs | Wall clock |
+|---|---|---|---|---|
+| Playwright (local, 4 workers) | 23 | 119 | 357 | 5.1 m / 5.1 m (55a); 4.8 m / 4.6 m (55b) |
+| Vitest (`unit/`) | 15 | 304 | 304 | ~75 s locally |
+
+**CI (55-CI):**
+
+| Run | Shape | Wall clock |
+|---|---|---|
+| `36367819548` (Phase 53b, before) | one job, 3 browsers, 1 worker | 13 m 47 s (Playwright 12 m 04 s) |
+| `36373804867` | `checks` + 3 browser jobs, 1 worker, cache miss | 5 m 18 s |
+| `36374212154` attempts 1-3 | same, 2 workers, cache hit | 4 m 31 s / 4 m 48 s / 4 m 31 s |
+| `36375847772` (55a commit) | same | 4 m 33 s |
+
+The browser step went from 53 s (all three browsers) to 12-35 s per job on a cache hit, which still runs `install-deps`. At 2 workers, chromium runs its 119 tests in 1.6-1.9 m, firefox in 2.6-2.8 m and webkit in 2.1-2.9 m.
+
+**Intermittent local failures since 55a:** 3 timeouts in 1,428 full-suite runs (four full runs). Two were Firefox in `account-and-mobile-nav.spec.ts`: a click on More, and a `page.goto` waiting for `load`. One was WebKit waiting for `#tx-import-csv-btn` to be stable. None reproduced in 300 targeted repeats, and CI has seen none.
+- **Unverified hypothesis:** Firefox delays the `load` event for web fonts, and the page now requests up to six font files where it requested one.
+
+## Phase 56 (shared components) — delta against Phase 55b
+
+Built with `npm run build` on the final Phase 56 tree and, for the per-chunk table, `main` (`8c55728`, Phase 55b) rebuilt the same way on the same machine. Gzip is `zlib` level 9.
+
+| Chunk | Phase 55b | Phase 56 | Delta |
+|---|---|---|---|
+| entry `index-*.js` | 173,497 B / 49,129 B gzip | 172,870 B / 49,461 B gzip | -627 B raw / +332 B gzip |
+| **all JS, summed** | 1,335,397 B | 1,324,986 B | **-10,411 B** |
+| `index-*.css` | 46,984 B / 8,961 B gzip | 48,822 B / 9,359 B gzip | +1,838 B |
+| fonts (`woff2`) | 120,532 B | 120,532 B | 0 |
+| JS chunks | 37 | 36 | -1 |
+| PWA precache | 54 entries, 1,623.43 KiB | 53 entries, 1,615.06 KiB | -8.37 KiB |
+
+Per chunk (raw bytes, 55b -> 56; every other chunk is byte-identical):
+
+| Chunk | Delta | Why |
+|---|---|---|
+| `DashboardView` | -2,933 | hero, recent table and insights buttons became component calls; the per-row "THB" went |
+| `TransactionsView` | -2,508 | seven header, pagination and import buttons |
+| `TxCells` | -2,011 (chunk gone) | Rollup merged it into the `ledger` shared chunk |
+| `ledger` | +1,989 | now also holds `TxCells` and `Chip`'s use |
+| `AccountModal` | -1,089 | five buttons |
+| `Badge` | -1,086 (chunk gone) | `CategoryChip` moved out, and `Badge`'s remaining users (`DiaryView`, `DiaryEntryCard`) share one chunk, so it no longer needs its own |
+| `WalletsView`, `DebtsView`, `CategoriesView`, `ConfirmDialog` | -682, -681, -578, -489 | buttons |
+| `ProgressMeter` -> `ProgressBar` | -462 / +716 | ARIA attributes and tones |
+| `Chip` | +540 (new chunk) | shared by the tables and the rules list |
+| entry | -627 | the header's buttons shrank more than `Button` and `IconButton` added (both live in the entry, since the header and `ReloadPrompt` are eager) |
+
+**Why the total fell:** each call site used to carry its own copy of a 150 to 250 character class string, and minification cannot share a string between chunks. Gzip already compressed the repetition, so the entry's gzip size *rose* 332 B while its raw size fell: the new component code is what gzip sees.
+
+**The build-only components cost 0 B.** `PageHeader`, `TransactionRow`, `DayGroupHeader`, `AllocationBar`, `WarningBanner` and `OverflowMenu` have no importer yet, so Rollup drops them. `grep` finds none of their strings in `dist/`.
+
+**CSS grew 1,838 B** for the new utilities: the button variants' `hover:` pairs, `rounded-card`/`-inner`/`-control` where they were not yet emitted, `text-chip-text`, `border-danger-line`, the `group-focus-visible:outline-*` trio and the `:focus-visible` rule.
+
+| Suite | Files | Tests | Runs | Wall clock |
+|---|---|---|---|---|
+| Playwright (local, 4 workers) | 23 | 119 | 357 | 5.6 / 6.0 / 4.9 / 4.9 m (four runs) |
+| Vitest (`unit/`) | 18 | 353 | 353 | ~33 s |
+
+## Phase 57 (the Dashboard) — delta against Phase 56
+
+Built with `npx vite build` in the repo on the final Phase 57 tree. For the per-chunk table, `main` (`2739e4e`) was checked out and rebuilt the same way, in the same directory. Its entry, 172,870 B, is byte for byte what production serves. Gzip is `zlib` level 9.
+
+| Chunk | Phase 56 | Phase 57 | Delta |
+|---|---|---|---|
+| entry `index-*.js` | 172,870 B / 49,461 B gzip | 174,259 B / 49,830 B gzip | +1,389 B raw / +369 B gzip |
+| **all JS, summed** | 1,324,986 B | 1,329,954 B | **+4,968 B** |
+| `index-*.css` | 48,822 B / 9,359 B gzip | 47,902 B / 9,307 B gzip | -920 B |
+| fonts (`woff2`) | 120,532 B | 120,532 B | 0 |
+| JS chunks | 36 | 38 | +2 |
+| PWA precache | 53 entries, 1,615.06 KiB | 55 entries, 1,619.02 KiB | +3.96 KiB |
+
+Per chunk (raw bytes; every other chunk is byte-identical):
+
+| Chunk | Delta | Why |
+|---|---|---|
+| `DashboardView` | +2,739 | ten cards where there were seven. The chunk now also holds code with no caller until now: `TransactionRow`, `DayGroupHeader`, the display selectors (L6/L7/L10/L13), the L8 fold, the debt plan and the mood selector |
+| entry | +1,389 | the five date helpers (`utils/date.ts` is eager, so they land in the entry although only the lazy Dashboard calls them), `walletShares`, and one more byte per `transition-control` |
+| `Card` | +494 (new chunk) | `Card`/`Inset` now shared by the Dashboard and other views, so Rollup split it out of `SectionHeader` (-275) |
+| `walletFormStyles` | +336 (new chunk) | `WALLET_TYPE_OPTIONS` is now read by the Dashboard as well as `AddWalletForm`, so it left `AddWalletModal` (-249) |
+| `ledger` | +390 | `cashFlow`, and `groupByDay`, which had no caller until now and was tree-shaken |
+| `vendor-icons` | -36 | the old hero's and table's icons out; chevrons and arrows in |
+| seven view chunks | +4 to +39 each | `transition-colors` -> `transition-control` |
+
+**CSS fell 920 B.** The six deleted components took their one-off utilities with them: the coloured `border-2` edges, the share-bar layout, the table's column classes. The new cards reuse existing utilities, plus `@container` and `@md:grid-cols-3`.
+
+| Suite | Files | Tests | Runs | Wall clock |
+|---|---|---|---|---|
+| Playwright (local, 4 workers) | 23 | 119 | 357 | 6.3 / 6.9 / 5.5 m (three runs) |
+| Vitest (`unit/`) | 20 | 385 | 385 | ~32-36 s |
+
+## Phase 58a (the Transactions page) — delta against Phase 57
+
+`main` (`01e6c16`) and the final Phase 58a tree were each built with `npx vite build` in the repo, one after the other. Gzip is `zlib` level 9.
+
+| Chunk | Phase 57 | Phase 58a | Delta |
+|---|---|---|---|
+| entry `index-*.js` | 174,259 B / 49,827 B gzip | 174,280 B / 49,837 B gzip | +21 B raw / +10 B gzip |
+| **all JS, summed** | 1,330,289 B | 1,332,841 B | **+2,552 B** |
+| `index-*.css` | 47,902 B / 9,307 B gzip | 47,958 B / 9,299 B gzip | +56 B |
+| JS chunks | 38 | 38 | 0 |
+| PWA precache | 55 entries, 1,619.34 KiB | 55 entries, 1,621.89 KiB | +2.55 KiB |
+
+Per chunk (raw bytes; every other chunk is byte-identical):
+
+| Chunk | Delta | Why |
+|---|---|---|
+| `timeRange` | +4,009 (new shared chunk) | `TransactionRow`, `DayGroupHeader`, the display selectors, `timeRange` and `pagination` are now used by two lazy views, so Rollup put them in one shared chunk, named after its first module |
+| `DashboardView` | -3,483 | the same code, which only the Dashboard used before, moved into that chunk |
+| `TransactionsView` | +3,410 | the filter row, the day-grouped list, the panel, the menu and `useMediaQuery`. The import code moved to `ImportCsvModal` but stays in this chunk, since only this view loads it |
+| `vendor-icons` | -1,150 | three icons no longer used anywhere: `Upload` and `FileText` (the old header's import and diary-export buttons) and `RotateCcw` (the table row's restore). No icon was added; `ChevronDown` and `MoreHorizontal` were already in use |
+| `DiaryView` / `diaryExport` | +552 / -676 (chunk gone) | only the diary exports JSON now, so the exporter joined its chunk |
+| `ledger` | -133 | `groupByDay` moved to the shared chunk with its two callers |
+| entry | +21 | `Button`'s `ref` and `SegmentedControl`'s minimum width |
+
+**CSS grew 56 B**, for `min-w-[44px]` and the panel's grid and sticky classes.
+
+| Suite | Files | Tests | Runs | Wall clock |
+|---|---|---|---|---|
+| Playwright (local, 4 workers) | 23 | 119 | 357 | 5.1 / 5.0 m (two runs) |
+| Vitest (`unit/`) | 21 | 396 | 396 | ~31 s |
+
+**Intermittent local failures:** 2 in 714 full-suite runs, both `account-and-mobile-nav.spec.ts:60` on Firefox, where the Quick Add dialog never appeared. The test passed 20/20 in isolation on both the branch and `main`.
+
+## Phase 58s (the AI proxies' callers, `public.profiles`) — delta against Phase 58a
+
+`main` (`f3a5819`) and the Phase 58s tree were each built with `npx vite build` in the repo, one after the other. Gzip is `zlib` level 9. The `api/` functions are not part of the client bundle.
+
+| Chunk | Phase 58a | Phase 58s | Delta |
+|---|---|---|---|
+| entry `index-*.js` | 174,280 B / 49,837 B gzip | 174,476 B / 49,930 B gzip | +196 B raw / +93 B gzip |
+| **all JS, summed** | 1,332,841 B | 1,333,131 B | **+290 B** |
+| `index-*.css` | unchanged | unchanged | 0 |
+| PWA precache | 55 entries, 1,621.89 KiB | 55 entries, 1,622.17 KiB | +0.28 KiB |
+
+Per chunk (raw bytes; every other chunk is byte-identical):
+
+| Chunk | Delta | Why |
+|---|---|---|
+| entry | +196 | `authorizationHeader()` in `src/lib/supabase.ts`, which the entry already loads for `FinanceContext` |
+| `TransactionForm` | +72 | `jevClassifier` spreading the header, and its 401 branch |
+| `DashboardView` | +22 | `insightsClient` spreading the header |
+
+| Suite | Files | Tests | Runs | Wall clock |
+|---|---|---|---|---|
+| Playwright (local, 4 workers) | 23 | 119 | 357 | 5.9 m (run 1) |
+| Vitest (`unit/`) | 22 | 443 | 443 | ~33 s |
+
+**Intermittent local failures:** run 1 was 356/357. The failure was WebKit `insights.spec.ts:66`, in its seeding step: the Quick Add submit button never became "stable", before any insights request was made. The whole insights spec then passed 70/70 on WebKit in isolation (`--repeat-each=10`). It is the Quick Add intermittent of audit 005 and 006 finding 3.
+
+## Phase 58b (editing a transaction) — delta against Phase 58s
+
+`main` (`280e70a`) and the Phase 58b tree were each built with `npx vite build` in the repo, one after the other. Gzip is `zlib` level 9.
+
+| Chunk | Phase 58s | Phase 58b | Delta |
+|---|---|---|---|
+| entry `index-*.js` | 174,476 B / 49,930 B gzip | 178,446 B / 51,000 B gzip | **+3,970 B raw / +1,070 B gzip** |
+| **all JS, summed** | 1,333,131 B | 1,343,555 B | **+10,424 B** |
+| `index-*.css` | 47,958 B / 9,299 B gzip | 48,450 B / 9,335 B gzip | +492 B |
+| PWA precache | 55 entries, 1,622.17 KiB | 55 entries, 1,632.83 KiB | +10.66 KiB |
+
+Per chunk (raw bytes; every other chunk, every vendor chunk included, is byte-identical):
+
+| Chunk | Delta | Why |
+|---|---|---|
+| entry | +3,970 | `updateTransaction`, `walletEffects`, `editRuleError` and their messages in `FinanceContext`, which the entry loads; and `App.tsx`'s row hand-off. The panel and the evaluator are not in it. |
+| `TransactionsView` | +6,329 | `EditTransactionPanel`. It uses `safeEvaluateMath`, whose `vendor-math` this chunk already loaded through `TransactionForm`, so no vendor chunk moved. |
+| `DashboardView` | +128 | the Recent activity rows' `onSelect` and ids |
+| `DiaryView`, `InlineMathInput`, `TransactionForm` | -5, +1, +1 | Rollup's shared-name shuffle; no source change |
+
+**CSS grew 492 B**: `@xs:grid-cols-2`, `focus-within:ring-*` for the amount box, and the panel's 24px amount.
+
+**T267** (audit 007 finding 2) added the read-only wallet and debt lines to the lazy `TransactionsView` chunk (34.62 kB, 10.90 kB gzip after it); the entry is unchanged at 178.45 kB, and the precache went from 1,632.83 to 1,633.53 KiB.
+
+| Suite | Files | Tests | Runs | Wall clock |
+|---|---|---|---|---|
+| Playwright (local, 4 workers) | 24 | 122 | 366 | 5.3 / 5.1 m (two runs) |
+| Vitest (`unit/`) | 22 | 471 (470 before T267) | 471 | ~33 s |
+
+**Intermittent local failures:** none in 732 full-suite runs.
+
+The entry's growth is the ledger action itself, which lives with the other ledger writes in `FinanceContext`, as ADR `0023`'s RPC callers do. The panel and the evaluator stay in the lazy `TransactionsView` chunk.
+
+**Intermittent local failures:** 6 in 1,071 full-suite runs (3 full runs). All were timeouts: a Firefox `goto`, a Firefox context close, and four WebKit clicks waiting for "stable". No assertion failed. See audit 005 finding 3 for the control runs.
+
+## Phase 124 (dead code, the tab swipe) - delta against Phase 123
+
+**Bundle** (`main` at `8ef7c65` and the branch, both built with the repo's `.env`, gzip level 9): the entry `index-B8wLrv24.js` 195,458 / 57,105 B to `index-BLSMm3p4.js` 191,674 / 55,793 (-3,784 / -1,312 gzip); all app JS 882,026 / 268,262 to 878,223 / 266,908 (-3,803 / -1,354), 40 files on both sides. react-swipeable was in the entry chunk.
+
+**Source and dependencies:** `src/` +60 / -100 lines (45 of the additions are `useTabSwipe`); runtime dependencies 8 to 7.
+
+| Suite | Files | Tests | Runs | Result |
+|---|---|---|---|---|
+| Vitest (`unit/`) | 62 | 1375 | 1375 | 1375/1375 (41 s); shuffled 1375/1375 (seed `1791595131349`) |
+| Playwright (local, 4 workers) | 34 | 164 | 492 | 486 passed, 6 skipped, 0 failed (8.2 m), first run |
+
+## Phase 123 (the ledger table grants, the action majors) - delta against Phase 122
+
+**No `src/` change:** the bundle is Phase 121's.
+
+| Measure | Phase 122 | Phase 123 |
+|---|---|---|
+| Migrations | 20 | 21 (not yet applied to live) |
+| `anon` table privileges on the six ledger tables | 7 each | none |
+| `authenticated` table privileges on them | 7 each | 4 each (`SELECT`, `INSERT`, `UPDATE`, `DELETE`) |
+| `actions/checkout`, `actions/setup-node` | v5.1.0, v5.0.0 | v7.0.1, v7.0.0 |
+
+| Suite | Files | Tests | Runs | Result |
+|---|---|---|---|---|
+| Vitest (`unit/`) | 61 | 1364 | 1364 | 1364/1364 (63 s); shuffled 1364/1364 (seed `1791586917386`) |
+| Playwright (local, 4 workers) | 34 | 164 | 492 | 486 passed, 6 skipped, 0 failed (9.6 m), first run |
+
+## Phase 122 (the advisors re-read) - delta against Phase 121
+
+**No code change:** the bundle and source are Phase 121's.
+
+| Measure | Phase 98 (ADR `0074`) | Phase 122 (ADR `0098`) |
+|---|---|---|
+| Security advisor findings | 3 lints / 13 (11 `SECURITY DEFINER`) | 3 lints / 12 (10 `SECURITY DEFINER`) |
+| Performance advisor findings | 2 lints / 8 | 2 lints / 8 |
+| `public.transactions` rows (index trigger 100,000) | - | 121 |
+| Live drift | none | none (run `37996758984`, 20 migrations) |
+
+| Suite | Files | Tests | Runs | Result |
+|---|---|---|---|---|
+| Vitest (`unit/`) | 61 | 1360 | 1360 | 1360/1360 (67 s) |
+| Playwright | 34 | 164 | 492 | not run: no code change |
+
+## Phase 121 (the hydration and backup services) - delta against Phase 120
+
+**Bundle** (`main` at `a84dfff` built in a worktree with `.env`, gzip level 9 on both sides): the entry `index-CnVTLmA-.js` 194,826 / 56,963 B to `index-B8wLrv24.js` 195,458 / 57,105 (+632 / +142 gzip: the injected setters' property names and a second async function); all app JS 881,394 / 268,083 to 882,026 / 268,262 (+632 / +179), 40 files; cold start still three scripts.
+
+**Source:** `src/context/FinanceContext.tsx` 3,090 to 2,936 lines (-154); `src/services/financeHydration.ts` 212, `src/services/financeBackup.ts` 29.
+
+| Suite | Files | Tests | Runs | Result |
+|---|---|---|---|---|
+| Vitest (`unit/`) | 61 | 1360 | 1360 | 1360/1360 before (70 s) and after (41 s); shuffled 1360/1360 (63 s, seed `1791555857981`) |
+| Playwright (local, 4 workers) | 34 | 164 | 492 | 486 passed, 6 skipped, 0 failed (8.1 m), first run |
+
+## Phase 120 (the safe id guard, the shuffled unit run) - delta against Phase 119
+
+**Bundle:** unchanged. The `src/` edits are comments; the branch builds the entry `index-CnVTLmA-.js`, the one production serves.
+
+| Suite | Files | Tests | Runs | Result |
+|---|---|---|---|---|
+| Vitest (`unit/`) | 61 | 1360 | 1360 | 1360/1360 (+29 `safe-ids-guard`), 44 s; shuffled 10 times, 1360/1360 each, 44 to 76 s |
+| Playwright (local, 4 workers) | 34 | 164 | 492 | 484 passed, 6 skipped, 2 failed (12.6 m): the WebKit painting stall; then 120 of 120 on WebKit |
+
+**CI:** the `checks` job runs the unit suite a second time, shuffled (about +50 s).
+
+## Phase 119 (collision-free guest ids) - delta against Phase 118
+
+**Bundle** (`main` at `28473b4` built in a worktree with `.env`, gzip level 9 on both sides. The entry 194,599 / 56,884 to 194,826 / 56,963 B (+227 / +79 gzip: `generateEntityId` and its eight callers are in it); all app JS 881,167 / 268,064 to 881,394 / 268,083 (+227 / +19; other chunks' gzip moves a few bytes with the entry's hash), 40 files; cold start still three scripts.)
+
+| Suite | Files | Tests | Runs | Result |
+|---|---|---|---|---|
+| Vitest (`unit/`) | 60 | 1331 | 1331 | 1331/1331 (+11 `entity-ids`) |
+| Playwright (local, 4 workers) | 34 | 164 | 492 | 485 passed, 6 skipped, 1 failed (11.4 m): the WebKit painting stall; then 60 of 60 on WebKit |
+
+## Phase 118 (the quick templates' own contexts) - delta against Phase 117
+
+**Bundle** (gzip level 9 in Node on both sides; `main` at `1dc83a1` built in a worktree with `.env`). The entry 193,818 / 56,787 to 194,599 / 56,884 B (+781 / +97 gzip: `TemplateContext` is in it); all app JS 880,341 / 267,904 to 881,167 / 268,064 (+826 / +160), 40 files; cold start still three scripts. `FinanceContext.tsx` 3,187 to 3,086 lines, `TemplateContext.tsx` 174.
+
+**Re-renders** (`unit/rerender-matrix.test.tsx`, three runs): a template add, edit or delete re-rendered all six views once each; now 0 / 0 / 0 / 0 / 0 / 0. A template apply (a new row) reaches all six. Every other row unchanged.
+
+| Suite | Files | Tests | Runs | Result |
+|---|---|---|---|---|
+| Vitest (`unit/`) | 59 | 1320 | 1320 | 1320/1320 (+6 `template-context`) |
+| Playwright (local, 4 workers) | 34 | 164 | 492 | 485 passed, 6 skipped, 1 failed (12.2 m): the WebKit painting stall; then 110 of 110 on WebKit |
+
+## Phase 117 (the re-render matrix, the smart rules' own contexts) - delta against Phase 116
+
+**Bundle** (gzip level 9 in Node on both sides; `main` at `f55432d` built in a worktree with `.env`). The entry 192,987 / 56,621 to 193,818 / 56,787 B (+831 / +166 gzip: `KeywordRulesContext` is in it); all app JS 879,417 / 267,658 to 880,341 / 267,904 (+924 / +246), 40 files; cold start still three scripts. `FinanceContext.tsx` 3,288 to 3,187 lines, `KeywordRulesContext.tsx` 192.
+
+**Re-renders** (`unit/rerender-matrix.test.tsx`, the six real views under one `FinanceProvider`, jsdom, three runs each side): before, every write but a diary save re-rendered Dashboard / Transactions / Wallets / Debts / Categories / Diary once each; after, a rule add or delete is 0 / 1 / 0 / 0 / 1 / 0 (the Transactions commit is the closed CSV import dialog). Every other row unchanged.
+
+**The helpers' wait** (`soft-delete.spec.ts` on WebKit, 240 runs a side: without `settle` 5 stalls (59, 59, 58, 59 of 60 per batch of ten repeats), with `main`'s `settle` 0 (60 of 60 four times)): kept.
+
+| Suite | Files | Tests | Runs | Result |
+|---|---|---|---|---|
+| Vitest (`unit/`) | 58 | 1314 | 1314 | 1314/1314 (+1 `rerender-matrix`, +7 `authenticated-ledger`) |
+| Playwright (local, 4 workers) | 34 | 164 | 492 | 486 passed, 6 skipped (14.4 m), with `settle`; without it 485 passed, 1 failed (12.5 m) |
+
+## Phase 116 (the diary's own contexts, one missing-function code) - delta against Phase 115
+
+**Bundle** (gzip level 9 in Node on both sides; `main` at `44f1a9f` built in a worktree with `.env`). The entry 191,919 / 56,213 to 192,987 / 56,621 B (+1,068 / +408 gzip: `DiaryContext` and its two contexts are in it); all app JS 878,287 / 267,227 to 879,417 / 267,658 (+1,130 / +431), 40 files, the views that import the new hooks a few bytes each; cold start still three scripts. `FinanceContext.tsx` 3,408 to 3,288 lines, `DiaryContext.tsx` 228.
+
+**Re-renders** (React `Profiler`, the real views under one `FinanceProvider`, jsdom; three runs each, identical): a diary save re-rendered Dashboard / Daily diary / Transactions 1 / 1 / 1 before and 1 / 1 / 0 after; an expense 1 / 1 / 2 before and after.
+
+| Suite | Files | Tests | Runs | Result |
+|---|---|---|---|---|
+| Vitest (`unit/`) | 57 | 1306 | 1306 | 1306/1306 on the second run (+2 `diary-context`, +5 `authenticated-ledger`) |
+| Playwright (local, 4 workers) | 34 | 164 | 492 | 484 passed, 6 skipped, 2 failed: the WebKit painting stall |
+
+## Phase 115 (no fallback writes, settled helper clicks) - delta against Phase 114
+
+**Bundle** (gzip level 9 in Node on both sides; `main` at `7a98597` built in a worktree with `.env`). The entry 196,820 / 57,066 to 191,919 / 56,213 B (-4,901 / -853 gzip; `FinanceContext` is in it); all app JS 883,188 / 268,070 to 878,287 / 267,227, 40 files, no other chunk changed; cold start still three scripts.
+
+| Suite | Files | Tests | Runs | Result |
+|---|---|---|---|---|
+| Vitest (`unit/`) | 56 | 1299 | 1299 | 1299/1299 (+6, -8 `authenticated-ledger`) |
+| Playwright (local, 4 workers) | 34 | 164 | 492 | first run 484 passed, 6 skipped, 2 failed; second run 485 passed, 6 skipped, 1 failed; all three the WebKit painting stall |
+| Playwright, WebKit project x2 | 34 | 164 | 328 | 322 passed, 6 skipped |
+
+## Phase 114 (legacy transfer_funds dropped, overdraft announced) - delta against Phase 113
+
+**Bundle** (gzip level 9 in Node on both sides; `main` at `311e5cd` built in a worktree with `.env`). All app JS 882,669 / 267,804 to 883,188 / 268,070 B (+519 / +266 gzip), 40 files: the chunk the two forms share, named `InlineMathInput` before, is now named `OverdraftAnnouncer` and holds both (6,322 / 2,387 to 6,664 / 2,566); `TransactionForm` +81 / +39 and `TransferFundsModal` +84 / +28; the entry +3 / +6 (chunk names); cold start still three scripts.
+
+| Suite | Files | Tests | Runs | Result |
+|---|---|---|---|---|
+| Vitest (`unit/`) | 56 | 1301 | 1301 | 1301/1301 (+3 `migration-replay`, +2 `overdraft-warning`) |
+| Playwright (local, 4 workers) | 34 | 164 | 492 | first run 485 passed, 6 skipped, 1 failed; second run 484 passed, 6 skipped, 2 failed; all three the WebKit painting stall |
+
+## Phase 113 (tab titles, Back closes dialogs) - delta against Phase 112
+
+**Bundle** (gzip level 9 in Node on both sides; `main` at `6aabb4e` built in a worktree with `.env`). All app JS 881,054 / 267,319 to 882,669 / 267,804 B (+1,615 / +485), 40 files; only the entry `index` changed, 195,202 / 56,546 to 196,817 / 57,060 (`Modal` and `modalHistory`). Cold start: still three scripts.
+
+| Suite | Files | Tests | Runs | Result |
+|---|---|---|---|---|
+| Vitest (`unit/`) | 56 | 1296 | 1296 | 1296/1296 (+6 `modal-history`, +6 `tab-route`) |
+| Playwright (local, 4 workers) | 34 | 164 | 492 | first run 485 passed, 6 skipped, 1 failed (a WebKit click waiting on "stable"); second run 486 passed, 6 skipped |
+
+## Phase 112 (tabs in the URL, insights for accounts, body cap) - delta against Phase 111
+
+**Bundle** (gzip level 9 in Node on both sides; `main` at `bad64ea` built in a worktree with `.env`). All app JS 880,228 / 267,043 to 881,054 / 267,319 B (+826 / +276), 40 files. Entry `index` 194,746 / 56,364 to 195,202 / 56,546 (`tabRoute` and the history listener); `DashboardView` 23,018 / 7,330 to 23,388 / 7,431 (the insights card's note and the client's guest check). Cold start: still three scripts. (Node's level-9 gzip reads 267,043 for the same `main` that Phase 111 recorded as 267,385 with `gzip -9`; both sides here use Node.)
+
+| Suite | Files | Tests | Runs | Result |
+|---|---|---|---|---|
+| Vitest (`unit/`) | 55 | 1284 | 1284 | 1284/1284 (+17 `tab-route`, +7 `insights-card`, +6 contract, +2 client, +2 parity) |
+| Playwright (local, 4 workers) | 34 | 159 | 477 | 470 passed, 6 skipped, 1 failed (8.2 m): a WebKit painting stall, ADR `0058` |
+
+## Phase 111 (classifier re-arm, debt payment dates, password floor) - delta against Phase 110
+
+**Bundle** (gzip -9 on both sides; Phase 110 built from a `main` worktree with `.env` at `ece2219`, all app JS 879,623 / 267,133, as Phase 110 recorded). All app JS to 880,228 / 267,385 B (+605 / +252), 40 files. Entry `index` 194,409 / 56,065 to 194,746 / 56,178 (the password schemas and the eager `AuthModal`); `TransactionForm` 26,255 / 8,574 to 26,359 / 8,608 (the classifier); `ProgressBar` 1,750 / 966 to 1,889 / 1,058 (the chunk that holds `selectors/debts`); `AccountModal` 16,358 / 5,132 to 16,383 / 5,155. Cold start: still three scripts.
+
+| Suite | Files | Tests | Runs | Result |
+|---|---|---|---|---|
+| Vitest (`unit/`) | 53 | 1250 | 1250 | 1250/1250 (+2 `classifier-strict-mode.test.tsx`, +4 `auth-password.test.tsx`, +3 `selectors-debts`) |
+| Playwright (local, 4 workers) | 33 | 161 | 483 | 477 passed, 6 skipped of 483 (8.1 m), no failure; `jev-classify.spec.ts` on WebKit 90/90 |
+
+## Phase 110 (amount cap, stale errors, empty debt form, insights eviction, one h1, Permissions-Policy) - delta against Phase 109
+
+**Bundle** (gzip -9 on both sides; Phase 109 built from a `main` worktree with `.env` at `a7a3d1f`, all app JS 879,108 / 266,940, as Phase 109 recorded). All app JS to 879,623 / 267,133 B (+515 / +193), 40 files. Entry `index` 194,203 / 55,982 to 194,409 / 56,065; `DebtsView` 17,093 / 5,183 to 17,250 / 5,214; `InlineMathInput` 6,241 / 2,387 to 6,322 / 2,408; `TransactionForm` 26,232 / 8,560 to 26,255 / 8,574; `TransactionsView` 35,010 / 11,117 to 35,052 / 11,136; `TransferFundsModal` 6,815 / 2,793 to 6,844 / 2,811. Cold start: still three scripts.
+
+| Suite | Files | Tests | Runs | Result |
+|---|---|---|---|---|
+| Vitest (`unit/`) | 51 | 1241 | 1241 | 1241/1241 (+6 `inline-math-seed`, +2 `stale-errors.test.tsx`, +3 `debts-page`, +1 `ledger-guards`, +1 `security-headers`, +3 `dialog-names.test.tsx`) |
+| Playwright (local, 4 workers) | 33 | 161 | 483 | 476 passed, 1 failed, 6 skipped of 483 (8.3 m): the `jev-classify` WebKit flake, 2 in 20 on `main` too |
+
+## Phase 109 (category integrity, overdraft warning, wallet caption) - delta against Phase 108
+
+**Bundle** (gzip -9 on both sides; Phase 108 built from a `main` worktree with `.env` at `4c43be5`, all app JS 877,885 / 266,520, as Phase 108 recorded). All app JS to 879,108 / 266,940 B (+1,223 / +420), 40 files. Entry `index` 193,876 / 55,858 to 194,203 / 55,982 (the `addTransaction` and import guards, `overdraftBy`); `TransactionForm` 25,725 / 8,445 to 26,232 / 8,560; `TransactionsView` 34,711 / 11,015 to 35,010 / 11,117 (the edit panel and the import preview); `walletFormStyles` 394 / 313 to 517 / 380. Cold start: still three scripts.
+
+| Suite | Files | Tests | Runs | Result |
+|---|---|---|---|---|
+| Vitest (`unit/`) | 49 | 1225 | 1225 | 1225/1225 (+8 `ledger-guards`, +3 `transactions-page`, +3 `csv-import-categories.test.tsx`, +5 `overdraft-warning.test.tsx`, +1 `dashboard`, +1 `wallets-page`) |
+| Playwright (local, 4 workers) | 33 | 161 | 483 | 477 passed, 6 skipped of 483 (8.0 m), no failure |
+
+## Phase 108 (entry categories by type, debt bounds) - delta against Phase 107
+
+**Bundle** (gzip -9 on both sides; Phase 107 built from a `main` worktree with `.env` at `66fdb51`, all app JS 877,619 / 266,475, as Phase 107 recorded). All app JS to 877,885 / 266,520 B (+266 / +45), 40 files. Entry `index` 193,689 / 55,840 to 193,876 / 55,858 (`DebtSchema`'s refine); `TransactionForm` 25,696 / 8,432 to 25,725 / 8,445; `DebtsView` 17,081 / 5,174 to 17,093 / 5,180; `useDebts` 921 / 505 to 933 / 516; `ProgressBar` 1,724 / 960 to 1,750 / 964 (`payoffPercent`'s clamp). Every other difference is a gzip byte or two from a renamed import. Cold start: still three scripts.
+
+| Suite | Files | Tests | Runs | Result |
+|---|---|---|---|---|
+| Vitest (`unit/`) | 47 | 1204 | 1204 | 1204/1204 (+3 `transaction-form-category.test.tsx`, +4 `debts-page.test.tsx`, one pin changed in `selectors-debts.test.ts`) |
+| Playwright (local, 4 workers) | 33 | 161 | 483 | 477 passed, 6 skipped of 483 (7.7 m), no failure |
+
+## Phase 107 (supabase-js on demand) - delta against Phase 106
+
+**Bundle** (gzip -9 on both sides; Phase 106 built from a `main` worktree with `.env`, entry `index-S7OwAc0d.js`, the one production serves). **A guest's cold start:** JS 638,136 / 179,535 to 412,253 / 121,416 B (−225,883 / −58,119, −32.4%), four files to three; with CSS 691,013 / 189,673 to 465,159 / 131,563 (−225,854 / −58,110, −30.6%). Entry `index` 192,536 / 55,413 to 193,689 / 55,840 (the loader); `index.css` 52,877 / 10,138 to 52,906 / 10,147. `vendor-supabase` (227,036 / 58,546 to 228,140 / 58,955) loads on demand: a signed-in load fetches 180,371 B of JS in all, 836 more than before. All app JS 875,762 / 265,840 to 877,619 / 266,475 B. `sw.js` 4,181 / 1,588.
+
+**Timing** (Chromium, 150 ms RTT, 1.6 Mbps, medians; the project's requests aborted): guest first paint 1,368 to 1,080 ms; a cold signed-in load's first paint 1,364 to 1,076 ms and client ready 1,275 to 1,888 ms; warm (service worker) client ready 12 to 21 ms.
+
+| Suite | Files | Tests | Runs | Result |
+|---|---|---|---|---|
+| Vitest (`unit/`) | 46 | 1197 | 1197 | 1197/1197 (+15 `supabase-lazy.test.ts`, +3 `supabase-lazy-provider.test.tsx`) |
+| Playwright (local, 4 workers) | 33 | 161 | 483 | 477 passed, 6 skipped of 483 (7.0 m), no failure (+1 in `auth.spec.ts`) |
+
+## Phase 106 (CSS motion, no framer-motion) - delta against Phase 105
+
+**Bundle** (gzip -9 on both sides; Phase 105 built from a `main` worktree with `.env`, entry `index-Br-KQ4vK.js`, the one production serves). **Cold start** (the files `index.html` loads): JS 766,022 / 221,296 to 638,136 / 179,535 B (−127,886 / −41,761, −18.9%), five files to four; with CSS 817,251 / 231,148 to 691,013 / 189,673 (−126,238 / −41,475, −17.9%). `vendor-motion` (129,389 / 42,296) is gone; entry `index` 191,611 / 55,071 to 192,536 / 55,413 (`Presence`, `slidePill`); `vendor-supabase` 226,458 / 58,353 to 227,036 / 58,546 (`tslib`); `index.css` 51,229 / 9,852 to 52,877 / 10,138 (the keyframes); every lazy chunk that imported framer-motion 36 B smaller. All app JS 1,004,186 / 307,785 to 875,762 / 265,840 B (−128,424 / −41,945), 41 to 40 files. `sw.js` 4,236 / 1,598 to 4,181 / 1,592; precache 58 to 57 entries (1,180.22 KiB).
+
+| Suite | Files | Tests | Runs | Result |
+|---|---|---|---|---|
+| Vitest (`unit/`) | 44 | 1179 | 1179 | 1179/1179 (+8 `motion.test.tsx`, +2 `modal-focus.test.tsx`) |
+| Playwright (local, 4 workers) | 33 | 160 | 480 | 474 passed, 6 skipped of 480 (7.5 m), no failure (+`reduced-motion.spec.ts`) |
+
+## Phase 105 (own arithmetic parser, ฿0 summary) - delta against Phase 104
+
+**Bundle** (gzip -9 on both sides; Phase 104 is the build whose entry production serves, `index-Ck3vA7lB.js`): all app JS 1,380,029 / 417,344 to 1,004,186 / 307,785 B (−375,843 / −109,559), 42 to 41 files. `vendor-math` (375,725 / 109,561) is gone; `InlineMathInput`, which now holds the parser, 5,680 / 2,134 to 6,241 / 2,386; entry `index` 191,656 / 55,089 to 191,611 / 55,071; `vendor-react` 194,329 / 60,402 to 193,822 / 60,257. Every other change is a hashed chunk name. `sw.js` 4,289 / 1,613 to 4,236 / 1,598 B; precache 59 to 58 entries (1,304.12 KiB).
+
+| Suite | Files | Tests | Runs | Result |
+|---|---|---|---|---|
+| Vitest (`unit/`) | 43 | 1169 | 1169 | 1169/1169 (+83 in `math-evaluator.test.ts`, one pin changed) |
+| Playwright (local, 4 workers) | 32 | 158 | 474 | 468 passed, 6 skipped of 474 (8.2 m), no failure |
+
+## Phase 104 (฿0 debt, fonts cache, date helpers) - delta against Phase 103
+
+**Bundle** (gzip -9 on both sides; Phase 103 is the build whose entry production serves, `index-DhnQcc5z.js`): the app's JS is unchanged apart from hashed chunk names, entry `index` 191,656 B raw either way, all JS 1,380,027 to 1,380,029 B raw. **Service worker:** `sw.js` 4,761 / 1,765 to 4,289 / 1,613 B; the Workbox runtime 21,863 / 7,462 to 15,112 / 5,228 B (−6,751 / −2,234), as the expiration and cacheable-response plugins go with the font routes. Precache 59 entries.
+
+**Measured and not shipped:** the `dateDisplay.ts` split, entry 189,839 / 54,537 B (−1,817 / −541) plus a 1,830 / 754 B chunk the Dashboard loads on every cold start (ADR `0080`).
+
+| Suite | Files | Tests | Runs | Result |
+|---|---|---|---|---|
+| Vitest (`unit/`) | 42 | 1086 | 1086 | 1086/1086 (one pin changed, none added) |
+| Playwright (local, 4 workers) | 32 | 158 | 474 | 468 passed, 6 skipped of 474 (8.8 m), no failure |
+
+## Phase 103 (one payoff percent selector) - delta against Phase 102
+
+**Bundle** (gzip -9 on both sides; Phase 102 built from a `main` worktree with `.env`): 51 files on each side. `selectors/debts.ts` moved from the `useDebts` chunk, 1,775 / 915 to 906 / 499 B, into the shared `ProgressBar` chunk, 716 / 476 to 1,724 / 960 B, which `DebtsView`, `DashboardView`, `TransactionForm` and `useDebts` already load; `DashboardView` 23,155 / 7,430 to 23,102 / 7,393; `DebtsView` 17,197 / 5,231 to 17,189 / 5,221; `TransactionForm` 25,865 / 8,485 to 25,844 / 8,479; `QuickAddModal` 2,587 / 1,246 to 2,619 / 1,256; entry `index` 191,652 / 55,091 to 191,656 / 55,078. Every other change is a hashed chunk name. All JS 1,379,936 / 417,354 to 1,380,027 / 417,315 B (+91 / −39). CSS unchanged.
+
+| Suite | Files | Tests | Runs | Result |
+|---|---|---|---|---|
+| Vitest (`unit/`) | 42 | 1086 | 1086 | 1086/1086 (+6: four `payoffPercent` tests, two zero-total pins) |
+| Playwright (local, 4 workers) | 32 | 158 | 474 | 468 passed, 6 skipped of 474 (9.6 m), no failure |
+
+## Phase 102 (legacy transfer_funds refuses) - delta against Phase 101
+
+**Database (replay):** 19 migrations, from 18; `SECURITY DEFINER` functions `authenticated` may execute: 10, from 11 signatures. **Bundle:** no client change.
+
+| Suite | Files | Tests | Runs | Result |
+|---|---|---|---|---|
+| Vitest (`unit/`) | 42 | 1080 | 1080 | 1080/1080 (+3: the Phase 102 probe before, after, and failing on the old schema) |
+| Playwright (local, 4 workers) | 32 | 158 | 474 | 468 passed, 6 skipped of 474 (8.9 m), no failure |
+
+## Phase 101 (strict mode) - delta against Phase 100
+
+**Bundle:** all 51 files in `dist/assets/` and `index.html` byte-identical to production's files of the same name, so no size changed.
+
+| Suite | Files | Tests | Runs | Result |
+|---|---|---|---|---|
+| `tsc` (root and `api/`, both `strict`) | - | - | - | 0 errors (7 under `--strict` before the fixes) |
+| Vitest (`unit/`) | 42 | 1077 | 1077 | 1077/1077 |
+| Playwright (local, 4 workers) | 32 | 158 | 474 | 468 passed, 6 skipped of 474 (8.9 m), no failure |
+
+## Phase 100 (backup schema type parity) - delta against Phase 99
+
+**Bundle** (gzip -9 on both sides; Phase 99 from the production assets): entry JS the same size, 191,652 / 55,091 B; `accountExport` 5,694 / 2,210 to 5,740 / 2,225 B (+46 / +15: the `schemaOf` calls); `AccountModal` 16,414 / 5,167 to 16,414 / 5,169 (only the hashed chunk names it imports changed); CSS and the vendor chunks unchanged. `schemaParity.ts` has no chunk of its own: its one runtime function is inlined into `accountExport`, and its types emit nothing.
+
+| Suite | Files | Tests | Runs | Result |
+|---|---|---|---|---|
+| Vitest (`unit/`) | 42 | 1077 | 1077 | 1077/1077 |
+| Type checks (`tsconfig.parity.json`, strict) | 2 | 7 | - | 1 schema passes, 6 drifts refused |
+| Playwright (local, 4 workers) | 32 | 158 | 474 | 468 passed, 6 skipped of 474 (8.8 m), no failure |
+
+## Phase 99 (backup restore) - delta against Phase 98
+
+**Bundle** (gzip -9 on both sides; Phase 98 from the production assets): entry `index` JS 190,954 / 54,830 to 191,652 / 55,091 B (+698 / +261); `accountExport` 2,282 / 946 to 5,694 / 2,210 (+3,412 / +1,264); `AccountModal` 14,184 / 4,463 to 16,414 / 5,167 (+2,230 / +704); `vendor-icons` 24,383 / 5,279 to 24,742 / 5,320 (+359 / +41); CSS 51,229 / 9,852 unchanged.
+
+| Suite | Files | Tests | Runs | Result |
+|---|---|---|---|---|
+| Vitest (`unit/`) | 42 | 1077 | 1077 | 1077/1077 (parser 10, guest restore 4, signed-in refusal 2) |
+| Playwright (local, 4 workers) | 32 | 158 | 474 | 466 passed + 2 failed + 6 skipped of 474 in 13.4 m, first run; both failures (WebKit: `csv-classify` "a wait of over a minute", `transaction` "a fresh guest sees a first-run empty state") are the ADR `0058` painting stall, a click waiting 15 s with the screencast stopping 1.0 and 0.2 s into the wait, and both passed 10 of 10 alone |
+
+## Phase 98 (install scripts, CLAUDE.md, run time) - delta against Phase 97
+
+**Bundle:** unchanged; the build on a clean `npm ci` is byte-identical to production's Phase 97 files.
+
+**CLAUDE.md:** 798 lines / 161,676 B to 705 / 147,454 B (the Do NOT list 133 rules to 37).
+
+| Suite | Files | Tests | Runs | Result |
+|---|---|---|---|---|
+| Vitest (`unit/`) | 41 | 1061 | 1061 | 1061/1061; 84.5 s cold after `npm ci`, then 42.9 and 42.8 s |
+| Playwright (local, 4 workers) | 32 | 156 | 468 | 462 passed + 6 skipped of 468 in 10.7 m, first run, no failure |
+
+| Playwright time | Phase 97 local | Phase 98 local | `main` CI (Phase 97 merge) |
+|---|---|---|---|
+| Wall | 11.1 min | 10.7 min | 285 s |
+| Summed test time | 2,543 s | 2,412 s | 1,219 s |
+| Per spec, against CI | 1.5 to 3.0 times | 1.5 to 3.3 times | 1 |
+
+## Phase 97 (whole-account export, cascade check) - delta against Phase 96
+
+**Bundle** (gzip -9 on both sides; Phase 96 from the production assets): entry `index` JS 190,913 / 54,813 to 190,954 / 54,830 B raw / gzip (+41 / +17); new `accountExport` chunk 2,282 / 946; `AccountModal` 12,409 / 3,994 to 14,184 / 4,463 (+1,775 / +469); `DiaryView` 14,494 / 5,106 to 14,277 / 4,989 (-217 / -117); CSS 51,229 / 9,852 unchanged.
+
+| Suite | Files | Tests | Runs | Result |
+|---|---|---|---|---|
+| Vitest (`unit/`) | 41 | 1061 | 1061 | 1061/1061 (export 8, signed-in export 3) |
+| Playwright (local, 4 workers) | 32 | 156 | 468 | 462 passed + 6 skipped of 468 in 11.1 m, first run, no failure |
+
+| Erasure cascade (PGlite, median of 3) | Transactions | Without the five indexes | With them |
+|---|---|---|---|
+| Live's shape | 206 | 1 ms | 3 ms |
+| Heavy account alone | 20,000 | 36 ms | 28 ms |
+| Heavy + 100k other rows | 120,000 | 756 ms | 21 ms |
+| Heavy + 500k other rows | 520,000 | 3,777 ms | 26 ms |
+
+## Phase 96 (account deletion) - delta against Phase 95
+
+**Bundle** (gzip -9 on both sides; Phase 95 from the production assets): entry `index` JS 190,322 / 54,636 to 190,913 / 54,813 B raw / gzip (+591 / +177); `AccountModal` chunk 10,631 / 3,550 to 12,409 / 3,994 (+1,778 / +444); CSS 51,229 / 9,852 unchanged.
+
+| Suite | Files | Tests | Runs | Result |
+|---|---|---|---|---|
+| Vitest (`unit/`) | 40 | 1050 | 1050 | 1050/1050 (Phase 96 probe 2 ways, signed-in deletion 6) |
+| Playwright (local, 4 workers) | 32 | 155 | 465 | 458 passed + 1 failed + 6 skipped of 465 in 11.8 m, first run; the failure (WebKit, `account-and-mobile-nav` "lowering a balance") is the ADR `0058` painting stall: its trace's last screencast frame is 0.8 s into the 15 s click wait, and it passed 10 of 10 alone |
+
+| Schema (replayed) | Phase 95 | Phase 96 |
+|---|---|---|
+| Migrations | 17 | 18 |
+| Functions | 16 | 17 (`delete_user_account`) |
+| Function grants | 64 | 68 |
+
+## Phase 95 (CSP violation reports, footer margin, Node engines) - delta against Phase 94
+
+**Bundle** (gzip -9 on both sides; Phase 94 from the production assets): entry `index` JS 190,318 / 54,642 to 190,322 / 54,636 B raw / gzip (+4 / -6), CSS 51,218 / 9,849 to 51,229 / 9,852 (+11 / +3). The footer's margin class only; `api/csp-report.ts` is a function, not in the bundle.
+
+| Suite | Files | Tests | Runs | Result |
+|---|---|---|---|---|
+| Vitest (`unit/`) | 40 | 1042 | 1042 | 1042/1042 (`csp-report` +10, headers +1) |
+| Playwright (local, 4 workers) | 32 | 154 | 462 | 455 passed + 1 failed + 6 skipped of 462 in 7.9 m, first run; the failure (WebKit, jev-classify mid-confidence chip) passed 10/10 alone and 100/100 with both Jev specs under 4 workers |
+
+Schema unchanged: 17 migrations.
+
+## Phase 94 (CSP enforced, viewport-fit=cover, package metadata) - delta against Phase 93
+
+**Bundle** (gzip -9 on both sides; Phase 93 from the production assets, which are byte-identical to its build): entry `index` JS 190,069 / 54,595 to 190,318 / 54,638 B raw / gzip (+249 / +43), CSS 50,639 / 9,750 to 51,218 / 9,845 (+579 / +95). All from the safe-area inset classes. Phase 93's own gzip figure above (54,775) used another compressor setting, so compare like with like.
+
+| Suite | Files | Tests | Runs | Result |
+|---|---|---|---|---|
+| Vitest (`unit/`) | 39 | 1031 | 1031 | 1031/1031 (enforced-CSP header test +1) |
+| Playwright (local, 4 workers) | 32 | 154 | 462 | 456 passed + 6 skipped of 462 in 7.4 m, first run (`safe-area.spec.ts` +2 tests, Chromium only) |
+
+Schema unchanged: 17 migrations, 7 policies, 16 functions, 64 function grants.
+
+## Phase 93 (redundant SELECT policies dropped, transfer_funds from the session) - delta against Phase 92
+
+**Bundle:** entry `index` 190,084 / 54,778 to 190,069 / 54,775 B raw / gzip (-15 / -3: no `p_user_id` in the transfer call). All 42 JS and CSS files 1,416,889 / 423,354 to 1,416,874 / 423,385 (gzip +31 from changed chunk hashes).
+
+| Suite | Files | Tests | Runs | Result |
+|---|---|---|---|---|
+| Vitest (`unit/`) | 39 | 1030 | 1030 | 1030/1030 (Phase 93 probe 3 ways, signed-in transfer 1) |
+| Playwright (local, 4 workers) | 31 | 152 | 456 | 454 passed + 2 skipped of 456 in 7.7 m, first run |
+
+| Schema (replayed) | Phase 92 | Phase 93 |
+|---|---|---|
+| Migrations | 15 | 17 |
+| Policies | 9 | 7 |
+| Functions | 15 | 16 (`transfer_funds` twice) |
+| Function grants | 60 | 64 |
+
+## Phase 92 (CSV formula escape, zoomable viewport, security headers) - delta against Phase 91
+
+**Bundle** (production build, the same `.env`, `main` built in a worktree at `49d6070`; `main`'s entry is the `index-DNX-vcmX.js` production serves):
+
+| Chunk | Phase 91 raw / gzip | Phase 92 raw / gzip | Delta raw / gzip | Why |
+|---|---|---|---|---|
+| `index` (entry) | 189,976 / 54,722 | 190,084 / 54,778 | +108 / +56 | `isZoomedIn`, zod `jitless` |
+| `index.css` | 50,539 / 9,744 | 50,639 / 9,777 | +100 / +33 | the iOS field rule |
+| `csvExchange` (lazy) | 22,257 / 8,413 | 22,420 / 8,478 | +163 / +65 | escape and unescape |
+| `TransactionsView` (lazy) | 34,823 / 11,106 | 34,819 / 11,106 | -4 / 0 | `text-[11px]` to `text-xs` |
+| All JS and CSS | 1,416,522 / 423,204 | 1,416,889 / 423,354 | +367 / +150 | 42 files before and after |
+
+| Suite | Files | Tests | Runs | Result |
+|---|---|---|---|---|
+| Vitest (`unit/`) | 39 | 1026 | 1026 | 1026/1026 (CSV +6, swipe +4, headers 7) |
+| Playwright (local, 4 workers) | 31 | 152 | 456 | 454 passed + 2 skipped of 456 in 8.4 m (third full run; the first lost its port-3100 server, the second had one WebKit Escape race in the new spec, since fixed) |
+
+| Production `/api/classify`, 10 guest `POST {}` | Phase 91 (before, 2026-10-05 13:57 UTC) | Phase 92 (after, 2026-10-05 15:05 UTC) |
+|---|---|---|
+| Status, region | 10 x `400`, `sin1::icn1` | 10 x `400`, `sin1::icn1` |
+| `Server-Timing: total` | 0.5 to 4.5 ms, median 0.75 | 0.4 to 4.5 ms, median 0.7 |
+| Client time | 0.21 to 1.05 s | 0.22 to 0.88 s |
+| Security headers | HSTS only | HSTS, `nosniff`, referrer policy, `X-Frame-Options`, `frame-ancestors`, report-only CSP |
+| CSP violations (guest walk, three browsers) | - | 0 |
+
+## Phase 91 (pinned workflow actions, least-privilege tokens, advisor triage) - delta against Phase 90
+
+**Bundle:** unchanged (no `src/` change).
+
+| Suite | Files | Tests | Runs | Result |
+|---|---|---|---|---|
+| Vitest (`unit/`) | 38 | 1009 | 1009 | 1009/1009 (workflow rules 12) |
+| Playwright (local, 4 workers) | 30 | 149 | 447 | 443 passed, 2 failed, 2 skipped of 447 in 8.0 m (both failures WebKit clicks in `jev-classify.spec.ts` waiting 15 s for a stable element, ADR `0058`'s local painting stall); that spec in WebKit three times over: 27/27 |
+
+| CI | Phase 90 | Phase 91 |
+|---|---|---|
+| Actions | by tag (`@v5`, `@v7`, `@v8`) | by commit, release in a comment |
+| Token permissions | `playwright.yml`: the repository default; `schema-drift.yml`: `contents: read` | none by default; `contents: read` per job |
+| Token in `.git/config` after checkout | yes | no |
+
+| Supabase advisors (2026-10-05) | Findings | Accepted | Scheduled | Owner |
+|---|---|---|---|---|
+| Security | 11 | 10 (9 RPCs, 1 table) | `transfer_funds`' `p_user_id` (within the accepted 9) | 1 (leaked passwords) |
+| Performance | 10 | 8 (5 foreign keys, 3 indexes) | 2 (redundant SELECT policies) | - |
+
+## Phase 90 (scheduled drift check, read-only role) - delta against Phase 89
+
+**Bundle:** unchanged (no `src/` change; `pg` is a devDependency used by `scripts/` only).
+
+| Suite | Files | Tests | Runs | Result |
+|---|---|---|---|---|
+| Vitest (`unit/`) | 37 | 997 | 997 | 997/997 (drift runner 27) |
+| Playwright (local, 4 workers) | 30 | 149 | 447 | 445 passed + 2 skipped of 447 in 8.3 m, first pass |
+
+| Drift check | Phase 89 | Phase 90 |
+|---|---|---|
+| When it runs | at a release, by hand | weekly (Mondays 02:17 UTC) and by hand |
+| As whom | the admin login (SQL editor, MCP) | `schema_drift_reader`: catalogs and history, read-only |
+| Result | rows on screen | exit 0 / 1 / 2 and a job summary |
+
+## Phase 89 (key set prefetch, proxy parity test, history row helper) - delta against Phase 88
+
+**Bundle:** unchanged (no `src/` change).
+
+| Suite | Files | Tests | Runs | Result |
+|---|---|---|---|---|
+| Vitest (`unit/`) | 36 | 970 | 970 | 970/970 (prefetch 18, parity 39, history helper 18) |
+| Playwright (local, 4 workers) | 30 | 149 | 447 | 445 passed + 2 skipped of 447 in 7.6 m, first pass |
+
+| Key set on a new instance | Phase 88 (production) | Phase 89 |
+|---|---|---|
+| When the fetch starts | at the first request with a token | when the module loads |
+| What that request waits for (`auth`, production) | the whole fetch, 456.0 ms (one sample) | 326.6, 319.0, 483.1, 341.4, 390.3 ms (median 341.4; all `desc="keys"`) |
+| The other function, a second later on the same host | - (a warm instance's refetch: 31.3 and 68.3 ms) | 64.7, 34.5, 57.7, 46.9, 29.2 ms |
+| Warm request, keys held | 0.2 to 0.6 ms | 0.5 to 0.9 ms |
+| Cold requests at once | one fetch each | one fetch |
+
+## Phase 88 (local token check, session check in the count, THB default) - delta against Phase 87
+
+**Bundle:** unchanged (no `src/` change).
+
+| Suite | Files | Tests | Runs | Result |
+|---|---|---|---|---|
+| Vitest (`unit/`) | 33 | 895 | 895 | 895/895 (proxy contract 189, migration replay 14) |
+| Playwright (local, 4 workers) | 30 | 149 | 447 | 445 passed + 2 skipped of 447 in 6.9 m, first pass |
+| Playwright (`main` CI on `97d7abb`, 6 shards) | 30 | 149 | 447 | 445 passed + 2 skipped, 0 flaky; 261 s end to end |
+
+| Signed-in AI request | Before (ADR `0051`, production) | Phase 88 |
+|---|---|---|
+| Token check | `/auth/v1/user`, about 390 ms uncached; cached 60 s per instance | local, about 0.05 ms; key set fetched once per 10 min per instance |
+| Key set fetch (production, forged tokens, 2026-10-05) | - | 456.0 ms on a new instance; 31.3 and 68.3 ms on warm ones; once per 10 min per instance |
+| Token check without a fetch (production) | - | 0.2 to 0.6 ms (`auth` step) |
+| Function total, uncached token | 626.3 ms | to measure with a real session (expected near the warm 238 ms) |
+| Revoked session refused | within 60 s | on the next request |
+
+## Phase 87 (the migrations rebuild the live schema) - delta against Phase 86
+
+**Bundle:** unchanged (no `src/` change; PGlite is a dev dependency).
+
+| Suite | Files | Tests | Runs | Result |
+|---|---|---|---|---|
+| Vitest (`unit/`) | 33 | 840 | 840 | 840/840 (`migration-replay` 11 in about 3 s) |
+| Playwright (local, 4 workers) | 30 | 149 | 447 | 445 passed + 2 skipped of 447 in 8.2 m, first pass |
+
+| Schema | Live | Replayed from the files |
+|---|---|---|
+| Migration files / history rows | 9 recorded | 13 files (9 + baseline + 3 applied outside the tool) |
+| Tables / columns / constraints | 8 / 75 / 28 | 8 / 75 / 28 |
+| Indexes / policies / functions / triggers | 17 / 9 / 15 / 2 | 17 / 9 / 15 / 2 |
+| Per-kind catalog hash | - | 11 of 11 kinds identical |
+
+## Phase 86 (one Playwright report for all six CI shards) - delta against Phase 85
+
+**Bundle:** unchanged (no `src/` change).
+
+| Suite | Files | Tests | Runs | Result |
+|---|---|---|---|---|
+| Vitest (`unit/`) | 32 | 829 | 829 | 829/829 |
+| Playwright, CI merged report | 30 | 149 | 447 | 445 passed + 2 skipped, 149 per browser |
+
+| CI, per run | Phase 85 | Phase 86 |
+|---|---|---|
+| Reports to read | 6 (one per shard) | 1 (`playwright-report-unified`) |
+| Artifacts uploaded | 1.67 MB (six HTML reports) | 1.08 MB (six blobs 0.64 MB, merged report 0.44 MB) |
+| Merge job | - | 17 to 25 s after the slowest shard (five runs) |
+| End to end | 233 to 286 s | 247 s, and 268 s with a 36 s runner wait |
+
+## Phase 85 (CI time follows the runner; two shards per browser) - delta against Phase 84
+
+**Bundle:** unchanged (no `src/` change).
+
+| Suite | Files | Tests | Runs | Result |
+|---|---|---|---|---|
+| Playwright (local, 4 workers) | 30 | 149 | 447 | 445 passed + 2 skipped in 7.7 m, first pass |
+| Vitest (`unit/`) | 32 | 829 | 829 | 829/829 |
+
+| CI, three runs each | End to end | Slowest E2E job | E2E runner time |
+|---|---|---|---|
+| 2 workers, one job per browser | 320 / 336 / 362 s | 261 to 307 s | 11.5 to 13.7 min |
+| 3 workers, one job per browser | 322 / 339 / 344 s | 276 to 285 s | 11.6 to 12.4 min |
+| 2 workers, two shards per browser (kept) | 233 / 237 / 242 s | 184 to 195 s | 16.3 to 16.6 min |
+
+| WebKit seconds per test, 2 workers | |
+|---|---|
+| AMD EPYC 9V45 | 2.30 to 2.42 |
+| Intel Xeon Platinum 8573C | 2.89 to 3.08 |
+| AMD EPYC 7763 | 3.21 to 3.46 |
+| AMD EPYC 9V74 | 3.29 |
+
+## Phase 84 (lean CI traces, nothing moves while the app loads) - delta against Phase 83
+
+**Bundle** (the branch against `main`'s build, both with `.env`): `index-*.css` 48,810 -> 50,539 B (+1,729 B, +229 B gzip), the fallback faces; the entry `index-*.js` 189,919 -> 189,976 B (+57 B, +9 B gzip), `<main>`'s classes. Every other chunk is identical once hashed chunk names are normalised. Precache 58 entries, 1,655.03 -> 1,656.78 KiB.
+
+**Layout shift on load** (Chromium, `vite preview`, throttled, load plus one visit to each tab): 1280 0.0268 -> 0.0000; 390 0.0000 -> 0.0000.
+
+| Suite | Files | Tests | Runs | Result |
+|---|---|---|---|---|
+| Playwright (local, 4 workers) | 30 | 149 | 447 | 445 passed + 2 skipped in 7.5 m, first pass |
+| Vitest (`unit/`) | 32 | 829 | 829 | 829/829 |
+
+| Local WebKit full run, 4 workers | Run 1 | Run 2 |
+|---|---|---|
+| no trace | 3.1 m | 3.3 m |
+| `retain-on-first-failure` (ADR `0059`) | 4.7 m | 4.1 m |
+| the same without screenshots (ADR `0060`) | 3.4 m | 3.3 m |
+
+| CI E2E job | untraced (Phase 82) | ADR `0059`'s trace | this trace (PR #34's three runs) |
+|---|---|---|---|
+| WebKit | 3.6, 3.8 m | 4.5, 4.5 m | 4.3, 3.2, 3.2 m |
+| Firefox | 2.6, 3.5 m | 4.0, 3.7 m | 3.7, 3.9, 3.2 m |
+| chromium | 2.5, 2.5 m | 2.5, 3.1 m | 3.1, 3.1, 2.7 m (the first two with a failing test's retries) |
+
+## Phase 83 (an open dialog keeps its focus across effect re-runs) - delta against Phase 82
+
+**Bundle** (the branch built with `.env` against production's files, `main`'s build): the entry `index-*.js` 189,653 -> 189,919 B (+266 B, +61 B gzip), where `Modal` lives. Every other chunk is identical once hashed chunk names are normalised.
+
+| Suite | Files | Tests | Runs | Result |
+|---|---|---|---|---|
+| Playwright (local, 4 workers) | 29 | 147 | 441 | 441/441 in 8.0 m, first pass |
+| Vitest (`unit/`) | 32 | 829 | 829 | 829/829 |
+
+## Phase 82 (a dialog isolates the page in its commit) - delta against Phase 81
+
+**Bundle** (the branch built with `.env` against production's files, which are `main`'s build byte for byte): the entry `index-*.js` 189,481 -> 189,653 B (+172 B, +61 B gzip), where `Modal` lives. Every other chunk is identical once hashed chunk names are normalised.
+
+| Suite | Files | Tests | Runs | Result |
+|---|---|---|---|---|
+| Playwright (local, 4 workers) | 29 | 147 | 441 | run 1 440/441 in 7.5 m (WebKit, the high-confidence classification test: the badge never appeared, no trace); run 2 440/441 in 11.1 m with traces on (WebKit, a Categories click stalled on "stable"); run 3 441/441 in 8.1 m, first pass |
+| Vitest (`unit/`) | 32 | 828 | 828 | 828/828 |
+
+## Phase 81 (warm PWA server; seed during render) - delta against Phase 80
+
+**Bundle** (local builds with `.env`, gzip level 9): `InlineMathInput` 5,983 -> 5,680 B (-303 B, -137 B gzip), `TransactionForm` 25,869 -> 25,865 B (-4 B, +26 B gzip) and `TransferFundsModal` 6,855 -> 6,927 B (+72 B, +39 B gzip). No other chunk changed size, and the entry `index-*.js` is identical to `main`'s once its hashed chunk names are normalised.
+
+| Suite | Files | Tests | Runs | Result |
+|---|---|---|---|---|
+| Playwright (local, 4 workers) | 29 | 147 | 441 | run 1 439/441 in 8.3 m: two WebKit clicks waited 15 s for a button to be stable after a dialog closed (`debts-page.spec.ts` Mark as paid off, `transaction-edit.spec.ts` the repayment edit); run 2 441/441 in 8.0 m, first pass |
+| Vitest (`unit/`) | 32 | 827 | 827 | 827/827 |
+
+`toast-layering.spec.ts` on chromium 1.7 s and 2.5 s in both full runs (Phase 80: 28.5 s and 29.4 s); the warm-up took 3.6 s and 3.8 s.
+
+## Phase 80 (feedback follows its event) - delta against Phase 79
+
+**Bundle** (local builds with `.env`, gzip level 9): `TransactionsView` 34,825 -> 34,823 B (-2 B, +33 B gzip) and `WalletsView` 14,765 -> 14,740 B (-25 B, 0 B gzip). No other chunk changed, and the entry `index-*.js` is identical to `main`'s once its hashed chunk names are normalised.
+
+| Suite | Files | Tests | Runs | Result |
+|---|---|---|---|---|
+| Playwright (local, 4 workers) | 29 | 147 | 441 | 441/441 in 8.2 m, first pass, no retries. Near miss: `toast-layering.spec.ts`'s two tests took 28.5 s and 29.4 s on chromium, the first requests to the cold PWA server on port 3100, against the 30 s navigation timeout |
+| Vitest (`unit/`) | 31 | 802 | 802 | 802/802 |
+
+## Phase 79 (every run heard; 4 local workers) - delta against Phase 78
+
+**Bundle** (local builds with `.env`, gzip level 9): `TransactionsView` 34,870 -> 34,825 B (-45 B, -18 B gzip), from removing the pause flag and the effect. No other chunk changed, and the entry `index-*.js` is identical to `main`'s once its hashed chunk names are normalised.
+
+| Suite | Files | Tests | Runs | Result |
+|---|---|---|---|---|
+| Playwright (local, 4 workers) | 29 | 147 | 441 | 441/441 three times, first pass, no retries (7.3 m, 7.2 m, 7.2 m; slowest test 10.3 s, 10.9 s, 10.3 s) |
+| Vitest (`unit/`) | 30 | 785 | 785 | 785/785 (784/784 three times before the CI fix, 36.8 to 39.2 s) |
+
+| Firefox only, `--repeat-each 3` (441 runs) | Wall time | Failed | Slowest test | Tests over 20 s |
+|---|---|---|---|---|
+| 6 workers (the old local default) | 10.4 m | 2 | 42.5 s | 10 |
+| 4 workers | 10.2 m | 0 | 12.1 s | 0 |
+
+## Phase 78 (a screen reader hears the import's pause) - delta against Phase 77
+
+**Bundle** (local builds with `.env`, gzip level 9): `TransactionsView` 34,179 -> 34,870 B (+691 B, +255 B gzip), the lazy chunk that holds the import preview. No other chunk changed, and the entry `index-*.js` is identical to `main`'s once its hashed chunk names are normalised.
+
+| Suite | Files | Tests | Runs | Result |
+|---|---|---|---|---|
+| Playwright (local) | 29 | 147 | 441 | 439/441 in 8.2 m; the 2 Firefox failures (a `page.goto` timeout in `account-and-mobile-nav.spec.ts`, a Quick Add click never stable in `smart-rules.spec.ts`, both with Firefox's own compositor errors in the log) passed 6/6 on re-run, three times each |
+| Vitest (`unit/`) | 30 | 781 | 781 | 781/781, ~39 s |
+
+## Phase 77 (every 429 says how long to wait) - delta against Phase 76
+
+**Bundle** (local builds with `.env`, gzip level 9): `TransactionsView` 33,955 -> 34,179 B (+224 B, +93 B gzip) and `TransactionForm` 25,742 -> 25,869 B (+127 B, +46 B gzip), the two lazy chunks that hold the classifier. The entry `index-*.js` is identical to `main`'s once its hashed chunk names are normalised.
+
+| Suite | Files | Tests | Runs | Result |
+|---|---|---|---|---|
+| Playwright (local) | 29 | 147 | 441 | 439/441 in 6.8 m; the 2 Firefox failures (a `page.goto` timeout in `account-and-mobile-nav.spec.ts`, a nav click never stable in `date-boundary.spec.ts`) passed 6/6 on re-run, three times each |
+| Vitest (`unit/`) | 29 | 770 | 770 | 770/770, ~39 s |
+
+## Phase 76 (the CSV importer waits out Retry-After) - delta against Phase 75
+
+**Bundle** (local builds with `.env`, gzip level 9): `TransactionsView` 33,033 -> 33,955 B (+922 B, +370 B gzip) and `TransactionForm` 25,486 -> 25,742 B (+256 B, +122 B gzip), the two lazy chunks that hold the classifier and the import preview. The entry `index-*.js` stays 189,481 B and is identical to `main`'s once its 55 hashed chunk names are normalised (gzip +2 B from those names).
+
+| Suite | Files | Tests | Runs | Result |
+|---|---|---|---|---|
+| Playwright (local) | 29 | 146 | 438 | 438/438 in 6.5 m |
+| Vitest (`unit/`) | 29 | 739 | 739 | 739/739, ~39 s |
+
+## Phase 75 (the functions' region) - before the change
+
+No `src/` file changed, so the client bundle is unchanged (not rebuilt). Unit 725/725; Playwright 432/432 in 6.7 m.
+
+**Guest `POST {}` to `/api/classify` on production, `iad1`** (this machine in Thailand, 2026-10-03 23:33 UTC):
+
+| Request | `x-vercel-id` | `Server-Timing` | Wall time |
+|---|---|---|---|
+| 1 to 5 | `sin1::iad1` | `total` 0.6 to 4.8 ms | 0.603 to 1.288 s |
+| 6 to 10 | `sin1::iad1` | `total` 0.5 to 0.8 ms | 0.364 to 0.376 s |
+
+**After, on `icn1`** (`65d49f4`, Vercel `dpl_BnxC9uqZHQBTPhzxskVM9a8bpZQq`):
+
+| Guest `POST {}`, 10 requests from Thailand | fastest | median | mean | slowest |
+|---|---|---|---|---|
+| `iad1` (`sin1::iad1`, 2026-10-03 23:33 UTC) | 0.364 s | 0.490 s | 0.615 s | 1.288 s |
+| `icn1` (`sin1::icn1`, 2026-10-04 00:34 UTC) | **0.226 s** | **0.358 s** | **0.341 s** | 0.574 s |
+
+| Signed-in `/api/classify` (ms) | `auth` | `quota` | `ai` | `total` |
+|---|---|---|---|---|
+| token not yet cached, `iad1` | 793.5 | 680.6 | 141.1 | **1616.3** |
+| token not yet cached, `icn1` | 356.0 | 54.8 | 213.3 | **626.3** (−61%) |
+| token cached, `iad1` (3 to 5 samples) | 0 | ~626 to 652 | ~132 to 185 | **~782 to 839** |
+| token cached, `icn1` (4 samples) | 0 | 31.4 to 43.5, median 35.8 | 175.6 to 225.8, median 196.2 | **209.0 to 261.7, median 237.9** (about −70%) |
+
+The function's own time for a guest's `POST {}` stayed under 5 ms. One `icn1` value arrived cut off (`total;dur=244.`) and is read as 244.0.
+
+## Phase 74 (the AI proxies time their steps) - delta against Phase 73
+
+Only `api/`, `unit/` and docs changed; no `src/` file did, so the client bundle is unchanged (not rebuilt).
+
+| Suite | Files | Tests | Runs | Result |
+|---|---|---|---|---|
+| Playwright (local) | 29 | 144 | 432 | 431/432 in 7.4 m; the one failure was Firefox timing out loading the dev server's page (`page.goto`, 30 s) in `jev-classify.spec.ts:209`'s setup, before the test body ran and in a spec that never reaches the proxies; that spec then passed 27/27 on Firefox (`--repeat-each=3`) |
+| Vitest (`unit/`) | 29 | 725 | 725 | 725/725, ~39 s |
+
+**Production** (`e69425f`, Vercel `dpl_2J9Asnb3kofhqt3RyPRYMRRvCWS9`, functions in `iad1`, database in `ap-northeast-2`):
+
+| `/api/classify` request | Status | `Server-Timing` |
+|---|---|---|
+| signed in, a note no keyword rule matches (the owner's DevTools, one request) | 200 | `auth;dur=0.0;desc="cached", quota;dur=614.5, ai;dur=134.3, total;dur=750.2` |
+| guest `POST {}` (this machine, three requests) | 400 | `total;dur=1.1`, `0.5`, `0.4` |
+
+## Phase 73 (signed-in callers limited per account) - delta against Phase 72
+
+Only `api/`, `unit/`, `tests/`, `supabase/` and docs changed; no `src/` file did, so the client bundle is unchanged (not rebuilt).
+
+| Suite | Files | Tests | Runs | Result |
+|---|---|---|---|---|
+| Playwright (local) | 29 | 144 | 432 | 431/432 in 6.4 m; the one failure a WebKit click timing out "waiting for ... stable" in `presets.spec.ts:79`, which this phase does not touch, with no assertion failing; that spec then passed 30/30 on WebKit (`--repeat-each=5`) |
+| Vitest (`unit/`) | 29 | 707 | 707 | 707/707, ~39 s |
+
+**Production** (`ec9cabb`, Vercel `dpl_5sd1QkZZ4Qx4tBhQCTPzUZQhG3WT`):
+
+| Request to `/api/classify` | Status | Time (this machine, mean) |
+|---|---|---|
+| guest `POST {}`, requests 1 to 30 | 400 | 0.414 s |
+| guest `POST {}`, requests 31 and 32 | 429 (edge) | 0.137 s |
+| `POST {}` with a refused token | 401 | 1.18 s (one request, cold) |
+| signed in, a note no keyword rule matches (the owner's browser, DevTools) | 200 | 697 ms, 886 ms (two requests; a full classification, TypeSafe included) |
+
+`consume_ai_quota()` in Postgres: about 0.13 ms a call in the probe (121 calls, 15.5 ms); 8.4 ms mean, 31 ms at most, over the first 5 Data API calls on production. The signed-in rows are not comparable with the guest rows: those stop at 400 before TypeSafe. The round trip the count adds from the function to `ap-northeast-2` is not measured on its own.
+
+## Phase 71 (the page behind a dialog is inert) - delta against Phase 70
+
+A local build of the Phase 71 tree with the repo's `.env`, against `main`'s entry as served in production (`index-BFWd6EeO.js`, 188,651 B, unchanged since Phase 67). Gzip is level 9.
+
+| Chunk | Phase 70 | Phase 71 | Delta |
+|---|---|---|---|
+| entry `index-*.js` | 188,651 B / 54,246 B gzip | 189,481 B / 54,403 B gzip | **+830 B raw / +157 B gzip** (`Modal` is in the entry: the marks, their release and the watcher) |
+
+| Suite | Files | Tests | Runs | Wall clock |
+|---|---|---|---|---|
+| Playwright (local) | 29 | 142 | 426 | 7.8 / 7.0 m (two full runs, 425/426 each) |
+| Vitest (`unit/`) | 29 | 672 | 672 | ~37 s |
+
+**Production** (`3b9abec`, Vercel `dpl_5VQ4CZchLxdFrkPFpfM4cgmDjSRU`): `index-C0jaDWkz.js` at 189,481 B, the size measured locally. CI (push run `37126532803`): unit 672/672, 142/142 per browser, the run 307 s.
+
+**Intermittent local failures:** 2 in 852 full-suite runs, plus 1 in a WebKit-only run (142), all WebKit clicks timing out "waiting for ... stable", no assertion. A WebKit-only A/B on the same machine: this branch 1 failure in 2 runs, `main`'s `Modal.tsx` 2 in 2.
+
+## Phase 70 (the guest rate limit) - the AI proxies on production
+
+No code change, so no bundle, unit or E2E delta. Measured from this machine against `income-and-expence-neon.vercel.app` with `POST {}` (no TypeSafe call).
+
+| Guest requests to `/api/classify` | Before the rule (05:25 UTC) | After (10:03:55 UTC) |
+|---|---|---|
+| 40 sequential | 40 x 400 in 20 s | 30 x 400, then 10 x 429, in 17 s |
+| Time per response | - | 400 (the function): 0.36-1.1 s; 429 (the edge): 0.12-0.14 s |
+
+## Phase 69 (Node globals guard) - against Phase 68
+
+No `src/` change, so no bundle delta.
+
+| Measure | Phase 68 | Phase 69 |
+|---|---|---|
+| `npm run lint` steps | `tsc` (root), `tsc` (api) | **the guard**, then the same two |
+| The guard on `src/` | - | 121 files, 0 findings, ~0.16 s |
+| Vitest (`unit/`) | 615 tests, 28 files | 666 tests, 29 files, ~37 s |
+
+**CI** (push run `37098175414` on `89b27a6`): the guard, both `tsc` configs and unit 666/666 in the `checks` job; 141/141 per browser; the run 298 s, jobs 176 / 204 / 251 s, setup 43 to 46 s.
+
+## Phase 68 (CI in Playwright's container image) - CI timing against Phase 67
+
+No app change, so no bundle delta. Measured with scratchpad `cijobs.py` from the GitHub API. Setup is job start to the start of the test step; tests is the test step.
+
+| E2E jobs | n | setup median / max | tests median | job median / max |
+|---|---|---|---|---|
+| Before: the 40 runs from 2026-09-28 to 2026-10-02 | 117 | 43 s / 1,171 s | 156 s | 204 s / 1,328 s |
+| Before: the same 141-test suite (`37027020930`, `37074761332`, `37075229294`) | 9 | 39 s / 663 s | 172 s | 219 s / 871 s |
+| After: `37087564638`, attempts 1 to 4 | 12 | 44 s / **52 s** | 176 s | 222 s / **265 s** |
+| After: `37089300857` (docs push) and `37091502761` (`main`, `33eebde`) | 6 | 43.5 s / 54 s | 176.5 s | 226.5 s / 248 s |
+
+| Browser, after (4 attempts) | job | tests | same suite before, tests |
+|---|---|---|---|
+| chromium | 177-195 s | 130-143 s | 127-145 s |
+| firefox | 215-239 s | 166-191 s | 172-193 s |
+| webkit | 211-265 s | 155-214 s | 169-205 s |
+
+- **Inside setup:** the image pull ("Initialize containers") 24 to 39 s over the four attempts, 24 to 42 s over all 18 jobs; `npm ci` 6 to 13 s; checkout and `setup-node` 1 to 3 s.
+- **Before, `install-deps` alone:** median 23 s over 117 steps, with 336, 647 and 1,155 s outliers.
+- **Whole runs** (first job start to last job end): 323 / 308 / 324 / 271 s, against 284 and 326 s (normal days, same suite) and 924 s (PR #16, slow mirror).
+
+## Phase 67 (Modal focus trap) - delta against Phase 66
+
+A local build of `main` (`6354c08`) and of the Phase 67 tree, both with the repo's `.env`, made in the repo one after the other. Gzip is level 9.
+
+| Chunk | Phase 66 | Phase 67 | Delta |
+|---|---|---|---|
+| entry `index-*.js` | 186,724 B / 53,346 B gzip | 188,651 B / 54,246 B gzip | **+1,927 B raw / +900 B gzip** (`Modal` is in the entry: the open-time focus, the Tab trap, the reachability filter and the dialog stack) |
+| `index-*.css` | - | 48,810 B | no new rule: `focus-visible:outline-none` was already used by three controls |
+| PWA precache | 58 entries, 1,650.04 KiB | 58 entries, 1,651.92 KiB | +1.88 KiB |
+
+| Suite | Files | Tests | Runs | Wall clock |
+|---|---|---|---|---|
+| Playwright (local, 6 workers) | 29 | 141 | 423 | 7.4 / 6.8 m (two runs) |
+| Vitest (`unit/`) | 28 | 615 | 615 | ~39 s |
+
+E2E +2 tests, both in `account-and-mobile-nav.spec.ts` (Quick Add by keyboard at 1280, a Transactions row by keyboard at 390). Unit +19, all in the new `modal-focus.test.tsx`.
+
+**Intermittent local failures:** 3 in 846 full-suite runs (2 full runs), all in run 1, all timeouts: a Firefox `page.goto` and two WebKit clicks waiting for "stable". No assertion failed; both specs then passed 48/48 alone and run 2 was clean.
+
+**Acceptance probe** (scratchpad `accept10.cjs`, `vite preview`): 369/372 -> 372/372.
+
+**Production** (`d2f735e`, Vercel `dpl_9uk8JX9RkeU4fgUF9HT5as6PA54T`): `index-BFWd6EeO.js` at 188,651 B, the size measured locally; 54 of 59 files byte for byte, the rest line endings only. The section 10 probe passes 372/372 there. CI (push run `37075229294`, after PR #17's test fix): unit 615/615, 141/141 per browser.
+
+## Phase 66 (UI polish) - delta against Phase 65
+
+A local build of the Phase 66 tree with the repo's `.env`, against Phase 65's recorded local build and a build of `main` (`1036ee0`) made at the start of this phase. Gzip is level 9.
+
+| Chunk | Phase 65 | Phase 66 | Delta |
+|---|---|---|---|
+| entry `index-*.js` | 186,724 B | 186,724 B / 53,346 B gzip | **0 B** (`ReloadPrompt`'s `z-50` -> `z-45` is the same length) |
+| `TransactionForm-*.js` | 25.85 kB | 25,486 B | about -360 B (the form's heading is gone) |
+| `InlineMathInput-*.js` | 6.44 kB | 5,983 B | about -460 B (the help line, the (i) and the `Info` import are gone) |
+
+| Suite | Files | Tests | Runs | Wall clock |
+|---|---|---|---|---|
+| Playwright (local, 6 workers) | 29 | 139 | 417 | 6.0 / 6.2 m (two runs) |
+| Vitest (`unit/`) | 27 | 596 | 596 | ~37 s |
+
+E2E +3 tests: `toast-layering.spec.ts` (new: the More sheet over the real toast at 390, a dialog over it at 1280) and `transaction.spec.ts` (Quick Add's one title, one result, one help). Unit +4: `ui-display` 1, `dashboard` 1, `wallets-page` 2. `npm test` now starts a second dev server (`vite --mode pwa-dev`, port 3100) for the toast spec.
+
+**Local failures:** none in 834 runs (2 full runs).
+
+**Touch targets** (scratchpad probe, 390×844 and 1280×800, light and dark): still 0 under 44px in Quick Add, the Transactions Add dialog and the repay modal, excluding the documented calculator keys, microphone and shortcut links.
+
+## Phase 65 (audit 013 fixes) - delta against Phase 54
+
+A local build of the Phase 65 tree with the repo's `.env`, against Phase 54's recorded local build. No other chunk was compared.
+
+| Chunk | Phase 54 | Phase 65 | Delta |
+|---|---|---|---|
+| entry `index-*.js` | 186,800 B | 186,724 B | **-76 B** (`ReloadPrompt`'s shorter copy and classes; the form's changes are in lazy chunks) |
+
+| Suite | Files | Tests | Runs | Wall clock |
+|---|---|---|---|---|
+| Playwright (local) | 28 | 136 | 408 | 6.6 m (third run; runs 1 and 2: 406 and 407 of 408, WebKit 'stable' click timeouts) |
+| Vitest (`unit/`) | 27 | 592 | 592 | one run |
+
+E2E +1 test (`transaction.spec.ts`: a fresh guest sees the first-run empty state). Unit +4 (`transactions-page`: first run, first run under a filter, a filter that hides every row, deleted rows only).
+
+**Local failures:** 3 in 1,224 runs (3 full runs), all WebKit clicks timing out while "waiting for element to be visible, enabled and stable", on controls this phase did not touch: the Wallets adjust button and the Import CSV menu item (run 1), Add debt (run 2). No assertion failed; each spec passed on its own re-run, and run 3 passed 408/408.
+
+**Touch targets** (scratchpad probe, 390×844 and 1280×800, light and dark): controls under 44px in Quick Add / the Transactions Add modal / the repay modal, 11 / 9 / 7 -> 0 / 0 / 0, excluding the documented calculator keys, microphone and shortcut links.
+
+## Phase 54 (empty starters) - delta against Phase 64
+
+A local build of the Phase 54 tree with the repo's `.env`, against Phase 64's recorded production entry. No other chunk was compared.
+
+| Chunk | Phase 64 | Phase 54 | Delta |
+|---|---|---|---|
+| entry `index-*.js` | 187,067 B | 186,800 B | **-267 B** (the starter debt literal and three non-zero balances) |
+
+| Suite | Files | Tests | Runs | Wall clock |
+|---|---|---|---|---|
+| Playwright (local, 6 workers) | 28 | 135 | 405 | 6.9 m (one run) |
+| Vitest (`unit/`) | 27 | 588 | 588 | ~83 s (one run, alongside other work) |
+
+E2E +1 test (`wallets-page.spec.ts`: a fresh guest starts with three ฿0.00 wallets and no debt). Unit +2 (`ledger-guards`, `authenticated-ledger`). `unit/fixtures/guestLedger.ts` is not collected (`include` is `unit/**/*.test.{ts,tsx}`).
+
+**Local failures:** none in 405 runs.
+
+## Phase 63 (the identity colour migration) - delta against Phase 62
+
+`main` (`ba87338`, the Phase 62 merge) and the Phase 63 tree (`cdda81d`) were each built in a separate worktree with the repo's `.env` copied in. `main`'s entry measured 185,111 B, byte-identical to production. Gzip is `zlib` level 9.
+
+| Chunk | Phase 62 | Phase 63 | Delta |
+|---|---|---|---|
+| entry `index-*.js` | 185,111 B / 52,884 B gzip | 186,928 B / 53,513 B gzip | **+1,817 B raw / +629 B gzip** |
+| **all JS, summed** | 1,359,986 B | 1,361,153 B | **+1,167 B** |
+| `index-*.css` | 48,850 B / 9,492 B gzip | 48,850 B / 9,492 B gzip | 0 |
+| PWA precache | 59 entries, 1,649.32 KiB | 58 entries, 1,650.46 KiB | -1 entry, +1.14 KiB |
+
+Per chunk (raw bytes; every chunk not listed is byte-identical):
+
+| Chunk | Delta | Why |
+|---|---|---|
+| entry | +1,817 | `identityColorMigration` and the palette it imports, both now reached from `FinanceContext`. |
+| `identityPalette` | -484 (gone) | moved into the entry. |
+| `AddWalletModal`, `WalletsView`, `CategoriesView`, `DashboardView`, `walletFormStyles` | -46, -39, -35, -38, -9 | the palette import now resolves to the entry. |
+
+| Suite | Files | Tests | Runs | Wall clock |
+|---|---|---|---|---|
+| Playwright (local, 6 workers) | 28 | 134 | 402 | 7.4 / 6.5 m (two runs) |
+| Vitest (`unit/`) | 27 | 578 | 578 | ~36 s |
+
+**Local failures:** 5 in 804 runs, every one a click waiting for an element to settle or a browser-process crash. Four came in run 1, while two worktree builds competed for the CPU, and each file then passed on repeat. Run 2 had one, a WebKit row in `transaction-edit.spec.ts` (then 15/15).
+
+## Phase 62 (the Categories page) - delta against Phase 61
+
+`main` (`192e333`, the Phase 61 merge) was built in a separate worktree with the repo's `.env` copied in, and the Phase 62 tree (`f8c62a0`) in the repo. `main`'s entry measured 182,550 B, byte-identical to production. Gzip is `zlib` level 9.
+
+| Chunk | Phase 61 | Phase 62 | Delta |
+|---|---|---|---|
+| entry `index-*.js` | 182,550 B / 51,996 B gzip | 185,111 B / 52,891 B gzip | **+2,561 B raw / +895 B gzip** |
+| **all JS, summed** | 1,358,531 B | 1,359,103 B | **+572 B** |
+| `index-*.css` | 48,446 B / 9,415 B gzip | 48,612 B / 9,443 B gzip | +166 B |
+| PWA precache | 57 entries, 1,647.50 KiB | 59 entries, 1,648.17 KiB | +2 entries, +0.67 KiB |
+
+Per chunk (raw bytes; every chunk not listed is byte-identical or within ±40 B):
+
+| Chunk | Delta | Why |
+|---|---|---|
+| entry | +2,561 | the L9/L10 guards, and `selectors/ledger` (about 1.7 kB), which `FinanceContext` now imports and which therefore left the shared `Money` chunk. |
+| `Money` | -1,721 | `selectors/ledger` moved into the entry. |
+| `CategoriesView` | +2,217 | the list, the form, the colour grid and the Smart rules panel. |
+| `vendor-icons` | -3,563 | the icon picker's eleven icons and the old row icons are no longer imported. |
+| `Card`, `Chip`, new `Badge`, new `identityPalette` | +449, +919, 362, 484 | Rollup regrouped the shared chunks for the page's new imports. |
+| `DayGroupHeader`, `DebtsView` | -854, -255 | the same regrouping. |
+
+| Suite | Files | Tests | Runs | Wall clock |
+|---|---|---|---|---|
+| Playwright (local, 6 workers) | 28 | 134 | 402 | 6.5 / 7.2 m (two runs) |
+| Vitest (`unit/`) | 26 | 562 (560 before audit 011's fixes) | 562 | ~35 s |
+
+**Intermittent local failures:** 2 in 804 runs, one per run. WebKit `csv.spec.ts`: Import / export did not settle in time (then 10/10). Firefox `account-and-mobile-nav.spec.ts`: `page.goto` timed out before the app loaded.
+
+## Phase 61 (the Daily diary) - delta against Phase 60
+
+`main` (`3f45e3b`, the Phase 60 merge) was built in a separate worktree **with the repo's `.env` copied in**, and the Phase 61 tree (`d80fb5e`) in the repo. `main`'s entry then measured 182,025 B, byte-identical to production. Gzip is `zlib` level 9.
+
+| Chunk | Phase 60 | Phase 61 | Delta |
+|---|---|---|---|
+| entry `index-*.js` | 182,025 B / 51,869 B gzip | 182,550 B / 51,998 B gzip | **+525 B raw / +129 B gzip** |
+| **all JS, summed** | 1,357,773 B | 1,358,401 B | **+628 B** |
+| `index-*.css` | 48,143 B / 9,336 B gzip | 48,399 B / 9,406 B gzip | +256 B |
+| PWA precache | 60 entries, 1,646.47 KiB | 57 entries, 1,647.28 KiB | -3 entries, +0.81 KiB |
+
+Per chunk (raw bytes; every chunk not listed is byte-identical):
+
+| Chunk | Delta | Why |
+|---|---|---|
+| entry | +525 | the day hand-off in `App.tsx`; `monthGrid` and the other date helpers. |
+| `DiaryView` | +16 | the page's new components replace the old form and `DiaryEntryCard` at almost the same size. |
+| new `MoodMeter` | 1,564 | `MoodMeter` and the diary labels, shared by the Dashboard and the diary. |
+| `Money`, `DayGroupHeader` | +1,272, +1,493 | Rollup regrouped the shared chunks: `ledger` (1,314), `TxCells` (1,702), `Badge` (362) and `SectionHeader` (441) are gone, merged into these. |
+| `DashboardView` | -542 | `MoodMeter` moved out. |
+| `TransactionsView` | +284 | the day filter and its button. |
+| `vendor-icons` | -614 | the old diary's icons (`BookHeart`, `Dumbbell`, `Utensils`, `Receipt` and others) are no longer imported. |
+| others | -64 to +284 | Rollup's shared-name shuffle. |
+
+| Suite | Files | Tests | Runs | Wall clock |
+|---|---|---|---|---|
+| Playwright (local, 4 workers) | 27 | 131 | 393 | 6.1 / 5.5 m (two runs) |
+| Vitest (`unit/`) | 25 | 537 | 537 | ~34 s |
+
+**Intermittent local failures:** 1 in 786 runs: Firefox could not open a page in `account-and-mobile-nav.spec.ts`'s `beforeEach` (a browser protocol error), in run 1.
+
+## Phase 60 (the Debt payoff page) — delta against Phase 59
+
+`main` (`f58f681`, the Phase 59 merge) was built with `npx vite build` in a separate worktree, and the Phase 60 tree (`ebf7a14`) in the repo. Gzip is `zlib` level 9.
+
+**Corrected in Phase 61.** The first figures came from a worktree without the git-ignored `.env`, whose `VITE_SUPABASE_*` values are inlined into the entry, so `main`'s entry measured 189 B short (180,058 B) and the deltas came out that much too large (+1,967 B entry, +11,589 B all JS). Rebuilt with `.env` on both sides, `f58f681`'s entry is 180,247 B, the size production served for Phase 59, and `ebf7a14`'s is 182,025 B, the size production serves now.
+
+| Chunk | Phase 59 | Phase 60 | Delta |
+|---|---|---|---|
+| entry `index-*.js` | 180,247 B / 51,466 B gzip | 182,025 B / 51,865 B gzip | **+1,778 B raw / +399 B gzip** |
+| **all JS, summed** | 1,346,150 B | 1,357,550 B | **+11,400 B** |
+| `index-*.css` | 47,808 B / 9,291 B gzip | 48,143 B / 9,336 B gzip | +335 B |
+| PWA precache | 56 entries, 1,634.79 KiB | 60 entries, 1,646.25 KiB | +4 entries, +11.46 KiB |
+
+Per chunk (raw bytes; every chunk not listed is byte-identical):
+
+| Chunk | Delta | Why |
+|---|---|---|
+| entry | +1,778 | `editDebt` and `DebtEditSchema` in `FinanceContext` and `zodSchemas`. |
+| `DebtsView` | +8,710 | the page: `DebtSummaryCard`, `DebtCard`, `EditDebtModal`, the write-off dialog and the focus hand-off. |
+| `useDebts` | +1,094 | `editDebt`, and the sorted `activeDebts` / `settledDebts` (it now pulls in `sortByDueDate`). |
+| new shared chunks | `ledger` 1,314, `Money` 728, `useMediaQuery` 385, `Badge` 362 | Rollup splits what the Debts chunk now shares with the Dashboard, Transactions and Wallets chunks. |
+| `TxCells`, `DayGroupHeader`, `OverflowMenu`, `DashboardView`, `DiaryView` | −1,277, −559, −329, −796, −221 | the same modules moved into the shared chunks above. |
+| others | +5 to +108 | Rollup's shared-name shuffle; no source change. |
+
+**No vendor chunk changed.** CSS grew 335 B, for the container-query variants (`@sm:`, `@2xl:`) and `text-[28px]`.
+
+| Suite | Files | Tests | Runs | Wall clock |
+|---|---|---|---|---|
+| Playwright (local, 4 workers) | 26 | 128 | 384 | 6.0 / 5.8 / 5.8 / 5.7 m (four runs) |
+| Vitest (`unit/`) | 24 | 518 (516 before audit 009's fixes) | 518 | ~33 s |
+
+**Intermittent local failures:** 2 in 1,536 full-suite runs (four full runs), both Firefox, both in `account-and-mobile-nav.spec.ts`'s 390px block, both a click waiting 15 s on the mobile nav (runs 2 and 3). No assertion failed. On Firefox the file then passed 120/120 (10 repeats) and the block 120/120 more (20 repeats, 4 workers), and run 4 was clean. Phase 60 changes nothing the mobile nav loads. This is the known Firefox intermittent in that file, seen after Phase 55a (a click on More) and earlier (`:60`). Measured on both trees with the block repeated 30 times on Firefox, 6 workers: 1 failure in 180 on this branch, 2 in 180 on `main`.
+
+## Phase 59 (the Wallets page) — delta against Phase 58b
+
+`main` (`8725c11`, the Phase 58b merge) and the Phase 59 tree (`21dba28`) were each built with `npx vite build` in the repo, one after the other. Gzip is `zlib` level 9.
+
+| Chunk | Phase 58b | Phase 59 | Delta |
+|---|---|---|---|
+| entry `index-*.js` | 178,446 B / 51,004 B gzip | 180,025 B / 51,402 B gzip | **+1,579 B raw / +398 B gzip** |
+| **all JS, summed** | 1,344,269 B | 1,345,868 B | **+1,599 B** |
+| `index-*.css` | 48,450 B / 9,335 B gzip | 47,808 B / 9,291 B gzip | −642 B |
+| PWA precache | 55 entries, 1,633.53 KiB | 56 entries, 1,634.46 KiB | +1 entry, +0.93 KiB |
+
+Per chunk (raw bytes; every chunk not listed is byte-identical):
+
+| Chunk | Delta | Why |
+|---|---|---|
+| entry | +1,579 | `editWallet`, `setWalletArchived`, `WalletEditSchema` and the column filter in `FinanceContext`; `App.tsx`'s wallet hand-off. |
+| `WalletsView` | +10,889 | the page: `WalletList`, `WalletDetail`, the edit form and the moved Adjust editor. |
+| `DashboardView` | −13,068 | `WalletPopupModal` is gone; `ActivityFeed`, `TxCells` and `DayGroupHeader` left it for shared chunks. |
+| `TransactionsView` | −2,280 | `TxCells` and `DayGroupHeader` moved to shared chunks, now that two pages load them. |
+| new shared chunks | `ActivityFeed` 3,271, `DayGroupHeader` 3,374, `TxCells` 2,979, `OverflowMenu` 2,330 | Rollup splits what the Dashboard, Transactions and Wallets chunks now share. |
+| gone | `ledger` 3,164, `Money` 279, `useWallets` 230 | merged into the shared chunks above; `timeRange` −3,192 likewise. |
+| `vendor-icons` | −852 | the glyphs only the popup imported (`TrendingUp`, `TrendingDown`, `Layers`, `Receipt` among them) are no longer bundled. |
+| `walletIcons`, `walletFormStyles` | +221, +98 | now shared by the Dashboard and Wallets chunks; `walletTypeLabel`. |
+| others | −38 to +6 | Rollup's shared-name shuffle; no source change. |
+
+**CSS shrank 642 B**: the popup's classes went with it; the page reuses existing utilities apart from `text-[40px]`, `w-[52px]` and the 5/7 grid spans.
+
+| Suite | Files | Tests | Runs | Wall clock |
+|---|---|---|---|---|
+| Playwright (local, 4 workers) | 25 | 125 | 375 | 6.9 / 7.1 m (two runs) |
+| Vitest (`unit/`) | 23 | 494 (489 before audit 008's fixes) | 494 | ~33 s |
+
+**Intermittent local failures:** 1 in 1,500 full-suite runs (four full runs): a WebKit click waiting for "stable" on Add wallet's submit, in run 3. No assertion failed; the test passed 10 of 10 on repeat.
