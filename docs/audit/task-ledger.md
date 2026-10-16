@@ -58,12 +58,12 @@ Branch `phase-129-wallet-label`, cut from `main` at `0bdfbe6`. No migration.
 
 ## Phase 130 - Line-ending rule and commit prompts (docs and agent settings only, amends ADR `0101`)
 
-Branch `phase-130-eol-check`, cut from `main` at `706e335`. No migration.
+Branch `phase-130-eol-check`, cut from `main` at `706e335`. Two commits, T757's `f2045f0` and T758's `f4926c4`, merged into `main` as `5e34257` (PR #82). No migration.
 
 | # | Task | Files | Status | Commit | Gate result |
 |---|---|---|---|---|---|
-| T757 | Promote the line-ending Backlog row into stage 01's Rules: check with `git ls-files --eol` or Node, never `grep -c` | `workflow/stages/01_spec/CONTEXT.md`, `docs/audit/refactor-log.md` | done | | G1-G7 passed: paths exist, diff 1/0, 11/0, 9/1, CRLF kept, rule at :50, ledger updated, 0 em dashes, scope clean |
-| T758 | Drop the bare `git commit` ask rules (Bash and PowerShell) so the orchestrator's automatic commit stops asking; ADR `0101` amendment | `.claude/settings.json`, ADR `0101`, `docs/audit/refactor-log.md` | done | | G1-G8 passed: paths exist, settings diff 0/2, deny 91 ask 11 OK, schema valid, CRLF kept, markdown diffs 5/1, 6/6, 2/1, 0 em dashes, scope clean |
+| T757 | Promote the line-ending Backlog row into stage 01's Rules: check with `git ls-files --eol` or Node, never `grep -c` | `workflow/stages/01_spec/CONTEXT.md`, `docs/audit/refactor-log.md` | done | f2045f0 | G1-G7 passed: paths exist, diff 1/0, 11/0, 9/1, CRLF kept, rule at :50, ledger updated, 0 em dashes, scope clean |
+| T758 | Drop the bare `git commit` ask rules (Bash and PowerShell) so the orchestrator's automatic commit stops asking; ADR `0101` amendment | `.claude/settings.json`, ADR `0101`, `docs/audit/refactor-log.md` | done | f4926c4 | G1-G8 passed: paths exist, settings diff 0/2, deny 91 ask 11 OK, schema valid, CRLF kept, markdown diffs 5/1, 6/6, 2/1, 0 em dashes, scope clean |
 
 ## Backlog
 
