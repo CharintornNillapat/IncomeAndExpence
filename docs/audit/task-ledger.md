@@ -46,6 +46,7 @@ Branch `phase-128-workflow-automation`, cut from `main` at `88cc32b`. No migrati
 | # | Task | Files | Status | Commit | Gate result |
 |---|---|---|---|---|---|
 | T754 | Per-task build reports, short spec orders, the automatic pause after the spec, the automatic commit of each approved task; drop the prefixed commit ask rule; ADR `0101` amendments | `AGENTS.md`, `workflow/stages/*/CONTEXT.md`, ADR `0101`, `.claude/settings.json`, `docs/audit/refactor-log.md` | done | | G1-G7 passed: schema valid, 0 stale refs, zero em dashes, scope clean |
+| T755 | Backlog row: check line endings with `git ls-files --eol` or Node, not `grep -c` (T754's rule candidate) | `docs/audit/task-ledger.md` | done | | G1-G6 passed: paths exist, 2 added lines, row in place, CRLF 79, zero em dashes, scope clean |
 
 ## Backlog
 
@@ -63,6 +64,7 @@ Not scheduled. Each row says where it came from.
 | `tsconfig.json` `strict` | same | done since Phase 101 (ADR `0077`) |
 | React Compiler (auto-memoization; needs a Babel plugin and its own evaluation) | same | todo |
 | `rollup-plugin-visualizer` for bundle-size visibility | same | todo |
+| Specs check line endings with `git ls-files --eol <file>` (the `w/crlf` column) or a Node count of `\r\n`, never `grep -c $'\r' <file>`: in the agents' Git Bash it printed 0 on CRLF files (`AGENTS.md`, `docs/audit/task-ledger.md`), while the same command inside `$(...)` counted correctly | Phase 128, T754's review (rule candidate); reproduced in T755's spec | todo: add to `workflow/stages/01_spec/CONTEXT.md` once a spec uses it |
 
 ## Template for the next phase
 
