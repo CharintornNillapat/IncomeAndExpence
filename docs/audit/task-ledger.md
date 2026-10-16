@@ -65,6 +65,14 @@ Branch `phase-130-eol-check`, cut from `main` at `706e335`. Two commits, T757's 
 | T757 | Promote the line-ending Backlog row into stage 01's Rules: check with `git ls-files --eol` or Node, never `grep -c` | `workflow/stages/01_spec/CONTEXT.md`, `docs/audit/refactor-log.md` | done | f2045f0 | G1-G7 passed: paths exist, diff 1/0, 11/0, 9/1, CRLF kept, rule at :50, ledger updated, 0 em dashes, scope clean |
 | T758 | Drop the bare `git commit` ask rules (Bash and PowerShell) so the orchestrator's automatic commit stops asking; ADR `0101` amendment | `.claude/settings.json`, ADR `0101`, `docs/audit/refactor-log.md` | done | f4926c4 | G1-G8 passed: paths exist, settings diff 0/2, deny 91 ask 11 OK, schema valid, CRLF kept, markdown diffs 5/1, 6/6, 2/1, 0 em dashes, scope clean |
 
+## Phase 131 - Whole-app audit (docs only, no ADR)
+
+Branch `phase-131-project-audit`, cut from `main` at `cb9e109`. No migration.
+
+| # | Task | Files | Status | Commit | Gate result |
+|---|---|---|---|---|---|
+| T759 | Read-only whole-app audit by four domain sub-agents; high and medium findings to the Backlog | `docs/audit/audit-2026-10-16.md`, `docs/audit/README.md`, `docs/audit/refactor-log.md` | done | | G1-G7 passed: scope clean, citations and Backlog rows valid, counts match, skip list clean, 0 em dashes, CRLF kept, no code changed |
+
 ## Backlog
 
 Not scheduled. Each row says where it came from.
@@ -82,6 +90,12 @@ Not scheduled. Each row says where it came from.
 | React Compiler (auto-memoization; needs a Babel plugin and its own evaluation) | same | todo |
 | `rollup-plugin-visualizer` for bundle-size visibility | same | todo |
 | Specs check line endings with `git ls-files --eol <file>` (the `w/crlf` column) or a Node count of `\r\n`, never `grep -c $'\r' <file>`: in the agents' Git Bash it printed 0 on CRLF files (`AGENTS.md`, `docs/audit/task-ledger.md`), while the same command inside `$(...)` counted correctly | Phase 128, T754's review (rule candidate); reproduced in T755's spec | done in Phase 130 (T757) |
+| addTransaction omits unknown-outcome cloud refresh on transfer_funds failures | Audit 2026-10-16 (T759), finding SL-02, high; src/context/FinanceContext.tsx:1848-1853 | todo |
+| transfer_funds breaks replay on soft-deleted transactions and throws unique_violation | Audit 2026-10-16 (T759), finding SL-01, medium; supabase/migrations/20261006_phase93_transfer_funds_from_session.sql:80-86 | todo |
+| Form inputs in AuthModal lack programmatic label association via htmlFor | Audit 2026-10-16 (T759), finding UI-02, medium; src/components/AuthModal.tsx:182 | todo |
+| Form inputs in AddWalletForm lack programmatic label association via htmlFor | Audit 2026-10-16 (T759), finding UI-03, medium; src/components/wallet/AddWalletForm.tsx:95 | todo |
+| Profile and password fields in AccountModal lack programmatic label association via htmlFor | Audit 2026-10-16 (T759), finding UI-04, medium; src/components/account/AccountModal.tsx:611 | todo |
+| Category selector in CSV import preview table lacks accessible name | Audit 2026-10-16 (T759), finding UI-05, medium; src/components/transaction/ImportCsvModal.tsx:547-552 | todo |
 
 ## Template for the next phase
 
