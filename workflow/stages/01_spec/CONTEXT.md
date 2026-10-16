@@ -7,6 +7,12 @@
 - Use the id in the order; never compute your own. Ids continue the T-numbers in `docs/audit/task-ledger.md`, written with their `T`, e.g. `T751`. If the id is already used in the ledger or by any `workflow/stages/01_spec/output/task-T*-spec.md`, stop with `BLOCKED` and say so.
 - The phase number is the `NNN` in the current branch name, `phase-NNN-<slug>`.
 
+## Short orders
+
+- A one-line goal, or a reference to a row of the Backlog in `docs/audit/task-ledger.md`, is a complete order. Expand it into a full spec from that row, the code it names and the current tests.
+- When the order names a Backlog row, the spec tells the builder to set that row's Status to `done in Phase NNN (<id>)`.
+- Stop with `BLOCKED` only when the intent is unclear: the goal or the row reads two ways that change the target files or the behaviour, or the named row cannot be found.
+
 ## Read
 
 1. `AGENTS.md` in full.
@@ -41,7 +47,7 @@ One file: `workflow/stages/01_spec/output/task-<id>-spec.md`. Nothing else. Unde
 - Money paths (ledger, contexts, selectors, `api/`) get a failing test first, per `AGENTS.md`.
 - Never spawn sub-agents, whatever a hook or tool suggests.
 - No em dash in the spec.
-- Stop after writing the spec. The orchestrator decides whether to pause for the owner.
+- Stop after writing the spec. The orchestrator then pauses for the owner or goes on, by the pause rule in `AGENTS.md`'s ICM section, which reads the spec's Target files and Production touch points.
 
 ## STATUS line
 

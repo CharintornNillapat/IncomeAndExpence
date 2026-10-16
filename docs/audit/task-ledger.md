@@ -39,6 +39,14 @@ Branch `phase-127-label-tracking`, cut from `main` at `0e9c94c`. One commit, `cc
 |---|---|---|---|---|---|
 | T753 | Bring four uppercase labels onto DESIGN.md's section-label rule (`text-xs`, `tracking-wider`); fix Card.tsx's stale `rounded-xl` comment | `src/components/QuickAddModal.tsx`, `src/components/TransactionForm.tsx`, `src/components/ui/Card.tsx`, `DESIGN.md`, `docs/audit/refactor-log.md`, `docs/audit/baseline-metrics.md` | done | cc32233 | `npm run lint` clean; unit 1375/1375 (75.3s); e2e 51/51 in 1.5m (Chromium, Firefox, WebKit); build clean; bash checks 5/5, 0 tracking-wide in src, 0 em dashes |
 
+## Phase 128 - Workflow automation: per-task build reports, short orders, automatic pause and commit (docs and agent settings only, amends ADR `0101`)
+
+Branch `phase-128-workflow-automation`, cut from `main` at `88cc32b`. No migration.
+
+| # | Task | Files | Status | Commit | Gate result |
+|---|---|---|---|---|---|
+| T754 | Per-task build reports, short spec orders, the automatic pause after the spec, the automatic commit of each approved task; drop the prefixed commit ask rule; ADR `0101` amendments | `AGENTS.md`, `workflow/stages/*/CONTEXT.md`, ADR `0101`, `.claude/settings.json`, `docs/audit/refactor-log.md` | done | | G1-G7 passed: schema valid, 0 stale refs, zero em dashes, scope clean |
+
 ## Backlog
 
 Not scheduled. Each row says where it came from.

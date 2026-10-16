@@ -1,6 +1,6 @@
 # 0101: Hierarchical context, a quarantined archive, and herdr workflow stages
 
-**Status:** Accepted. Released: renames `7bed3d7`, docs `ca1440f`, hash backfill `7dfe6c2`, readiness gaps `53794ca` (T750, which amended sections 3 and 4 and the Consequences), merged into `main` as `3124756` (PR #76); production deployment READY in `icn1`, serving `index-BLSMm3p4.js`. No code, test, config or schema change. Amended in Phase 126 (T751, `86d0849`), merged into `main` as `3f301ab` (PR #77); see Amendments.
+**Status:** Accepted. Released: renames `7bed3d7`, docs `ca1440f`, hash backfill `7dfe6c2`, readiness gaps `53794ca` (T750, which amended sections 3 and 4 and the Consequences), merged into `main` as `3124756` (PR #76); production deployment READY in `icn1`, serving `index-BLSMm3p4.js`. No code, test, config or schema change. Amended in Phase 126 (T751, `86d0849`), merged into `main` as `3f301ab` (PR #77), and in Phase 128 (T754); see Amendments.
 - **Supersedes** the single 175 KB `CLAUDE.md` as the agent contract (in force from the project's start to Phase 124). Its full text is kept as `docs/audit/archive/claude-monolith-v124.md`.
 - **Moves** the audit's history out of the live `docs/audit/` set into `docs/audit/archive/`. Every move is a `git mv` with its content unchanged.
 
@@ -120,3 +120,10 @@ All ICM work happens on a branch `phase-NNN-<slug>` cut from `main`, and the pha
 8. **No reviewer sub-agents.** Stages 01 and 03 say the reviewer never spawns sub-agents, whatever a hook or tool suggests.
 
 **Phase 126 release.** PR #77 merged into `main` as `3f301ab`, a merge commit, so `86d0849` and T752's comment commit `5bc45f5` are on `main`. Vercel deployment `dpl_FVBnrcrEzJrGXUJceQmtWiWRuNhT` (GitHub deployment `7110036939`) is READY in `icn1`, built in 19 s, with the production aliases assigned; it still serves `index-BLSMm3p4.js`, since T752 changed comments only. `main` CI on the merge (run `38845131793`, 5 m 14 s) passed all 8 jobs on its first attempt: unit 1375/1375 in 62 files, in order and shuffled (seed `1792120965210`); E2E 486 passed, 6 skipped, none failed or flaky. No migration, no drift run, no request to `/api/*`.
+
+**Phase 128 (T754, 2026-10-16), branch `phase-128-workflow-automation`.** These cut the owner's round trips per task. They change workflow rules, not the decision, so no new ADR.
+
+1. **A build report per task.** Stage 02 writes `02_build/output/task-<id>-build.md`, and each fix round appends a `## Fix round N` section to it. This replaces section 3's single `build-report.md`, overwritten per task. `build-report.md` stays as the last shared report (T753) and is not written again. `AGENTS.md` names the three per-task outputs.
+2. **Short orders.** In stage 01, a one-line goal or a reference to a ledger Backlog row is a complete order. The reviewer expands it from that row and the code, and stops with `BLOCKED` only when the intent is unclear.
+3. **Automatic pause.** After the spec, the orchestrator pauses for the owner only when the spec touches a money path (`FinanceContext.tsx`, `src/selectors/`, the ledger), `supabase/`, `api/`, `AGENTS.md` or a stage file, or lists a production touch point. Otherwise it goes on without asking.
+4. **Automatic commit (replaces section 4's `commit <id>` order).** The orchestrator commits each `APPROVED` task on the phase branch by itself, staging only that task's files. Pushing still needs the owner's push order, and merging stays with the owner. `.claude/settings.json` drops its ask rule for the prefixed `ALLOW_GIT_WRITE=1 git commit` form; every other rule stays, including the ask rule for `ALLOW_GIT_WRITE=1 git push`.

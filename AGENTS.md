@@ -36,7 +36,7 @@ Do none of these without the owner's explicit go-ahead in this session:
 - `npm run schema:drift -- --live`, or dispatching the `schema-drift` workflow.
 - Any request to production `/api/*` (it spends TypeSafe credits and live quota), including the 31-request firewall check, and `vercel dev` with a real key.
 - Any MCP or CLI write tool (Supabase, Vercel, GitHub, Turso): deploys, env vars, firewall, projects, branches, issues, PRs.
-- `git commit`, `git push`, merging, or rewriting history. Under herdr, only the orchestrator commits and pushes, on the owner's order (see ICM workflow).
+- `git commit`, `git push`, merging, or rewriting history. Under herdr, the ICM workflow section is the owner's standing go-ahead for one thing only: the orchestrator commits each APPROVED task on its phase branch. Pushing still needs the owner's push order, and only the owner merges.
 - Signing in from a local dev server (`.env` points at the live project), or adding a spec that submits real credentials.
 - Editing `vercel.json`, `.github/workflows/`, or the live dashboards (Auth settings, firewall rule).
 - Deleting files you did not create, or adding a dependency.
@@ -123,8 +123,9 @@ Before calling a task done, a task whose gates include a code tier (any row abov
   - `spec <id>: <description> (stage file: workflow/stages/01_spec/CONTEXT.md)`: reviewer (Claude Code). The spec's Goal comes from the description.
   - `build <id> (stage file: workflow/stages/02_build/CONTEXT.md)` and `fix <id> (stage file: workflow/stages/02_build/CONTEXT.md)`: builder (agy)
   - `review <id> (stage file: workflow/stages/03_review/CONTEXT.md)`: reviewer (Claude Code)
-- Task ids continue the ledger's T-numbers. Each stage writes to its own `output/`, and every reply ends with the one STATUS line its stage file defines, starting with the task id: `STATUS: <id> | <state> | <detail>`.
-- **Commits:** only the orchestrator commits, only on a phase branch, and only on the owner's `commit <id>` order. It pushes only the phase branch, only on the owner's push order. No agent merges; the owner merges.
+- Task ids continue the ledger's T-numbers. Each stage writes to its own `output/`: `task-<id>-spec.md`, `task-<id>-build.md` (fix rounds append to it) and `task-<id>-review.md`. Every reply ends with the one STATUS line its stage file defines, starting with the task id: `STATUS: <id> | <state> | <detail>`.
+- **Pause after the spec:** after `SPEC DONE`, the orchestrator pauses for the owner's go-ahead before sending `build <id>` when the spec's Target files include a money path (`src/context/FinanceContext.tsx`, `src/selectors/`, or the ledger), anything under `supabase/` or `api/`, `AGENTS.md`, or a `workflow/stages/*/CONTEXT.md` file, or when its Production touch points section lists anything but `none`. Otherwise it sends `build <id>` without asking. Bookkeeping files (`docs/audit/task-ledger.md`, `workflow/stages/*/output/*`) never cause a pause.
+- **Commits:** after an `APPROVED` review, the orchestrator commits that task on the phase branch by itself, with no `commit <id>` order. It stages only that task's files, by path, never with `git add -A` or `git add .`: the spec's Target files the build changed, `docs/audit/task-ledger.md`, and the task's `task-<id>-spec.md`, `task-<id>-build.md` and `task-<id>-review.md`. It leaves any other changed file unstaged and names it to the owner. It never commits on `main` and never skips hooks; if the commit fails, it stops for the owner. It pushes only the phase branch, only on the owner's push order. No agent merges; the owner merges.
 - **The one exception on `main`:** the owner's post-merge deploy record, a docs-only `[skip ci]` commit on `main`, stays allowed when the owner makes it or explicitly approves it.
 
 ## Environment (`.env.example`)

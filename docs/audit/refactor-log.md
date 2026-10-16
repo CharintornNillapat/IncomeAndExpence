@@ -19,6 +19,17 @@ ADR `NNNN`. <the brief, one or two sentences>
 
 ---
 
+## Phase 128 - Workflow automation: T754 (2026-10-16, docs `<sha>`, merged `<sha>`)
+
+ADR `0101` (amended, no new ADR). The owner's brief: cut the owner's round trips per task, with a build report per task, short spec orders, a pause after the spec only for risky tasks, and an automatic commit of each approved task on the phase branch.
+
+**Changed:** `AGENTS.md` (the per-task outputs, the pause rule, the automatic commit, the Stop and ask first line on commits); `workflow/stages/02_build/CONTEXT.md` (`task-<id>-build.md`, `build-report.md` kept as the last shared report, who commits); `workflow/stages/03_review/CONTEXT.md` (reads `task-<id>-build.md`); `workflow/stages/01_spec/CONTEXT.md` (short orders, the pause pointer); ADR `0101`'s Amendments; `.claude/settings.json` (the `ALLOW_GIT_WRITE=1 git commit` ask rule removed).
+**Verified:** G1 named paths exist; G2 `build-report.md` untouched; G3 `.claude/settings.json` diff exactly one removed line (`Bash(ALLOW_GIT_WRITE=1 git commit:*)`), 113 lines, CRLF preserved; G4 schema validation valid against Claude Code schema (`workflow/stages/02_build/output/logs/T754-settings-schema.log`); G5 stale reference checks clean (`build-report` 3 hits, `commit <id>` 3 hits, `owner's order` 0 hits); G6 zero em dashes across all touched files; G7 scope clean.
+**Surprises:** none.
+**Deliberately not done:** no `baseline-metrics.md` section (no bundle or test count changed). `build-report.md` keeps T753's report; it is not moved or deleted. No allow rule was added to `.claude/settings.json`, and the bare `git commit` ask rules for Bash and PowerShell stay. The herdr orchestrator's own configuration lives outside the repo and is the owner's to change.
+
+---
+
 ## Phase 127 - Section label tracking: T753 (2026-10-16, code `cc32233`, merged `9323826`)
 
 No ADR (applies `DESIGN.md` lines 77 and 85 as written). The owner's brief: bring the four uppercase labels that used `text-[11px]` and `tracking-wide` onto the section-label rule, and fix `Card.tsx`'s stale `rounded-xl` comment.
