@@ -54,7 +54,7 @@ Branch `phase-129-wallet-label`, cut from `main` at `0bdfbe6`. No migration.
 
 | # | Task | Files | Status | Commit | Gate result |
 |---|---|---|---|---|---|
-| T756 | Move the transfer panel's uppercase From/To label from `text-[10px]` to `text-xs` (DESIGN.md's section-label size) | `src/components/wallet/WalletTransferForm.tsx`, `docs/audit/refactor-log.md`, `docs/audit/baseline-metrics.md` | done | | `npm run lint` clean; unit 1375/1375 (69.9s); e2e 39/39 in 1.2m (Chromium, Firefox, WebKit); build clean; bash checks 5/5, 0 text-[10px] in WalletTransferForm, 0 em dashes |
+| T756 | Move the transfer panel's uppercase From/To label from `text-[10px]` to `text-xs` (DESIGN.md's section-label size) | `src/components/wallet/WalletTransferForm.tsx`, `docs/audit/refactor-log.md`, `docs/audit/baseline-metrics.md` | done | 613b26c | `npm run lint` clean; unit 1375/1375 (69.9s); e2e 39/39 in 1.2m (Chromium, Firefox, WebKit); build clean; bash checks 6/6, 0 text-[10px] in WalletTransferForm, 0 em dashes |
 
 ## Backlog
 

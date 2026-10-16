@@ -19,7 +19,7 @@ ADR `NNNN`. <the brief, one or two sentences>
 
 ---
 
-## Phase 129 - Wallet transfer label size: T756 (2026-10-16, code `<sha>`, merged `<sha>`)
+## Phase 129 - Wallet transfer label size: T756 (2026-10-16, code `613b26c`, merged `0348602`)
 
 No ADR (applies `DESIGN.md` line 77 as written). The owner's brief: move the transfer panel's uppercase From/To label in `WalletTransferForm.tsx` from `text-[10px]` to the section-label size, `text-xs`.
 
