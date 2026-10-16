@@ -96,12 +96,10 @@
     ],
     "ask": [
       "Bash(ALLOW_GIT_WRITE=1 git push:*)",
-      "Bash(git commit:*)",
       "Bash(git push:*)",
       "Bash(git merge:*)",
       "Bash(git rebase:*)",
       "Bash(gh pr create:*)",
-      "PowerShell(git commit:*)",
       "PowerShell(git push:*)",
       "PowerShell(git merge:*)",
       "PowerShell(git rebase:*)",

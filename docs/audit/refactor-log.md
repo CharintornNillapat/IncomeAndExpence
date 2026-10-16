@@ -19,6 +19,17 @@ ADR `NNNN`. <the brief, one or two sentences>
 
 ---
 
+## Phase 130 - Line-ending rule and commit prompts: T757-T758 (2026-10-16, docs `<sha>`, merged `<sha>`)
+
+ADR `0101` (amended by T758, no new ADR). T757 closes the Backlog row from T754's review: specs check line endings with `git ls-files --eol` or a Node count, never `grep -c`. T758, the owner's brief: drop the bare `git commit` ask rules, which made the orchestrator's automatic commit ask the owner every time.
+
+**Changed:** T757: `workflow/stages/01_spec/CONTEXT.md` (one Rules bullet on checking line endings); one Backlog row closed. T758: `.claude/settings.json` (the `Bash(git commit:*)` and `PowerShell(git commit:*)` ask rules removed); ADR `0101` (Status line and a Phase 130 amendment).
+**Verified:** T757: G1 named paths exist (6 paths); G2 diff size per file matches (1/0, 11/0, 9/1); G3 line endings stay CRLF (git w/crlf; Node CRLF 58/122/95, bareLF 0); G4 rule landed whole at line 50; G5 ledger rows in place with T757 done and Backlog row closed; G6 zero em dashes across all 4 touched files; G7 scope clean. T758: G1 named paths exist (7 paths); G2 settings diff exactly 2 removed lines (0 2); G3 deny 91 ask 11 OK; G4 schema validation valid (workflow/stages/02_build/output/logs/T758-settings-schema.log); G5 line endings stay CRLF (git w/crlf; Node CRLF 111/135/122/96, bareLF 0); G6 markdown diff sizes (5/1, 6/6, 2/1) and placement verified; G7 zero em dashes across all 5 touched files; G8 scope clean.
+**Surprises:** T757: none. T758: none.
+**Deliberately not done:** No `AGENTS.md` change: its Stop and ask first list still names `git commit`. `workflow/stages/03_review/CONTEXT.md` is unchanged: the reviewer runs the spec's gates, so T757's rule reaches it through the spec. `.claude/settings.json` keeps every other rule, including the push, merge, rebase and `gh pr create` ask rules and `Bash(ALLOW_GIT_WRITE=1 git push:*)`; no allow rule was added. The untracked `.git/hooks/` guards are unchanged. No `baseline-metrics.md` section (no bundle or test count changed).
+
+---
+
 ## Phase 129 - Wallet transfer label size: T756 (2026-10-16, code `613b26c`, merged `0348602`)
 
 No ADR (applies `DESIGN.md` line 77 as written). The owner's brief: move the transfer panel's uppercase From/To label in `WalletTransferForm.tsx` from `text-[10px]` to the section-label size, `text-xs`.
