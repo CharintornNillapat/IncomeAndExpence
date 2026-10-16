@@ -16,6 +16,7 @@ The working memory of the audit and refactor work: what is planned, what shipped
 | `refactor-log.md` | One entry per shipped phase from Phase 125 on | Asked what has shipped recently |
 | `baseline-metrics.md` | How to measure, and the latest bundle and test figures | Shipping a phase, or proving a change |
 | `test-selector-contract.md` | Every id and `data-testid` the specs use today, and their hazards | Renaming, moving or removing an id |
+| `audit-2026-10-16.md` | The whole-app audit of 2026-10-16 (T759): findings by domain and severity | Picking up a Backlog row it raised |
 | `decisions/NNNN-*.md` | ADRs, one per decision with a live alternative | A rule or task names the ADR |
 
 ## `archive/`: do not read

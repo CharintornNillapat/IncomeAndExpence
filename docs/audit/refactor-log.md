@@ -19,6 +19,17 @@ ADR `NNNN`. <the brief, one or two sentences>
 
 ---
 
+## Phase 131 - Whole-app audit: T759 (2026-10-16)
+
+No ADR (docs-only task, whole-app read-only audit). The owner's brief: audit the whole app as it is today, without changing any code, with four read-only domain sub-agents, and write the findings to one report, adding high and medium findings to the ledger's Backlog.
+
+**Changed:** `docs/audit/audit-2026-10-16.md` (the whole-app audit report: 16 findings in total, 1 high, 5 medium, 10 low across the four domains); `docs/audit/README.md` (added report row to Live files table); `docs/audit/task-ledger.md` (Phase 131 section and 6 new Backlog rows for all high and medium findings).
+**Verified:** G1 scope clean (only target and bookkeeping files touched); G2 citations, structure and Backlog rows valid (T759-check.mjs passed: 0 bad citations, 0 duplicate IDs, all required fields present, 6 Backlog rows matching high and medium findings); G3 counts match Summary table (CS: 0/0/3, SL: 1/1/1, AP: 0/0/2, UI: 0/4/4; total 1 high, 5 medium, 10 low); G4 skip list verified (no open/done Backlog rows or accepted advisors repeated); G5 zero em dashes across all 5 touched files; G6 line endings clean (CRLF preserved across modified files, uniform in new report); G7 no code changed (diff against main in code directories empty).
+**Surprises:** The review changed five findings' severity or Impact (see the report's Changed in review).
+**Deliberately not done:** No code fixed: all 16 findings are recorded for future phases; no live check run: live database/dashboard checks left for the owner; low findings (10 in total) not added to the Backlog per spec; no `baseline-metrics.md` section (no bundle or test count changed); no ADR (docs-only task).
+
+---
+
 ## Phase 130 - Line-ending rule and commit prompts: T757-T758 (2026-10-16, docs `f2045f0` and `f4926c4`, merged `5e34257`)
 
 ADR `0101` (amended by T758, no new ADR). T757 closes the Backlog row from T754's review: specs check line endings with `git ls-files --eol` or a Node count, never `grep -c`. T758, the owner's brief: drop the bare `git commit` ask rules, which made the orchestrator's automatic commit ask the owner every time.
