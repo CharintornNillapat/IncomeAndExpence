@@ -23,6 +23,14 @@ npx tsc --noEmit --extendedDiagnostics
 
 ## Figures
 
+### Phase 127 - delta against Phase 124
+
+- **Entry chunk** `index-0LGxXWZU.js`: 191,674 B (0 delta), 55,796 B gzip (+3 B against Phase 124 `index-BLSMm3p4.js`, 191,674 / 55,793).
+- **All app JS**: 878,211 B (-12 B), 266,951 B gzip (+43 B), 40 files (0 delta against Phase 124 878,223 / 266,908, 40 files).
+- **CSS**: `index-CqllkKUj.css`: 52,759 B, 10,159 B gzip.
+- **Vitest**: 62 files, 1375 tests, 1375 passed in 75.3 s (`workflow/stages/02_build/output/logs/T753-unit.log`).
+- **Playwright**: 2 files (`tests/presets.spec.ts`, `tests/debt-repayment.spec.ts`), 17 tests, 51 runs across 3 browsers (Chromium, Firefox, WebKit), 51 passed, 0 failed in 1.5 m (`workflow/stages/02_build/output/logs/T753-e2e.log`); Chromium alone: 17 passed in 59.4 s.
+
 ### Phase 125 (docs only) - delta against Phase 124
 
 - **No `src/` change:** the bundle is Phase 124's.

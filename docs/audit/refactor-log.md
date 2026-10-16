@@ -19,6 +19,17 @@ ADR `NNNN`. <the brief, one or two sentences>
 
 ---
 
+## Phase 127 - Section label tracking: T753 (2026-10-16, code `<sha>`, merged `<sha>`)
+
+No ADR (applies `DESIGN.md` lines 77 and 85 as written). The owner's brief: bring the four uppercase labels that used `text-[11px]` and `tracking-wide` onto the section-label rule, and fix `Card.tsx`'s stale `rounded-xl` comment.
+
+**Changed:** the four labels in `src/components/QuickAddModal.tsx` and `src/components/TransactionForm.tsx` (`text-xs`, `tracking-wider`); the `src/components/ui/Card.tsx` comment; `DESIGN.md`'s deviation row; two Backlog rows closed.
+**Verified:** `npm run lint` clean (node-globals and safe-ids 132 files in src, tsc clean); `npm run test:unit` clean (62 files, 1375 passed, `workflow/stages/02_build/output/logs/T753-unit.log`); Playwright `tests/presets.spec.ts` and `tests/debt-repayment.spec.ts` passed (Chromium: 17/17 passed in 59.4s; all 3 browsers: 51/51 passed in 1.5m, `workflow/stages/02_build/output/logs/T753-e2e.log`); clean production build succeeded (`index-0LGxXWZU.js`, 191,674 B / 55,796 B gzip); bash checks confirmed 5 lines removed and 5 added in `src/`, 0 occurrences of `tracking-wide` or `text-[11px]` uppercase in `src/`, 4 compliant lines in `QuickAddModal.tsx` and `TransactionForm.tsx`, `Card.tsx` comment updated, `DESIGN.md` deviation row updated, and 0 em dashes across all touched files.
+**Surprises:** none.
+**Deliberately not done:** No other `text-[11px]` or `text-[10px]` class was moved to the scale: they are not uppercase section labels, apart from `WalletTransferForm.tsx:101` (`text-[10px]`, now a Backlog row). No `leading-*` class was added for `text-xs`'s 16px line height.
+
+---
+
 ## Phase 126 - ICM tune-up: settle the readiness-2 gaps: T751-T752 (2026-10-16, docs `86d0849`, comments `5bc45f5`, merged `3f301ab`)
 
 ADR `0101` (amended, no new ADR). The owner's brief: one docs commit that settles the gaps the second ICM readiness check found (`../finlife-icm-readiness-2.md`, outside the repo). T752, the phase's last task, rewords five code comments that pointed into `docs/audit/archive/` so each cites a live doc (ADR `0006`, `0039`, `docs/contexts/ui-and-e2e.md`) and drops the framer-motion mention ADR `0082` made stale.

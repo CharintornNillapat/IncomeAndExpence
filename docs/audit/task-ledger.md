@@ -31,6 +31,14 @@ Branch `phase-126-icm-tuneup`, cut from `main` at `7e24554`. Two commits: T751's
 | T751 | Settle the readiness-2 gaps (D1 to D4, M1 to M3, M6, the C3 leftover): before-done scope, who cuts the phase branch, doc-only phase paperwork, `Commit` filled by the deploy record, order forms, the id from the order, the builder's BLOCKED reason, no reviewer sub-agents; ADR `0101` amendments | `AGENTS.md`, `workflow/stages/*/CONTEXT.md`, `docs/audit/README.md`, `docs/audit/task-ledger.md`, ADR `0101`, `docs/audit/refactor-log.md` | done | 86d0849 | `npm run lint` clean |
 | T752 | Point five archived comment references at live docs (ADR `0006`, `0039`, `docs/contexts/ui-and-e2e.md`); drop the stale framer-motion mention | `src/components/transaction/txTypeMeta.ts`, `src/components/ui/Card.tsx`, `src/components/ui/OverflowMenu.tsx`, `tests/categories.spec.ts`, `docs/audit/refactor-log.md` | done | 5bc45f5 | `npm run lint` clean; diff confirmed comments only; 0 archived pointers; zero em dashes |
 
+## Phase 127 - Section label tracking (UI classes and one comment, no ADR)
+
+Branch `phase-127-label-tracking`, cut from `main` at `0e9c94c`. No migration.
+
+| # | Task | Files | Status | Commit | Gate result |
+|---|---|---|---|---|---|
+| T753 | Bring four uppercase labels onto DESIGN.md's section-label rule (`text-xs`, `tracking-wider`); fix Card.tsx's stale `rounded-xl` comment | `src/components/QuickAddModal.tsx`, `src/components/TransactionForm.tsx`, `src/components/ui/Card.tsx`, `DESIGN.md`, `docs/audit/refactor-log.md`, `docs/audit/baseline-metrics.md` | done | | `npm run lint` clean; unit 1375/1375 (75.3s); e2e 51/51 in 1.5m (Chromium, Firefox, WebKit); build clean; bash checks 5/5, 0 tracking-wide in src, 0 em dashes |
+
 ## Backlog
 
 Not scheduled. Each row says where it came from.
@@ -38,9 +46,10 @@ Not scheduled. Each row says where it came from.
 | Item | Source | Status |
 |---|---|---|
 | Every interactive element added to a view carries an `id` following `<view>-<thing>-<kind>` | `archive/constraints-to-promote.md` row T12. `AuthModal.tsx` complies; never verified repo-wide | todo: verify across views before it can become a rule |
-| `QuickAddModal.tsx:101` labels its template list `text-[11px] ... uppercase tracking-wide`, below `DESIGN.md`'s 12 to 13px label size and off the `tracking-wider` used elsewhere | Context audit, 2026-10-15. `TransactionForm.tsx:709`, `:848` and `:871` also use `tracking-wide` on uppercase labels | todo: code change, needs a UI phase |
+| `QuickAddModal.tsx:101` labels its template list `text-[11px] ... uppercase tracking-wide`, below `DESIGN.md`'s 12 to 13px label size and off the `tracking-wider` used elsewhere | Context audit, 2026-10-15. `TransactionForm.tsx:709`, `:848` and `:871` also use `tracking-wide` on uppercase labels | done in Phase 127 (T753) |
+| `WalletTransferForm.tsx:101`'s uppercase label is `text-[10px]`, below `DESIGN.md`'s 12 to 13px (its tracking is already `tracking-wider`) | Phase 127, T753's spec | todo: code change, needs a UI phase |
 | Four code comments point into `docs/audit/archive/`: `src/components/transaction/txTypeMeta.ts:21` (`ui-ux-audit-report.md`), `src/components/ui/OverflowMenu.tsx:44` (a reason now in the archived selector log), `src/components/ui/Card.tsx:28` and `tests/categories.spec.ts:9` (refactor-log Phases 25 and 30) | Phase 125 (ADR `0101`); code was out of scope | done in Phase 126 (T752) |
-| `src/components/ui/Card.tsx:23`'s doc comment says the shell is `rounded-xl`, while the code uses `rounded-card` | Phase 126, T752's review; outside T752's scope | todo: comment fix |
+| `src/components/ui/Card.tsx:23`'s doc comment says the shell is `rounded-xl`, while the code uses `rounded-card` | Phase 126, T752's review; outside T752's scope | done in Phase 127 (T753) |
 | ESLint with `react-hooks/exhaustive-deps` | `archive/constraints-to-promote.md` follow-on proposals | todo |
 | Vitest for `smartMatcher.ts`, `mathEvaluator.ts`, `csvExchange.ts` | same | done since Phase 49 (ADR `0021`) |
 | `tsconfig.json` `strict` | same | done since Phase 101 (ADR `0077`) |

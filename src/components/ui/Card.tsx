@@ -20,7 +20,7 @@ const PADDING_CLASS: Record<CardPadding, string> = {
 
 /**
  * T44: the card shell repeated across the app's view containers -
- * `rounded-xl`, a 1px `border-line`, and the Surface 1 background (DESIGN.md: no card shadows).
+ * `rounded-card`, a 1px `border-line`, and the Surface 1 background (DESIGN.md: no card shadows).
  * Adopted only where an existing shell already matches this shape losslessly.
  * A shell with stepped responsive padding (e.g. `p-4 sm:p-5`) stays local
  * because the padding enum is deliberately closed (ADR 0006). A shell with a
