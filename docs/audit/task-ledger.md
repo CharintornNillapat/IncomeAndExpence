@@ -56,13 +56,14 @@ Branch `phase-129-wallet-label`, cut from `main` at `0bdfbe6`. No migration.
 |---|---|---|---|---|---|
 | T756 | Move the transfer panel's uppercase From/To label from `text-[10px]` to `text-xs` (DESIGN.md's section-label size) | `src/components/wallet/WalletTransferForm.tsx`, `docs/audit/refactor-log.md`, `docs/audit/baseline-metrics.md` | done | 613b26c | `npm run lint` clean; unit 1375/1375 (69.9s); e2e 39/39 in 1.2m (Chromium, Firefox, WebKit); build clean; bash checks 6/6, 0 text-[10px] in WalletTransferForm, 0 em dashes |
 
-## Phase 130 - Line-ending check rule (docs only, no ADR)
+## Phase 130 - Line-ending rule and commit prompts (docs and agent settings only, amends ADR `0101`)
 
 Branch `phase-130-eol-check`, cut from `main` at `706e335`. No migration.
 
 | # | Task | Files | Status | Commit | Gate result |
 |---|---|---|---|---|---|
 | T757 | Promote the line-ending Backlog row into stage 01's Rules: check with `git ls-files --eol` or Node, never `grep -c` | `workflow/stages/01_spec/CONTEXT.md`, `docs/audit/refactor-log.md` | done | | G1-G7 passed: paths exist, diff 1/0, 11/0, 9/1, CRLF kept, rule at :50, ledger updated, 0 em dashes, scope clean |
+| T758 | Drop the bare `git commit` ask rules (Bash and PowerShell) so the orchestrator's automatic commit stops asking; ADR `0101` amendment | `.claude/settings.json`, ADR `0101`, `docs/audit/refactor-log.md` | done | | G1-G8 passed: paths exist, settings diff 0/2, deny 91 ask 11 OK, schema valid, CRLF kept, markdown diffs 5/1, 6/6, 2/1, 0 em dashes, scope clean |
 
 ## Backlog
 
