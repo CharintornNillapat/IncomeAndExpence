@@ -95,7 +95,6 @@
       "PowerShell(npx vercel:*)"
     ],
     "ask": [
-      "Bash(ALLOW_GIT_WRITE=1 git commit:*)",
       "Bash(ALLOW_GIT_WRITE=1 git push:*)",
       "Bash(git commit:*)",
       "Bash(git push:*)",

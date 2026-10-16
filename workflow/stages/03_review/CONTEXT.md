@@ -5,8 +5,8 @@
 ## Steps
 
 1. Run `git check-ignore -v` on every target file in the spec. An ignored target never shows in a diff, so say so in the review.
-2. Read the spec, `workflow/stages/02_build/output/build-report.md`, the diff of every file the builder listed, and the **full text of every changed function**, not just the hunks.
-3. **Scope:** run `git diff --stat` and `git status --porcelain`. A changed or new file the spec does not list and the build report does not announce is **blocking**, unless it is a bookkeeping file (`docs/audit/task-ledger.md`, `workflow/stages/02_build/output/*`).
+2. Read the spec, `workflow/stages/02_build/output/task-<id>-build.md` (on a fix round, including its latest `## Fix round N` section), the diff of every file the builder listed, and the **full text of every changed function**, not just the hunks.
+3. **Scope:** run `git diff --stat` and `git status --porcelain`. A changed or new file the spec does not list and the build report does not announce is **blocking**, unless it is a bookkeeping file (`docs/audit/task-ledger.md`, `workflow/stages/02_build/output/*`, which holds `task-<id>-build.md`).
 4. **Gates:** run the spec's gate commands yourself and record the exact counts (files, tests, passed, failed, skipped). Do not copy the builder's numbers. Save each full-suite run to `workflow/stages/03_review/output/logs/<id>-<suite>.log`. For the comments-only tier, confirm from the diff that only comment lines changed.
 5. **Parity:** check every row of `AGENTS.md`'s parity map the change touches.
 6. **Tests:** for each new test, confirm it fails without the change. Skip this step when the spec's tests are `none`.
@@ -21,7 +21,7 @@
 
 ## Verdicts
 
-Only `APPROVED` or `CHANGES REQUESTED`. `BLOCKED` is not a verdict: use it when the review cannot be done (no spec, no build report, a gate cannot run), and say why.
+Only `APPROVED` or `CHANGES REQUESTED`. `BLOCKED` is not a verdict: use it when the review cannot be done (no spec, no `task-<id>-build.md`, a gate cannot run), and say why.
 
 ## Write
 

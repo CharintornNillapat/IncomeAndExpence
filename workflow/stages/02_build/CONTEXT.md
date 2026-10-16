@@ -13,7 +13,7 @@
 ## Allowed writes
 
 - The spec's target files.
-- **Bookkeeping files**, always allowed and never a scope violation: `docs/audit/task-ledger.md` and `workflow/stages/02_build/output/*` (full-suite logs go in `output/logs/`, which git ignores).
+- **Bookkeeping files**, always allowed and never a scope violation: `docs/audit/task-ledger.md` and `workflow/stages/02_build/output/*`, which holds the task's build report `task-<id>-build.md` (full-suite logs go in `output/logs/`, which git ignores).
 - `docs/audit/refactor-log.md` and `docs/audit/baseline-metrics.md` only when the spec lists them, which it does for the task that ships the phase.
 - Nothing else. A change the spec did not foresee means `BLOCKED`, not a wider edit.
 
@@ -25,9 +25,9 @@
 4. Tests first: add the spec's tests and run them against the unchanged code; they must fail for the reason the spec gives. Skip this step when the spec's tests are `none`.
 5. Make the change, then run the spec's gates **once**, after all edits. Never edit `src/` while Playwright runs. Save each full-suite run to `workflow/stages/02_build/output/logs/<id>-<suite>.log`.
 6. Keep the task's row in `docs/audit/task-ledger.md`. The phase is the `NNN` in the branch name `phase-NNN-<slug>`. Put the row under that phase's section, creating the section from the ledger's template if it is missing. Status `in-progress`, then `done` with the gate result. Leave `Commit` empty: the owner-approved deploy record fills every task's `Commit` cell once per phase, after the merge.
-7. Write `workflow/stages/02_build/output/build-report.md`: task id, files changed (with the count), tests added and their fail-then-pass evidence, each gate command with its exact counts and log path, and anything not done.
+7. Write `workflow/stages/02_build/output/task-<id>-build.md`: task id, files changed (with the count), tests added and their fail-then-pass evidence, each gate command with its exact counts and log path, and anything not done.
 
-`build-report.md` is overwritten by each `build <id>`; a `fix <id>` appends a `## Fix round N` section to it.
+Each task has its own build report, `task-<id>-build.md`: a `build <id>` creates it, and each `fix <id>` appends a `## Fix round N` section to the same file. Never edit another task's report. `build-report.md` is the last shared report (T753, Phase 127), kept as it is: never write to it again.
 
 ## On `fix <id>`
 
@@ -39,7 +39,7 @@
 
 - Read `docs/audit/archive/` or open `docs/design/*.html`.
 - Use MCP write tools (Supabase, Vercel, GitHub) or sign in on the dev server.
-- Run anything on `AGENTS.md`'s Stop and ask first list, including `git commit`, `git push` and any merge. Only the orchestrator commits, on the owner's order.
+- Run anything on `AGENTS.md`'s Stop and ask first list, including `git commit`, `git push` and any merge. Only the orchestrator commits (each APPROVED task, on the phase branch) and pushes (on the owner's push order).
 - Create `GEMINI.md`, or edit `AGENTS.md` or `CLAUDE.md`, unless the spec lists them as targets.
 - Write an em dash in any file you touch.
 
