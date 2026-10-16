@@ -8,7 +8,7 @@ Status values: `todo`, `in-progress`, `done`, `dropped` (with a one-line reason)
 
 ## Phase 125 - ICM bootstrap: hierarchical context, the archive, herdr stages (docs only, ADR `0101`)
 
-Branch `phase-125-icm-bootstrap`. The archive renames are one commit (`7bed3d7`), the docs are `ca1440f`, the hash backfill `7dfe6c2`, and T750 is the readiness-gap commit.
+Branch `phase-125-icm-bootstrap`, cut from `main` at `75d2171`. The archive renames are one commit (`7bed3d7`), the docs are `ca1440f`, the hash backfill `7dfe6c2`, and the readiness gaps `53794ca`; merged into `main` as `3124756` (PR #76). No migration.
 
 | # | Task | Files | Status | Commit | Gate result |
 |---|---|---|---|---|---|
@@ -20,7 +20,7 @@ Branch `phase-125-icm-bootstrap`. The archive renames are one commit (`7bed3d7`)
 | T747 | The herdr stages: `workflow/stages/{01_spec,02_build,03_review}/CONTEXT.md` and their `output/` folders | `workflow/stages/` | done | ca1440f | n/a (docs) |
 | T748 | ADR `0101`; the ICM workflow section in `AGENTS.md`; the phase-branch rule | `docs/audit/decisions/0101-hierarchical-icm-context-and-herdr-stages.md`, `AGENTS.md` | done | ca1440f | `npm run lint` clean |
 | T749 | Phase 125 bookkeeping: refactor-log entry, baseline-metrics section, the commits and hash backfill | `docs/audit/` | done | ca1440f | n/a (docs) |
-| T750 | Close the ICM readiness gaps (G3, G4, G5, G7, G9, G10, G11; C1 to C8): STATUS lines with the task id, who writes what, commits and the deploy-record exception, phase from the branch, new gate tiers, routing, tests `none`, the reviewer's stash check, gitignored logs; Claude Code permission rules | `AGENTS.md`, `workflow/stages/*/CONTEXT.md`, ADR `0101`, `docs/audit/README.md`, `.gitignore`, `.claude/settings.json`, `docs/audit/` | done | readiness-gap commit | `npm run lint` clean |
+| T750 | Close the ICM readiness gaps (G3, G4, G5, G7, G9, G10, G11; C1 to C8): STATUS lines with the task id, who writes what, commits and the deploy-record exception, phase from the branch, new gate tiers, routing, tests `none`, the reviewer's stash check, gitignored logs; Claude Code permission rules | `AGENTS.md`, `workflow/stages/*/CONTEXT.md`, ADR `0101`, `docs/audit/README.md`, `.gitignore`, `.claude/settings.json`, `docs/audit/` | done | 53794ca | `npm run lint` clean; settings valid against the Claude Code schema |
 
 ## Backlog
 

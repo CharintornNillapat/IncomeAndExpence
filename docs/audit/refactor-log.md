@@ -19,7 +19,7 @@ ADR `NNNN`. <the brief, one or two sentences>
 
 ---
 
-## Phase 125 - ICM bootstrap: hierarchical context, the archive, herdr stages: T742-T750 (2026-10-15 to 2026-10-16, renames `7bed3d7`, docs `ca1440f`, backfill `7dfe6c2`, then the readiness-gap commit, branch `phase-125-icm-bootstrap`, not merged)
+## Phase 125 - ICM bootstrap: hierarchical context, the archive, herdr stages: T742-T750 (2026-10-15 to 2026-10-16, renames `7bed3d7`, docs `ca1440f`, backfill `7dfe6c2`, readiness gaps `53794ca`, merged `3124756`)
 
 ADR `0101`. The owner's brief: prepare the repo for ICM under herdr (reviewer Claude Code, builder agy), first removing the context bloat, doc drift and dirty tree a read-only discovery pass found.
 
@@ -64,5 +64,4 @@ ADR `0101`. The owner's brief: prepare the repo for ICM under herdr (reviewer Cl
 - No code, test, config or schema change. The four code comments that point into the archive, and the `tracking-wide` labels, are Backlog rows.
 - No `GEMINI.md`: agy is told by its stage file to read `AGENTS.md`, so there is one rule file.
 - `anti-slop/` stays in place (the antislop skill writes there).
-- No E2E run this phase, since no code changed. Phase 124's 486 passed, 6 skipped stands.
-- Not pushed and not merged.
+- No local E2E run this phase, since no code changed. The PR's CI did not run either: every branch commit carried `[skip ci]`, so `main` CI on the merge is the only suite run.

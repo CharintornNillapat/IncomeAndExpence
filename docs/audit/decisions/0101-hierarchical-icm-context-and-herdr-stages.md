@@ -1,6 +1,6 @@
 # 0101: Hierarchical context, a quarantined archive, and herdr workflow stages
 
-**Status:** Accepted. Built on branch `phase-125-icm-bootstrap`: renames `7bed3d7`, docs `ca1440f`, hash backfill `7dfe6c2`, then the readiness-gap commit (T750), which amended sections 3 and 4 and the Consequences. Not yet merged. No code, test, config or schema change.
+**Status:** Accepted. Released: renames `7bed3d7`, docs `ca1440f`, hash backfill `7dfe6c2`, readiness gaps `53794ca` (T750, which amended sections 3 and 4 and the Consequences), merged into `main` as `3124756` (PR #76); production deployment READY in `icn1`, serving `index-BLSMm3p4.js`. No code, test, config or schema change.
 - **Supersedes** the single 175 KB `CLAUDE.md` as the agent contract (in force from the project's start to Phase 124). Its full text is kept as `docs/audit/archive/claude-monolith-v124.md`.
 - **Moves** the audit's history out of the live `docs/audit/` set into `docs/audit/archive/`. Every move is a `git mv` with its content unchanged.
 
@@ -98,3 +98,10 @@ All ICM work happens on a branch `phase-NNN-<slug>` cut from `main`, and the pha
 - **Every rule has one home among these files:** `AGENTS.md`; the four `docs/contexts/*.md` files; `DESIGN.md`, for visual work; `docs/audit/test-selector-contract.md`, for spec-asserted ids; the three `workflow/stages/*/CONTEXT.md` files, for the herdr workflow; and `docs/audit/README.md`, for doc discipline. A change to a rule must find its one home. The parity map and routing table are the index.
 - **Four code comments still point into the archive:** `txTypeMeta.ts:21`, `OverflowMenu.tsx:44`, `Card.tsx:28` and `tests/categories.spec.ts:9`. This phase does not touch code, so they are a Backlog row.
 - **UI tasks still load the antislop skills** (about 78 KB for the core and UI skills). That is the owner's standing choice, outside this repo.
+
+## Release
+
+- **Merge:** PR #76 merged into `main` as `3124756`, a merge commit, so the four branch hashes above are on `main`. The pull request ran no CI: every branch commit carried `[skip ci]`.
+- **Production:** Vercel deployment `dpl_3G9wZuANkH7Brfu951xTD4Fw66K6` (GitHub deployment `7107812424`) on `3124756` is READY in `icn1`, built in 21 s, with the production aliases assigned. It serves `index-BLSMm3p4.js`, Phase 124's entry, since no `src/` file changed. No request was sent to `/api/*`.
+- **`main` CI on the merge** (run `38830122172`, 5 m 12 s) passed all 8 jobs on its first attempt: type-check and unit 1375/1375 in 62 files, in order and shuffled (seed `1792110845103`); E2E 486 passed, 6 skipped, none failed or flaky.
+- **No migration,** so no drift run.
