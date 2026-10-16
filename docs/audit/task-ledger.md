@@ -33,11 +33,11 @@ Branch `phase-126-icm-tuneup`, cut from `main` at `7e24554`. Two commits: T751's
 
 ## Phase 127 - Section label tracking (UI classes and one comment, no ADR)
 
-Branch `phase-127-label-tracking`, cut from `main` at `0e9c94c`. No migration.
+Branch `phase-127-label-tracking`, cut from `main` at `0e9c94c`. One commit, `cc32233`; merged into `main` as `9323826` (PR #78). No migration.
 
 | # | Task | Files | Status | Commit | Gate result |
 |---|---|---|---|---|---|
-| T753 | Bring four uppercase labels onto DESIGN.md's section-label rule (`text-xs`, `tracking-wider`); fix Card.tsx's stale `rounded-xl` comment | `src/components/QuickAddModal.tsx`, `src/components/TransactionForm.tsx`, `src/components/ui/Card.tsx`, `DESIGN.md`, `docs/audit/refactor-log.md`, `docs/audit/baseline-metrics.md` | done | | `npm run lint` clean; unit 1375/1375 (75.3s); e2e 51/51 in 1.5m (Chromium, Firefox, WebKit); build clean; bash checks 5/5, 0 tracking-wide in src, 0 em dashes |
+| T753 | Bring four uppercase labels onto DESIGN.md's section-label rule (`text-xs`, `tracking-wider`); fix Card.tsx's stale `rounded-xl` comment | `src/components/QuickAddModal.tsx`, `src/components/TransactionForm.tsx`, `src/components/ui/Card.tsx`, `DESIGN.md`, `docs/audit/refactor-log.md`, `docs/audit/baseline-metrics.md` | done | cc32233 | `npm run lint` clean; unit 1375/1375 (75.3s); e2e 51/51 in 1.5m (Chromium, Firefox, WebKit); build clean; bash checks 5/5, 0 tracking-wide in src, 0 em dashes |
 
 ## Backlog
 
