@@ -47,6 +47,7 @@ One file: `workflow/stages/01_spec/output/task-<id>-spec.md`. Nothing else. Unde
 - Money paths (ledger, contexts, selectors, `api/`) get a failing test first, per `AGENTS.md`.
 - Never spawn sub-agents, whatever a hook or tool suggests.
 - No em dash in the spec.
+- A gate that checks line endings uses `git ls-files --eol <file>` (the `w/crlf` column) or a Node count of `\r\n` and of bare `\n`, never `grep -c $'\r' <file>`: in the agents' Git Bash that grep printed 0 on CRLF files, while the same command inside `$(...)` counted correctly.
 - Stop after writing the spec. The orchestrator then pauses for the owner or goes on, by the pause rule in `AGENTS.md`'s ICM section, which reads the spec's Target files and Production touch points.
 
 ## STATUS line
