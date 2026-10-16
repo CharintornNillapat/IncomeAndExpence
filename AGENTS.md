@@ -36,7 +36,7 @@ Do none of these without the owner's explicit go-ahead in this session:
 - `npm run schema:drift -- --live`, or dispatching the `schema-drift` workflow.
 - Any request to production `/api/*` (it spends TypeSafe credits and live quota), including the 31-request firewall check, and `vercel dev` with a real key.
 - Any MCP or CLI write tool (Supabase, Vercel, GitHub, Turso): deploys, env vars, firewall, projects, branches, issues, PRs.
-- `git commit`, `git push`, merging, or rewriting history.
+- `git commit`, `git push`, merging, or rewriting history. Under herdr, only the orchestrator commits and pushes, on the owner's order (see ICM workflow).
 - Signing in from a local dev server (`.env` points at the live project), or adding a spec that submits real credentials.
 - Editing `vercel.json`, `.github/workflows/`, or the live dashboards (Auth settings, firewall rule).
 - Deleting files you did not create, or adding a dependency.
@@ -72,11 +72,14 @@ These pairs must change together; nothing in `tsc` links them.
 
 ## Tiered verification gates
 
-Run every tier that matches a changed path, then report the commands and results.
+Run every tier that matches a changed path, then report the commands and results. A task's gates are the union of the tier rows for every changed path. An owner's task description may add gates but never remove a tier. A file whose only changed lines are comments takes the comments-only row in place of its folder's row.
 
 | Changed | Run |
 |---|---|
-| Docs only | Nothing, unless a doc states a count or path: check it against the code |
+| Docs only, including `workflow/` and `docs/contexts/` | Nothing, unless a doc states a count or path: check it against the code |
+| Comments only, in any code folder | `npm run lint`; the reviewer confirms from the diff that only comment lines changed |
+| `tests/*.spec.ts` | `npm run lint`; the changed spec(s) with `--project=chromium`, then without a project filter |
+| `unit/` | `npm run lint`; `npx vitest run unit/<changed files>`; then `npm run test:unit` |
 | `src/utils/`, `src/selectors/`, `src/services/` | `npm run lint`; `npx vitest run unit/<related>`; then `npm run test:unit` |
 | `src/context/`, `src/hooks/`, `src/lib/` | The row above, plus the affected spec(s) on chromium, then on all three browsers |
 | `src/components/`, `src/views/`, `src/index.css`, `App.tsx` | `npm run lint`; `npm run test:unit`; the affected spec(s) with `--project=chromium`, then without a project filter |
@@ -86,7 +89,7 @@ Run every tier that matches a changed path, then report the commands and results
 | `.github/workflows/` | `npx vitest run unit/workflow-hardening.test.ts` |
 | Any money path (ledger, context, selectors, `api/`) | Write the failing test first and run it against the unfixed code |
 
-Before calling a task done: `npm run lint`, `npm run test:unit`, and the affected spec(s). Save full-suite output to a log file. Check ports 3000 and 3100 for stale dev servers before Playwright.
+Before calling a task done: `npm run lint`, `npm run test:unit`, and the affected spec(s). Save full-suite output to a log file; under herdr, the builder saves to `workflow/stages/02_build/output/logs/` and the reviewer to `workflow/stages/03_review/output/logs/` (both gitignored). Check ports 3000 and 3100 for stale dev servers before Playwright.
 
 ## Domain context routing
 
@@ -98,26 +101,31 @@ Before calling a task done: `npm run lint`, `npm run test:unit`, and the affecte
 | Components, views, accessibility, modals, page contracts, Playwright, CI, when the change is logic only | `docs/contexts/ui-and-e2e.md` alone |
 | Visual work: a new or restyled screen, tokens, layout, motion | `docs/contexts/ui-and-e2e.md` and `DESIGN.md` |
 | Renaming or moving an id a spec uses | `docs/audit/test-selector-contract.md` |
-| Why a rule exists | The ADR it names, `docs/audit/decisions/NNNN-*.md` |
+| A comments-only or docs-only change | No context file |
+| Why a rule exists | The ADR it names, `docs/audit/decisions/NNNN-*.md`. With no ADR named, a keyword search of `docs/audit/decisions/`, reading only the ADRs that match |
 
 **Never read `docs/audit/archive/`** unless the user explicitly asks for historical research. It is superseded history, including the pre-split rule file. **Never open `docs/design/*.html`** (a 2 MB bundled mockup), and read `docs/design/finlife-redesign-spec.md` only for a new redesign; `DESIGN.md` is the design authority.
 
 ## Workflow
 
-- A vague request: ask before writing code. A new feature or phase: write the spec and plan, then the next ADR in `docs/audit/decisions/` and rows in `docs/audit/task-ledger.md`.
-- A shipped phase adds one `docs/audit/refactor-log.md` entry (with `Surprises` and `Deliberately not done`) and its figures at the top of `docs/audit/baseline-metrics.md`.
+- A vague request: ask before writing code.
+- A new feature or phase, in this order: the spec and plan; the next ADR in `docs/audit/decisions/`, before any code; the task rows in `docs/audit/task-ledger.md`; the code. The task that ships the phase adds one `docs/audit/refactor-log.md` entry (with `Surprises` and `Deliberately not done`) and its figures at the top of `docs/audit/baseline-metrics.md`.
+  - **Under herdr:** the reviewer's spec is the plan. An ADR the task needs is a spec target the builder writes first, before any code. The builder keeps the task's ledger row. `refactor-log.md` and `baseline-metrics.md` are written by the task that ships the phase.
+  - **Outside herdr:** one session does all of it, in the same order.
 - Removing a signature, column or code path: plan its deprecation and migration first.
 - Skip the process for typos, copy tweaks and doc-only edits.
 - A rule enters this file or `docs/contexts/` only once the code complies.
 
 ## ICM workflow (herdr) [ADR 0101]
 
-- **Phase work happens on a branch** `phase-NNN-<slug>` cut from `main`, never on `main`: pushing or merging `main` deploys to production, and only the owner merges.
+- **Phase work happens on a branch** `phase-NNN-<slug>` cut from `main`, never on `main`: pushing or merging `main` deploys to production. The phase number is the `NNN` in the branch name.
 - An orchestrator routes four orders. Read the stage file for the order you received:
   - `spec <id>`: `workflow/stages/01_spec/CONTEXT.md`, reviewer (Claude Code)
   - `build <id>` and `fix <id>`: `workflow/stages/02_build/CONTEXT.md`, builder (agy)
   - `review <id>`: `workflow/stages/03_review/CONTEXT.md`, reviewer (Claude Code)
-- Task ids continue the ledger's T-numbers. Each stage writes to its own `output/`, and every reply ends with the one STATUS line its stage file defines.
+- Task ids continue the ledger's T-numbers. Each stage writes to its own `output/`, and every reply ends with the one STATUS line its stage file defines, starting with the task id: `STATUS: <id> | <state> | <detail>`.
+- **Commits:** only the orchestrator commits, only on a phase branch, and only on the owner's `commit <id>` order. It pushes only the phase branch, only on the owner's push order. No agent merges; the owner merges.
+- **The one exception on `main`:** the owner's post-merge deploy record, a docs-only `[skip ci]` commit on `main`, stays allowed when the owner makes it or explicitly approves it.
 
 ## Environment (`.env.example`)
 

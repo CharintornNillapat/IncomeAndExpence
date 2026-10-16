@@ -32,11 +32,12 @@ The working memory of the audit and refactor work: what is planned, what shipped
 
 ## Update discipline
 
-- **`task-ledger.md` is the only file edited mid-phase.** Flip a row to `in-progress` when started; fill `Commit` and `Gate result` when it lands.
+- **Who writes what.** Under herdr, the reviewer's spec is the plan. An ADR the task needs is a spec target the builder writes first, before any code. The builder keeps the task's ledger row. `refactor-log.md` and `baseline-metrics.md` are written by the task that ships the phase. Outside herdr, one session does all of it, in the same order.
+- **`task-ledger.md` is the only file edited by every task mid-phase.** Flip a row to `in-progress` when started; fill `Commit` and `Gate result` when it lands. The row goes under the section for the phase in the branch name, created from the template if missing.
 - **Every `refactor-log.md` entry has `Surprises` and `Deliberately not done`,** even when they say "none".
 - **`baseline-metrics.md` gains one section per shipped phase, at the top.** Never rewrite an archived column.
 - **Keep each live file short.** Past about 150 lines, move finished phases into a new file in `archive/`.
-- **An ADR is written before the task that implements it.**
+- **An ADR is written before the code that implements it.** Under herdr it is a spec target the builder writes first.
 - **Do not create** a `TODO.md` (the Backlog is in the ledger) or per-file notes.
 
 ## Relationship to the rule files

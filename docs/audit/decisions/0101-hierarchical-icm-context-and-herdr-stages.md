@@ -1,6 +1,6 @@
 # 0101: Hierarchical context, a quarantined archive, and herdr workflow stages
 
-**Status:** Accepted. Built on branch `phase-125-icm-bootstrap`: renames `7bed3d7`, docs `ca1440f`, hash backfill to follow. Not yet merged. No code, test, config or schema change.
+**Status:** Accepted. Built on branch `phase-125-icm-bootstrap`: renames `7bed3d7`, docs `ca1440f`, hash backfill `7dfe6c2`, then the readiness-gap commit (T750), which amended sections 3 and 4 and the Consequences. Not yet merged. No code, test, config or schema change.
 - **Supersedes** the single 175 KB `CLAUDE.md` as the agent contract (in force from the project's start to Phase 124). Its full text is kept as `docs/audit/archive/claude-monolith-v124.md`.
 - **Moves** the audit's history out of the live `docs/audit/` set into `docs/audit/archive/`. Every move is a `git mv` with its content unchanged.
 
@@ -69,14 +69,19 @@
   - `01_spec/output/task-<id>-spec.md`;
   - `02_build/output/build-report.md`, overwritten per task, with a section appended per fix round;
   - `03_review/output/task-<id>-review.md`, a section per round, so earlier rounds' blocking items stay checkable.
-- **Every reply ends with one STATUS line:**
+- **Every reply ends with one STATUS line, starting with the task id** (`STATUS: <id> | <state> | <detail>`), to match the orchestrator:
   - reviewer: `SPEC DONE`, `APPROVED`, `CHANGES REQUESTED` or `BLOCKED`, with the output path;
   - builder: `BUILT`, `FIXED` or `BLOCKED`, with the count of files changed.
-- **Scope is the spec's target-file allowlist.** The bookkeeping files are always allowed: `task-ledger.md`, `refactor-log.md`, `baseline-metrics.md` and the build output. The review treats any other unannounced file as blocking, runs the gates itself, and checks that each new test fails without the change.
+- **Who writes what:** the reviewer's spec is the plan. An ADR the task needs is a spec target the builder writes first, before any code. The builder keeps the task's ledger row, under the phase named by the branch. `refactor-log.md` and `baseline-metrics.md` are written by the task that ships the phase. Outside herdr, one session does all of it in the same order.
+- **Scope is the spec's target-file allowlist.** The bookkeeping files are always allowed: `task-ledger.md` and the build output, including its gitignored `output/logs/`. The review treats any other unannounced file as blocking, runs the gates itself (logs in `03_review/output/logs/`), and checks that each new test fails without the change by stashing only the non-test changes and restoring them, with `git status` identical before and after. A spec may answer `none` for tests only when the change cannot alter behaviour.
 
 ### 4. Phase branches
 
-All ICM work happens on a branch `phase-NNN-<slug>` cut from `main`. Pushing or merging `main` deploys to production, so no agent commits on `main`, and only the owner merges.
+All ICM work happens on a branch `phase-NNN-<slug>` cut from `main`, and the phase number is the branch's `NNN`. Pushing or merging `main` deploys to production, so:
+
+- **Only the orchestrator commits,** only on a phase branch, and only on the owner's `commit <id>` order. It pushes only the phase branch, only on the owner's push order. No other agent commits or pushes.
+- **No agent merges.** The owner merges.
+- **The one exception on `main`:** the owner's post-merge deploy record, a docs-only `[skip ci]` commit, stays allowed when the owner makes it or explicitly approves it.
 
 ## Verification
 
@@ -90,6 +95,6 @@ All ICM work happens on a branch `phase-NNN-<slug>` cut from `main`. Pushing or 
 
 - **Session start loads about 20 KB of rule files instead of about 185 KB.** That is the global `CLAUDE.md`, this repo's `CLAUDE.md` with `AGENTS.md`, the memory index and a plugin's start hook. A typical task adds one context file (8 to 19 KB).
 - **The live `docs/audit/` set is about 27 KB in 5 files, down from about 1.5 MB in 12.** Shipping a phase no longer opens a 168 KB metrics file.
-- **A rule now lives in one of five places** (`AGENTS.md` or one of four context files), so a change to a rule must find its one home. The parity map and routing table are the index.
+- **Every rule has one home among these files:** `AGENTS.md`; the four `docs/contexts/*.md` files; `DESIGN.md`, for visual work; `docs/audit/test-selector-contract.md`, for spec-asserted ids; the three `workflow/stages/*/CONTEXT.md` files, for the herdr workflow; and `docs/audit/README.md`, for doc discipline. A change to a rule must find its one home. The parity map and routing table are the index.
 - **Four code comments still point into the archive:** `txTypeMeta.ts:21`, `OverflowMenu.tsx:44`, `Card.tsx:28` and `tests/categories.spec.ts:9`. This phase does not touch code, so they are a Backlog row.
 - **UI tasks still load the antislop skills** (about 78 KB for the core and UI skills). That is the owner's standing choice, outside this repo.

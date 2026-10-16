@@ -89,3 +89,6 @@ graphify-out/
 
 # Antigravity scratch folder
 .antigravity/
+
+# herdr stage logs (full-suite runs by the builder and the reviewer)
+workflow/stages/*/output/logs/

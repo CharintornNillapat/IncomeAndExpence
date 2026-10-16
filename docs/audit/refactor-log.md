@@ -19,7 +19,7 @@ ADR `NNNN`. <the brief, one or two sentences>
 
 ---
 
-## Phase 125 - ICM bootstrap: hierarchical context, the archive, herdr stages: T742-T749 (2026-10-15, renames `7bed3d7`, docs `ca1440f`, branch `phase-125-icm-bootstrap`, not merged)
+## Phase 125 - ICM bootstrap: hierarchical context, the archive, herdr stages: T742-T750 (2026-10-15 to 2026-10-16, renames `7bed3d7`, docs `ca1440f`, backfill `7dfe6c2`, then the readiness-gap commit, branch `phase-125-icm-bootstrap`, not merged)
 
 ADR `0101`. The owner's brief: prepare the repo for ICM under herdr (reviewer Claude Code, builder agy), first removing the context bloat, doc drift and dirty tree a read-only discovery pass found.
 
@@ -43,6 +43,7 @@ ADR `0101`. The owner's brief: prepare the repo for ICM under herdr (reviewer Cl
 - **Routing:** `DESIGN.md` is read for visual work only; never open `docs/design/*.html`; the redesign spec only for a new redesign.
 - **Workflow:** `workflow/stages/{01_spec,02_build,03_review}/CONTEXT.md` with `output/` folders, and the phase-branch rule.
 - **Root:** `.antigravity/` is ignored, and the stale local `HANDOFF.md` was deleted.
+- **Readiness gaps (T750):** a read-only readiness check (`../finlife-icm-readiness.md`, 2026-10-16) dry-ran one task through the three stages and found 11 guesses and 8 conflicts. This commit fixed them in `AGENTS.md`, the stage files, ADR `0101` and `docs/audit/README.md`: STATUS lines start with the task id; who writes what; only the orchestrator commits, on the owner's order, with the owner's deploy record the one exception on `main`; the phase comes from the branch; tier rows for `tests/`, `unit/`, `workflow/`, `docs/contexts/` and comments-only changes; tests may be `none` when behaviour cannot change; the reviewer's stash check; logs in gitignored `output/logs/`. A tracked `.claude/settings.json` denies Claude Code's production write tools and asks before git writes and PRs.
 
 **Verified:**
 - `npm run lint` is clean.
