@@ -1,6 +1,6 @@
 # 0101: Hierarchical context, a quarantined archive, and herdr workflow stages
 
-**Status:** Accepted. Released: renames `7bed3d7`, docs `ca1440f`, hash backfill `7dfe6c2`, readiness gaps `53794ca` (T750, which amended sections 3 and 4 and the Consequences), merged into `main` as `3124756` (PR #76); production deployment READY in `icn1`, serving `index-BLSMm3p4.js`. No code, test, config or schema change.
+**Status:** Accepted. Released: renames `7bed3d7`, docs `ca1440f`, hash backfill `7dfe6c2`, readiness gaps `53794ca` (T750, which amended sections 3 and 4 and the Consequences), merged into `main` as `3124756` (PR #76); production deployment READY in `icn1`, serving `index-BLSMm3p4.js`. No code, test, config or schema change. Amended in Phase 126 (T751, `86d0849`), merged into `main` as `3f301ab` (PR #77); see Amendments.
 - **Supersedes** the single 175 KB `CLAUDE.md` as the agent contract (in force from the project's start to Phase 124). Its full text is kept as `docs/audit/archive/claude-monolith-v124.md`.
 - **Moves** the audit's history out of the live `docs/audit/` set into `docs/audit/archive/`. Every move is a `git mv` with its content unchanged.
 
@@ -108,7 +108,7 @@ All ICM work happens on a branch `phase-NNN-<slug>` cut from `main`, and the pha
 
 ## Amendments
 
-**Phase 126 (T751, 2026-10-16), branch `phase-126-icm-tuneup`.** These settle the gaps of the second readiness check. They change workflow rules, not the decision, so no new ADR.
+**Phase 126 (T751, 2026-10-16), branch `phase-126-icm-tuneup`, docs `86d0849`, released in merge `3f301ab` (PR #77).** These settle the gaps of the second readiness check. They change workflow rules, not the decision, so no new ADR.
 
 1. **Before-done scope (D1).** `AGENTS.md`'s before-done line (lint, unit, the affected specs) applies only to tasks whose gates include a code tier. Docs-only and comments-only tasks run only their own tier rows.
 2. **Who cuts the phase branch (D2).** On the owner's phase order, before the first spec of the phase, the orchestrator cuts `phase-NNN-<slug>` from an up-to-date `main`. `NNN` is one above the last phase in the ledger. Work stays on that branch until the owner merges.
@@ -118,3 +118,5 @@ All ICM work happens on a branch `phase-NNN-<slug>` cut from `main`, and the pha
 6. **The builder's BLOCKED line (M3)** carries the reason as its detail, like the reviewer's: `STATUS: <id> | BLOCKED | <reason>`.
 7. **Ledger header (C3 leftover).** `task-ledger.md` no longer calls itself the only file edited mid-phase; the task that ships a phase also writes the refactor log and metrics. The stale `Metric delta` column name is gone.
 8. **No reviewer sub-agents.** Stages 01 and 03 say the reviewer never spawns sub-agents, whatever a hook or tool suggests.
+
+**Phase 126 release.** PR #77 merged into `main` as `3f301ab`, a merge commit, so `86d0849` and T752's comment commit `5bc45f5` are on `main`. Vercel deployment `dpl_FVBnrcrEzJrGXUJceQmtWiWRuNhT` (GitHub deployment `7110036939`) is READY in `icn1`, built in 19 s, with the production aliases assigned; it still serves `index-BLSMm3p4.js`, since T752 changed comments only. `main` CI on the merge (run `38845131793`, 5 m 14 s) passed all 8 jobs on its first attempt: unit 1375/1375 in 62 files, in order and shuffled (seed `1792120965210`); E2E 486 passed, 6 skipped, none failed or flaky. No migration, no drift run, no request to `/api/*`.
