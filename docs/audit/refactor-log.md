@@ -19,6 +19,17 @@ ADR `NNNN`. <the brief, one or two sentences>
 
 ---
 
+## Phase 126 - ICM tune-up: settle the readiness-2 gaps: T751-T752 (2026-10-16, docs `<sha>`, merged `<sha>`)
+
+ADR `0101` (amended, no new ADR). The owner's brief: one docs commit that settles the gaps the second ICM readiness check found (`../finlife-icm-readiness-2.md`, outside the repo). T752, the phase's last task, rewords five code comments that pointed into `docs/audit/archive/` so each cites a live doc (ADR `0006`, `0039`, `docs/contexts/ui-and-e2e.md`) and drops the framer-motion mention ADR `0082` made stale.
+
+**Changed:** `AGENTS.md` (before-done scope, who cuts the phase branch, doc-only phase paperwork, the order forms), the three `workflow/stages/*/CONTEXT.md` files (order forms, the id from the order, the builder's BLOCKED reason, the empty `Commit` cell, no reviewer sub-agents), `docs/audit/README.md` and the ledger header (who fills `Commit`), ADR `0101`'s Amendments section; T752: comments in `src/components/transaction/txTypeMeta.ts`, `src/components/ui/Card.tsx`, `src/components/ui/OverflowMenu.tsx` and `tests/categories.spec.ts`.
+**Verified:** `npm run lint` clean; zero em dashes in the touched files; T752: `npm run lint` clean (node-globals and safe-ids 132 files in src, tsc clean); comments-only diff confirmed (0 code lines changed); grep confirmed 0 archived pointers in target files; all 4 named paths and symbols resolved; zero em dashes in touched files.
+**Surprises:** the ledger header still named a `Metric delta` column the live ledger dropped in Phase 125; removed with the C3 fix.
+**Deliberately not done:** no `baseline-metrics.md` section (no bundle or test count changed). The herdr agents' workspace, agy's `always-proceed` mode and the jev-router hook live outside the repo and are the owner's to change. T752 left ADR `0006`'s own pointers to archived refactor-log notes, and `Card.tsx`'s stale `rounded-xl` (the code uses `rounded-card`), as they are.
+
+---
+
 ## Phase 125 - ICM bootstrap: hierarchical context, the archive, herdr stages: T742-T750 (2026-10-15 to 2026-10-16, renames `7bed3d7`, docs `ca1440f`, backfill `7dfe6c2`, readiness gaps `53794ca`, merged `3124756`)
 
 ADR `0101`. The owner's brief: prepare the repo for ICM under herdr (reviewer Claude Code, builder agy), first removing the context bloat, doc drift and dirty tree a read-only discovery pass found.

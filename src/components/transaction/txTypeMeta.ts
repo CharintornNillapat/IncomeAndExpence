@@ -18,7 +18,7 @@ export interface TxTypeMeta {
 /**
  * T35: centralizes the type -> icon/label/tint/sign mapping that was the
  * single most duplicated fragment across the app's transaction renderers
- * (see docs/audit/ui-ux-audit-report.md finding D).
+ * (ADR 0006 lists it in the UI primitive inventory).
  *
  * Phase 55a (spec sections 3 and 4.8, ADR 0027): a transfer carries no sign,
  * because it moves money between the user's own wallets. A balance adjustment

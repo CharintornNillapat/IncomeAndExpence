@@ -41,7 +41,7 @@ interface OverflowMenuProps {
  *
  * The items exist only while the menu is open. A spec that asserts an item is
  * absent must open the menu first, or the assertion passes for the wrong
- * reason (recorded in `test-selector-contract.md`).
+ * reason (`docs/contexts/ui-and-e2e.md`).
  */
 export const OverflowMenu: React.FC<OverflowMenuProps> = ({ label, items, triggerLabel, triggerId, className = '' }) => {
   const [isOpen, setIsOpen] = useState(false);

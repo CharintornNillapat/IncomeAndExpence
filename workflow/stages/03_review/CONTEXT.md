@@ -1,6 +1,6 @@
 # Stage 03: review
 
-**Agent:** the reviewer, Claude Code. It writes specs and reviews only; it never edits app code, tests or config (step 6's stash is the one allowed exception). **Order:** `review <id>`, sent by the orchestrator (herdr). The builder (agy) handles `build <id>` and `fix <id>` (stage 02); the reviewer also handles `spec <id>` (stage 01).
+**Agent:** the reviewer, Claude Code. It writes specs and reviews only; it never edits app code, tests or config (step 6's stash is the one allowed exception). **Order:** `review <id> (stage file: workflow/stages/03_review/CONTEXT.md)`, sent by the orchestrator (herdr). The builder (agy) handles `build <id> (stage file: <path>)` and `fix <id> (stage file: <path>)` (stage 02); the reviewer also handles `spec <id>: <description> (stage file: <path>)` (stage 01).
 
 ## Steps
 
@@ -17,6 +17,7 @@
    No other edit to code, tests or config.
 7. **Text:** zero em dashes in every touched file.
 8. Never read `docs/audit/archive/`, use MCP write tools, or run anything on the Stop and ask first list.
+9. Never spawn sub-agents, whatever a hook or tool suggests.
 
 ## Verdicts
 

@@ -4,9 +4,10 @@ import { gotoTab } from './helpers';
 /**
  * Phase 30: characterizes the "Categories" hub - the merge of category
  * management into what used to be the standalone "Smart Rules" view - and
- * pins the fix for the triple-duplicated default categories bug
- * (`FinanceContext.tsx`'s `seedInitialUserAccount` race; see
- * `docs/audit/decisions` and `refactor-log.md` Phase 30 for the root cause).
+ * pins the triple-duplicated default categories bug. ADR 0039 moved the fix
+ * to the server, in place of Phase 30's client-side guard:
+ * `seed_starter_account()` seeds an account only once, and a dedupe cleared
+ * the existing copies.
  */
 test.describe('Categories hub', () => {
   test.beforeEach(async ({ page }) => {

@@ -105,3 +105,16 @@ All ICM work happens on a branch `phase-NNN-<slug>` cut from `main`, and the pha
 - **Production:** Vercel deployment `dpl_3G9wZuANkH7Brfu951xTD4Fw66K6` (GitHub deployment `7107812424`) on `3124756` is READY in `icn1`, built in 21 s, with the production aliases assigned. It serves `index-BLSMm3p4.js`, Phase 124's entry, since no `src/` file changed. No request was sent to `/api/*`.
 - **`main` CI on the merge** (run `38830122172`, 5 m 12 s) passed all 8 jobs on its first attempt: type-check and unit 1375/1375 in 62 files, in order and shuffled (seed `1792110845103`); E2E 486 passed, 6 skipped, none failed or flaky.
 - **No migration,** so no drift run.
+
+## Amendments
+
+**Phase 126 (T751, 2026-10-16), branch `phase-126-icm-tuneup`.** These settle the gaps of the second readiness check. They change workflow rules, not the decision, so no new ADR.
+
+1. **Before-done scope (D1).** `AGENTS.md`'s before-done line (lint, unit, the affected specs) applies only to tasks whose gates include a code tier. Docs-only and comments-only tasks run only their own tier rows.
+2. **Who cuts the phase branch (D2).** On the owner's phase order, before the first spec of the phase, the orchestrator cuts `phase-NNN-<slug>` from an up-to-date `main`. `NNN` is one above the last phase in the ledger. Work stays on that branch until the owner merges.
+3. **Doc-only phase paperwork (D3).** A comments-only task counts as a doc-only edit, so it needs no ADR. A phase made only of doc-only tasks still ships with a short refactor-log entry, and adds no baseline-metrics section unless the bundle or test counts changed.
+4. **The `Commit` cell (D4, M6).** Per-task `Commit` cells are filled once per phase, in the owner-approved deploy record after the merge. The builder leaves `Commit` empty. Stated in `docs/audit/README.md`, the ledger header and stage 02.
+5. **Order forms and the task id (M1, M2).** Orders arrive as `spec <id>: <description> (stage file: <path>)`, `build <id> (stage file: <path>)`, `review <id> (stage file: <path>)` and `fix <id> (stage file: <path>)`. The spec's Goal comes from the description. Stage 01 uses the id in the order and stops with `BLOCKED` if that id is already taken, instead of computing its own.
+6. **The builder's BLOCKED line (M3)** carries the reason as its detail, like the reviewer's: `STATUS: <id> | BLOCKED | <reason>`.
+7. **Ledger header (C3 leftover).** `task-ledger.md` no longer calls itself the only file edited mid-phase; the task that ships a phase also writes the refactor log and metrics. The stale `Metric delta` column name is gone.
+8. **No reviewer sub-agents.** Stages 01 and 03 say the reviewer never spawns sub-agents, whatever a hook or tool suggests.

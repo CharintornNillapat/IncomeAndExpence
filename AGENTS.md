@@ -89,7 +89,7 @@ Run every tier that matches a changed path, then report the commands and results
 | `.github/workflows/` | `npx vitest run unit/workflow-hardening.test.ts` |
 | Any money path (ledger, context, selectors, `api/`) | Write the failing test first and run it against the unfixed code |
 
-Before calling a task done: `npm run lint`, `npm run test:unit`, and the affected spec(s). Save full-suite output to a log file; under herdr, the builder saves to `workflow/stages/02_build/output/logs/` and the reviewer to `workflow/stages/03_review/output/logs/` (both gitignored). Check ports 3000 and 3100 for stale dev servers before Playwright.
+Before calling a task done, a task whose gates include a code tier (any row above other than docs-only and comments-only) also runs `npm run lint`, `npm run test:unit` and the affected spec(s). A docs-only or comments-only task runs only its own tier rows. Save full-suite output to a log file; under herdr, the builder saves to `workflow/stages/02_build/output/logs/` and the reviewer to `workflow/stages/03_review/output/logs/` (both gitignored). Check ports 3000 and 3100 for stale dev servers before Playwright.
 
 ## Domain context routing
 
@@ -113,16 +113,16 @@ Before calling a task done: `npm run lint`, `npm run test:unit`, and the affecte
   - **Under herdr:** the reviewer's spec is the plan. An ADR the task needs is a spec target the builder writes first, before any code. The builder keeps the task's ledger row. `refactor-log.md` and `baseline-metrics.md` are written by the task that ships the phase.
   - **Outside herdr:** one session does all of it, in the same order.
 - Removing a signature, column or code path: plan its deprecation and migration first.
-- Skip the process for typos, copy tweaks and doc-only edits.
+- Skip the process for typos, copy tweaks and doc-only edits. A comments-only edit counts as doc-only, so it needs no ADR. A phase made only of doc-only tasks still ships with a short `refactor-log.md` entry, and adds no `baseline-metrics.md` section unless the bundle or test counts changed.
 - A rule enters this file or `docs/contexts/` only once the code complies.
 
 ## ICM workflow (herdr) [ADR 0101]
 
-- **Phase work happens on a branch** `phase-NNN-<slug>` cut from `main`, never on `main`: pushing or merging `main` deploys to production. The phase number is the `NNN` in the branch name.
-- An orchestrator routes four orders. Read the stage file for the order you received:
-  - `spec <id>`: `workflow/stages/01_spec/CONTEXT.md`, reviewer (Claude Code)
-  - `build <id>` and `fix <id>`: `workflow/stages/02_build/CONTEXT.md`, builder (agy)
-  - `review <id>`: `workflow/stages/03_review/CONTEXT.md`, reviewer (Claude Code)
+- **Phase work happens on a branch** `phase-NNN-<slug>`, never on `main`: pushing or merging `main` deploys to production. On the owner's phase order, before the first spec of the phase, the orchestrator cuts the branch from an up-to-date `main`. `NNN` is one above the last phase in `docs/audit/task-ledger.md`, and it is the phase number. Work stays on that branch until the owner merges it.
+- An orchestrator routes four orders. Each arrives as written below; read the stage file it names:
+  - `spec <id>: <description> (stage file: workflow/stages/01_spec/CONTEXT.md)`: reviewer (Claude Code). The spec's Goal comes from the description.
+  - `build <id> (stage file: workflow/stages/02_build/CONTEXT.md)` and `fix <id> (stage file: workflow/stages/02_build/CONTEXT.md)`: builder (agy)
+  - `review <id> (stage file: workflow/stages/03_review/CONTEXT.md)`: reviewer (Claude Code)
 - Task ids continue the ledger's T-numbers. Each stage writes to its own `output/`, and every reply ends with the one STATUS line its stage file defines, starting with the task id: `STATUS: <id> | <state> | <detail>`.
 - **Commits:** only the orchestrator commits, only on a phase branch, and only on the owner's `commit <id>` order. It pushes only the phase branch, only on the owner's push order. No agent merges; the owner merges.
 - **The one exception on `main`:** the owner's post-merge deploy record, a docs-only `[skip ci]` commit on `main`, stays allowed when the owner makes it or explicitly approves it.
