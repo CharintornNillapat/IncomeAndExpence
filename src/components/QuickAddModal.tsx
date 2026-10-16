@@ -98,7 +98,7 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
     >
       {presets.length > 0 && (
         <div className="mb-4 flex flex-col gap-2">
-          <span className="text-[11px] font-semibold text-fg-muted uppercase tracking-wide">
+          <span className="text-xs font-semibold text-fg-muted uppercase tracking-wider">
             Quick templates
           </span>
           <div className="flex flex-wrap gap-2">

@@ -706,7 +706,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
           template silently override its fixed type. */}
       {!lockType && presets.length > 0 && (
         <div className="flex flex-wrap items-center gap-x-1.5">
-          <span className="text-[11px] font-semibold text-fg-muted uppercase tracking-wide mr-0.5">
+          <span className="text-xs font-semibold text-fg-muted uppercase tracking-wider mr-0.5">
             Templates
           </span>
           {presets.map((preset) => (
@@ -845,7 +845,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
               `tests/debts.spec.ts` fills. */}
           {remainingDebt > 0 && (
           <div className="flex flex-wrap items-center gap-x-1.5">
-            <span className="text-[11px] font-semibold text-fg-muted uppercase tracking-wide mr-0.5">
+            <span className="text-xs font-semibold text-fg-muted uppercase tracking-wider mr-0.5">
               Quick payoff
             </span>
             <QuickChip id={`${idBase}-payoff-full`} onClick={() => seedPayoffAmount(remainingDebt)}>
@@ -868,7 +868,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
               keystroke (ADR 0026). */}
           <div className="flex flex-col gap-1.5">
             <div className="flex items-baseline justify-between gap-2 flex-wrap">
-              <span className="text-[11px] font-semibold uppercase tracking-wide text-fg-secondary">
+              <span className="text-xs font-semibold uppercase tracking-wider text-fg-secondary">
                 Remaining after payment
               </span>
               <span className="flex items-baseline gap-1.5 text-sm">
