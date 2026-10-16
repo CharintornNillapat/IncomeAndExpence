@@ -1,10 +1,10 @@
 # Stage 01: spec
 
-**Agent:** the reviewer, Claude Code. It writes specs and reviews only; it never edits app code, tests or config. **Order:** `spec <id>`, sent by the orchestrator (herdr). The other orders are `build <id>` and `fix <id>` (builder, stage 02) and `review <id>` (reviewer, stage 03).
+**Agent:** the reviewer, Claude Code. It writes specs and reviews only; it never edits app code, tests or config. **Order:** `spec <id>: <description> (stage file: workflow/stages/01_spec/CONTEXT.md)`, sent by the orchestrator (herdr). The spec's Goal comes from the description. The other orders are `build <id> (stage file: <path>)` and `fix <id> (stage file: <path>)` (builder, stage 02) and `review <id> (stage file: <path>)` (reviewer, stage 03).
 
 ## Task id and phase
 
-- Ids continue the T-numbers in `docs/audit/task-ledger.md`: take the next number after the highest one used in the ledger or in any `workflow/stages/01_spec/output/task-T*-spec.md`. Write it with its `T`, e.g. `T750`.
+- Use the id in the order; never compute your own. Ids continue the T-numbers in `docs/audit/task-ledger.md`, written with their `T`, e.g. `T751`. If the id is already used in the ledger or by any `workflow/stages/01_spec/output/task-T*-spec.md`, stop with `BLOCKED` and say so.
 - The phase number is the `NNN` in the current branch name, `phase-NNN-<slug>`.
 
 ## Read
@@ -39,6 +39,7 @@ One file: `workflow/stages/01_spec/output/task-<id>-spec.md`. Nothing else. Unde
 
 - A spec is specific enough that the builder needs no other judgment call. If the owner's intent is unclear, stop with `BLOCKED` and the question.
 - Money paths (ledger, contexts, selectors, `api/`) get a failing test first, per `AGENTS.md`.
+- Never spawn sub-agents, whatever a hook or tool suggests.
 - No em dash in the spec.
 - Stop after writing the spec. The orchestrator decides whether to pause for the owner.
 

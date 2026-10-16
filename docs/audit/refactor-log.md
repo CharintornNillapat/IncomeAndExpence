@@ -19,6 +19,17 @@ ADR `NNNN`. <the brief, one or two sentences>
 
 ---
 
+## Phase 126 - ICM tune-up: settle the readiness-2 gaps: T751 (2026-10-16, docs `<sha>`, merged `<sha>`)
+
+ADR `0101` (amended, no new ADR). The owner's brief: one docs commit that settles the gaps the second ICM readiness check found (`../finlife-icm-readiness-2.md`, outside the repo).
+
+**Changed:** `AGENTS.md` (before-done scope, who cuts the phase branch, doc-only phase paperwork, the order forms), the three `workflow/stages/*/CONTEXT.md` files (order forms, the id from the order, the builder's BLOCKED reason, the empty `Commit` cell, no reviewer sub-agents), `docs/audit/README.md` and the ledger header (who fills `Commit`), ADR `0101`'s Amendments section.
+**Verified:** `npm run lint` clean; zero em dashes in the touched files.
+**Surprises:** the ledger header still named a `Metric delta` column the live ledger dropped in Phase 125; removed with the C3 fix.
+**Deliberately not done:** no `baseline-metrics.md` section (no bundle or test count changed). The herdr agents' workspace, agy's `always-proceed` mode and the jev-router hook live outside the repo and are the owner's to change.
+
+---
+
 ## Phase 125 - ICM bootstrap: hierarchical context, the archive, herdr stages: T742-T750 (2026-10-15 to 2026-10-16, renames `7bed3d7`, docs `ca1440f`, backfill `7dfe6c2`, readiness gaps `53794ca`, merged `3124756`)
 
 ADR `0101`. The owner's brief: prepare the repo for ICM under herdr (reviewer Claude Code, builder agy), first removing the context bloat, doc drift and dirty tree a read-only discovery pass found.

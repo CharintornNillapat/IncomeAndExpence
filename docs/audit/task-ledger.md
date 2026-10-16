@@ -1,6 +1,6 @@
 # Task ledger
 
-The only file in `docs/audit/` edited mid-phase. Flip `Status` to `in-progress` when a task starts; fill `Commit`, `Gate result` and `Metric delta` when it lands.
+Every task edits this file; only the task that ships a phase also writes `refactor-log.md` and `baseline-metrics.md`. Flip `Status` to `in-progress` when a task starts and fill `Gate result` when it lands. Leave `Commit` empty: the owner-approved deploy record fills every task's `Commit` cell once per phase, after the merge.
 
 Status values: `todo`, `in-progress`, `done`, `dropped` (with a one-line reason).
 
@@ -21,6 +21,14 @@ Branch `phase-125-icm-bootstrap`, cut from `main` at `75d2171`. The archive rena
 | T748 | ADR `0101`; the ICM workflow section in `AGENTS.md`; the phase-branch rule | `docs/audit/decisions/0101-hierarchical-icm-context-and-herdr-stages.md`, `AGENTS.md` | done | ca1440f | `npm run lint` clean |
 | T749 | Phase 125 bookkeeping: refactor-log entry, baseline-metrics section, the commits and hash backfill | `docs/audit/` | done | ca1440f | n/a (docs) |
 | T750 | Close the ICM readiness gaps (G3, G4, G5, G7, G9, G10, G11; C1 to C8): STATUS lines with the task id, who writes what, commits and the deploy-record exception, phase from the branch, new gate tiers, routing, tests `none`, the reviewer's stash check, gitignored logs; Claude Code permission rules | `AGENTS.md`, `workflow/stages/*/CONTEXT.md`, ADR `0101`, `docs/audit/README.md`, `.gitignore`, `.claude/settings.json`, `docs/audit/` | done | 53794ca | `npm run lint` clean; settings valid against the Claude Code schema |
+
+## Phase 126 - ICM tune-up: settle the readiness-2 gaps (docs only, amends ADR `0101`)
+
+Branch `phase-126-icm-tuneup`, cut from `main` at `7e24554`. One docs commit. No migration.
+
+| # | Task | Files | Status | Commit | Gate result |
+|---|---|---|---|---|---|
+| T751 | Settle the readiness-2 gaps (D1 to D4, M1 to M3, M6, the C3 leftover): before-done scope, who cuts the phase branch, doc-only phase paperwork, `Commit` filled by the deploy record, order forms, the id from the order, the builder's BLOCKED reason, no reviewer sub-agents; ADR `0101` amendments | `AGENTS.md`, `workflow/stages/*/CONTEXT.md`, `docs/audit/README.md`, `docs/audit/task-ledger.md`, ADR `0101`, `docs/audit/refactor-log.md` | done | | `npm run lint` clean |
 
 ## Backlog
 

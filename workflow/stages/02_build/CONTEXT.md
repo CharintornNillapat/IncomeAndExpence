@@ -2,7 +2,7 @@
 
 **Read `AGENTS.md` first, in full, before anything else.** Do not assume it was loaded for you.
 
-**Agent:** the builder, agy (Gemini 3.8 Flash). **Orders:** `build <id>` and `fix <id>`, sent by the orchestrator (herdr). The reviewer (Claude Code) handles `spec <id>` (stage 01) and `review <id>` (stage 03).
+**Agent:** the builder, agy (Gemini 3.8 Flash). **Orders:** `build <id> (stage file: workflow/stages/02_build/CONTEXT.md)` and `fix <id> (stage file: workflow/stages/02_build/CONTEXT.md)`, sent by the orchestrator (herdr). The reviewer (Claude Code) handles `spec <id>: <description> (stage file: <path>)` (stage 01) and `review <id> (stage file: <path>)` (stage 03).
 
 ## Inputs
 
@@ -24,7 +24,7 @@
 3. If the spec lists an ADR, write it first, before any test or code.
 4. Tests first: add the spec's tests and run them against the unchanged code; they must fail for the reason the spec gives. Skip this step when the spec's tests are `none`.
 5. Make the change, then run the spec's gates **once**, after all edits. Never edit `src/` while Playwright runs. Save each full-suite run to `workflow/stages/02_build/output/logs/<id>-<suite>.log`.
-6. Keep the task's row in `docs/audit/task-ledger.md`. The phase is the `NNN` in the branch name `phase-NNN-<slug>`. Put the row under that phase's section, creating the section from the ledger's template if it is missing. Status `in-progress`, then `done` with the gate result.
+6. Keep the task's row in `docs/audit/task-ledger.md`. The phase is the `NNN` in the branch name `phase-NNN-<slug>`. Put the row under that phase's section, creating the section from the ledger's template if it is missing. Status `in-progress`, then `done` with the gate result. Leave `Commit` empty: the owner-approved deploy record fills every task's `Commit` cell once per phase, after the merge.
 7. Write `workflow/stages/02_build/output/build-report.md`: task id, files changed (with the count), tests added and their fail-then-pass evidence, each gate command with its exact counts and log path, and anything not done.
 
 `build-report.md` is overwritten by each `build <id>`; a `fix <id>` appends a `## Fix round N` section to it.
@@ -49,4 +49,4 @@ End every reply with exactly one line, starting with the task id:
 
 - `STATUS: <id> | BUILT | <n> files changed`
 - `STATUS: <id> | FIXED | <n> files changed`
-- `STATUS: <id> | BLOCKED | <n> files changed` (put the reason in the line above)
+- `STATUS: <id> | BLOCKED | <reason>`
