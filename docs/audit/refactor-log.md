@@ -19,6 +19,17 @@ ADR `NNNN`. <the brief, one or two sentences>
 
 ---
 
+## Phase 129 - Wallet transfer label size: T756 (2026-10-16, code `<sha>`, merged `<sha>`)
+
+No ADR (applies `DESIGN.md` line 77 as written). The owner's brief: move the transfer panel's uppercase From/To label in `WalletTransferForm.tsx` from `text-[10px]` to the section-label size, `text-xs`.
+
+**Changed:** `src/components/wallet/WalletTransferForm.tsx` (the panel label, `text-[10px]` to `text-xs`); one Backlog row closed.
+**Verified:** `npm run lint` clean (node-globals and safe-ids 132 files in src, tsc clean); `npm run test:unit` clean (62 files, 1375 passed in 69.9s, `workflow/stages/02_build/output/logs/T756-unit.log`); Playwright `tests/wallet-forms.spec.ts`, `tests/transfer-preview.spec.ts`, `tests/ios-field-zoom.spec.ts` passed (Chromium: 13/13 passed in 28.6s; all 3 browsers: 39/39 passed in 1.2m, `workflow/stages/02_build/output/logs/T756-e2e.log`); clean production build succeeded (`index-BB5386eR.js`, 191,674 B / 55,802 B gzip; `index-CqllkKUj.css`, 52,759 B / 10,159 B gzip); bash checks confirmed 1 line removed and 1 added in `src/`, 0 occurrences of `text-[10px]` in `WalletTransferForm.tsx`, line 101 matches `text-xs font-semibold uppercase tracking-wider text-fg-muted`, CRLF preserved across 4 files, and 0 em dashes across all touched files.
+**Surprises:** none.
+**Deliberately not done:** No other `text-[10px]` class was moved to the scale: `AccountModal.tsx`, `NavbarLedgerStatus.tsx`, `ImportCsvModal.tsx`, `TxCells.tsx`, `ui/Badge.tsx` and `ui/Chip.tsx` use it for pills, badges and inline links, not section labels. No `leading-*` class was added for `text-xs`'s 16px line height. `DESIGN.md` is unchanged: its line 295 reference to `WalletTransferForm.tsx:101` still holds.
+
+---
+
 ## Phase 128 - Workflow automation: T754-T755 (2026-10-16, docs `a757938` and `694f0cc`, merged `9c62173` and `967b049`)
 
 ADR `0101` (amended, no new ADR). The owner's brief: cut the owner's round trips per task, with a build report per task, short spec orders, a pause after the spec only for risky tasks, and an automatic commit of each approved task on the phase branch.

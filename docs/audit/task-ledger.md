@@ -48,6 +48,14 @@ Branch `phase-128-workflow-automation`, cut from `main` at `88cc32b`. Two commit
 | T754 | Per-task build reports, short spec orders, the automatic pause after the spec, the automatic commit of each approved task; drop the prefixed commit ask rule; ADR `0101` amendments | `AGENTS.md`, `workflow/stages/*/CONTEXT.md`, ADR `0101`, `.claude/settings.json`, `docs/audit/refactor-log.md` | done | a757938 | G1-G7 passed: schema valid, 0 stale refs, zero em dashes, scope clean |
 | T755 | Backlog row: check line endings with `git ls-files --eol` or Node, not `grep -c` (T754's rule candidate) | `docs/audit/task-ledger.md` | done | 694f0cc | G1-G6 passed: paths exist, 2 added lines, row in place, CRLF 79, zero em dashes, scope clean |
 
+## Phase 129 - Wallet transfer label size (one UI class, no ADR)
+
+Branch `phase-129-wallet-label`, cut from `main` at `0bdfbe6`. No migration.
+
+| # | Task | Files | Status | Commit | Gate result |
+|---|---|---|---|---|---|
+| T756 | Move the transfer panel's uppercase From/To label from `text-[10px]` to `text-xs` (DESIGN.md's section-label size) | `src/components/wallet/WalletTransferForm.tsx`, `docs/audit/refactor-log.md`, `docs/audit/baseline-metrics.md` | done | | `npm run lint` clean; unit 1375/1375 (69.9s); e2e 39/39 in 1.2m (Chromium, Firefox, WebKit); build clean; bash checks 5/5, 0 text-[10px] in WalletTransferForm, 0 em dashes |
+
 ## Backlog
 
 Not scheduled. Each row says where it came from.
@@ -56,7 +64,7 @@ Not scheduled. Each row says where it came from.
 |---|---|---|
 | Every interactive element added to a view carries an `id` following `<view>-<thing>-<kind>` | `archive/constraints-to-promote.md` row T12. `AuthModal.tsx` complies; never verified repo-wide | todo: verify across views before it can become a rule |
 | `QuickAddModal.tsx:101` labels its template list `text-[11px] ... uppercase tracking-wide`, below `DESIGN.md`'s 12 to 13px label size and off the `tracking-wider` used elsewhere | Context audit, 2026-10-15. `TransactionForm.tsx:709`, `:848` and `:871` also use `tracking-wide` on uppercase labels | done in Phase 127 (T753) |
-| `WalletTransferForm.tsx:101`'s uppercase label is `text-[10px]`, below `DESIGN.md`'s 12 to 13px (its tracking is already `tracking-wider`) | Phase 127, T753's spec | todo: code change, needs a UI phase |
+| `WalletTransferForm.tsx:101`'s uppercase label is `text-[10px]`, below `DESIGN.md`'s 12 to 13px (its tracking is already `tracking-wider`) | Phase 127, T753's spec | done in Phase 129 (T756) |
 | Four code comments point into `docs/audit/archive/`: `src/components/transaction/txTypeMeta.ts:21` (`ui-ux-audit-report.md`), `src/components/ui/OverflowMenu.tsx:44` (a reason now in the archived selector log), `src/components/ui/Card.tsx:28` and `tests/categories.spec.ts:9` (refactor-log Phases 25 and 30) | Phase 125 (ADR `0101`); code was out of scope | done in Phase 126 (T752) |
 | `src/components/ui/Card.tsx:23`'s doc comment says the shell is `rounded-xl`, while the code uses `rounded-card` | Phase 126, T752's review; outside T752's scope | done in Phase 127 (T753) |
 | ESLint with `react-hooks/exhaustive-deps` | `archive/constraints-to-promote.md` follow-on proposals | todo |
