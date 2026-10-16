@@ -21,11 +21,11 @@ const PADDING_CLASS: Record<CardPadding, string> = {
 /**
  * T44: the card shell repeated across the app's view containers -
  * `rounded-xl`, a 1px `border-line`, and the Surface 1 background (DESIGN.md: no card shadows).
- * Adopted only where an existing shell already matches this shape losslessly;
- * a shell with stepped responsive padding (e.g. `p-4 sm:p-5`), a non-white
- * background, a conditional per-state className, or its own framer-motion
- * hover/tap animation is a genuinely different shape and was left local - see
- * `docs/audit/refactor-log.md` Phase 25 for the audited list of each.
+ * Adopted only where an existing shell already matches this shape losslessly.
+ * A shell with stepped responsive padding (e.g. `p-4 sm:p-5`) stays local
+ * because the padding enum is deliberately closed (ADR 0006). A shell with a
+ * non-white background or a conditional per-state className is a different
+ * shape and stays local too.
  *
  * Phase 56 (spec 4.3, ADR 0029): the spec's 16px card radius (`rounded-card`)
  * and 24 to 28px padding. The border stays neutral: a card never takes a
