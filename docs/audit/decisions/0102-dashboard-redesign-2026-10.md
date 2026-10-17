@@ -2,7 +2,7 @@
 
 **Status:** Accepted.
 - **Amends** ADR 0030: replaces its block layout (`DESIGN.md`'s Dashboard table). It keeps 0030's one period for the page, every figure through a selector, and ADR 0020's insights card.
-- **Implements nothing yet:** Phases 134 (selectors) and 135 (UI) build it, per the owner spec's section 6.
+- **Implemented by** Phases 134 (selectors, merged as `35c7967`) and 135 (UI, merged as `bdfc500`), per the owner spec's section 6.
 - **Adds** the owner spec and its mock as the redesign's authority for the Dashboard only, in place of `docs/design/finlife-redesign-spec.md` section 6.1. For every other page that spec stays the source.
 
 **Date:** 2026-10-17
