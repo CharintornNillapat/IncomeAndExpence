@@ -21,41 +21,47 @@ function prompt(loggedCount: number): string | null {
 }
 
 /**
- * Spec 6.1 item 6: the diary's mood beside that day's spending, for the days
- * logged in the page's period. Spending is signed as well as red, so the
- * colour never carries the meaning alone (spec section 7).
+ * Owner spec 4.4, decision A. The strip lays out the diary days `moodSpendingDays`
+ * returns for the page's period, at most five, oldest on the left. There are no
+ * placeholder days, so no selector change.
  */
 export const MoodSpendingCard: React.FC<MoodSpendingCardProps> = ({ mood, today, todayLogged, onOpenDiary }) => {
   const hint = prompt(mood.loggedCount);
   return (
-    <Card className="h-full flex flex-col gap-4">
-      <div>
-        <h2 className="text-base font-semibold text-fg">Mood &amp; spending</h2>
-        <p className="text-sm text-fg-muted mt-0.5">From your daily diary</p>
-      </div>
+    <section aria-labelledby="dashboard-mood-title" className="min-w-0">
+      <Card className="flex flex-col gap-4">
+        <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-3">
+          <div>
+            <h2 id="dashboard-mood-title" className="text-base font-semibold text-fg">
+              Mood and spending
+            </h2>
+            <p className="text-sm text-fg-muted mt-0.5">From your daily diary</p>
+          </div>
+          <Button id="dashboard-log-mood-btn" variant="soft" onClick={onOpenDiary}>
+            {todayLogged ? "Edit today's entry" : `Log today (${formatWeekdayDate(today)})`}
+          </Button>
+        </div>
 
-      {mood.days.length > 0 && (
-        <ul className="flex flex-col gap-3">
-          {mood.days.map((day) => (
-            <li key={day.date} className="flex items-center justify-between gap-3">
-              <span className="flex flex-col gap-1">
-                <span className="text-sm font-medium text-fg">{formatWeekdayDate(day.date)}</span>
+        {mood.days.length > 0 && (
+          <ul className="flex flex-wrap gap-2">
+            {[...mood.days].reverse().map((day) => (
+              <li
+                key={day.date}
+                className="flex-1 basis-24 min-w-0 flex flex-col items-center gap-1.5 rounded-inner bg-surface-2 px-2 py-2.5 text-center"
+              >
+                <span className="text-xs text-fg-muted">{formatWeekdayDate(day.date)}</span>
                 <MoodMeter mood={day.mood} />
-              </span>
-              <Money
-                value={-day.spending}
-                className={`text-sm font-semibold ${day.spending > 0 ? 'text-expense' : 'text-fg-muted'}`}
-              />
-            </li>
-          ))}
-        </ul>
-      )}
+                <Money
+                  value={-day.spending}
+                  className={`text-xs font-semibold ${day.spending > 0 ? 'text-expense' : 'text-fg-muted'}`}
+                />
+              </li>
+            ))}
+          </ul>
+        )}
 
-      {hint && <Inset className="px-3.5 py-3 text-sm text-fg-secondary leading-relaxed">{hint}</Inset>}
-
-      <Button id="dashboard-log-mood-btn" block onClick={onOpenDiary} className="mt-auto">
-        {todayLogged ? "Edit today's entry" : `Log today (${formatWeekdayDate(today)})`}
-      </Button>
-    </Card>
+        {hint && <Inset className="px-3.5 py-3 text-sm text-fg-secondary leading-relaxed">{hint}</Inset>}
+      </Card>
+    </section>
   );
 };

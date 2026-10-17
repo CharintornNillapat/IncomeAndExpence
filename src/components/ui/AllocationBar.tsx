@@ -53,7 +53,7 @@ export const AllocationBar: React.FC<AllocationBarProps> = ({ segments, label, e
 
   if (total > 0 || !emptyCaption) return bar;
 
-  // The Cash flow card's empty-bar caption is the precedent: same size and token.
+  // Same size and token as the Dashboard's other captions (text-xs, fg-muted).
   return (
     <div className="flex flex-col gap-2">
       {bar}

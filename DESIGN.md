@@ -77,7 +77,7 @@ Wallets and categories take their own colour from the muted identity palette in 
 | Section label | 12 to 13px / 600, uppercase, `tracking-wider` (0.05em), `fg-secondary` or `fg-muted` |
 | Body | 14px / 400 to 500 |
 | Caption | 12 to 13px, `fg-muted` |
-| Hero number (net worth) | 44px / 600, −1px tracking |
+| Hero number (the Dashboard's Left over) | 44px / 600, −1px tracking |
 | KPI number | 28px / 600 |
 | Amount in a list row | 15px / 600 |
 
@@ -105,7 +105,7 @@ Wallets and categories take their own colour from the muted identity palette in 
 ### Amounts (spec section 4.8)
 - Format through `formatCurrencyAmount`: `฿1,234.56`, and a negative as `−฿1,234.56` (U+2212 before the symbol).
 - Income `+฿` green. Spending `−฿` red. A transfer `฿` blue, unsigned, except inside one wallet's own view, where it is `+` arriving or `−` leaving. An adjustment `+` or `−` in grey. A debt repayment `−` in grey: it is not spending (spec L1).
-- "THB" appears only beside the hero number.
+- "THB" appears only beside the net worth figure.
 - Numbers render their final value immediately. No count-up.
   - Why: a figure that is still moving can be read as the wrong amount.
 
@@ -159,7 +159,7 @@ Exceptions that keep their own markup, each for a reason:
 - Sections are 24px apart. Card rows sit on a 12-column grid with 16px gaps.
 
 ### Dashboard (the 2026-10 redesign, ADRs 0030 and 0102)
-**Status:** the target of the 2026-10 redesign, built in Phases 134 (selectors) and 135 (UI). Until Phase 135 ships, the shipped page still follows ADR 0030's layout. The authority is `docs/design/dashboard-2026-10/spec.md`. Its mock shows layout only: every colour, size and number in it is a mock value.
+**Status:** shipped in Phase 135 (UI) on the selectors Phase 134 added. The authority is `docs/design/dashboard-2026-10/spec.md`. Its mock shows layout only: every colour, size and number in it is a mock value.
 
 One period for the whole page, chosen in the `PageHeader`. Every figure comes from `src/selectors/`, computed once in `DashboardView`; cards only lay out. The app header, nav, sync badge and Quick Add are not part of this page.
 
@@ -196,14 +196,14 @@ One period for the whole page, chosen in the `PageHeader`. Every figure comes fr
 | PageHeader | A greeting by the local hour, the long date, and the period `SegmentedControl`: Today, This week, Past 30 days, All time (DAY, WEEK, MONTH, ALL). |
 | Row 1: Left over | The wide card. The period's left over, the share of income kept, "after debt due" (MONTH only), the daily spending sparkline (hidden for DAY and ALL), and the spent and kept bar. |
 | Row 1: Income, Spending | Two small cards stacked beside it, with the totals from `cashFlow`. |
-| Row 2: Spending by category | A donut and the top five (name, percent, amount) from `spendingByCategory` (L1). A subtitle says it excludes debt payments, transfers and adjustments. Under it, the month-to-date line, shown in every period: spending and left over for day 1 to N of this month against day 1 to N of last month (N clamped to last month's length). |
+| Row 2: Spending by category | A donut and the top five (name, percent, amount) from `spendingByCategory` (L1); any further categories are one grey segment and one "N more categories" row with its percent. A subtitle says it excludes debt payments, transfers and adjustments. Under it, the month-to-date line, shown in every period: spending and left over for day 1 to N of this month against day 1 to N of last month (N clamped to last month's length). |
 | Row 2: Debt payoff | The overall percent paid (`payoffPercent` on the totals), paid of total, and needed this month from `debtPlan` and `requiredMonthly`, with the existing surplus warning when it applies. Then each active debt: name, amount left, its `ProgressBar`, its payment-date end and its monthly. A Make a repayment button. |
 | Row 3: Recent activity | The latest rows grouped by day, each day with its net, by the Transactions page's rule (`groupByDay`, L11; transfers shown but not counted), through the existing `TransactionRow` and `DayGroupHeader` and their behaviour. |
 | Row 3: Net worth and wallets | `netWorth` (L3) with its "wallets minus debt" caption, the share bar and list from `walletShares` (active wallets only), then Transfer, Add wallet and Manage. |
-| Row 3: Mood and spending | The week strip from `moodSpendingDays`, an empty line when there are no diary days, and Log today. |
+| Row 3: Mood and spending | A strip of the diary days `moodSpendingDays` returns for the period, at most five, oldest on the left, each with its mood and that day's spending; an empty line when there are none; Log today. |
 | Spending insights | ADR 0020's card, unchanged, full width and last. |
 
-The left over, sparkline and month-to-date figures come from selectors Phase 134 adds (the redesign spec's section 5).
+The left over, sparkline and month-to-date figures come from selectors Phase 134 added (the redesign spec's section 5).
 
 ### Transactions (spec 6.2, ADRs 0031 and 0033)
 - **Header:** `PageHeader` "Transactions" with "Click any row to edit it", an "Import / export" menu, and the one primary button, "Add transaction".
@@ -323,7 +323,7 @@ Five states. The first is for guests; the other four are for a signed-in user, c
 | Spec | App | Why |
 |---|---|---|
 | `--border-control` `#252B38` on inputs | Inputs keep `line-input` `#5E7092`; `#252B38` is `line-control`, for secondary buttons only | `#252B38` is 1.26:1 on a card, under WCAG 1.4.11's 3:1 for an input's edge. A button's label identifies it; an input has only its edge. |
-| Section label letter-spacing 0.4px | `tracking-wider` (0.05em, about 0.6px at 12px) | It is what the code's section labels and column headers use (`CashFlowCard.tsx:35`, `NetWorthCard.tsx:22`, `DebtSummaryCard.tsx:18`, `SmartRulesPanel.tsx:149`, `TransactionDrawer.tsx:97`, `WalletTransferForm.tsx:101`); recorded in Phase 125 so this file matches the code. Phase 127 (T753) moved the last four `tracking-wide` labels, in `QuickAddModal.tsx` and `TransactionForm.tsx`, onto it. |
+| Section label letter-spacing 0.4px | `tracking-wider` (0.05em, about 0.6px at 12px) | It is what the code's section labels and column headers use (`DebtSummaryCard.tsx:18`, `SmartRulesPanel.tsx:149`, `TransactionDrawer.tsx:97`, `WalletTransferForm.tsx:101`); recorded in Phase 125 so this file matches the code. Phase 127 (T753) moved the last four `tracking-wide` labels, in `QuickAddModal.tsx` and `TransactionForm.tsx`, onto it. |
 | Header buttons and `IconButton` 40px | 44px | The app's 44px floor (section 4). The owner kept it for every control, header included (2026-09-28, ADR 0029). |
 | Editing row background `#1C1930`; selected wallet `#1C1930` with edge `#4B3F86` | `brand-soft` (`#1E1A33`) with the 3px `focus` edge, for both | Two near-identical violets would be two tokens for one meaning, and a selected row looks the same on every page. |
 | Header title "FinLife" | "FinLife Tracker" | `theme.spec.ts` finds the heading by that name. |
@@ -332,7 +332,7 @@ Five states. The first is for guests; the other four are for a signed-in user, c
 | Pages full width | `main` keeps `max-w-7xl` (1280px) | Temporary, until every page is redesigned: the old Transactions table and forms would stretch across a wide screen (owner, 2026-09-28, ADR 0030). |
 | "~฿4,391/mo needed" | "฿4,391.23 / month needed" | Every displayed amount goes through `formatCurrencyAmount`. |
 | Mood-row spending red, unsigned | Signed, `−฿340.00` | Spec section 7: colour never carries the meaning alone. |
-| Spent-vs-left bar in red and green | One `ProgressBar` of the spent share on the neutral track | A green remainder would read as income; the caption states the share. |
+| Spent-vs-left bar in red and green | Spent in `expense` and kept in `brand`, one bar with "Spent N%" and "Kept N%" under it | A green remainder would read as income; the 2026-10 owner spec (4.2) colours the kept part brand. |
 | Static "Good morning" | Greeting by the local hour | The page is open at every hour. |
 | "…uses the period on the right" | "…uses the selected period" | On a phone the control sits below the text. |
 | Edit panel: every row edits type, amount, wallets and category | A repayment or an adjustment edits only its note and date | Its money is tied to a debt's remainder or to a counted balance; changing it is a delete and a new entry (owner, 2026-09-28, ADR 0033). |

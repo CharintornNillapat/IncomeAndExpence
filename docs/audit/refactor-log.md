@@ -19,6 +19,27 @@ ADR `NNNN`. <the brief, one or two sentences>
 
 ---
 
+## Phase 135 - Dashboard UI: T765-T767 (2026-10-17, code `<sha>`, merged `<sha>`)
+
+ADR `0102`. The Dashboard body rebuilt to the 2026-10 owner spec: the page header and row 1, Left over with its sparkline beside the Income and Spending cards (T765); row 2, spending by category with the donut and the month-to-date line, and debt payoff with the surplus warning inside (T766); row 3, recent activity, net worth merged into the wallets card, the mood strip (owner decision A), the insights card last, the T766 review notes and the phase paperwork (T767).
+
+**Changed:**
+- T765: `DESIGN.md`, `docs/audit/task-ledger.md`, `docs/audit/test-selector-contract.md`, `src/components/dashboard/CashFlowCard.tsx`, `src/components/dashboard/LeftOverCard.tsx`, `src/views/DashboardView.tsx`, `tests/dashboard.spec.ts`, `unit/dashboard.test.tsx`.
+- T766: `DESIGN.md`, `docs/audit/task-ledger.md`, `docs/audit/test-selector-contract.md`, `src/components/dashboard/CategorySpendingCard.tsx`, `src/components/dashboard/DebtPayoffCard.tsx`, `src/views/DashboardView.tsx`, `tests/dashboard.spec.ts`, `unit/dashboard.test.tsx`.
+- T767: `AGENTS.md`, `DESIGN.md`, `README.md`, `docs/audit/baseline-metrics.md`, `docs/audit/refactor-log.md` (this file), `docs/audit/task-ledger.md`, `docs/audit/test-selector-contract.md`, `docs/contexts/ui-and-e2e.md`, `docs/design/dashboard-2026-10/spec.md`, `src/components/ViewLoadingFallback.tsx`, `src/components/dashboard/CategorySpendingCard.tsx`, `src/components/dashboard/MoodSpendingCard.tsx`, `src/components/dashboard/NetWorthCard.tsx` (deleted), `src/components/dashboard/RecentActivityCard.tsx`, `src/components/dashboard/WalletsSection.tsx`, `src/components/ui/AllocationBar.tsx`, `src/views/DashboardView.tsx`, `tests/dashboard.spec.ts`, `unit/dashboard.test.tsx`.
+**Verified:**
+- T765: Red gate verified; npm run lint clean; related unit 4/4 files 75 passed; unit 62/62 files 1415 passed; e2e 20/20 chr, 58 passed 2 skipped on 3 browsers; wcag-tokens clean; CRLF kept; 0 em dashes.
+- T766: Red gate verified; npm run lint clean; related unit 4/4 files 86 passed; unit 62/62 files 1426 passed; e2e 21/21 chr, 61 passed 2 skipped on 3 browsers; wcag-tokens clean; CRLF kept; 0 em dashes.
+- T767: Red gate verified (unit 8 failed, Playwright Chromium 4 failed); npm run lint clean (132 files); related unit tests passed (5 files, 116 passed); full unit suite 62 files, 1432 passed in 44.88s (workflow/stages/02_build/output/logs/T767-unit.log); Vitest shuffle 62 files, 1432 passed (seed 1792225420210); Playwright 12 specs on Chromium (71 passed in 40.3s) and on all 3 browsers (207 passed, 6 skipped in 3.7m); full Playwright E2E suite 35 specs on all 3 browsers (531 passed, 6 skipped by design, 0 failed in 9.9m, workflow/stages/02_build/output/logs/T767-e2e-full.log); production clean build passed (index-wgYjfCND.js 193,252 B / 56,336 B gzip; index-z3bqoA9P.css 52,884 B / 10,209 B gzip; 39 JS files); scripts/wcag-tokens.mjs passed all token pairs; line endings verified (ViewLoadingFallback.tsx w/lf, others w/crlf); 0 em dashes in git diff; 0 raw hex or text px in redesigned cards; 0 NetWorthCard references in src, unit, tests, DESIGN.md, AGENTS.md and docs/contexts.
+**Surprises:** T765's em-dash gate counted the whole file, including a test that asserts no em dash, so that test's literal became an escape (T765 review note 1; later specs count added lines only); T766's spec placed DESIGN.md's rest-row clause before the data source (fixed in T767); the full-suite WebKit run can stall a click on Windows for 15 s (csv-classify, ADR 0058), which passed on rerun in T767's review.
+**Deliberately not done:**
+- the mock's seven-day strip with empty days (owner decision A: strip displays only days returned by `moodSpendingDays` up to 5, oldest on left);
+- the header and nav restyle and the darker brand theme (owner spec 6, "Later");
+- the hero token (Backlog);
+- the visual check by eye in both themes at 1280 px and phone width, which is the owner's, after merge.
+
+---
+
 ## Phase 134 - Dashboard selectors: T762-T764 (2026-10-17, code `e6fb160`, `30da09d` and `3187e10`, merged `35c7967`)
 
 ADR `0102`. Pure selectors for the redesigned Dashboard cards: left over with debt due for the Left over card, daily spending series for its sparkline, and month-to-date comparison against last month. All tests first; nothing rendered on screen until Phase 135.

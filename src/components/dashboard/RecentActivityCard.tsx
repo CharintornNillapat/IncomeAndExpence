@@ -25,6 +25,7 @@ interface RecentActivityCardProps {
  * adjustment that was immediately undone folded into one row that expands
  * (L8). The Transactions page still lists both rows of a pair.
  *
+ * Owner spec 4.4 keeps this card's rows and behaviour.
  * Since Phase 58b each row is a button that opens it on the Transactions page
  * with its edit panel (audit 005 finding 4). Each shows its description
  * exactly once, which `transaction.spec.ts` and `storage-persistence.spec.ts`
@@ -40,28 +41,30 @@ export const RecentActivityCard: React.FC<RecentActivityCardProps> = ({
   onViewAll,
   onOpenTransaction,
 }) => (
-  <Card padding="none" className="h-full flex flex-col">
-    <div className="flex items-baseline justify-between gap-4 px-6 pt-6 pb-3">
-      <h2 className="text-base font-semibold text-fg">Recent activity</h2>
-      <DashboardLink id="dashboard-view-all-transactions-btn" onClick={onViewAll}>
-        View all
-      </DashboardLink>
-    </div>
-
-    {items.length === 0 ? (
-      <EmptyState icon={History} title="No transactions recorded yet" subtitle="Your latest activity will show here." />
-    ) : (
-      <div className="px-2 pb-3">
-        <ActivityFeed
-          items={items}
-          dayNets={dayNets}
-          wallets={wallets}
-          categories={categories}
-          today={today}
-          idPrefix="dashboard"
-          onOpenTransaction={onOpenTransaction}
-        />
+  <section aria-labelledby="dashboard-activity-title" className="min-w-0 h-full">
+    <Card padding="none" className="h-full flex flex-col">
+      <div className="flex items-baseline justify-between gap-4 px-6 pt-6 pb-3">
+        <h2 id="dashboard-activity-title" className="text-base font-semibold text-fg">Recent activity</h2>
+        <DashboardLink id="dashboard-view-all-transactions-btn" onClick={onViewAll}>
+          View all
+        </DashboardLink>
       </div>
-    )}
-  </Card>
+
+      {items.length === 0 ? (
+        <EmptyState icon={History} title="No transactions recorded yet" subtitle="Your latest activity will show here." />
+      ) : (
+        <div className="px-2 pb-3">
+          <ActivityFeed
+            items={items}
+            dayNets={dayNets}
+            wallets={wallets}
+            categories={categories}
+            today={today}
+            idPrefix="dashboard"
+            onOpenTransaction={onOpenTransaction}
+          />
+        </div>
+      )}
+    </Card>
+  </section>
 );
