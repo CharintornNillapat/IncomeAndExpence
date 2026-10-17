@@ -7,6 +7,7 @@ import { PageHeader } from '../components/ui/PageHeader';
 import { SegmentedControl } from '../components/ui/SegmentedControl';
 import { NetWorthCard } from '../components/dashboard/NetWorthCard';
 import { CashFlowCard } from '../components/dashboard/CashFlowCard';
+import { LeftOverCard } from '../components/dashboard/LeftOverCard';
 import { DebtWarningBanner } from '../components/dashboard/DebtWarningBanner';
 import { WalletsSection } from '../components/dashboard/WalletsSection';
 import { CategorySpendingCard } from '../components/dashboard/CategorySpendingCard';
@@ -17,11 +18,11 @@ import { SpendingInsightsCard } from '../components/dashboard/SpendingInsightsCa
 import { formatLongDate, greetingFor, todayIsoDate } from '../utils/date';
 import { buildLookupMap } from '../utils/mapUtils';
 import { filterByRange, formatRangeLabel, TimeRange } from '../selectors/timeRange';
-import { cashFlow, groupByDay, spendingByCategory } from '../selectors/ledger';
+import { groupByDay, leftOverFor, spendingByCategory } from '../selectors/ledger';
 import { debtRemaining, netWorth, walletShares, walletTotal } from '../selectors/wallets';
 import { debtPlan, monthlySurplus } from '../selectors/debts';
 import { foldAdjustmentPairs } from '../selectors/adjustments';
-import { moodSpendingDays } from '../selectors/diary';
+import { dailySpendingSeries, moodSpendingDays } from '../selectors/diary';
 
 export type TimeFilter = TimeRange;
 
@@ -83,10 +84,23 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const walletMap = useMemo(() => buildLookupMap(allWallets), [allWallets]);
   const categoryMap = useMemo(() => buildLookupMap(categories), [categories]);
 
-  // L2: one period for the page. Cash flow and the category card read the
-  // same filtered rows, so their Spending is one figure (acceptance check 1).
+  // L4 and L5: the surplus is always the past 30 days, whatever the period.
+  const plan = useMemo(
+    () => debtPlan(debts, today, monthlySurplus(transactions, today, categoryMap)),
+    [debts, today, transactions, categoryMap]
+  );
+
+  // L2: one period for the page. Left over, the Income and Spending cards and
+  // the category card read the same period, so Spending is one figure (acceptance check 1).
   const periodRows = useMemo(() => filterByRange(transactions, timeFilter, today), [transactions, timeFilter, today]);
-  const flow = useMemo(() => cashFlow(periodRows, categoryMap), [periodRows, categoryMap]);
+  const leftOver = useMemo(
+    () => leftOverFor(transactions, timeFilter, today, plan.totalRequired, categoryMap),
+    [transactions, timeFilter, today, plan.totalRequired, categoryMap]
+  );
+  const series = useMemo(
+    () => dailySpendingSeries(transactions, timeFilter, today, categoryMap),
+    [transactions, timeFilter, today, categoryMap]
+  );
   const categoryRows = useMemo(() => spendingByCategory(periodRows, categoryMap), [periodRows, categoryMap]);
 
   // L3
@@ -98,12 +112,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       shares: walletShares(activeWallets),
     }),
     [activeWallets, debts]
-  );
-
-  // L4 and L5: the surplus is always the past 30 days, whatever the period.
-  const plan = useMemo(
-    () => debtPlan(debts, today, monthlySurplus(transactions, today, categoryMap)),
-    [debts, today, transactions, categoryMap]
   );
 
   // L8 and L11: the newest live rows, a cancelling adjustment pair folded,
@@ -145,21 +153,25 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         }
       />
 
-      <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
-        <div className="md:col-span-5">
-          <NetWorthCard
-            netWorth={wealth.netWorth}
-            walletTotal={wealth.walletTotal}
-            walletCount={activeWallets.length}
-            debtRemaining={wealth.debtRemaining}
-          />
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+        <div className="lg:col-span-8">
+          <LeftOverCard data={leftOver} series={series} periodName={period.name} periodDates={formatRangeLabel(timeFilter, today)} />
         </div>
-        <div className="md:col-span-7">
-          <CashFlowCard flow={flow} periodName={period.name} periodDates={formatRangeLabel(timeFilter, today)} />
+        <div className="lg:col-span-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-4">
+          <CashFlowCard kind="income" amount={leftOver.income} />
+          <CashFlowCard kind="spending" amount={leftOver.spending} />
         </div>
       </div>
 
       <DebtWarningBanner plan={plan} onReviewPlan={goTo('debts')} />
+
+      {/* Net worth joins the wallets card in UI-3 (owner spec 4.4). */}
+      <NetWorthCard
+        netWorth={wealth.netWorth}
+        walletTotal={wealth.walletTotal}
+        walletCount={activeWallets.length}
+        debtRemaining={wealth.debtRemaining}
+      />
 
       <WalletsSection
         wallets={activeWallets}
@@ -172,7 +184,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-4">
         <div className="xl:col-span-7">
-          <CategorySpendingCard rows={categoryRows} total={flow.spending} />
+          <CategorySpendingCard rows={categoryRows} total={leftOver.spending} />
         </div>
         <div className="xl:col-span-5">
           <DebtPayoffCard

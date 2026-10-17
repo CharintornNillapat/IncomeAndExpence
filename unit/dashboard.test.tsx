@@ -3,20 +3,22 @@ import { describe, it, expect, afterEach, beforeAll, afterAll, vi } from 'vitest
 import { render, cleanup, fireEvent, screen, within } from '@testing-library/react';
 import { NetWorthCard } from '../src/components/dashboard/NetWorthCard';
 import { CashFlowCard } from '../src/components/dashboard/CashFlowCard';
+import { LeftOverCard } from '../src/components/dashboard/LeftOverCard';
 import { CategorySpendingCard } from '../src/components/dashboard/CategorySpendingCard';
 import { DebtWarningBanner } from '../src/components/dashboard/DebtWarningBanner';
 import { DebtPayoffCard } from '../src/components/dashboard/DebtPayoffCard';
 import { RecentActivityCard } from '../src/components/dashboard/RecentActivityCard';
 import { MoodSpendingCard } from '../src/components/dashboard/MoodSpendingCard';
 import { WalletsSection } from '../src/components/dashboard/WalletsSection';
-import { cashFlow, groupByDay, spendingByCategory } from '../src/selectors/ledger';
+import { cashFlow, groupByDay, leftOverFor, spendingByCategory } from '../src/selectors/ledger';
 import { debtRemaining, netWorth, walletShares, walletTotal } from '../src/selectors/wallets';
 import { debtPlan } from '../src/selectors/debts';
 import { foldAdjustmentPairs } from '../src/selectors/adjustments';
-import { moodSpendingDays } from '../src/selectors/diary';
+import { dailySpendingSeries, moodSpendingDays } from '../src/selectors/diary';
 import { buildLookupMap } from '../src/utils/mapUtils';
 import { formatCurrencyAmount, MINUS } from '../src/utils/currency';
 import type { Category, Debt, DiaryEntry, Transaction, Wallet } from '../src/types';
+import type { TimeRange } from '../src/selectors/timeRange';
 
 /**
  * Phase 57 (ADR 0030, spec 6.1): the redesigned Dashboard's cards, rendered
@@ -112,7 +114,7 @@ describe('acceptance check 1: one Spending figure', () => {
     const rows = spendingByCategory(ROWS, CATEGORIES);
     render(
       <>
-        <CashFlowCard flow={flow} periodName="past 30 days" periodDates="Aug 29 – Sep 28" />
+        <CashFlowCard kind="spending" amount={flow.spending} />
         <CategorySpendingCard rows={rows} total={flow.spending} />
       </>
     );
@@ -134,19 +136,228 @@ describe('acceptance check 1: one Spending figure', () => {
 
 describe('Left over follows the net rule (spec section 3)', () => {
   it('is signed and in the primary text colour when positive', () => {
-    render(<CashFlowCard flow={cashFlow([tx({ type: 'INCOME', amount: 500 }), tx({ type: 'EXPENSE', amount: 200 })], CATEGORIES)} periodName="today" periodDates="Sep 28" />);
-    const net = screen.getByTestId('metric-card-net').lastElementChild!;
+    const rows = [tx({ type: 'INCOME', amount: 500 }), tx({ type: 'EXPENSE', amount: 200 })];
+    render(<LeftOverCard data={leftOverFor(rows, 'DAY', TODAY, 0, CATEGORIES)} series={null} periodName="today" periodDates="Sep 28" />);
+    const net = screen.getByText(`+${formatCurrencyAmount(300)}`);
     expect(net.textContent).toBe(`+${formatCurrencyAmount(300)}`);
     expect(net.className).toContain('text-fg');
     expect(net.className).not.toContain('text-income');
   });
 
   it('is signed and red when negative, and says when there was no income', () => {
-    render(<CashFlowCard flow={cashFlow([tx({ type: 'EXPENSE', amount: 200 })], CATEGORIES)} periodName="today" periodDates="Sep 28" />);
-    const net = screen.getByTestId('metric-card-net').lastElementChild!;
+    const rows = [tx({ type: 'EXPENSE', amount: 200 })];
+    render(<LeftOverCard data={leftOverFor(rows, 'DAY', TODAY, 0, CATEGORIES)} series={null} periodName="today" periodDates="Sep 28" />);
+    const net = screen.getByText(`${MINUS}${formatCurrencyAmount(200)}`);
     expect(net.textContent).toBe(`${MINUS}${formatCurrencyAmount(200)}`);
     expect(net.className).toContain('text-expense');
-    expect(screen.getByText('No income in this period')).toBeTruthy();
+    expect(screen.getByText('No income this period')).toBeTruthy();
+  });
+});
+
+describe('Left over card (owner spec 4.2)', () => {
+  it('shows left over, kept share, after debt due, and spent/kept bar for MONTH with a debt due', () => {
+    const rows = [
+      tx({ type: 'INCOME', amount: 10000, categoryId: 'cat-salary' }),
+      tx({ type: 'EXPENSE', amount: 3000, categoryId: 'cat-food' }),
+    ];
+    render(
+      <LeftOverCard
+        data={leftOverFor(rows, 'MONTH', TODAY, 1500, CATEGORIES)}
+        series={null}
+        periodName="past 30 days"
+        periodDates="Aug 29 – Sep 28"
+      />
+    );
+    expect(screen.getByText('+฿7,000.00')).toBeTruthy();
+    expect(screen.getByText(/70% of income kept/)).toBeTruthy();
+    expect(screen.getByText('฿5,500.00')).toBeTruthy();
+    expect(screen.getByText(/after debt due/)).toBeTruthy();
+    expect(screen.getByText('Spent 30%')).toBeTruthy();
+    expect(screen.getByText('Kept 70%')).toBeTruthy();
+  });
+
+  it('omits after-debt line outside MONTH', () => {
+    const rows = [
+      tx({ type: 'INCOME', amount: 10000, categoryId: 'cat-salary' }),
+      tx({ type: 'EXPENSE', amount: 3000, categoryId: 'cat-food' }),
+    ];
+    render(
+      <LeftOverCard
+        data={leftOverFor(rows, 'DAY', TODAY, 1500, CATEGORIES)}
+        series={null}
+        periodName="today"
+        periodDates="Sep 28"
+      />
+    );
+    expect(screen.queryByText(/after debt due/)).toBeNull();
+  });
+
+  it('shows spent more than earned and negative figures with text-expense when spending passed income', () => {
+    const rows = [
+      tx({ type: 'INCOME', amount: 1000, categoryId: 'cat-salary' }),
+      tx({ type: 'EXPENSE', amount: 1200, categoryId: 'cat-food' }),
+    ];
+    render(
+      <LeftOverCard
+        data={leftOverFor(rows, 'MONTH', TODAY, 100, CATEGORIES)}
+        series={null}
+        periodName="past 30 days"
+        periodDates="Aug 29 – Sep 28"
+      />
+    );
+    expect(screen.getByText(/Spent 20% more than earned/)).toBeTruthy();
+    const figure = screen.getByText(`${MINUS}฿200.00`);
+    expect(figure.className).toContain('text-expense');
+    const afterDebt = screen.getByText(`${MINUS}฿300.00`);
+    expect(afterDebt.className).toContain('text-expense');
+  });
+
+  it('renders a sparkline with an accessible name and valid points', () => {
+    const rows = [tx({ type: 'EXPENSE', amount: 2500, categoryId: 'cat-food' })];
+    const series = dailySpendingSeries(rows, 'WEEK', TODAY, CATEGORIES);
+    const { container } = render(
+      <LeftOverCard
+        data={leftOverFor(rows, 'WEEK', TODAY, 0, CATEGORIES)}
+        series={series}
+        periodName="this week"
+        periodDates="Sep 21 – Sep 28"
+      />
+    );
+    const img = screen.getByRole('img', { name: 'Daily spending, this week: highest ฿2,500.00 on Mon, Sep 28' });
+    expect(img).toBeTruthy();
+    const polyline = container.querySelector('polyline');
+    expect(polyline).toBeTruthy();
+    const pointsAttr = polyline!.getAttribute('points') ?? '';
+    const pairs = pointsAttr.trim().split(/\s+/);
+    expect(pairs).toHaveLength(8);
+    for (const pair of pairs) {
+      expect(pair).not.toContain('NaN');
+      const coords = pair.split(',');
+      expect(coords).toHaveLength(2);
+      expect(Number.isFinite(parseFloat(coords[0]))).toBe(true);
+      expect(Number.isFinite(parseFloat(coords[1]))).toBe(true);
+    }
+  });
+
+  it('renders no sparkline when series is null', () => {
+    const rows = [tx({ type: 'EXPENSE', amount: 2500, categoryId: 'cat-food' })];
+    render(
+      <LeftOverCard
+        data={leftOverFor(rows, 'DAY', TODAY, 0, CATEGORIES)}
+        series={null}
+        periodName="today"
+        periodDates="Sep 28"
+      />
+    );
+    expect(screen.queryByRole('img')).toBeNull();
+  });
+
+  it('handles a new account with no transactions', () => {
+    const data = leftOverFor([], 'MONTH', TODAY, 0, CATEGORIES);
+    const series = dailySpendingSeries([], 'MONTH', TODAY, CATEGORIES);
+    const { container, unmount } = render(
+      <LeftOverCard
+        data={data}
+        series={series}
+        periodName="past 30 days"
+        periodDates="Aug 29 – Sep 28"
+      />
+    );
+    expect(screen.getByText('฿0.00')).toBeTruthy();
+    expect(container.querySelector('p')).toBeNull();
+    expect(screen.queryByText(/after debt due/)).toBeNull();
+    expect(screen.queryByText(/No income/)).toBeNull();
+    expect(screen.getByRole('img', { name: 'Daily spending, past 30 days: nothing spent' })).toBeTruthy();
+    expect(container.innerHTML).not.toMatch(/NaN|Infinity/);
+
+    unmount();
+    const dataWithNeeded = leftOverFor([], 'MONTH', TODAY, 1500, CATEGORIES);
+    const { container: container2 } = render(
+      <LeftOverCard
+        data={dataWithNeeded}
+        series={series}
+        periodName="past 30 days"
+        periodDates="Aug 29 – Sep 28"
+      />
+    );
+    expect(container2.querySelector('p')).toBeNull();
+    expect(screen.queryByText(/after debt due/)).toBeNull();
+  });
+
+  it('renders Income and Spending cards correctly', () => {
+    const { unmount } = render(<CashFlowCard kind="income" amount={10000} />);
+    expect(screen.getByRole('heading', { name: 'Income' })).toBeTruthy();
+    const incomeAmount = screen.getByText(`+${formatCurrencyAmount(10000)}`);
+    expect(incomeAmount.className).toContain('text-income');
+
+    unmount();
+    render(<CashFlowCard kind="spending" amount={3000} />);
+    expect(screen.getByRole('heading', { name: 'Spending' })).toBeTruthy();
+    const spendingAmount = screen.getByText(`${MINUS}${formatCurrencyAmount(3000)}`);
+    expect(spendingAmount.className).toContain('text-expense');
+  });
+
+  describe('No NaN, Infinity or bare percent, in any period (Amendment 1)', () => {
+    const RANGES: Array<{ range: TimeRange; periodName: string }> = [
+      { range: 'DAY', periodName: 'today' },
+      { range: 'WEEK', periodName: 'this week' },
+      { range: 'MONTH', periodName: 'past 30 days' },
+      { range: 'ALL', periodName: 'all time' },
+    ];
+
+    const DATASETS: Array<{ name: string; rows: Transaction[] }> = [
+      { name: 'empty', rows: [] },
+      { name: 'income only', rows: [tx({ type: 'INCOME', amount: 1000, categoryId: 'cat-salary', transactionDate: TODAY })] },
+      { name: 'spending only', rows: [tx({ type: 'EXPENSE', amount: 250, categoryId: 'cat-food', transactionDate: '2026-09-25' })] },
+      {
+        name: 'income 1000 with spending 300',
+        rows: [
+          tx({ type: 'INCOME', amount: 1000, categoryId: 'cat-salary', transactionDate: TODAY }),
+          tx({ type: 'EXPENSE', amount: 300, categoryId: 'cat-food', transactionDate: '2026-09-25' }),
+        ],
+      },
+      {
+        name: 'spending past income',
+        rows: [
+          tx({ type: 'INCOME', amount: 1000, categoryId: 'cat-salary', transactionDate: TODAY }),
+          tx({ type: 'EXPENSE', amount: 1200, categoryId: 'cat-food', transactionDate: '2026-09-25' }),
+        ],
+      },
+      {
+        name: 'income 3 with spending 1',
+        rows: [
+          tx({ type: 'INCOME', amount: 3, categoryId: 'cat-salary', transactionDate: TODAY }),
+          tx({ type: 'EXPENSE', amount: 1, categoryId: 'cat-food', transactionDate: '2026-09-25' }),
+        ],
+      },
+    ];
+
+    it.each(RANGES)('renders cleanly without NaN, Infinity or bare % for %s', ({ range, periodName }) => {
+      for (const { rows } of DATASETS) {
+        for (const needed of [0, 1500]) {
+          const data = leftOverFor(rows, range, TODAY, needed, CATEGORIES);
+          const series = dailySpendingSeries(rows, range, TODAY, CATEGORIES);
+          const { container, unmount } = render(
+            <LeftOverCard
+              data={data}
+              series={series}
+              periodName={periodName}
+              periodDates="x"
+            />
+          );
+          expect(container.innerHTML).not.toMatch(/NaN|Infinity/);
+
+          const ariaLabels = Array.from(container.querySelectorAll('[aria-label]'))
+            .map((el) => el.getAttribute('aria-label') ?? '')
+            .join(' ');
+          const combined = `${container.textContent ?? ''} ${ariaLabels}`;
+          expect(combined).not.toMatch(/NaN|Infinity/);
+          expect(combined).not.toMatch(/(^|[^0-9])%/);
+
+          unmount();
+        }
+      }
+    });
   });
 });
 
@@ -188,7 +399,7 @@ describe('acceptance check 4: L4 figures and the L5 banner', () => {
     // Four payment dates to 1 Jan 2027 (ADR 0087), still more than the surplus.
     expect(note.textContent).toContain('SPayLater needs ฿3,293.43 a month to be cleared by Jan 1, 2027');
     expect(note.textContent).toContain('surplus of ฿3,106.78');
-    expect(note.textContent).not.toContain('—');
+    expect(note.textContent).not.toContain('\u2014');
     fireEvent.click(within(note).getByRole('button', { name: 'Review plan' }));
     expect(onReview).toHaveBeenCalledTimes(1);
   });

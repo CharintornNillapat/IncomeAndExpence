@@ -99,12 +99,21 @@ Branch `phase-134-dashboard-selectors`, cut from `main` at `3927c83`. Three comm
 | T763 | Dashboard redesign SEL-2: the daily spending series (owner spec 5.2); WEEK 8 points (owner decision) | `src/selectors/diary.ts`, `unit/selectors-dashboard.test.ts`, `docs/design/dashboard-2026-10/spec.md` | done | 30da09d | Red gate verified; npm run lint clean; unit 62/62 files 1395 passed (50.6s); related unit 4/4 files 91 passed; spec.md 1 line updated; CRLF kept; 0 em dashes |
 | T764 | Dashboard redesign SEL-3: the month-to-date comparison (owner spec 5.3); T763 test tightened; Phase 134 paperwork | `src/selectors/ledger.ts`, `unit/selectors-dashboard.test.ts`, `docs/contexts/client-state.md`, `docs/audit/refactor-log.md`, `docs/audit/baseline-metrics.md` | done | 3187e10 | Red gate verified; npm run lint clean; unit 62/62 files 1404 passed (49.85s); related unit 4/4 files 100 passed; prod build clean (0 bundle delta); CRLF kept; 0 em dashes |
 
+## Phase 135 - Dashboard UI: the redesigned page (ADR 0102)
+
+Branch `phase-135-dashboard-ui`, cut from `main` at `ce9983f`.
+
+| # | Task | Files | Status | Commit | Gate result |
+|---|---|---|---|---|---|
+| T765 | Dashboard redesign UI-1: page header and row 1 (owner spec 3, 4.1 to 4.2) | `src/components/dashboard/LeftOverCard.tsx`, `src/components/dashboard/CashFlowCard.tsx`, `src/views/DashboardView.tsx`, `unit/dashboard.test.tsx`, `tests/dashboard.spec.ts`, `DESIGN.md`, `docs/audit/test-selector-contract.md` | done | | Red gate verified; npm run lint clean; related unit 4/4 files 75 passed; unit 62/62 files 1415 passed; e2e 20/20 chr, 58 passed 2 skipped on 3 browsers; wcag-tokens clean; CRLF kept; 0 em dashes |
+
 ## Backlog
 
 Not scheduled. Each row says where it came from.
 
 | Item | Source | Status |
 |---|---|---|
+| DESIGN.md's Hero number is 44px, but the code sets it with `text-4xl` (36px): `NetWorthCard.tsx:28` and `LeftOverCard.tsx`. A `--text-hero` token would close it | Phase 135, T765's spec | todo |
 | Every interactive element added to a view carries an `id` following `<view>-<thing>-<kind>` | `archive/constraints-to-promote.md` row T12. `AuthModal.tsx` complies; never verified repo-wide | todo: verify across views before it can become a rule |
 | `QuickAddModal.tsx:101` labels its template list `text-[11px] ... uppercase tracking-wide`, below `DESIGN.md`'s 12 to 13px label size and off the `tracking-wider` used elsewhere | Context audit, 2026-10-15. `TransactionForm.tsx:709`, `:848` and `:871` also use `tracking-wide` on uppercase labels | done in Phase 127 (T753) |
 | `WalletTransferForm.tsx:101`'s uppercase label is `text-[10px]`, below `DESIGN.md`'s 12 to 13px (its tracking is already `tracking-wider`) | Phase 127, T753's spec | done in Phase 129 (T756) |

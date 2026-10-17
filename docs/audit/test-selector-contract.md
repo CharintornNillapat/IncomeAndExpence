@@ -25,6 +25,7 @@ To regenerate, grep the specs for `#`-ids, `[id^=`, `[id$=`, `[id*=`, `data-test
 - `categories.spec.ts`: ids `#*-category`, `#category-group-income`, `#category-row-*`, `#category-subtab-rules`, `#confirm-destructive-btn`, `#delete-category-*`, `#edit-category-*`, `#edit-category-cancel-btn`, `#edit-category-description`, `#edit-category-name`, `#edit-category-save-btn`, `#keyword-category-select`, `#navbar-quick-add-btn`, `#new-category-description`, `#new-category-name`, `#new-category-type-expense`, `#new-category-type-income`, `#save-category-btn`
 - `csv-classify.spec.ts`: ids `#commit-import-btn`, `#csv-classify-btn`, `#csv-classify-cancel-btn`, `#csv-file-input`, `#tx-import-csv-btn`, `#tx-import-export-btn`, `#tx-row-*`; test ids `csv-classify-announcer`, `csv-classify-note`, `csv-classify-progress`, `csv-classify-wait`, `csv-row-category-*`, `csv-row-confidence-*`
 - `csv.spec.ts`: ids `#commit-import-btn`, `#csv-file-input`, `#tx-export-csv-btn`, `#tx-import-csv-btn`, `#tx-import-export-btn`
+- `dashboard.spec.ts`: ids `#time-filter-all`, `#time-filter-day`, `#time-filter-month`, `#time-filter-week`; test ids `metric-card-expense`, `metric-card-income`
 - `date-boundary.spec.ts`: ids `#time-filter-week`, `#wallet-detail-meta`, `#wallet-entity-*`; test ids `metric-card-expense`
 - `debt-repayment.spec.ts`: ids `#*-desc`, `#confirm-repay-btn`, `#debt-card-*`, `#navbar-quick-add-btn`, `#new-debt-min-payment`, `#new-debt-name`, `#new-debt-total`, `#open-add-debt-btn`, `#open-repay-modal-*`, `#repay-amount-math`, `#repay-payoff-full`, `#repay-payoff-half`, `#repay-payoff-minimum`, `#save-new-debt-btn`; test ids `repay-overpayment-note`, `repay-payoff-preview`, `repay-remaining-after`, `repay-settle-note`
 - `debts-page.spec.ts`: ids `#confirm-destructive-btn`, `#debt-card-*`, `#debt-menu-btn-*`, `#edit-debt-*`, `#edit-debt-error`, `#edit-debt-name`, `#edit-debt-total`, `#new-debt-due-date`, `#new-debt-name`, `#new-debt-total`, `#open-add-debt-btn`, `#save-edit-debt-btn`, `#save-new-debt-btn`, `#settle-debt-*`
@@ -70,6 +71,7 @@ The specs also match these by text, so the text is part of the contract:
 - `wallet-forms.spec.ts:38`: "Funds transfer" in a transfer row's second line (its title is always "Transfer").
 - `date-boundary.spec.ts:37`: "created Sep 18, 2026" in `#wallet-detail-meta`.
 - `diary.spec.ts:15` and `theme.spec.ts:60`: the heading `/Daily Diary/i`. Each view has one `PageHeader` `h1`; a second heading with the same name on a view breaks the unique match.
+- `dashboard.spec.ts`: the regions "Left over" and "Income" (matched with `exact: true`, since "Spending insights" is also a region) and the sparkline's name, "Daily spending, <period>: highest ฿X on <Ddd, Mmm D>" or "...: nothing spent", and the caption text "No income this period".
 
 ### Row id prefixes
 
