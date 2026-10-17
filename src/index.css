@@ -321,6 +321,10 @@
    * (spec section 2). The system stack is only what paints before it loads.
    */
   --font-sans: "IBM Plex Sans Thai", "IBM Plex Sans Thai Fallback", system-ui, -apple-system, "Segoe UI", "Leelawadee UI", Thonburi, "Noto Sans Thai", Roboto, sans-serif;
+
+  /* DESIGN.md's Hero number, the Dashboard's Left over figure. */
+  --text-hero: 2.75rem;
+  --text-hero--line-height: 1.1;
 }
 
 @layer base {

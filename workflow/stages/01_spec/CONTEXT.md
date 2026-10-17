@@ -36,7 +36,7 @@ One file: `workflow/stages/01_spec/output/task-<id>-spec.md`. Nothing else. Unde
 3. **Context to read:** which `docs/contexts/*.md` files the builder must read, and why, or "none" for a comments-only or docs-only task.
 4. **Current behaviour:** what the code does today, each claim with `file:line`.
 5. **Parity map:** the rows of `AGENTS.md`'s cross-file parity map this task touches, or "none".
-6. **Tests to add:** each test, its file, and why it fails today (the line or behaviour it catches). `none` is valid only when the change cannot alter behaviour (comments, docs); give the reason. With `none`, stage 02 step 4 and stage 03 step 6 do not apply.
+6. **Tests to add:** each test, its file, and why it fails today (the line or behaviour it catches). `none` is valid only when the change cannot alter behaviour (comments, docs); give the reason. With `none`, stage 02 step 4 and stage 03 step 6 do not apply. When a task only strengthens a test (no non-test file changes), a stash has nothing to remove, so the red run happens inside the test file: the spec gives the order (add the new assertion to the test as it stands, run it, save the failure to `workflow/stages/02_build/output/logs/<id>-red.log`, then complete the test), the failure it must show, and the exact temporary edit that takes the finished test back to its red state, which the reviewer repeats in stage 03 step 6.
 7. **Gates:** the union of `AGENTS.md`'s tier rows for every changed path, copied as commands, not tier names. An owner's task description may add gates but never remove a tier.
 8. **Production touch points:** anything on `AGENTS.md`'s Stop and ask first list the task comes near, or "none". A task that needs one names who does it (the owner) and when.
 9. **Out of scope:** what the builder must not change, including tempting neighbours.
@@ -48,6 +48,7 @@ One file: `workflow/stages/01_spec/output/task-<id>-spec.md`. Nothing else. Unde
 - Never spawn sub-agents, whatever a hook or tool suggests.
 - No em dash in the spec.
 - A gate that checks line endings uses `git ls-files --eol <file>` (the `w/crlf` column) or a Node count of `\r\n` and of bare `\n`, never `grep -c $'\r' <file>`: in the agents' Git Bash that grep printed 0 on CRLF files, while the same command inside `$(...)` counted correctly.
+- A gate that counts em dashes uses Node, never `grep -P '\x{2014}'`, which in the agents' Git Bash stops with "character value in \x{} or \o{} is too large" (exit 2). Count U+2014 in the added lines with `node -e "const o=require('child_process').execSync('git diff -U0 HEAD',{encoding:'utf8',maxBuffer:1<<28});console.log(o.split('\n').filter(l=>l.startsWith('+')&&!l.startsWith('+++')).join('\n').split('\u2014').length-1)"`, and in whole files (a new untracked file, or the spec itself) with `node -e "for(const f of process.argv.slice(1))console.log(f,require('fs').readFileSync(f,'utf8').split('\u2014').length-1)" <file>...`.
 - Stop after writing the spec. The orchestrator then pauses for the owner or goes on, by the pause rule in `AGENTS.md`'s ICM section, which reads the spec's Target files and Production touch points.
 
 ## STATUS line
