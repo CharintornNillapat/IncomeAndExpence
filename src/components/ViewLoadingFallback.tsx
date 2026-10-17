@@ -18,10 +18,11 @@ const HEADER: SkeletonRow = { heights: ['h-20'] };
  */
 const SHAPES: Record<ActiveTab, SkeletonRow[]> = {
   dashboard: [
-    { heights: ['h-40'] },
-    { heights: ['h-36', 'h-36', 'h-36'], columns: 'sm:grid-cols-3' },
     HEADER,
-    { heights: ['h-32', 'h-32', 'h-32'], columns: 'md:grid-cols-3' },
+    { heights: ['h-56', 'h-56'], columns: 'lg:grid-cols-2' },
+    { heights: ['h-96', 'h-96'], columns: 'lg:grid-cols-2' },
+    { heights: ['h-96', 'h-96'], columns: 'lg:grid-cols-2' },
+    { heights: ['h-40'] },
   ],
   transactions: [HEADER, { heights: ['h-12'] }, { heights: ['h-12', 'h-12', 'h-12', 'h-12', 'h-12', 'h-12'] }],
   wallets: [HEADER, { heights: ['h-48', 'h-48', 'h-48'], columns: 'sm:grid-cols-2 lg:grid-cols-3' }],

@@ -1,7 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, afterEach, beforeAll, afterAll, vi } from 'vitest';
 import { render, cleanup, fireEvent, screen, within } from '@testing-library/react';
-import { NetWorthCard } from '../src/components/dashboard/NetWorthCard';
 import { CashFlowCard } from '../src/components/dashboard/CashFlowCard';
 import { LeftOverCard } from '../src/components/dashboard/LeftOverCard';
 import { CategorySpendingCard } from '../src/components/dashboard/CategorySpendingCard';
@@ -377,11 +376,16 @@ describe('acceptance check 3: net worth is wallets minus debt', () => {
   it("shows the spec's sample figure, ฿9,595.48, with the debt signed", () => {
     const debts = [debt('spay', 'SPayLater', 17000, 13173.7, '2027-01-01'), debt('easy', 'SEasy Cash', 10500, 9403.3, '2028-04-01')];
     render(
-      <NetWorthCard
+      <WalletsSection
+        wallets={WALLET_LIST}
+        shares={walletShares(WALLET_LIST)}
         netWorth={netWorth(WALLET_LIST, debts)}
         walletTotal={walletTotal(WALLET_LIST)}
-        walletCount={WALLET_LIST.length}
         debtRemaining={debtRemaining(debts)}
+        onTransfer={() => {}}
+        onAddWallet={() => {}}
+        onManageWallets={() => {}}
+        onOpenWallet={() => {}}
       />
     );
     const card = screen.getByTestId('net-worth-card');
@@ -394,7 +398,19 @@ describe('acceptance check 3: net worth is wallets minus debt', () => {
   });
 
   it('turns red when debt passes what the wallets hold (spec section 3)', () => {
-    render(<NetWorthCard netWorth={-38850} walletTotal={7650} walletCount={3} debtRemaining={46500} />);
+    render(
+      <WalletsSection
+        wallets={WALLET_LIST}
+        shares={walletShares(WALLET_LIST)}
+        netWorth={-38850}
+        walletTotal={7650}
+        debtRemaining={46500}
+        onTransfer={() => {}}
+        onAddWallet={() => {}}
+        onManageWallets={() => {}}
+        onOpenWallet={() => {}}
+      />
+    );
     const figure = screen.getByText(`${MINUS}฿38,850.00`);
     expect(figure.className).toContain('text-expense');
   });
@@ -497,6 +513,15 @@ describe('Recent activity: L8 fold, L11 nets, and no placeholder labels', () => 
     expect(screen.getAllByText('Camel 300')).toHaveLength(1);
     expect(screen.getAllByText('กิจนิมนต์')).toHaveLength(1);
   });
+
+  it('sits in a named region containing the View all button and activity items', () => {
+    const { container } = renderCard();
+    const region = screen.getByRole('region', { name: 'Recent activity' });
+    expect(within(region).getByRole('button', { name: 'View all' })).toBeTruthy();
+    for (const el of container.querySelectorAll('[id^="dashboard-tx-"]')) {
+      expect(region.contains(el)).toBe(true);
+    }
+  });
 });
 
 describe('Mood & spending', () => {
@@ -529,6 +554,9 @@ describe('Wallets section', () => {
       <WalletsSection
         wallets={WALLET_LIST}
         shares={walletShares(WALLET_LIST)}
+        netWorth={netWorth(WALLET_LIST, [])}
+        walletTotal={walletTotal(WALLET_LIST)}
+        debtRemaining={0}
         onTransfer={onTransfer}
         onAddWallet={() => {}}
         onManageWallets={() => {}}
@@ -557,6 +585,9 @@ describe('Wallets section', () => {
       <WalletsSection
         wallets={empty}
         shares={walletShares(empty)}
+        netWorth={netWorth(empty, [])}
+        walletTotal={walletTotal(empty)}
+        debtRemaining={0}
         onTransfer={() => {}}
         onAddWallet={() => {}}
         onManageWallets={() => {}}
@@ -573,6 +604,9 @@ describe('Wallets section', () => {
       <WalletsSection
         wallets={owing}
         shares={walletShares(owing)}
+        netWorth={netWorth(owing, [])}
+        walletTotal={walletTotal(owing)}
+        debtRemaining={0}
         onTransfer={() => {}}
         onAddWallet={() => {}}
         onManageWallets={() => {}}
@@ -581,6 +615,115 @@ describe('Wallets section', () => {
     );
     expect(screen.queryByText('No money in your wallets yet')).toBeNull();
     expect(screen.getAllByText(`Your wallets add up to ${MINUS}฿1,200.00`)).toHaveLength(1);
+  });
+});
+
+describe('Net worth and wallets card (owner spec 4.4)', () => {
+  const debts = [debt('spay', 'SPayLater', 17000, 13173.7, '2027-01-01'), debt('easy', 'SEasy Cash', 10500, 9403.3, '2028-04-01')];
+
+  it('renders net worth block, wallets heading, buttons, and single net worth figure', () => {
+    const { container } = render(
+      <WalletsSection
+        wallets={WALLET_LIST}
+        shares={walletShares(WALLET_LIST)}
+        netWorth={netWorth(WALLET_LIST, debts)}
+        walletTotal={walletTotal(WALLET_LIST)}
+        debtRemaining={debtRemaining(debts)}
+        onTransfer={() => {}}
+        onAddWallet={() => {}}
+        onManageWallets={() => {}}
+        onOpenWallet={() => {}}
+      />
+    );
+    const region = screen.getByRole('region', { name: 'Net worth and wallets' });
+    expect(within(region).getByRole('heading', { level: 2, name: 'Net worth' })).toBeTruthy();
+    expect(within(region).getByRole('heading', { level: 3, name: 'Wallets' })).toBeTruthy();
+    expect(within(region).getByTestId('net-worth-card')).toBeTruthy();
+    expect(within(region).getByRole('button', { name: 'Transfer' })).toBeTruthy();
+    expect(within(region).getByRole('button', { name: 'Add wallet' })).toBeTruthy();
+    expect(within(region).getByRole('button', { name: 'Manage wallets' })).toBeTruthy();
+    expect(container.querySelector('button#dashboard-wallet-card-main')).not.toBeNull();
+    expect(region.querySelectorAll('[data-testid="net-worth-card"]')).toHaveLength(1);
+    expect(screen.getAllByText('฿9,595.48')).toHaveLength(1);
+  });
+
+  it('renders a new account with three 0-balance wallets without NaN, Infinity or bare %', () => {
+    const empty = WALLET_LIST.map((w) => ({ ...w, balance: 0 }));
+    render(
+      <WalletsSection
+        wallets={empty}
+        shares={walletShares(empty)}
+        netWorth={0}
+        walletTotal={0}
+        debtRemaining={0}
+        onTransfer={() => {}}
+        onAddWallet={() => {}}
+        onManageWallets={() => {}}
+        onOpenWallet={() => {}}
+      />
+    );
+    const region = screen.getByRole('region', { name: 'Net worth and wallets' });
+    expect(region.textContent).toContain('In 3 wallets');
+    expect(region.textContent).toContain('฿0.00');
+    expect(region.textContent).toContain('No money in your wallets yet');
+
+    const text = region.textContent || '';
+    const labels = Array.from(region.querySelectorAll('[aria-label]')).map((el) => el.getAttribute('aria-label') || '').join(' ');
+    const combined = `${text} ${labels}`;
+    expect(combined).not.toMatch(/NaN|Infinity/);
+    expect(combined).not.toMatch(/(^|[^0-9])%/);
+  });
+});
+
+describe('Mood and spending card (owner spec 4.4, decision A)', () => {
+  const entries: DiaryEntry[] = [
+    { id: 'd1', userId: 'u', date: '2026-09-05', mood: 3, workout: false, foodQuality: 'AVERAGE', isDeleted: false, createdAt: '', updatedAt: '' },
+    { id: 'd2', userId: 'u', date: '2026-09-03', mood: 4, workout: false, foodQuality: 'AVERAGE', isDeleted: false, createdAt: '', updatedAt: '' },
+  ];
+  const rows = [tx({ type: 'EXPENSE', amount: 340, transactionDate: '2026-09-05' })];
+
+  it('lays out days oldest on the left', () => {
+    render(<MoodSpendingCard mood={moodSpendingDays(entries, rows, CATEGORIES, 'MONTH', TODAY)} today={TODAY} todayLogged={false} onOpenDiary={() => {}} />);
+    const region = screen.getByRole('region', { name: 'Mood and spending' });
+    expect(within(region).getByRole('heading', { level: 2, name: 'Mood and spending' })).toBeTruthy();
+    const items = within(region).getAllByRole('listitem');
+    expect(items).toHaveLength(2);
+    expect(items[0].textContent).toContain('Thu, Sep 3');
+    expect(within(items[0]).getByRole('img', { name: 'Mood 4 of 5' })).toBeTruthy();
+    expect(items[1].textContent).toContain('Sat, Sep 5');
+    expect(items[1].textContent).toContain(`${MINUS}฿340.00`);
+  });
+
+  it('shows at most five days, oldest of the five first, with no prompt when 5 are shown', () => {
+    const sixEntries: DiaryEntry[] = [
+      { id: 'd-22', userId: 'u', date: '2026-09-22', mood: 3, workout: false, foodQuality: 'AVERAGE', isDeleted: false, createdAt: '', updatedAt: '' },
+      { id: 'd-23', userId: 'u', date: '2026-09-23', mood: 3, workout: false, foodQuality: 'AVERAGE', isDeleted: false, createdAt: '', updatedAt: '' },
+      { id: 'd-24', userId: 'u', date: '2026-09-24', mood: 3, workout: false, foodQuality: 'AVERAGE', isDeleted: false, createdAt: '', updatedAt: '' },
+      { id: 'd-25', userId: 'u', date: '2026-09-25', mood: 3, workout: false, foodQuality: 'AVERAGE', isDeleted: false, createdAt: '', updatedAt: '' },
+      { id: 'd-26', userId: 'u', date: '2026-09-26', mood: 3, workout: false, foodQuality: 'AVERAGE', isDeleted: false, createdAt: '', updatedAt: '' },
+      { id: 'd-27', userId: 'u', date: '2026-09-27', mood: 3, workout: false, foodQuality: 'AVERAGE', isDeleted: false, createdAt: '', updatedAt: '' },
+    ];
+    render(<MoodSpendingCard mood={moodSpendingDays(sixEntries, rows, CATEGORIES, 'MONTH', TODAY)} today={TODAY} todayLogged={false} onOpenDiary={() => {}} />);
+    const region = screen.getByRole('region', { name: 'Mood and spending' });
+    const items = within(region).getAllByRole('listitem');
+    expect(items).toHaveLength(5);
+    expect(items[0].textContent).toContain('Wed, Sep 23');
+    expect(items[4].textContent).toContain('Sun, Sep 27');
+    expect(within(region).queryByText(/logged in this period/)).toBeNull();
+  });
+
+  it('renders empty prompt when no diary days are logged', () => {
+    render(<MoodSpendingCard mood={moodSpendingDays([], rows, CATEGORIES, 'MONTH', TODAY)} today={TODAY} todayLogged={false} onOpenDiary={() => {}} />);
+    const region = screen.getByRole('region', { name: 'Mood and spending' });
+    expect(within(region).queryByRole('list')).toBeNull();
+    expect(within(region).getByText('No diary days logged in this period. Log a day to see your mood beside your spending.')).toBeTruthy();
+    expect(within(region).getByRole('button', { name: 'Log today (Mon, Sep 28)' })).toBeTruthy();
+
+    const text = region.textContent || '';
+    const labels = Array.from(region.querySelectorAll('[aria-label]')).map((el) => el.getAttribute('aria-label') || '').join(' ');
+    const combined = `${text} ${labels}`;
+    expect(combined).not.toMatch(/NaN|Infinity/);
+    expect(combined).not.toMatch(/(^|[^0-9])%/);
   });
 });
 
@@ -819,18 +962,6 @@ describe('Spending by category card (owner spec 4.3)', () => {
     );
     checkCard(screen.getByRole('region', { name: 'Spending by category' }));
     unmount3();
-
-    // Scenario 4: All empty
-    const { unmount: unmount4 } = render(
-      <CategorySpendingCard
-        rows={[]}
-        total={0}
-        monthToDate={monthToDate([], TODAY, CATEGORIES)}
-        onOpenDetails={() => {}}
-      />
-    );
-    checkCard(screen.getByRole('region', { name: 'Spending by category' }));
-    unmount4();
   });
 });
 

@@ -1,5 +1,6 @@
 import { test, expect, type Locator, type Page } from '@playwright/test';
-import { SAMPLE_STUDENT_LOAN, gotoTab, seedLedger } from './helpers';
+import { SAMPLE_STUDENT_LOAN, SAMPLE_WALLETS, gotoTab, seedLedger } from './helpers';
+import type { Wallet } from '../src/types';
 
 async function expectCleanCard(region: Locator) {
   const text = await region.innerText();
@@ -9,9 +10,14 @@ async function expectCleanCard(region: Locator) {
   expect(combined).not.toMatch(/(^|[^0-9])%/);
 }
 
-async function seedTestTransactions(page: Page, debts = [SAMPLE_STUDENT_LOAN]) {
-  await seedLedger(page, { debts });
-  await page.addInitScript(() => {
+async function seedTestTransactions(
+  page: Page,
+  debts = [SAMPLE_STUDENT_LOAN],
+  wallets?: Wallet[],
+  diary: unknown[] = []
+) {
+  await seedLedger(page, { debts, wallets });
+  await page.addInitScript((diary) => {
     const userId = 'usr-guest-01';
     const walletId = 'wal-main-checking';
     const now = new Date().toISOString();
@@ -33,7 +39,8 @@ async function seedTestTransactions(page: Page, debts = [SAMPLE_STUDENT_LOAN]) {
         { ...base, id: 'tx-e2e-dash-groceries', type: 'EXPENSE', amount: 500, categoryId: 'cat-groceries', transactionDate: '2026-10-16' },
       ])
     );
-  });
+    localStorage.setItem('pf_diary', JSON.stringify(diary));
+  }, diary);
 }
 
 test.describe('Dashboard row 1: left over, income and spending', () => {
@@ -242,5 +249,139 @@ test.describe('Dashboard row 2: spending by category and debt payoff', () => {
     await expect(warning).toBeVisible();
     await expect(warning).toContainText('Big loan needs ฿20,000.00 a month');
     await expect(page.getByTestId('dashboard-debt-warning')).toHaveCount(1);
+  });
+});
+
+const DIARY_NOW = '2026-10-16T15:00:00.000Z';
+const DIARY = [
+  { id: 'diary-e2e-1', userId: 'usr-guest-01', date: '2026-10-10', mood: 2, workout: false, foodQuality: 'AVERAGE', isDeleted: false, createdAt: DIARY_NOW, updatedAt: DIARY_NOW },
+  { id: 'diary-e2e-2', userId: 'usr-guest-01', date: '2026-10-16', mood: 4, workout: false, foodQuality: 'AVERAGE', isDeleted: false, createdAt: DIARY_NOW, updatedAt: DIARY_NOW },
+];
+
+test.describe('Dashboard row 3: recent activity, net worth and wallets, mood and spending', () => {
+  test.use({ timezoneId: 'Asia/Bangkok' });
+
+  test.beforeEach(async ({ page }) => {
+    await page.clock.setFixedTime(new Date('2026-10-16T15:00:00+07:00'));
+  });
+
+  test('Past 30 days', async ({ page }) => {
+    await seedTestTransactions(page, [SAMPLE_STUDENT_LOAN], SAMPLE_WALLETS, DIARY);
+    await page.goto('/');
+
+    const netWorthRegion = page.getByRole('region', { name: 'Net worth and wallets', exact: true });
+    await expect(netWorthRegion).toContainText('฿3,150.00');
+    await expect(netWorthRegion).toContainText('THB');
+    await expect(netWorthRegion).toContainText('In 3 wallets');
+    await expect(netWorthRegion).toContainText('฿7,650.00');
+    await expect(netWorthRegion).toContainText('\u2212฿4,500.00');
+    await expect(netWorthRegion.getByTestId('net-worth-card')).toBeVisible();
+    await expect(netWorthRegion.locator('#dashboard-wallet-card-wal-main-checking')).toContainText('Main Checking');
+    await expect(netWorthRegion.locator('#dashboard-wallet-card-wal-main-checking')).toContainText('Bank Account · 32.7%');
+    await expect(netWorthRegion.getByRole('img', { name: /^Share of money by wallet: / })).toBeVisible();
+
+    const recentRegion = page.getByRole('region', { name: 'Recent activity', exact: true });
+    await expect(recentRegion).toContainText('Today · Fri, Oct 16');
+    await expect(recentRegion.locator('[id^="dashboard-tx-"]')).toHaveCount(4);
+
+    const moodRegion = page.getByRole('region', { name: 'Mood and spending', exact: true });
+    await expect(moodRegion.getByRole('listitem')).toHaveCount(2);
+    await expect(moodRegion.getByRole('listitem').nth(0)).toContainText('Sat, Oct 10');
+    await expect(moodRegion.getByRole('listitem').nth(0)).toContainText('\u2212฿2,500.00');
+    await expect(moodRegion.getByRole('listitem').nth(1)).toContainText('Fri, Oct 16');
+    await expect(moodRegion.getByRole('listitem').nth(1)).toContainText('\u2212฿500.00');
+    await expect(moodRegion.getByRole('img', { name: 'Mood 2 of 5' })).toBeVisible();
+    await expect(moodRegion.getByRole('img', { name: 'Mood 4 of 5' })).toBeVisible();
+    await expect(moodRegion).toContainText('Only 2 days logged in this period.');
+    await expect(moodRegion.locator('#dashboard-log-mood-btn')).toHaveText("Edit today's entry");
+
+    const insightsFollows = await moodRegion.evaluate((el) => {
+      const insights = document.querySelector('section[aria-label="Spending insights"]');
+      if (!insights) return false;
+      return Boolean(el.compareDocumentPosition(insights) & Node.DOCUMENT_POSITION_FOLLOWING);
+    });
+    expect(insightsFollows).toBe(true);
+  });
+
+  test('The strip follows the period', async ({ page }) => {
+    await seedTestTransactions(page, [SAMPLE_STUDENT_LOAN], SAMPLE_WALLETS, DIARY);
+    await page.goto('/');
+
+    const dayBtn = page.locator('#time-filter-day');
+    await dayBtn.click();
+    await expect(dayBtn).toHaveAttribute('aria-pressed', 'true');
+
+    const moodRegion = page.getByRole('region', { name: 'Mood and spending', exact: true });
+    await expect(moodRegion.getByRole('listitem')).toHaveCount(1);
+    await expect(moodRegion.getByRole('listitem').first()).toContainText('Fri, Oct 16');
+    await expect(moodRegion).toContainText('Only 1 day logged in this period.');
+  });
+
+  test('Links', async ({ page }) => {
+    await seedTestTransactions(page, [SAMPLE_STUDENT_LOAN], SAMPLE_WALLETS, DIARY);
+    await page.goto('/');
+
+    await page.locator('#dashboard-view-all-transactions-btn').click();
+    await expect(page.locator('#nav-tab-transactions')).toHaveAttribute('aria-current', 'page');
+
+    await gotoTab(page, 'dashboard');
+    await page.locator('#hero-manage-all-wallets-btn').click();
+    await expect(page.locator('#nav-tab-wallets')).toHaveAttribute('aria-current', 'page');
+
+    await gotoTab(page, 'dashboard');
+    await page.locator('#dashboard-log-mood-btn').click();
+    await expect(page.locator('#nav-tab-diary')).toHaveAttribute('aria-current', 'page');
+  });
+
+  test('New account', async ({ page }) => {
+    await page.goto('/');
+
+    const netWorthRegion = page.getByRole('region', { name: 'Net worth and wallets', exact: true });
+    await expect(netWorthRegion).toContainText('฿0.00');
+    await expect(netWorthRegion).toContainText('In 3 wallets');
+    await expect(netWorthRegion).toContainText('No money in your wallets yet');
+
+    const recentRegion = page.getByRole('region', { name: 'Recent activity', exact: true });
+    await expect(recentRegion).toContainText('No transactions recorded yet');
+
+    const moodRegion = page.getByRole('region', { name: 'Mood and spending', exact: true });
+    await expect(moodRegion).toContainText('No diary days logged in this period.');
+    await expect(moodRegion.getByRole('listitem')).toHaveCount(0);
+    await expect(moodRegion.locator('#dashboard-log-mood-btn')).toHaveText('Log today (Fri, Oct 16)');
+
+    await expectCleanCard(netWorthRegion);
+    await expectCleanCard(recentRegion);
+    await expectCleanCard(moodRegion);
+  });
+
+  test('Phone width', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await seedTestTransactions(page, [SAMPLE_STUDENT_LOAN], SAMPLE_WALLETS, DIARY);
+    await page.goto('/');
+
+    const recentRegion = page.getByRole('region', { name: 'Recent activity', exact: true });
+    const netWorthRegion = page.getByRole('region', { name: 'Net worth and wallets', exact: true });
+    const moodRegion = page.getByRole('region', { name: 'Mood and spending', exact: true });
+
+    await expect(recentRegion).toBeVisible();
+    await expect(netWorthRegion).toBeVisible();
+    await expect(moodRegion).toBeVisible();
+
+    const recentBox = await recentRegion.boundingBox();
+    const netWorthBox = await netWorthRegion.boundingBox();
+    const moodBox = await moodRegion.boundingBox();
+
+    expect(recentBox).not.toBeNull();
+    expect(netWorthBox).not.toBeNull();
+    expect(moodBox).not.toBeNull();
+
+    expect(netWorthBox!.y).toBeGreaterThanOrEqual(recentBox!.y + recentBox!.height - 1);
+    expect(moodBox!.y).toBeGreaterThanOrEqual(netWorthBox!.y + netWorthBox!.height - 1);
+
+    const { scrollWidth, innerWidth } = await page.evaluate(() => ({
+      scrollWidth: document.documentElement.scrollWidth,
+      innerWidth: window.innerWidth,
+    }));
+    expect(scrollWidth).toBeLessThanOrEqual(innerWidth);
   });
 });

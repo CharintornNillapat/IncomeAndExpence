@@ -5,7 +5,6 @@ import { useWallets } from '../hooks/useWallets';
 import { useDebts } from '../hooks/useDebts';
 import { PageHeader } from '../components/ui/PageHeader';
 import { SegmentedControl } from '../components/ui/SegmentedControl';
-import { NetWorthCard } from '../components/dashboard/NetWorthCard';
 import { CashFlowCard } from '../components/dashboard/CashFlowCard';
 import { LeftOverCard } from '../components/dashboard/LeftOverCard';
 import { WalletsSection } from '../components/dashboard/WalletsSection';
@@ -164,23 +163,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
       </div>
 
-      {/* Net worth joins the wallets card in UI-3 (owner spec 4.4). */}
-      <NetWorthCard
-        netWorth={wealth.netWorth}
-        walletTotal={wealth.walletTotal}
-        walletCount={activeWallets.length}
-        debtRemaining={wealth.debtRemaining}
-      />
-
-      <WalletsSection
-        wallets={activeWallets}
-        shares={wealth.shares}
-        onTransfer={handleOpenTransfer}
-        onAddWallet={handleOpenAddWallet}
-        onManageWallets={handleOpenManageWallets}
-        onOpenWallet={handleOpenWallet}
-      />
-
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
         <div className="lg:col-span-7">
           <CategorySpendingCard rows={categoryRows} total={leftOver.spending} monthToDate={mtd} onOpenDetails={goTo('transactions')} />
@@ -196,8 +178,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-12 gap-4">
-        <div className="xl:col-span-8">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+        <div className="lg:col-span-7">
           <RecentActivityCard
             items={recentItems}
             dayNets={dayNets}
@@ -208,7 +190,18 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             onOpenTransaction={onOpenTransaction}
           />
         </div>
-        <div className="xl:col-span-4">
+        <div className="lg:col-span-5 flex flex-col gap-4">
+          <WalletsSection
+            wallets={activeWallets}
+            shares={wealth.shares}
+            netWorth={wealth.netWorth}
+            walletTotal={wealth.walletTotal}
+            debtRemaining={wealth.debtRemaining}
+            onTransfer={handleOpenTransfer}
+            onAddWallet={handleOpenAddWallet}
+            onManageWallets={handleOpenManageWallets}
+            onOpenWallet={handleOpenWallet}
+          />
           <MoodSpendingCard mood={mood} today={today} todayLogged={todayLogged} onOpenDiary={goTo('diary')} />
         </div>
       </div>

@@ -9,7 +9,7 @@ import { MINUS } from '../../utils/currency';
 interface CategorySpendingCardProps {
   /** `spendingByCategory` over the page's period, largest first. */
   rows: CategorySpend[];
-  /** `cashFlow().spending`: the same figure as the Spending card, and the rows' sum. */
+  /** `leftOverFor().spending`: the same figure as the Spending card, and the rows' sum. */
   total: number;
   /** Always month-to-date, whatever the page's period (owner spec 4.3). */
   monthToDate: MonthToDate;
@@ -17,45 +17,28 @@ interface CategorySpendingCardProps {
   onOpenDetails: () => void;
 }
 
+interface Segment {
+  name: string;
+  color: string;
+  percent: number;
+}
+
 interface DonutProps {
-  rows: CategorySpend[];
+  segments: Segment[];
   total: number;
 }
 
-const Donut: React.FC<DonutProps> = ({ rows, total }) => {
-  const shown = rows.slice(0, 5);
-  const rest = rows.slice(5);
-
-  const percentOf = (amount: number) => (total > 0 ? (amount / total) * 100 : 0);
-
-  const shownSegments = shown.map((row) => ({
-    name: row.name,
-    color: row.color,
-    percent: percentOf(row.amount),
-  }));
-
-  const restPercent = rest.reduce((sum, r) => sum + percentOf(r.amount), 0);
-  const moreLabel = `${rest.length} more ${rest.length === 1 ? 'category' : 'categories'}`;
-
-  const allSegments = [...shownSegments];
-  if (rest.length > 0) {
-    allSegments.push({
-      name: moreLabel,
-      color: SYSTEM_CATEGORY_COLOR,
-      percent: restPercent,
-    });
-  }
-
+const Donut: React.FC<DonutProps> = ({ segments, total }) => {
   const label =
     'Spending by category: ' +
-    allSegments.map((s) => `${s.name} ${s.percent.toFixed(1)}%`).join(', ');
+    segments.map((s) => `${s.name} ${s.percent.toFixed(1)}%`).join(', ');
 
   let accumulated = 0;
-  const renderedSegments = allSegments.map((s) => {
+  const renderedSegments = segments.map((s) => {
     const p = Number(s.percent.toFixed(2));
     const before = Number(accumulated.toFixed(2));
     accumulated += s.percent;
-    const strokeDasharray = allSegments.length === 1 ? '100 0' : `${p} ${Number((100 - p).toFixed(2))}`;
+    const strokeDasharray = `${p} ${Number((100 - p).toFixed(2))}`;
     return {
       color: s.color,
       strokeDasharray,
@@ -107,6 +90,19 @@ export const CategorySpendingCard: React.FC<CategorySpendingCardProps> = ({
   const restPercent = rest.reduce((sum, r) => sum + percentOf(r.amount), 0);
   const moreLabel = `${rest.length} more ${rest.length === 1 ? 'category' : 'categories'}`;
 
+  const segments: Segment[] = shown.map((row) => ({
+    name: row.name,
+    color: row.color,
+    percent: percentOf(row.amount),
+  }));
+  if (rest.length > 0) {
+    segments.push({
+      name: moreLabel,
+      color: SYSTEM_CATEGORY_COLOR,
+      percent: restPercent,
+    });
+  }
+
   const thisName = formatMonthName(monthKeyOf(m.thisMonth.start));
   const lastName = formatMonthName(monthKeyOf(m.lastMonth.start));
   const span = (name: string) => (m.days === 1 ? `${name} 1` : `${name} 1 to ${m.days}`);
@@ -132,7 +128,7 @@ export const CategorySpendingCard: React.FC<CategorySpendingCardProps> = ({
           <p className="text-sm text-fg-muted py-6 text-center">No spending in this period.</p>
         ) : (
           <div className="flex flex-wrap items-center gap-x-8 gap-y-6">
-            <Donut rows={rows} total={total} />
+            <Donut segments={segments} total={total} />
             <ul className="flex-1 basis-70 min-w-0 flex flex-col gap-1">
               {shown.map((row) => {
                 const p = percentOf(row.amount);

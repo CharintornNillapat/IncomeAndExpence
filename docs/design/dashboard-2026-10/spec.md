@@ -58,7 +58,7 @@ Order top to bottom. Each names its data. NEW means a selector that does not exi
 4. **Row 3:**
    - **Recent activity** (mock 177 to 208): the latest rows grouped by day, each day with its net, using the same grouping and net rule as the Transactions page (`groupByDay`, transfers shown but not counted). Keep the existing row component and its behaviour.
    - **Net worth and wallets** (mock 211 to 249): net worth from `netWorth` with its wallets minus debt caption, the share bar and list from `walletShares` (active wallets only), Transfer, Add wallet and Manage.
-   - **Mood and spending** (mock 251 to 266): the week strip from `moodSpendingDays`, the empty line when no diary days, Log today.
+   - **Mood and spending** (mock 251 to 266): the diary days `moodSpendingDays` returns for the selected period, laid out as a strip, oldest on the left (owner decision A, T767: no selector change, no placeholder days); the empty line when no diary days; Log today.
 5. **AI insights card** (D3): unchanged, full width, last.
 
 ## 5. New selectors

@@ -7,6 +7,7 @@ import { AllocationBar } from '../ui/AllocationBar';
 import { EmptyState } from '../ui/EmptyState';
 import { getWalletIcon } from '../../utils/walletIcons';
 import { emptyWalletsCaption, walletTypeLabel } from '../wallet/walletFormStyles';
+import { APP_CURRENCY } from '../../utils/currency';
 import { DashboardLink } from './DashboardLink';
 
 interface WalletsSectionProps {
@@ -14,6 +15,10 @@ interface WalletsSectionProps {
   wallets: Wallet[];
   /** `walletShares(wallets)`: a wallet at or below zero has no entry. */
   shares: ReadonlyMap<string, number>;
+  /** `netWorth` (L3): the wallet total minus what active debts still owe. */
+  netWorth: number;
+  walletTotal: number;
+  debtRemaining: number;
   onTransfer: () => void;
   onAddWallet: () => void;
   onManageWallets: () => void;
@@ -21,46 +26,63 @@ interface WalletsSectionProps {
 }
 
 /**
- * Spec 6.1 item 4: a plain heading with its links, then one card holding the
- * AllocationBar and a row per wallet. It replaces the carded wallet grid, its
- * "Tap to inspect" line and the per-card share bars.
+ * Owner spec 4.4: one card holding net worth with its wallets-minus-debt caption,
+ * then the share bar and a row per active wallet, with Transfer, Add wallet and
+ * Manage wallets.
  *
- * The links keep the old hero's ids (`#hero-transfer-funds-btn`,
- * `#hero-add-wallet-btn`, `#hero-manage-all-wallets-btn`), and each row keeps
- * `#dashboard-wallet-card-{id}`: the Playwright suite drives all four. Each
- * row is now a real `<button>`. Since Phase 59 it opens the Wallets page
- * with that wallet selected (ADR 0034); "Manage wallets" opens the page.
+ * It keeps the three hero-* ids (`#hero-transfer-funds-btn`,
+ * `#hero-add-wallet-btn`, `#hero-manage-all-wallets-btn`) and `#dashboard-wallet-card-{id}`,
+ * which the suite drives.
+ * Net worth keeps `data-testid="net-worth-card"` (`theme.spec.ts`) and is the
+ * one figure with the currency code.
  */
 export const WalletsSection: React.FC<WalletsSectionProps> = ({
   wallets,
   shares,
+  netWorth,
+  walletTotal,
+  debtRemaining,
   onTransfer,
   onAddWallet,
   onManageWallets,
   onOpenWallet,
 }) => (
-  <section aria-labelledby="dashboard-wallets-heading" className="flex flex-col gap-3">
-    <div className="flex items-baseline justify-between gap-x-5 gap-y-1 flex-wrap">
-      <h2 id="dashboard-wallets-heading" className="text-base font-semibold text-fg">
-        Wallets
-      </h2>
-      <div className="flex items-center gap-x-5 flex-wrap">
+  <section aria-label="Net worth and wallets" className="min-w-0">
+    <Card className="flex flex-col gap-4">
+      <div data-testid="net-worth-card" className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
+        <div className="min-w-0">
+          <h2 className="text-base font-semibold text-fg">Net worth</h2>
+          <p className="text-xs text-fg-muted mt-0.5">
+            In {wallets.length} {wallets.length === 1 ? 'wallet' : 'wallets'}{' '}
+            <Money value={walletTotal} className="text-fg-secondary" />
+            {' · debt '}
+            <Money
+              value={-debtRemaining}
+              className={debtRemaining > 0 ? 'text-expense' : 'text-fg-secondary'}
+            />
+          </p>
+        </div>
+        <p className="flex items-baseline gap-1.5 shrink-0">
+          <Money
+            value={netWorth}
+            className={`text-2xl font-semibold tracking-tight ${netWorth < 0 ? 'text-expense' : 'text-fg'}`}
+          />
+          <span className="text-xs text-fg-muted">{APP_CURRENCY}</span>
+        </p>
+      </div>
+
+      <div className="flex items-center justify-between gap-4 pt-4 border-t border-line">
+        <h3 id="dashboard-wallets-heading" className="text-sm font-medium text-fg-secondary">
+          Wallets
+        </h3>
         {/* Called with no argument: the click event must never reach
             `onOpenTransfer(walletId?)` as a wallet id (transfer-preview.spec.ts
             expects the form's own defaults). */}
         <DashboardLink id="hero-transfer-funds-btn" onClick={() => onTransfer()}>
           Transfer
         </DashboardLink>
-        <DashboardLink id="hero-add-wallet-btn" onClick={() => onAddWallet()}>
-          Add wallet
-        </DashboardLink>
-        <DashboardLink id="hero-manage-all-wallets-btn" onClick={() => onManageWallets()}>
-          Manage wallets
-        </DashboardLink>
       </div>
-    </div>
 
-    <Card className="flex flex-col gap-5">
       {wallets.length === 0 ? (
         <EmptyState
           icon={WalletGlyph}
@@ -79,7 +101,7 @@ export const WalletsSection: React.FC<WalletsSectionProps> = ({
               color: wallet.color,
             }))}
           />
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+          <div className="flex flex-col gap-1">
             {wallets.map((wallet) => {
               const Icon = getWalletIcon(wallet.type);
               const share = shares.get(wallet.id);
@@ -90,11 +112,11 @@ export const WalletsSection: React.FC<WalletsSectionProps> = ({
                   id={`dashboard-wallet-card-${wallet.id}`}
                   type="button"
                   onClick={() => onOpenWallet(wallet.id)}
-                  className="w-full min-w-0 flex items-center gap-3.5 px-4 py-3.5 rounded-inner bg-surface-2 border border-line hover:border-line-strong text-left transition-control duration-150 cursor-pointer"
+                  className="w-full min-w-0 min-h-[44px] flex items-center gap-3 px-2 py-1.5 -mx-2 rounded-control hover:bg-surface-2 text-left transition-control duration-150 cursor-pointer"
                 >
                   <span
                     aria-hidden="true"
-                    className="w-10 h-10 shrink-0 rounded-control flex items-center justify-center"
+                    className="w-9 h-9 shrink-0 rounded-control flex items-center justify-center"
                     style={{ backgroundColor: `color-mix(in srgb, ${wallet.color} 18%, transparent)`, color: wallet.color }}
                   >
                     <Icon className="w-5 h-5" />
@@ -115,6 +137,15 @@ export const WalletsSection: React.FC<WalletsSectionProps> = ({
           </div>
         </>
       )}
+
+      <div className="flex flex-wrap gap-x-6 pt-3 border-t border-line">
+        <DashboardLink id="hero-add-wallet-btn" onClick={() => onAddWallet()}>
+          Add wallet
+        </DashboardLink>
+        <DashboardLink id="hero-manage-all-wallets-btn" onClick={() => onManageWallets()}>
+          Manage wallets
+        </DashboardLink>
+      </div>
     </Card>
   </section>
 );
