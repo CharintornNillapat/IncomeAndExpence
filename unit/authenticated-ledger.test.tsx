@@ -1662,6 +1662,18 @@ describe('a signed-in transfer through transfer_funds (Phase 93, ADR 0069)', () 
     });
   });
 
+  const reads = () => writes('transactions', 'select').length;
+  const transfer = (key: string) =>
+    actions().addTransaction({
+      amount: 250,
+      type: 'TRANSFER',
+      walletId: WALLET,
+      destinationWalletId: CASH,
+      description: 'Move to cash',
+      transactionDate: TODAY,
+      idempotencyKey: key,
+    });
+
   it('names no user: the server takes it from the session', async () => {
     const result = await actions().addTransaction({
       amount: 250,
@@ -1688,6 +1700,58 @@ describe('a signed-in transfer through transfer_funds (Phase 93, ADR 0069)', () 
     });
     await waitFor(() => expect(wallet(CASH)?.balance).toBe(CASH_OPENING + 250));
     expect(wallet()?.balance).toBe(WALLET_OPENING - 250);
+  });
+
+  it('re-reads after a lost response instead of showing a rollback the server never made (SL-02)', async () => {
+    fake.state.lostResponses.add('transfer_funds');
+    const readsBefore = reads();
+
+    const result = await transfer('key-transfer-lost');
+    expect(result.success).toBe(false);
+    // The re-read is part of the call, not a later reload that happens to come.
+    expect(reads()).toBeGreaterThan(readsBefore);
+
+    // The transfer committed; the client shows what the server holds.
+    expect(serverWallet(WALLET).balance).toBe(WALLET_OPENING - 250);
+    await waitFor(() => {
+      expect(wallet()?.balance).toBe(WALLET_OPENING - 250);
+      expect(wallet(CASH)?.balance).toBe(CASH_OPENING + 250);
+      expect(state().transactions).toHaveLength(1);
+    });
+  });
+
+  it('re-reads after a success with no row, since the money may have moved (SL-02)', async () => {
+    const commit = fake.state.rpcs.get('transfer_funds')!;
+    fake.state.rpcs.set('transfer_funds', (args) => {
+      commit(args);
+      return { data: null, error: null };
+    });
+    const readsBefore = reads();
+
+    const result = await transfer('key-transfer-empty');
+    expect(result.success).toBe(false);
+    expect(result.error).toBe('transfer_funds returned an unexpected response');
+    expect(reads()).toBeGreaterThan(readsBefore);
+
+    await waitFor(() => {
+      expect(wallet()?.balance).toBe(WALLET_OPENING - 250);
+      expect(wallet(CASH)?.balance).toBe(CASH_OPENING + 250);
+      expect(state().transactions).toHaveLength(1);
+    });
+  });
+
+  it('only rolls back, with no re-read, when the server refuses with a SQLSTATE', async () => {
+    fake.state.failures.set('rpc:transfer_funds', { message: 'permission denied for function', code: '42501' });
+    const readsBefore = reads();
+
+    const result = await transfer('key-transfer-refused');
+    expect(result.success).toBe(false);
+    expect(result.error).toContain('permission denied');
+    expect(reads()).toBe(readsBefore);
+    await waitFor(() => {
+      expect(wallet()?.balance).toBe(WALLET_OPENING);
+      expect(wallet(CASH)?.balance).toBe(CASH_OPENING);
+    });
   });
 });
 
