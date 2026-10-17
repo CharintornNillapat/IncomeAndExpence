@@ -117,13 +117,25 @@ Branch `phase-136-form-labels`, cut from `main` at `779db69`. One commit, T768's
 |---|---|---|---|---|---|
 | T768 | Link every form label to its control via htmlFor, and name the CSV row category select (UI-02, UI-03, UI-04, UI-05) | `src/components/AuthModal.tsx`, `src/components/wallet/AddWalletForm.tsx`, `src/components/account/AccountModal.tsx`, `src/components/transaction/ImportCsvModal.tsx`, `unit/auth-password.test.tsx`, `unit/authenticated-ledger.test.tsx`, `unit/wallets-page.test.tsx`, `unit/csv-import-categories.test.tsx`, `docs/audit/refactor-log.md`, `docs/audit/baseline-metrics.md` | done | df57e06 | Red gate verified (4 unit failed); npm run lint clean; related unit 4/4 files 152 passed; unit 62/62 files 1436 passed (48.79s); e2e 8 specs on chr 51 passed, 153 passed on 3 browsers (3.4m); prod build clean (193,335 B entry); CRLF kept; 0 em dashes |
 
+## Phase 137 - Small fixes: four low UI findings and the hero size (no ADR)
+
+Branch `phase-137-small-fixes`, cut from `main` at `1d286e5`. No migration.
+
+| # | Task | Files | Status | Commit | Gate result |
+|---|---|---|---|---|---|
+| T769 | Close UI-01, UI-06, UI-07, UI-08 and size the Left over figure with a `--text-hero` token (44px) | `src/components/InlineMathInput.tsx`, `src/components/ui/motion.tsx`, `src/components/diary/RecentEntries.tsx`, `src/components/dashboard/LeftOverCard.tsx`, `src/index.css`, `unit/dashboard.test.tsx`, `unit/inline-math-seed.test.tsx`, `DESIGN.md`, `docs/audit/test-selector-contract.md`, `docs/audit/refactor-log.md`, `docs/audit/baseline-metrics.md` | done | | Red gate verified (2 unit failed); npm run lint clean; related unit 4/4 files 106 passed; unit 62/62 files 1438 passed (50.99s); e2e 5 specs on chr 32 passed, 96 passed on 3 browsers (2.2m); prod build clean (193,335 B entry); CRLF kept; 0 em dashes |
+
 ## Backlog
 
 Not scheduled. Each row says where it came from.
 
 | Item | Source | Status |
 |---|---|---|
-| DESIGN.md's Hero number is 44px, but the code sets it with `text-4xl` (36px): `LeftOverCard.tsx` (the net worth figure is a card figure since T767). A `--text-hero` token would close it | Phase 135, T765's spec | todo |
+| DESIGN.md's Hero number is 44px, but the code sets it with `text-4xl` (36px): `LeftOverCard.tsx` (the net worth figure is a card figure since T767). A `--text-hero` token would close it | Phase 135, T765's spec | done in Phase 137 (T769) |
+| InlineMathInput.tsx:136 frame uses transition-all | Audit 2026-10-16 (T759), finding UI-01, low; `src/components/InlineMathInput.tsx:136` | done in Phase 137 (T769) |
+| Selector contract omits the two transfer balance test ids | Audit 2026-10-16 (T759), finding UI-06, low; `docs/audit/test-selector-contract.md:52` | done in Phase 137 (T769) |
+| Dead export prefersReducedMotion | Audit 2026-10-16 (T759), finding UI-07, low; `src/components/ui/motion.tsx:14` | done in Phase 137 (T769) |
+| Dead export RECENT_STEP | Audit 2026-10-16 (T759), finding UI-08, low; `src/components/diary/RecentEntries.tsx:9` | done in Phase 137 (T769) |
 | Every interactive element added to a view carries an `id` following `<view>-<thing>-<kind>` | `archive/constraints-to-promote.md` row T12. `AuthModal.tsx` complies; never verified repo-wide | todo: verify across views before it can become a rule |
 | `QuickAddModal.tsx:101` labels its template list `text-[11px] ... uppercase tracking-wide`, below `DESIGN.md`'s 12 to 13px label size and off the `tracking-wider` used elsewhere | Context audit, 2026-10-15. `TransactionForm.tsx:709`, `:848` and `:871` also use `tracking-wide` on uppercase labels | done in Phase 127 (T753) |
 | `WalletTransferForm.tsx:101`'s uppercase label is `text-[10px]`, below `DESIGN.md`'s 12 to 13px (its tracking is already `tracking-wider`) | Phase 127, T753's spec | done in Phase 129 (T756) |

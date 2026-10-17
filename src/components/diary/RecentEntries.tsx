@@ -6,7 +6,7 @@ import { Card } from '../ui/Card';
 import { DiaryEntryRow } from './DiaryEntryRow';
 
 /** How many recent entries show at first, and how many more each press adds. */
-export const RECENT_STEP = 10;
+const RECENT_STEP = 10;
 
 interface RecentEntriesProps {
   /** Live entries, newest first. */

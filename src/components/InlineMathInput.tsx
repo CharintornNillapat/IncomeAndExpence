@@ -133,7 +133,7 @@ export const InlineMathInput: React.FC<InlineMathInputProps> = ({
           the frame's full 44px height, so a tap anywhere on it lands on the
           input (ADR 0041). */}
       <div
-        className={`relative flex items-center rounded-lg border px-3 transition-all ${
+        className={`relative flex items-center rounded-lg border px-3 transition-control ${
           errorMessage
             ? 'border-expense ring-2 ring-expense-line'
             : isFocused

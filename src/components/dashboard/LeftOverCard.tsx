@@ -110,7 +110,7 @@ export const LeftOverCard: React.FC<LeftOverCardProps> = ({ data, series, period
           <Money
             value={data.leftOver}
             showPlus
-            className={`text-4xl font-semibold tracking-tight ${data.leftOver < 0 ? 'text-expense' : 'text-fg'}`}
+            className={`text-hero font-semibold tracking-tight ${data.leftOver < 0 ? 'text-expense' : 'text-fg'}`}
           />
           {hasRows && (
             <p className="text-sm text-fg-secondary mt-1">

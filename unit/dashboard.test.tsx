@@ -163,6 +163,14 @@ describe('Left over follows the net rule (spec section 3)', () => {
     expect(net.className).toContain('text-expense');
     expect(screen.getByText('No income this period')).toBeTruthy();
   });
+
+  it('sets the figure at the Hero size', () => {
+    const rows = [tx({ type: 'INCOME', amount: 500 }), tx({ type: 'EXPENSE', amount: 200 })];
+    render(<LeftOverCard data={leftOverFor(rows, 'DAY', TODAY, 0, CATEGORIES)} series={null} periodName="today" periodDates="Sep 28" />);
+    const net = screen.getByText(`+${formatCurrencyAmount(300)}`);
+    expect(net.className).toContain('text-hero');
+    expect(net.className).not.toContain('text-4xl');
+  });
 });
 
 describe('Left over card (owner spec 4.2)', () => {
