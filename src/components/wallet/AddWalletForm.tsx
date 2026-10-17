@@ -92,7 +92,7 @@ export const AddWalletForm: React.FC<AddWalletFormProps> = ({
   return (
     <form onSubmit={handleCreateWallet} className={`space-y-4 ${className}`.trim()}>
       <div>
-        <label className={LABEL_CLASS}>Wallet Name *</label>
+        <label htmlFor={ids.name} className={LABEL_CLASS}>Wallet Name *</label>
         <input
           id={ids.name}
           type="text"
@@ -106,7 +106,7 @@ export const AddWalletForm: React.FC<AddWalletFormProps> = ({
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
         <div>
-          <label className={LABEL_CLASS}>Type</label>
+          <label htmlFor={ids.type} className={LABEL_CLASS}>Type</label>
           <select
             id={ids.type}
             value={walletType}
@@ -133,7 +133,7 @@ export const AddWalletForm: React.FC<AddWalletFormProps> = ({
       </div>
 
       <div>
-        <label className={LABEL_CLASS}>Starting Balance ({APP_CURRENCY_SYMBOL})</label>
+        <label htmlFor={ids.balance} className={LABEL_CLASS}>Starting Balance ({APP_CURRENCY_SYMBOL})</label>
         <input
           id={ids.balance}
           type="number"

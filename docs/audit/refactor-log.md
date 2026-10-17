@@ -19,6 +19,34 @@ ADR `NNNN`. <the brief, one or two sentences>
 
 ---
 
+## Phase 136 - Form labels: T768 (2026-10-17, code `<sha>`, merged `<sha>`)
+
+No ADR (fixes markup to standard HTML labelling and accessibility). Connects form `<label>`s to their form controls via `htmlFor` in `AuthModal`, `AddWalletForm`, and `AccountModal`, and provides an accessible name for the CSV import preview table's row category selector via `aria-label` (resolving audit 2026-10-16 findings UI-02, UI-03, UI-04, and UI-05).
+
+**Changed:**
+- `src/components/AuthModal.tsx` (`htmlFor` on Full Name, Email Address, Password labels);
+- `src/components/wallet/AddWalletForm.tsx` (`htmlFor` on Wallet Name, Type, Starting Balance labels);
+- `src/components/account/AccountModal.tsx` (`htmlFor` on Display Name, New Password, Confirm Password labels);
+- `src/components/transaction/ImportCsvModal.tsx` (`htmlFor` on Select CSV File label and `aria-label` on row category select);
+- `unit/auth-password.test.tsx` (label association test for auth modal);
+- `unit/authenticated-ledger.test.tsx` (label association test for profile and password fields);
+- `unit/wallets-page.test.tsx` (label association test for Add Wallet form);
+- `unit/csv-import-categories.test.tsx` (label association and accessible name test for CSV file picker and row picker);
+- `docs/audit/task-ledger.md` (Phase 136 section and T768 row added, UI-02 to UI-05 marked done, new Backlog row added);
+- `docs/audit/baseline-metrics.md` (Phase 136 section added);
+- this file (`docs/audit/refactor-log.md`).
+**Verified:** Red gate verified (4 unit tests failed as expected on unfixed code); `npm run lint` clean (132 files, Node globals and safe ids verified, type-check passed); targeted unit tests passed (4/4 files, 152 passed); full unit test suite passed (62 files, 1436 passed in 48.79s, `workflow/stages/02_build/output/logs/T768-unit.log`); targeted Playwright on Chromium passed (8 specs, 51 passed in 43.5s); targeted Playwright on all 3 browsers passed (8 specs, 153 passed in 3.4m, `workflow/stages/02_build/output/logs/T768-e2e.log`); clean production build succeeded (`index-BcaenrL9.js`, 193,335 B / 56,360 B gzip; `index-z3bqoA9P.css`, 52,884 B / 10,209 B gzip; 39 JS files); git diff and status clean (target and bookkeeping files only); line endings verified `w/crlf` across all touched files; 0 em dashes added in git diff; `grep -rn "<label" src --include=*.tsx | grep -v htmlFor` verified (only Currency, Color, EditTransactionPanel, and TransactionForm:1091).
+**Surprises:** none.
+**Deliberately not done:**
+- `AddWalletForm.tsx`'s `Currency` and `Color` labels (name no labelable control; added to Backlog);
+- `EditTransactionPanel.tsx` and `TransactionForm.tsx` labels (already named);
+- Any id, `data-testid`, label text, class or layout change; `docs/audit/test-selector-contract.md`;
+- Wrapping inputs inside labels instead of `htmlFor`, or adding `aria-label` where a visible label exists;
+- The test counts in `AGENTS.md:11` and `README.md:157` (left for deploy record or later docs task);
+- Any other audit 2026-10-16 finding (SL-01, UI-06).
+
+---
+
 ## Phase 135 - Dashboard UI: T765-T767 (2026-10-17, code `3f7b3e8`, `662c528` and `7f7c82a`, merged `bdfc500`)
 
 ADR `0102`. The Dashboard body rebuilt to the 2026-10 owner spec: the page header and row 1, Left over with its sparkline beside the Income and Spending cards (T765); row 2, spending by category with the donut and the month-to-date line, and debt payoff with the surplus warning inside (T766); row 3, recent activity, net worth merged into the wallets card, the mood strip (owner decision A), the insights card last, the T766 review notes and the phase paperwork (T767).

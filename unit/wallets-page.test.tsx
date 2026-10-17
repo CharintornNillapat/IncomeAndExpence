@@ -2,6 +2,7 @@
 import { describe, it, expect, beforeAll, afterAll, afterEach, vi } from 'vitest';
 import { render, cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { FinanceProvider } from '../src/context/FinanceContext';
+import { AddWalletModal } from '../src/components/wallet/AddWalletModal';
 import { WalletsView } from '../src/views/WalletsView';
 import { formatCurrencyAmount, MINUS } from '../src/utils/currency';
 import { todayIsoDate } from '../src/utils/date';
@@ -386,5 +387,18 @@ describe("spec 5.1's colour migration on this device (Phase 63, ADR 0038)", () =
     expect(tile('s')).toBe(rgb('#4FB7A8'));
     expect(tile('p')).toBe(rgb('#E879A6'));
     expect(tile('o')).toBe(rgb('#16a34a'));
+  });
+});
+
+describe('the Add Wallet form (audit 2026-10-16 UI-03)', () => {
+  it('names each field from its label', () => {
+    render(
+      <FinanceProvider>
+        <AddWalletModal isOpen onClose={() => {}} />
+      </FinanceProvider>,
+    );
+    expect(screen.getByLabelText(/^Wallet Name/)).toBe(document.getElementById('new-wallet-name'));
+    expect(screen.getByLabelText('Type')).toBe(document.getElementById('new-wallet-type'));
+    expect(screen.getByLabelText(/^Starting Balance/)).toBe(document.getElementById('new-wallet-init-balance'));
   });
 });

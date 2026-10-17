@@ -356,7 +356,7 @@ export const ImportCsvModal: React.FC<ImportCsvModalProps> = ({ isOpen, onClose 
       {/* Step 1: Upload File */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <label className="text-xs font-semibold text-fg-secondary">
+          <label htmlFor="csv-file-input" className="text-xs font-semibold text-fg-secondary">
             Select CSV File
           </label>
           <button
@@ -546,6 +546,7 @@ export const ImportCsvModal: React.FC<ImportCsvModalProps> = ({ isOpen, onClose 
                         <div className="flex flex-col gap-1">
                           <select
                             data-testid={`csv-row-category-${row.rowIndex}`}
+                            aria-label={`Category for row ${row.rowIndex}: ${row.description || 'transaction'}`}
                             value={row.categoryId || ''}
                             onChange={(e) => setRowCategory(row.rowIndex, e.target.value)}
                             className="w-full max-w-[10rem] text-xs rounded-lg border border-line-input bg-surface-2 px-1.5 py-1 text-fg focus:outline-none focus:ring-2 focus:ring-focus cursor-pointer"

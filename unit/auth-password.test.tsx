@@ -62,4 +62,12 @@ describe('the sign-in dialog', () => {
     const hint = screen.getByText('At least 8 characters');
     expect(password.getAttribute('aria-describedby')).toBe(hint.id);
   });
+
+  it('names each field from its label', () => {
+    open();
+    fireEvent.click(document.getElementById('auth-tab-signup')!);
+    expect(screen.getByLabelText('Full Name')).toBe(document.getElementById('auth-name-input'));
+    expect(screen.getByLabelText('Email Address')).toBe(document.getElementById('auth-email-input'));
+    expect(screen.getByLabelText('Password')).toBe(document.getElementById('auth-password-input'));
+  });
 });

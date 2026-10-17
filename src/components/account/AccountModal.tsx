@@ -608,7 +608,7 @@ const ProfileSection: React.FC = () => {
       </div>
       <form onSubmit={handleUpdateProfile} className="space-y-3">
         <div>
-          <label className={LABEL_CLASS}>Display Name</label>
+          <label htmlFor="profile-name-input" className={LABEL_CLASS}>Display Name</label>
           <input
             id="profile-name-input"
             type="text"
@@ -668,7 +668,7 @@ const PasswordSection: React.FC = () => {
       </div>
       <form onSubmit={handleUpdatePassword} className="space-y-3">
         <div>
-          <label className={LABEL_CLASS}>New Password</label>
+          <label htmlFor="security-new-password" className={LABEL_CLASS}>New Password</label>
           <input
             id="security-new-password"
             type="password"
@@ -679,7 +679,7 @@ const PasswordSection: React.FC = () => {
           />
         </div>
         <div>
-          <label className={LABEL_CLASS}>Confirm Password</label>
+          <label htmlFor="security-confirm-password" className={LABEL_CLASS}>Confirm Password</label>
           <input
             id="security-confirm-password"
             type="password"
