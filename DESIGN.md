@@ -77,7 +77,7 @@ Wallets and categories take their own colour from the muted identity palette in 
 | Section label | 12 to 13px / 600, uppercase, `tracking-wider` (0.05em), `fg-secondary` or `fg-muted` |
 | Body | 14px / 400 to 500 |
 | Caption | 12 to 13px, `fg-muted` |
-| Hero number (the Dashboard's Left over) | 44px / 600, −1px tracking; the `text-hero` token |
+| Hero number (the Dashboard's Left over) | 44px / 600, 48px line height, −1px tracking; the `text-hero` token |
 | KPI number | 28px / 600 |
 | Amount in a list row | 15px / 600 |
 

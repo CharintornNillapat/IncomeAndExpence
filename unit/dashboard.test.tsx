@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, afterEach, beforeAll, afterAll, vi } from 'vitest';
+import { readFileSync } from 'node:fs';
 import { render, cleanup, fireEvent, screen, within } from '@testing-library/react';
 import { CashFlowCard } from '../src/components/dashboard/CashFlowCard';
 import { LeftOverCard } from '../src/components/dashboard/LeftOverCard';
@@ -170,6 +171,9 @@ describe('Left over follows the net rule (spec section 3)', () => {
     const net = screen.getByText(`+${formatCurrencyAmount(300)}`);
     expect(net.className).toContain('text-hero');
     expect(net.className).not.toContain('text-4xl');
+    // A fractional line box makes the page fractionally tall and breaks tests/safe-area.spec.ts (T774).
+    const css = readFileSync(new URL(String('../src/index.css'), import.meta.url), 'utf8');
+    expect(css).toMatch(/--text-hero--line-height:\s*\d+px;/);
   });
 });
 
