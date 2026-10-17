@@ -89,6 +89,14 @@ Branch `phase-133-dashboard-redesign-docs`, cut from `main` at `3aeca33`. One co
 |---|---|---|---|---|---|
 | T761 | Dashboard redesign DOC-1: owner spec, ADR 0102, DESIGN.md, routing | `docs/design/dashboard-2026-10/spec.md`, `docs/design/dashboard-2026-10/dashboard-2026-10.dc.html`, `docs/audit/decisions/0102-dashboard-redesign-2026-10.md`, `DESIGN.md`, `AGENTS.md`, `docs/audit/refactor-log.md` | done | 41a1bfb | Docs-only gates passed: mock unchanged, spec 4 lines, scope clean, DESIGN.md/AGENTS.md valid, names resolve, CRLF/LF verified, 0 em dashes |
 
+## Phase 134 - Dashboard selectors: left over, daily spending series, month-to-date comparison (money path, ADR 0102)
+
+Branch `phase-134-dashboard-selectors`, cut from `main` at `3927c83`.
+
+| # | Task | Files | Status | Commit | Gate result |
+|---|---|---|---|---|---|
+| T762 | Dashboard redesign SEL-1: the Left over selector (owner spec 5.1) | `src/selectors/ledger.ts`, `unit/selectors-dashboard.test.ts` | done | | Red gate verified; npm run lint clean; unit 62/62 files 1386 passed (50.6s); related unit 3/3 files 65 passed; CRLF kept; 0 em dashes |
+
 ## Backlog
 
 Not scheduled. Each row says where it came from.

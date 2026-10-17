@@ -1,5 +1,6 @@
 import { Category, Transaction } from '../types';
 import { roundToCents } from '../utils/money';
+import { filterByRange, TimeRange } from './timeRange';
 
 /**
  * Spec L1 and L11 (ADR 0028): the one definition of spending and income.
@@ -75,6 +76,40 @@ export function cashFlow(txs: Transaction[], categories?: CategoryLookup): CashF
     spending,
     leftOver: roundToCents(income - spending),
     spentPercent: income > 0 ? (spending / income) * 100 : null,
+  };
+}
+
+export interface LeftOver extends CashFlow {
+  /** Left over as a share of income, or `null` with no income. Not clamped: negative when spending passed income. */
+  keptPercent: number | null;
+  /** The bar's spent part, 0 to 100: 100 when spending reached or passed income, 0 with neither income nor spending. */
+  spentShare: number;
+  /** The bar's kept part, `100 - spentShare` when there is income, else 0. */
+  keptShare: number;
+  /** Left over minus what the debts need this month; MONTH only, else `null`. */
+  afterDebtDue: number | null;
+}
+
+/**
+ * The Dashboard's Left over card (owner spec 5.1, ADR 0102) for one period.
+ * `neededThisMonth` is `debtPlan(...).totalRequired`, passed in so the plan is
+ * computed once in `DashboardView` (D5).
+ */
+export function leftOverFor(
+  txs: Transaction[],
+  range: TimeRange,
+  today: string,
+  neededThisMonth: number,
+  categories?: CategoryLookup
+): LeftOver {
+  const flow = cashFlow(filterByRange(txs, range, today), categories);
+  const spentShare = flow.leftOver <= 0 && flow.spending > 0 ? 100 : flow.income > 0 ? (flow.spending / flow.income) * 100 : 0;
+  return {
+    ...flow,
+    keptPercent: flow.income > 0 ? (flow.leftOver / flow.income) * 100 : null,
+    spentShare,
+    keptShare: flow.income > 0 ? 100 - spentShare : 0,
+    afterDebtDue: range === 'MONTH' ? roundToCents(flow.leftOver - neededThisMonth) : null,
   };
 }
 

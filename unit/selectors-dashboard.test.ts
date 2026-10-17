@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { cashFlow, spendingByCategory } from '../src/selectors/ledger';
+import { cashFlow, leftOverFor, spendingByCategory } from '../src/selectors/ledger';
 import { walletShares } from '../src/selectors/wallets';
 import { moodSpendingDays } from '../src/selectors/diary';
 import { greetingFor, formatLongDate, formatShortDate, formatWeekdayDate, formatMonthName, shiftIsoDate } from '../src/utils/date';
@@ -115,6 +115,133 @@ describe('cashFlow: the Cash flow card, on the L1 definition', () => {
     expect(cashFlow([tx({ type: 'EXPENSE', amount: 40 })], BY_ID).spentPercent).toBeNull();
     expect(cashFlow([], BY_ID)).toEqual({ income: 0, spending: 0, leftOver: 0, spentPercent: null });
   });
+});
+
+describe('leftOverFor: the Left over card (owner spec 5.1)', () => {
+  it('counts L1 only, and every field', () => {
+    const rows = [
+      tx({ type: 'INCOME', amount: 13103, categoryId: 'cat-salary' }),
+      tx({ type: 'EXPENSE', amount: 9000.22, categoryId: 'cat-food' }),
+      tx({ type: 'EXPENSE', amount: 996, categoryId: 'cat-food' }),
+      tx({ type: 'TRANSFER', amount: 300, destinationWalletId: 'wal-main' }),
+      tx({ type: 'DEBT_REPAYMENT', amount: 5000, categoryId: 'cat-debt', debtId: 'debt-1' }),
+      tx({ type: 'ADJUSTMENT', amount: -7900, categoryId: 'cat-adjust' }),
+      tx({ type: 'EXPENSE', amount: 123, categoryId: 'cat-food', isDeleted: true }),
+    ];
+    const result = leftOverFor(rows, 'MONTH', TODAY, 1000, BY_ID);
+    expect(result.income).toBe(13103);
+    expect(result.spending).toBe(9996.22);
+    expect(result.leftOver).toBe(3106.78);
+    expect(result.spentPercent).toBeCloseTo((9996.22 / 13103) * 100, 10);
+    expect(result.keptPercent).toBeCloseTo((3106.78 / 13103) * 100, 10);
+    const expectedSpentShare = (9996.22 / 13103) * 100;
+    expect(result.spentShare).toBeCloseTo(expectedSpentShare, 10);
+    expect(result.keptShare).toBeCloseTo(100 - expectedSpentShare, 10);
+    expect(result.afterDebtDue).toBe(2106.78);
+  });
+
+  it('picks rows according to the range (L2)', () => {
+    const rows = [
+      tx({ type: 'INCOME', amount: 10, transactionDate: TODAY }),
+      tx({ type: 'INCOME', amount: 10, transactionDate: shiftIsoDate(TODAY, -7) }),
+      tx({ type: 'INCOME', amount: 10, transactionDate: shiftIsoDate(TODAY, -8) }),
+      tx({ type: 'INCOME', amount: 10, transactionDate: shiftIsoDate(TODAY, -30) }),
+      tx({ type: 'INCOME', amount: 10, transactionDate: shiftIsoDate(TODAY, -31) }),
+    ];
+    expect(leftOverFor(rows, 'DAY', TODAY, 0, BY_ID).income).toBe(10);
+    expect(leftOverFor(rows, 'WEEK', TODAY, 0, BY_ID).income).toBe(20);
+    expect(leftOverFor(rows, 'MONTH', TODAY, 0, BY_ID).income).toBe(40);
+    expect(leftOverFor(rows, 'ALL', TODAY, 0, BY_ID).income).toBe(50);
+  });
+
+  it('computes afterDebtDue for MONTH only, to the cent', () => {
+    const rows = [
+      tx({ type: 'INCOME', amount: 10.3 }),
+      tx({ type: 'EXPENSE', amount: 10 }),
+    ];
+    expect(leftOverFor(rows, 'MONTH', TODAY, 0.1, BY_ID).afterDebtDue).toBe(0.2);
+    expect(leftOverFor(rows, 'DAY', TODAY, 0.1, BY_ID).afterDebtDue).toBeNull();
+    expect(leftOverFor(rows, 'WEEK', TODAY, 0.1, BY_ID).afterDebtDue).toBeNull();
+    expect(leftOverFor(rows, 'ALL', TODAY, 0.1, BY_ID).afterDebtDue).toBeNull();
+
+    const monthZero = leftOverFor(rows, 'MONTH', TODAY, 0, BY_ID);
+    expect(monthZero.afterDebtDue).toBe(monthZero.leftOver);
+  });
+
+  it('shows a full spent bar when left over is negative', () => {
+    const rows = [
+      tx({ type: 'INCOME', amount: 100 }),
+      tx({ type: 'EXPENSE', amount: 250.5 }),
+    ];
+    const result = leftOverFor(rows, 'MONTH', TODAY, 50, BY_ID);
+    expect(result.leftOver).toBe(-150.5);
+    expect(result.keptPercent).toBeCloseTo(-150.5, 10);
+    expect(result.spentShare).toBe(100);
+    expect(result.keptShare).toBe(0);
+    expect(result.afterDebtDue).toBe(-200.5);
+  });
+
+  it('handles spending equal to income', () => {
+    const rows = [
+      tx({ type: 'INCOME', amount: 500 }),
+      tx({ type: 'EXPENSE', amount: 500 }),
+    ];
+    const result = leftOverFor(rows, 'MONTH', TODAY, 0, BY_ID);
+    expect(result.leftOver).toBe(0);
+    expect(result.keptPercent).toBe(0);
+    expect(result.spentShare).toBe(100);
+    expect(result.keptShare).toBe(0);
+  });
+
+  it('handles no income and empty rows', () => {
+    const expenseOnly = leftOverFor([tx({ type: 'EXPENSE', amount: 40 })], 'MONTH', TODAY, 0, BY_ID);
+    expect(expenseOnly.keptPercent).toBeNull();
+    expect(expenseOnly.spentShare).toBe(100);
+    expect(expenseOnly.keptShare).toBe(0);
+
+    const empty = leftOverFor([], 'MONTH', TODAY, 0, BY_ID);
+    expect(empty).toEqual({
+      income: 0,
+      spending: 0,
+      leftOver: 0,
+      spentPercent: null,
+      keptPercent: null,
+      spentShare: 0,
+      keptShare: 0,
+      afterDebtDue: 0,
+    });
+    for (const val of Object.values(empty)) {
+      if (typeof val === 'number') {
+        expect(Number.isFinite(val)).toBe(true);
+      }
+    }
+  });
+
+  for (const zone of ['UTC', 'Asia/Bangkok'] as const) {
+    describe(`in ${zone}`, () => {
+      beforeAll(() => {
+        process.env.TZ = zone;
+      });
+      afterAll(() => {
+        process.env.TZ = 'Asia/Bangkok';
+      });
+
+      it('respects day and month bounds in this zone', () => {
+        const today = '2026-10-17';
+        const monthRows = [
+          tx({ type: 'EXPENSE', amount: 7, transactionDate: '2026-09-17' }),
+          tx({ type: 'EXPENSE', amount: 11, transactionDate: '2026-09-16' }),
+        ];
+        expect(leftOverFor(monthRows, 'MONTH', today, 0, BY_ID).spending).toBe(7);
+
+        const dayRows = [
+          tx({ type: 'EXPENSE', amount: 5, transactionDate: '2026-10-17' }),
+          tx({ type: 'EXPENSE', amount: 12, transactionDate: '2026-10-16' }),
+        ];
+        expect(leftOverFor(dayRows, 'DAY', today, 0, BY_ID).spending).toBe(5);
+      });
+    });
+  }
 });
 
 describe("walletShares: each wallet's part of the AllocationBar", () => {
