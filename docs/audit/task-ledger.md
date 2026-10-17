@@ -109,6 +109,14 @@ Branch `phase-135-dashboard-ui`, cut from `main` at `ce9983f`. Three commits, T7
 | T766 | Dashboard redesign UI-2: row 2, spending by category with the month line, and debt payoff (owner spec 4.3) | `src/components/dashboard/CategorySpendingCard.tsx`, `src/components/dashboard/DebtPayoffCard.tsx`, `src/views/DashboardView.tsx`, `unit/dashboard.test.tsx`, `tests/dashboard.spec.ts`, `DESIGN.md`, `docs/audit/test-selector-contract.md` | done | 662c528 | Red gate verified; npm run lint clean; related unit 4/4 files 86 passed; unit 62/62 files 1426 passed; e2e 21/21 chr, 61 passed 2 skipped on 3 browsers; wcag-tokens clean; CRLF kept; 0 em dashes |
 | T767 | Dashboard redesign UI-3: row 3, net worth and wallets merged, mood strip, insights last; T766 notes; Phase 135 paperwork (owner spec 4.4 to 4.5) | `src/components/dashboard/WalletsSection.tsx`, `src/components/dashboard/NetWorthCard.tsx` (deleted), `src/components/dashboard/MoodSpendingCard.tsx`, `src/components/dashboard/RecentActivityCard.tsx`, `src/components/dashboard/CategorySpendingCard.tsx`, `src/views/DashboardView.tsx`, `src/components/ViewLoadingFallback.tsx`, `src/components/ui/AllocationBar.tsx`, `unit/dashboard.test.tsx`, `tests/dashboard.spec.ts`, `DESIGN.md`, `docs/design/dashboard-2026-10/spec.md`, `docs/audit/test-selector-contract.md`, `AGENTS.md`, `docs/contexts/ui-and-e2e.md`, `README.md`, `docs/audit/refactor-log.md`, `docs/audit/baseline-metrics.md` | done | 7f7c82a | Red gate verified (8 unit, 4 e2e failed); npm run lint clean; related unit 5/5 files 116 passed; unit 62/62 files 1432 passed (44.88s); Vitest shuffle 1432 passed (seed 1792225420210); e2e 71/71 chr, 207 passed 6 skipped on 3 browsers; full e2e 531 passed 6 skipped on 3 browsers (9.9m); prod build clean (193,252 B entry); wcag-tokens clean; ViewLoadingFallback w/lf kept, others w/crlf; 0 em dashes; 0 NetWorthCard refs |
 
+## Phase 136 - Form labels: htmlFor on every field and a name for the CSV row category (accessibility, no ADR)
+
+Branch `phase-136-form-labels`, cut from `main` at `779db69`.
+
+| # | Task | Files | Status | Commit | Gate result |
+|---|---|---|---|---|---|
+| T768 | Link every form label to its control via htmlFor, and name the CSV row category select (UI-02, UI-03, UI-04, UI-05) | `src/components/AuthModal.tsx`, `src/components/wallet/AddWalletForm.tsx`, `src/components/account/AccountModal.tsx`, `src/components/transaction/ImportCsvModal.tsx`, `unit/auth-password.test.tsx`, `unit/authenticated-ledger.test.tsx`, `unit/wallets-page.test.tsx`, `unit/csv-import-categories.test.tsx`, `docs/audit/refactor-log.md`, `docs/audit/baseline-metrics.md` | done | | Red gate verified (4 unit failed); npm run lint clean; related unit 4/4 files 152 passed; unit 62/62 files 1436 passed (48.79s); e2e 8 specs on chr 51 passed, 153 passed on 3 browsers (3.4m); prod build clean (193,335 B entry); CRLF kept; 0 em dashes |
+
 ## Backlog
 
 Not scheduled. Each row says where it came from.
@@ -129,10 +137,11 @@ Not scheduled. Each row says where it came from.
 | Specs check line endings with `git ls-files --eol <file>` (the `w/crlf` column) or a Node count of `\r\n`, never `grep -c $'\r' <file>`: in the agents' Git Bash it printed 0 on CRLF files (`AGENTS.md`, `docs/audit/task-ledger.md`), while the same command inside `$(...)` counted correctly | Phase 128, T754's review (rule candidate); reproduced in T755's spec | done in Phase 130 (T757) |
 | addTransaction omits unknown-outcome cloud refresh on transfer_funds failures | Audit 2026-10-16 (T759), finding SL-02, high; `src/context/FinanceContext.tsx:1848-1853` | done in Phase 132 (T760) |
 | transfer_funds breaks replay on soft-deleted transactions and throws unique_violation | Audit 2026-10-16 (T759), finding SL-01, medium; `supabase/migrations/20261006_phase93_transfer_funds_from_session.sql:80-86` | todo |
-| Form inputs in AuthModal lack programmatic label association via htmlFor | Audit 2026-10-16 (T759), finding UI-02, medium; `src/components/AuthModal.tsx:182` | todo |
-| Form inputs in AddWalletForm lack programmatic label association via htmlFor | Audit 2026-10-16 (T759), finding UI-03, medium; `src/components/wallet/AddWalletForm.tsx:95` | todo |
-| Profile and password fields in AccountModal lack programmatic label association via htmlFor | Audit 2026-10-16 (T759), finding UI-04, medium; `src/components/account/AccountModal.tsx:611` | todo |
-| Category selector in CSV import preview table lacks accessible name | Audit 2026-10-16 (T759), finding UI-05, medium; `src/components/transaction/ImportCsvModal.tsx:547-552` | todo |
+| Form inputs in AuthModal lack programmatic label association via htmlFor | Audit 2026-10-16 (T759), finding UI-02, medium; `src/components/AuthModal.tsx:182` | done in Phase 136 (T768) |
+| Form inputs in AddWalletForm lack programmatic label association via htmlFor | Audit 2026-10-16 (T759), finding UI-03, medium; `src/components/wallet/AddWalletForm.tsx:95` | done in Phase 136 (T768) |
+| Profile and password fields in AccountModal lack programmatic label association via htmlFor | Audit 2026-10-16 (T759), finding UI-04, medium; `src/components/account/AccountModal.tsx:611` | done in Phase 136 (T768) |
+| Category selector in CSV import preview table lacks accessible name | Audit 2026-10-16 (T759), finding UI-05, medium; `src/components/transaction/ImportCsvModal.tsx:547-552` | done in Phase 136 (T768) |
+| AddWalletForm's `Currency` and `Color` `<label>`s name no labelable control (a read-only `div` and a swatch button group); make them a `span` or a `role="group"` with `aria-labelledby` | Phase 136, T768's spec | todo |
 | setTransactionDeleted has no cloudRevisionAtStart check, so a failed delete or restore restores its pre-call snapshot even when a cloud reload landed mid-flight, unlike addTransaction and updateTransaction | Phase 132, T760's spec (owner decision); `src/context/FinanceContext.tsx:2190-2197`, compare `:1959` and `:2302` | todo |
 
 ## Template for the next phase

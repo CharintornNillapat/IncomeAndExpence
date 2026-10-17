@@ -2316,6 +2316,13 @@ describe('the Account & Security modal (ADR 0024)', () => {
       expect(state().isAuthenticated).toBe(false);
     });
   });
+
+  it('names the profile and password fields from their labels', async () => {
+    open();
+    expect(await screen.findByLabelText('Display Name')).toBe(document.getElementById('profile-name-input'));
+    expect(screen.getByLabelText('New Password')).toBe(document.getElementById('security-new-password'));
+    expect(screen.getByLabelText('Confirm Password')).toBe(document.getElementById('security-confirm-password'));
+  });
 });
 
 describe('exporting all of the account\'s data (Phase 97, ADR 0073)', () => {

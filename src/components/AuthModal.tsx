@@ -179,7 +179,7 @@ export const AuthModal: React.FC<AuthModalProps> = React.memo(({ isOpen, onClose
       <form onSubmit={handleAuth} className="space-y-4">
         {mode === 'signup' && (
           <div className="space-y-1.5">
-            <label className={LABEL_TEXT_CLASS}>Full Name</label>
+            <label htmlFor="auth-name-input" className={LABEL_TEXT_CLASS}>Full Name</label>
             <div className="relative">
               <UserIcon className="w-4 h-4 text-fg-muted absolute left-3 top-3" />
               <input
@@ -196,7 +196,7 @@ export const AuthModal: React.FC<AuthModalProps> = React.memo(({ isOpen, onClose
         )}
 
         <div className="space-y-1.5">
-          <label className={LABEL_TEXT_CLASS}>Email Address</label>
+          <label htmlFor="auth-email-input" className={LABEL_TEXT_CLASS}>Email Address</label>
           <div className="relative">
             <Mail className="w-4 h-4 text-fg-muted absolute left-3 top-3" />
             <input
@@ -214,7 +214,7 @@ export const AuthModal: React.FC<AuthModalProps> = React.memo(({ isOpen, onClose
         {mode !== 'forgot' && (
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
-              <label className={LABEL_TEXT_CLASS}>Password</label>
+              <label htmlFor="auth-password-input" className={LABEL_TEXT_CLASS}>Password</label>
               {mode === 'signin' && (
                 <button
                   type="button"

@@ -51,6 +51,14 @@ describe("the preview's category picker", () => {
     expect(options(4)).toEqual(['', 'cat-adjust']);
   });
 
+  it('names the file picker and each row picker', async () => {
+    await openWith([',EXPENSE,45,zzzlunch']);
+    expect(screen.getByLabelText('Select CSV File')).toBe(document.getElementById('csv-file-input'));
+    expect(screen.getByRole('combobox', { name: 'Category for row 2: zzzlunch' })).toBe(
+      screen.getByTestId('csv-row-category-2'),
+    );
+  });
+
   it('treats a named category of another type as no category, so Jev may fill it', async () => {
     fetchMock.mockResolvedValue({
       status: 200,
