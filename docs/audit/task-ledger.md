@@ -81,6 +81,14 @@ Branch `phase-132-transfer-unknown-outcome`, cut from `main` at `67e6bef`. One c
 |---|---|---|---|---|---|
 | T760 | A transfer with an unknown outcome re-reads the cloud (SL-02) | `src/context/FinanceContext.tsx`, `unit/authenticated-ledger.test.tsx`, `docs/audit/refactor-log.md`, `docs/audit/baseline-metrics.md` | done | 1530008 | Red gate verified; npm run lint clean; unit 62/62 files 1378 passed; e2e 11/11 chr 33/33 all passed; build clean (55,810 B gzip); CRLF kept; 0 em dashes |
 
+## Phase 133 - Dashboard redesign docs: the owner spec, ADR 0102, DESIGN.md and routing (docs only)
+
+Branch `phase-133-dashboard-redesign-docs`, cut from `main` at `3aeca33`. No migration.
+
+| # | Task | Files | Status | Commit | Gate result |
+|---|---|---|---|---|---|
+| T761 | Dashboard redesign DOC-1: owner spec, ADR 0102, DESIGN.md, routing | `docs/design/dashboard-2026-10/spec.md`, `docs/design/dashboard-2026-10/dashboard-2026-10.dc.html`, `docs/audit/decisions/0102-dashboard-redesign-2026-10.md`, `DESIGN.md`, `AGENTS.md`, `docs/audit/refactor-log.md` | done | | Docs-only gates passed: mock unchanged, spec 4 lines, scope clean, DESIGN.md/AGENTS.md valid, names resolve, CRLF/LF verified, 0 em dashes |
+
 ## Backlog
 
 Not scheduled. Each row says where it came from.

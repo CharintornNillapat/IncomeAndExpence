@@ -158,21 +158,52 @@ Exceptions that keep their own markup, each for a reason:
 - `main` pads 16px on phones and 32px top, 40px sides, 48px bottom from `md`. It keeps `max-w-7xl` until every page is redesigned (see Deviations).
 - Sections are 24px apart. Card rows sit on a 12-column grid with 16px gaps.
 
-### Dashboard (spec 6.1, ADR 0030)
-One period for the whole page, chosen in the `PageHeader`. Every figure comes from `src/selectors/`, computed once in the view.
+### Dashboard (the 2026-10 redesign, ADRs 0030 and 0102)
+**Status:** the target of the 2026-10 redesign, built in Phases 134 (selectors) and 135 (UI). Until Phase 135 ships, the shipped page still follows ADR 0030's layout. The authority is `docs/design/dashboard-2026-10/spec.md`. Its mock shows layout only: every colour, size and number in it is a mock value.
 
-| Block | Width (`xl` / `md`) | Rules |
-|---|---|---|
-| PageHeader | full | A greeting by the local hour, the long date, and the period control. |
-| Net worth | 5/12 / 5/12 | `netWorth` (L3) with "THB", the only place the code shows. Insets: "In N wallets" and "Debt remaining" (signed, red). |
-| Cash flow | 7/12 / 7/12 | Income, Spending and Left over on a neutral edge. Left over is `fg`, red only when negative. One `ProgressBar` of the share of income spent. |
-| Debt warning | full | `WarningBanner`, only when L5 fires. Names the debt when exactly one outruns the surplus. |
-| Wallets | full | A plain heading with its links, then one card: `AllocationBar` and one button row per wallet ("type · share%"). |
-| Spending by category | 7/12 / full | `spendingByCategory` (L1), total at the right, a caption naming what is excluded. |
-| Debt payoff | 5/12 / full | Overall progress, then each debt with its L4 figure, in `pending` when it alone passes the surplus; "Overdue" in red. |
-| Recent activity | 8/12 / full | `TransactionRow`s under `DayGroupHeader`s (L11), with a cancelling adjustment pair folded into one expandable row (L8). |
-| Mood & spending | 4/12 / full | Diary days in the period, a five-bar meter (no emoji) and that day's signed spending. |
-| Spending insights | full | ADR 0020's card, titled with its own months. |
+One period for the whole page, chosen in the `PageHeader`. Every figure comes from `src/selectors/`, computed once in `DashboardView`; cards only lay out. The app header, nav, sync badge and Quick Add are not part of this page.
+
+**Colour (no new palette, both themes, no raw hex):**
+- Page `canvas`. Cards `surface-1`, `rounded-card`, with the neutral `line` edge. Tracks and chips `surface-2` or `surface-3`. Dividers `line`.
+- Text `fg`, `fg-secondary`, `fg-muted`.
+- The Left over card is the page's one brand emphasis: a `brand-tint` ground, with `brand`, `brand-soft` and `brand-line` for its accents. Its figure follows section 1: `fg`, and `expense` when negative.
+- Income `income`. Spending and debt still owed `expense`. A transfer row `transfer`, shown as not counted.
+- The net worth figure is `fg`; it takes no colour of its own.
+- Category and wallet hues are the record's own colour, tinted as the existing chips tint them. Debt progress is a `ProgressBar` (payoff is `income`).
+
+**Type:** IBM Plex Sans Thai with `tabular-nums`, sizes from section 2's scale. The Left over figure takes the Hero number size. No `text-[Npx]`.
+
+**Rules:**
+- Every control has a 44px hit box: the period control is a `SegmentedControl`, Log today a `ui/Button`.
+- Every amount goes through `formatCurrencyAmount` or `ui/Money`: two decimals, U+2212 before a negative. Never whole baht.
+- Colour is never the only signal: income keeps its `+`, spending its minus, and a transfer says it is not counted, as `txTypeMetaFor` does.
+- No sync state on the page; `NavbarSyncBadge` in the header shows it.
+- One h1, in `PageHeader` (the greeting and the long date). Card titles are h2.
+- Ids: keep every Dashboard id and test id in `docs/audit/test-selector-contract.md`. New ids start `dashboard-`, never another page's prefix (`tx-row-`, `debt-card-`, `open-repay-modal-`, `settle-debt-`, `wallet-entity-`).
+- Charts: the sparkline and the donut are inline SVG with `role="img"` and an `aria-label` that states the figures. The category list beside the donut is the text equivalent. No chart library, no animation; nothing moves under reduced motion.
+- Loading: each card shows one static outline, with no pulse. Empty: a new account shows `฿0.00` figures and short empty lines, never `NaN` or `Infinity`.
+- Layout: fluid inside the `max-w-7xl` main. Rows wrap to one column at phone width, with one render path per breakpoint and no hidden duplicates.
+- Links and actions use the existing tab routing:
+  - Details and View all open Transactions.
+  - All debts and Make a repayment open Debt payoff.
+  - Manage opens Wallets.
+  - Log today opens the Daily diary.
+  - Transfer opens the shell `TransferFundsModal` through `onOpenTransfer()`, with no click event.
+  - Add wallet opens `AddWalletModal`.
+
+| Block, top to bottom | Rules |
+|---|---|
+| PageHeader | A greeting by the local hour, the long date, and the period `SegmentedControl`: Today, This week, Past 30 days, All time (DAY, WEEK, MONTH, ALL). |
+| Row 1: Left over | The wide card. The period's left over, the share of income kept, "after debt due" (MONTH only), the daily spending sparkline (hidden for DAY and ALL), and the spent and kept bar. |
+| Row 1: Income, Spending | Two small cards stacked beside it, with the totals from `cashFlow`. |
+| Row 2: Spending by category | A donut and the top five (name, percent, amount) from `spendingByCategory` (L1). A subtitle says it excludes debt payments, transfers and adjustments. Under it, the month-to-date line, shown in every period: spending and left over for day 1 to N of this month against day 1 to N of last month (N clamped to last month's length). |
+| Row 2: Debt payoff | The overall percent paid (`payoffPercent` on the totals), paid of total, and needed this month from `debtPlan` and `requiredMonthly`, with the existing surplus warning when it applies. Then each active debt: name, amount left, its `ProgressBar`, its payment-date end and its monthly. A Make a repayment button. |
+| Row 3: Recent activity | The latest rows grouped by day, each day with its net, by the Transactions page's rule (`groupByDay`, L11; transfers shown but not counted), through the existing `TransactionRow` and `DayGroupHeader` and their behaviour. |
+| Row 3: Net worth and wallets | `netWorth` (L3) with its "wallets minus debt" caption, the share bar and list from `walletShares` (active wallets only), then Transfer, Add wallet and Manage. |
+| Row 3: Mood and spending | The week strip from `moodSpendingDays`, an empty line when there are no diary days, and Log today. |
+| Spending insights | ADR 0020's card, unchanged, full width and last. |
+
+The left over, sparkline and month-to-date figures come from selectors Phase 134 adds (the redesign spec's section 5).
 
 ### Transactions (spec 6.2, ADRs 0031 and 0033)
 - **Header:** `PageHeader` "Transactions" with "Click any row to edit it", an "Import / export" menu, and the one primary button, "Add transaction".
