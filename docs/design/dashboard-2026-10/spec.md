@@ -66,7 +66,7 @@ Order top to bottom. Each names its data. NEW means a selector that does not exi
 All pure, in `src/selectors/`, taking `today` as an ISO string, rounding with `roundToCents`, using `isIncome` / `isSpending` (debt payments, transfers and adjustments excluded). Each gets unit tests, including `TZ=UTC` and `TZ=Asia/Bangkok`.
 
 1. **Left over:** for a `TimeRange`, `leftOver = income - spending`; `keptPercent = leftOver / income * 100`, `null` when income is 0; `spentShare` and `keptShare` for the bar (clamped 0 to 100; a negative left over shows a full spent bar); `afterDebtDue = leftOver - neededThisMonth` (from `debtPlan`), defined for MONTH only.
-2. **Daily spending series:** one point per local day in the range, from `daySpending`, oldest first, zero-filled: WEEK 7 points, MONTH 31. `null` for DAY and ALL.
+2. **Daily spending series:** one point per local day in the range, from `daySpending`, oldest first, zero-filled: WEEK 8 points, MONTH 31. Every series covers exactly the days of `filterByRange` for its period. `null` for DAY and ALL.
 3. **Month-to-date comparison:** spending and left over for day 1 to N of this month against day 1 to N of last month (N = today's day, clamped to last month's length), and the percent change, `null` when last month's figure is 0.
 
 ## 6. Phases and tasks

@@ -1,5 +1,7 @@
 import { Category, Transaction } from '../types';
 import { roundToCents } from '../utils/money';
+import { monthKeyOf, shiftIsoDate } from '../utils/date';
+import { filterByRange, inRange, TimeRange } from './timeRange';
 
 /**
  * Spec L1 and L11 (ADR 0028): the one definition of spending and income.
@@ -75,6 +77,88 @@ export function cashFlow(txs: Transaction[], categories?: CategoryLookup): CashF
     spending,
     leftOver: roundToCents(income - spending),
     spentPercent: income > 0 ? (spending / income) * 100 : null,
+  };
+}
+
+export interface LeftOver extends CashFlow {
+  /** Left over as a share of income, or `null` with no income. Not clamped: negative when spending passed income. */
+  keptPercent: number | null;
+  /** The bar's spent part, 0 to 100: 100 when spending reached or passed income, 0 with neither income nor spending. */
+  spentShare: number;
+  /** The bar's kept part, `100 - spentShare` when there is income, else 0. */
+  keptShare: number;
+  /** Left over minus what the debts need this month; MONTH only, else `null`. */
+  afterDebtDue: number | null;
+}
+
+/**
+ * The Dashboard's Left over card (owner spec 5.1, ADR 0102) for one period.
+ * `neededThisMonth` is `debtPlan(...).totalRequired`, passed in so the plan is
+ * computed once in `DashboardView` (D5).
+ */
+export function leftOverFor(
+  txs: Transaction[],
+  range: TimeRange,
+  today: string,
+  neededThisMonth: number,
+  categories?: CategoryLookup
+): LeftOver {
+  const flow = cashFlow(filterByRange(txs, range, today), categories);
+  const spentShare = flow.leftOver <= 0 && flow.spending > 0 ? 100 : flow.income > 0 ? (flow.spending / flow.income) * 100 : 0;
+  return {
+    ...flow,
+    keptPercent: flow.income > 0 ? (flow.leftOver / flow.income) * 100 : null,
+    spentShare,
+    keptShare: flow.income > 0 ? 100 - spentShare : 0,
+    afterDebtDue: range === 'MONTH' ? roundToCents(flow.leftOver - neededThisMonth) : null,
+  };
+}
+
+export interface MonthToDateSide {
+  /** First and last local day counted, `YYYY-MM-DD`, both inclusive. */
+  start: string;
+  end: string;
+  spending: number;
+  leftOver: number;
+}
+
+export interface MonthToDate {
+  /** N: today's day of the month, clamped to last month's length. Both months count days 1 to N. */
+  days: number;
+  thisMonth: MonthToDateSide;
+  lastMonth: MonthToDateSide;
+  /** Spending's change on last month, in percent; `null` when last month spent nothing. */
+  spendingChange: number | null;
+  /** Left over's change, in percent of the size of last month's, so up means better even from a negative base; `null` when last month's was 0. */
+  leftOverChange: number | null;
+}
+
+function percentChange(now: number, before: number): number | null {
+  return before === 0 ? null : ((now - before) / Math.abs(before)) * 100;
+}
+
+/**
+ * The Dashboard's month comparison line (owner spec 5.3, ADR 0102 D4): day 1
+ * to N of this month against day 1 to N of last month, N being today's day
+ * clamped to last month's length. It ignores the page's period.
+ */
+export function monthToDate(txs: Transaction[], today: string, categories?: CategoryLookup): MonthToDate {
+  const lastMonthEnd = shiftIsoDate(`${monthKeyOf(today)}-01`, -1);
+  const days = Math.min(Number(today.slice(8, 10)), Number(lastMonthEnd.slice(8, 10)));
+  const side = (monthKey: string): MonthToDateSide => {
+    const start = `${monthKey}-01`;
+    const end = `${monthKey}-${String(days).padStart(2, '0')}`;
+    const flow = cashFlow(txs.filter((tx) => inRange(tx.transactionDate, { start, end })), categories);
+    return { start, end, spending: flow.spending, leftOver: flow.leftOver };
+  };
+  const thisMonth = side(monthKeyOf(today));
+  const lastMonth = side(monthKeyOf(lastMonthEnd));
+  return {
+    days,
+    thisMonth,
+    lastMonth,
+    spendingChange: percentChange(thisMonth.spending, lastMonth.spending),
+    leftOverChange: percentChange(thisMonth.leftOver, lastMonth.leftOver),
   };
 }
 
