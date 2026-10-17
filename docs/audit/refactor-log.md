@@ -19,31 +19,14 @@ ADR `NNNN`. <the brief, one or two sentences>
 
 ---
 
-## Phase 136 - Form labels: T768 (2026-10-17, code `<sha>`, merged `<sha>`)
+## Phase 136 - Form labels: T768 (2026-10-17, code `df57e06`, merged `753e4f4`)
 
-No ADR (fixes markup to standard HTML labelling and accessibility). Connects form `<label>`s to their form controls via `htmlFor` in `AuthModal`, `AddWalletForm`, and `AccountModal`, and provides an accessible name for the CSV import preview table's row category selector via `aria-label` (resolving audit 2026-10-16 findings UI-02, UI-03, UI-04, and UI-05).
+No ADR (fixes markup to standard HTML labelling and accessibility). Connects form `<label>`s to their form controls via `htmlFor` in `AuthModal`, `AddWalletForm`, `AccountModal` and the CSV import file picker, and provides an accessible name for the CSV import preview table's row category selector via `aria-label` (resolving audit 2026-10-16 findings UI-02, UI-03, UI-04, and UI-05).
 
-**Changed:**
-- `src/components/AuthModal.tsx` (`htmlFor` on Full Name, Email Address, Password labels);
-- `src/components/wallet/AddWalletForm.tsx` (`htmlFor` on Wallet Name, Type, Starting Balance labels);
-- `src/components/account/AccountModal.tsx` (`htmlFor` on Display Name, New Password, Confirm Password labels);
-- `src/components/transaction/ImportCsvModal.tsx` (`htmlFor` on Select CSV File label and `aria-label` on row category select);
-- `unit/auth-password.test.tsx` (label association test for auth modal);
-- `unit/authenticated-ledger.test.tsx` (label association test for profile and password fields);
-- `unit/wallets-page.test.tsx` (label association test for Add Wallet form);
-- `unit/csv-import-categories.test.tsx` (label association and accessible name test for CSV file picker and row picker);
-- `docs/audit/task-ledger.md` (Phase 136 section and T768 row added, UI-02 to UI-05 marked done, new Backlog row added);
-- `docs/audit/baseline-metrics.md` (Phase 136 section added);
-- this file (`docs/audit/refactor-log.md`).
-**Verified:** Red gate verified (4 unit tests failed as expected on unfixed code); `npm run lint` clean (132 files, Node globals and safe ids verified, type-check passed); targeted unit tests passed (4/4 files, 152 passed); full unit test suite passed (62 files, 1436 passed in 48.79s, `workflow/stages/02_build/output/logs/T768-unit.log`); targeted Playwright on Chromium passed (8 specs, 51 passed in 43.5s); targeted Playwright on all 3 browsers passed (8 specs, 153 passed in 3.4m, `workflow/stages/02_build/output/logs/T768-e2e.log`); clean production build succeeded (`index-BcaenrL9.js`, 193,335 B / 56,360 B gzip; `index-z3bqoA9P.css`, 52,884 B / 10,209 B gzip; 39 JS files); git diff and status clean (target and bookkeeping files only); line endings verified `w/crlf` across all touched files; 0 em dashes added in git diff; `grep -rn "<label" src --include=*.tsx | grep -v htmlFor` verified (only Currency, Color, EditTransactionPanel, and TransactionForm:1091).
+**Changed:** `src/components/AuthModal.tsx` (`htmlFor` on Full Name, Email Address, Password labels); `src/components/wallet/AddWalletForm.tsx` (`htmlFor` on Wallet Name, Type, Starting Balance labels); `src/components/account/AccountModal.tsx` (`htmlFor` on Display Name, New Password, Confirm Password labels); `src/components/transaction/ImportCsvModal.tsx` (`htmlFor` on Select CSV File label and `aria-label` on row category select); `unit/auth-password.test.tsx`, `unit/authenticated-ledger.test.tsx`, `unit/wallets-page.test.tsx`, `unit/csv-import-categories.test.tsx` (one label association test each); `docs/audit/task-ledger.md` (Phase 136 section and T768 row added, UI-02 to UI-05 marked done, new Backlog row added); `docs/audit/baseline-metrics.md` (Phase 136 section added); this file.
+**Verified:** Red gate verified (4 unit tests failed as expected on unfixed code); `npm run lint` clean (132 files, Node globals and safe ids verified, type-check passed); targeted unit tests passed (4/4 files, 152 passed); full unit test suite passed (62 files, 1436 passed in 48.79s, `workflow/stages/02_build/output/logs/T768-unit.log`); targeted Playwright on Chromium passed (8 specs, 51 passed in 43.5s); targeted Playwright on all 3 browsers passed (8 specs, 153 passed in 3.4m, `workflow/stages/02_build/output/logs/T768-e2e.log`); clean production build succeeded (`index-BcaenrL9.js`, 193,335 B / 56,360 B gzip; `index-z3bqoA9P.css`, 52,884 B / 10,209 B gzip; 39 JS files); git diff and status clean (target and bookkeeping files only); line endings verified `w/crlf` across all touched files; 0 em dashes added in git diff; `grep -rn "<label" src --include=*.tsx | grep -v htmlFor` verified (only Currency, Color, EditTransactionPanel, and TransactionForm:1091). T768 review: approved in round 1; the reviewer's own runs matched (red gate 4 failed, unit 1436 passed, 153 Playwright runs passed, same bundles). Release: PR #88 merged T768 into `main` as `753e4f4`, a merge commit; the `main` CI run on the merge (Playwright E2E Tests, run `39033190536`) passed in 6 min: type-check and unit tests, and all six E2E shards on Chromium, Firefox and WebKit. Vercel deployment `dpl_Wn4btLycbfABHbS7UpFqsj4EGjES` (GitHub deployment `7139652469`) is READY in `icn1`, built in 20 s, with the production aliases assigned, serving `index-BcaenrL9.js` and `index-z3bqoA9P.css`, the bundles `baseline-metrics.md` records. No migration, no request to `/api/*`.
 **Surprises:** none.
-**Deliberately not done:**
-- `AddWalletForm.tsx`'s `Currency` and `Color` labels (name no labelable control; added to Backlog);
-- `EditTransactionPanel.tsx` and `TransactionForm.tsx` labels (already named);
-- Any id, `data-testid`, label text, class or layout change; `docs/audit/test-selector-contract.md`;
-- Wrapping inputs inside labels instead of `htmlFor`, or adding `aria-label` where a visible label exists;
-- The test counts in `AGENTS.md:11` and `README.md:157` (left for deploy record or later docs task);
-- Any other audit 2026-10-16 finding (SL-01, UI-06).
+**Deliberately not done:** `AddWalletForm.tsx`'s `Currency` and `Color` labels (name no labelable control; added to Backlog); `EditTransactionPanel.tsx` and `TransactionForm.tsx` labels (already named); any id, `data-testid`, label text, class or layout change, and `docs/audit/test-selector-contract.md`; wrapping inputs inside labels instead of `htmlFor`, or adding `aria-label` where a visible label exists; the test counts in `AGENTS.md:11` and `README.md:157` (left for a later docs task); any other audit 2026-10-16 finding (SL-01, UI-06).
 
 ---
 

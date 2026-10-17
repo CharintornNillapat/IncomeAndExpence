@@ -111,11 +111,11 @@ Branch `phase-135-dashboard-ui`, cut from `main` at `ce9983f`. Three commits, T7
 
 ## Phase 136 - Form labels: htmlFor on every field and a name for the CSV row category (accessibility, no ADR)
 
-Branch `phase-136-form-labels`, cut from `main` at `779db69`.
+Branch `phase-136-form-labels`, cut from `main` at `779db69`. One commit, T768's `df57e06`, merged into `main` as `753e4f4` (PR #88). No migration.
 
 | # | Task | Files | Status | Commit | Gate result |
 |---|---|---|---|---|---|
-| T768 | Link every form label to its control via htmlFor, and name the CSV row category select (UI-02, UI-03, UI-04, UI-05) | `src/components/AuthModal.tsx`, `src/components/wallet/AddWalletForm.tsx`, `src/components/account/AccountModal.tsx`, `src/components/transaction/ImportCsvModal.tsx`, `unit/auth-password.test.tsx`, `unit/authenticated-ledger.test.tsx`, `unit/wallets-page.test.tsx`, `unit/csv-import-categories.test.tsx`, `docs/audit/refactor-log.md`, `docs/audit/baseline-metrics.md` | done | | Red gate verified (4 unit failed); npm run lint clean; related unit 4/4 files 152 passed; unit 62/62 files 1436 passed (48.79s); e2e 8 specs on chr 51 passed, 153 passed on 3 browsers (3.4m); prod build clean (193,335 B entry); CRLF kept; 0 em dashes |
+| T768 | Link every form label to its control via htmlFor, and name the CSV row category select (UI-02, UI-03, UI-04, UI-05) | `src/components/AuthModal.tsx`, `src/components/wallet/AddWalletForm.tsx`, `src/components/account/AccountModal.tsx`, `src/components/transaction/ImportCsvModal.tsx`, `unit/auth-password.test.tsx`, `unit/authenticated-ledger.test.tsx`, `unit/wallets-page.test.tsx`, `unit/csv-import-categories.test.tsx`, `docs/audit/refactor-log.md`, `docs/audit/baseline-metrics.md` | done | df57e06 | Red gate verified (4 unit failed); npm run lint clean; related unit 4/4 files 152 passed; unit 62/62 files 1436 passed (48.79s); e2e 8 specs on chr 51 passed, 153 passed on 3 browsers (3.4m); prod build clean (193,335 B entry); CRLF kept; 0 em dashes |
 
 ## Backlog
 
