@@ -83,11 +83,11 @@ Branch `phase-132-transfer-unknown-outcome`, cut from `main` at `67e6bef`. One c
 
 ## Phase 133 - Dashboard redesign docs: the owner spec, ADR 0102, DESIGN.md and routing (docs only)
 
-Branch `phase-133-dashboard-redesign-docs`, cut from `main` at `3aeca33`. No migration.
+Branch `phase-133-dashboard-redesign-docs`, cut from `main` at `3aeca33`. One commit, T761's `41a1bfb`, merged into `main` as `5fe4ffe` (PR #85). No migration.
 
 | # | Task | Files | Status | Commit | Gate result |
 |---|---|---|---|---|---|
-| T761 | Dashboard redesign DOC-1: owner spec, ADR 0102, DESIGN.md, routing | `docs/design/dashboard-2026-10/spec.md`, `docs/design/dashboard-2026-10/dashboard-2026-10.dc.html`, `docs/audit/decisions/0102-dashboard-redesign-2026-10.md`, `DESIGN.md`, `AGENTS.md`, `docs/audit/refactor-log.md` | done | | Docs-only gates passed: mock unchanged, spec 4 lines, scope clean, DESIGN.md/AGENTS.md valid, names resolve, CRLF/LF verified, 0 em dashes |
+| T761 | Dashboard redesign DOC-1: owner spec, ADR 0102, DESIGN.md, routing | `docs/design/dashboard-2026-10/spec.md`, `docs/design/dashboard-2026-10/dashboard-2026-10.dc.html`, `docs/audit/decisions/0102-dashboard-redesign-2026-10.md`, `DESIGN.md`, `AGENTS.md`, `docs/audit/refactor-log.md` | done | 41a1bfb | Docs-only gates passed: mock unchanged, spec 4 lines, scope clean, DESIGN.md/AGENTS.md valid, names resolve, CRLF/LF verified, 0 em dashes |
 
 ## Backlog
 
