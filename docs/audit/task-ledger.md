@@ -124,6 +124,7 @@ Branch `phase-137-small-fixes`, cut from `main` at `1d286e5`. No migration.
 | # | Task | Files | Status | Commit | Gate result |
 |---|---|---|---|---|---|
 | T769 | Close UI-01, UI-06, UI-07, UI-08 and size the Left over figure with a `--text-hero` token (44px) | `src/components/InlineMathInput.tsx`, `src/components/ui/motion.tsx`, `src/components/diary/RecentEntries.tsx`, `src/components/dashboard/LeftOverCard.tsx`, `src/index.css`, `unit/dashboard.test.tsx`, `unit/inline-math-seed.test.tsx`, `DESIGN.md`, `docs/audit/test-selector-contract.md`, `docs/audit/refactor-log.md`, `docs/audit/baseline-metrics.md` | done | | Red gate verified (2 unit failed); npm run lint clean; related unit 4/4 files 106 passed; unit 62/62 files 1438 passed (50.99s); e2e 5 specs on chr 32 passed, 96 passed on 3 browsers (2.2m); prod build clean (193,335 B entry); CRLF kept; 0 em dashes |
+| T770 | Current test counts in AGENTS.md and README.md (1438), and T767 note 1 (dashboard test 9) | `AGENTS.md`, `README.md`, `unit/dashboard.test.tsx`, `docs/audit/refactor-log.md` | done | | Red gate verified (test 9 length 0 failed); npm run lint clean; unit/dashboard.test.tsx 49 passed; unit 62/62 files 1438 passed (52.65s); docs count check passed (1438 unit, 537 e2e, 0 stale 1432); CRLF kept; 0 em dashes |
 
 ## Backlog
 

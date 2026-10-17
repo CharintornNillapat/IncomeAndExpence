@@ -477,7 +477,7 @@ describe('Recent activity: L8 fold, L11 nets, and no placeholder labels', () => 
     tx({ type: 'INCOME', amount: 1000, transactionDate: '2026-09-27', description: 'กิจนิมนต์' }),
   ];
 
-  function renderCard() {
+  function renderCard(onOpenTransaction?: (txId: string) => void) {
     const nets = new Map(groupByDay(ROWS, CATEGORIES).map((day) => [day.date, day.net]));
     return render(
       <RecentActivityCard
@@ -487,6 +487,7 @@ describe('Recent activity: L8 fold, L11 nets, and no placeholder labels', () => 
         categories={CATEGORIES}
         today={TODAY}
         onViewAll={() => {}}
+        onOpenTransaction={onOpenTransaction}
       />
     );
   }
@@ -523,10 +524,12 @@ describe('Recent activity: L8 fold, L11 nets, and no placeholder labels', () => 
   });
 
   it('sits in a named region containing the View all button and activity items', () => {
-    const { container } = renderCard();
+    const { container } = renderCard(() => {});
     const region = screen.getByRole('region', { name: 'Recent activity' });
     expect(within(region).getByRole('button', { name: 'View all' })).toBeTruthy();
-    for (const el of container.querySelectorAll('[id^="dashboard-tx-"]')) {
+    const rows = container.querySelectorAll('[id^="dashboard-tx-"]');
+    expect(rows).toHaveLength(4);
+    for (const el of rows) {
       expect(region.contains(el)).toBe(true);
     }
   });
