@@ -8,7 +8,6 @@ import { SegmentedControl } from '../components/ui/SegmentedControl';
 import { NetWorthCard } from '../components/dashboard/NetWorthCard';
 import { CashFlowCard } from '../components/dashboard/CashFlowCard';
 import { LeftOverCard } from '../components/dashboard/LeftOverCard';
-import { DebtWarningBanner } from '../components/dashboard/DebtWarningBanner';
 import { WalletsSection } from '../components/dashboard/WalletsSection';
 import { CategorySpendingCard } from '../components/dashboard/CategorySpendingCard';
 import { DebtPayoffCard } from '../components/dashboard/DebtPayoffCard';
@@ -18,7 +17,7 @@ import { SpendingInsightsCard } from '../components/dashboard/SpendingInsightsCa
 import { formatLongDate, greetingFor, todayIsoDate } from '../utils/date';
 import { buildLookupMap } from '../utils/mapUtils';
 import { filterByRange, formatRangeLabel, TimeRange } from '../selectors/timeRange';
-import { groupByDay, leftOverFor, spendingByCategory } from '../selectors/ledger';
+import { groupByDay, leftOverFor, monthToDate, spendingByCategory } from '../selectors/ledger';
 import { debtRemaining, netWorth, walletShares, walletTotal } from '../selectors/wallets';
 import { debtPlan, monthlySurplus } from '../selectors/debts';
 import { foldAdjustmentPairs } from '../selectors/adjustments';
@@ -97,6 +96,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     () => leftOverFor(transactions, timeFilter, today, plan.totalRequired, categoryMap),
     [transactions, timeFilter, today, plan.totalRequired, categoryMap]
   );
+  // Always month-to-date, whatever the period (owner spec 4.3, D4).
+  const mtd = useMemo(() => monthToDate(transactions, today, categoryMap), [transactions, today, categoryMap]);
   const series = useMemo(
     () => dailySpendingSeries(transactions, timeFilter, today, categoryMap),
     [transactions, timeFilter, today, categoryMap]
@@ -163,8 +164,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
       </div>
 
-      <DebtWarningBanner plan={plan} onReviewPlan={goTo('debts')} />
-
       {/* Net worth joins the wallets card in UI-3 (owner spec 4.4). */}
       <NetWorthCard
         netWorth={wealth.netWorth}
@@ -182,11 +181,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         onOpenWallet={handleOpenWallet}
       />
 
-      <div className="grid grid-cols-1 xl:grid-cols-12 gap-4">
-        <div className="xl:col-span-7">
-          <CategorySpendingCard rows={categoryRows} total={leftOver.spending} />
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+        <div className="lg:col-span-7">
+          <CategorySpendingCard rows={categoryRows} total={leftOver.spending} monthToDate={mtd} onOpenDetails={goTo('transactions')} />
         </div>
-        <div className="xl:col-span-5">
+        <div className="lg:col-span-5">
           <DebtPayoffCard
             plan={plan}
             paid={debtSummary.paidTarget}

@@ -1,46 +1,47 @@
-import { test, expect, type Locator } from '@playwright/test';
-import { SAMPLE_STUDENT_LOAN, seedLedger } from './helpers';
+import { test, expect, type Locator, type Page } from '@playwright/test';
+import { SAMPLE_STUDENT_LOAN, gotoTab, seedLedger } from './helpers';
+
+async function expectCleanCard(region: Locator) {
+  const text = await region.innerText();
+  const labels = await region.locator('[aria-label]').evaluateAll((els) => els.map((e) => e.getAttribute('aria-label') || ''));
+  const combined = `${text} ${labels.join(' ')}`;
+  expect(combined).not.toMatch(/NaN|Infinity/);
+  expect(combined).not.toMatch(/(^|[^0-9])%/);
+}
+
+async function seedTestTransactions(page: Page, debts = [SAMPLE_STUDENT_LOAN]) {
+  await seedLedger(page, { debts });
+  await page.addInitScript(() => {
+    const userId = 'usr-guest-01';
+    const walletId = 'wal-main-checking';
+    const now = new Date().toISOString();
+    const base = {
+      userId,
+      walletId,
+      description: '',
+      isDeleted: false,
+      createdBy: userId,
+      createdAt: now,
+      updatedAt: now,
+    };
+    localStorage.setItem(
+      'pf_transactions',
+      JSON.stringify([
+        { ...base, id: 'tx-e2e-dash-income', type: 'INCOME', amount: 10000, categoryId: 'cat-salary', transactionDate: '2026-10-01' },
+        { ...base, id: 'tx-e2e-dash-housing', type: 'EXPENSE', amount: 6000, categoryId: 'cat-housing', transactionDate: '2026-09-05' },
+        { ...base, id: 'tx-e2e-dash-food', type: 'EXPENSE', amount: 2500, categoryId: 'cat-food', transactionDate: '2026-10-10' },
+        { ...base, id: 'tx-e2e-dash-groceries', type: 'EXPENSE', amount: 500, categoryId: 'cat-groceries', transactionDate: '2026-10-16' },
+      ])
+    );
+  });
+}
 
 test.describe('Dashboard row 1: left over, income and spending', () => {
   test.use({ timezoneId: 'Asia/Bangkok' });
 
-  async function expectCleanCard(region: Locator) {
-    const text = await region.innerText();
-    const labels = await region.locator('[aria-label]').evaluateAll((els) => els.map((e) => e.getAttribute('aria-label') || ''));
-    const combined = `${text} ${labels.join(' ')}`;
-    expect(combined).not.toMatch(/NaN|Infinity/);
-    expect(combined).not.toMatch(/(^|[^0-9])%/);
-  }
-
   test.beforeEach(async ({ page }) => {
     await page.clock.setFixedTime(new Date('2026-10-16T15:00:00+07:00'));
   });
-
-  async function seedTestTransactions(page: any) {
-    await seedLedger(page, { debts: [SAMPLE_STUDENT_LOAN] });
-    await page.addInitScript(() => {
-      const userId = 'usr-guest-01';
-      const walletId = 'wal-main-checking';
-      const now = new Date().toISOString();
-      const base = {
-        userId,
-        walletId,
-        description: '',
-        isDeleted: false,
-        createdBy: userId,
-        createdAt: now,
-        updatedAt: now,
-      };
-      localStorage.setItem(
-        'pf_transactions',
-        JSON.stringify([
-          { ...base, id: 'tx-e2e-dash-income', type: 'INCOME', amount: 10000, categoryId: 'cat-salary', transactionDate: '2026-10-01' },
-          { ...base, id: 'tx-e2e-dash-food', type: 'EXPENSE', amount: 2500, categoryId: 'cat-food', transactionDate: '2026-10-10' },
-          { ...base, id: 'tx-e2e-dash-groceries', type: 'EXPENSE', amount: 500, categoryId: 'cat-groceries', transactionDate: '2026-10-16' },
-        ])
-      );
-    });
-  }
 
   test('Past 30 days (default)', async ({ page }) => {
     await seedTestTransactions(page);
@@ -141,5 +142,105 @@ test.describe('Dashboard row 1: left over, income and spending', () => {
       await expect(btn).toHaveAttribute('aria-pressed', 'true');
       await expectCleanCard(leftOverRegion);
     }
+  });
+});
+
+test.describe('Dashboard row 2: spending by category and debt payoff', () => {
+  test.use({ timezoneId: 'Asia/Bangkok' });
+
+  test.beforeEach(async ({ page }) => {
+    await page.clock.setFixedTime(new Date('2026-10-16T15:00:00+07:00'));
+  });
+
+  test('Past 30 days', async ({ page }) => {
+    await seedTestTransactions(page);
+    await page.goto('/');
+
+    const categoryRegion = page.getByRole('region', { name: 'Spending by category', exact: true });
+    const debtRegion = page.getByRole('region', { name: 'Debt payoff', exact: true });
+
+    await expect(categoryRegion).toContainText('฿3,000.00');
+    await expect(categoryRegion).toContainText('total spent');
+    await expect(categoryRegion).toContainText('Food & Dining');
+    await expect(categoryRegion).toContainText('83.3%');
+    await expect(categoryRegion).toContainText('฿2,500.00');
+    await expect(categoryRegion).toContainText('Groceries');
+    await expect(categoryRegion).toContainText('16.7%');
+    await expect(categoryRegion).toContainText('฿500.00');
+
+    await expect(
+      categoryRegion.getByRole('img', { name: 'Spending by category: Food & Dining 83.3%, Groceries 16.7%' })
+    ).toBeVisible();
+
+    await expect(categoryRegion).toContainText('October 1 to 16:');
+    await expect(categoryRegion).toContainText('฿3,000.00 spent, against ฿6,000.00 in September 1 to 16.');
+    await expect(categoryRegion).toContainText('+฿7,000.00 left over.');
+    await expect(categoryRegion).toContainText('\u221250% vs Sep');
+
+    await expect(debtRegion).toContainText('55.0%');
+    await expect(debtRegion).toContainText('paid off');
+    await expect(debtRegion).toContainText('฿5,500.00 of ฿10,000.00');
+    await expect(debtRegion).toContainText('Needed this month');
+    await expect(debtRegion).toContainText('฿1,500.00');
+    await expect(debtRegion).toContainText('Student Loan');
+    await expect(debtRegion).toContainText('\u2212฿4,500.00');
+    await expect(debtRegion).toContainText('55.0% · due Dec 31, 2026');
+    await expect(debtRegion).toContainText('฿1,500.00 / month needed');
+    await expect(debtRegion.getByRole('note')).toHaveCount(0);
+  });
+
+  test('The month line ignores the period', async ({ page }) => {
+    await seedTestTransactions(page);
+    await page.goto('/');
+
+    const categoryRegion = page.getByRole('region', { name: 'Spending by category', exact: true });
+    const dayBtn = page.locator('#time-filter-day');
+    await dayBtn.click();
+    await expect(dayBtn).toHaveAttribute('aria-pressed', 'true');
+
+    await expect(categoryRegion).toContainText('Groceries');
+    await expect(categoryRegion).toContainText('100.0%');
+    await expect(categoryRegion).toContainText('October 1 to 16:');
+    await expect(categoryRegion).toContainText('\u221250% vs Sep');
+  });
+
+  test('Links', async ({ page }) => {
+    await seedTestTransactions(page);
+    await page.goto('/');
+
+    await page.locator('#dashboard-category-details-btn').click();
+    await expect(page.locator('#nav-tab-transactions')).toHaveAttribute('aria-current', 'page');
+
+    await gotoTab(page, 'dashboard');
+    await page.locator('#dashboard-repay-btn').click();
+    await expect(page.locator('#nav-tab-debts')).toHaveAttribute('aria-current', 'page');
+  });
+
+  test('New account', async ({ page }) => {
+    await page.goto('/');
+
+    const categoryRegion = page.getByRole('region', { name: 'Spending by category', exact: true });
+    const debtRegion = page.getByRole('region', { name: 'Debt payoff', exact: true });
+
+    await expect(categoryRegion).toContainText('No spending in this period.');
+    await expect(categoryRegion).toContainText('October 1 to 16:');
+    await expect(categoryRegion).toContainText('฿0.00 spent, against ฿0.00 in September 1 to 16.');
+    await expect(categoryRegion).not.toContainText('vs Sep');
+    await expectCleanCard(categoryRegion);
+
+    await expect(debtRegion).toContainText('No active debts.');
+  });
+
+  test('The warning sits in the card', async ({ page }) => {
+    await seedTestTransactions(page, [
+      { ...SAMPLE_STUDENT_LOAN, id: 'debt-e2e-big', name: 'Big loan', totalAmount: 60000, remainingAmount: 60000 },
+    ]);
+    await page.goto('/');
+
+    const debtRegion = page.getByRole('region', { name: 'Debt payoff', exact: true });
+    const warning = debtRegion.getByRole('note');
+    await expect(warning).toBeVisible();
+    await expect(warning).toContainText('Big loan needs ฿20,000.00 a month');
+    await expect(page.getByTestId('dashboard-debt-warning')).toHaveCount(1);
   });
 });

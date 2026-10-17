@@ -106,6 +106,7 @@ Branch `phase-135-dashboard-ui`, cut from `main` at `ce9983f`.
 | # | Task | Files | Status | Commit | Gate result |
 |---|---|---|---|---|---|
 | T765 | Dashboard redesign UI-1: page header and row 1 (owner spec 3, 4.1 to 4.2) | `src/components/dashboard/LeftOverCard.tsx`, `src/components/dashboard/CashFlowCard.tsx`, `src/views/DashboardView.tsx`, `unit/dashboard.test.tsx`, `tests/dashboard.spec.ts`, `DESIGN.md`, `docs/audit/test-selector-contract.md` | done | | Red gate verified; npm run lint clean; related unit 4/4 files 75 passed; unit 62/62 files 1415 passed; e2e 20/20 chr, 58 passed 2 skipped on 3 browsers; wcag-tokens clean; CRLF kept; 0 em dashes |
+| T766 | Dashboard redesign UI-2: row 2, spending by category with the month line, and debt payoff (owner spec 4.3) | `src/components/dashboard/CategorySpendingCard.tsx`, `src/components/dashboard/DebtPayoffCard.tsx`, `src/views/DashboardView.tsx`, `unit/dashboard.test.tsx`, `tests/dashboard.spec.ts`, `DESIGN.md`, `docs/audit/test-selector-contract.md` | done | | Red gate verified; npm run lint clean; related unit 4/4 files 86 passed; unit 62/62 files 1426 passed; e2e 21/21 chr, 61 passed 2 skipped on 3 browsers; wcag-tokens clean; CRLF kept; 0 em dashes |
 
 ## Backlog
 

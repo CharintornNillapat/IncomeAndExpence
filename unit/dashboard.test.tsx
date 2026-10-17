@@ -10,7 +10,7 @@ import { DebtPayoffCard } from '../src/components/dashboard/DebtPayoffCard';
 import { RecentActivityCard } from '../src/components/dashboard/RecentActivityCard';
 import { MoodSpendingCard } from '../src/components/dashboard/MoodSpendingCard';
 import { WalletsSection } from '../src/components/dashboard/WalletsSection';
-import { cashFlow, groupByDay, leftOverFor, spendingByCategory } from '../src/selectors/ledger';
+import { cashFlow, groupByDay, leftOverFor, monthToDate, spendingByCategory, type CategorySpend } from '../src/selectors/ledger';
 import { debtRemaining, netWorth, walletShares, walletTotal } from '../src/selectors/wallets';
 import { debtPlan } from '../src/selectors/debts';
 import { foldAdjustmentPairs } from '../src/selectors/adjustments';
@@ -115,19 +115,31 @@ describe('acceptance check 1: one Spending figure', () => {
     render(
       <>
         <CashFlowCard kind="spending" amount={flow.spending} />
-        <CategorySpendingCard rows={rows} total={flow.spending} />
+        <CategorySpendingCard
+          rows={rows}
+          total={flow.spending}
+          monthToDate={monthToDate(ROWS, TODAY, CATEGORIES)}
+          onOpenDetails={() => {}}
+        />
       </>
     );
     const spending = formatCurrencyAmount(4844.97);
     expect(screen.getByTestId('metric-card-expense').textContent).toContain(`${MINUS}${spending}`);
-    const categoryCard = screen.getByRole('heading', { name: 'Spending by category' }).closest('div')!.parentElement!;
+    const categoryCard = screen.getByRole('region', { name: 'Spending by category' });
     expect(categoryCard.textContent).toContain(spending);
     const rowSum = rows.reduce((sum, row) => sum + row.amount, 0);
     expect(rowSum).toBeCloseTo(flow.spending, 10);
   });
 
   it('leaves repayments, adjustments and transfers out of the category rows', () => {
-    render(<CategorySpendingCard rows={spendingByCategory(ROWS, CATEGORIES)} total={cashFlow(ROWS, CATEGORIES).spending} />);
+    render(
+      <CategorySpendingCard
+        rows={spendingByCategory(ROWS, CATEGORIES)}
+        total={cashFlow(ROWS, CATEGORIES).spending}
+        monthToDate={monthToDate(ROWS, TODAY, CATEGORIES)}
+        onOpenDetails={() => {}}
+      />
+    );
     const names = screen.getAllByRole('listitem').map((li) => li.textContent);
     expect(names).toHaveLength(2);
     expect(names.join(' ')).not.toMatch(/DEBT_REPAYMENT|General|Transfer|adjustment/i);
@@ -569,5 +581,301 @@ describe('Wallets section', () => {
     );
     expect(screen.queryByText('No money in your wallets yet')).toBeNull();
     expect(screen.getAllByText(`Your wallets add up to ${MINUS}฿1,200.00`)).toHaveLength(1);
+  });
+});
+
+describe('Spending by category card (owner spec 4.3)', () => {
+  it('shows top five categories, rest row, and donut geometry', () => {
+    const rows: CategorySpend[] = [
+      { categoryId: 'a', name: 'A', amount: 700, color: '#111111' },
+      { categoryId: 'b', name: 'B', amount: 600, color: '#222222' },
+      { categoryId: 'c', name: 'C', amount: 500, color: '#333333' },
+      { categoryId: 'd', name: 'D', amount: 400, color: '#444444' },
+      { categoryId: 'e', name: 'E', amount: 300, color: '#555555' },
+      { categoryId: 'f', name: 'F', amount: 200, color: '#666666' },
+      { categoryId: 'g', name: 'G', amount: 100, color: '#777777' },
+    ];
+    const { container } = render(
+      <CategorySpendingCard
+        rows={rows}
+        total={2800}
+        monthToDate={monthToDate([], TODAY, CATEGORIES)}
+        onOpenDetails={() => {}}
+      />
+    );
+    const listItems = screen.getAllByRole('listitem');
+    expect(listItems).toHaveLength(6);
+    expect(listItems[0].textContent).toContain('25.0%');
+    expect(listItems[0].textContent).toContain('฿700.00');
+    expect(listItems[5].textContent).toContain('2 more categories');
+    expect(listItems[5].textContent).toContain('10.7%');
+    expect(listItems[5].textContent).not.toContain('฿');
+
+    expect(
+      screen.getByRole('img', {
+        name: 'Spending by category: A 25.0%, B 21.4%, C 17.9%, D 14.3%, E 10.7%, 2 more categories 10.7%',
+      })
+    ).toBeTruthy();
+
+    const circles = container.querySelectorAll('svg circle');
+    expect(circles).toHaveLength(7);
+    const card = screen.getByRole('region', { name: 'Spending by category' });
+    expect(card.textContent).toContain('฿2,800.00');
+    expect(card.textContent).toContain('total spent');
+  });
+
+  it('renders one segment with stroke-dasharray 100 0 for a single category', () => {
+    const rows: CategorySpend[] = [
+      { categoryId: 'a', name: 'Food', amount: 500, color: '#111111' },
+    ];
+    const { container } = render(
+      <CategorySpendingCard
+        rows={rows}
+        total={500}
+        monthToDate={monthToDate([], TODAY, CATEGORIES)}
+        onOpenDetails={() => {}}
+      />
+    );
+    expect(
+      screen.getByRole('img', {
+        name: 'Spending by category: Food 100.0%',
+      })
+    ).toBeTruthy();
+    const circles = container.querySelectorAll('svg circle');
+    expect(circles).toHaveLength(2);
+    expect(circles[1].getAttribute('stroke-dasharray')).toBe('100 0');
+  });
+
+  it('renders empty state when rows is empty and total is 0', () => {
+    render(
+      <CategorySpendingCard
+        rows={[]}
+        total={0}
+        monthToDate={monthToDate([], TODAY, CATEGORIES)}
+        onOpenDetails={() => {}}
+      />
+    );
+    expect(screen.getByText('No spending in this period.')).toBeTruthy();
+    expect(screen.queryByRole('img')).toBeNull();
+    expect(screen.queryAllByRole('listitem')).toHaveLength(0);
+    expect(screen.getByText('September 1 to 28:')).toBeTruthy();
+  });
+
+  it('renders month line with spending down', () => {
+    const txs = [
+      tx({ type: 'INCOME', amount: 10000, categoryId: 'cat-salary', transactionDate: '2026-09-01' }),
+      tx({ type: 'EXPENSE', amount: 3000, categoryId: 'cat-food', transactionDate: '2026-09-10' }),
+      tx({ type: 'EXPENSE', amount: 6000, categoryId: 'cat-food', transactionDate: '2026-08-10' }),
+    ];
+    const mtd = monthToDate(txs, TODAY, CATEGORIES);
+    render(
+      <CategorySpendingCard
+        rows={[]}
+        total={0}
+        monthToDate={mtd}
+        onOpenDetails={() => {}}
+      />
+    );
+    expect(screen.getByText('September 1 to 28:')).toBeTruthy();
+    const card = screen.getByRole('region', { name: 'Spending by category' });
+    expect(card.textContent).toContain('฿3,000.00 spent, against ฿6,000.00 in August 1 to 28.');
+    expect(card.textContent).toContain('+฿7,000.00 left over.');
+    const pill = screen.getByText(`${MINUS}50% vs Aug`);
+    expect(pill.className).toContain('bg-adjust-tint');
+  });
+
+  it('renders month line with spending up', () => {
+    const txs = [
+      tx({ type: 'EXPENSE', amount: 3000, categoryId: 'cat-food', transactionDate: '2026-09-10' }),
+      tx({ type: 'EXPENSE', amount: 2400, categoryId: 'cat-food', transactionDate: '2026-08-10' }),
+    ];
+    const mtd = monthToDate(txs, TODAY, CATEGORIES);
+    render(
+      <CategorySpendingCard
+        rows={[]}
+        total={0}
+        monthToDate={mtd}
+        onOpenDetails={() => {}}
+      />
+    );
+    const pill = screen.getByText('+25% vs Aug');
+    expect(pill.className).toContain('bg-expense-tint');
+    const leftOverEl = screen.getByText(`${MINUS}฿3,000.00`);
+    expect(leftOverEl.className).toContain('text-expense');
+  });
+
+  it('renders month line when there was no spending last month', () => {
+    const txs = [
+      tx({ type: 'INCOME', amount: 10000, categoryId: 'cat-salary', transactionDate: '2026-09-01' }),
+      tx({ type: 'EXPENSE', amount: 3000, categoryId: 'cat-food', transactionDate: '2026-09-10' }),
+    ];
+    const mtd = monthToDate(txs, TODAY, CATEGORIES);
+    render(
+      <CategorySpendingCard
+        rows={[]}
+        total={0}
+        monthToDate={mtd}
+        onOpenDetails={() => {}}
+      />
+    );
+    expect(screen.queryByText(/vs Aug/)).toBeNull();
+    const card = screen.getByRole('region', { name: 'Spending by category' });
+    expect(card.textContent).toContain('against ฿0.00 in August 1 to 28.');
+    const text = card.textContent || '';
+    const labels = Array.from(card.querySelectorAll('[aria-label]')).map((el) => el.getAttribute('aria-label') || '').join(' ');
+    const combined = `${text} ${labels}`;
+    expect(combined).not.toMatch(/NaN|Infinity/);
+    expect(combined).not.toMatch(/(^|[^0-9])%/);
+  });
+
+  it('handles day 1 correctly', () => {
+    const txs = [
+      tx({ type: 'INCOME', amount: 10000, categoryId: 'cat-salary', transactionDate: '2026-09-01' }),
+      tx({ type: 'EXPENSE', amount: 3000, categoryId: 'cat-food', transactionDate: '2026-09-10' }),
+      tx({ type: 'EXPENSE', amount: 6000, categoryId: 'cat-food', transactionDate: '2026-08-10' }),
+    ];
+    const mtd = monthToDate(txs, '2026-10-01', CATEGORIES);
+    render(
+      <CategorySpendingCard
+        rows={[]}
+        total={0}
+        monthToDate={mtd}
+        onOpenDetails={() => {}}
+      />
+    );
+    expect(screen.getByText('October 1:')).toBeTruthy();
+    const card = screen.getByRole('region', { name: 'Spending by category' });
+    expect(card.textContent).toContain('in September 1.');
+  });
+
+  it('calls onOpenDetails when clicking Details button', () => {
+    const onOpenDetails = vi.fn();
+    render(
+      <CategorySpendingCard
+        rows={[]}
+        total={0}
+        monthToDate={monthToDate([], TODAY, CATEGORIES)}
+        onOpenDetails={onOpenDetails}
+      />
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Details' }));
+    expect(onOpenDetails).toHaveBeenCalledTimes(1);
+  });
+
+  it('has no NaN, Infinity or bare % across scenarios', () => {
+    const checkCard = (card: HTMLElement) => {
+      const text = card.textContent || '';
+      const labels = Array.from(card.querySelectorAll('[aria-label]')).map((el) => el.getAttribute('aria-label') || '').join(' ');
+      const combined = `${text} ${labels}`;
+      expect(combined).not.toMatch(/NaN|Infinity/);
+      expect(combined).not.toMatch(/(^|[^0-9])%/);
+    };
+
+    // Scenario 1: Top five and rest
+    const rows4: CategorySpend[] = [
+      { categoryId: 'a', name: 'A', amount: 700, color: '#111111' },
+      { categoryId: 'b', name: 'B', amount: 600, color: '#222222' },
+      { categoryId: 'c', name: 'C', amount: 500, color: '#333333' },
+      { categoryId: 'd', name: 'D', amount: 400, color: '#444444' },
+      { categoryId: 'e', name: 'E', amount: 300, color: '#555555' },
+      { categoryId: 'f', name: 'F', amount: 200, color: '#666666' },
+      { categoryId: 'g', name: 'G', amount: 100, color: '#777777' },
+    ];
+    const { unmount: unmount1 } = render(
+      <CategorySpendingCard
+        rows={rows4}
+        total={2800}
+        monthToDate={monthToDate([], TODAY, CATEGORIES)}
+        onOpenDetails={() => {}}
+      />
+    );
+    checkCard(screen.getByRole('region', { name: 'Spending by category' }));
+    unmount1();
+
+    // Scenario 2: Empty
+    const { unmount: unmount2 } = render(
+      <CategorySpendingCard
+        rows={[]}
+        total={0}
+        monthToDate={monthToDate([], TODAY, CATEGORIES)}
+        onOpenDetails={() => {}}
+      />
+    );
+    checkCard(screen.getByRole('region', { name: 'Spending by category' }));
+    unmount2();
+
+    // Scenario 3: Spending up
+    const txs8 = [
+      tx({ type: 'EXPENSE', amount: 3000, categoryId: 'cat-food', transactionDate: '2026-09-10' }),
+      tx({ type: 'EXPENSE', amount: 2400, categoryId: 'cat-food', transactionDate: '2026-08-10' }),
+    ];
+    const { unmount: unmount3 } = render(
+      <CategorySpendingCard
+        rows={[]}
+        total={0}
+        monthToDate={monthToDate(txs8, TODAY, CATEGORIES)}
+        onOpenDetails={() => {}}
+      />
+    );
+    checkCard(screen.getByRole('region', { name: 'Spending by category' }));
+    unmount3();
+
+    // Scenario 4: All empty
+    const { unmount: unmount4 } = render(
+      <CategorySpendingCard
+        rows={[]}
+        total={0}
+        monthToDate={monthToDate([], TODAY, CATEGORIES)}
+        onOpenDetails={() => {}}
+      />
+    );
+    checkCard(screen.getByRole('region', { name: 'Spending by category' }));
+    unmount4();
+  });
+});
+
+describe('Debt payoff card (owner spec 4.3)', () => {
+  const debts = [
+    debt('spay', 'SPayLater', 17000, 13173.7, '2027-01-01'),
+    debt('easy', 'SEasy Cash', 10500, 9403.3, '2028-04-01'),
+  ];
+
+  it('renders overall block and Needed this month with surplus 10000', () => {
+    render(
+      <DebtPayoffCard
+        plan={debtPlan(debts, TODAY, 10000)}
+        paid={5677.21}
+        total={28254.21}
+        progressPercent={20.1}
+        onOpenDebts={() => {}}
+      />
+    );
+    const percentEl = screen.getByText('20.1%');
+    expect(percentEl.className).toContain('text-income');
+    const card = screen.getByRole('region', { name: 'Debt payoff' });
+    expect(card.textContent).toContain('20.1% paid off');
+    expect(card.textContent).toContain('฿5,677.21 of ฿28,254.21');
+    expect(screen.getByText('Needed this month')).toBeTruthy();
+    const needed = screen.getByText('฿3,788.34');
+    expect(needed.className).toContain('text-expense');
+    expect(screen.queryByRole('note')).toBeNull();
+  });
+
+  it('renders warning banner inside the card when surplus is exceeded', () => {
+    const onOpenDebts = vi.fn();
+    render(
+      <DebtPayoffCard
+        plan={debtPlan(debts, TODAY, 3106.78)}
+        paid={5677.21}
+        total={28254.21}
+        progressPercent={20.1}
+        onOpenDebts={onOpenDebts}
+      />
+    );
+    const card = screen.getByRole('region', { name: 'Debt payoff' });
+    const note = within(card).getByRole('note');
+    expect(note.textContent).toContain('SPayLater needs ฿3,293.43 a month');
+    fireEvent.click(within(note).getByRole('button', { name: 'Review plan' }));
+    expect(onOpenDebts).toHaveBeenCalledTimes(1);
   });
 });
