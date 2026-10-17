@@ -1,6 +1,7 @@
 import { Category, Transaction } from '../types';
 import { roundToCents } from '../utils/money';
-import { filterByRange, TimeRange } from './timeRange';
+import { monthKeyOf, shiftIsoDate } from '../utils/date';
+import { filterByRange, inRange, TimeRange } from './timeRange';
 
 /**
  * Spec L1 and L11 (ADR 0028): the one definition of spending and income.
@@ -110,6 +111,54 @@ export function leftOverFor(
     spentShare,
     keptShare: flow.income > 0 ? 100 - spentShare : 0,
     afterDebtDue: range === 'MONTH' ? roundToCents(flow.leftOver - neededThisMonth) : null,
+  };
+}
+
+export interface MonthToDateSide {
+  /** First and last local day counted, `YYYY-MM-DD`, both inclusive. */
+  start: string;
+  end: string;
+  spending: number;
+  leftOver: number;
+}
+
+export interface MonthToDate {
+  /** N: today's day of the month, clamped to last month's length. Both months count days 1 to N. */
+  days: number;
+  thisMonth: MonthToDateSide;
+  lastMonth: MonthToDateSide;
+  /** Spending's change on last month, in percent; `null` when last month spent nothing. */
+  spendingChange: number | null;
+  /** Left over's change, in percent of the size of last month's, so up means better even from a negative base; `null` when last month's was 0. */
+  leftOverChange: number | null;
+}
+
+function percentChange(now: number, before: number): number | null {
+  return before === 0 ? null : ((now - before) / Math.abs(before)) * 100;
+}
+
+/**
+ * The Dashboard's month comparison line (owner spec 5.3, ADR 0102 D4): day 1
+ * to N of this month against day 1 to N of last month, N being today's day
+ * clamped to last month's length. It ignores the page's period.
+ */
+export function monthToDate(txs: Transaction[], today: string, categories?: CategoryLookup): MonthToDate {
+  const lastMonthEnd = shiftIsoDate(`${monthKeyOf(today)}-01`, -1);
+  const days = Math.min(Number(today.slice(8, 10)), Number(lastMonthEnd.slice(8, 10)));
+  const side = (monthKey: string): MonthToDateSide => {
+    const start = `${monthKey}-01`;
+    const end = `${monthKey}-${String(days).padStart(2, '0')}`;
+    const flow = cashFlow(txs.filter((tx) => inRange(tx.transactionDate, { start, end })), categories);
+    return { start, end, spending: flow.spending, leftOver: flow.leftOver };
+  };
+  const thisMonth = side(monthKeyOf(today));
+  const lastMonth = side(monthKeyOf(lastMonthEnd));
+  return {
+    days,
+    thisMonth,
+    lastMonth,
+    spendingChange: percentChange(thisMonth.spending, lastMonth.spending),
+    leftOverChange: percentChange(thisMonth.leftOver, lastMonth.leftOver),
   };
 }
 

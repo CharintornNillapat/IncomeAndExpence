@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { cashFlow, leftOverFor, spendingByCategory } from '../src/selectors/ledger';
+import { cashFlow, leftOverFor, monthToDate, spendingByCategory } from '../src/selectors/ledger';
 import { walletShares } from '../src/selectors/wallets';
 import { dailySpendingSeries, moodSpendingDays } from '../src/selectors/diary';
 import { greetingFor, formatLongDate, formatShortDate, formatWeekdayDate, formatMonthName, shiftIsoDate } from '../src/utils/date';
@@ -336,6 +336,7 @@ describe('dailySpendingSeries: the Left over sparkline (owner spec 5.2)', () => 
     ];
     for (const range of ['WEEK', 'MONTH'] as const) {
       const flow = leftOverFor(rows, range, TODAY, 0, BY_ID);
+      expect(flow.spending).toBeCloseTo((range === 'WEEK' ? 250.9 : 351) + 30, 10);
       const series = dailySpendingSeries(rows, range, TODAY, BY_ID)!;
       expect(series.find((p) => p.date === shiftIsoDate(TODAY, 1))).toBeUndefined();
       expect(series).toHaveLength(range === 'WEEK' ? 8 : 31);
@@ -379,6 +380,173 @@ describe('dailySpendingSeries: the Left over sparkline (owner spec 5.2)', () => 
           '2027-01-02',
           '2027-01-03',
         ]);
+      });
+    });
+  }
+});
+
+describe('monthToDate: the month comparison line (owner spec 5.3)', () => {
+  it('mid-month, L1 only, every field', () => {
+    const today = '2026-10-17';
+    const rows = [
+      tx({ type: 'INCOME', amount: 1000, categoryId: 'cat-salary', transactionDate: '2026-10-01' }),
+      tx({ type: 'EXPENSE', amount: 300, categoryId: 'cat-food', transactionDate: '2026-10-17' }),
+      tx({ type: 'EXPENSE', amount: 99, categoryId: 'cat-food', transactionDate: '2026-10-18' }),
+      tx({ type: 'EXPENSE', amount: 1, categoryId: 'cat-food', transactionDate: '2026-09-30' }),
+      tx({ type: 'INCOME', amount: 800, categoryId: 'cat-salary', transactionDate: '2026-09-01' }),
+      tx({ type: 'EXPENSE', amount: 200, categoryId: 'cat-food', transactionDate: '2026-09-17' }),
+      tx({ type: 'EXPENSE', amount: 500, categoryId: 'cat-food', transactionDate: '2026-09-18' }),
+      tx({ type: 'TRANSFER', amount: 400, destinationWalletId: 'wal-main', transactionDate: '2026-09-10' }),
+      tx({ type: 'DEBT_REPAYMENT', amount: 100, categoryId: 'cat-debt', debtId: 'debt-1', transactionDate: '2026-09-10' }),
+      tx({ type: 'EXPENSE', amount: 60, categoryId: 'cat-debt', transactionDate: '2026-09-10' }),
+      tx({ type: 'ADJUSTMENT', amount: -50, categoryId: 'cat-adjust', transactionDate: '2026-09-10' }),
+      tx({ type: 'EXPENSE', amount: 70, categoryId: 'cat-food', isDeleted: true, transactionDate: '2026-09-10' }),
+    ];
+    const result = monthToDate(rows, today, BY_ID);
+    expect(result.days).toBe(17);
+    expect(result.thisMonth).toEqual({ start: '2026-10-01', end: '2026-10-17', spending: 300, leftOver: 700 });
+    expect(result.lastMonth).toEqual({ start: '2026-09-01', end: '2026-09-17', spending: 200, leftOver: 600 });
+    expect(result.spendingChange).toBeCloseTo(50, 10);
+    expect(result.leftOverChange).toBeCloseTo((100 / 600) * 100, 10);
+  });
+
+  it('the 31st against a 30-day month', () => {
+    const today = '2026-10-31';
+    const rows = [
+      tx({ type: 'EXPENSE', amount: 10, transactionDate: '2026-10-30' }),
+      tx({ type: 'EXPENSE', amount: 45, transactionDate: '2026-10-31' }),
+      tx({ type: 'EXPENSE', amount: 20, transactionDate: '2026-09-30' }),
+    ];
+    const result = monthToDate(rows, today, BY_ID);
+    expect(result.days).toBe(30);
+    expect(result.thisMonth.end).toBe('2026-10-30');
+    expect(result.thisMonth.spending).toBe(10);
+    expect(result.lastMonth.end).toBe('2026-09-30');
+    expect(result.lastMonth.spending).toBe(20);
+    expect(result.spendingChange).toBeCloseTo(-50, 10);
+  });
+
+  it('March 29 to 31 against February, leap and non-leap', () => {
+    for (const today of ['2028-03-29', '2028-03-30', '2028-03-31'] as const) {
+      const leap = monthToDate([], today, BY_ID);
+      expect(leap.days).toBe(29);
+      expect(leap.lastMonth).toEqual({ start: '2028-02-01', end: '2028-02-29', spending: 0, leftOver: 0 });
+      expect(leap.thisMonth.end).toBe('2028-03-29');
+    }
+
+    const nonLeapRows = [
+      tx({ type: 'EXPENSE', amount: 5, transactionDate: '2027-02-28' }),
+      tx({ type: 'EXPENSE', amount: 8, transactionDate: '2027-03-29' }),
+    ];
+    for (const today of ['2027-03-29', '2027-03-30', '2027-03-31'] as const) {
+      const nonLeap = monthToDate(nonLeapRows, today, BY_ID);
+      expect(nonLeap.days).toBe(28);
+      expect(nonLeap.lastMonth.end).toBe('2027-02-28');
+      expect(nonLeap.thisMonth.end).toBe('2027-03-28');
+      if (today === '2027-03-29') {
+        expect(nonLeap.lastMonth.spending).toBe(5);
+        expect(nonLeap.thisMonth.spending).toBe(0);
+      }
+    }
+
+    const march28 = monthToDate([], '2028-03-28', BY_ID);
+    expect(march28.days).toBe(28);
+  });
+
+  it('January against the previous December', () => {
+    const decRows = [
+      tx({ type: 'EXPENSE', amount: 12, transactionDate: '2026-12-15' }),
+      tx({ type: 'EXPENSE', amount: 13, transactionDate: '2026-12-16' }),
+    ];
+    const midJan = monthToDate(decRows, '2027-01-15', BY_ID);
+    expect(midJan.days).toBe(15);
+    expect(midJan.lastMonth.start).toBe('2026-12-01');
+    expect(midJan.lastMonth.end).toBe('2026-12-15');
+    expect(midJan.lastMonth.spending).toBe(12);
+
+    const endJan = monthToDate([], '2027-01-31', BY_ID);
+    expect(endJan.days).toBe(31);
+    expect(endJan.lastMonth.end).toBe('2026-12-31');
+    expect(endJan.thisMonth.end).toBe('2027-01-31');
+
+    const startJan = monthToDate([], '2027-01-01', BY_ID);
+    expect(startJan.days).toBe(1);
+    expect(startJan.lastMonth.start).toBe('2026-12-01');
+    expect(startJan.lastMonth.end).toBe('2026-12-01');
+  });
+
+  it('no figure last month', () => {
+    const rows = [tx({ type: 'EXPENSE', amount: 50, transactionDate: '2026-10-05' })];
+    const result = monthToDate(rows, '2026-10-17', BY_ID);
+    expect(result.lastMonth.spending).toBe(0);
+    expect(result.lastMonth.leftOver).toBe(0);
+    expect(result.spendingChange).toBeNull();
+    expect(result.leftOverChange).toBeNull();
+
+    const empty = monthToDate([], '2026-10-17', BY_ID);
+    expect(empty.thisMonth.spending).toBe(0);
+    expect(empty.thisMonth.leftOver).toBe(0);
+    expect(empty.lastMonth.spending).toBe(0);
+    expect(empty.lastMonth.leftOver).toBe(0);
+    expect(empty.spendingChange).toBeNull();
+    expect(empty.leftOverChange).toBeNull();
+
+    expect(Number.isFinite(empty.days)).toBe(true);
+    expect(Number.isFinite(empty.thisMonth.spending)).toBe(true);
+    expect(Number.isFinite(empty.thisMonth.leftOver)).toBe(true);
+    expect(Number.isFinite(empty.lastMonth.spending)).toBe(true);
+    expect(Number.isFinite(empty.lastMonth.leftOver)).toBe(true);
+  });
+
+  it('a negative base', () => {
+    const today = '2026-10-17';
+    const rows = [
+      tx({ type: 'INCOME', amount: 100, transactionDate: '2026-09-01' }),
+      tx({ type: 'EXPENSE', amount: 300, transactionDate: '2026-09-05' }),
+      tx({ type: 'INCOME', amount: 100, transactionDate: '2026-10-01' }),
+      tx({ type: 'EXPENSE', amount: 200, transactionDate: '2026-10-05' }),
+    ];
+    const result = monthToDate(rows, today, BY_ID);
+    expect(result.spendingChange).toBeCloseTo((-100 / 300) * 100, 10);
+    expect(result.leftOverChange).toBeCloseTo(50, 10);
+  });
+
+  it('cents', () => {
+    const today = '2026-10-17';
+    const rows = [
+      tx({ type: 'EXPENSE', amount: 0.1, transactionDate: '2026-09-03' }),
+      tx({ type: 'EXPENSE', amount: 0.2, transactionDate: '2026-09-03' }),
+    ];
+    const result = monthToDate(rows, today, BY_ID);
+    expect(result.lastMonth.spending).toBe(0.3);
+  });
+
+  for (const zone of ['UTC', 'Asia/Bangkok'] as const) {
+    describe(`in ${zone}`, () => {
+      beforeAll(() => {
+        process.env.TZ = zone;
+      });
+      afterAll(() => {
+        process.env.TZ = 'Asia/Bangkok';
+      });
+
+      it('respects day bounds and leap years across time zones', () => {
+        expect(new Date(2026, 9, 17).getTimezoneOffset()).toBe(zone === 'UTC' ? 0 : -420);
+
+        const leap = monthToDate([], '2028-03-31', BY_ID);
+        expect(leap.days).toBe(29);
+        expect(leap.lastMonth.end).toBe('2028-02-29');
+
+        const nonLeap = monthToDate([], '2027-03-31', BY_ID);
+        expect(nonLeap.days).toBe(28);
+        expect(nonLeap.lastMonth.end).toBe('2027-02-28');
+
+        const yearStart = monthToDate([], '2027-01-01', BY_ID);
+        expect(yearStart.days).toBe(1);
+        expect(yearStart.lastMonth.start).toBe('2026-12-01');
+
+        const thirtyDay = monthToDate([], '2026-10-31', BY_ID);
+        expect(thirtyDay.days).toBe(30);
       });
     });
   }

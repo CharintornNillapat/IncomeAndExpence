@@ -97,6 +97,7 @@ Branch `phase-134-dashboard-selectors`, cut from `main` at `3927c83`.
 |---|---|---|---|---|---|
 | T762 | Dashboard redesign SEL-1: the Left over selector (owner spec 5.1) | `src/selectors/ledger.ts`, `unit/selectors-dashboard.test.ts` | done | | Red gate verified; npm run lint clean; unit 62/62 files 1386 passed (50.6s); related unit 3/3 files 65 passed; CRLF kept; 0 em dashes |
 | T763 | Dashboard redesign SEL-2: the daily spending series (owner spec 5.2); WEEK 8 points (owner decision) | `src/selectors/diary.ts`, `unit/selectors-dashboard.test.ts`, `docs/design/dashboard-2026-10/spec.md` | done | | Red gate verified; npm run lint clean; unit 62/62 files 1395 passed (50.6s); related unit 4/4 files 91 passed; spec.md 1 line updated; CRLF kept; 0 em dashes |
+| T764 | Dashboard redesign SEL-3: the month-to-date comparison (owner spec 5.3); T763 test tightened; Phase 134 paperwork | `src/selectors/ledger.ts`, `unit/selectors-dashboard.test.ts`, `docs/contexts/client-state.md`, `docs/audit/refactor-log.md`, `docs/audit/baseline-metrics.md` | done | | Red gate verified; npm run lint clean; unit 62/62 files 1404 passed (49.85s); related unit 4/4 files 100 passed; prod build clean (0 bundle delta); CRLF kept; 0 em dashes |
 
 ## Backlog
 

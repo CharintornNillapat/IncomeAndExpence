@@ -23,6 +23,14 @@ npx tsc --noEmit --extendedDiagnostics
 
 ## Figures
 
+### Phase 134 - delta against Phase 132
+
+- **Entry chunk** `index-C7LsbYem.js`: 191,696 B (0 delta), 55,810 B gzip (0 delta against Phase 132 `index-C7LsbYem.js`, 191,696 / 55,810).
+- **All app JS**: 878,229 B (0 delta), 266,912 B gzip (0 delta), 40 files (0 delta against Phase 132 878,229 / 266,912, 40 files).
+- **CSS**: `index-CqllkKUj.css`: 52,759 B (0 delta), 10,159 B gzip (0 delta against Phase 132 `index-CqllkKUj.css`, 52,759 / 10,159).
+- **Vitest**: 62 files, 1404 tests (+26 tests against Phase 132), 1404 passed in 49.85 s (`workflow/stages/02_build/output/logs/T764-unit.log`).
+- **Playwright**: not run: no UI path changed in Phase 134; nothing renders the new selectors.
+
 ### Phase 132 - delta against Phase 129
 
 - **Entry chunk** `index-C7LsbYem.js`: 191,696 B (+22 B), 55,810 B gzip (+8 B against Phase 129 `index-BB5386eR.js`, 191,674 / 55,802).

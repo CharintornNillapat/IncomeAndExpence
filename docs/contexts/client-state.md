@@ -60,7 +60,7 @@ A screen showing spending, income, net, net worth or a debt figure computes it h
 - **L3:** `walletTotal`/`activeWallets` (not deleted, not archived); `netWorth(wallets, debts)` subtracts active debts.
 - **L4/L5:** `monthsLeft` counts monthly payment dates from today through the due date, at least one [0087]. `requiredMonthly` rounds to cents, `null` without a due date. `debtPlan` warns when the total exceeds `monthlySurplus` (always the past 30 days).
 - **`payoffPercent(total, remaining, ifNothingBorrowed)`** (`selectors/debts.ts`, [0079, 0080, 0081, 0084]) clamped 0 to 100. Never re-type the formula.
-- **L6 to L13** (`display`, `adjustments`, `categories`, `pagination`): the Transactions page sorts newest first, pages with `visibleRows` before `groupByDay`, and takes each day's net from all its filtered rows. `cashFlow`, `walletShares`, `moodSpendingDays` serve the Dashboard, which computes every figure once in `DashboardView`.
+- **L6 to L13** (`display`, `adjustments`, `categories`, `pagination`): the Transactions page sorts newest first, pages with `visibleRows` before `groupByDay`, and takes each day's net from all its filtered rows. `cashFlow`, `walletShares`, `moodSpendingDays` serve the Dashboard, which computes every figure once in `DashboardView`. The 2026-10 redesign adds `leftOverFor` (Left over card, MONTH-only `afterDebtDue`), `dailySpendingSeries` (`selectors/diary.ts`; one point per day from the range's start through today, WEEK 8, MONTH 31) and `monthToDate` (day 1 to N of this month and last month) [0102].
 - **Match a system category by type, never by id** (signed-in rows carry uuids).
 
 ## Ledger behaviour (`addTransaction` and friends)

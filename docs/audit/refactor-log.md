@@ -19,6 +19,17 @@ ADR `NNNN`. <the brief, one or two sentences>
 
 ---
 
+## Phase 134 - Dashboard selectors: T762-T764 (2026-10-17, code `<sha>`, merged `<sha>`)
+
+ADR `0102`. Pure selectors for the redesigned Dashboard cards: left over with debt due for the Left over card, daily spending series for its sparkline, and month-to-date comparison against last month. All tests first; nothing rendered on screen until Phase 135.
+
+**Changed:** `src/selectors/ledger.ts` (`leftOverFor` T762, `monthToDate` T764); `src/selectors/diary.ts` (`dailySpendingSeries` T763); `unit/selectors-dashboard.test.ts` (tests for `leftOverFor`, `dailySpendingSeries`, `monthToDate`, plus tightened future-dated test assertion); `docs/design/dashboard-2026-10/spec.md:69` (T763: WEEK 8 points, owner decision); `docs/contexts/client-state.md:63` (updated selector list); `docs/audit/task-ledger.md` (Phase 134 rows T762-T764); this entry and `docs/audit/baseline-metrics.md`.
+**Verified:** T762: Red gate verified (8 failed, 15 passed); `npm run lint` clean; unit 62/62 files 1386 passed (50.6s); related unit 3/3 files 65 passed; CRLF kept; 0 em dashes. T763: Red gate verified (9 failed, 23 passed); `npm run lint` clean; unit 62/62 files 1395 passed (50.6s); related unit 4/4 files 91 passed; spec.md 1 line updated; CRLF kept; 0 em dashes. T764: Red gate verified (9 failed, 32 passed); `npm run lint` clean; unit 62/62 files 1404 passed in 49.85s (`workflow/stages/02_build/output/logs/T764-unit.log`); related unit 4/4 files 100 passed; production build clean (0 bundle delta, exports tree-shaken); CRLF kept; 0 em dashes.
+**Surprises:** The owner spec's WEEK series said 7 points while the WEEK range is 8 days (owner chose 8, T763); a mid-file `process.env.TZ` switch takes effect only in Vitest's `forks` pool, not in a worker thread, so the zone blocks assert the offset first (T762 and T763 reviews); the future-dated row counts in the card but has no sparkline point (owner kept the series ending at today, T763).
+**Deliberately not done:** Wiring any of the three into `DashboardView` (Phase 135); moving `debts.ts`'s `daysInMonth` (not needed); the offset guard in T762's zone block; `AGENTS.md`'s stale test count (1375) and `DESIGN.md`.
+
+---
+
 ## Phase 133 - Dashboard redesign docs: T761 (2026-10-17, docs `41a1bfb`, merged `5fe4ffe`)
 
 ADR `0102`. Put the owner's Dashboard redesign plan into the repo: record its decisions in ADR 0102, rewrite `DESIGN.md`'s Dashboard section to match, update `AGENTS.md` routing, and add the owner's spec and mock to `docs/design/dashboard-2026-10/`, with four lines in `spec.md` corrected to the code per owner order.
