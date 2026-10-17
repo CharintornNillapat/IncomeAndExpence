@@ -19,6 +19,17 @@ ADR `NNNN`. <the brief, one or two sentences>
 
 ---
 
+## Phase 133 - Dashboard redesign docs: T761 (2026-10-17, docs <sha>, merged <sha>)
+
+ADR `0102`. Put the owner's Dashboard redesign plan into the repo: record its decisions in ADR 0102, rewrite `DESIGN.md`'s Dashboard section to match, update `AGENTS.md` routing, and add the owner's spec and mock to `docs/design/dashboard-2026-10/`, with four lines in `spec.md` corrected to the code per owner order.
+
+**Changed:** `docs/audit/decisions/0102-dashboard-redesign-2026-10.md` (ADR 0102 recording decisions D1 to D5, amending ADR 0030); `DESIGN.md` (Dashboard section lines 161-175 replaced with 2026-10 redesign target description and layout table); `AGENTS.md` (added Dashboard redesign routing row and clarified `docs/design` HTML restriction clause); `docs/design/dashboard-2026-10/spec.md` (corrected 4 lines to match code: D1 transfer hue, text-fg-* tokens, transfer hue row, ProgressBar); `docs/design/dashboard-2026-10/dashboard-2026-10.dc.html` (owner mock added, verified byte-for-byte unchanged); `docs/audit/task-ledger.md` (Phase 133 section and T761 row added).
+**Verified:** Docs-only gates passed: mock HTML hash verified unchanged (`d3d0e013...`); owner spec diff exactly 4 lines replaced (`4 4`), sha256 matched target (`09f30687...`); git scope clean; `DESIGN.md` diff only Dashboard section with 0 other heading changes; `AGENTS.md` diff `2 1`; name existence checks verified (all tokens, radii, components, exports, selectors, files resolve, and obsolete names appear 0 times); line citations in ADR 0102 verified against post-edit line numbers; CRLF line endings preserved on repo markdown and LF preserved on owner files (0 CRLF on spec.md); 0 em dashes in git diff and new files.
+**Surprises:** none.
+**Deliberately not done:** Any edit to the HTML, and any edit to `spec.md` beyond section 7.5's four lines; opening `dashboard-2026-10.dc.html` or `FinLife Dashboard Redesign.html`; the rest of `DESIGN.md` (Overview source line :6, Typography scale "(net worth)" label, Amounts THB line, Deviations from the spec rows); ADR 0030's text; `docs/audit/test-selector-contract.md`, `docs/contexts/*.md` and `workflow/stages/*/CONTEXT.md`; `docs/audit/baseline-metrics.md` (no count changed); any code, test or config, and the Phase 134 and 135 tasks themselves.
+
+---
+
 ## Phase 132 - Transfer unknown outcome re-reads the cloud: T760 (2026-10-17, code `1530008`, merged `4fb77dd`)
 
 No ADR (brings `addTransaction`'s transfer branch into line with ADR 0023). When a signed-in transfer's `transfer_funds` call fails with an unknown outcome (no SQLSTATE or empty transaction payload), `addTransaction` now flags `rpcOutcomeUnknown = true` and re-reads from the cloud after local rollback, matching `record_transaction`.

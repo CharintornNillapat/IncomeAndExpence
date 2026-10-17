@@ -100,11 +100,12 @@ Before calling a task done, a task whose gates include a code tier (any row abov
 | `api/`, the TypeSafe key, JWT and quota checks, rate limits, `vercel.json` headers and CSP | `docs/contexts/api-proxies.md` |
 | Components, views, accessibility, modals, page contracts, Playwright, CI, when the change is logic only | `docs/contexts/ui-and-e2e.md` alone |
 | Visual work: a new or restyled screen, tokens, layout, motion | `docs/contexts/ui-and-e2e.md` and `DESIGN.md` |
+| Dashboard redesign tasks (the 2026-10 plan's DOC, SEL and UI tasks) | `docs/design/dashboard-2026-10/spec.md`, plus the rows above that the task's paths match. Open `docs/design/dashboard-2026-10/dashboard-2026-10.dc.html` only at the mock lines the task names: the one exception to the `docs/design` HTML rule below |
 | Renaming or moving an id a spec uses | `docs/audit/test-selector-contract.md` |
 | A comments-only or docs-only change | No context file |
 | Why a rule exists | The ADR it names, `docs/audit/decisions/NNNN-*.md`. With no ADR named, a keyword search of `docs/audit/decisions/`, reading only the ADRs that match |
 
-**Never read `docs/audit/archive/`** unless the user explicitly asks for historical research. It is superseded history, including the pre-split rule file. **Never open `docs/design/*.html`** (a 2 MB bundled mockup), and read `docs/design/finlife-redesign-spec.md` only for a new redesign; `DESIGN.md` is the design authority.
+**Never read `docs/audit/archive/`** unless the user explicitly asks for historical research. It is superseded history, including the pre-split rule file. **Never open `docs/design/*.html`** (a 2 MB bundled mockup) or any other HTML under `docs/design/`, except the dashboard mock lines a task names (the routing row above), and read `docs/design/finlife-redesign-spec.md` only for a new redesign; `DESIGN.md` is the design authority.
 
 ## Workflow
 
