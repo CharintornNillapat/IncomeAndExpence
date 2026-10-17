@@ -75,11 +75,11 @@ Branch `phase-131-project-audit`, cut from `main` at `cb9e109`. One commit, T759
 
 ## Phase 132 - Transfer unknown outcome re-reads the cloud (client error handling, no ADR)
 
-Branch `phase-132-transfer-unknown-outcome`, cut from `main` at `67e6bef`. No migration.
+Branch `phase-132-transfer-unknown-outcome`, cut from `main` at `67e6bef`. One commit, T760's `1530008`, merged into `main` as `4fb77dd` (PR #84). No migration.
 
 | # | Task | Files | Status | Commit | Gate result |
 |---|---|---|---|---|---|
-| T760 | A transfer with an unknown outcome re-reads the cloud (SL-02) | `src/context/FinanceContext.tsx`, `unit/authenticated-ledger.test.tsx`, `docs/audit/refactor-log.md`, `docs/audit/baseline-metrics.md` | done | | Red gate verified; npm run lint clean; unit 62/62 files 1378 passed; e2e 11/11 chr 33/33 all passed; build clean (55,810 B gzip); CRLF kept; 0 em dashes |
+| T760 | A transfer with an unknown outcome re-reads the cloud (SL-02) | `src/context/FinanceContext.tsx`, `unit/authenticated-ledger.test.tsx`, `docs/audit/refactor-log.md`, `docs/audit/baseline-metrics.md` | done | 1530008 | Red gate verified; npm run lint clean; unit 62/62 files 1378 passed; e2e 11/11 chr 33/33 all passed; build clean (55,810 B gzip); CRLF kept; 0 em dashes |
 
 ## Backlog
 
