@@ -335,4 +335,3 @@ describe('InlineMathInput: the frame', () => {
     expect(input.parentElement!.className).not.toContain('transition-all');
   });
 });
-
