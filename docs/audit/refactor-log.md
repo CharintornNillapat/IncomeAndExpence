@@ -19,6 +19,17 @@ ADR `NNNN`. <the brief, one or two sentences>
 
 ---
 
+## Phase 132 - Transfer unknown outcome re-reads the cloud: T760 (2026-10-17, code `<sha>`, merged `<sha>`)
+
+No ADR (brings `addTransaction`'s transfer branch into line with ADR 0023). When a signed-in transfer's `transfer_funds` call fails with an unknown outcome (no SQLSTATE or empty transaction payload), `addTransaction` now flags `rpcOutcomeUnknown = true` and re-reads from the cloud after local rollback, matching `record_transaction`.
+
+**Changed:** `src/context/FinanceContext.tsx` (`transfer_funds` error and empty payload handling flags unknown outcome); `unit/authenticated-ledger.test.tsx` (tests for lost response, empty payload, and SQLSTATE rejection); `docs/audit/task-ledger.md` (Phase 132 row, SL-02 closed, and new backlog row for `setTransactionDeleted` `cloudRevisionAtStart`); `docs/audit/baseline-metrics.md` (Phase 132 section).
+**Verified:** Red-first test run verified Tests A and B fail on unchanged code while Test C and existing transfer test pass (`workflow/stages/02_build/output/logs/T760-red.log`); `npm run lint` clean; targeted vitest `unit/authenticated-ledger.test.tsx` and `unit/ledger-guards.test.tsx` passed (171/171); `npm run test:unit` clean (62 files, 1378 passed in 49.8 s, `workflow/stages/02_build/output/logs/T760-unit.log`); Playwright `tests/transfer-preview.spec.ts` and `tests/wallet-forms.spec.ts` passed (Chromium: 11/11 passed in 46.4 s; all 3 browsers: 33/33 passed in 56.8 s, `workflow/stages/02_build/output/logs/T760-e2e.log`); clean production build succeeded (`index-C7LsbYem.js`, 191,696 B / 55,810 B gzip; `index-CqllkKUj.css`, 52,759 B / 10,159 B gzip); git checks confirmed only target and bookkeeping files changed, lines 1848-1853 region changed in `FinanceContext.tsx` with 4 `rpcOutcomeUnknown = true` in `addTransaction` and 6 in file, CRLF preserved across touched files, and 0 em dashes in git diff.
+**Surprises:** none.
+**Deliberately not done:** The SL-01 row (`transfer_funds` replay on soft-deleted rows, SQL) is left for a future `supabase/` migration; SL-03 (guest `amount` rounding at `:1937`) remains dropped per T759 review; `markLocalWrite` order in the TRANSFER branch (`:1877-1879`) was not moved; `setTransactionDeleted` lacking a `cloudRevisionAtStart` check (`:2190-2197`) was added to the Backlog; the test harness fake client, other `describe` blocks, Playwright specs, and non-transfer branches of `addTransaction` were not modified.
+
+---
+
 ## Phase 131 - Whole-app audit: T759 (2026-10-16, docs `c568376`, merged `0792b88`)
 
 No ADR (docs-only task, whole-app read-only audit). The owner's brief: audit the whole app as it is today, without changing any code, with four read-only domain sub-agents, and write the findings to one report, adding high and medium findings to the ledger's Backlog.

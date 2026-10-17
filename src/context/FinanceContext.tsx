@@ -1845,10 +1845,16 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
             p_raw_input: data.rawInput || null,
           });
 
-          if (rpcError) throw isMissingRpcError(rpcError) ? new MissingLedgerFunction() : rpcError;
+          if (rpcError) {
+            if (isMissingRpcError(rpcError)) throw new MissingLedgerFunction();
+            if (isUnknownOutcomeError(rpcError)) rpcOutcomeUnknown = true;
+            throw rpcError;
+          }
           const payload = rpcData as TransferFundsResult | null;
-          // The RPC may already have moved the money: report it, never retry.
+          // The RPC may already have moved the money; restoring the snapshot
+          // would hide a transfer that happened. Re-read instead, never retry.
           if (!payload?.transaction) {
+            rpcOutcomeUnknown = true;
             throw new Error('transfer_funds returned an unexpected response');
           }
 
