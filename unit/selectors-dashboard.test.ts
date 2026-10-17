@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { cashFlow, leftOverFor, spendingByCategory } from '../src/selectors/ledger';
 import { walletShares } from '../src/selectors/wallets';
-import { moodSpendingDays } from '../src/selectors/diary';
+import { dailySpendingSeries, moodSpendingDays } from '../src/selectors/diary';
 import { greetingFor, formatLongDate, formatShortDate, formatWeekdayDate, formatMonthName, shiftIsoDate } from '../src/utils/date';
 import { buildLookupMap } from '../src/utils/mapUtils';
 import type { Category, DiaryEntry, Transaction, Wallet } from '../src/types';
@@ -239,6 +239,146 @@ describe('leftOverFor: the Left over card (owner spec 5.1)', () => {
           tx({ type: 'EXPENSE', amount: 12, transactionDate: '2026-10-16' }),
         ];
         expect(leftOverFor(dayRows, 'DAY', today, 0, BY_ID).spending).toBe(5);
+      });
+    });
+  }
+});
+
+describe('dailySpendingSeries: the Left over sparkline (owner spec 5.2)', () => {
+  it('WEEK is 8 points, oldest first, zero-filled', () => {
+    const rows = [
+      tx({ type: 'EXPENSE', amount: 40, categoryId: 'cat-food', transactionDate: shiftIsoDate(TODAY, -7) }),
+      tx({ type: 'EXPENSE', amount: 25, transactionDate: TODAY }),
+      tx({ type: 'EXPENSE', amount: 12.5, categoryId: 'cat-food', transactionDate: shiftIsoDate(TODAY, -3) }),
+    ];
+    const series = dailySpendingSeries(rows, 'WEEK', TODAY, BY_ID);
+    expect(series).toHaveLength(8);
+    expect(series!.map((p) => p.date)).toEqual([-7, -6, -5, -4, -3, -2, -1, 0].map((n) => shiftIsoDate(TODAY, n)));
+    expect(series!.map((p) => p.spending)).toEqual([40, 0, 0, 0, 12.5, 0, 0, 25]);
+  });
+
+  it('MONTH is 31 points', () => {
+    const series = dailySpendingSeries([], 'MONTH', TODAY, BY_ID);
+    expect(series).toHaveLength(31);
+    expect(series![0].date).toBe(shiftIsoDate(TODAY, -30));
+    expect(series![30].date).toBe(TODAY);
+    expect(series!.every((p) => p.spending === 0)).toBe(true);
+  });
+
+  it('DAY and ALL have no series', () => {
+    const rows = [
+      tx({ type: 'EXPENSE', amount: 40, categoryId: 'cat-food', transactionDate: shiftIsoDate(TODAY, -7) }),
+      tx({ type: 'EXPENSE', amount: 25, transactionDate: TODAY }),
+      tx({ type: 'EXPENSE', amount: 12.5, categoryId: 'cat-food', transactionDate: shiftIsoDate(TODAY, -3) }),
+    ];
+    expect(dailySpendingSeries(rows, 'DAY', TODAY, BY_ID)).toBeNull();
+    expect(dailySpendingSeries(rows, 'ALL', TODAY, BY_ID)).toBeNull();
+  });
+
+  it('L1 only, summed and rounded per day', () => {
+    const rows = [
+      tx({ type: 'EXPENSE', amount: 0.1, categoryId: 'cat-food', transactionDate: TODAY }),
+      tx({ type: 'EXPENSE', amount: 0.2, categoryId: 'cat-food', transactionDate: TODAY }),
+      tx({ type: 'INCOME', amount: 500, categoryId: 'cat-salary', transactionDate: TODAY }),
+      tx({ type: 'TRANSFER', amount: 300, destinationWalletId: 'wal-main', transactionDate: TODAY }),
+      tx({ type: 'DEBT_REPAYMENT', amount: 1000, categoryId: 'cat-debt', debtId: 'debt-1', transactionDate: TODAY }),
+      tx({ type: 'EXPENSE', amount: 70, categoryId: 'cat-debt', transactionDate: TODAY }),
+      tx({ type: 'ADJUSTMENT', amount: -50, categoryId: 'cat-adjust', transactionDate: TODAY }),
+      tx({ type: 'EXPENSE', amount: 9, categoryId: 'cat-food', isDeleted: true, transactionDate: TODAY }),
+    ];
+    const series = dailySpendingSeries(rows, 'WEEK', TODAY, BY_ID);
+    expect(series).toHaveLength(8);
+    expect(series![7].spending).toBe(0.3);
+  });
+
+  it('only the range days', () => {
+    const weekRows = [
+      tx({ type: 'EXPENSE', amount: 5, transactionDate: shiftIsoDate(TODAY, -8) }),
+      tx({ type: 'EXPENSE', amount: 6, transactionDate: shiftIsoDate(TODAY, 1) }),
+    ];
+    const weekSeries = dailySpendingSeries(weekRows, 'WEEK', TODAY, BY_ID);
+    expect(weekSeries).toHaveLength(8);
+    expect(weekSeries![0].date).toBe(shiftIsoDate(TODAY, -7));
+    expect(weekSeries![7].date).toBe(TODAY);
+    expect(weekSeries!.every((p) => p.spending === 0)).toBe(true);
+
+    const monthRows = [
+      tx({ type: 'EXPENSE', amount: 7, transactionDate: shiftIsoDate(TODAY, -31) }),
+    ];
+    const monthSeries = dailySpendingSeries(monthRows, 'MONTH', TODAY, BY_ID);
+    expect(monthSeries).toHaveLength(31);
+    expect(monthSeries!.every((p) => p.spending === 0)).toBe(true);
+  });
+
+  it("adds up to the card's Spending", () => {
+    const rows = [
+      tx({ type: 'EXPENSE', amount: 100.1, transactionDate: shiftIsoDate(TODAY, -30) }),
+      tx({ type: 'EXPENSE', amount: 200.2, transactionDate: shiftIsoDate(TODAY, -7) }),
+      tx({ type: 'EXPENSE', amount: 0.7, transactionDate: shiftIsoDate(TODAY, -1) }),
+      tx({ type: 'EXPENSE', amount: 50, transactionDate: TODAY }),
+      tx({ type: 'INCOME', amount: 999, transactionDate: shiftIsoDate(TODAY, -2) }),
+    ];
+    for (const range of ['WEEK', 'MONTH'] as const) {
+      const series = dailySpendingSeries(rows, range, TODAY, BY_ID)!;
+      const sum = series.reduce((total, p) => total + p.spending, 0);
+      expect(sum).toBeCloseTo(leftOverFor(rows, range, TODAY, 0, BY_ID).spending, 10);
+    }
+  });
+
+  it('future-dated row: intended gap where card counts but sparkline does not', () => {
+    const rows = [
+      tx({ type: 'EXPENSE', amount: 100.1, transactionDate: shiftIsoDate(TODAY, -30) }),
+      tx({ type: 'EXPENSE', amount: 200.2, transactionDate: shiftIsoDate(TODAY, -7) }),
+      tx({ type: 'EXPENSE', amount: 0.7, transactionDate: shiftIsoDate(TODAY, -1) }),
+      tx({ type: 'EXPENSE', amount: 50, transactionDate: TODAY }),
+      tx({ type: 'INCOME', amount: 999, transactionDate: shiftIsoDate(TODAY, -2) }),
+      tx({ type: 'EXPENSE', amount: 30, categoryId: 'cat-food', transactionDate: shiftIsoDate(TODAY, 1) }),
+    ];
+    for (const range of ['WEEK', 'MONTH'] as const) {
+      const flow = leftOverFor(rows, range, TODAY, 0, BY_ID);
+      const series = dailySpendingSeries(rows, range, TODAY, BY_ID)!;
+      expect(series.find((p) => p.date === shiftIsoDate(TODAY, 1))).toBeUndefined();
+      expect(series).toHaveLength(range === 'WEEK' ? 8 : 31);
+      const sum = series.reduce((total, p) => total + p.spending, 0);
+      expect(sum).toBeCloseTo(flow.spending - 30, 10);
+    }
+  });
+
+  for (const zone of ['UTC', 'Asia/Bangkok'] as const) {
+    describe(`in ${zone}`, () => {
+      beforeAll(() => {
+        process.env.TZ = zone;
+      });
+      afterAll(() => {
+        process.env.TZ = 'Asia/Bangkok';
+      });
+
+      it('respects day and month bounds across time zones and year ends', () => {
+        expect(new Date(2026, 9, 17).getTimezoneOffset()).toBe(zone === 'UTC' ? 0 : -420);
+
+        const today = '2026-10-17';
+        const weekSeries = dailySpendingSeries([], 'WEEK', today, BY_ID)!;
+        expect(weekSeries).toHaveLength(8);
+        expect(weekSeries[0].date).toBe('2026-10-10');
+        expect(weekSeries[7].date).toBe('2026-10-17');
+
+        const monthSeries = dailySpendingSeries([], 'MONTH', today, BY_ID)!;
+        expect(monthSeries).toHaveLength(31);
+        expect(monthSeries[0].date).toBe('2026-09-17');
+
+        const yearEndToday = '2027-01-03';
+        const yearEndWeek = dailySpendingSeries([], 'WEEK', yearEndToday, BY_ID)!;
+        expect(yearEndWeek[0].date).toBe('2026-12-27');
+        expect(yearEndWeek.map((p) => p.date)).toEqual([
+          '2026-12-27',
+          '2026-12-28',
+          '2026-12-29',
+          '2026-12-30',
+          '2026-12-31',
+          '2027-01-01',
+          '2027-01-02',
+          '2027-01-03',
+        ]);
       });
     });
   }

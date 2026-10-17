@@ -1,7 +1,8 @@
 import { DiaryEntry, Transaction } from '../types';
 import { CategoryLookup, isSpending } from './ledger';
 import { roundToCents } from '../utils/money';
-import { TimeRange, inRange, rangeBounds } from './timeRange';
+import { shiftIsoDate } from '../utils/date';
+import { TimeRange, filterByRange, inRange, rangeBounds } from './timeRange';
 
 export interface MoodDay {
   /** Local calendar day, `YYYY-MM-DD`. */
@@ -33,6 +34,35 @@ export function daySpending(txs: Transaction[], date: string, categories?: Categ
     count += 1;
   }
   return { spending: roundToCents(spending), count };
+}
+
+export interface SpendingPoint {
+  /** Local calendar day, `YYYY-MM-DD`. */
+  date: string;
+  /** That day's spending on the L1 definition; 0 on a day with none. */
+  spending: number;
+}
+
+/**
+ * The Left over card's sparkline (owner spec 5.2, ADR 0102): one point per
+ * local day from the range's first day through `today`, oldest first,
+ * zero-filled. WEEK is 8 points and MONTH 31, the days `filterByRange` gives
+ * the card's figures. A row dated after today has no point. `null` for DAY
+ * and ALL, which show no sparkline.
+ */
+export function dailySpendingSeries(
+  txs: Transaction[],
+  range: TimeRange,
+  today: string,
+  categories?: CategoryLookup
+): SpendingPoint[] | null {
+  if (range === 'DAY' || range === 'ALL') return null;
+  const rows = filterByRange(txs, range, today);
+  const points: SpendingPoint[] = [];
+  for (let date = rangeBounds(range, today).start!; date <= today; date = shiftIsoDate(date, 1)) {
+    points.push({ date, spending: daySpending(rows, date, categories).spending });
+  }
+  return points;
 }
 
 /** The live diary dates in one month (`YYYY-MM`), for spec 6.5's calendar. */
