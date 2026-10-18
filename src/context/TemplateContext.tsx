@@ -105,25 +105,18 @@ export function useTemplateMutations({
       return { success: false, error: 'Template not found' };
     }
 
-    let cleanedUpdates = updates;
-    if (updates.name !== undefined) {
-      const cleanedName = updates.name.trim();
-      if (!cleanedName) {
-        return { success: false, error: 'Template name is required' };
-      }
+    const validation = PresetSchema.partial().safeParse(updates);
+    if (!validation.success) {
+      return { success: false, error: formatZodIssues(validation.error) };
+    }
+    const cleanedUpdates = validation.data;
+    if (cleanedUpdates.name !== undefined) {
       const isDuplicate = presetsRef.current.some(
-        (p) => p.id !== id && p.name.trim().toLowerCase() === cleanedName.toLowerCase()
+        (p) => p.id !== id && p.name.trim().toLowerCase() === cleanedUpdates.name!.toLowerCase()
       );
       if (isDuplicate) {
-        return { success: false, error: `A template named "${cleanedName}" already exists` };
+        return { success: false, error: `A template named "${cleanedUpdates.name}" already exists` };
       }
-      cleanedUpdates = { ...updates, name: cleanedName };
-    }
-    if (updates.amount !== undefined && !(updates.amount > 0)) {
-      return { success: false, error: 'Amount must be greater than 0' };
-    }
-    if (updates.description !== undefined && !updates.description.trim()) {
-      return { success: false, error: 'Description is required' };
     }
 
     setPresets((prev) => prev.map((p) => (p.id === id ? { ...p, ...cleanedUpdates } : p)));
