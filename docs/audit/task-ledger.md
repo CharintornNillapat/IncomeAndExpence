@@ -35,6 +35,14 @@ Branch `phase-138-reviewer-subagents`, cut from `main` at `f5b05cd`. One commit,
 |---|---|---|---|---|---|
 | T775 | Run the reviewer as Claude Code project sub-agents fin-reviewer (Sonnet) and fin-reviewer-strict (Opus); .claude/agents/ joins the automatic-pause list | `.claude/agents/fin-reviewer.md`, `.claude/agents/fin-reviewer-strict.md`, `AGENTS.md`, `docs/audit/decisions/0101-hierarchical-icm-context-and-herdr-stages.md`, `docs/audit/refactor-log.md` | done | 6055d41 | G1 text landed from spec blocks; G2 agent files differ only in name, description and model; G3 git sees agent files (exit 1, 2 untracked); G4 scope clean (AGENTS.md 1/1, ADR 5/0, other tracked clean); G5 CRLF kept (tracked w/crlf, agents crlf 10 bare-lf 0); G6 paths exist; G7 0 em dashes |
 
+## Phase 139 - Subagent trial: useTransactions honours an explicit includeDeleted: true (CS-01, no ADR)
+
+Branch `phase-139-subagent-trial`, cut from `main` at `2e81e2c`.
+
+| # | Task | Files | Status | Commit | Gate result |
+|---|---|---|---|---|---|
+| T776 | useTransactions honours an explicit includeDeleted: true (CS-01) | `src/hooks/useTransactions.ts`, `unit/use-transactions.test.tsx` | done | | Red gate verified (1 failed, 1 passed); npm run lint clean; related unit 2/2 files 26 passed; unit 63/63 files 1440 passed (43.94s); e2e 2 specs on chr 12 passed (36.4s), 36 passed on 3 browsers (1.0m); CRLF kept; 0 em dashes |
+
 ## Backlog
 
 Not scheduled. Each row says where it came from.
@@ -67,6 +75,7 @@ Not scheduled. Each row says where it came from.
 | setTransactionDeleted has no cloudRevisionAtStart check, so a failed delete or restore restores its pre-call snapshot even when a cloud reload landed mid-flight, unlike addTransaction and updateTransaction | Phase 132, T760's spec (owner decision); `src/context/FinanceContext.tsx:2190-2197`, compare `:1959` and `:2302` | todo |
 | A gate that checks text landed reads the expected text from the spec's code blocks with a script, never retyped; rule candidate for `workflow/stages/02_build/CONTEXT.md` | Phase 137, T772's review (section 8): gate 3 passed on the builder's side while edit 2 differed by one character, so the expected string was not the spec's | todo |
 | Any change to a typography or spacing token (`src/index.css` `@theme` sizes, line heights, spacing) runs the layout specs (`tests/safe-area.spec.ts`, `tests/layout-stability.spec.ts`), not only the specs that name the component; rule candidate for `AGENTS.md`'s tier row for `src/index.css`, and for `docs/contexts/ui-and-e2e.md` | Phase 137, T774: T769's `--text-hero` line height of 1.1 (48.4px) passed its gates and failed `safe-area.spec.ts` in CI | todo |
+| `useTransactions` ignores `options.includeDeleted: true` when `showSoftDeleted` is false | Audit 2026-10-16 (T759), finding CS-01, low; `src/hooks/useTransactions.ts:68` | done in Phase 139 (T776) |
 
 ## Template for the next phase
 
