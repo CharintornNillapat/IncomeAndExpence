@@ -29,11 +29,11 @@ Branch `phase-137-small-fixes`, cut from `main` at `1d286e5`. Six commits, T769'
 
 ## Phase 138 - Reviewer sub-agents: two Claude Code project sub-agents replace the reviewer pane (ADR 0101 amendment)
 
-Branch `phase-138-reviewer-subagents`, cut from `main` at `f5b05cd`.
+Branch `phase-138-reviewer-subagents`, cut from `main` at `f5b05cd`. One commit, T775's `6055d41`, merged into `main` as `9a0b9ab` (PR #90). No migration.
 
 | # | Task | Files | Status | Commit | Gate result |
 |---|---|---|---|---|---|
-| T775 | Run the reviewer as Claude Code project sub-agents fin-reviewer (Sonnet) and fin-reviewer-strict (Opus); .claude/agents/ joins the automatic-pause list | `.claude/agents/fin-reviewer.md`, `.claude/agents/fin-reviewer-strict.md`, `AGENTS.md`, `docs/audit/decisions/0101-hierarchical-icm-context-and-herdr-stages.md`, `docs/audit/refactor-log.md` | done | | G1 text landed from spec blocks; G2 agent files differ only in name, description and model; G3 git sees agent files (exit 1, 2 untracked); G4 scope clean (AGENTS.md 1/1, ADR 5/0, other tracked clean); G5 CRLF kept (tracked w/crlf, agents crlf 10 bare-lf 0); G6 paths exist; G7 0 em dashes |
+| T775 | Run the reviewer as Claude Code project sub-agents fin-reviewer (Sonnet) and fin-reviewer-strict (Opus); .claude/agents/ joins the automatic-pause list | `.claude/agents/fin-reviewer.md`, `.claude/agents/fin-reviewer-strict.md`, `AGENTS.md`, `docs/audit/decisions/0101-hierarchical-icm-context-and-herdr-stages.md`, `docs/audit/refactor-log.md` | done | 6055d41 | G1 text landed from spec blocks; G2 agent files differ only in name, description and model; G3 git sees agent files (exit 1, 2 untracked); G4 scope clean (AGENTS.md 1/1, ADR 5/0, other tracked clean); G5 CRLF kept (tracked w/crlf, agents crlf 10 bare-lf 0); G6 paths exist; G7 0 em dashes |
 
 ## Backlog
 

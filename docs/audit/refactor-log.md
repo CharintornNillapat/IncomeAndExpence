@@ -19,13 +19,13 @@ ADR `NNNN`. <the brief, one or two sentences>
 
 ---
 
-## Phase 138 - Reviewer sub-agents: T775 (2026-10-18)
+## Phase 138 - Reviewer sub-agents: T775 (2026-10-18, code `6055d41`, merged `9a0b9ab`)
 
 ADR `0101` (Phase 138 amendment). From Phase 139 the reviewer runs as a Claude Code project sub-agent, `fin-reviewer` (Sonnet) or `fin-reviewer-strict` (Opus), instead of a herdr pane the orchestrator cleared, switched with `/model` and re-sent the role prompt for each task.
 
 **Changed:** `.claude/agents/fin-reviewer.md` and `.claude/agents/fin-reviewer-strict.md` (new; the role prompt word for word except that "wait for the next one" becomes one order per invocation, plus the final-message, BLOCKED, git, secrets, /api/*, MCP-write and no-sub-agent rules; descriptions say MASTER invokes them by name only; tools Read, Grep, Glob, Bash, Write, Edit); `AGENTS.md` (`.claude/agents/` joins the automatic-pause list); `docs/audit/decisions/0101-hierarchical-icm-context-and-herdr-stages.md` (Phase 138 amendment); `docs/audit/task-ledger.md` (Phase 138 section, T775 row); this file.
-**Verified:** G1 text landed from spec blocks; G2 agent files differ only in name, description and model; G3 git sees agent files (exit 1, 2 untracked); G4 scope clean (AGENTS.md 1/1, ADR 5/0, other tracked clean); G5 CRLF kept (tracked w/crlf, agents crlf 10 bare-lf 0); G6 paths exist; G7 0 em dashes
-**Surprises:** none
+**Verified:** G1 text landed from spec blocks; G2 agent files differ only in name, description and model; G3 git sees agent files (exit 1, 2 untracked); G4 scope clean (AGENTS.md 1/1, ADR 5/0, other tracked clean); G5 CRLF kept (tracked w/crlf, agents crlf 10 bare-lf 0); G6 paths exist; G7 0 em dashes. Release: PR #90 merged T775 into `main` as `9a0b9ab`, a merge commit; CI ran on neither the PR nor the merge, since every changed file is Markdown and `playwright.yml` ignores `**/*.md`. Vercel deployment `dpl_9XgC9X8B6YSiBA5M2XSazYaxevuH` (GitHub deployment `7152721434`) is READY in `icn1`, built in 21 s, with the production aliases assigned, still serving `index-vzBQwKkr.js` and `index-BJZ9fITB.css`, since the phase changed no code. No migration, no request to `/api/*`.
+**Surprises:** Claude Code loaded both agents into the running orchestrator session right after the T775 commit and listed them with their tools, so the files load; which model each runs on is still unproven until Phase 139.
 **Deliberately not done:** the stage files and the rest of `AGENTS.md` (no line names the reviewer pane or its `/clear`, `/model` or role-prompt steps); `.gitignore` (it does not hide `.claude/agents/`); the orchestrator's own configuration and notes, which live outside the repo; a check that Claude Code loads the two agents (no CLI lists them; the first Phase 139 order proves it); `baseline-metrics.md` (no bundle or test count changed).
 
 ---
