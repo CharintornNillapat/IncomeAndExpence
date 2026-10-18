@@ -25,6 +25,8 @@ npx tsc --noEmit --extendedDiagnostics
 
 ### Phase 139 - delta against Phase 137
 
+Measured at `5076a1d`; the merge commit `f33ba89` has the same tree, so the figures hold for it.
+
 - **Entry chunk** `index-DdI940YI.js`: 193,377 B (+42 B), 56,330 B gzip (-28 B against Phase 137 `index-vzBQwKkr.js`, 193,335 / 56,358).
 - **All app JS**: 884,689 B (+20 B), 268,554 B gzip (-34 B against Phase 137 884,669 / 268,588, 39 files, 0 file delta).
 - **CSS**: `index-BJZ9fITB.css`: 52,877 B (0 delta), 10,216 B gzip (0 delta against Phase 137 `index-BJZ9fITB.css`, 52,877 / 10,216).
