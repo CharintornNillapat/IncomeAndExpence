@@ -27,6 +27,14 @@ Branch `phase-137-small-fixes`, cut from `main` at `1d286e5`. Six commits, T769'
 | T773 | Archive the Phase 125 to 135 refactor-log entries; Backlog row for the text-landed gate rule | `docs/audit/archive/refactor-log-phases-125-135.md`, `docs/audit/refactor-log.md`, `docs/audit/README.md`, `docs/audit/task-ledger.md` | done | 15b24b8 | Docs checks passed (log lines 40, archive byte match, 0 Phase 125-135, 2 Phase 136-137, no trailing ---); Phase 137 entry updated (T769-T773, stale sentence gone); pointers resolve; Backlog row added (ledger lines 71); CRLF kept (archive 172/0); 0 em dashes in diff, archive and build report; scope clean |
 | T774 | Whole-pixel line height for the Hero token (CI safe-area failure from T769); Backlog row for running the layout specs on token changes | `src/index.css`, `unit/dashboard.test.tsx`, `DESIGN.md`, `docs/audit/refactor-log.md`, `docs/audit/task-ledger.md` | done | 364e41d | Cause confirmed (safe-area 745.390625 with token, 2 passed without); Red gate verified (unit failed on 1.1); npm run lint clean; unit/dashboard.test.tsx 49 passed; unit 62/62 files 1438 passed (47.89s); e2e chr 3 specs 19 passed (16.1s); e2e 3 browsers 51 passed, 6 skipped (59.5s); docs count check passed (1438); line height 48px verified; CRLF kept; 0 em dashes; scope clean |
 
+## Phase 138 - Reviewer sub-agents: two Claude Code project sub-agents replace the reviewer pane (ADR 0101 amendment)
+
+Branch `phase-138-reviewer-subagents`, cut from `main` at `f5b05cd`.
+
+| # | Task | Files | Status | Commit | Gate result |
+|---|---|---|---|---|---|
+| T775 | Run the reviewer as Claude Code project sub-agents fin-reviewer (Sonnet) and fin-reviewer-strict (Opus); .claude/agents/ joins the automatic-pause list | `.claude/agents/fin-reviewer.md`, `.claude/agents/fin-reviewer-strict.md`, `AGENTS.md`, `docs/audit/decisions/0101-hierarchical-icm-context-and-herdr-stages.md`, `docs/audit/refactor-log.md` | done | | G1 text landed from spec blocks; G2 agent files differ only in name, description and model; G3 git sees agent files (exit 1, 2 untracked); G4 scope clean (AGENTS.md 1/1, ADR 5/0, other tracked clean); G5 CRLF kept (tracked w/crlf, agents crlf 10 bare-lf 0); G6 paths exist; G7 0 em dashes |
+
 ## Backlog
 
 Not scheduled. Each row says where it came from.

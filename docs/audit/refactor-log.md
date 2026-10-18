@@ -19,6 +19,17 @@ ADR `NNNN`. <the brief, one or two sentences>
 
 ---
 
+## Phase 138 - Reviewer sub-agents: T775 (2026-10-18)
+
+ADR `0101` (Phase 138 amendment). From Phase 139 the reviewer runs as a Claude Code project sub-agent, `fin-reviewer` (Sonnet) or `fin-reviewer-strict` (Opus), instead of a herdr pane the orchestrator cleared, switched with `/model` and re-sent the role prompt for each task.
+
+**Changed:** `.claude/agents/fin-reviewer.md` and `.claude/agents/fin-reviewer-strict.md` (new; the role prompt word for word except that "wait for the next one" becomes one order per invocation, plus the final-message, BLOCKED, git, secrets, /api/*, MCP-write and no-sub-agent rules; descriptions say MASTER invokes them by name only; tools Read, Grep, Glob, Bash, Write, Edit); `AGENTS.md` (`.claude/agents/` joins the automatic-pause list); `docs/audit/decisions/0101-hierarchical-icm-context-and-herdr-stages.md` (Phase 138 amendment); `docs/audit/task-ledger.md` (Phase 138 section, T775 row); this file.
+**Verified:** G1 text landed from spec blocks; G2 agent files differ only in name, description and model; G3 git sees agent files (exit 1, 2 untracked); G4 scope clean (AGENTS.md 1/1, ADR 5/0, other tracked clean); G5 CRLF kept (tracked w/crlf, agents crlf 10 bare-lf 0); G6 paths exist; G7 0 em dashes
+**Surprises:** none
+**Deliberately not done:** the stage files and the rest of `AGENTS.md` (no line names the reviewer pane or its `/clear`, `/model` or role-prompt steps); `.gitignore` (it does not hide `.claude/agents/`); the orchestrator's own configuration and notes, which live outside the repo; a check that Claude Code loads the two agents (no CLI lists them; the first Phase 139 order proves it); `baseline-metrics.md` (no bundle or test count changed).
+
+---
+
 ## Phase 137 - Small fixes: T769-T774 (2026-10-17 to 2026-10-18, code `9ca857f` to `364e41d`, merged `0a0f87d`)
 
 No ADR (ADR 0102 already fixes Hero size at 44px; cleanups of existing rules). Closes four low UI findings from the 2026-10-16 audit (UI-01, UI-06, UI-07, UI-08) and introduces the `--text-hero` token (2.75rem / 44px) to size the Left over figure per DESIGN.md instead of `text-4xl`. T770 brings the unit test count on `AGENTS.md` and `README.md` to 1438, and makes the T767 review's test 9 count its 4 rows. T772 adds the rule candidates from the T767, T770 and T771 reviews to the three workflow stage files. T773 archives the Phase 125 to 135 entries of this log and adds a Backlog row for the text-landed gate rule. T774 fixes a CI failure T769 caused: the Hero token's line height of 1.1 (48.4px) made the page fractionally tall, and `safe-area.spec.ts` could not scroll the footer clear of the nav; the line height is now 48px, with an assertion on it.
