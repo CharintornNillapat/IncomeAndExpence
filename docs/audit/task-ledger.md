@@ -45,6 +45,12 @@ Branch `phase-139-subagent-trial`, cut from `main` at `2e81e2c`. Three commits, 
 | T777 | setTransactionDeleted re-fetches instead of restoring a stale snapshot (T69) | `src/context/FinanceContext.tsx`, `unit/authenticated-ledger.test.tsx` | done | 557c025 | Red gate verified (2 failed on wallet-read assertion, 2 passed); npm run lint clean; related unit 2/2 files 176 passed; unit 63/63 files 1444 passed (60.60s); e2e 1 spec on chr 6 passed (21.3s), 18 passed on 3 browsers (52.6s); CRLF kept; 0 em dashes |
 | T778 | Phase 139 closing docs: refactor-log entry, baseline-metrics section, unit test count 1444 / 63 files in AGENTS.md and README.md | `AGENTS.md`, `README.md`, `docs/audit/refactor-log.md`, `docs/audit/baseline-metrics.md` | done | 5076a1d | unit 63 files 1444 passed (75.76s); playwright list 179/35/537; clean prod build (index-DdI940YI.js 193,377 B, all app JS 884,689 B 39 files, CSS 52,877 B); CRLF kept; 0 em dashes |
 
+## Phase 140 - Gemini trial (no ADR)
+
+| # | Task | Files | Status | Commit | Gate result |
+|---|---|---|---|---|---|
+| T779 | Fix Phase 139 refactor-log wording for T776 (CS-01 bug fix, not a redundant guard) | `docs/audit/refactor-log.md` | done | | Docs checks passed (git diff 1/1 at line 24; w/crlf kept; 0 em dashes; scope clean) |
+
 ## Backlog
 
 Not scheduled. Each row says where it came from.
