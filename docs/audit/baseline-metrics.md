@@ -23,6 +23,14 @@ npx tsc --noEmit --extendedDiagnostics
 
 ## Figures
 
+### Phase 137 - delta against Phase 136
+
+- **Entry chunk** `index-DLzcvRPb.js`: 193,335 B (0 delta), 56,359 B gzip (-1 B against Phase 136 `index-BcaenrL9.js`, 193,335 / 56,360).
+- **All app JS**: 884,669 B (+5 B), 268,583 B gzip (+21 B against Phase 136 884,664 / 268,562, 39 files, 0 file delta).
+- **CSS**: `index-CLc9BRYW.css`: 52,876 B (-8 B), 10,214 B gzip (+5 B against Phase 136 `index-z3bqoA9P.css`, 52,884 / 10,209).
+- **Vitest**: 62 files, 1438 tests (+2 tests against Phase 136), 1438 passed in 50.99 s (`workflow/stages/02_build/output/logs/T769-unit.log`).
+- **Playwright**: 5 files (`tests/dashboard.spec.ts`, `tests/transfer-preview.spec.ts`, `tests/transaction.spec.ts`, `tests/transaction-edit.spec.ts`, `tests/diary.spec.ts`), 32 tests, 96 runs across 3 browsers (Chromium, Firefox, WebKit), 96 passed, 0 failed in 2.2 m; Chromium alone: 32 passed in 40.2 s.
+
 ### Phase 136 - delta against Phase 135
 
 - **Entry chunk** `index-BcaenrL9.js`: 193,335 B (+83 B), 56,360 B gzip (+24 B against Phase 135 `index-wgYjfCND.js`, 193,252 / 56,336).

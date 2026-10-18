@@ -326,3 +326,12 @@ describe('WalletTransferForm: Transfer all records the amount it seeds', () => {
     expect(document.body.textContent).toContain('฿1,400.00');
   });
 });
+
+describe('InlineMathInput: the frame', () => {
+  it('uses transition-control, not transition-all', () => {
+    render(<InlineMathInput id="amt" onAmountEvaluated={() => {}} />);
+    const input = byId('amt')!;
+    expect(input.parentElement!.className).toContain('transition-control');
+    expect(input.parentElement!.className).not.toContain('transition-all');
+  });
+});

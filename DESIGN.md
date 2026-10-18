@@ -77,7 +77,7 @@ Wallets and categories take their own colour from the muted identity palette in 
 | Section label | 12 to 13px / 600, uppercase, `tracking-wider` (0.05em), `fg-secondary` or `fg-muted` |
 | Body | 14px / 400 to 500 |
 | Caption | 12 to 13px, `fg-muted` |
-| Hero number (the Dashboard's Left over) | 44px / 600, −1px tracking |
+| Hero number (the Dashboard's Left over) | 44px / 600, 48px line height, −1px tracking; the `text-hero` token |
 | KPI number | 28px / 600 |
 | Amount in a list row | 15px / 600 |
 
@@ -171,7 +171,7 @@ One period for the whole page, chosen in the `PageHeader`. Every figure comes fr
 - The net worth figure is `fg`; it takes no colour of its own.
 - Category and wallet hues are the record's own colour, tinted as the existing chips tint them. Debt progress is a `ProgressBar` (payoff is `income`).
 
-**Type:** IBM Plex Sans Thai with `tabular-nums`, sizes from section 2's scale. The Left over figure takes the Hero number size. No `text-[Npx]`.
+**Type:** IBM Plex Sans Thai with `tabular-nums`, sizes from section 2's scale. The Left over figure takes the Hero number size (`text-hero`). No `text-[Npx]`.
 
 **Rules:**
 - Every control has a 44px hit box: the period control is a `SegmentedControl`, Log today a `ui/Button`.

@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, afterEach, beforeAll, afterAll, vi } from 'vitest';
+import { readFileSync } from 'node:fs';
 import { render, cleanup, fireEvent, screen, within } from '@testing-library/react';
 import { CashFlowCard } from '../src/components/dashboard/CashFlowCard';
 import { LeftOverCard } from '../src/components/dashboard/LeftOverCard';
@@ -162,6 +163,17 @@ describe('Left over follows the net rule (spec section 3)', () => {
     expect(net.textContent).toBe(`${MINUS}${formatCurrencyAmount(200)}`);
     expect(net.className).toContain('text-expense');
     expect(screen.getByText('No income this period')).toBeTruthy();
+  });
+
+  it('sets the figure at the Hero size', () => {
+    const rows = [tx({ type: 'INCOME', amount: 500 }), tx({ type: 'EXPENSE', amount: 200 })];
+    render(<LeftOverCard data={leftOverFor(rows, 'DAY', TODAY, 0, CATEGORIES)} series={null} periodName="today" periodDates="Sep 28" />);
+    const net = screen.getByText(`+${formatCurrencyAmount(300)}`);
+    expect(net.className).toContain('text-hero');
+    expect(net.className).not.toContain('text-4xl');
+    // A fractional line box makes the page fractionally tall and breaks tests/safe-area.spec.ts (T774).
+    const css = readFileSync(new URL(String('../src/index.css'), import.meta.url), 'utf8');
+    expect(css).toMatch(/--text-hero--line-height:\s*\d+px;/);
   });
 });
 
@@ -469,7 +481,7 @@ describe('Recent activity: L8 fold, L11 nets, and no placeholder labels', () => 
     tx({ type: 'INCOME', amount: 1000, transactionDate: '2026-09-27', description: 'กิจนิมนต์' }),
   ];
 
-  function renderCard() {
+  function renderCard(onOpenTransaction?: (txId: string) => void) {
     const nets = new Map(groupByDay(ROWS, CATEGORIES).map((day) => [day.date, day.net]));
     return render(
       <RecentActivityCard
@@ -479,6 +491,7 @@ describe('Recent activity: L8 fold, L11 nets, and no placeholder labels', () => 
         categories={CATEGORIES}
         today={TODAY}
         onViewAll={() => {}}
+        onOpenTransaction={onOpenTransaction}
       />
     );
   }
@@ -515,10 +528,12 @@ describe('Recent activity: L8 fold, L11 nets, and no placeholder labels', () => 
   });
 
   it('sits in a named region containing the View all button and activity items', () => {
-    const { container } = renderCard();
+    const { container } = renderCard(() => {});
     const region = screen.getByRole('region', { name: 'Recent activity' });
     expect(within(region).getByRole('button', { name: 'View all' })).toBeTruthy();
-    for (const el of container.querySelectorAll('[id^="dashboard-tx-"]')) {
+    const rows = container.querySelectorAll('[id^="dashboard-tx-"]');
+    expect(rows).toHaveLength(4);
+    for (const el of rows) {
       expect(region.contains(el)).toBe(true);
     }
   });

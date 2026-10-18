@@ -11,7 +11,7 @@ import { cloneElement, useEffect, useState, type ReactElement } from 'react';
 /** DESIGN.md MOTION 1: every tween is 200 ms, ease-out. */
 export const MOTION_MS = 200;
 
-export function prefersReducedMotion(): boolean {
+function prefersReducedMotion(): boolean {
   return typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 }
 
