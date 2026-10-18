@@ -2058,6 +2058,8 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     const previousTransactions = transactionsRef.current;
     const previousWallets = walletsRef.current;
     const previousDebts = debtsRef.current;
+    // T69: see `cloudRevisionRef`.
+    const cloudRevisionAtStart = cloudRevisionRef.current;
 
     // Resolve every participating wallet and compute both new balances BEFORE
     // any setState call. This function used to assign `sourceNewBal`/
@@ -2196,20 +2198,27 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     } catch (err: unknown) {
       console.error('[Set Transaction Deleted Failed]', err);
 
-      // Roll back the optimistic local state. Wallets and the transaction flag
-      // are restored together so the ledger and the balances can never disagree.
-      setTransactions(previousTransactions);
-      setWallets(previousWallets);
-      setDebts(previousDebts);
+      if (cloudRevisionRef.current !== cloudRevisionAtStart) {
+        // T69: a realtime reload landed while this write was in flight, so the
+        // snapshot is stale; restoring it would discard what another device
+        // just committed. Re-fetch instead.
+        await refreshFromCloud();
+      } else {
+        // Roll back the optimistic local state. Wallets and the transaction flag
+        // are restored together so the ledger and the balances can never disagree.
+        setTransactions(previousTransactions);
+        setWallets(previousWallets);
+        setDebts(previousDebts);
+
+        // ADR 0023: the rollback above is a guess when the RPC may have
+        // committed. Re-read; if that fails too (offline), the rollback stands
+        // until the reconnect reload corrects it.
+        if (rpcOutcomeUnknown) {
+          await refreshFromCloud();
+        }
+      }
 
       if (err instanceof MissingLedgerFunction) return databaseUpdateNeeded();
-
-      // ADR 0023: the rollback above is a guess when the RPC may have
-      // committed. Re-read; if that fails too (offline), the rollback stands
-      // until the reconnect reload corrects it.
-      if (rpcOutcomeUnknown) {
-        await refreshFromCloud();
-      }
 
       const postgrestErr = err as { message?: string; details?: string; hint?: string };
       const detailedError =

@@ -1226,6 +1226,132 @@ describe('a signed-in delete and restore through set_transaction_deleted (ADR 00
     });
   });
 
+  it('delete: re-fetches instead of restoring a stale snapshot when a reload landed mid-flight (T69)', async () => {
+    const spent = await expense(200);
+    await landed(spent.txId);
+
+    let release!: () => void;
+    fake.state.gates.set('rpc:set_transaction_deleted', new Promise<void>((resolve) => (release = resolve)));
+
+    const pending = actions().softDeleteTransaction(spent.txId!);
+    await waitFor(() => expect(wallet()?.balance).toBe(WALLET_OPENING));
+
+    serverWallet(WALLET).balance = 7777;
+    await fake.state.authCallback!('SIGNED_IN', fake.session);
+    await waitFor(() => {
+      expect(wallet()?.balance).toBe(7777);
+      expect(state().isSyncing).toBe(false);
+    });
+
+    fake.state.calls = [];
+    fake.state.failures.set('rpc:set_transaction_deleted', { message: 'permission denied for function', code: '42501' });
+    release();
+
+    expect((await pending).success).toBe(false);
+    expect(writes('wallets', 'select').length).toBeGreaterThan(0);
+    // Server truth, not the pre-call snapshot of 4,800.
+    await waitFor(() => {
+      expect(wallet()?.balance).toBe(7777);
+      expect(state().transactions.find((t) => t.id === spent.txId)?.isDeleted).toBe(false);
+    });
+  });
+
+  it('restore: re-fetches instead of restoring a stale snapshot when a reload landed mid-flight (T69)', async () => {
+    const spent = await expense(200);
+    await landed(spent.txId);
+
+    const removed = await actions().softDeleteTransaction(spent.txId!);
+    expect(removed.success).toBe(true);
+    await waitFor(() => {
+      expect(wallet()?.balance).toBe(WALLET_OPENING);
+      expect(state().transactions.find((t) => t.id === spent.txId)?.isDeleted).toBe(true);
+    });
+    await new Promise<void>((resolve) => setTimeout(resolve, 0));
+
+    let release!: () => void;
+    fake.state.gates.set('rpc:set_transaction_deleted', new Promise<void>((resolve) => (release = resolve)));
+
+    const pending = actions().restoreTransaction(spent.txId!);
+    await waitFor(() => expect(wallet()?.balance).toBe(WALLET_OPENING - 200));
+
+    serverWallet(WALLET).balance = 7777;
+    await fake.state.authCallback!('SIGNED_IN', fake.session);
+    await waitFor(() => {
+      expect(wallet()?.balance).toBe(7777);
+      expect(state().isSyncing).toBe(false);
+    });
+
+    fake.state.calls = [];
+    fake.state.failures.set('rpc:set_transaction_deleted', { message: 'permission denied for function', code: '42501' });
+    release();
+
+    expect((await pending).success).toBe(false);
+    expect(writes('wallets', 'select').length).toBeGreaterThan(0);
+    // Server truth, not the pre-call snapshot of 5,000.
+    await waitFor(() => {
+      expect(wallet()?.balance).toBe(7777);
+      expect(state().transactions.find((t) => t.id === spent.txId)?.isDeleted).toBe(true);
+    });
+  });
+
+  it('delete: still restores the pre-call snapshot when no reload landed mid-flight (T69)', async () => {
+    const spent = await expense(200);
+    await landed(spent.txId);
+
+    let release!: () => void;
+    fake.state.gates.set('rpc:set_transaction_deleted', new Promise<void>((resolve) => (release = resolve)));
+
+    const pending = actions().softDeleteTransaction(spent.txId!);
+    await waitFor(() => {
+      expect(wallet()?.balance).toBe(WALLET_OPENING);
+      expect(state().transactions.find((t) => t.id === spent.txId)?.isDeleted).toBe(true);
+    });
+
+    fake.state.calls = [];
+    fake.state.failures.set('rpc:set_transaction_deleted', { message: 'permission denied for function', code: '42501' });
+    release();
+
+    expect((await pending).success).toBe(false);
+    expect(writes('wallets', 'select')).toHaveLength(0);
+    await waitFor(() => {
+      expect(wallet()?.balance).toBe(WALLET_OPENING - 200);
+      expect(state().transactions.find((t) => t.id === spent.txId)?.isDeleted).toBe(false);
+    });
+  });
+
+  it('restore: still restores the pre-call snapshot when no reload landed mid-flight (T69)', async () => {
+    const spent = await expense(200);
+    await landed(spent.txId);
+
+    const removed = await actions().softDeleteTransaction(spent.txId!);
+    expect(removed.success).toBe(true);
+    await waitFor(() => {
+      expect(wallet()?.balance).toBe(WALLET_OPENING);
+      expect(state().transactions.find((t) => t.id === spent.txId)?.isDeleted).toBe(true);
+    });
+    await new Promise<void>((resolve) => setTimeout(resolve, 0));
+
+    let release!: () => void;
+    fake.state.gates.set('rpc:set_transaction_deleted', new Promise<void>((resolve) => (release = resolve)));
+
+    const pending = actions().restoreTransaction(spent.txId!);
+    await waitFor(() => {
+      expect(wallet()?.balance).toBe(WALLET_OPENING - 200);
+      expect(state().transactions.find((t) => t.id === spent.txId)?.isDeleted).toBe(false);
+    });
+
+    fake.state.calls = [];
+    fake.state.failures.set('rpc:set_transaction_deleted', { message: 'permission denied for function', code: '42501' });
+    release();
+
+    expect((await pending).success).toBe(false);
+    expect(writes('wallets', 'select')).toHaveLength(0);
+    await waitFor(() => {
+      expect(wallet()?.balance).toBe(WALLET_OPENING);
+      expect(state().transactions.find((t) => t.id === spent.txId)?.isDeleted).toBe(true);
+    });
+  });
+
   it('re-reads after an unknown outcome', async () => {
     const spent = await expense(200);
     await landed(spent.txId);
