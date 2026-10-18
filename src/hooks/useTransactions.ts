@@ -65,7 +65,6 @@ export const useTransactions = (options: UseTransactionsFilterOptions = {}) => {
     return transactions.filter((tx) => {
       // Soft-deletion check
       if (!includeDeleted && tx.isDeleted) return false;
-      if (includeDeleted && !showSoftDeleted && tx.isDeleted) return false;
 
       // Wallet filter
       if (walletId && tx.walletId !== walletId && tx.destinationWalletId !== walletId) {
@@ -92,7 +91,7 @@ export const useTransactions = (options: UseTransactionsFilterOptions = {}) => {
 
       return true;
     });
-  }, [transactions, includeDeleted, showSoftDeleted, walletId, categoryId, type, startDate, endDate]);
+  }, [transactions, includeDeleted, walletId, categoryId, type, startDate, endDate]);
 
   // Stage 2: keyword search over Stage 1's result. Matches across all five
   // user-visible fields: the description, the raw amount, the original

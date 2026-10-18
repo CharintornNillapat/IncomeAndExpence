@@ -35,6 +35,16 @@ Branch `phase-138-reviewer-subagents`, cut from `main` at `f5b05cd`. One commit,
 |---|---|---|---|---|---|
 | T775 | Run the reviewer as Claude Code project sub-agents fin-reviewer (Sonnet) and fin-reviewer-strict (Opus); .claude/agents/ joins the automatic-pause list | `.claude/agents/fin-reviewer.md`, `.claude/agents/fin-reviewer-strict.md`, `AGENTS.md`, `docs/audit/decisions/0101-hierarchical-icm-context-and-herdr-stages.md`, `docs/audit/refactor-log.md` | done | 6055d41 | G1 text landed from spec blocks; G2 agent files differ only in name, description and model; G3 git sees agent files (exit 1, 2 untracked); G4 scope clean (AGENTS.md 1/1, ADR 5/0, other tracked clean); G5 CRLF kept (tracked w/crlf, agents crlf 10 bare-lf 0); G6 paths exist; G7 0 em dashes |
 
+## Phase 139 - Subagent trial: useTransactions includeDeleted (CS-01) and setTransactionDeleted's T69 reload check (no ADR)
+
+Branch `phase-139-subagent-trial`, cut from `main` at `2e81e2c`.
+
+| # | Task | Files | Status | Commit | Gate result |
+|---|---|---|---|---|---|
+| T776 | useTransactions honours an explicit includeDeleted: true (CS-01) | `src/hooks/useTransactions.ts`, `unit/use-transactions.test.tsx` | done | | Red gate verified (1 failed, 1 passed); npm run lint clean; related unit 2/2 files 26 passed; unit 63/63 files 1440 passed (43.94s); e2e 2 specs on chr 12 passed (36.4s), 36 passed on 3 browsers (1.0m); CRLF kept; 0 em dashes |
+| T777 | setTransactionDeleted re-fetches instead of restoring a stale snapshot (T69) | `src/context/FinanceContext.tsx`, `unit/authenticated-ledger.test.tsx` | done | | Red gate verified (2 failed on wallet-read assertion, 2 passed); npm run lint clean; related unit 2/2 files 176 passed; unit 63/63 files 1444 passed (60.60s); e2e 1 spec on chr 6 passed (21.3s), 18 passed on 3 browsers (52.6s); CRLF kept; 0 em dashes |
+| T778 | Phase 139 closing docs: refactor-log entry, baseline-metrics section, unit test count 1444 / 63 files in AGENTS.md and README.md | `AGENTS.md`, `README.md`, `docs/audit/refactor-log.md`, `docs/audit/baseline-metrics.md` | done | | unit 63 files 1444 passed (75.76s); playwright list 179/35/537; clean prod build (index-DdI940YI.js 193,377 B, all app JS 884,689 B 39 files, CSS 52,877 B); CRLF kept; 0 em dashes |
+
 ## Backlog
 
 Not scheduled. Each row says where it came from.
@@ -64,9 +74,10 @@ Not scheduled. Each row says where it came from.
 | Profile and password fields in AccountModal lack programmatic label association via htmlFor | Audit 2026-10-16 (T759), finding UI-04, medium; `src/components/account/AccountModal.tsx:611` | done in Phase 136 (T768) |
 | Category selector in CSV import preview table lacks accessible name | Audit 2026-10-16 (T759), finding UI-05, medium; `src/components/transaction/ImportCsvModal.tsx:547-552` | done in Phase 136 (T768) |
 | AddWalletForm's `Currency` and `Color` `<label>`s name no labelable control (a read-only `div` and a swatch button group); make them a `span` or a `role="group"` with `aria-labelledby` | Phase 136, T768's spec | todo |
-| setTransactionDeleted has no cloudRevisionAtStart check, so a failed delete or restore restores its pre-call snapshot even when a cloud reload landed mid-flight, unlike addTransaction and updateTransaction | Phase 132, T760's spec (owner decision); `src/context/FinanceContext.tsx:2190-2197`, compare `:1959` and `:2302` | todo |
+| setTransactionDeleted has no cloudRevisionAtStart check, so a failed delete or restore restores its pre-call snapshot even when a cloud reload landed mid-flight, unlike addTransaction and updateTransaction | Phase 132, T760's spec (owner decision); `src/context/FinanceContext.tsx:2190-2197`, compare `:1959` and `:2302` | done in Phase 139 (T777) |
 | A gate that checks text landed reads the expected text from the spec's code blocks with a script, never retyped; rule candidate for `workflow/stages/02_build/CONTEXT.md` | Phase 137, T772's review (section 8): gate 3 passed on the builder's side while edit 2 differed by one character, so the expected string was not the spec's | todo |
 | Any change to a typography or spacing token (`src/index.css` `@theme` sizes, line heights, spacing) runs the layout specs (`tests/safe-area.spec.ts`, `tests/layout-stability.spec.ts`), not only the specs that name the component; rule candidate for `AGENTS.md`'s tier row for `src/index.css`, and for `docs/contexts/ui-and-e2e.md` | Phase 137, T774: T769's `--text-hero` line height of 1.1 (48.4px) passed its gates and failed `safe-area.spec.ts` in CI | todo |
+| `useTransactions` ignores `options.includeDeleted: true` when `showSoftDeleted` is false | Audit 2026-10-16 (T759), finding CS-01, low; `src/hooks/useTransactions.ts:68` | done in Phase 139 (T776) |
 
 ## Template for the next phase
 
