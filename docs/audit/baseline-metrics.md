@@ -23,6 +23,14 @@ npx tsc --noEmit --extendedDiagnostics
 
 ## Figures
 
+### Phase 139 - delta against Phase 137
+
+- **Entry chunk** `index-DdI940YI.js`: 193,377 B (+42 B), 56,330 B gzip (-28 B against Phase 137 `index-vzBQwKkr.js`, 193,335 / 56,358).
+- **All app JS**: 884,689 B (+20 B), 268,554 B gzip (-34 B against Phase 137 884,669 / 268,588, 39 files, 0 file delta).
+- **CSS**: `index-BJZ9fITB.css`: 52,877 B (0 delta), 10,216 B gzip (0 delta against Phase 137 `index-BJZ9fITB.css`, 52,877 / 10,216).
+- **Vitest**: 63 files, 1444 tests (+6 tests, +1 file against Phase 137), 1444 passed in 75.76 s (`workflow/stages/02_build/output/logs/T778-unit.log`). Per-task runs: T776 1440 passed in 43.94 s (`workflow/stages/02_build/output/logs/T776-unit.log`), T777 1444 passed in 60.60 s (`workflow/stages/02_build/output/logs/T777-unit.log`).
+- **Playwright**: not run in full: no UI path changed in Phase 139; affected specs ran per task (`tests/soft-delete.spec.ts` for T777: 6 on Chromium, 18 on three browsers; `tests/soft-delete.spec.ts` and `tests/transaction.spec.ts` for T776: 12 on Chromium, 36 on three browsers). Suite size unchanged: `npx playwright test --list` reports 179 tests in 35 files, 537 runs across 3 projects.
+
 ### Phase 137 - delta against Phase 136
 
 - **Entry chunk** `index-vzBQwKkr.js`: 193,335 B (0 delta), 56,358 B gzip (-2 B against Phase 136 `index-BcaenrL9.js`, 193,335 / 56,360).
