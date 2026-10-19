@@ -1,5 +1,6 @@
 import Papa from 'papaparse';
 import { todayIsoDate, toIsoDate } from './date';
+import { roundToCents } from './money';
 import { Transaction, Wallet, Category, Debt, ImportPreviewSummary, ImportRowValidation, TransactionType } from '../types';
 
 /**
@@ -181,19 +182,25 @@ export function parseAndValidateTransactionCsv(
 
           // Validate Amount. An ADJUSTMENT is the signed correction (ADR 0024):
           // any non-zero amount; every other type must be positive.
-          const numAmount = parseFloat(rawAmount);
-          if (isNaN(numAmount)) {
+          const rawParsedAmount = parseFloat(rawAmount);
+          let roundedAmount = 0;
+          if (isNaN(rawParsedAmount)) {
             errors.push('Amount must be a positive number');
-          } else if (parsedType === 'ADJUSTMENT') {
-            if (numAmount === 0) errors.push('An adjustment must not be zero');
-          } else if (numAmount <= 0) {
-            errors.push('Amount must be a positive number');
+          } else {
+            const rounded = roundToCents(rawParsedAmount);
+            // In JavaScript, roundToCents(-0.004) produces -0; normalize to 0.
+            roundedAmount = rounded === 0 ? 0 : rounded;
+            if (parsedType === 'ADJUSTMENT') {
+              if (roundedAmount === 0) errors.push('An adjustment must not be zero');
+            } else if (roundedAmount <= 0) {
+              errors.push('Amount must be a positive number');
+            }
           }
 
           const isValid = errors.length === 0;
           if (isValid) {
             validCount++;
-            totalAmount += Math.round(numAmount * 100) / 100;
+            totalAmount = roundToCents(totalAmount + roundedAmount);
           } else {
             invalidCount++;
           }
@@ -206,7 +213,7 @@ export function parseAndValidateTransactionCsv(
             categoryName: rawCategory || undefined,
             debtName: resolvedDebtId ? rawDebt : undefined,
             debtId: resolvedDebtId,
-            amount: isNaN(numAmount) ? 0 : Math.round(numAmount * 100) / 100,
+            amount: roundedAmount,
             type: parsedType,
             description,
             isValid,
@@ -220,7 +227,7 @@ export function parseAndValidateTransactionCsv(
           totalRows: dataRows.length,
           validRowsCount: validCount,
           invalidRowsCount: invalidCount,
-          totalAmount: Math.round(totalAmount * 100) / 100,
+          totalAmount: roundToCents(totalAmount),
           rows: validationRows,
         });
       },

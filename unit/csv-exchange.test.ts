@@ -29,6 +29,44 @@ describe('parseAndValidateTransactionCsv - amounts', () => {
     expect(preview.rows[0].isValid).toBe(false);
     expect(preview.rows[0].errorMessage).toContain('positive');
   });
+
+  it('rejects an expense whose sub-cent amount rounds to zero (T788)', async () => {
+    const preview = await parseAndValidateTransactionCsv(csv('2026-09-28,Cash,EXPENSE,0.004,Sub-cent zero expense'), WALLETS);
+    expect(preview.rows[0].isValid).toBe(false);
+    expect(preview.rows[0].errorMessage).toContain('Amount must be a positive number');
+    expect(preview.validRowsCount).toBe(0);
+    expect(preview.invalidRowsCount).toBe(1);
+    expect(preview.totalAmount).toBe(0);
+  });
+
+  it('rejects an adjustment whose sub-cent amount rounds to zero (T788)', async () => {
+    const pos = await parseAndValidateTransactionCsv(csv('2026-09-28,Cash,ADJUSTMENT,0.004,Sub-cent zero adjustment'), WALLETS);
+    expect(pos.rows[0].isValid).toBe(false);
+    expect(pos.rows[0].errorMessage).toContain('An adjustment must not be zero');
+    expect(pos.validRowsCount).toBe(0);
+    expect(pos.invalidRowsCount).toBe(1);
+
+    const neg = await parseAndValidateTransactionCsv(csv('2026-09-28,Cash,ADJUSTMENT,-0.004,Sub-cent neg adjustment'), WALLETS);
+    expect(neg.rows[0].isValid).toBe(false);
+    expect(neg.rows[0].errorMessage).toContain('An adjustment must not be zero');
+    expect(neg.validRowsCount).toBe(0);
+    expect(neg.invalidRowsCount).toBe(1);
+  });
+
+  it('rounds valid sub-cent amounts to whole cents with roundToCents (T788)', async () => {
+    const preview = await parseAndValidateTransactionCsv(
+      csv(
+        '2026-09-28,Cash,EXPENSE,10.004,Round down',
+        '2026-09-28,Cash,INCOME,20.006,Round up'
+      ),
+      WALLETS
+    );
+    expect(preview.rows[0]).toMatchObject({ isValid: true, amount: 10 });
+    expect(preview.rows[1]).toMatchObject({ isValid: true, amount: 20.01 });
+    expect(preview.validRowsCount).toBe(2);
+    expect(preview.invalidRowsCount).toBe(0);
+    expect(preview.totalAmount).toBe(30.01);
+  });
 });
 
 /**
