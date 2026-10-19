@@ -45,7 +45,9 @@ Branch `phase-139-subagent-trial`, cut from `main` at `2e81e2c`. Three commits, 
 | T777 | setTransactionDeleted re-fetches instead of restoring a stale snapshot (T69) | `src/context/FinanceContext.tsx`, `unit/authenticated-ledger.test.tsx` | done | 557c025 | Red gate verified (2 failed on wallet-read assertion, 2 passed); npm run lint clean; related unit 2/2 files 176 passed; unit 63/63 files 1444 passed (60.60s); e2e 1 spec on chr 6 passed (21.3s), 18 passed on 3 browsers (52.6s); CRLF kept; 0 em dashes |
 | T778 | Phase 139 closing docs: refactor-log entry, baseline-metrics section, unit test count 1444 / 63 files in AGENTS.md and README.md | `AGENTS.md`, `README.md`, `docs/audit/refactor-log.md`, `docs/audit/baseline-metrics.md` | done | 5076a1d | unit 63 files 1444 passed (75.76s); playwright list 179/35/537; clean prod build (index-DdI940YI.js 193,377 B, all app JS 884,689 B 39 files, CSS 52,877 B); CRLF kept; 0 em dashes |
 
-## Phase 140 - Gemini trial (no ADR)
+## Phase 140 - Gemini trial (ADR 0101 amendment)
+
+Branch `phase-140-gemini-trial`, cut from `main` at `1f17107`.
 
 | # | Task | Files | Status | Commit | Gate result |
 |---|---|---|---|---|---|
@@ -56,6 +58,7 @@ Branch `phase-139-subagent-trial`, cut from `main` at `2e81e2c`. Three commits, 
 | T783 | useDebts rounds totalTarget, remainingTarget and paidTarget with roundToCents (CS-03) | `src/hooks/useDebts.ts`, `unit/debts-page.test.tsx` | done | | Red gate verified (1 failed, 28 skipped); npm run lint clean; related unit 3/3 files 98 passed; unit 63/63 files 1446 passed (77.12s); e2e 2 specs on chr 4 passed (49.9s), 12 passed on 3 browsers (1.0m); CRLF kept; 0 em dashes |
 | T784 | Insights choice validation uses Object.hasOwn instead of in (AP-01) | `api/insights.ts`, `unit/proxy-contract.test.ts` | done | | Red gate verified (3 failed, 40 passed); npm run lint clean; related unit 5/5 files 281 passed; unit 63/63 files 1450 passed (88.93s); e2e 1 spec on chr 2 passed (25.3s), 6 passed on 3 browsers (39.2s); CRLF kept; 0 em dashes |
 | T785 | Insights validator checks category changePercent (AP-02) | `api/insights.ts`, `unit/proxy-contract.test.ts` | done | | Red gate verified (5 failed, 1 passed); npm run lint clean; related unit 5/5 files 287 passed; unit 63/63 files 1456 passed (69.41s); e2e 1 spec on chr 2 passed (17.1s), 6 passed on 3 browsers (25.0s); CRLF kept; 0 em dashes |
+| T786 | Phase 140 closing docs: ADR 0101 amendment (Option B), refactor-log entry, baseline-metrics section, branch line in task-ledger.md, unit test count 1456 / 63 files in AGENTS.md and README.md | `AGENTS.md`, `README.md`, `docs/audit/decisions/0101-hierarchical-icm-context-and-herdr-stages.md`, `docs/audit/refactor-log.md`, `docs/audit/baseline-metrics.md`, `docs/audit/task-ledger.md` | done | | unit 63 files 1456 passed (70.48s); playwright list 179/35/537; clean prod build (index-BxO3ndwn.js 193,199 B, all app JS 884,527 B 39 files, CSS 52,877 B); CRLF kept; 0 em dashes |
 
 ## Backlog
 
