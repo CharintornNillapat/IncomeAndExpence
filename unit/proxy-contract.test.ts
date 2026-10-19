@@ -903,3 +903,56 @@ describe('the 64 KB body cap fits the largest valid body', () => {
     expect((await insights(req)).status).toBe(200);
   });
 });
+
+describe('/api/insights choice validation (AP-01)', () => {
+  it.each(['toString', 'valueOf', 'constructor'])(
+    'degrades Object.prototype key "%s" in pattern.choice to STEADY and in focus.choice to null',
+    async (protoKey) => {
+      upstreamReplies(200, {
+        answers: {
+          pattern: { choice: protoKey, confidence: 0.85 },
+          focus: { choice: protoKey, confidence: 0.75 },
+        },
+      });
+
+      const res = await insights(postAs('/api/insights', INSIGHTS_BODY, `Bearer ${await freshToken()}`));
+
+      expect(res.status).toBe(200);
+      expect(await res.json()).toEqual({
+        pattern: 'STEADY',
+        focus: null,
+        confidence: 0.85,
+      });
+    },
+  );
+
+  it('keeps own pattern and category choices and maps the none sentinel to null', async () => {
+    upstreamReplies(200, {
+      answers: {
+        pattern: { choice: 'IMPROVED_SAVING', confidence: 0.91 },
+        focus: { choice: 'Food & Dining', confidence: 0.88 },
+      },
+    });
+    const ownRes = await insights(postAs('/api/insights', INSIGHTS_BODY, `Bearer ${await freshToken()}`));
+    expect(ownRes.status).toBe(200);
+    expect(await ownRes.json()).toEqual({
+      pattern: 'IMPROVED_SAVING',
+      focus: 'Food & Dining',
+      confidence: 0.91,
+    });
+
+    upstreamReplies(200, {
+      answers: {
+        pattern: { choice: 'STEADY', confidence: 0.8 },
+        focus: { choice: 'none', confidence: 0.9 },
+      },
+    });
+    const noneRes = await insights(postAs('/api/insights', INSIGHTS_BODY, `Bearer ${await freshToken()}`));
+    expect(noneRes.status).toBe(200);
+    expect(await noneRes.json()).toEqual({
+      pattern: 'STEADY',
+      focus: null,
+      confidence: 0.8,
+    });
+  });
+});

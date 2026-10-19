@@ -623,12 +623,12 @@ async function handle(req: Request, timings: Timings): Promise<Response> {
   // An unrecognized choice degrades to STEADY rather than 502ing: the client
   // can always render STEADY, and a usable card beats an error.
   const chosenPattern =
-    typeof pattern.choice === 'string' && pattern.choice in PATTERN_CRITERIA
+    typeof pattern.choice === 'string' && Object.hasOwn(PATTERN_CRITERIA, pattern.choice)
       ? (pattern.choice as InsightsResponse['pattern'])
       : 'STEADY';
 
   const chosenFocus =
-    typeof focus.choice === 'string' && focus.choice !== noneKey && focus.choice in focusCriteria
+    typeof focus.choice === 'string' && focus.choice !== noneKey && Object.hasOwn(focusCriteria, focus.choice)
       ? focus.choice
       : null;
 

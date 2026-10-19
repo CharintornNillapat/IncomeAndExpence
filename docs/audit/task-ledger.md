@@ -54,6 +54,7 @@ Branch `phase-139-subagent-trial`, cut from `main` at `2e81e2c`. Three commits, 
 | T781 | guest addTransaction rounds newTx.amount with roundToCents (SL-03) | `src/context/FinanceContext.tsx`, `unit/ledger-guards.test.tsx` | done | | Red gate verified (1 failed, 49 skipped); npm run lint clean; related unit 2/2 files 177 passed; unit 63/63 files 1445 passed (90.21s); e2e 2 specs on chr 12 passed (28.1s), 36 passed on 3 browsers (1.6m); CRLF kept; 0 em dashes |
 | T782 | Add two Backlog rows from the blind Opus review of T781 (addTransaction entry rounding and CSV import roundToCents check) | `docs/audit/task-ledger.md` | done | | Docs checks passed (code lines verified, git diff 3/0, w/crlf kept, 0 em dashes, scope clean) |
 | T783 | useDebts rounds totalTarget, remainingTarget and paidTarget with roundToCents (CS-03) | `src/hooks/useDebts.ts`, `unit/debts-page.test.tsx` | done | | Red gate verified (1 failed, 28 skipped); npm run lint clean; related unit 3/3 files 98 passed; unit 63/63 files 1446 passed (77.12s); e2e 2 specs on chr 4 passed (49.9s), 12 passed on 3 browsers (1.0m); CRLF kept; 0 em dashes |
+| T784 | Insights choice validation uses Object.hasOwn instead of in (AP-01) | `api/insights.ts`, `unit/proxy-contract.test.ts` | done | | Red gate verified (3 failed, 40 passed); npm run lint clean; related unit 5/5 files 281 passed; unit 63/63 files 1450 passed (88.93s); e2e 1 spec on chr 2 passed (25.3s), 6 passed on 3 browsers (39.2s); CRLF kept; 0 em dashes |
 
 ## Backlog
 
@@ -93,6 +94,7 @@ Not scheduled. Each row says where it came from.
 | Guest `addTransaction` runs its Zod amount check and the ADR 0016 overpayment guard on the raw amount before rounding (`src/context/FinanceContext.tsx:1675` and `:1749`), so a guest `EXPENSE` of `0.004` stores a `0.00` row and a `DEBT_REPAYMENT` of `100.004` against `100.00` remaining is rejected; SQL rounds first, then checks. Fix: round once at the entry of `addTransaction`, before `safeParse` | Phase 140, blind Opus review of T781; `src/context/FinanceContext.tsx:1675`, `:1749` | todo |
 | CSV import checks `numAmount <= 0` before rounding (`src/utils/csvExchange.ts:184-196`) and uses an inline `Math.round` copy, so `0.004` becomes a `0.00` row that fails the whole `import_transactions` batch for a signed-in user. Fix: check the rounded value and use `roundToCents` | Phase 140, blind Opus review of T781; `src/utils/csvExchange.ts:184-196`, `:209` | todo |
 | useDebts.ts summary targets do not round reduction totals to cents | Audit 2026-10-16 (T759), finding CS-03, low; `src/hooks/useDebts.ts:40-42` | done in Phase 140 (T783) |
+| Insights choice validation uses in operator instead of own-property check | Audit 2026-10-16 (T759), finding AP-01, low; `api/insights.ts:625-634` | done in Phase 140 (T784) |
 
 ## Template for the next phase
 
