@@ -769,3 +769,54 @@ describe('guest addTransaction rounds the stored transaction amount to cents (SL
     expect(wallet(WALLET_MAIN).balance).toBe(2479.76);
   });
 });
+
+describe('guest addTransaction rounds amount before validation and overpayment checks (T787)', () => {
+  it('rejects an expense whose sub-cent amount rounds to zero', async () => {
+    const result = await call(() =>
+      actions().addTransaction({
+        amount: 0.004,
+        type: 'EXPENSE',
+        categoryId: 'cat-food',
+        walletId: WALLET_MAIN,
+        description: 'Sub-cent zero expense',
+        transactionDate: TODAY,
+      }),
+    );
+    expect(result.success).toBe(false);
+    expect(result.error).toContain('Amount must be greater than 0');
+    expect(state().transactions).toHaveLength(0);
+  });
+
+  it('rejects an adjustment whose sub-cent amount rounds to zero', async () => {
+    const result = await call(() =>
+      actions().addTransaction({
+        amount: 0.004,
+        type: 'ADJUSTMENT',
+        categoryId: 'cat-adjust',
+        walletId: WALLET_MAIN,
+        description: 'Sub-cent zero adjustment',
+        transactionDate: TODAY,
+      }),
+    );
+    expect(result.success).toBe(false);
+    expect(result.error).toContain('An adjustment must not be zero');
+    expect(state().transactions).toHaveLength(0);
+  });
+
+  it('accepts a debt repayment with sub-cent float excess that rounds to the exact balance', async () => {
+    const result = await call(() => repay({ amount: DEBT_REMAINING + 0.004 }));
+    expect(result.success).toBe(true);
+    expect(debt().remainingAmount).toBe(0);
+    expect(debt().isSettled).toBe(true);
+    const tx = state().transactions.find((t) => t.id === result.txId)!;
+    expect(tx.amount).toBe(DEBT_REMAINING);
+  });
+
+  it('rejects a debt repayment whose rounded amount exceeds remaining balance', async () => {
+    const result = await call(() => repay({ amount: DEBT_REMAINING + 0.006 }));
+    expect(result.success).toBe(false);
+    expect(result.error).toContain('Payment exceeds');
+    expect(debt().remainingAmount).toBe(DEBT_REMAINING);
+    expect(state().transactions).toHaveLength(0);
+  });
+});
