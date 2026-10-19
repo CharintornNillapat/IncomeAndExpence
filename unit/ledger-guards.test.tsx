@@ -11,6 +11,7 @@ import {
 import type { TransactionEdit } from '../src/types';
 import { seedGuestLedger, SAMPLE_WALLETS, SAMPLE_STUDENT_LOAN } from './fixtures/guestLedger';
 import { readCachedVerdict } from '../src/utils/insightsClient';
+import { roundToCents } from '../src/utils/money';
 
 /**
  * Phase 44's coverage gap (ADR 0021).
@@ -725,5 +726,46 @@ describe('sign-out clears the cached monthly insights too (ADR 0086)', () => {
     expect(keys.filter((k) => k.startsWith('pf_insights::'))).toEqual([]);
     expect(localStorage.getItem('pf_insights_collapsed')).toBe('true');
     expect(localStorage.getItem('finlife_theme_preference')).toBe('dark');
+  });
+});
+
+describe('guest addTransaction rounds the stored transaction amount to cents (SL-03)', () => {
+  it('stores roundToCents(amount) on positive and negative entries so the row matches the wallet delta and reverses cleanly', async () => {
+    const exp = await call(() =>
+      actions().addTransaction({
+        amount: 10.124,
+        type: 'EXPENSE',
+        categoryId: 'cat-food',
+        walletId: WALLET_MAIN,
+        description: 'Sub-cent coffee',
+        transactionDate: TODAY,
+      }),
+    );
+    expect(exp.success).toBe(true);
+    const expRow = state().transactions.find((t) => t.id === exp.txId)!;
+    expect(expRow.amount).toBe(10.12);
+    expect(wallet(WALLET_MAIN).balance).toBe(2489.88);
+    expect(roundToCents(2500 - wallet(WALLET_MAIN).balance)).toBe(expRow.amount);
+
+    await call(() => actions().softDeleteTransaction(exp.txId!));
+    expect(wallet(WALLET_MAIN).balance).toBe(2500);
+    await call(() => actions().restoreTransaction(exp.txId!));
+    expect(wallet(WALLET_MAIN).balance).toBe(2489.88);
+
+    await tick();
+    const adj = await call(() =>
+      actions().addTransaction({
+        amount: -10.124,
+        type: 'ADJUSTMENT',
+        categoryId: 'cat-adjust',
+        walletId: WALLET_MAIN,
+        description: 'Sub-cent downward adjustment',
+        transactionDate: TODAY,
+      }),
+    );
+    expect(adj.success).toBe(true);
+    const adjRow = state().transactions.find((t) => t.id === adj.txId)!;
+    expect(adjRow.amount).toBe(-10.12);
+    expect(wallet(WALLET_MAIN).balance).toBe(2479.76);
   });
 });
