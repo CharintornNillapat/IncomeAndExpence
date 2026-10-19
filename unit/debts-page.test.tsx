@@ -1,12 +1,14 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeAll, afterAll, afterEach } from 'vitest';
-import { render, cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
+import { render, renderHook, cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { FinanceProvider } from '../src/context/FinanceContext';
 import { DebtsView } from '../src/views/DebtsView';
 import { DebtEditSchema, DebtSchema } from '../src/utils/zodSchemas';
 import { formatCurrencyAmount, MINUS } from '../src/utils/currency';
 import { formatShortDate, shiftIsoDate, todayIsoDate } from '../src/utils/date';
 import { debtPlan, requiredMonthly } from '../src/selectors/debts';
+import { useDebts } from '../src/hooks/useDebts';
+import { debtRemaining } from '../src/selectors/wallets';
 import type { Debt, Transaction } from '../src/types';
 import { SAMPLE_STUDENT_LOAN } from './fixtures/guestLedger';
 
@@ -214,6 +216,33 @@ describe('the summary', () => {
     mount({ debts: [big(), debtRow({ id: 'done', name: 'Done', totalAmount: 3000, remainingAmount: 0, isSettled: true })] });
     expect(screen.getByTestId('debt-summary-owed').textContent).toBe(`Still owed${formatCurrencyAmount(12000)}of ${formatCurrencyAmount(15000)} borrowed`);
     expect(screen.getByTestId('debt-summary-paid').textContent).toBe(`Paid off20.0%${formatCurrencyAmount(3000)} repaid`);
+  });
+
+  it('rounds totalTarget, remainingTarget and paidTarget to cents in useDebts().metrics (CS-03)', () => {
+    const seeded = [
+      debtRow({ id: 'd1', name: 'One', totalAmount: 10.1, remainingAmount: 0.1 }),
+      debtRow({ id: 'd2', name: 'Two', totalAmount: 20.2, remainingAmount: 0.2 }),
+    ];
+    localStorage.setItem('pf_debts', JSON.stringify(seeded));
+    const { result } = renderHook(() => useDebts(), {
+      wrapper: ({ children }) => <FinanceProvider>{children}</FinanceProvider>,
+    });
+    expect(result.current.metrics.totalTarget).toBe(30.3);
+    expect(result.current.metrics.remainingTarget).toBe(0.3);
+    expect(result.current.metrics.remainingTarget).toBe(debtRemaining(seeded));
+    expect(result.current.metrics.paidTarget).toBe(30);
+
+    cleanup();
+    localStorage.setItem(
+      'pf_debts',
+      JSON.stringify([debtRow({ id: 'd3', name: 'Three', totalAmount: 0.3, remainingAmount: 0.1 })])
+    );
+    const { result: single } = renderHook(() => useDebts(), {
+      wrapper: ({ children }) => <FinanceProvider>{children}</FinanceProvider>,
+    });
+    expect(single.current.metrics.totalTarget).toBe(0.3);
+    expect(single.current.metrics.remainingTarget).toBe(0.1);
+    expect(single.current.metrics.paidTarget).toBe(0.2);
   });
 
   it('warns when the debts need more a month than the past 30 days left, which left nothing over', () => {
