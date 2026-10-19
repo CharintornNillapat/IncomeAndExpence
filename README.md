@@ -154,7 +154,7 @@ Then open `http://localhost:3000`. The `api/` functions do not run under the Vit
 
 ```bash
 npm run lint         # TypeScript for the app, the tests and the functions, plus checks for Node globals and time-only ids in src/
-npm run test:unit    # Vitest: 1444 tests in 63 files, including every migration replayed in PGlite
+npm run test:unit    # Vitest: 1456 tests in 63 files, including every migration replayed in PGlite
 npm test             # Playwright: 179 tests in 35 spec files on Chromium, Firefox and WebKit (537 runs)
 npx playwright test tests/wallets.spec.ts --project=chromium   # one spec, one browser
 npx playwright install                                          # first run only: the browser engines

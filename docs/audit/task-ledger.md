@@ -45,6 +45,21 @@ Branch `phase-139-subagent-trial`, cut from `main` at `2e81e2c`. Three commits, 
 | T777 | setTransactionDeleted re-fetches instead of restoring a stale snapshot (T69) | `src/context/FinanceContext.tsx`, `unit/authenticated-ledger.test.tsx` | done | 557c025 | Red gate verified (2 failed on wallet-read assertion, 2 passed); npm run lint clean; related unit 2/2 files 176 passed; unit 63/63 files 1444 passed (60.60s); e2e 1 spec on chr 6 passed (21.3s), 18 passed on 3 browsers (52.6s); CRLF kept; 0 em dashes |
 | T778 | Phase 139 closing docs: refactor-log entry, baseline-metrics section, unit test count 1444 / 63 files in AGENTS.md and README.md | `AGENTS.md`, `README.md`, `docs/audit/refactor-log.md`, `docs/audit/baseline-metrics.md` | done | 5076a1d | unit 63 files 1444 passed (75.76s); playwright list 179/35/537; clean prod build (index-DdI940YI.js 193,377 B, all app JS 884,689 B 39 files, CSS 52,877 B); CRLF kept; 0 em dashes |
 
+## Phase 140 - Gemini trial (ADR 0101 amendment)
+
+Branch `phase-140-gemini-trial`, cut from `main` at `1f17107`.
+
+| # | Task | Files | Status | Commit | Gate result |
+|---|---|---|---|---|---|
+| T779 | Fix Phase 139 refactor-log wording for T776 (CS-01 bug fix, not a redundant guard) | `docs/audit/refactor-log.md` | done | | Docs checks passed (git diff 1/1 at line 24; w/crlf kept; 0 em dashes; scope clean) |
+| T780 | updatePreset validates with PresetSchema.partial(): amount cap and description trim (CS-02) | `src/context/TemplateContext.tsx`, `unit/template-context.test.tsx` | done | | Red gate verified (1 failed, 5 passed); npm run lint clean; related unit 3/3 files 18 passed; unit 63/63 files 1444 passed (68.65s); e2e 1 spec on chr 6 passed (51.7s), 18 passed on 3 browsers (47.4s); CRLF kept; 0 em dashes |
+| T781 | guest addTransaction rounds newTx.amount with roundToCents (SL-03) | `src/context/FinanceContext.tsx`, `unit/ledger-guards.test.tsx` | done | | Red gate verified (1 failed, 49 skipped); npm run lint clean; related unit 2/2 files 177 passed; unit 63/63 files 1445 passed (90.21s); e2e 2 specs on chr 12 passed (28.1s), 36 passed on 3 browsers (1.6m); CRLF kept; 0 em dashes |
+| T782 | Add two Backlog rows from the blind Opus review of T781 (addTransaction entry rounding and CSV import roundToCents check) | `docs/audit/task-ledger.md` | done | | Docs checks passed (code lines verified, git diff 3/0, w/crlf kept, 0 em dashes, scope clean) |
+| T783 | useDebts rounds totalTarget, remainingTarget and paidTarget with roundToCents (CS-03) | `src/hooks/useDebts.ts`, `unit/debts-page.test.tsx` | done | | Red gate verified (1 failed, 28 skipped); npm run lint clean; related unit 3/3 files 98 passed; unit 63/63 files 1446 passed (77.12s); e2e 2 specs on chr 4 passed (49.9s), 12 passed on 3 browsers (1.0m); CRLF kept; 0 em dashes |
+| T784 | Insights choice validation uses Object.hasOwn instead of in (AP-01) | `api/insights.ts`, `unit/proxy-contract.test.ts` | done | | Red gate verified (3 failed, 40 passed); npm run lint clean; related unit 5/5 files 281 passed; unit 63/63 files 1450 passed (88.93s); e2e 1 spec on chr 2 passed (25.3s), 6 passed on 3 browsers (39.2s); CRLF kept; 0 em dashes |
+| T785 | Insights validator checks category changePercent (AP-02) | `api/insights.ts`, `unit/proxy-contract.test.ts` | done | | Red gate verified (5 failed, 1 passed); npm run lint clean; related unit 5/5 files 287 passed; unit 63/63 files 1456 passed (69.41s); e2e 1 spec on chr 2 passed (17.1s), 6 passed on 3 browsers (25.0s); CRLF kept; 0 em dashes |
+| T786 | Phase 140 closing docs: ADR 0101 amendment (Option B), refactor-log entry, baseline-metrics section, branch line in task-ledger.md, unit test count 1456 / 63 files in AGENTS.md and README.md | `AGENTS.md`, `README.md`, `docs/audit/decisions/0101-hierarchical-icm-context-and-herdr-stages.md`, `docs/audit/refactor-log.md`, `docs/audit/baseline-metrics.md`, `docs/audit/task-ledger.md` | done | | unit 63 files 1456 passed (70.48s); playwright list 179/35/537; clean prod build (index-BxO3ndwn.js 193,199 B, all app JS 884,527 B 39 files, CSS 52,877 B); CRLF kept; 0 em dashes |
+
 ## Backlog
 
 Not scheduled. Each row says where it came from.
@@ -78,6 +93,13 @@ Not scheduled. Each row says where it came from.
 | A gate that checks text landed reads the expected text from the spec's code blocks with a script, never retyped; rule candidate for `workflow/stages/02_build/CONTEXT.md` | Phase 137, T772's review (section 8): gate 3 passed on the builder's side while edit 2 differed by one character, so the expected string was not the spec's | todo |
 | Any change to a typography or spacing token (`src/index.css` `@theme` sizes, line heights, spacing) runs the layout specs (`tests/safe-area.spec.ts`, `tests/layout-stability.spec.ts`), not only the specs that name the component; rule candidate for `AGENTS.md`'s tier row for `src/index.css`, and for `docs/contexts/ui-and-e2e.md` | Phase 137, T774: T769's `--text-hero` line height of 1.1 (48.4px) passed its gates and failed `safe-area.spec.ts` in CI | todo |
 | `useTransactions` ignores `options.includeDeleted: true` when `showSoftDeleted` is false | Audit 2026-10-16 (T759), finding CS-01, low; `src/hooks/useTransactions.ts:68` | done in Phase 139 (T776) |
+| updatePreset in TemplateContext.tsx skips amount cap validation and description trimming | Audit 2026-10-16 (T759), finding CS-02, low; `src/context/TemplateContext.tsx:108-127` | done in Phase 140 (T780) |
+| addTransaction assigns unrounded amount on guest transaction record | Audit 2026-10-16 (T759), finding SL-03, low; `src/context/FinanceContext.tsx:1943` | done in Phase 140 (T781) |
+| Guest `addTransaction` runs its Zod amount check and the ADR 0016 overpayment guard on the raw amount before rounding (`src/context/FinanceContext.tsx:1675` and `:1749`), so a guest `EXPENSE` of `0.004` stores a `0.00` row and a `DEBT_REPAYMENT` of `100.004` against `100.00` remaining is rejected; SQL rounds first, then checks. Fix: round once at the entry of `addTransaction`, before `safeParse` | Phase 140, blind Opus review of T781; `src/context/FinanceContext.tsx:1675`, `:1749` | todo |
+| CSV import checks `numAmount <= 0` before rounding (`src/utils/csvExchange.ts:184-196`) and uses an inline `Math.round` copy, so `0.004` becomes a `0.00` row that fails the whole `import_transactions` batch for a signed-in user. Fix: check the rounded value and use `roundToCents` | Phase 140, blind Opus review of T781; `src/utils/csvExchange.ts:184-196`, `:209` | todo |
+| useDebts.ts summary targets do not round reduction totals to cents | Audit 2026-10-16 (T759), finding CS-03, low; `src/hooks/useDebts.ts:40-42` | done in Phase 140 (T783) |
+| Insights choice validation uses in operator instead of own-property check | Audit 2026-10-16 (T759), finding AP-01, low; `api/insights.ts:625-634` | done in Phase 140 (T784) |
+| Insights validator omits category changePercent check, allowing NaN in model prompt | Audit 2026-10-16 (T759), finding AP-02, low; `api/insights.ts:482-485` | done in Phase 140 (T785) |
 
 ## Template for the next phase
 

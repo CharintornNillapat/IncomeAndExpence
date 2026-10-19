@@ -473,13 +473,18 @@ function validate(body: unknown): SpendingSummary | string {
   const seen = new Set<string>();
   for (const raw of summary.categories) {
     if (!isPlainObject(raw)) return 'Each category must be an object.';
-    const { name, current, previous, txCount } = raw;
+    const { name, current, previous, changePercent, txCount } = raw;
     if (typeof name !== 'string' || name.trim().length === 0) return 'Each category needs a name.';
     if (name.length > MAX_CATEGORY_NAME_LENGTH) return 'A category name is too long.';
     // A duplicate name would silently collapse two options into one criteria key.
     if (seen.has(name)) return 'Category names must be unique.';
     seen.add(name);
-    if (!isFiniteNumber(current) || !isFiniteNumber(previous) || !isFiniteNumber(txCount)) {
+    if (
+      !isFiniteNumber(current) ||
+      !isFiniteNumber(previous) ||
+      !isFiniteNumber(txCount) ||
+      (changePercent !== null && !isFiniteNumber(changePercent))
+    ) {
       return 'Category totals must be finite numbers.';
     }
   }
@@ -623,12 +628,12 @@ async function handle(req: Request, timings: Timings): Promise<Response> {
   // An unrecognized choice degrades to STEADY rather than 502ing: the client
   // can always render STEADY, and a usable card beats an error.
   const chosenPattern =
-    typeof pattern.choice === 'string' && pattern.choice in PATTERN_CRITERIA
+    typeof pattern.choice === 'string' && Object.hasOwn(PATTERN_CRITERIA, pattern.choice)
       ? (pattern.choice as InsightsResponse['pattern'])
       : 'STEADY';
 
   const chosenFocus =
-    typeof focus.choice === 'string' && focus.choice !== noneKey && focus.choice in focusCriteria
+    typeof focus.choice === 'string' && focus.choice !== noneKey && Object.hasOwn(focusCriteria, focus.choice)
       ? focus.choice
       : null;
 

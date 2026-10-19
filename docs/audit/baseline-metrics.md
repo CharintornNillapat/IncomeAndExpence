@@ -23,6 +23,14 @@ npx tsc --noEmit --extendedDiagnostics
 
 ## Figures
 
+### Phase 140 - delta against Phase 139
+
+- **Entry chunk** `index-BxO3ndwn.js`: 193,199 B (-178 B), 56,302 B gzip (-28 B against Phase 139 `index-DdI940YI.js`, 193,377 / 56,330).
+- **All app JS**: 884,527 B (-162 B), 268,510 B gzip (-44 B against Phase 139 884,689 / 268,554, 39 files, 0 file delta).
+- **CSS**: `index-BJZ9fITB.css`: 52,877 B (0 delta), 10,216 B gzip (0 delta against Phase 139 `index-BJZ9fITB.css`, 52,877 / 10,216).
+- **Vitest**: 63 files, 1456 tests (+12 tests, 0 file delta against Phase 139), 1456 passed in 70.48 s (`workflow/stages/02_build/output/logs/T786-unit.log`). Per-task runs: T780 1444 passed in 68.65 s (`workflow/stages/02_build/output/logs/T780-unit.log`), T781 1445 passed in 90.21 s (`workflow/stages/02_build/output/logs/T781-unit.log`), T783 1446 passed in 77.12 s (`workflow/stages/02_build/output/logs/T783-unit.log`), T784 1450 passed in 88.93 s (`workflow/stages/02_build/output/logs/T784-unit.log`), T785 1456 passed in 69.41 s (`workflow/stages/02_build/output/logs/T785-unit.log`).
+- **Playwright**: not run in full: affected specs ran per task (`tests/presets.spec.ts` for T780: 6 on Chromium, 18 on three browsers; `tests/transaction.spec.ts` and `tests/soft-delete.spec.ts` for T781: 12 on Chromium, 36 on three browsers; `tests/debts.spec.ts` and `tests/debts-page.spec.ts` for T783: 4 on Chromium, 12 on three browsers; `tests/insights.spec.ts` for T784 and T785: 2 on Chromium, 6 on three browsers each). Suite size unchanged: `npx playwright test --list` reports 179 tests in 35 files, 537 runs across 3 projects.
+
 ### Phase 139 - delta against Phase 137
 
 Measured at `5076a1d`; the merge commit `f33ba89` has the same tree, so the figures hold for it.

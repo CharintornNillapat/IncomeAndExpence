@@ -1940,7 +1940,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
           destinationWalletId: data.destinationWalletId,
           categoryId: data.categoryId,
           debtId: data.debtId,
-          amount: data.amount,
+          amount: roundToCents(data.amount),
           type: data.type,
           description: data.description,
           rawInput: data.rawInput,

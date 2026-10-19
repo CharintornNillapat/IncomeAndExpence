@@ -903,3 +903,131 @@ describe('the 64 KB body cap fits the largest valid body', () => {
     expect((await insights(req)).status).toBe(200);
   });
 });
+
+describe('/api/insights choice validation (AP-01)', () => {
+  it.each(['toString', 'valueOf', 'constructor'])(
+    'degrades Object.prototype key "%s" in pattern.choice to STEADY and in focus.choice to null',
+    async (protoKey) => {
+      upstreamReplies(200, {
+        answers: {
+          pattern: { choice: protoKey, confidence: 0.85 },
+          focus: { choice: protoKey, confidence: 0.75 },
+        },
+      });
+
+      const res = await insights(postAs('/api/insights', INSIGHTS_BODY, `Bearer ${await freshToken()}`));
+
+      expect(res.status).toBe(200);
+      expect(await res.json()).toEqual({
+        pattern: 'STEADY',
+        focus: null,
+        confidence: 0.85,
+      });
+    },
+  );
+
+  it('keeps own pattern and category choices and maps the none sentinel to null', async () => {
+    upstreamReplies(200, {
+      answers: {
+        pattern: { choice: 'IMPROVED_SAVING', confidence: 0.91 },
+        focus: { choice: 'Food & Dining', confidence: 0.88 },
+      },
+    });
+    const ownRes = await insights(postAs('/api/insights', INSIGHTS_BODY, `Bearer ${await freshToken()}`));
+    expect(ownRes.status).toBe(200);
+    expect(await ownRes.json()).toEqual({
+      pattern: 'IMPROVED_SAVING',
+      focus: 'Food & Dining',
+      confidence: 0.91,
+    });
+
+    upstreamReplies(200, {
+      answers: {
+        pattern: { choice: 'STEADY', confidence: 0.8 },
+        focus: { choice: 'none', confidence: 0.9 },
+      },
+    });
+    const noneRes = await insights(postAs('/api/insights', INSIGHTS_BODY, `Bearer ${await freshToken()}`));
+    expect(noneRes.status).toBe(200);
+    expect(await noneRes.json()).toEqual({
+      pattern: 'STEADY',
+      focus: null,
+      confidence: 0.8,
+    });
+  });
+});
+
+describe('/api/insights category changePercent validation (AP-02)', () => {
+  it.each([
+    ['omitted (undefined)', undefined],
+    ['a numeric string', '5'],
+    ['a boolean', true],
+    ['an object', {}],
+  ])('rejects a category with changePercent %s with 400 without calling TypeSafe', async (_label, badChangePercent) => {
+    upstreamReplies(200, { answers: ENDPOINTS[1].answers });
+    const category: Record<string, unknown> = {
+      name: 'Food & Dining',
+      current: 4200,
+      previous: 4000,
+      txCount: 30,
+    };
+    if (badChangePercent !== undefined) {
+      category.changePercent = badChangePercent;
+    }
+    const body = {
+      summary: {
+        ...INSIGHTS_BODY.summary,
+        categories: [category],
+      },
+    };
+
+    const res = await insights(postAs('/api/insights', body, `Bearer ${await freshToken()}`));
+
+    expect(res.status).toBe(400);
+    expect(await res.json()).toEqual({ error: 'Category totals must be finite numbers.' });
+    expect(typesafeCalls()).toHaveLength(0);
+  });
+
+  it('rejects a JSON number that parses to Infinity with 400 without calling TypeSafe', async () => {
+    upstreamReplies(200, { answers: ENDPOINTS[1].answers });
+    const rawJson =
+      '{"summary":{"month":"2026-09","categories":[{"name":"Food & Dining","current":4200,"previous":4000,"changePercent":1e309,"txCount":30}],"totals":{"income":30000,"expense":7700,"net":22300,"previousExpense":4800}}}';
+    const req = new Request('https://finlife.test/api/insights', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${await freshToken()}`,
+      },
+      body: rawJson,
+    });
+
+    const res = await insights(req);
+
+    expect(res.status).toBe(400);
+    expect(await res.json()).toEqual({ error: 'Category totals must be finite numbers.' });
+    expect(typesafeCalls()).toHaveLength(0);
+  });
+
+  it('accepts changePercent when null or a finite number and formats both cleanly in state', async () => {
+    upstreamReplies(200, { answers: ENDPOINTS[1].answers });
+    const body = {
+      summary: {
+        ...INSIGHTS_BODY.summary,
+        categories: [
+          { name: 'Food & Dining', current: 4200, previous: 0, changePercent: null, txCount: 30 },
+          { name: 'Transportation', current: 3500, previous: 4000, changePercent: -12.4, txCount: 12 },
+        ],
+      },
+    };
+
+    const res = await insights(postAs('/api/insights', body, `Bearer ${await freshToken()}`));
+
+    expect(res.status).toBe(200);
+    expect(typesafeCalls()).toHaveLength(1);
+    const sent = JSON.parse(typesafeCalls()[0][1].body as string);
+    expect(sent.state).toContain('- Food & Dining: 4200.00 this month (0.00 last month, no prior month), 30 transactions');
+    expect(sent.state).toContain('- Transportation: 3500.00 this month (4000.00 last month, -12% vs last month), 12 transactions');
+    expect(sent.state).not.toContain('NaN');
+  });
+});
+

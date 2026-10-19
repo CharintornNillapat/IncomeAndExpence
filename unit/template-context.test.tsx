@@ -4,6 +4,7 @@ import { render, act, cleanup } from '@testing-library/react';
 import { FinanceProvider, useFinanceActions, useFinanceState } from '../src/context/FinanceContext';
 import { useTemplateActions, useTemplateState } from '../src/context/TemplateContext';
 import { todayIsoDate } from '../src/utils/date';
+import { MAX_AMOUNT, MAX_AMOUNT_ERROR } from '../src/utils/money';
 
 /**
  * Phase 118 (ADR 0094): the quick templates. They live on this device only.
@@ -71,10 +72,11 @@ describe('the quick templates', () => {
     expect(await run(() => templateWrite().updatePreset(id, { name: 'lunch' })))
       .toEqual({ success: false, error: 'A template named "lunch" already exists' });
     expect(await run(() => templateWrite().updatePreset(id, { amount: 0 }))).toEqual({ success: false, error: 'Amount must be greater than 0' });
+    expect(await run(() => templateWrite().updatePreset(id, { amount: MAX_AMOUNT + 1 }))).toEqual({ success: false, error: MAX_AMOUNT_ERROR });
     expect(await run(() => templateWrite().updatePreset(id, { description: ' ' }))).toEqual({ success: false, error: 'Description is required' });
 
-    expect(await run(() => templateWrite().updatePreset(id, { name: ' Flat white ', amount: 75 }))).toEqual({ success: true });
-    expect(templates().find((p) => p.id === id)).toMatchObject({ name: 'Flat white', amount: 75, description: 'Morning coffee' });
+    expect(await run(() => templateWrite().updatePreset(id, { name: ' Flat white ', amount: 75, description: '  Oat flat white  ' }))).toEqual({ success: true });
+    expect(templates().find((p) => p.id === id)).toMatchObject({ name: 'Flat white', amount: 75, description: 'Oat flat white' });
   });
 
   it('a delete removes the one template, and a second delete says it is gone', async () => {
