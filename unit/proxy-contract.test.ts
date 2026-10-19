@@ -956,3 +956,78 @@ describe('/api/insights choice validation (AP-01)', () => {
     });
   });
 });
+
+describe('/api/insights category changePercent validation (AP-02)', () => {
+  it.each([
+    ['omitted (undefined)', undefined],
+    ['a numeric string', '5'],
+    ['a boolean', true],
+    ['an object', {}],
+  ])('rejects a category with changePercent %s with 400 without calling TypeSafe', async (_label, badChangePercent) => {
+    upstreamReplies(200, { answers: ENDPOINTS[1].answers });
+    const category: Record<string, unknown> = {
+      name: 'Food & Dining',
+      current: 4200,
+      previous: 4000,
+      txCount: 30,
+    };
+    if (badChangePercent !== undefined) {
+      category.changePercent = badChangePercent;
+    }
+    const body = {
+      summary: {
+        ...INSIGHTS_BODY.summary,
+        categories: [category],
+      },
+    };
+
+    const res = await insights(postAs('/api/insights', body, `Bearer ${await freshToken()}`));
+
+    expect(res.status).toBe(400);
+    expect(await res.json()).toEqual({ error: 'Category totals must be finite numbers.' });
+    expect(typesafeCalls()).toHaveLength(0);
+  });
+
+  it('rejects a JSON number that parses to Infinity with 400 without calling TypeSafe', async () => {
+    upstreamReplies(200, { answers: ENDPOINTS[1].answers });
+    const rawJson =
+      '{"summary":{"month":"2026-09","categories":[{"name":"Food & Dining","current":4200,"previous":4000,"changePercent":1e309,"txCount":30}],"totals":{"income":30000,"expense":7700,"net":22300,"previousExpense":4800}}}';
+    const req = new Request('https://finlife.test/api/insights', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${await freshToken()}`,
+      },
+      body: rawJson,
+    });
+
+    const res = await insights(req);
+
+    expect(res.status).toBe(400);
+    expect(await res.json()).toEqual({ error: 'Category totals must be finite numbers.' });
+    expect(typesafeCalls()).toHaveLength(0);
+  });
+
+  it('accepts changePercent when null or a finite number and formats both cleanly in state', async () => {
+    upstreamReplies(200, { answers: ENDPOINTS[1].answers });
+    const body = {
+      summary: {
+        ...INSIGHTS_BODY.summary,
+        categories: [
+          { name: 'Food & Dining', current: 4200, previous: 0, changePercent: null, txCount: 30 },
+          { name: 'Transportation', current: 3500, previous: 4000, changePercent: -12.4, txCount: 12 },
+        ],
+      },
+    };
+
+    const res = await insights(postAs('/api/insights', body, `Bearer ${await freshToken()}`));
+
+    expect(res.status).toBe(200);
+    expect(typesafeCalls()).toHaveLength(1);
+    const sent = JSON.parse(typesafeCalls()[0][1].body as string);
+    expect(sent.state).toContain('- Food & Dining: 4200.00 this month (0.00 last month, no prior month), 30 transactions');
+    expect(sent.state).toContain('- Transportation: 3500.00 this month (4000.00 last month, -12% vs last month), 12 transactions');
+    expect(sent.state).not.toContain('NaN');
+  });
+});
+
