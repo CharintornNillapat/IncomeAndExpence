@@ -52,6 +52,7 @@ Branch `phase-139-subagent-trial`, cut from `main` at `2e81e2c`. Three commits, 
 | T779 | Fix Phase 139 refactor-log wording for T776 (CS-01 bug fix, not a redundant guard) | `docs/audit/refactor-log.md` | done | | Docs checks passed (git diff 1/1 at line 24; w/crlf kept; 0 em dashes; scope clean) |
 | T780 | updatePreset validates with PresetSchema.partial(): amount cap and description trim (CS-02) | `src/context/TemplateContext.tsx`, `unit/template-context.test.tsx` | done | | Red gate verified (1 failed, 5 passed); npm run lint clean; related unit 3/3 files 18 passed; unit 63/63 files 1444 passed (68.65s); e2e 1 spec on chr 6 passed (51.7s), 18 passed on 3 browsers (47.4s); CRLF kept; 0 em dashes |
 | T781 | guest addTransaction rounds newTx.amount with roundToCents (SL-03) | `src/context/FinanceContext.tsx`, `unit/ledger-guards.test.tsx` | done | | Red gate verified (1 failed, 49 skipped); npm run lint clean; related unit 2/2 files 177 passed; unit 63/63 files 1445 passed (90.21s); e2e 2 specs on chr 12 passed (28.1s), 36 passed on 3 browsers (1.6m); CRLF kept; 0 em dashes |
+| T782 | Add two Backlog rows from the blind Opus review of T781 (addTransaction entry rounding and CSV import roundToCents check) | `docs/audit/task-ledger.md` | done | | Docs checks passed (code lines verified, git diff 3/0, w/crlf kept, 0 em dashes, scope clean) |
 
 ## Backlog
 
@@ -88,6 +89,8 @@ Not scheduled. Each row says where it came from.
 | `useTransactions` ignores `options.includeDeleted: true` when `showSoftDeleted` is false | Audit 2026-10-16 (T759), finding CS-01, low; `src/hooks/useTransactions.ts:68` | done in Phase 139 (T776) |
 | updatePreset in TemplateContext.tsx skips amount cap validation and description trimming | Audit 2026-10-16 (T759), finding CS-02, low; `src/context/TemplateContext.tsx:108-127` | done in Phase 140 (T780) |
 | addTransaction assigns unrounded amount on guest transaction record | Audit 2026-10-16 (T759), finding SL-03, low; `src/context/FinanceContext.tsx:1943` | done in Phase 140 (T781) |
+| Guest `addTransaction` runs its Zod amount check and the ADR 0016 overpayment guard on the raw amount before rounding (`src/context/FinanceContext.tsx:1675` and `:1749`), so a guest `EXPENSE` of `0.004` stores a `0.00` row and a `DEBT_REPAYMENT` of `100.004` against `100.00` remaining is rejected; SQL rounds first, then checks. Fix: round once at the entry of `addTransaction`, before `safeParse` | Phase 140, blind Opus review of T781; `src/context/FinanceContext.tsx:1675`, `:1749` | todo |
+| CSV import checks `numAmount <= 0` before rounding (`src/utils/csvExchange.ts:184-196`) and uses an inline `Math.round` copy, so `0.004` becomes a `0.00` row that fails the whole `import_transactions` batch for a signed-in user. Fix: check the rounded value and use `roundToCents` | Phase 140, blind Opus review of T781; `src/utils/csvExchange.ts:184-196`, `:209` | todo |
 
 ## Template for the next phase
 
