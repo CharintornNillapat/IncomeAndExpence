@@ -23,6 +23,14 @@ npx tsc --noEmit --extendedDiagnostics
 
 ## Figures
 
+### Phase 141 - delta against Phase 140
+
+- **Entry chunk** `index-O-Xe4lzP.js`: 193,175 B (-24 B), 56,380 B gzip (+78 B against Phase 140 `index-BxO3ndwn.js`, 193,199 / 56,302).
+- **All app JS**: 884,491 B (-36 B), 268,612 B gzip (+102 B against Phase 140 884,527 / 268,510, 39 files, 0 file delta).
+- **CSS**: `index-BJZ9fITB.css`: 52,877 B (0 delta), 10,216 B gzip (0 delta against Phase 140 `index-BJZ9fITB.css`, 52,877 / 10,216).
+- **Vitest**: 63 files, 1463 tests (+7 tests, 0 file delta against Phase 140), 1463 passed in 72.01 s (`workflow/stages/02_build/output/logs/T789-unit.log`). Per-task runs: T787 1460 passed in 71.99 s (`workflow/stages/02_build/output/logs/T787-unit.log`), T788 1463 passed in 68.49 s (`workflow/stages/02_build/output/logs/T788-unit.log`).
+- **Playwright**: not run in full: affected specs ran per task (`tests/transaction.spec.ts`, `tests/debt-repayment.spec.ts`, and `tests/soft-delete.spec.ts` for T787: 23 on Chromium, 69 on three browsers; `tests/csv.spec.ts` and `tests/csv-classify.spec.ts` for T788: 13 on Chromium, 39 on three browsers). Suite size unchanged: `npx playwright test --list` reports 179 tests in 35 files, 537 runs across 3 projects.
+
 ### Phase 140 - delta against Phase 139
 
 Measured at `3f6071d`; the merge commit `f1532dd` has the same tree, so the figures hold for it.
