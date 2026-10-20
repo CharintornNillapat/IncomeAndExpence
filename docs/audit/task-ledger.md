@@ -62,13 +62,13 @@ Branch `phase-140-gemini-trial`, cut from `main` at `1f17107`. Eight commits, T7
 
 ## Phase 141 - Fix money rounding: addTransaction and CSV import entry roundToCents (no ADR)
 
-Branch `phase-141-fix-money-rounding`, cut from `main` at `086d271`.
+Branch `phase-141-fix-money-rounding`, cut from `main` at `086d271`. Three commits, T787's `54da8c1` to T789's `1324fb2`, merged into `main` as `e61ac44` (PR #93). No migration.
 
 | # | Task | Files | Status | Commit | Gate result |
 |---|---|---|---|---|---|
 | T787 | Round guest addTransaction amount with roundToCents before safeParse and overpayment checks | `src/context/FinanceContext.tsx`, `unit/ledger-guards.test.tsx` | done | 54da8c1 | Red gate verified (3 failed, 1 passed); npm run lint clean; related unit 2/2 files 181 passed; unit 63/63 files 1460 passed (71.99s); e2e 3 specs on chr 23 passed (29.3s), 69 passed on 3 browsers (1.9m); CRLF kept; 0 em dashes |
 | T788 | Fix CSV import money rounding to check rounded value with roundToCents and replace inline Math.round | `src/utils/csvExchange.ts`, `unit/csv-exchange.test.ts` | done | 8a7928d | Red gate verified (2 failed, 1 passed); npm run lint clean; related unit 3/3 files 38 passed; unit 63/63 files 1463 passed (68.49s); e2e 2 specs on chr 13 passed (1.1m), 39 passed on 3 browsers (1.1m); CRLF kept; 0 em dashes |
-| T789 | Phase 141 closing docs: refactor-log entry, baseline-metrics section, task-ledger.md updates, unit test count 1463 / 63 files in AGENTS.md and README.md | `AGENTS.md`, `README.md`, `docs/audit/refactor-log.md`, `docs/audit/baseline-metrics.md`, `docs/audit/task-ledger.md` | done | | unit 63 files 1463 passed (72.01s); playwright list 179/35/537; clean prod build (index-O-Xe4lzP.js 193,175 B, all app JS 884,491 B 39 files, CSS 52,877 B); CRLF kept; 0 em dashes |
+| T789 | Phase 141 closing docs: refactor-log entry, baseline-metrics section, task-ledger.md updates, unit test count 1463 / 63 files in AGENTS.md and README.md | `AGENTS.md`, `README.md`, `docs/audit/refactor-log.md`, `docs/audit/baseline-metrics.md`, `docs/audit/task-ledger.md` | done | 1324fb2 | unit 63 files 1463 passed (72.01s); playwright list 179/35/537; clean prod build (index-O-Xe4lzP.js 193,175 B, all app JS 884,491 B 39 files, CSS 52,877 B); CRLF kept; 0 em dashes |
 
 ## Backlog
 
