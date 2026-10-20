@@ -1672,7 +1672,8 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     transactionDate: string;
     idempotencyKey?: string;
   }) => {
-    const validation = TransactionSchema.safeParse(data);
+    const roundedAmount = roundToCents(data.amount);
+    const validation = TransactionSchema.safeParse({ ...data, amount: roundedAmount });
     if (!validation.success) {
       return { success: false, error: formatZodIssues(validation.error) };
     }
@@ -1746,7 +1747,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       if (!targetDebt) {
         return { success: false, error: 'Debt goal not found or has been deleted' };
       }
-      if (data.amount > targetDebt.remainingAmount) {
+      if (roundedAmount > targetDebt.remainingAmount) {
         return {
           success: false,
           error: `Payment exceeds the ${formatCurrencyAmount(targetDebt.remainingAmount)} remaining on ${targetDebt.name}`,
@@ -1774,14 +1775,14 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     // the state updater below stays a pure mapping with no assignment side effects.
     let sourceNewBalance: number | null = null;
     if (data.type === 'EXPENSE' || data.type === 'DEBT_REPAYMENT' || data.type === 'TRANSFER') {
-      sourceNewBalance = roundToCents(sourceWallet.balance - data.amount);
+      sourceNewBalance = roundToCents(sourceWallet.balance - roundedAmount);
     } else if (data.type === 'INCOME' || data.type === 'ADJUSTMENT') {
-      sourceNewBalance = roundToCents(sourceWallet.balance + data.amount);
+      sourceNewBalance = roundToCents(sourceWallet.balance + roundedAmount);
     }
 
     const destNewBalance: number | null =
       data.type === 'TRANSFER' && destWallet
-        ? roundToCents(destWallet.balance + data.amount)
+        ? roundToCents(destWallet.balance + roundedAmount)
         : null;
 
     setWallets((prev) =>
@@ -1810,7 +1811,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     // Supabase ฿2,500 for a ฿1,000 payment off ฿4,500. The floor hid it
     // whenever the payment settled the debt.
     const debtNewRemaining: number | null = targetDebt
-      ? Math.max(0, roundToCents(targetDebt.remainingAmount - data.amount))
+      ? Math.max(0, roundToCents(targetDebt.remainingAmount - roundedAmount))
       : null;
 
     if (targetDebt && debtNewRemaining !== null) {
@@ -1838,7 +1839,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
           const { data: rpcData, error: rpcError } = await supabase.rpc('transfer_funds', {
             p_source_wallet_id: sourceWallet.id,
             p_dest_wallet_id: destWallet.id,
-            p_amount: data.amount,
+            p_amount: roundedAmount,
             p_idempotency_key: clientKey,
             p_notes: data.description,
             p_date: data.transactionDate,
@@ -1900,7 +1901,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
         if (targetDebt) markLocalWrite(targetDebt.id);
         const { data: rpcData, error: rpcError } = await supabase.rpc('record_transaction', {
           p_wallet_id: sourceWallet.id,
-          p_amount: data.amount,
+          p_amount: roundedAmount,
           p_type: data.type,
           p_description: data.description,
           p_transaction_date: data.transactionDate,
@@ -1940,7 +1941,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
           destinationWalletId: data.destinationWalletId,
           categoryId: data.categoryId,
           debtId: data.debtId,
-          amount: roundToCents(data.amount),
+          amount: roundedAmount,
           type: data.type,
           description: data.description,
           rawInput: data.rawInput,
