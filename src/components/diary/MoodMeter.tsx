@@ -9,7 +9,7 @@ import { MOOD_LEVELS } from './diaryLabels';
 export const MoodMeter: React.FC<{ mood: number }> = ({ mood }) => (
   <span role="img" aria-label={`Mood ${mood} of 5`} className="flex gap-[3px]">
     {MOOD_LEVELS.map((step) => (
-      <span key={step} className={`w-3.5 h-1.5 rounded-full ${step <= mood ? 'bg-brand' : 'bg-line-strong'}`} />
+      <span key={step} className={`w-3.5 h-1.5 rounded-full ${step <= mood ? 'bg-brand' : 'bg-mood-empty'}`} />
     ))}
   </span>
 );

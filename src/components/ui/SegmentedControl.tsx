@@ -48,7 +48,7 @@ const SIZE_CLASS: Record<SegmentedControlSize, string> = {
  * only; framer-motion's `layoutId` did it until then.
  *
  * Phase 56 (spec 4.6, ADR 0029): a bordered card-coloured tray, the selected
- * option on `control-active` in bold, and the selection exposed in ARIA -
+ * option on `segment-active` in bold, and the selection exposed in ARIA -
  * `aria-pressed` for a toggle group, `role="tab"` + `aria-selected` for tabs.
  */
 export function SegmentedControl<T extends string>({
@@ -102,7 +102,7 @@ export function SegmentedControl<T extends string>({
             }`.trim()}
           >
             {isActive && (
-              <span data-pill className="absolute inset-0 z-0 bg-control-active rounded-button" />
+              <span data-pill className="absolute inset-0 z-0 bg-segment-active rounded-button" />
             )}
             <span className="relative z-10">{option.label}</span>
           </button>

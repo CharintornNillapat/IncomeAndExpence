@@ -122,4 +122,55 @@ describe('Theme tokens and fills (ADR 0103 D5)', () => {
       expect(darkBlock[name], `dark variable --${name}`).toBe(expectedValue);
     }
   });
+
+  it('defines the five T794 tokens with light and dark values and preserves dark invariants (ADR 0103 D6)', () => {
+    const rootBlock = extractBlock(':root');
+    const darkBlock = extractBlock('.dark');
+    const inlineBlock = extractBlock('@theme inline');
+
+    const expectedTokens: Record<string, { light: string; dark: string }> = {
+      'hero-line': { light: '#D9D2F5', dark: '#1F2532' },
+      'segment-active': { light: '#EEE9E0', dark: '#262B3A' },
+      'mood-tile': { light: '#F5F2EC', dark: '#0F131B' },
+      'mood-empty': { light: '#E0D8CB', dark: '#2A3140' },
+      'wallet-fallback': { light: '#8A8172', dark: '#A8A29E' },
+    };
+
+    for (const [name, expected] of Object.entries(expectedTokens)) {
+      expect(rootBlock[name], `light token --${name}`).toBe(expected.light);
+      expect(darkBlock[name], `dark token --${name}`).toBe(expected.dark);
+      expect(inlineBlock[`color-${name}`], `--color-${name} mapping in @theme inline`).toBe(`var(--${name})`);
+    }
+
+    expect(darkBlock['hero-line']).toBe(darkBlock['line']);
+    expect(darkBlock['segment-active']).toBe(darkBlock['control-active']);
+    expect(darkBlock['mood-tile']).toBe(darkBlock['surface-2']);
+    expect(darkBlock['mood-empty']).toBe(darkBlock['line-strong']);
+    expect(darkBlock['wallet-fallback']).toBe('#A8A29E');
+  });
+
+  it('points the four components at the new tokens', () => {
+    const leftOverSrc = readFileSync(new URL('../src/components/dashboard/LeftOverCard.tsx', import.meta.url), 'utf8');
+    const segmentedSrc = readFileSync(new URL('../src/components/ui/SegmentedControl.tsx', import.meta.url), 'utf8');
+    const moodCardSrc = readFileSync(new URL('../src/components/dashboard/MoodSpendingCard.tsx', import.meta.url), 'utf8');
+    const moodMeterSrc = readFileSync(new URL('../src/components/diary/MoodMeter.tsx', import.meta.url), 'utf8');
+
+    expect(leftOverSrc).toContain('border-hero-line');
+    expect(leftOverSrc).not.toContain('bg-brand-tint border border-line ');
+
+    expect(segmentedSrc).toContain('bg-segment-active');
+    expect(segmentedSrc).not.toContain('bg-control-active');
+
+    expect(moodCardSrc).toContain('bg-mood-tile');
+
+    expect(moodMeterSrc).toContain('bg-mood-empty');
+    expect(moodMeterSrc).not.toContain('bg-line-strong');
+  });
+
+  it('has no hard-coded fallback hex in WalletTransferForm', () => {
+    const walletTransferSrc = readFileSync(new URL('../src/components/wallet/WalletTransferForm.tsx', import.meta.url), 'utf8');
+
+    expect(walletTransferSrc).toContain('bg-wallet-fallback');
+    expect(walletTransferSrc).not.toMatch(/#[0-9a-fA-F]{3,8}\b/);
+  });
 });

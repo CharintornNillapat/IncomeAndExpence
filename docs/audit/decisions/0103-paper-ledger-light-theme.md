@@ -191,3 +191,52 @@ Text pairs on `canvas` / `surface-1` / `surface-2` (ratios, 2 decimals, from `sc
 - A `[data-theme]` CSS selector.
 - New `--cat-*` tokens in CSS (the identity variables replace them).
 - The active-tab font weight (stays `font-medium` per typography rules).
+
+## Amendment (T794)
+
+### Component token re-pointing verdicts (ADR 0103 D6)
+
+Section 3 of `docs/design/finlife-light-theme.md` evaluated against the components in the codebase:
+
+1. **Top nav:** `--surface` bg, `--border` bottom border (`Navbar.tsx:97` `bg-header border-b border-line`) is OK.
+2. **Active tab:** `accent-tint` bg + `accent` text (`Navbar.tsx:142` `bg-brand-soft text-brand-soft-text`) is OK. Weight stays `font-medium` (typography rule).
+3. **Inactive tabs:** `text-muted` (`Navbar.tsx:143` `text-fg-secondary`). **Stays.** `fg-secondary` is the step ADR D4 added between `text` and `text-muted`; dark `#A3AABB` vs `fg-muted` `#8A93A6` would change dark appearance, and a new token would only re-state `fg-muted` for one control.
+4. **Add entry:** `accent` bg, hover `accent-hover` (`Button.tsx:30` `bg-brand-fill hover:bg-brand-fill-hover text-white`) is OK.
+5. **Period switcher container:** `--surface` container + `--border` (`SegmentedControl.tsx:77` `bg-surface-1 ... border-line`) is OK.
+6. **Period switcher selected segment:** `--surface-2` bg + `--text` (`SegmentedControl.tsx:105` `bg-control-active`). **Change (new token `segment-active`)**: mapping directly to `surface-2` would turn dark `#262B3A` into `#0F131B`, violating D6 dark byte-invariance.
+7. **Hero card ground:** `accent-tint` bg (`LeftOverCard.tsx:93` `bg-brand-tint`) is OK.
+8. **Hero card border:** `accent-tint-border` border (`LeftOverCard.tsx:93` `border-line`). **Change (new token `hero-line`)**: `brand-line` is translucent violet in dark, which would change it; this is the one card-edge exception (DESIGN.md line 30, ADR D6).
+9. **Sparkline stroke:** `accent` (`LeftOverCard.tsx:58` `stroke-brand`) is OK.
+10. **Spent/Kept:** Spent `expense`, Kept `accent` (`LeftOverCard.tsx:136-137` `bg-expense-fill`, `bg-brand-fill`) is OK.
+11. **Income / Spending cards:** `surface`, `income` / `expense` amounts (`CashFlowCard.tsx`) is OK.
+12. **Donut hole & comparison box:** `surface` / `surface-2` (`CategorySpendingCard.tsx:114,169`) is OK.
+13. **Debt payoff % and fill:** `income` (`DebtPayoffCard.tsx`) is OK.
+14. **Debt payoff track:** `surface-2` (`ProgressBar.tsx:59` `bg-line`). **Stays.** `DebtPayoffCard.tsx:72-77` puts `ProgressBar` inside an `Inset` (`surface-2`): a `surface-2` track would match its ground (1.00:1) and vanish in light; in dark, `surface-2` `#0F131B` is darker than `line` `#1F2532`, a dark change. The Spent/Kept gap track at `LeftOverCard.tsx:135` (`bg-line`) is not a progress track in the design file and also stays.
+15. **"Needed this month":** `bg` or `surface-2`, amount `expense` (`DebtPayoffCard.tsx` `Inset` + `text-expense`) is OK (`surface-2`).
+16. **Negative debt balance:** `expense` (`DebtPayoffCard.tsx` `text-expense`) is OK.
+17. **"Make a repayment" outline:** transparent bg, `accent` border and text (`DebtPayoffCard.tsx:95` `Button variant="soft"`). **Stays.** An outline requires a per-button variant and two new tokens, and `soft` is shared by Log today and other buttons. Listed in T796 Deliberately not done.
+18. **Date header rows:** `surface-2` (`DayGroupHeader.tsx:25` `bg-surface-2`) is OK.
+19. **Expense / transfer icon tile:** at ~10% tint (`txTypeMeta.ts`) is OK (8% solid tint, ADR D4).
+20. **Category chips:** `surface-2` + dot (`Chip.tsx` `bg-adjust-tint`) is OK.
+21. **Debt figure:** `expense` (`WalletsSection.tsx:61`) is OK.
+22. **Mood day tiles:** `--bg` (`MoodSpendingCard.tsx:50` `bg-surface-2`). **Change (new token `mood-tile`)**: using `canvas` `#0B0E14` would change dark `#0F131B`.
+23. **Filled mood dots:** `accent` (`MoodMeter.tsx:12` `bg-brand`) is OK.
+24. **Empty mood dots:** `--border` (`MoodMeter.tsx:12` `bg-line-strong`). **Change (new token `mood-empty`)**: `line` is `#1F2532` in dark, which would change dark `#2A3140`.
+25. **Mood amounts:** `expense`, 0 in `text-muted` (`MoodSpendingCard.tsx:56`) is OK.
+26. **Links:** `accent`, hover `accent-hover` (`DashboardLink.tsx:15` `text-brand hover:underline`). **Stays.** Adding a hover colour is new behaviour (not a re-point), and `brand-fill-hover` as text would be `#6D28D9` on dark `#131722` (under 4.5:1). Listed in T796 Deliberately not done.
+27. **Wallet icon fallback:** (`WalletTransferForm.tsx:108`). **Change (new token `wallet-fallback`)**: replaces raw `#a8a29e` hex fallback with a semantic token.
+
+### Five theme tokens (T794)
+
+| Variable | Class | Dark (today's value) | Light | Replaces | Light value source |
+|---|---|---|---|---|---|
+| `hero-line` | `border-hero-line` | `#1F2532` (`line`) | `#D9D2F5` | `border-line` on the Left over card | `--accent-tint-border` |
+| `segment-active` | `bg-segment-active` | `#262B3A` (`control-active`) | `#EEE9E0` | `bg-control-active` on the pill | `--surface-2` |
+| `mood-tile` | `bg-mood-tile` | `#0F131B` (`surface-2`) | `#F5F2EC` | `bg-surface-2` on a day tile | `--bg` |
+| `mood-empty` | `bg-mood-empty` | `#2A3140` (`line-strong`) | `#E0D8CB` | `bg-line-strong` on an empty bar | `--border` |
+| `wallet-fallback` | `bg-wallet-fallback` | `#A8A29E` (pre-existing hex) | `#8A8172` (`line-input` light) | `'#a8a29e'` fallback | derived: white on it is 3.84:1 (3:1 needed for icon) |
+
+### Contrast and dark figures recorded
+
+- In light mode, white on `wallet-fallback` (`#8A8172`) is 3.84:1 (clearing the 3:1 non-text contrast threshold).
+- In dark mode, white on `wallet-fallback` (`#A8A29E`) is 2.52:1. This is a pre-existing figure from the hard-coded JSX hex, preserved under D6 dark byte-invariance, and recorded here as known and unchanged.

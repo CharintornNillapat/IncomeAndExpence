@@ -27,9 +27,9 @@ FinLife Tracker is a personal money tracker for Thai Baht wallets, with a daily 
 | Violet | `brand` | One primary button per area, the active nav tab, a selected option, focus | Decoration |
 | Amber | `pending` | Something that really needs fixing: a warning, a sync in progress | Ordinary values ("Avg food") |
 
-- **Cards keep a neutral border** (`line`). A card is never outlined green or red; the colour sits on the number.
+- **Cards keep a neutral border** (`line`); the Left over card is the one exception (`hero-line`). A card is never outlined green or red; the colour sits on the number.
 - **A net or left-over figure** is `fg` when positive and `expense` when negative. It never takes the income green.
-- **A selected option looks the same everywhere**: `selected` background, `focus` ring, `on-selected` text. A segmented control uses `control-active`.
+- **A selected option looks the same everywhere**: `selected` background, `focus` ring, `on-selected` text. A segmented control uses `segment-active`.
 
 ### Tokens
 Values live in `src/index.css`, on `:root` (light) and `.dark`. `@theme inline` maps them to Tailwind utilities, so one class covers both themes.
@@ -41,7 +41,12 @@ Values live in `src/index.css`, on `:root` (light) and `.dark`. `@theme inline` 
 | Card | `surface-1` | `#131722` | `#FFFFFF` |
 | Box inside a card, input | `surface-2` | `#0F131B` | `#EEE9E0` |
 | Menu, hover on a card | `surface-3` | `#1A1F2B` | `#E6E0D5` |
-| Selected segment | `control-active` | `#262B3A` | `#E6E0D5` |
+| Hover shade, menu item hover | `control-active` | `#262B3A` | `#E6E0D5` |
+| Hero card edge | `hero-line` | `#1F2532` | `#D9D2F5` |
+| Selected segment | `segment-active` | `#262B3A` | `#EEE9E0` |
+| Mood day tile | `mood-tile` | `#0F131B` | `#F5F2EC` |
+| Empty mood dot | `mood-empty` | `#2A3140` | `#E0D8CB` |
+| Wallet fallback icon tile | `wallet-fallback` | `#A8A29E` | `#8A8172` |
 | Divider, card edge, progress track | `line` | `#1F2532` | `#E0D8CB` |
 | Secondary-button edge | `line-control` | `#252B38` | `#CFC5B4` |
 | Dashed edge, menu edge | `line-strong` | `#2A3140` | `#CFC5B4` |
@@ -68,7 +73,7 @@ The authority is `docs/design/finlife-light-theme.md` and ADR 0103; light only; 
 |---|---|---|
 | `--bg` | `#F5F2EC` | `canvas` |
 | `--surface` | `#FFFFFF` | `surface-1`, `header` |
-| `--surface-2` | `#EEE9E0` | `surface-2` (`surface-3` and `control-active` are one step darker, `#E6E0D5`) |
+| `--surface-2` | `#EEE9E0` | `surface-2`, `segment-active` (`surface-3` and `control-active` are one step darker, `#E6E0D5`) |
 | `--border` | `#E0D8CB` | `line` |
 | `--text` | `#1E1A15` | `fg` |
 | `--text-muted` | `#675F53` | `fg-muted`, `adjust-text` |
@@ -180,7 +185,7 @@ Build a screen from these, not from a re-typed class string.
 |---|---|---|
 | `Button` | `ui/Button` | Four variants: primary (the one main action in an area), secondary, soft (`brand-soft`), danger (red text, `danger-line` edge). `type="button"` unless it submits. |
 | `IconButton` | `ui/IconButton` | 44 x 44. A required `label` becomes `aria-label` and `title`. Tones: neutral, danger, income. |
-| `SegmentedControl` | `ui/SegmentedControl` | A `surface-1` tray with the selected option on `control-active` in bold, exposed as `aria-pressed`, or as `role="tab"` + `aria-selected` when it switches content. |
+| `SegmentedControl` | `ui/SegmentedControl` | A `surface-1` tray with the selected option on `segment-active` in bold, exposed as `aria-pressed`, or as `role="tab"` + `aria-selected` when it switches content. |
 | `Chip` | `ui/Chip` | A neutral pill (`adjust` tint, `chip-text`). The item's colour is a 7px dot and nowhere else. System categories use the grey `#6B7385` dot. |
 | `Card`, `Inset` | `ui/Card` | Card: `surface-1`, `rounded-card`, 24 to 28px padding, neutral edge. Inset: a box inside a card, `surface-2`, `rounded-inner`. |
 | `PageHeader` | `ui/PageHeader` | h1 and one line on the left, actions on the right, no card. |
@@ -209,7 +214,7 @@ One period for the whole page, chosen in the `PageHeader`. Every figure comes fr
 **Colour (no new palette, both themes, no raw hex):**
 - Page `canvas`. Cards `surface-1`, `rounded-card`, with the neutral `line` edge. Tracks and chips `surface-2` or `surface-3`. Dividers `line`.
 - Text `fg`, `fg-secondary`, `fg-muted`.
-- The Left over card is the page's one brand emphasis: a `brand-tint` ground, with `brand`, `brand-soft` and `brand-line` for its accents. Its figure follows section 1: `fg`, and `expense` when negative.
+- The Left over card is the page's one brand emphasis: a `brand-tint` ground, with `hero-line` for its edge, and `brand`, `brand-soft` and `brand-line` for its accents. Its figure follows section 1: `fg`, and `expense` when negative.
 - Income `income`. Spending and debt still owed `expense`. A transfer row `transfer`, shown as not counted.
 - The net worth figure is `fg`; it takes no colour of its own.
 - Category and wallet hues are the record's own colour, tinted as the existing chips tint them. Debt progress is a `ProgressBar` (payoff is `income`).

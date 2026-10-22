@@ -87,11 +87,14 @@ for (const [theme, v] of Object.entries(themes)) {
   // Phase 57: the Dashboard's debt banner sets its figures in `fg` on the warning tint.
   check(theme, 'fg on pending-bg', c('fg'), c('pending-bg'), 4.5);
   // Phase 57: the mood meter's filled bars against its empty ones (non-text, WCAG 1.4.11).
-  check(theme, 'brand-text vs line-strong (mood meter)', c('brand-text'), c('line-strong'), 3);
+  check(theme, 'brand-text vs mood-empty (mood meter)', c('brand-text'), c('mood-empty'), 3);
   check(theme, 'brand-soft-text on brand-soft-bg', c('brand-soft-text'), c('brand-soft-bg'), 4.5);
   check(theme, 'selected-text on selected-bg', c('selected-text'), c('selected-bg'), 4.5);
   // Phase 61: a logged day's number in the diary calendar.
   check(theme, 'fg on logged-bg', c('fg'), c('logged-bg'), 4.5);
+  check(theme, 'fg on segment-active', c('fg'), c('segment-active'), 4.5);
+  check(theme, 'fg-muted on mood-tile', c('fg-muted'), c('mood-tile'), 4.5);
+  check(theme, 'expense-text on mood-tile', c('expense-text'), c('mood-tile'), 4.5);
   for (const s of ['surface-1', 'surface-2']) {
     const tint = over(parse(v['brand-tint']), c(s));
     check(theme, `brand-text on brand-tint over ${s}`, c('brand-text'), tint, 4.5);
@@ -101,6 +104,7 @@ for (const [theme, v] of Object.entries(themes)) {
     for (const text of ['fg', 'fg-secondary', 'fg-muted', 'expense-text', 'income-text', 'pending-text', 'transfer-text']) {
       check(theme, `${text} on brand-tint`, c(text), c('brand-tint'), 4.5);
     }
+    check(theme, 'white on wallet-fallback', [255, 255, 255, 1], c('wallet-fallback'), 3);
   }
   check(theme, 'white on brand-fill-hover', [255, 255, 255, 1], c('brand-fill-hover'), 4.5);
 }

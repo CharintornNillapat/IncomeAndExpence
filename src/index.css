@@ -217,6 +217,11 @@
   --pending-fill: #B45309;
   --transfer-fill: #2563EB;
   --transfer-line: rgba(37, 99, 235, 0.3);
+  --hero-line: #D9D2F5;
+  --segment-active: #EEE9E0;
+  --mood-tile: #F5F2EC;
+  --mood-empty: #E0D8CB;
+  --wallet-fallback: #8A8172;
 }
 
 .dark {
@@ -268,6 +273,11 @@
   --pending-fill: #F59E0B;
   --transfer-fill: #38BDF8;
   --transfer-line: rgba(56, 189, 248, 0.3);
+  --hero-line: #1F2532;
+  --segment-active: #262B3A;
+  --mood-tile: #0F131B;
+  --mood-empty: #2A3140;
+  --wallet-fallback: #A8A29E;
 }
 
 @theme inline {
@@ -319,6 +329,11 @@
   --color-pending-fill: var(--pending-fill);
   --color-transfer-fill: var(--transfer-fill);
   --color-transfer-line: var(--transfer-line);
+  --color-hero-line: var(--hero-line);
+  --color-segment-active: var(--segment-active);
+  --color-mood-tile: var(--mood-tile);
+  --color-mood-empty: var(--mood-empty);
+  --color-wallet-fallback: var(--wallet-fallback);
 }
 
 /*
