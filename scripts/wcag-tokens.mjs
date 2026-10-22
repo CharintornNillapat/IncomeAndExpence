@@ -1,8 +1,8 @@
 // WCAG 2.x contrast check for the design tokens in src/index.css (Phase 53).
-// Reads the :root and .dark custom properties straight from the stylesheet, so
-// the numbers always describe what ships, then checks every text token against
-// every surface it can sit on, input borders and the focus ring at 3:1
-// (WCAG 1.4.11), and semantic text on its own tint background. Exits 1 on any
+// Reads the :root and .dark custom properties (including fills and tints) straight
+// from the stylesheet, so the numbers always describe what ships, then checks every
+// text token against every surface it can sit on, input borders and the focus ring at
+// 3:1 (WCAG 1.4.11), and semantic text on its own tint background. Exits 1 on any
 // failure.
 //
 // Usage: node scripts/wcag-tokens.mjs
@@ -93,11 +93,16 @@ for (const [theme, v] of Object.entries(themes)) {
   // Phase 61: a logged day's number in the diary calendar.
   check(theme, 'fg on logged-bg', c('fg'), c('logged-bg'), 4.5);
   for (const s of ['surface-1', 'surface-2']) {
-    const tint = over(parse('rgba(139, 92, 246, 0.12)'), c(s));
+    const tint = over(parse(v['brand-tint']), c(s));
     check(theme, `brand-text on brand-tint over ${s}`, c('brand-text'), tint, 4.5);
   }
-  check(theme, 'white on brand fill #7C3AED', [255, 255, 255, 1], parse('#7C3AED'), 4.5);
-  check(theme, 'white on brand fill hover #6D28D9', [255, 255, 255, 1], parse('#6D28D9'), 4.5);
+  check(theme, 'white on brand-fill', [255, 255, 255, 1], c('brand-fill'), 4.5);
+  if (theme === 'light') {
+    for (const text of ['fg', 'fg-secondary', 'fg-muted', 'expense-text', 'income-text', 'pending-text', 'transfer-text']) {
+      check(theme, `${text} on brand-tint`, c(text), c('brand-tint'), 4.5);
+    }
+  }
+  check(theme, 'white on brand-fill-hover', [255, 255, 255, 1], c('brand-fill-hover'), 4.5);
 }
 
 console.log(lines.join('\n'));

@@ -36,22 +36,22 @@ Values live in `src/index.css`, on `:root` (light) and `.dark`. `@theme inline` 
 
 | Role | Token | Dark (spec) | Light |
 |---|---|---|---|
-| Page | `canvas` | `#0B0E14` | `#FFFFFF` |
-| Header | `header` | `#0F131B` | `#F8FAFC` |
-| Card | `surface-1` | `#131722` | `#F8FAFC` |
-| Box inside a card, input | `surface-2` | `#0F131B` | `#F1F5F9` |
-| Menu, hover on a card | `surface-3` | `#1A1F2B` | `#E2E8F0` |
-| Selected segment | `control-active` | `#262B3A` | `#E2E8F0` |
-| Divider, card edge, progress track | `line` | `#1F2532` | `#E2E8F0` |
-| Secondary-button edge | `line-control` | `#252B38` | `#CBD5E1` |
-| Dashed edge, menu edge | `line-strong` | `#2A3140` | `#CBD5E1` |
-| Input edge | `line-input` | `#5E7092` | `#7C8BA1` |
-| Text 1 / 2 / 3 | `fg` / `fg-secondary` / `fg-muted` | `#E8EAF0` / `#A3AABB` / `#8A93A6` | `#0F172A` / `#475569` / `#586880` |
-| Disabled text | `fg-disabled` | `#4A5163` | `#94A3B8` |
-| Chip text (on `adjust` tint) | `chip-text` | `#C9CFDC` | `#334155` |
-| Danger-button edge | `danger-line` | `#4A2227` | `#FECDD3` |
+| Page | `canvas` | `#0B0E14` | `#F5F2EC` |
+| Header | `header` | `#0F131B` | `#FFFFFF` |
+| Card | `surface-1` | `#131722` | `#FFFFFF` |
+| Box inside a card, input | `surface-2` | `#0F131B` | `#EEE9E0` |
+| Menu, hover on a card | `surface-3` | `#1A1F2B` | `#E6E0D5` |
+| Selected segment | `control-active` | `#262B3A` | `#E6E0D5` |
+| Divider, card edge, progress track | `line` | `#1F2532` | `#E0D8CB` |
+| Secondary-button edge | `line-control` | `#252B38` | `#CFC5B4` |
+| Dashed edge, menu edge | `line-strong` | `#2A3140` | `#CFC5B4` |
+| Input edge | `line-input` | `#5E7092` | `#8A8172` |
+| Text 1 / 2 / 3 | `fg` / `fg-secondary` / `fg-muted` | `#E8EAF0` / `#A3AABB` / `#8A93A6` | `#1E1A15` / `#4A4338` / `#675F53` |
+| Disabled text | `fg-disabled` | `#4A5163` | `#A39B8E` |
+| Chip text (on `adjust` tint) | `chip-text` | `#C9CFDC` | `#4A4338` |
+| Danger-button edge | `danger-line` | `#4A2227` | `#ECC3C0` |
 
-Each hue has a text token and a solid `-tint` background: `income`, `expense`, `transfer`, `adjust`, `pending` (plus `pending-line` and `pending-body` for the warning banner), and `brand-soft` for the active nav tab. The primary button fill is `#7C3AED` with white text, at 5.70:1 in both themes.
+Each hue has a text token and a solid `-tint` background: `income`, `expense`, `transfer`, `adjust`, `pending` (plus `pending-line` and `pending-body` for the warning banner), and `brand-soft` for the active nav tab. The primary button fill is `brand-fill`, `#7C3AED` in dark (5.70:1) and `#4338CA` in light (7.90:1), with white text. The eleven fills are theme variables.
 
 ### Contrast (WCAG AA)
 Every text token passes 4.5:1 on every surface it can sit on, in both themes. Every hue passes on its own tint. `fg-muted` is the faintest text allowed: 5.80:1 on a dark card. Input edges and the focus outline reach 3:1 (WCAG 1.4.11); the outline is checked against every surface it can sit on, header and menu included. Run `node scripts/wcag-tokens.mjs` after changing any value; it reads `src/index.css` and exits 1 on a failure. `fg-disabled` is exempt, as WCAG exempts disabled controls.
@@ -60,7 +60,7 @@ Every text token passes 4.5:1 on every surface it can sit on, in both themes. Ev
 Wallets and categories take their own colour from the muted identity palette in spec section 1. It avoids red, green, blue, cyan and amber, which carry money meaning. Since Phase 59 (audit 008) the wallet colour picker, in Add wallet and in Edit, offers exactly those twelve colours, and since Phase 62 the category picker offers the same twelve (`utils/identityPalette.ts`). Two categories never share one (L9) while any is free: a used colour is disabled, its fill at 0.25 under a diagonal strike, and named "Rose, used by Pets". Once all twelve are in use, colours repeat: every swatch is enabled and named "Rose, also used by Pets" (audit 012). Since Phase 63 (spec 5.1, ADR 0038) the shipped categories and the starter wallets sit on them too: Food & Dining Rose, Groceries Peach, Housing & Utilities Periwinkle, Shopping & Apparel Lavender, Transport & Fuel Aqua, Primary Salary Steel, Freelance & Side Gig Orchid, the System pair `#6B7385`, and the wallets Blue, Tan and Teal. A swatch is named by its colour ("Tan"), never by a hex code. In light mode they are painted through the Paper Ledger values below (ADR 0103).
 
 ### Light palette: Paper Ledger (ADR 0103)
-**Status:** target, shipped by Phases 143 (T793 to T796). The Tokens table above shows the values in force until T793 rewrites its Light column.
+**Status:** in force from T793 (Phase 143) for the Light column and palette values; identity colours (D7) follow in T795.
 
 The authority is `docs/design/finlife-light-theme.md` and ADR 0103; light only; dark unchanged.
 
