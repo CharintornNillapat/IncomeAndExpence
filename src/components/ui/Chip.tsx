@@ -1,3 +1,4 @@
+import { identityDisplayColor } from '../../utils/identityPalette';
 import React from 'react';
 
 export type ChipSize = 'sm' | 'md';
@@ -34,7 +35,7 @@ export const Chip: React.FC<ChipProps> = ({ label, color, size = 'md', className
 
   return (
     <span className={classes}>
-      {color && <span aria-hidden="true" className="w-[7px] h-[7px] rounded-full shrink-0" style={{ backgroundColor: color }} />}
+      {color && <span aria-hidden="true" className="w-[7px] h-[7px] rounded-full shrink-0" style={{ backgroundColor: identityDisplayColor(color) }} />}
       <span className="truncate">{label}</span>
     </span>
   );

@@ -240,3 +240,30 @@ Section 3 of `docs/design/finlife-light-theme.md` evaluated against the componen
 
 - In light mode, white on `wallet-fallback` (`#8A8172`) is 3.84:1 (clearing the 3:1 non-text contrast threshold).
 - In dark mode, white on `wallet-fallback` (`#A8A29E`) is 2.52:1. This is a pre-existing figure from the hard-coded JSX hex, preserved under D6 dark byte-invariance, and recorded here as known and unchanged.
+
+## Amendment (T795)
+
+### Identity colour display in light mode (ADR 0103 D7)
+
+1. **Paint sites identified and updated (15 sites across 11 components):**
+   - `components/ui/Chip.tsx:37`: category/dot background wrapped in `identityDisplayColor`. Covers transaction rows, drawer, and smart rules panel.
+   - `components/ui/AllocationBar.tsx:48`: segment background wrapped in `identityDisplayColor`. Covers wallet list and section allocation bars.
+   - `components/ui/ProgressBar.tsx:63`: custom fill background wrapped in `identityDisplayColor`.
+   - `components/dashboard/CategorySpendingCard.tsx:61`: donut ring stroke wrapped in `identityDisplayColor` via inline style (D-b).
+   - `components/dashboard/CategorySpendingCard.tsx:141`: top-5 category row dot background wrapped.
+   - `components/dashboard/WalletsSection.tsx:120`: wallet icon tile `color-mix` background and `color` wrapped.
+   - `components/wallet/WalletList.tsx:87`: wallet icon tile `color-mix` background and `color` wrapped.
+   - `components/wallet/WalletDetail.tsx:146`: wallet icon tile `color-mix` background and `color` wrapped.
+   - `components/wallet/WalletDetail.tsx:227`: wallet edit picker swatch background wrapped (D-a).
+   - `components/wallet/AddWalletForm.tsx:167`: add wallet picker swatch background wrapped (D-a).
+   - `components/wallet/WalletTransferForm.tsx:108`: transfer source/dest icon tile background wrapped.
+   - `components/category/CategoryList.tsx:64`: category list row dot background wrapped.
+   - `components/category/ColorGrid.tsx:62`: blocked colour swatch background wrapped (D-a).
+   - `components/category/ColorGrid.tsx:66`: available colour swatch background wrapped (D-a).
+   - `components/category/ColorGrid.tsx:86`: custom colour swatch background wrapped for uniformity.
+
+2. **Decisions recorded:**
+   - **D-a. Picker swatches show the display colour:** `ColorGrid.tsx:62,66`, `WalletDetail.tsx:227`, and `AddWalletForm.tsx:167` paint `identityDisplayColor(hex)`. Swatches preview the colour the user will actually see; the stored hex values saved into state and database are completely untouched.
+   - **D-b. Donut ring uses inline style:** `stroke={s.color}` is replaced with `style={{ stroke: identityDisplayColor(s.color) }}` in `CategorySpendingCard.tsx:61` to guarantee CSS variable resolution across all SVG engines.
+   - **D-c. Primitive wrapping:** Primitives `Chip`, `AllocationBar`, and `ProgressBar` wrap `color` internally so callers require no redundant transformation.
+   - **D-d. Static guard test:** `unit/identity-display.test.ts` scans all `.tsx` files in `src/components/` and `src/views/` for colour styling patterns, enforcing that every colour paint site uses `identityDisplayColor` or `SYSTEM_CATEGORY_COLOR`.

@@ -222,6 +222,19 @@
   --mood-tile: #F5F2EC;
   --mood-empty: #E0D8CB;
   --wallet-fallback: #8A8172;
+  /* Identity display colours in light mode (ADR 0103 D7) */
+  --identity-1: #A16207;
+  --identity-2: #1E40AF;
+  --identity-3: #0E7490;
+  --identity-4: #D97706;
+  --identity-5: #DB2777;
+  --identity-6: #2563EB;
+  --identity-7: #7C3AED;
+  --identity-8: #0891B2;
+  --identity-9: #8A6D46;
+  --identity-10: #5B7A9D;
+  --identity-11: #A21CAF;
+  --identity-12: #6B5FBF;
 }
 
 .dark {
@@ -278,6 +291,19 @@
   --mood-tile: #0F131B;
   --mood-empty: #2A3140;
   --wallet-fallback: #A8A29E;
+  /* Identity display colours in dark mode (ADR 0103 D7 stored hexes) */
+  --identity-1: #D9A066;
+  --identity-2: #6C8EEF;
+  --identity-3: #4FB7A8;
+  --identity-4: #F59E6B;
+  --identity-5: #E879A6;
+  --identity-6: #7DA2F0;
+  --identity-7: #B69CF5;
+  --identity-8: #5CC8B8;
+  --identity-9: #C7B38A;
+  --identity-10: #8FA8C8;
+  --identity-11: #D98FD0;
+  --identity-12: #9C8CD9;
 }
 
 @theme inline {

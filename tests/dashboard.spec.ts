@@ -385,3 +385,43 @@ test.describe('Dashboard row 3: recent activity, net worth and wallets, mood and
     expect(scrollWidth).toBeLessThanOrEqual(innerWidth);
   });
 });
+
+test.describe('Dashboard identity colours (ADR 0103 D7)', () => {
+  test.use({ timezoneId: 'Asia/Bangkok' });
+
+  test.beforeEach(async ({ page }) => {
+    await page.clock.setFixedTime(new Date('2026-10-16T15:00:00+07:00'));
+  });
+
+  test('resolves Paper Ledger identity colours in light theme', async ({ page }) => {
+    await page.addInitScript(() => localStorage.setItem('finlife_theme_preference', 'light'));
+    await seedTestTransactions(page);
+    await page.goto('/');
+
+    // Main Checking wallet tile: Blue identity-2 -> light rgb(30, 64, 175)
+    const walletTile = page.locator('#dashboard-wallet-card-wal-main-checking > span[aria-hidden="true"]');
+    await expect(walletTile).toHaveCSS('color', 'rgb(30, 64, 175)');
+
+    // Donut circles: Food & Dining (2500) -> Rose identity-5 light rgb(219, 39, 119)
+    // Groceries (500) -> Peach identity-4 light rgb(217, 119, 6)
+    const donutCircles = page.getByRole('img', { name: /^Spending by category/ }).locator('circle[stroke-dasharray]');
+    await expect(donutCircles.nth(0)).toHaveCSS('stroke', 'rgb(219, 39, 119)');
+    await expect(donutCircles.nth(1)).toHaveCSS('stroke', 'rgb(217, 119, 6)');
+  });
+
+  test('resolves stored identity colours in dark theme', async ({ page }) => {
+    await page.addInitScript(() => localStorage.setItem('finlife_theme_preference', 'dark'));
+    await seedTestTransactions(page);
+    await page.goto('/');
+
+    // Main Checking wallet tile: Blue identity-2 -> dark rgb(108, 142, 239)
+    const walletTile = page.locator('#dashboard-wallet-card-wal-main-checking > span[aria-hidden="true"]');
+    await expect(walletTile).toHaveCSS('color', 'rgb(108, 142, 239)');
+
+    // Donut circles: Food & Dining -> Rose identity-5 dark rgb(232, 121, 166)
+    // Groceries -> Peach identity-4 dark rgb(245, 158, 107)
+    const donutCircles = page.getByRole('img', { name: /^Spending by category/ }).locator('circle[stroke-dasharray]');
+    await expect(donutCircles.nth(0)).toHaveCSS('stroke', 'rgb(232, 121, 166)');
+    await expect(donutCircles.nth(1)).toHaveCSS('stroke', 'rgb(245, 158, 107)');
+  });
+});

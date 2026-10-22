@@ -1,3 +1,4 @@
+import { identityDisplayColor } from '../../utils/identityPalette';
 import React from 'react';
 import { ChevronRight, Wallet as WalletGlyph } from 'lucide-react';
 import type { Wallet } from '../../types';
@@ -117,7 +118,7 @@ export const WalletsSection: React.FC<WalletsSectionProps> = ({
                   <span
                     aria-hidden="true"
                     className="w-9 h-9 shrink-0 rounded-control flex items-center justify-center"
-                    style={{ backgroundColor: `color-mix(in srgb, ${wallet.color} 18%, transparent)`, color: wallet.color }}
+                    style={{ backgroundColor: `color-mix(in srgb, ${identityDisplayColor(wallet.color)} 18%, transparent)`, color: identityDisplayColor(wallet.color) }}
                   >
                     <Icon className="w-5 h-5" />
                   </span>

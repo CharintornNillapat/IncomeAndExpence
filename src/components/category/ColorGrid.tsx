@@ -1,3 +1,4 @@
+import { identityDisplayColor } from '../../utils/identityPalette';
 import React from 'react';
 import { IDENTITY_COLORS, IDENTITY_PALETTE, isIdentityColor } from '../../utils/identityPalette';
 import { paletteExhausted } from '../../selectors/categories';
@@ -59,11 +60,11 @@ export const ColorGrid: React.FC<ColorGridProps> = ({ idPrefix, value, onChange,
             >
               {blocked ? (
                 <span aria-hidden="true" data-used-mark className="relative w-7 h-7 rounded-full border border-line-strong">
-                  <span className="absolute inset-0 rounded-full opacity-25" style={{ backgroundColor: hex }} />
+                  <span className="absolute inset-0 rounded-full opacity-25" style={{ backgroundColor: identityDisplayColor(hex) }} />
                   <span className="absolute left-1/2 top-1/2 w-8 h-0.5 -translate-x-1/2 -translate-y-1/2 -rotate-45 rounded-full bg-fg-secondary" />
                 </span>
               ) : (
-                <span aria-hidden="true" className={swatchClass(isSelected)} style={{ backgroundColor: hex }} />
+                <span aria-hidden="true" className={swatchClass(isSelected)} style={{ backgroundColor: identityDisplayColor(hex) }} />
               )}
             </button>
           );
@@ -83,7 +84,7 @@ export const ColorGrid: React.FC<ColorGridProps> = ({ idPrefix, value, onChange,
             <span
               aria-hidden="true"
               className={swatchClass(value.toLowerCase() === currentColor.toLowerCase())}
-              style={{ backgroundColor: currentColor }}
+              style={{ backgroundColor: identityDisplayColor(currentColor) }}
             />
           </button>
           Custom color

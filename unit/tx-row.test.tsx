@@ -121,7 +121,7 @@ describe('TransactionRow', () => {
       <TransactionRow tx={tx({ type: 'EXPENSE', categoryId: 'cat-food' })} category={CATEGORIES.get('cat-food')} wallets={WALLETS} />,
     );
     const dot = container.querySelector('[aria-hidden="true"][style]') as HTMLElement;
-    expect(dot.style.backgroundColor).toBe('rgb(232, 121, 166)');
+    expect(dot.style.backgroundColor).toBe('var(--identity-5)');
   });
 
   it('is a real button that reports its row when it can be selected, and marks the selected one', () => {
