@@ -1,7 +1,7 @@
 # FinLife Tracker Design System
 
 ## Overview
-FinLife Tracker is a personal money tracker for Thai Baht wallets, with a daily diary beside it. It is built for reading balances and transactions at a glance, on a phone or a desktop. Dark is the look it was designed in, and a matching light theme ships alongside it. The app follows the system setting by default.
+FinLife Tracker is a personal money tracker for Thai Baht wallets, with a daily diary beside it. It is built for reading balances and transactions at a glance, on a phone or a desktop. Dark is the look it was designed in, and a matching light theme ships alongside it. The light theme is the Paper Ledger palette (ADR 0103). The app follows the system setting by default.
 
 **Source of truth.** Since Phase 55 the direction is `docs/design/finlife-redesign-spec.md` (the redesign spec and its mockup). This file keeps the rules the app enforces and the reason for each. Where the two differ, the difference is listed under "Deviations from the spec" with its reason.
 
@@ -57,7 +57,50 @@ Each hue has a text token and a solid `-tint` background: `income`, `expense`, `
 Every text token passes 4.5:1 on every surface it can sit on, in both themes. Every hue passes on its own tint. `fg-muted` is the faintest text allowed: 5.80:1 on a dark card. Input edges and the focus outline reach 3:1 (WCAG 1.4.11); the outline is checked against every surface it can sit on, header and menu included. Run `node scripts/wcag-tokens.mjs` after changing any value; it reads `src/index.css` and exits 1 on a failure. `fg-disabled` is exempt, as WCAG exempts disabled controls.
 
 ### Identity colours (wallets and categories)
-Wallets and categories take their own colour from the muted identity palette in spec section 1. It avoids red, green, blue, cyan and amber, which carry money meaning. Since Phase 59 (audit 008) the wallet colour picker, in Add wallet and in Edit, offers exactly those twelve colours, and since Phase 62 the category picker offers the same twelve (`utils/identityPalette.ts`). Two categories never share one (L9) while any is free: a used colour is disabled, its fill at 0.25 under a diagonal strike, and named "Rose, used by Pets". Once all twelve are in use, colours repeat: every swatch is enabled and named "Rose, also used by Pets" (audit 012). Since Phase 63 (spec 5.1, ADR 0038) the shipped categories and the starter wallets sit on them too: Food & Dining Rose, Groceries Peach, Housing & Utilities Periwinkle, Shopping & Apparel Lavender, Transport & Fuel Aqua, Primary Salary Steel, Freelance & Side Gig Orchid, the System pair `#6B7385`, and the wallets Blue, Tan and Teal. A swatch is named by its colour ("Tan"), never by a hex code.
+Wallets and categories take their own colour from the muted identity palette in spec section 1. It avoids red, green, blue, cyan and amber, which carry money meaning. Since Phase 59 (audit 008) the wallet colour picker, in Add wallet and in Edit, offers exactly those twelve colours, and since Phase 62 the category picker offers the same twelve (`utils/identityPalette.ts`). Two categories never share one (L9) while any is free: a used colour is disabled, its fill at 0.25 under a diagonal strike, and named "Rose, used by Pets". Once all twelve are in use, colours repeat: every swatch is enabled and named "Rose, also used by Pets" (audit 012). Since Phase 63 (spec 5.1, ADR 0038) the shipped categories and the starter wallets sit on them too: Food & Dining Rose, Groceries Peach, Housing & Utilities Periwinkle, Shopping & Apparel Lavender, Transport & Fuel Aqua, Primary Salary Steel, Freelance & Side Gig Orchid, the System pair `#6B7385`, and the wallets Blue, Tan and Teal. A swatch is named by its colour ("Tan"), never by a hex code. In light mode they are painted through the Paper Ledger values below (ADR 0103).
+
+### Light palette: Paper Ledger (ADR 0103)
+**Status:** target, shipped by Phases 143 (T793 to T796). The Tokens table above shows the values in force until T793 rewrites its Light column.
+
+The authority is `docs/design/finlife-light-theme.md` and ADR 0103; light only; dark unchanged.
+
+| Design token | Hex | App tokens |
+|---|---|---|
+| `--bg` | `#F5F2EC` | `canvas` |
+| `--surface` | `#FFFFFF` | `surface-1`, `header` |
+| `--surface-2` | `#EEE9E0` | `surface-2` (`surface-3` and `control-active` are one step darker, `#E6E0D5`) |
+| `--border` | `#E0D8CB` | `line` |
+| `--text` | `#1E1A15` | `fg` |
+| `--text-muted` | `#675F53` | `fg-muted`, `adjust-text` |
+| `--accent` | `#4338CA` | `brand-text`, `brand-soft-text`, `focus`, `brand-fill` |
+| `--accent-hover` | `#3730A3` | `brand-fill-hover`, `selected-text` |
+| `--on-accent` | `#FFFFFF` | no token: `ui/Button.tsx:30` sets `text-white` on the primary fill |
+| `--accent-tint` | `#ECE8FB` | `brand-soft-bg`, `selected-bg`, `brand-tint` |
+| `--accent-tint-border` | `#D9D2F5` | `brand-soft-line`, `logged-bg`, `brand-line` |
+| `--income` | `#0E7A52` | `income-fill` exactly; `income-text` is `#0E7650` |
+| `--expense` | `#C0362C` | `expense-fill` exactly; `expense-text` is `#B6332A` |
+| `--warning` | `#B45309` | `pending-fill` exactly; `pending-text` is `#A94E08` |
+
+Tokens with no direct counterpart in the design file (`surface-3`, `control-active`, `line-control`, `line-strong`, `line-input`, `fg-secondary`, `fg-disabled`, `chip-text`, `adjust-bg`, `selected-text`, `focus`, the `-bg` and `-line` tints, and `transfer-text`) are derived per role to preserve contrast and state hierarchy; see [ADR 0103](docs/audit/decisions/0103-paper-ledger-light-theme.md) for the full values and rationales.
+
+The `brand` hue is violet in dark and indigo in light; text tokens `income-text`, `expense-text`, `pending-text`, `transfer-text` are darker than their fills (D3a); `surface-3` and `control-active` are `#E6E0D5` in light, one visible step darker than `surface-2`, so a hover on a `surface-2` base shows (D3b); fills and text of one hue are different tokens.
+
+Stored identity colours do not change; in light mode only, they are painted through `--identity-N` (D7). Amending the rule above for light mode only: identity colours may be blue (Blue, Periwinkle, Steel), amber or orange (Tan, Peach), or cyan (Teal, Aqua); no identity value is red or green. The dark rule (avoid red, green, blue, cyan, amber) stays in force for dark.
+
+| # | Name | Stored (dark) | Light |
+|---|---|---|---|
+| 1 | Tan | `#D9A066` | `#A16207` |
+| 2 | Blue | `#6C8EEF` | `#1E40AF` |
+| 3 | Teal | `#4FB7A8` | `#0E7490` |
+| 4 | Peach | `#F59E6B` | `#D97706` |
+| 5 | Rose | `#E879A6` | `#DB2777` |
+| 6 | Periwinkle | `#7DA2F0` | `#2563EB` |
+| 7 | Lavender | `#B69CF5` | `#7C3AED` |
+| 8 | Aqua | `#5CC8B8` | `#0891B2` |
+| 9 | Khaki | `#C7B38A` | `#8A6D46` |
+| 10 | Steel | `#8FA8C8` | `#5B7A9D` |
+| 11 | Orchid | `#D98FD0` | `#A21CAF` |
+| 12 | Iris | `#9C8CD9` | `#6B5FBF` |
 
 ---
 
@@ -328,6 +371,7 @@ Five states. The first is for guests; the other four are for a signed-in user, c
 | Editing row background `#1C1930`; selected wallet `#1C1930` with edge `#4B3F86` | `brand-soft` (`#1E1A33`) with the 3px `focus` edge, for both | Two near-identical violets would be two tokens for one meaning, and a selected row looks the same on every page. |
 | Header title "FinLife" | "FinLife Tracker" | `theme.spec.ts` finds the heading by that name. |
 | Dark only | Dark and light | The owner kept the light theme (2026-09-28). Light values are derived per role and pass the same checks. |
+| Light values "derived per role" | The Paper Ledger palette, mapped onto the same tokens | The owner's light-theme spec, 2026-10-22 (ADR 0103). |
 | "Display settings" icon button | The theme button keeps its own label ("Theme: Dark. Click to switch.") | Spec section 11: name a button for what it does. |
 | Pages full width | `main` keeps `max-w-7xl` (1280px) | Temporary, until every page is redesigned: the old Transactions table and forms would stretch across a wide screen (owner, 2026-09-28, ADR 0030). |
 | "~฿4,391/mo needed" | "฿4,391.23 / month needed" | Every displayed amount goes through `formatCurrencyAmount`. |
