@@ -45,9 +45,9 @@ export const DiaryEntryRow: React.FC<DiaryEntryRowProps> = React.memo(
               triggerId={`diary-menu-btn-${entry.id}`}
               className="-mr-2 -my-2"
               items={[
-                { id: `edit-diary-${entry.id}`, label: 'Edit entry', icon: <Pencil aria-hidden="true" className="w-4 h-4" />, onSelect: () => onEdit(entry.date) },
+                { id: `diary-edit-${entry.id}`, label: 'Edit entry', icon: <Pencil aria-hidden="true" className="w-4 h-4" />, onSelect: () => onEdit(entry.date) },
                 {
-                  id: `delete-diary-${entry.id}`,
+                  id: `diary-delete-${entry.id}`,
                   label: 'Delete entry…',
                   tone: 'danger',
                   icon: <Trash2 aria-hidden="true" className="w-4 h-4" />,

@@ -38,7 +38,7 @@ const EditDebtForm: React.FC<{ debt: Debt; onClose: () => void; onSave: EditDebt
 
   return (
     <form
-      id="edit-debt-form"
+      id="debt-edit-form"
       className="space-y-4"
       onSubmit={(e) =>
         handleSubmit(e, () =>
@@ -53,32 +53,32 @@ const EditDebtForm: React.FC<{ debt: Debt; onClose: () => void; onSave: EditDebt
       }
     >
       <div>
-        <label htmlFor="edit-debt-name" className={LABEL_CLASS}>
+        <label htmlFor="debt-edit-name" className={LABEL_CLASS}>
           Debt title
         </label>
-        <input id="edit-debt-name" type="text" required value={name} onChange={(e) => setName(e.target.value)} className={inputClass('subtle')} />
+        <input id="debt-edit-name" type="text" required value={name} onChange={(e) => setName(e.target.value)} className={inputClass('subtle')} />
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
         <div>
-          <label htmlFor="edit-debt-total" className={LABEL_CLASS}>
+          <label htmlFor="debt-edit-total" className={LABEL_CLASS}>
             Borrowed ({APP_CURRENCY_SYMBOL})
           </label>
           <input
-            id="edit-debt-total"
+            id="debt-edit-total"
             type="number"
             step="0.01"
             min="0"
             required
             value={total}
             onChange={(e) => setTotal(e.target.value)}
-            aria-describedby="edit-debt-owed"
+            aria-describedby="debt-edit-owed"
             className={inputClass('subtle')}
           />
         </div>
         <div>
           <span className={LABEL_CLASS}>Still owed</span>
-          <p id="edit-debt-owed" className="min-h-[44px] flex items-center text-sm font-semibold text-expense">
+          <p id="debt-edit-owed" className="min-h-[44px] flex items-center text-sm font-semibold text-expense">
             <span className="sr-only">Still owed: </span>
             <Money value={remaining} />
           </p>
@@ -91,11 +91,11 @@ const EditDebtForm: React.FC<{ debt: Debt; onClose: () => void; onSave: EditDebt
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
         <div>
-          <label htmlFor="edit-debt-interest" className={LABEL_CLASS}>
+          <label htmlFor="debt-edit-interest" className={LABEL_CLASS}>
             Interest rate (% APR)
           </label>
           <input
-            id="edit-debt-interest"
+            id="debt-edit-interest"
             type="number"
             step="0.1"
             min="0"
@@ -107,11 +107,11 @@ const EditDebtForm: React.FC<{ debt: Debt; onClose: () => void; onSave: EditDebt
           />
         </div>
         <div>
-          <label htmlFor="edit-debt-min-payment" className={LABEL_CLASS}>
+          <label htmlFor="debt-edit-min-payment" className={LABEL_CLASS}>
             Min monthly ({APP_CURRENCY_SYMBOL})
           </label>
           <input
-            id="edit-debt-min-payment"
+            id="debt-edit-min-payment"
             type="number"
             step="1"
             min="0"
@@ -124,19 +124,19 @@ const EditDebtForm: React.FC<{ debt: Debt; onClose: () => void; onSave: EditDebt
       </div>
 
       <div>
-        <label htmlFor="edit-debt-due-date" className={LABEL_CLASS}>
+        <label htmlFor="debt-edit-due-date" className={LABEL_CLASS}>
           Target payoff date
         </label>
-        <input id="edit-debt-due-date" type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className={inputClass('subtle')} />
+        <input id="debt-edit-due-date" type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className={inputClass('subtle')} />
       </div>
 
       <div className="pt-2 space-y-3">
         {error && (
-          <div id="edit-debt-error" role="alert" className={ERROR_BANNER_CLASS}>
+          <div id="debt-edit-error" role="alert" className={ERROR_BANNER_CLASS}>
             {error}
           </div>
         )}
-        <Button id="save-edit-debt-btn" type="submit" size="lg" block disabled={isSubmitting}>
+        <Button id="debt-edit-save-btn" type="submit" size="lg" block disabled={isSubmitting}>
           Save changes
         </Button>
       </div>

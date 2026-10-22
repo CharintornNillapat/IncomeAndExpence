@@ -22,7 +22,7 @@ const DEST_AFTER = 'transfer-balance-after-dest';
 async function openTransfer(page: Page) {
   // The dashboard hero button, so there is no navigation between the click and
   // the assertion - the same reachability property ADR 0008 cites.
-  await page.locator('#hero-transfer-funds-btn').click();
+  await page.locator('#dashboard-wallets-transfer-btn').click();
   const modal = page.getByRole('dialog', { name: /Transfer Funds/i });
   await expect(modal).toBeVisible();
   return modal;
@@ -39,13 +39,13 @@ test.describe('Transfer balance preview', () => {
 
     // Seeded defaults, asserted rather than assumed - the arithmetic below
     // depends on them.
-    await expect(modal.locator('#transfer-source-wallet')).toHaveValue('wal-main-checking');
-    await expect(modal.locator('#transfer-dest-wallet')).toHaveValue('wal-cash');
+    await expect(modal.locator('#wallet-transfer-source')).toHaveValue('wal-main-checking');
+    await expect(modal.locator('#wallet-transfer-dest')).toHaveValue('wal-cash');
 
     // No amount yet, so there is nothing to project.
     await expect(modal.getByTestId(SOURCE_AFTER)).toHaveCount(0);
 
-    await modal.locator('#transfer-amount-math').fill('400');
+    await modal.locator('#wallet-transfer-amount-math').fill('400');
 
     // ฿2,500.00 − ฿400.00 and ฿150.00 + ฿400.00.
     await expect(modal.getByTestId(SOURCE_AFTER)).toHaveText('฿2,100.00');
@@ -54,7 +54,7 @@ test.describe('Transfer balance preview', () => {
 
   test('clearing the amount removes the projection', async ({ page }) => {
     const modal = await openTransfer(page);
-    const amount = modal.locator('#transfer-amount-math');
+    const amount = modal.locator('#wallet-transfer-amount-math');
 
     await amount.fill('400');
     await expect(modal.getByTestId(SOURCE_AFTER)).toHaveText('฿2,100.00');
@@ -70,7 +70,7 @@ test.describe('Transfer balance preview', () => {
   test('an inline math expression drives the preview too', async ({ page }) => {
     const modal = await openTransfer(page);
 
-    await modal.locator('#transfer-amount-math').fill('1000/4');
+    await modal.locator('#wallet-transfer-amount-math').fill('1000/4');
 
     // 250 evaluated, not the literal text.
     await expect(modal.getByTestId(SOURCE_AFTER)).toHaveText('฿2,250.00');
@@ -79,17 +79,17 @@ test.describe('Transfer balance preview', () => {
 
   test('the swap button exchanges source and destination', async ({ page }) => {
     const modal = await openTransfer(page);
-    const src = modal.locator('#transfer-source-wallet');
-    const dst = modal.locator('#transfer-dest-wallet');
+    const src = modal.locator('#wallet-transfer-source');
+    const dst = modal.locator('#wallet-transfer-dest');
 
-    await modal.locator('#transfer-swap-btn').click();
+    await modal.locator('#wallet-transfer-swap-btn').click();
 
     await expect(src).toHaveValue('wal-cash');
     await expect(dst).toHaveValue('wal-main-checking');
 
     // The panels follow the selects, so the preview describes the wallets the
     // user is actually looking at.
-    await modal.locator('#transfer-amount-math').fill('50');
+    await modal.locator('#wallet-transfer-amount-math').fill('50');
     await expect(modal.getByTestId(SOURCE_AFTER)).toHaveText('฿100.00');
     await expect(modal.getByTestId(DEST_AFTER)).toHaveText('฿2,550.00');
   });
@@ -103,8 +103,8 @@ test.describe('Transfer balance preview', () => {
    */
   test('choosing the other side as the source swaps instead of desyncing', async ({ page }) => {
     const modal = await openTransfer(page);
-    const src = modal.locator('#transfer-source-wallet');
-    const dst = modal.locator('#transfer-dest-wallet');
+    const src = modal.locator('#wallet-transfer-source');
+    const dst = modal.locator('#wallet-transfer-dest');
 
     await src.selectOption('wal-cash');
 
@@ -122,8 +122,8 @@ test.describe('Transfer balance preview', () => {
     const modal = await openTransfer(page);
 
     // Cash Wallet holds ฿150.00. Selecting it as the source swaps the sides.
-    await modal.locator('#transfer-source-wallet').selectOption('wal-cash');
-    await modal.locator('#transfer-amount-math').fill('500');
+    await modal.locator('#wallet-transfer-source').selectOption('wal-cash');
+    await modal.locator('#wallet-transfer-amount-math').fill('500');
 
     const warning = modal.getByTestId('transfer-overdraft-warning');
     await expect(warning).toBeVisible();
@@ -131,13 +131,13 @@ test.describe('Transfer balance preview', () => {
     await expect(warning).toContainText('Cash Wallet');
 
     // The point of the test: still submittable.
-    await expect(modal.locator('#execute-transfer-btn')).toBeEnabled();
+    await expect(modal.locator('#wallet-transfer-execute-btn')).toBeEnabled();
 
     // A screen reader hears it once (ADR 0090): a keystroke that only moves
     // the amount leaves the status region as it was announced.
     const announcer = modal.getByRole('status').filter({ hasText: 'overdraws' });
     await expect(announcer).toHaveText('This overdraws Cash Wallet by ฿350.00.');
-    await modal.locator('#transfer-amount-math').pressSequentially('0');
+    await modal.locator('#wallet-transfer-amount-math').pressSequentially('0');
     await expect(warning).toContainText('฿4,850.00');
     await expect(announcer).toHaveText('This overdraws Cash Wallet by ฿350.00.');
   });
@@ -145,9 +145,9 @@ test.describe('Transfer balance preview', () => {
   test('"Transfer all" fills the amount with the whole source balance', async ({ page }) => {
     const modal = await openTransfer(page);
 
-    await modal.locator('#transfer-all-chip').click();
+    await modal.locator('#wallet-transfer-all-chip').click();
 
-    await expect(modal.locator('#transfer-amount-math')).toHaveValue('2500');
+    await expect(modal.locator('#wallet-transfer-amount-math')).toHaveValue('2500');
     await expect(modal.getByTestId(SOURCE_AFTER)).toHaveText('฿0.00');
     await expect(modal.getByTestId(DEST_AFTER)).toHaveText('฿2,650.00');
     // Emptying a wallet is not an overdraft.

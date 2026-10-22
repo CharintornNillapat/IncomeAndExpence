@@ -23,6 +23,14 @@ npx tsc --noEmit --extendedDiagnostics
 
 ## Figures
 
+### Phase 142 - delta against Phase 141
+
+- **Entry chunk** `index-CQ64gmHG.js`: 193,169 B (-6 B), 56,374 B gzip (-6 B against Phase 141 `index-O-Xe4lzP.js`, 193,175 / 56,380).
+- **All app JS**: 884,709 B (+218 B), 268,592 B gzip (-20 B against Phase 141 884,491 / 268,612, 39 files, 0 file delta).
+- **CSS**: `index-BJZ9fITB.css`: 52,877 B (0 delta), 10,216 B gzip (0 delta against Phase 141 `index-BJZ9fITB.css`, 52,877 / 10,216).
+- **Vitest**: 64 files, 1465 tests (+2 tests, +1 file against Phase 141: the new guard `unit/dom-id-convention.test.ts`), 1465 passed in 53.05 s (`workflow/stages/02_build/output/logs/T791-unit.log`). Per-task run: T790 1465 passed in 42.56 s (`workflow/stages/02_build/output/logs/T790-unit.log`).
+- **Playwright**: run in full by T790, since its renames touched 24 specs: 531 passed, 6 skipped, 0 failed across 3 projects (8.7 min, `workflow/stages/02_build/output/logs/T790-playwright.log`; the review's rerun took 10.9 min). Suite size unchanged: `npx playwright test --list` reports 179 tests in 35 files, 537 runs across 3 projects.
+
 ### Phase 141 - delta against Phase 140
 
 Measured at `1324fb2`; the merge commit `e61ac44` has the same tree, so the figures hold for it.

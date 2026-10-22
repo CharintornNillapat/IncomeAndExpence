@@ -71,9 +71,9 @@ export const DebtCard: React.FC<DebtCardProps> = React.memo(({ debt, planItem, o
           triggerId={`debt-menu-btn-${debt.id}`}
           className="-mr-2 -mt-2 shrink-0"
           items={[
-            { id: `edit-debt-${debt.id}`, label: 'Edit debt', icon: <Pencil aria-hidden="true" className="w-4 h-4" />, onSelect: () => onEdit(debt.id) },
+            { id: `debt-edit-${debt.id}`, label: 'Edit debt', icon: <Pencil aria-hidden="true" className="w-4 h-4" />, onSelect: () => onEdit(debt.id) },
             {
-              id: `delete-debt-${debt.id}`,
+              id: `debt-delete-${debt.id}`,
               label: 'Delete debt…',
               tone: 'danger',
               icon: <Trash2 aria-hidden="true" className="w-4 h-4" />,
@@ -122,7 +122,7 @@ export const DebtCard: React.FC<DebtCardProps> = React.memo(({ debt, planItem, o
       ) : (
         <div className="flex flex-col @sm:flex-row gap-2 mt-auto">
           <Button
-            id={`open-repay-modal-${debt.id}`}
+            id={`debt-open-repay-${debt.id}`}
             className="flex-1"
             onClick={() => onOpenRepay(debt)}
             icon={<CreditCard aria-hidden="true" className="w-4 h-4" />}
@@ -130,7 +130,7 @@ export const DebtCard: React.FC<DebtCardProps> = React.memo(({ debt, planItem, o
             Make repayment
           </Button>
           <Button
-            id={`settle-debt-${debt.id}`}
+            id={`debt-settle-${debt.id}`}
             variant="secondary"
             className="flex-1"
             onClick={() => onSettle(debt.id)}

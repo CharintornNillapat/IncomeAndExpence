@@ -123,7 +123,7 @@ test.describe('Dialogs and Back', () => {
   test('a dialog closed by its button leaves no Back step behind', async ({ page }) => {
     await openQuickAddOnWallets(page);
 
-    await page.locator('#close-quick-record-modal-btn').click();
+    await page.locator('#quickadd-close-btn').click();
     await expect(quickAdd(page)).toHaveCount(0);
 
     await page.goBack();
@@ -134,7 +134,7 @@ test.describe('Dialogs and Back', () => {
     await openQuickAddOnWallets(page);
 
     await quickAdd(page).locator('[id$="-shortcut-transfer"]').click();
-    const transfer = page.getByRole('dialog').filter({ has: page.locator('#transfer-source-wallet') });
+    const transfer = page.getByRole('dialog').filter({ has: page.locator('#wallet-transfer-source') });
     await expect(transfer).toBeVisible();
     await expect(quickAdd(page)).toHaveCount(0);
 

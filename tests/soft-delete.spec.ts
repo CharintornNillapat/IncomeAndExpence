@@ -65,8 +65,8 @@ test.describe('Soft-delete lifecycle', () => {
     await page.locator('#wallet-add-modal-btn').click();
 
     const walletName = `E2E SoftDelete Wallet ${Date.now().toString().slice(-6)}`;
-    await page.locator('#new-wallet-name').fill(walletName);
-    await page.locator('#save-new-wallet-btn').click();
+    await page.locator('#wallet-new-name').fill(walletName);
+    await page.locator('#wallet-new-save-btn').click();
 
     // Phase 59 (ADR 0034): each wallet is a row button in the list, and Delete
     // lives in the selected wallet's "⋯" menu, so the row is selected first.
@@ -75,7 +75,7 @@ test.describe('Soft-delete lifecycle', () => {
 
     await card.click();
     await page.locator('#wallet-detail-menu-btn').click();
-    await page.locator('button[id^="delete-wallet-"]').click();
+    await page.locator('button[id^="wallet-delete-"]').click();
     // T42: deletion now gates behind a confirmation dialog.
     await page.locator('#confirm-destructive-btn').click();
     await expect(page.locator('[id^="wallet-entity-"]').filter({ hasText: walletName })).toHaveCount(0);
@@ -87,20 +87,20 @@ test.describe('Soft-delete lifecycle', () => {
 
   test('debt: soft-delete removes it from the goals grid and survives a reload', async ({ page }) => {
     await gotoTab(page, 'debts');
-    await page.locator('#open-add-debt-btn').click();
+    await page.locator('#debt-open-add-btn').click();
 
     const debtName = `E2E SoftDelete Debt ${Date.now().toString().slice(-6)}`;
-    await page.locator('#new-debt-name').fill(debtName);
+    await page.locator('#debt-new-name').fill(debtName);
     // The form starts empty since ADR 0086; a total is the one figure it needs.
-    await page.locator('#new-debt-total').fill('5000');
-    await page.locator('#save-new-debt-btn').click();
+    await page.locator('#debt-new-total').fill('5000');
+    await page.locator('#debt-new-save-btn').click();
 
     const card = page.locator('div[id^="debt-card-"]').filter({ hasText: debtName });
     await expect(card).toBeVisible();
 
     // Phase 60 (spec 6.4): Delete lives in the card's ⋯ menu.
     await card.locator('button[id^="debt-menu-btn-"]').click();
-    await card.locator('button[id^="delete-debt-"]').click();
+    await card.locator('button[id^="debt-delete-"]').click();
     // T42: deletion now gates behind a confirmation dialog.
     await page.locator('#confirm-destructive-btn').click();
     await expect(page.locator('div[id^="debt-card-"]').filter({ hasText: debtName })).toHaveCount(0);
@@ -177,11 +177,11 @@ test.describe('Soft-delete lifecycle', () => {
     await expect(card).toContainText('55.0%');
 
     const marker = `E2E Debt Invariant ${Date.now().toString().slice(-6)}`;
-    await card.locator('button[id^="open-repay-modal-"]').click();
-    await page.locator('#repay-amount-math').fill('500');
+    await card.locator('button[id^="debt-open-repay-"]').click();
+    await page.locator('#debt-repay-amount-math').fill('500');
     await page.locator('input[id$="-desc"]').fill(marker);
-    await page.locator('#confirm-repay-btn').click();
-    await expect(page.locator('#repay-wallet-select')).toHaveCount(0);
+    await page.locator('#debt-repay-confirm-btn').click();
+    await expect(page.locator('#debt-repay-wallet-select')).toHaveCount(0);
 
     // ฿4,500 - ฿500 = ฿4,000 remaining, 60.0% paid off.
     await expect(card).toContainText('฿4,000.00');
@@ -221,14 +221,14 @@ test.describe('Soft-delete lifecycle', () => {
 
     // Clear the whole ฿4,500 remainder, which auto-settles the debt.
     const marker = `E2E Settle Reverse ${Date.now().toString().slice(-6)}`;
-    await card.locator('button[id^="open-repay-modal-"]').click();
-    await page.locator('#repay-payoff-full').click();
+    await card.locator('button[id^="debt-open-repay-"]').click();
+    await page.locator('#debt-repay-payoff-full').click();
     await page.locator('input[id$="-desc"]').fill(marker);
-    await page.locator('#confirm-repay-btn').click();
-    await expect(page.locator('#repay-wallet-select')).toHaveCount(0);
+    await page.locator('#debt-repay-confirm-btn').click();
+    await expect(page.locator('#debt-repay-wallet-select')).toHaveCount(0);
 
     await expect(card).toContainText('✓ Debt Fully Settled');
-    await expect(card.locator('button[id^="open-repay-modal-"]')).toHaveCount(0);
+    await expect(card.locator('button[id^="debt-open-repay-"]')).toHaveCount(0);
 
     // Reversing the payment must un-settle it: `isSettled` is recomputed in
     // both directions, so the card becomes actionable again rather than
@@ -243,6 +243,6 @@ test.describe('Soft-delete lifecycle', () => {
     await gotoTab(page, 'debts');
     await expect(card).not.toContainText('✓ Debt Fully Settled');
     await expect(card).toContainText('฿4,500.00');
-    await expect(card.locator('button[id^="open-repay-modal-"]')).toBeVisible();
+    await expect(card.locator('button[id^="debt-open-repay-"]')).toBeVisible();
   });
 });

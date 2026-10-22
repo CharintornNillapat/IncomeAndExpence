@@ -93,7 +93,7 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
       title="Quick Record Transaction"
       subtitle="Add an expense or income instantly"
       titleId="quick-record-modal-title"
-      closeButtonId="close-quick-record-modal-btn"
+      closeButtonId="quickadd-close-btn"
       maxWidthClassName="max-w-xl"
     >
       {presets.length > 0 && (

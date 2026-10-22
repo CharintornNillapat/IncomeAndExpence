@@ -51,7 +51,7 @@ function mountForm() {
   const save = async (note: string) => {
     fireEvent.change(document.querySelector('[id$="-desc"]')!, { target: { value: note } });
     await act(async () => {
-      fireEvent.click(document.getElementById('confirm-t-btn')!);
+      fireEvent.click(document.getElementById('t-confirm-btn')!);
     });
   };
   const toggle = (name: 'Expense' | 'Income') => fireEvent.click(screen.getByRole('button', { name }));

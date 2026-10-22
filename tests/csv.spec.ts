@@ -43,7 +43,7 @@ test.describe('CSV export/import round trip', () => {
       buffer: Buffer.from(csvContent),
     });
 
-    const commitBtn = page.locator('#commit-import-btn');
+    const commitBtn = page.locator('#csv-commit-btn');
     await expect(commitBtn).toBeEnabled();
     await commitBtn.click();
 
@@ -85,7 +85,7 @@ test.describe('CSV export/import round trip', () => {
       buffer: Buffer.from(csvContent),
     });
 
-    const commitBtn = page.locator('#commit-import-btn');
+    const commitBtn = page.locator('#csv-commit-btn');
     await expect(commitBtn).toBeEnabled();
     await commitBtn.click();
     await expect(page.getByText(/Successfully imported 1 transactions/i)).toBeVisible();

@@ -30,8 +30,8 @@ interface WalletsSectionProps {
  * then the share bar and a row per active wallet, with Transfer, Add wallet and
  * Manage wallets.
  *
- * It keeps the three hero-* ids (`#hero-transfer-funds-btn`,
- * `#hero-add-wallet-btn`, `#hero-manage-all-wallets-btn`) and `#dashboard-wallet-card-{id}`,
+ * It keeps the three wallet action ids (`#dashboard-wallets-transfer-btn`,
+ * `#dashboard-wallets-add-btn`, `#dashboard-wallets-manage-btn`) and `#dashboard-wallet-card-{id}`,
  * which the suite drives.
  * Net worth keeps `data-testid="net-worth-card"` (`theme.spec.ts`) and is the
  * one figure with the currency code.
@@ -78,7 +78,7 @@ export const WalletsSection: React.FC<WalletsSectionProps> = ({
         {/* Called with no argument: the click event must never reach
             `onOpenTransfer(walletId?)` as a wallet id (transfer-preview.spec.ts
             expects the form's own defaults). */}
-        <DashboardLink id="hero-transfer-funds-btn" onClick={() => onTransfer()}>
+        <DashboardLink id="dashboard-wallets-transfer-btn" onClick={() => onTransfer()}>
           Transfer
         </DashboardLink>
       </div>
@@ -139,10 +139,10 @@ export const WalletsSection: React.FC<WalletsSectionProps> = ({
       )}
 
       <div className="flex flex-wrap gap-x-6 pt-3 border-t border-line">
-        <DashboardLink id="hero-add-wallet-btn" onClick={() => onAddWallet()}>
+        <DashboardLink id="dashboard-wallets-add-btn" onClick={() => onAddWallet()}>
           Add wallet
         </DashboardLink>
-        <DashboardLink id="hero-manage-all-wallets-btn" onClick={() => onManageWallets()}>
+        <DashboardLink id="dashboard-wallets-manage-btn" onClick={() => onManageWallets()}>
           Manage wallets
         </DashboardLink>
       </div>

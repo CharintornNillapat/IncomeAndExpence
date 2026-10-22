@@ -72,11 +72,11 @@ export const ReloadPrompt: React.FC = React.memo(() => {
 
           <div className="flex items-center gap-2 mt-3">
             {needRefresh && (
-              <Button id="pwa-reload-button" onClick={() => updateServiceWorker(true)}>
+              <Button id="pwa-reload-btn" onClick={() => updateServiceWorker(true)}>
                 Reload
               </Button>
             )}
-            <Button id="pwa-dismiss-button" variant="secondary" onClick={close}>
+            <Button id="pwa-dismiss-btn" variant="secondary" onClick={close}>
               Dismiss
             </Button>
           </div>

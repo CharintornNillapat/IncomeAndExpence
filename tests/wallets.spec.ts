@@ -16,17 +16,17 @@ test.describe('Wallets & Accounts E2E Tests', () => {
     await addWalletBtn.click();
 
     // 3. Fill in Wallet Name
-    const walletNameInput = page.locator('#new-wallet-name');
+    const walletNameInput = page.locator('#wallet-new-name');
     await expect(walletNameInput).toBeVisible();
     const uniqueWalletName = `E2E Vault ${Date.now().toString().slice(-4)}`;
     await walletNameInput.fill(uniqueWalletName);
 
     // 4. Fill in Starting Balance
-    const initBalanceInput = page.locator('#new-wallet-init-balance');
+    const initBalanceInput = page.locator('#wallet-new-init-balance');
     await initBalanceInput.fill('1250');
 
     // 5. Submit form
-    const submitBtn = page.locator('#save-new-wallet-btn');
+    const submitBtn = page.locator('#wallet-new-save-btn');
     await submitBtn.click();
 
     // 6. Assert new wallet appears on the grid

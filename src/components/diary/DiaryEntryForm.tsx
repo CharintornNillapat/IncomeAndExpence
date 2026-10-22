@@ -160,7 +160,7 @@ export const DiaryEntryForm: React.FC<DiaryEntryFormProps> = ({
             {MOOD_LEVELS.map((level) => (
               <button
                 key={level}
-                id={`mood-btn-${level}`}
+                id={`diary-mood-btn-${level}`}
                 type="button"
                 aria-pressed={mood === level}
                 onClick={() => setMood(level)}
@@ -176,10 +176,10 @@ export const DiaryEntryForm: React.FC<DiaryEntryFormProps> = ({
         <fieldset className="flex flex-col gap-2">
           <legend className={`${LABEL_TEXT_CLASS} mb-2`}>Activity</legend>
           <div className="grid grid-cols-2 gap-2">
-            <button id="activity-btn-rest" type="button" aria-pressed={!workout} onClick={() => setWorkout(false)} className={choiceClass(!workout)}>
+            <button id="diary-activity-btn-rest" type="button" aria-pressed={!workout} onClick={() => setWorkout(false)} className={choiceClass(!workout)}>
               {ACTIVITY_LABELS.rest}
             </button>
-            <button id="activity-btn-workout" type="button" aria-pressed={workout} onClick={() => setWorkout(true)} className={choiceClass(workout)}>
+            <button id="diary-activity-btn-workout" type="button" aria-pressed={workout} onClick={() => setWorkout(true)} className={choiceClass(workout)}>
               {ACTIVITY_LABELS.workout}
             </button>
           </div>
@@ -202,7 +202,7 @@ export const DiaryEntryForm: React.FC<DiaryEntryFormProps> = ({
             {MEAL_OPTIONS.map((option) => (
               <button
                 key={option.value}
-                id={`food-btn-${option.value.toLowerCase()}`}
+                id={`diary-food-btn-${option.value.toLowerCase()}`}
                 type="button"
                 aria-pressed={foodQuality === option.value}
                 onClick={() => setFoodQuality(option.value)}
@@ -230,7 +230,7 @@ export const DiaryEntryForm: React.FC<DiaryEntryFormProps> = ({
 
         <div className="flex flex-col gap-2">
           {error && <div className={ERROR_BANNER_CLASS}>{error}</div>}
-          <Button id="save-diary-entry-btn" type="submit" size="lg" block disabled={mood === null || isSubmitting} aria-describedby="diary-save-status">
+          <Button id="diary-save-entry-btn" type="submit" size="lg" block disabled={mood === null || isSubmitting} aria-describedby="diary-save-status">
             Save entry
           </Button>
           <p id="diary-save-status" role="status" className={`text-xs text-center ${savedMessage ? 'text-income font-semibold' : 'text-fg-muted'}`}>

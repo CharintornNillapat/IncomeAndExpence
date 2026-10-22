@@ -142,9 +142,9 @@ describe('the page', () => {
       extra: [custom({ id: 'pets', name: 'Pets', color: BLUE }), custom({ id: 'gym', name: 'Gym', color: '#D9A066' })],
       rows: [tx({ categoryId: 'gym' })],
     });
-    expect(byId('edit-category-cat-food')!.textContent).toContain('Default');
-    expect(byId('edit-category-pets')!.textContent).toMatch(/Custom$/);
-    expect(byId('edit-category-gym')!.textContent).toContain('Custom · in use');
+    expect(byId('category-edit-cat-food')!.textContent).toContain('Default');
+    expect(byId('category-edit-pets')!.textContent).toMatch(/Custom$/);
+    expect(byId('category-edit-gym')!.textContent).toContain('Custom · in use');
   });
 });
 
@@ -154,34 +154,34 @@ describe('the form, from lg', () => {
     mount({ extra: [custom({ id: 'pets', name: 'Pets', color: BLUE, description: 'Vet and food' })] });
     expect(byId('category-form-heading')!.textContent).toBe('New category');
 
-    fireEvent.click(byId('edit-category-pets')!);
+    fireEvent.click(byId('category-edit-pets')!);
     expect(byId('category-form-heading')!.textContent).toBe('Edit category');
-    expect((byId('edit-category-name') as HTMLInputElement).value).toBe('Pets');
-    expect((byId('edit-category-description') as HTMLTextAreaElement).value).toBe('Vet and food');
-    expect(byId('edit-category-pets')!.getAttribute('aria-pressed')).toBe('true');
+    expect((byId('category-edit-name') as HTMLInputElement).value).toBe('Pets');
+    expect((byId('category-edit-description') as HTMLTextAreaElement).value).toBe('Vet and food');
+    expect(byId('category-edit-pets')!.getAttribute('aria-pressed')).toBe('true');
     await waitFor(() => expect(document.activeElement?.id).toBe('category-form-heading'));
 
-    fireEvent.click(byId('edit-category-cancel-btn')!);
-    expect(byId('edit-category-name')).toBeNull();
-    expect(byId('new-category-name')).not.toBeNull();
-    await waitFor(() => expect(document.activeElement?.id).toBe('edit-category-pets'));
+    fireEvent.click(byId('category-edit-cancel-btn')!);
+    expect(byId('category-edit-name')).toBeNull();
+    expect(byId('category-new-name')).not.toBeNull();
+    await waitFor(() => expect(document.activeElement?.id).toBe('category-edit-pets'));
   });
 
   it('L9: a colour in use is disabled and named, and the category being edited keeps its own', () => {
     wide();
     mount({ extra: [custom({ id: 'pets', name: 'Pets', color: BLUE })] });
-    const used = swatch('new-category', BLUE);
+    const used = swatch('category-new', BLUE);
     expect(used.disabled).toBe(true);
     expect(used.getAttribute('aria-label')).toBe('Blue, used by Pets');
     expect(used.getAttribute('title')).toBe('Blue, used by Pets');
     // A strike marks it as unavailable, not just paler (audit 011 finding 1).
     expect(used.querySelector('[data-used-mark]')).not.toBeNull();
-    expect(swatch('new-category', IDENTITY_PALETTE[0].hex).querySelector('[data-used-mark]')).toBeNull();
+    expect(swatch('category-new', IDENTITY_PALETTE[0].hex).querySelector('[data-used-mark]')).toBeNull();
     // A new category starts on the first free colour.
-    expect(swatch('new-category', IDENTITY_PALETTE[0].hex).getAttribute('aria-pressed')).toBe('true');
+    expect(swatch('category-new', IDENTITY_PALETTE[0].hex).getAttribute('aria-pressed')).toBe('true');
 
-    fireEvent.click(byId('edit-category-pets')!);
-    const own = swatch('edit-category', BLUE);
+    fireEvent.click(byId('category-edit-pets')!);
+    const own = swatch('category-edit', BLUE);
     expect(own.disabled).toBe(false);
     expect(own.getAttribute('aria-pressed')).toBe('true');
   });
@@ -190,73 +190,73 @@ describe('the form, from lg', () => {
     wide();
     // Sky, from the old ten-colour picker: no migration touches a colour someone picked.
     mount({ extra: [custom({ id: 'pets', name: 'Pets', color: '#0ea5e9' })] });
-    fireEvent.click(byId('edit-category-pets')!);
-    const current = byId('edit-category-color-current')!;
+    fireEvent.click(byId('category-edit-pets')!);
+    const current = byId('category-edit-color-current')!;
     expect(current.getAttribute('aria-pressed')).toBe('true');
     expect(current.getAttribute('title')).toBe('Custom color');
     expect(current.getAttribute('aria-label')).toBe('Custom color');
-    fireEvent.change(byId('edit-category-name')!, { target: { value: 'Animals' } });
-    fireEvent.click(byId('edit-category-save-btn')!);
-    await waitFor(() => expect(byId('edit-category-pets')!.textContent).toContain('Animals'));
-    expect((byId('edit-category-pets')!.querySelector('span') as HTMLElement).style.backgroundColor).toBe(rgb('#0ea5e9'));
+    fireEvent.change(byId('category-edit-name')!, { target: { value: 'Animals' } });
+    fireEvent.click(byId('category-edit-save-btn')!);
+    await waitFor(() => expect(byId('category-edit-pets')!.textContent).toContain('Animals'));
+    expect((byId('category-edit-pets')!.querySelector('span') as HTMLElement).style.backgroundColor).toBe(rgb('#0ea5e9'));
   });
 
   it('shows no "Current color" swatch for a shipped category, which ships on an identity colour', () => {
     wide();
     mount();
-    fireEvent.click(byId('edit-category-cat-food')!);
-    expect(byId('edit-category-color-current')).toBeNull();
-    expect(swatch('edit-category', '#E879A6').getAttribute('aria-pressed')).toBe('true');
+    fireEvent.click(byId('category-edit-cat-food')!);
+    expect(byId('category-edit-color-current')).toBeNull();
+    expect(swatch('category-edit', '#E879A6').getAttribute('aria-pressed')).toBe('true');
   });
 
   it('adds an income category on a free colour, then starts the next one on Income and the next free colour', async () => {
     wide();
     mount();
-    fireEvent.click(byId('new-category-type-income')!);
-    fireEvent.change(byId('new-category-name')!, { target: { value: 'Allowance' } });
-    fireEvent.click(byId('save-category-btn')!);
+    fireEvent.click(byId('category-new-type-income')!);
+    fireEvent.change(byId('category-new-name')!, { target: { value: 'Allowance' } });
+    fireEvent.click(byId('category-new-save-btn')!);
     await waitFor(() => {
       const income = [...byId('category-group-income')!.querySelectorAll('li')].map((li) => li.textContent);
       expect(income.some((text) => text?.includes('Allowance'))).toBe(true);
       // The form resets after the add resolves, in a later update than the
       // list's, so it is waited for too (ADR 0096).
-      expect((byId('new-category-name') as HTMLInputElement).value).toBe('');
+      expect((byId('category-new-name') as HTMLInputElement).value).toBe('');
     });
-    expect(byId('new-category-type-income')!.getAttribute('aria-pressed')).toBe('true');
-    expect(swatch('new-category', IDENTITY_PALETTE[0].hex).disabled).toBe(true);
-    expect(swatch('new-category', IDENTITY_PALETTE[1].hex).getAttribute('aria-pressed')).toBe('true');
+    expect(byId('category-new-type-income')!.getAttribute('aria-pressed')).toBe('true');
+    expect(swatch('category-new', IDENTITY_PALETTE[0].hex).disabled).toBe(true);
+    expect(swatch('category-new', IDENTITY_PALETTE[1].hex).getAttribute('aria-pressed')).toBe('true');
   });
 
   it('once all twelve colours are in use, lets them repeat: Add stays on and cycles to the least-shared one (audit 012 finding 1)', async () => {
     wide();
     // With the shipped seven, Rose to Orchid are each used twice, and Tan, Blue, Teal, Khaki and Iris once.
     mount({ extra: IDENTITY_PALETTE.map(({ hex }, i) => custom({ id: `c${i}`, name: `Custom ${i}`, color: hex })) });
-    expect((byId('save-category-btn') as HTMLButtonElement).disabled).toBe(false);
-    expect(byId('new-category-color-sharing')!.textContent).toBe('All 12 colors are in use, so this category will share one with another.');
-    const rose = swatch('new-category', '#E879A6');
+    expect((byId('category-new-save-btn') as HTMLButtonElement).disabled).toBe(false);
+    expect(byId('category-new-color-sharing')!.textContent).toBe('All 12 colors are in use, so this category will share one with another.');
+    const rose = swatch('category-new', '#E879A6');
     expect(rose.disabled).toBe(false);
     expect(rose.getAttribute('aria-label')).toBe('Rose, also used by Food & Dining');
     expect(rose.querySelector('[data-used-mark]')).toBeNull();
-    expect(swatch('new-category', '#D9A066').getAttribute('aria-pressed')).toBe('true');
+    expect(swatch('category-new', '#D9A066').getAttribute('aria-pressed')).toBe('true');
 
-    fireEvent.change(byId('new-category-name')!, { target: { value: 'Thirteenth' } });
-    fireEvent.click(byId('save-category-btn')!);
+    fireEvent.change(byId('category-new-name')!, { target: { value: 'Thirteenth' } });
+    fireEvent.click(byId('category-new-save-btn')!);
     await waitFor(() => expect(byId('category-group-expense')!.textContent).toContain('Thirteenth'));
     // Tan is now shared twice, so the next new category starts on Blue.
-    await waitFor(() => expect(swatch('new-category', '#6C8EEF').getAttribute('aria-pressed')).toBe('true'));
+    await waitFor(() => expect(swatch('category-new', '#6C8EEF').getAttribute('aria-pressed')).toBe('true'));
   });
 
   it('lets an edit pick a used colour once all twelve are taken', async () => {
     wide();
     mount({ extra: IDENTITY_PALETTE.map(({ hex }, i) => custom({ id: `c${i}`, name: `Custom ${i}`, color: hex })) });
     // Custom 4 shares Rose with Food & Dining, so even without it all twelve stay taken.
-    fireEvent.click(byId('edit-category-c4')!);
-    const tan = swatch('edit-category', '#D9A066');
+    fireEvent.click(byId('category-edit-c4')!);
+    const tan = swatch('category-edit', '#D9A066');
     expect(tan.disabled).toBe(false);
     expect(tan.getAttribute('aria-label')).toBe('Tan, also used by Custom 0');
     fireEvent.click(tan);
-    fireEvent.click(byId('edit-category-save-btn')!);
-    await waitFor(() => expect((byId('edit-category-c4')!.querySelector('span') as HTMLElement).style.backgroundColor).toBe(rgb('#D9A066')));
+    fireEvent.click(byId('category-edit-save-btn')!);
+    await waitFor(() => expect((byId('category-edit-c4')!.querySelector('span') as HTMLElement).style.backgroundColor).toBe(rgb('#D9A066')));
   });
 });
 
@@ -264,24 +264,24 @@ describe('delete, from lg', () => {
   it('a default has no Delete, and says why', () => {
     wide();
     mount();
-    fireEvent.click(byId('edit-category-cat-housing')!);
-    expect(byId('delete-category-cat-housing')).toBeNull();
+    fireEvent.click(byId('category-edit-cat-housing')!);
+    expect(byId('category-delete-cat-housing')).toBeNull();
     expect(document.body.textContent).toContain("Default categories can't be deleted.");
   });
 
   it('a custom category in use has Delete disabled, with what uses it', () => {
     wide();
     mount({ extra: [custom({ id: 'gym', name: 'Gym', color: BLUE })], rows: [tx({ categoryId: 'gym' })] });
-    fireEvent.click(byId('edit-category-gym')!);
-    expect((byId('delete-category-gym') as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(byId('category-edit-gym')!);
+    expect((byId('category-delete-gym') as HTMLButtonElement).disabled).toBe(true);
     expect(document.body.textContent).toContain("Used by 1 transaction, so it can't be deleted.");
   });
 
   it('an unused custom category is deleted after the confirm, and focus goes to the list', async () => {
     wide();
     mount({ extra: [custom({ id: 'pets', name: 'Pets', color: BLUE })] });
-    fireEvent.click(byId('edit-category-pets')!);
-    fireEvent.click(byId('delete-category-pets')!);
+    fireEvent.click(byId('category-edit-pets')!);
+    fireEvent.click(byId('category-delete-pets')!);
     const dialog = screen.getByRole('dialog', { name: 'Delete category' });
     expect(dialog.textContent).toContain('No transaction or rule uses it.');
     fireEvent.click(byId('confirm-destructive-btn')!);
@@ -294,27 +294,27 @@ describe('delete, from lg', () => {
 describe('below lg', () => {
   it('offers "Add category" in the header, which takes focus to the New form (audit 011 finding 2)', () => {
     mount();
-    const open = byId('open-new-category-btn')!;
+    const open = byId('category-open-new-btn')!;
     expect(open.textContent).toBe('Add category');
     fireEvent.click(open);
-    expect(document.activeElement?.id).toBe('new-category-name');
+    expect(document.activeElement?.id).toBe('category-new-name');
     // Not on the Smart rules tab, where there is no form to go to.
     fireEvent.click(byId('category-subtab-rules')!);
-    expect(byId('open-new-category-btn')).toBeNull();
+    expect(byId('category-open-new-btn')).toBeNull();
   });
 
   it('does not offer it from lg, where the form sits beside the list', () => {
     wide();
     mount();
-    expect(byId('open-new-category-btn')).toBeNull();
+    expect(byId('category-open-new-btn')).toBeNull();
   });
 
   it('a row opens the edit form in a sheet, and the new form stays on the page', () => {
     mount({ extra: [custom({ id: 'pets', name: 'Pets', color: BLUE })] });
-    fireEvent.click(byId('edit-category-pets')!);
+    fireEvent.click(byId('category-edit-pets')!);
     const sheet = screen.getByRole('dialog', { name: 'Edit category' });
     expect((within(sheet).getByLabelText('Name') as HTMLInputElement).value).toBe('Pets');
-    expect(byId('new-category-name')).not.toBeNull();
+    expect(byId('category-new-name')).not.toBeNull();
   });
 });
 
@@ -352,7 +352,7 @@ describe('the Smart rules tab', () => {
   it('names types in words, in the picker and the sandbox', () => {
     mount();
     fireEvent.click(byId('category-subtab-rules')!);
-    const options = [...(byId('keyword-category-select') as HTMLSelectElement).options].map((o) => o.textContent);
+    const options = [...(byId('category-rules-keyword-select') as HTMLSelectElement).options].map((o) => o.textContent);
     expect(options).toContain('Groceries (Expense)');
     expect(options).toContain('Debt repayment');
     expect(document.body.textContent).not.toMatch(RAW_ENUM);
@@ -375,7 +375,7 @@ describe('the header nav (audit 007 finding 1)', () => {
 });
 
 describe("spec 5.1's colour migration on this device (Phase 63, ADR 0038)", () => {
-  const dot = (id: string) => (byId(`edit-category-${id}`)!.querySelector('span') as HTMLElement).style.backgroundColor;
+  const dot = (id: string) => (byId(`category-edit-${id}`)!.querySelector('span') as HTMLElement).style.backgroundColor;
   const systemDot = (id: string) => (byId(`category-row-${id}`)!.querySelector('span') as HTMLElement).style.backgroundColor;
 
   it('loads the shipped categories a device stored on their old colours on the identity colours', () => {
@@ -400,7 +400,7 @@ describe("spec 5.1's colour migration on this device (Phase 63, ADR 0038)", () =
     expect(dot('cat-food')).toBe(rgb('#D9A066')); // Tan: Pets already holds Rose
     expect(dot('pets')).toBe(rgb('#E879A6'));
     expect(dot('gym')).toBe(rgb('#0ea5e9'));
-    expect(swatch('new-category', '#D9A066').getAttribute('aria-label')).toBe('Tan, used by Food & Dining');
+    expect(swatch('category-new', '#D9A066').getAttribute('aria-label')).toBe('Tan, used by Food & Dining');
   });
 
   it('starts a fresh guest on identity colours only, one each', () => {

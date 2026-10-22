@@ -64,7 +64,7 @@ export const CategoryForm: React.FC<CategoryFormProps> = ({
   onRequestDelete,
 }) => {
   const isEdit = editing !== null;
-  const prefix = isEdit ? 'edit-category' : 'new-category';
+  const prefix = isEdit ? 'category-edit' : 'category-new';
   const [type, setType] = useState<CreatableCategoryType>(initialType);
   const [name, setName] = useState(editing?.name ?? '');
   const [description, setDescription] = useState(editing?.description ?? '');
@@ -109,8 +109,8 @@ export const CategoryForm: React.FC<CategoryFormProps> = ({
           fill
           className="flex"
           options={[
-            { value: 'EXPENSE', id: 'new-category-type-expense', label: 'Expense' },
-            { value: 'INCOME', id: 'new-category-type-income', label: 'Income' },
+            { value: 'EXPENSE', id: 'category-new-type-expense', label: 'Expense' },
+            { value: 'INCOME', id: 'category-new-type-income', label: 'Income' },
           ]}
         />
       )}
@@ -172,10 +172,10 @@ export const CategoryForm: React.FC<CategoryFormProps> = ({
       {isEdit ? (
         <div className="flex flex-col gap-3">
           <div className="flex flex-wrap gap-2">
-            <Button id="edit-category-save-btn" type="submit" disabled={isSubmitting}>
+            <Button id="category-edit-save-btn" type="submit" disabled={isSubmitting}>
               Save changes
             </Button>
-            <Button id="edit-category-cancel-btn" variant="secondary" onClick={onCancel}>
+            <Button id="category-edit-cancel-btn" variant="secondary" onClick={onCancel}>
               Cancel
             </Button>
           </div>
@@ -186,7 +186,7 @@ export const CategoryForm: React.FC<CategoryFormProps> = ({
               <>
                 <div>
                   <Button
-                    id={`delete-category-${editing.id}`}
+                    id={`category-delete-${editing.id}`}
                     variant="danger"
                     disabled={inUse}
                     onClick={() => onRequestDelete(editing)}
@@ -204,7 +204,7 @@ export const CategoryForm: React.FC<CategoryFormProps> = ({
           </div>
         </div>
       ) : (
-        <Button id="save-category-btn" type="submit" size="lg" block disabled={isSubmitting}>
+        <Button id="category-new-save-btn" type="submit" size="lg" block disabled={isSubmitting}>
           Add category
         </Button>
       )}

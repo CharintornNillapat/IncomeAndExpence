@@ -78,7 +78,7 @@ describe('the page header', () => {
   it('is titled "Daily diary" with Export JSON, the one export on the page', () => {
     mount();
     expect(screen.getByRole('heading', { level: 1, name: 'Daily diary' })).toBeTruthy();
-    expect(byId('export-diary-btn')!.textContent).toBe('Export JSON');
+    expect(byId('diary-export-btn')!.textContent).toBe('Export JSON');
   });
 });
 
@@ -87,49 +87,49 @@ describe('the entry form', () => {
     mount({
       entries: [entryRow({ id: 'today', date: TODAY, mood: 2, workout: true, workoutNote: 'Swim', foodQuality: 'JUNK', notes: 'Long day' })],
     });
-    expect(pressed('mood-btn-2')).toBe('true');
-    expect(pressed('activity-btn-workout')).toBe('true');
+    expect(pressed('diary-mood-btn-2')).toBe('true');
+    expect(pressed('diary-activity-btn-workout')).toBe('true');
     expect((byId('diary-workout-note') as HTMLInputElement).value).toBe('Swim');
-    expect(pressed('food-btn-junk')).toBe('true');
+    expect(pressed('diary-food-btn-junk')).toBe('true');
     expect((byId('diary-notes-textarea') as HTMLTextAreaElement).value).toBe('Long day');
   });
 
   it('starts a day with no entry with no mood, a rest day, average meals and an empty note, and waits for a mood', () => {
     mount();
-    for (const level of [1, 2, 3, 4, 5]) expect(pressed(`mood-btn-${level}`)).toBe('false');
-    expect(pressed('activity-btn-rest')).toBe('true');
+    for (const level of [1, 2, 3, 4, 5]) expect(pressed(`diary-mood-btn-${level}`)).toBe('false');
+    expect(pressed('diary-activity-btn-rest')).toBe('true');
     expect(byId('diary-workout-note')).toBeNull();
-    expect(pressed('food-btn-average')).toBe('true');
+    expect(pressed('diary-food-btn-average')).toBe('true');
     expect((byId('diary-notes-textarea') as HTMLTextAreaElement).value).toBe('');
-    const save = byId('save-diary-entry-btn') as HTMLButtonElement;
+    const save = byId('diary-save-entry-btn') as HTMLButtonElement;
     expect(save.textContent).toBe('Save entry');
     expect(save.disabled).toBe(true);
     expect(byId('diary-save-status')!.textContent).toBe('Pick a mood to save.');
 
-    fireEvent.click(byId('mood-btn-4')!);
+    fireEvent.click(byId('diary-mood-btn-4')!);
     expect(save.disabled).toBe(false);
   });
 
   it('labels each mood with its number and word, and has no emoji anywhere', () => {
     mount({ entries: [entryRow({ id: 'a', date: YESTERDAY, notes: 'ok' })] });
-    expect(byId('mood-btn-1')!.textContent).toBe('1Very low');
-    expect(byId('mood-btn-3')!.textContent).toBe('3Neutral');
-    expect(byId('mood-btn-5')!.textContent).toBe('5Great');
-    expect(byId('food-btn-healthy')!.textContent).toBe('Clean / home');
-    expect(byId('food-btn-junk')!.textContent).toBe('Fast food / junk');
+    expect(byId('diary-mood-btn-1')!.textContent).toBe('1Very low');
+    expect(byId('diary-mood-btn-3')!.textContent).toBe('3Neutral');
+    expect(byId('diary-mood-btn-5')!.textContent).toBe('5Great');
+    expect(byId('diary-food-btn-healthy')!.textContent).toBe('Clean / home');
+    expect(byId('diary-food-btn-junk')!.textContent).toBe('Fast food / junk');
     expect(EMOJI.test(document.body.textContent ?? '')).toBe(false);
   });
 
   it('draws the selected Mood, Activity and Meals option in one style, never a colour by meaning', () => {
     mount();
-    fireEvent.click(byId('mood-btn-5')!);
-    fireEvent.click(byId('activity-btn-workout')!);
-    fireEvent.click(byId('food-btn-junk')!);
-    const selected = ['mood-btn-5', 'activity-btn-workout', 'food-btn-junk'].map((id) => byId(id)!.className);
+    fireEvent.click(byId('diary-mood-btn-5')!);
+    fireEvent.click(byId('diary-activity-btn-workout')!);
+    fireEvent.click(byId('diary-food-btn-junk')!);
+    const selected = ['diary-mood-btn-5', 'diary-activity-btn-workout', 'diary-food-btn-junk'].map((id) => byId(id)!.className);
     expect(new Set(selected).size).toBe(1);
     expect(selected[0]).toContain('bg-selected');
-    fireEvent.click(byId('food-btn-healthy')!);
-    expect(byId('food-btn-healthy')!.className).toBe(selected[0]);
+    fireEvent.click(byId('diary-food-btn-healthy')!);
+    expect(byId('diary-food-btn-healthy')!.className).toBe(selected[0]);
     for (const cls of selected) expect(cls).not.toMatch(/income|expense|pending/);
   });
 
@@ -166,13 +166,13 @@ describe('the entry form', () => {
 
   it('saves the entry and says so', async () => {
     mount();
-    fireEvent.click(byId('mood-btn-4')!);
+    fireEvent.click(byId('diary-mood-btn-4')!);
     fireEvent.change(byId('diary-notes-textarea')!, { target: { value: 'Quiet day' } });
-    fireEvent.click(byId('save-diary-entry-btn')!);
+    fireEvent.click(byId('diary-save-entry-btn')!);
 
     await waitFor(() => expect(byId('diary-save-status')!.textContent).toMatch(/^Diary entry logged for /));
     expect(screen.getByTestId('diary-entry-notes').textContent).toBe('Quiet day');
-    expect(pressed('mood-btn-4')).toBe('true');
+    expect(pressed('diary-mood-btn-4')).toBe('true');
   });
 });
 
@@ -216,8 +216,8 @@ describe('the calendar', () => {
     mount({ entries: [entryRow({ id: 'a', date: day, mood: 1, foodQuality: 'HEALTHY' })] });
     if (monthKeyOf(day) !== monthKeyOf(TODAY)) fireEvent.click(byId('diary-cal-prev-month-btn')!);
     fireEvent.click(byId(`diary-cal-day-${day}`)!);
-    expect(pressed('mood-btn-1')).toBe('true');
-    expect(pressed('food-btn-healthy')).toBe('true');
+    expect(pressed('diary-mood-btn-1')).toBe('true');
+    expect(pressed('diary-food-btn-healthy')).toBe('true');
     expect(byId(`diary-cal-day-${day}`)!.getAttribute('aria-pressed')).toBe('true');
   });
 });
@@ -251,26 +251,26 @@ describe('recent entries', () => {
 
   it('keeps Edit and Delete in each entry\'s menu', () => {
     mount({ entries: [entryRow({ id: 'a', date: YESTERDAY, mood: 5 })] });
-    expect(byId('delete-diary-a')).toBeNull();
+    expect(byId('diary-delete-a')).toBeNull();
     fireEvent.click(byId('diary-menu-btn-a')!);
-    expect(byId('edit-diary-a')!.textContent).toBe('Edit entry');
-    expect(byId('delete-diary-a')!.textContent).toBe('Delete entry…');
+    expect(byId('diary-edit-a')!.textContent).toBe('Edit entry');
+    expect(byId('diary-delete-a')!.textContent).toBe('Delete entry…');
 
-    fireEvent.click(byId('edit-diary-a')!);
-    expect(pressed('mood-btn-5')).toBe('true');
+    fireEvent.click(byId('diary-edit-a')!);
+    expect(pressed('diary-mood-btn-5')).toBe('true');
   });
 
   it('asks before deleting; Cancel keeps the entry, and a confirmed delete moves focus to the next entry', async () => {
     mount({ entries: [entryRow({ id: 'a', date: YESTERDAY }), entryRow({ id: 'b', date: shiftIsoDate(TODAY, -4) })] });
     fireEvent.click(byId('diary-menu-btn-a')!);
-    fireEvent.click(byId('delete-diary-a')!);
+    fireEvent.click(byId('diary-delete-a')!);
     const dialog = screen.getByRole('dialog', { name: 'Delete diary entry' });
     expect(dialog.textContent).toContain("Its mood, activity, meals and notes are removed. That day's transactions are not touched.");
     fireEvent.click(within(dialog).getByText('Cancel'));
     expect(byId('diary-card-a')).toBeTruthy();
 
     fireEvent.click(byId('diary-menu-btn-a')!);
-    fireEvent.click(byId('delete-diary-a')!);
+    fireEvent.click(byId('diary-delete-a')!);
     fireEvent.click(byId('confirm-destructive-btn')!);
     await waitFor(() => expect(byId('diary-card-a')).toBeNull());
     await waitFor(() => expect(document.activeElement).toBe(byId('diary-menu-btn-b')));

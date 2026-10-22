@@ -60,7 +60,7 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
       closeOnBackdropClick={!isLoading}
       footer={
         <div className="flex items-center justify-end gap-2.5">
-          <Button id="cancel-confirm-btn" variant="secondary" onClick={onClose} disabled={isLoading}>
+          <Button id="confirm-cancel-btn" variant="secondary" onClick={onClose} disabled={isLoading}>
             {cancelText}
           </Button>
           <Button

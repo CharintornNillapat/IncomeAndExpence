@@ -12,12 +12,12 @@ import { gotoTab, seedLedger, SAMPLE_WALLETS, SAMPLE_STUDENT_LOAN } from './help
 const studentLoan = (page: Page) => page.locator('div[id^="debt-card-"]').filter({ hasText: 'Student Loan' });
 
 async function addDebt(page: Page, name: string, dueDate: string) {
-  await page.locator('#open-add-debt-btn').click();
-  await page.locator('#new-debt-name').fill(name);
+  await page.locator('#debt-open-add-btn').click();
+  await page.locator('#debt-new-name').fill(name);
   // The form starts empty since ADR 0086; a total is the one figure it needs.
-  await page.locator('#new-debt-total').fill('5000');
-  await page.locator('#new-debt-due-date').fill(dueDate);
-  await page.locator('#save-new-debt-btn').click();
+  await page.locator('#debt-new-total').fill('5000');
+  await page.locator('#debt-new-due-date').fill(dueDate);
+  await page.locator('#debt-new-save-btn').click();
   await expect(page.locator('div[id^="debt-card-"]').filter({ hasText: name })).toBeVisible();
 }
 
@@ -31,14 +31,14 @@ test.describe('The Debt payoff page', () => {
   test('Mark as paid off asks first, then moves the debt to Paid off without moving money', async ({ page }) => {
     await expect(page.getByText('1 active debt · sorted by due date')).toBeVisible();
 
-    await studentLoan(page).locator('button[id^="settle-debt-"]').click();
+    await studentLoan(page).locator('button[id^="debt-settle-"]').click();
     const dialog = page.getByRole('dialog', { name: 'Mark as paid off' });
     await expect(dialog).toContainText('without recording a payment or moving money');
     await dialog.getByRole('button', { name: 'Cancel' }).click();
     await expect(dialog).not.toBeVisible();
     await expect(page.locator('section[aria-label="Active debts"]')).toContainText('Student Loan');
 
-    await studentLoan(page).locator('button[id^="settle-debt-"]').click();
+    await studentLoan(page).locator('button[id^="debt-settle-"]').click();
     await page.locator('#confirm-destructive-btn').click();
 
     const paidOff = page.getByRole('region', { name: 'Paid off (1)' });
@@ -54,18 +54,18 @@ test.describe('The Debt payoff page', () => {
   test('Edit refuses a borrowed total below what is still owed, then renames the debt, which survives a reload', async ({ page }) => {
     const name = `E2E Edited Loan ${Date.now().toString().slice(-6)}`;
     await studentLoan(page).locator('button[id^="debt-menu-btn-"]').click();
-    await studentLoan(page).locator('button[id^="edit-debt-"]').click();
+    await studentLoan(page).locator('button[id^="debt-edit-"]').click();
 
     const dialog = page.getByRole('dialog', { name: 'Edit debt' });
-    await expect(page.locator('#edit-debt-name')).toHaveValue('Student Loan');
-    await page.locator('#edit-debt-total').fill('4000');
-    await page.locator('#save-edit-debt-btn').click();
-    await expect(page.locator('#edit-debt-error')).toHaveText("Borrowed can't be less than what is still owed (฿4,500.00)");
+    await expect(page.locator('#debt-edit-name')).toHaveValue('Student Loan');
+    await page.locator('#debt-edit-total').fill('4000');
+    await page.locator('#debt-edit-save-btn').click();
+    await expect(page.locator('#debt-edit-error')).toHaveText("Borrowed can't be less than what is still owed (฿4,500.00)");
     await expect(dialog).toBeVisible();
 
-    await page.locator('#edit-debt-name').fill(name);
-    await page.locator('#edit-debt-total').fill('12000');
-    await page.locator('#save-edit-debt-btn').click();
+    await page.locator('#debt-edit-name').fill(name);
+    await page.locator('#debt-edit-total').fill('12000');
+    await page.locator('#debt-edit-save-btn').click();
     await expect(dialog).not.toBeVisible();
 
     const card = page.locator('div[id^="debt-card-"]').filter({ hasText: name });

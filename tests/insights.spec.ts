@@ -49,7 +49,7 @@ test.describe('Monthly spending insights', () => {
     await seedSpending(page, 'zzzguest');
 
     await expect(card(page)).toBeVisible();
-    await page.locator('#insights-generate-btn').click();
+    await page.locator('#dashboard-insights-generate-btn').click();
 
     const body = page.getByTestId('insights-body');
     await expect(body).toBeVisible();
@@ -66,14 +66,14 @@ test.describe('Monthly spending insights', () => {
   test('collapsing the card persists across a reload', async ({ page }) => {
     await seedSpending(page, 'zzzcollapse');
 
-    await expect(page.locator('#insights-generate-btn')).toBeVisible();
-    await page.locator('#insights-collapse-btn').click();
-    await expect(page.locator('#insights-generate-btn')).toHaveCount(0);
+    await expect(page.locator('#dashboard-insights-generate-btn')).toBeVisible();
+    await page.locator('#dashboard-insights-collapse-btn').click();
+    await expect(page.locator('#dashboard-insights-generate-btn')).toHaveCount(0);
 
     await page.reload();
 
     await expect(card(page)).toBeVisible();
-    await expect(page.locator('#insights-collapse-btn')).toHaveAttribute('aria-expanded', 'false');
-    await expect(page.locator('#insights-generate-btn')).toHaveCount(0);
+    await expect(page.locator('#dashboard-insights-collapse-btn')).toHaveAttribute('aria-expanded', 'false');
+    await expect(page.locator('#dashboard-insights-generate-btn')).toHaveCount(0);
   });
 });

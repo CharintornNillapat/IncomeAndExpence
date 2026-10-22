@@ -198,11 +198,11 @@ describe('the detail header', () => {
     wide();
     mount();
     expect(byId('wallet-detail-meta')!.textContent).toMatch(/^Bank Account · created [A-Z][a-z]{2} \d{1,2}, \d{4}$/);
-    expect(byId('archive-wallet-wal-main-checking')).toBeNull();
+    expect(byId('wallet-archive-wal-main-checking')).toBeNull();
 
     openMenu();
-    expect(byId('archive-wallet-wal-main-checking')!.textContent).toBe('Archive wallet');
-    expect(byId('delete-wallet-wal-main-checking')!.textContent).toBe('Delete wallet…');
+    expect(byId('wallet-archive-wal-main-checking')!.textContent).toBe('Archive wallet');
+    expect(byId('wallet-delete-wal-main-checking')!.textContent).toBe('Delete wallet…');
   });
 });
 
@@ -219,7 +219,7 @@ describe('delete', () => {
     });
     selectWallet('wal-cash');
     openMenu();
-    fireEvent.click(byId('delete-wallet-wal-cash')!);
+    fireEvent.click(byId('wallet-delete-wal-cash')!);
 
     const dialog = screen.getByRole('dialog', { name: 'Delete wallet' });
     expect(dialog.textContent).toContain('Its 2 transactions stay in your history and still count toward spending and income.');
@@ -237,7 +237,7 @@ describe('archive and unarchive', () => {
     mount({ wallets: SAMPLE_WALLETS });
     selectWallet('wal-cash');
     openMenu();
-    fireEvent.click(byId('archive-wallet-wal-cash')!);
+    fireEvent.click(byId('wallet-archive-wal-cash')!);
     expect(screen.getByRole('dialog', { name: 'Archive wallet' }).textContent).toContain('You can unarchive it from the Archived list.');
     fireEvent.click(byId('confirm-destructive-btn')!);
 
@@ -397,8 +397,8 @@ describe('the Add Wallet form (audit 2026-10-16 UI-03)', () => {
         <AddWalletModal isOpen onClose={() => {}} />
       </FinanceProvider>,
     );
-    expect(screen.getByLabelText(/^Wallet Name/)).toBe(document.getElementById('new-wallet-name'));
-    expect(screen.getByLabelText('Type')).toBe(document.getElementById('new-wallet-type'));
-    expect(screen.getByLabelText(/^Starting Balance/)).toBe(document.getElementById('new-wallet-init-balance'));
+    expect(screen.getByLabelText(/^Wallet Name/)).toBe(document.getElementById('wallet-new-name'));
+    expect(screen.getByLabelText('Type')).toBe(document.getElementById('wallet-new-type'));
+    expect(screen.getByLabelText(/^Starting Balance/)).toBe(document.getElementById('wallet-new-init-balance'));
   });
 });

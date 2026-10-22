@@ -216,10 +216,10 @@ test.describe('ledger fixes a user can see (ADR 0024)', () => {
   });
 
   test('a new wallet\'s opening balance is a ledger row (F7)', async ({ page }) => {
-    await page.locator('#hero-add-wallet-btn').click();
-    await page.locator('#new-wallet-name').fill('E2E Opening Vault');
-    await page.locator('#new-wallet-init-balance').fill('900');
-    await page.locator('#save-new-wallet-btn').click();
+    await page.locator('#dashboard-wallets-add-btn').click();
+    await page.locator('#wallet-new-name').fill('E2E Opening Vault');
+    await page.locator('#wallet-new-init-balance').fill('900');
+    await page.locator('#wallet-new-save-btn').click();
     await expect(page.getByText('E2E Opening Vault').first()).toBeVisible();
 
     await gotoTab(page, 'transactions');
@@ -245,7 +245,7 @@ test.describe('dialogs by keyboard (ADR 0043)', () => {
     await expect(dialog).toBeVisible();
     // The form is its own lazy chunk; wait for it so every Tab stop exists.
     await expect(dialog.locator('input[id$="-desc"]')).toBeVisible();
-    const close = dialog.locator('#close-quick-record-modal-btn');
+    const close = dialog.locator('#quickadd-close-btn');
     await expect(close).toBeFocused();
     // Read document.activeElement rather than a ':focus' locator: on the date
     // field's calendar-picker stop focus is inside the input's closed

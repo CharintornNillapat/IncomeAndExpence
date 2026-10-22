@@ -56,11 +56,11 @@ export const SmartRulesPanel: React.FC = () => {
 
           <form onSubmit={handleAddRule} className="space-y-4">
             <div>
-              <label htmlFor="new-keyword-input" className={LABEL_CLASS}>
+              <label htmlFor="category-rules-new-keyword-input" className={LABEL_CLASS}>
                 Keyword or phrase
               </label>
               <input
-                id="new-keyword-input"
+                id="category-rules-new-keyword-input"
                 type="text"
                 required
                 value={keyword}
@@ -71,11 +71,11 @@ export const SmartRulesPanel: React.FC = () => {
             </div>
 
             <div>
-              <label htmlFor="keyword-category-select" className={LABEL_CLASS}>
+              <label htmlFor="category-rules-keyword-select" className={LABEL_CLASS}>
                 Category
               </label>
               <select
-                id="keyword-category-select"
+                id="category-rules-keyword-select"
                 value={selectedCategoryId}
                 onChange={(e) => setSelectedCategoryId(e.target.value)}
                 className={selectClass('plain')}
@@ -90,7 +90,7 @@ export const SmartRulesPanel: React.FC = () => {
 
             {ruleError && <div className={ERROR_BANNER_CLASS}>{ruleError}</div>}
 
-            <Button id="save-keyword-rule-btn" type="submit" block>
+            <Button id="category-rules-save-btn" type="submit" block>
               Add rule
             </Button>
           </form>
@@ -100,11 +100,11 @@ export const SmartRulesPanel: React.FC = () => {
           <h2 className="text-base font-semibold text-fg">Try a note</h2>
 
           <div>
-            <label htmlFor="test-parser-input" className={LABEL_CLASS}>
+            <label htmlFor="category-rules-test-parser-input" className={LABEL_CLASS}>
               Sample note
             </label>
             <input
-              id="test-parser-input"
+              id="category-rules-test-parser-input"
               type="text"
               value={testInput}
               onChange={(e) => setTestInput(e.target.value)}
@@ -170,7 +170,7 @@ export const SmartRulesPanel: React.FC = () => {
                 keywordRules.map((rule) => {
                   const cat = categoryMap.get(rule.categoryId);
                   return (
-                    <tr key={rule.id} id={`rule-row-${rule.id}`} className="hover:bg-surface-2">
+                    <tr key={rule.id} id={`category-rule-row-${rule.id}`} className="hover:bg-surface-2">
                       <td className="py-3 px-4 font-semibold text-fg break-words">"{rule.keyword}"</td>
                       <td className="py-3 px-4">
                         {cat ? (

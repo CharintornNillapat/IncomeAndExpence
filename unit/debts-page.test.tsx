@@ -89,7 +89,7 @@ describe('the page header', () => {
     mount({ debts: [SAMPLE_STUDENT_LOAN] });
     expect(screen.getByRole('heading', { level: 1, name: 'Debt payoff' })).toBeTruthy();
     expect(screen.getByText('1 active debt · sorted by due date')).toBeTruthy();
-    expect(byId('open-add-debt-btn')!.textContent).toBe('Add debt');
+    expect(byId('debt-open-add-btn')!.textContent).toBe('Add debt');
   });
 
   it('leaves paid-off and deleted debts out of the count', () => {
@@ -124,8 +124,8 @@ describe('the order of the cards', () => {
     expect(within(paidOff).getByText('100% Fully Settled!')).toBeTruthy();
     expect(within(paidOff).getByText('✓ Debt Fully Settled')).toBeTruthy();
     // A paid-off card has no actions but its menu.
-    expect(byId('open-repay-modal-paid')).toBeNull();
-    expect(byId('settle-debt-paid')).toBeNull();
+    expect(byId('debt-open-repay-paid')).toBeNull();
+    expect(byId('debt-settle-paid')).toBeNull();
   });
 });
 
@@ -186,11 +186,11 @@ describe('a debt card', () => {
 
   it('refuses a new debt owing more than its total, and adds nothing (ADR 0084)', async () => {
     mount();
-    fireEvent.click(byId('open-add-debt-btn')!);
-    fireEvent.change(byId('new-debt-name')!, { target: { value: 'Card' } });
-    fireEvent.change(byId('new-debt-total')!, { target: { value: '1000' } });
-    fireEvent.change(byId('new-debt-remaining')!, { target: { value: '1200' } });
-    fireEvent.click(byId('save-new-debt-btn')!);
+    fireEvent.click(byId('debt-open-add-btn')!);
+    fireEvent.change(byId('debt-new-name')!, { target: { value: 'Card' } });
+    fireEvent.change(byId('debt-new-total')!, { target: { value: '1000' } });
+    fireEvent.change(byId('debt-new-remaining')!, { target: { value: '1200' } });
+    fireEvent.click(byId('debt-new-save-btn')!);
     await waitFor(() => expect(screen.getByText(`Remaining can't be more than the total amount (${formatCurrencyAmount(1000)})`)).toBeTruthy());
     expect(cardIds()).toEqual([]);
     expect(localStorage.getItem('pf_debts') ?? '[]').not.toContain('Card');
@@ -198,13 +198,13 @@ describe('a debt card', () => {
 
   it('keeps Edit and Delete in its ⋯ menu, which holds nothing until opened', () => {
     mount({ debts: [debtRow({ id: 'a', name: 'Car' })] });
-    expect(byId('edit-debt-a')).toBeNull();
-    expect(byId('delete-debt-a')).toBeNull();
+    expect(byId('debt-edit-a')).toBeNull();
+    expect(byId('debt-delete-a')).toBeNull();
     expect(byId('debt-menu-btn-a')!.getAttribute('aria-label')).toBe('More actions for Car');
 
     openMenu('a');
-    expect(byId('edit-debt-a')!.textContent).toBe('Edit debt');
-    expect(byId('delete-debt-a')!.textContent).toBe('Delete debt…');
+    expect(byId('debt-edit-a')!.textContent).toBe('Edit debt');
+    expect(byId('debt-delete-a')!.textContent).toBe('Delete debt…');
   });
 });
 
@@ -292,7 +292,7 @@ describe('the summary', () => {
 describe('Mark as paid off', () => {
   it('asks first, and Cancel leaves the debt as it was', () => {
     mount({ debts: [debtRow({ id: 'a', name: 'Car', remainingAmount: 4000 })] });
-    fireEvent.click(byId('settle-debt-a')!);
+    fireEvent.click(byId('debt-settle-a')!);
 
     const dialog = screen.getByRole('dialog', { name: 'Mark as paid off' });
     expect(dialog.textContent).toContain(
@@ -305,7 +305,7 @@ describe('Mark as paid off', () => {
 
   it('on confirm, moves the debt to Paid off and gives focus to its menu', async () => {
     mount({ debts: [debtRow({ id: 'a', name: 'Car', remainingAmount: 4000 })] });
-    const settle = byId('settle-debt-a')!;
+    const settle = byId('debt-settle-a')!;
     settle.focus();
     fireEvent.click(settle);
     fireEvent.click(within(screen.getByRole('dialog', { name: 'Mark as paid off' })).getByText('Mark as paid off', { selector: 'button' }));
@@ -320,7 +320,7 @@ describe('Mark as paid off', () => {
 describe('Edit', () => {
   const openEdit = (id: string) => {
     openMenu(id);
-    fireEvent.click(byId(`edit-debt-${id}`)!);
+    fireEvent.click(byId(`debt-edit-${id}`)!);
     return screen.getByRole('dialog', { name: 'Edit debt' });
   };
   const field = (id: string) => byId(id) as HTMLInputElement;
@@ -328,18 +328,18 @@ describe('Edit', () => {
   it('opens on the debt, shows what is still owed without offering it, and saves', async () => {
     mount({ debts: [debtRow({ id: 'a', name: 'Car', interestRate: 3, minimumPayment: 250, dueDate: '2027-03-31' })] });
     const dialog = openEdit('a');
-    expect(field('edit-debt-name').value).toBe('Car');
-    expect(field('edit-debt-total').value).toBe('10000');
-    expect(field('edit-debt-interest').value).toBe('3');
-    expect(field('edit-debt-min-payment').value).toBe('250');
-    expect(field('edit-debt-due-date').value).toBe('2027-03-31');
+    expect(field('debt-edit-name').value).toBe('Car');
+    expect(field('debt-edit-total').value).toBe('10000');
+    expect(field('debt-edit-interest').value).toBe('3');
+    expect(field('debt-edit-min-payment').value).toBe('250');
+    expect(field('debt-edit-due-date').value).toBe('2027-03-31');
     expect(within(dialog).getByText(formatCurrencyAmount(5000))).toBeTruthy();
-    expect(byId('edit-debt-remaining')).toBeNull();
+    expect(byId('debt-edit-remaining')).toBeNull();
 
-    fireEvent.change(field('edit-debt-name'), { target: { value: 'Car loan' } });
-    fireEvent.change(field('edit-debt-total'), { target: { value: '12000' } });
-    fireEvent.change(field('edit-debt-interest'), { target: { value: '' } });
-    fireEvent.click(byId('save-edit-debt-btn')!);
+    fireEvent.change(field('debt-edit-name'), { target: { value: 'Car loan' } });
+    fireEvent.change(field('debt-edit-total'), { target: { value: '12000' } });
+    fireEvent.change(field('debt-edit-interest'), { target: { value: '' } });
+    fireEvent.click(byId('debt-edit-save-btn')!);
 
     await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Edit debt' })).toBeNull());
     const card = byId('debt-card-a')!;
@@ -352,11 +352,11 @@ describe('Edit', () => {
   it('refuses a borrowed total below what is still owed, and stays open with the reason', async () => {
     mount({ debts: [debtRow({ id: 'a', name: 'Car' })] });
     openEdit('a');
-    fireEvent.change(field('edit-debt-total'), { target: { value: '4999.99' } });
-    fireEvent.click(byId('save-edit-debt-btn')!);
+    fireEvent.change(field('debt-edit-total'), { target: { value: '4999.99' } });
+    fireEvent.click(byId('debt-edit-save-btn')!);
 
     await waitFor(() =>
-      expect(byId('edit-debt-error')!.textContent).toBe(`Borrowed can't be less than what is still owed (${formatCurrencyAmount(5000)})`)
+      expect(byId('debt-edit-error')!.textContent).toBe(`Borrowed can't be less than what is still owed (${formatCurrencyAmount(5000)})`)
     );
     expect(screen.getByRole('dialog', { name: 'Edit debt' })).toBeTruthy();
     expect(byId('debt-card-a')!.textContent).toContain(`Borrowed${formatCurrencyAmount(10000)}`);
@@ -367,13 +367,13 @@ describe('Delete', () => {
   it('is reached through the menu, keeps the repayments, and gives focus to Add debt', async () => {
     mount({ debts: [debtRow({ id: 'a', name: 'Car' }), debtRow({ id: 'b', name: 'Bike' })] });
     openMenu('a');
-    fireEvent.click(byId('delete-debt-a')!);
+    fireEvent.click(byId('debt-delete-a')!);
     const dialog = screen.getByRole('dialog', { name: 'Delete debt' });
     expect(dialog.textContent).toContain('Delete "Car"? It leaves your payoff goals. Its repayment transactions stay in your history.');
 
     fireEvent.click(byId('confirm-destructive-btn')!);
     await waitFor(() => expect(byId('debt-card-a')).toBeNull());
-    await waitFor(() => expect(document.activeElement).toBe(byId('open-add-debt-btn')));
+    await waitFor(() => expect(document.activeElement).toBe(byId('debt-open-add-btn')));
   });
 });
 
@@ -427,31 +427,31 @@ describe('DebtSchema: a new debt (ADR 0084)', () => {
 // Phase 110 (ADR 0086, audit finding 12): the Add Debt form starts empty.
 describe('the Add Debt form', () => {
   const field = (id: string) => byId(id) as HTMLInputElement;
-  const FIELDS = ['new-debt-total', 'new-debt-remaining', 'new-debt-interest', 'new-debt-min-payment', 'new-debt-due-date'];
+  const FIELDS = ['debt-new-total', 'debt-new-remaining', 'debt-new-interest', 'debt-new-min-payment', 'debt-new-due-date'];
 
   it('opens with every figure empty, each with an example in its placeholder', () => {
     mount();
-    fireEvent.click(byId('open-add-debt-btn')!);
+    fireEvent.click(byId('debt-open-add-btn')!);
     for (const id of FIELDS) expect(field(id).value).toBe('');
-    for (const id of FIELDS.filter((id) => id !== 'new-debt-due-date')) expect(field(id).placeholder).toMatch(/^e\.g\. /);
-    expect(field('new-debt-total').required).toBe(true);
+    for (const id of FIELDS.filter((id) => id !== 'debt-new-due-date')) expect(field(id).placeholder).toMatch(/^e\.g\. /);
+    expect(field('debt-new-total').required).toBe(true);
   });
 
   it('adds nothing on a name alone', async () => {
     mount();
-    fireEvent.click(byId('open-add-debt-btn')!);
-    fireEvent.change(field('new-debt-name'), { target: { value: 'Card' } });
-    fireEvent.click(byId('save-new-debt-btn')!);
+    fireEvent.click(byId('debt-open-add-btn')!);
+    fireEvent.change(field('debt-new-name'), { target: { value: 'Card' } });
+    fireEvent.click(byId('debt-new-save-btn')!);
     await new Promise((resolve) => setTimeout(resolve, 50));
     expect(cardIds()).toEqual([]);
   });
 
   it('with a total only, owes all of it, interest-free, with no due date', async () => {
     mount();
-    fireEvent.click(byId('open-add-debt-btn')!);
-    fireEvent.change(field('new-debt-name'), { target: { value: 'Card' } });
-    fireEvent.change(field('new-debt-total'), { target: { value: '3000' } });
-    fireEvent.click(byId('save-new-debt-btn')!);
+    fireEvent.click(byId('debt-open-add-btn')!);
+    fireEvent.change(field('debt-new-name'), { target: { value: 'Card' } });
+    fireEvent.change(field('debt-new-total'), { target: { value: '3000' } });
+    fireEvent.click(byId('debt-new-save-btn')!);
     await waitFor(() => expect(cardIds()).toHaveLength(1));
     const card = byId(`debt-card-${cardIds()[0]}`)!;
     expect(card.textContent).toContain(`Still owed${formatCurrencyAmount(3000)}`);

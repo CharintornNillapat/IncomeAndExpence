@@ -42,7 +42,7 @@ Read this before touching `src/components/`, `src/views/`, `src/index.css`, `App
 ## Page contracts
 
 - **One render path per breakpoint** with `useMediaQuery`, never two copies hidden by CSS (the specs count hidden elements). Do not check such a page with a full-page screenshot.
-- **Dashboard** [0030]: every figure computed once in `DashboardView`; cards only lay out. Never give a Dashboard element another page's id prefix (`tx-row-`, `debt-card-`, `open-repay-modal-`, `settle-debt-`, `wallet-entity-`), never render its text twice, never put the total balance back in the header.
+- **Dashboard** [0030]: every figure computed once in `DashboardView`; cards only lay out. Never give a Dashboard element another page's id prefix (`tx-row-`, `debt-card-`, `debt-open-repay-`, `debt-settle-`, `wallet-entity-`), never render its text twice, never put the total balance back in the header.
 - **Transactions** [0031, 0033, 0041]: rows are buttons; delete and restore live in the selected row's panel. The empty list says why ("No transactions yet" for a first run, else "No transactions match your current filters."). `TransactionRow`'s `dateText` is `sr-only`.
 - **Wallets** [0034]: master-detail, the one place a wallet is edited, adjusted, archived or deleted. Transfer and Add Wallet are shell modals. Never pass a click event into `onOpenTransfer(walletId?)`. The two transfer `<select>`s stay real, visible controls (`wallet-forms.spec.ts`).
 - **Debt payoff** [0035, 0086]: Edit and Delete in the card's ⋯ menu; repay and Mark as paid off on the card. The Add Debt form starts empty.
@@ -54,6 +54,8 @@ Read this before touching `src/components/`, `src/views/`, `src/index.css`, `App
 ## Selector contract
 
 `docs/audit/test-selector-contract.md` lists every id and test id the specs use today. Keep them; moving one into `OverflowMenu` needs the menu-open step added to its spec, and a "count 0" assertion must never pass only because a menu is closed.
+
+**Convention.** Every interactive element added to a view carries an `id` following `<view>-<thing>-<kind>`, where `<view>` is one of the area prefixes (`auth`, `account`, `navbar`, `mobile-nav`, `nav-tab`, `pwa`, `view`, `dashboard`, `time-filter`, `tx`, `csv`, `confirm`, `quickadd`, `wallet`, `debt`, `debts`, `diary`, `category`), buttons end `-btn` and links `-link`. The unit guard `unit/dom-id-convention.test.ts` enforces the prefix.
 
 **Spec-edit policy.** Editing a spec is allowed when an assertion **survives and only its locator moves**; forbidden when an assertion would be **deleted or weakened**. Spec edits ship in the same commit as the code change they follow from, and the full suite must be green immediately before and after.
 

@@ -47,7 +47,7 @@ describe('the entry form', () => {
     );
     const note = (value: string) => fireEvent.change(document.querySelector('[id$="-desc"]')!, { target: { value } });
     const warning = () => screen.queryByTestId('t-overdraft-warning');
-    const submit = document.getElementById('confirm-t-btn') as HTMLButtonElement;
+    const submit = document.getElementById('t-confirm-btn') as HTMLButtonElement;
     return { note, warning, submit };
   }
 

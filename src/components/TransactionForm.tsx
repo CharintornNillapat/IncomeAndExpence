@@ -36,7 +36,7 @@ interface TransactionFormProps {
   /**
    * Overrides this form's internal field ids for the amount input, wallet
    * select, and submit button (`${idPrefix}-amount-math`,
-   * `${idPrefix}-wallet-select`, `confirm-${idPrefix}-btn`) instead of the
+   * `${idPrefix}-wallet-select`, `${idPrefix}-confirm-btn`) instead of the
    * default `useId()`-derived ones. Exists so a caller embedding this form
    * in its own purpose-built shell (e.g. `DebtsView`'s repay modal) can keep
    * ids its own Playwright specs already depend on. Every other field keeps
@@ -176,7 +176,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
   // regardless of `idPrefix`.
   const mathInputId = idPrefix ? `${idPrefix}-amount-math` : `${formId}-math-input`;
   const walletSelectId = idPrefix ? `${idPrefix}-wallet-select` : `${formId}-wallet`;
-  const submitBtnId = idPrefix ? `confirm-${idPrefix}-btn` : `${formId}-submit-btn`;
+  const submitBtnId = idPrefix ? `${idPrefix}-confirm-btn` : `${formId}-submit-btn`;
   // Prefix for everything added after those three legacy names (ADR 0015's
   // payoff block). Falls back to the generated id so a form mounted without
   // an `idPrefix` still gets unique ids.
@@ -837,11 +837,11 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
              debt's remaining balance appears in the repay modal at all. */}
       {repayTargetDebt && (
         <div
-          data-testid={`${idBase}-payoff-preview`}
+          data-testid="repay-payoff-preview"
           className="flex flex-col gap-3 rounded-lg border border-line bg-surface-2 p-3 -mt-1"
         >
           {/* Each chip seeds the amount field above rather than replacing it,
-              so `#repay-amount-math` remains the single control
+              so `#debt-repay-amount-math` remains the single control
               `tests/debts.spec.ts` fills. */}
           {remainingDebt > 0 && (
           <div className="flex flex-wrap items-center gap-x-1.5">
@@ -885,7 +885,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
                   <>
                     <ArrowRight className="w-3 h-3 self-center shrink-0 text-fg-muted" />
                     <span
-                      data-testid={`${idBase}-remaining-after`}
+                      data-testid="repay-remaining-after"
                       className={`font-bold ${
                         projectedRemaining === 0
                           ? 'text-income'
@@ -916,7 +916,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
               after the fact. Same testid, opposite meaning. */}
           {isOverpaying ? (
             <p
-              data-testid={`${idBase}-overpayment-note`}
+              data-testid="repay-overpayment-note"
               className="flex items-start gap-1.5 text-[11px] font-medium rounded-lg border border-pending-line bg-pending-tint text-pending px-2.5 py-2"
             >
               <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-px" />
@@ -927,7 +927,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
             </p>
           ) : settlesExactly ? (
             <p
-              data-testid={`${idBase}-settle-note`}
+              data-testid="repay-settle-note"
               className="flex items-center gap-1.5 text-[11px] font-medium rounded-lg border border-income-line bg-income-tint text-income px-2.5 py-2"
             >
               <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />

@@ -265,7 +265,7 @@ describe('TransactionForm: the form records the amount it seeds', () => {
     );
     const note = document.querySelector<HTMLInputElement>('[id$="-desc"]')!;
     const amount = byId('t-amount-math')!;
-    const submit = byId('confirm-t-btn') as unknown as HTMLButtonElement;
+    const submit = byId('t-confirm-btn') as unknown as HTMLButtonElement;
     return { note, amount, submit, onSubmit };
   }
 

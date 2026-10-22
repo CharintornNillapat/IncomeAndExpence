@@ -127,7 +127,7 @@ export const DebtsView: React.FC = () => {
       setDeleteDebtError(result.error || 'Failed to delete debt');
       return;
     }
-    focusAfterCloseRef.current = 'open-add-debt-btn';
+    focusAfterCloseRef.current = 'debt-open-add-btn';
     setDebtToDeleteId(null);
   }, [debtToDeleteId, deleteDebt]);
 
@@ -213,7 +213,7 @@ export const DebtsView: React.FC = () => {
             : `${activeCount} active ${activeCount === 1 ? 'debt' : 'debts'} · sorted by due date`
         }
         actions={
-          <Button id="open-add-debt-btn" onClick={() => setIsAddDebtOpen(true)} icon={<Plus aria-hidden="true" className="w-4 h-4" />}>
+          <Button id="debt-open-add-btn" onClick={() => setIsAddDebtOpen(true)} icon={<Plus aria-hidden="true" className="w-4 h-4" />}>
             Add debt
           </Button>
         }
@@ -269,11 +269,11 @@ export const DebtsView: React.FC = () => {
       >
         <form onSubmit={handleCreateDebt} className="space-y-4">
           <div>
-            <label htmlFor="new-debt-name" className={LABEL_CLASS}>
+            <label htmlFor="debt-new-name" className={LABEL_CLASS}>
               Debt title *
             </label>
             <input
-              id="new-debt-name"
+              id="debt-new-name"
               type="text"
               required
               value={debtName}
@@ -285,11 +285,11 @@ export const DebtsView: React.FC = () => {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <div>
-              <label htmlFor="new-debt-total" className={LABEL_CLASS}>
+              <label htmlFor="debt-new-total" className={LABEL_CLASS}>
                 Total amount ({APP_CURRENCY_SYMBOL}) *
               </label>
               <input
-                id="new-debt-total"
+                id="debt-new-total"
                 type="number"
                 step="0.01"
                 min="1"
@@ -305,11 +305,11 @@ export const DebtsView: React.FC = () => {
             </div>
 
             <div>
-              <label htmlFor="new-debt-remaining" className={LABEL_CLASS}>
+              <label htmlFor="debt-new-remaining" className={LABEL_CLASS}>
                 Remaining ({APP_CURRENCY_SYMBOL})
               </label>
               <input
-                id="new-debt-remaining"
+                id="debt-new-remaining"
                 type="number"
                 step="0.01"
                 min="0"
@@ -323,11 +323,11 @@ export const DebtsView: React.FC = () => {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <div>
-              <label htmlFor="new-debt-interest" className={LABEL_CLASS}>
+              <label htmlFor="debt-new-interest" className={LABEL_CLASS}>
                 Interest rate (% APR)
               </label>
               <input
-                id="new-debt-interest"
+                id="debt-new-interest"
                 type="number"
                 step="0.1"
                 min="0"
@@ -339,11 +339,11 @@ export const DebtsView: React.FC = () => {
             </div>
 
             <div>
-              <label htmlFor="new-debt-min-payment" className={LABEL_CLASS}>
+              <label htmlFor="debt-new-min-payment" className={LABEL_CLASS}>
                 Min monthly ({APP_CURRENCY_SYMBOL})
               </label>
               <input
-                id="new-debt-min-payment"
+                id="debt-new-min-payment"
                 type="number"
                 step="1"
                 min="0"
@@ -356,11 +356,11 @@ export const DebtsView: React.FC = () => {
           </div>
 
           <div>
-            <label htmlFor="new-debt-due-date" className={LABEL_CLASS}>
+            <label htmlFor="debt-new-due-date" className={LABEL_CLASS}>
               Target payoff date
             </label>
             <input
-              id="new-debt-due-date"
+              id="debt-new-due-date"
               type="date"
               value={dueDate}
               onChange={(e) => setDueDate(e.target.value)}
@@ -375,7 +375,7 @@ export const DebtsView: React.FC = () => {
               </div>
             )}
 
-            <Button id="save-new-debt-btn" type="submit" size="lg" block>
+            <Button id="debt-new-save-btn" type="submit" size="lg" block>
               Add debt
             </Button>
           </div>
@@ -395,7 +395,7 @@ export const DebtsView: React.FC = () => {
             key={repayDebtTarget.id}
             wallets={wallets}
             categories={categories.filter((c) => !c.isDeleted)}
-            idPrefix="repay"
+            idPrefix="debt-repay"
             presetType="DEBT_REPAYMENT"
             lockType
             presetDebtId={repayDebtTarget.id}

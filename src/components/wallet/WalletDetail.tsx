@@ -171,8 +171,8 @@ const WalletDetailBody: React.FC<WalletDetailProps> = ({
             label={`More actions for ${wallet.name}`}
             triggerId="wallet-detail-menu-btn"
             items={[
-              { id: `archive-wallet-${wallet.id}`, label: 'Archive wallet', onSelect: () => onRequestArchive(wallet) },
-              { id: `delete-wallet-${wallet.id}`, label: 'Delete wallet…', tone: 'danger', onSelect: () => onRequestDelete(wallet) },
+              { id: `wallet-archive-${wallet.id}`, label: 'Archive wallet', onSelect: () => onRequestArchive(wallet) },
+              { id: `wallet-delete-${wallet.id}`, label: 'Delete wallet…', tone: 'danger', onSelect: () => onRequestDelete(wallet) },
             ]}
           />
         </div>

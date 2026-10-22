@@ -53,7 +53,7 @@ export const CategoryList: React.FC<CategoryListProps> = ({ groups, inUseIds, se
                 return (
                   <li key={category.id} id={`category-row-${category.id}`}>
                     <button
-                      id={`edit-category-${category.id}`}
+                      id={`category-edit-${category.id}`}
                       type="button"
                       aria-pressed={isSelected}
                       onClick={() => onSelect(category)}

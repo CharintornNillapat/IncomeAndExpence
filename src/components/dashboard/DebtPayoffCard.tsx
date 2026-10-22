@@ -24,7 +24,7 @@ interface DebtPayoffCardProps {
  * a month to be cleared by its due date (L4).
  *
  * Ids use the `dashboard-debt-` prefix. The Debt Payoff page's `debt-card-`,
- * `open-repay-modal-` and `settle-debt-` prefixes are its own: specs filter on
+ * `debt-open-repay-` and `debt-settle-` prefixes are its own: specs filter on
  * them right after a tab switch, while this view may still be leaving.
  */
 export const DebtPayoffCard: React.FC<DebtPayoffCardProps> = ({ plan, paid, total, progressPercent, onOpenDebts }) => (
