@@ -42,7 +42,7 @@ async function runSteps(page: Page) {
   // focus to land, or an Escape sent at once can be lost on WebKit (it was on
   // framer-motion too, 1 in 3 locally).
   await expect(dialog.locator('input[id$="-desc"]')).toBeVisible();
-  await expect(dialog.locator('#close-quick-record-modal-btn')).toBeFocused();
+  await expect(dialog.locator('#quickadd-close-btn')).toBeFocused();
   await page.keyboard.press('Escape');
   await expect(dialog).toBeHidden();
 

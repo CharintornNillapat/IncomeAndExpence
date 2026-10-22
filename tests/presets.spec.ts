@@ -105,7 +105,7 @@ test.describe('Transaction templates (quick presets)', () => {
     // transaction from the initial save exists so far.
     await expect(modal).toBeVisible();
 
-    await page.locator('#close-quick-record-modal-btn').click();
+    await page.locator('#quickadd-close-btn').click();
     await expect(modal).not.toBeVisible();
 
     await gotoTab(page, 'transactions');

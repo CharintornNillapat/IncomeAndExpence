@@ -503,7 +503,7 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
         title="Record New Transaction"
         subtitle="Add an expense or income"
         titleId="add-transaction-modal-title"
-        closeButtonId="close-add-transaction-modal-btn"
+        closeButtonId="tx-add-modal-close-btn"
         maxWidthClassName="max-w-xl"
       >
         <TransactionForm

@@ -17,9 +17,9 @@ async function localDay(page: Page, offset: number): Promise<string> {
 }
 
 async function saveEntry(page: Page, mood: number, notes: string) {
-  await page.locator(`#mood-btn-${mood}`).click();
+  await page.locator(`#diary-mood-btn-${mood}`).click();
   await page.locator('#diary-notes-textarea').fill(notes);
-  await page.locator('#save-diary-entry-btn').click();
+  await page.locator('#diary-save-entry-btn').click();
   await expect(page.locator('#diary-save-status')).toContainText('Diary entry logged');
 }
 
@@ -38,15 +38,15 @@ test.describe('The Daily diary page', () => {
     await saveEntry(page, 2, 'E2E yesterday entry');
     await page.locator('#diary-next-day-btn').click();
     await expect(page.locator('#diary-next-day-btn')).toBeDisabled();
-    await expect(page.locator('#mood-btn-2')).toHaveAttribute('aria-pressed', 'false');
-    await expect(page.locator('#save-diary-entry-btn')).toBeDisabled();
+    await expect(page.locator('#diary-mood-btn-2')).toHaveAttribute('aria-pressed', 'false');
+    await expect(page.locator('#diary-save-entry-btn')).toBeDisabled();
 
     if (yesterday.slice(0, 7) !== today.slice(0, 7)) await page.locator('#diary-cal-prev-month-btn').click();
     const day = page.locator(`#diary-cal-day-${yesterday}`);
     await expect(day).toHaveAttribute('aria-label', /, logged$/);
     await day.click();
 
-    await expect(page.locator('#mood-btn-2')).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.locator('#diary-mood-btn-2')).toHaveAttribute('aria-pressed', 'true');
     await expect(page.locator('#diary-notes-textarea')).toHaveValue('E2E yesterday entry');
   });
 
@@ -57,7 +57,7 @@ test.describe('The Daily diary page', () => {
     await expect(card).toBeVisible();
 
     await card.locator('button[id^="diary-menu-btn-"]').click();
-    await card.locator('button[id^="delete-diary-"]').click();
+    await card.locator('button[id^="diary-delete-"]').click();
     const dialog = page.getByRole('dialog', { name: 'Delete diary entry' });
     await expect(dialog).toContainText("That day's transactions are not touched.");
     await dialog.getByRole('button', { name: 'Cancel' }).click();
@@ -65,7 +65,7 @@ test.describe('The Daily diary page', () => {
     await expect(card).toBeVisible();
 
     await card.locator('button[id^="diary-menu-btn-"]').click();
-    await card.locator('button[id^="delete-diary-"]').click();
+    await card.locator('button[id^="diary-delete-"]').click();
     await page.locator('#confirm-destructive-btn').click();
     await expect(card).toHaveCount(0);
 

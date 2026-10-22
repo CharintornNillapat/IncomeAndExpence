@@ -47,13 +47,13 @@ export const TransferFundsModal: React.FC<TransferFundsModalProps> = ({
         statusMessage={transferStatus}
         initialSourceWalletId={initialSourceWalletId}
         ids={{
-          source: 'transfer-source-wallet',
-          dest: 'transfer-dest-wallet',
-          amount: 'transfer-amount-math',
-          note: 'transfer-note',
-          submit: 'execute-transfer-btn',
-          swap: 'transfer-swap-btn',
-          transferAll: 'transfer-all-chip',
+          source: 'wallet-transfer-source',
+          dest: 'wallet-transfer-dest',
+          amount: 'wallet-transfer-amount-math',
+          note: 'wallet-transfer-note',
+          submit: 'wallet-transfer-execute-btn',
+          swap: 'wallet-transfer-swap-btn',
+          transferAll: 'wallet-transfer-all-chip',
         }}
         onTransferred={() => {
           flashTransferStatus('Transfer completed successfully!', 1000, onClose);

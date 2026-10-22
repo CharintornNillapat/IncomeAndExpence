@@ -613,7 +613,7 @@ export const ImportCsvModal: React.FC<ImportCsvModalProps> = ({ isOpen, onClose 
           {/* Same banner as the Step 1 file error, so the modal reads as one surface. */}
           {importCommitError && (
             <div
-              id="import-commit-error"
+              id="csv-commit-error"
               role="alert"
               className="p-3 rounded-lg bg-expense-tint border border-expense-line text-expense text-xs flex items-center gap-2"
             >
@@ -628,7 +628,7 @@ export const ImportCsvModal: React.FC<ImportCsvModalProps> = ({ isOpen, onClose 
               Commit inserts every valid row, then updates wallet balances. If the insert fails, nothing changes.
             </p>
             <Button
-              id="commit-import-btn"
+              id="csv-commit-btn"
               disabled={importPreview.validRowsCount === 0 || isCommittingImport}
               onClick={handleCommitImport}
               className="shrink-0"

@@ -78,7 +78,7 @@ async function openImportWith(page: Page, content: string) {
     buffer: Buffer.from(content),
   });
   // The dry-run preview is the signal that parsing finished.
-  await expect(page.locator('#commit-import-btn')).toBeEnabled();
+  await expect(page.locator('#csv-commit-btn')).toBeEnabled();
 }
 
 test.describe('CSV import auto-categorization', () => {
@@ -136,7 +136,7 @@ test.describe('CSV import auto-categorization', () => {
     // Only the stripped description is sent - never the whole CSV row.
     expect(calls.texts[0]).toBe(marker);
 
-    await page.locator('#commit-import-btn').click();
+    await page.locator('#csv-commit-btn').click();
     await expect(page.getByText(/Successfully imported 1 transactions/i)).toBeVisible();
 
     // The preview is not the proof - the committed ledger row is.
@@ -181,7 +181,7 @@ test.describe('CSV import auto-categorization', () => {
     await expect(page.getByTestId('csv-row-category-2')).toHaveValue(TRANSPORT.id);
 
     await page.getByTestId('csv-row-category-2').selectOption(GROCERIES.id);
-    await page.locator('#commit-import-btn').click();
+    await page.locator('#csv-commit-btn').click();
     await expect(page.getByText(/Successfully imported 1 transactions/i)).toBeVisible();
 
     const row = page.locator('button[id^="tx-row-"]').filter({ hasText: marker });
@@ -327,7 +327,7 @@ test.describe('CSV import auto-categorization', () => {
     await expect(page.getByTestId('csv-row-category-2')).toHaveValue('');
     expect(calls).toBe(1);
 
-    await page.locator('#commit-import-btn').click();
+    await page.locator('#csv-commit-btn').click();
     await expect(page.getByText(/Successfully imported 1 transactions/i)).toBeVisible();
   });
 
@@ -374,7 +374,7 @@ test.describe('CSV import auto-categorization', () => {
     await expect(page.getByTestId('csv-row-category-2')).toHaveValue('');
 
     // "Unavailable" must never mean "cannot import".
-    await page.locator('#commit-import-btn').click();
+    await page.locator('#csv-commit-btn').click();
     await expect(page.getByText(/Successfully imported 1 transactions/i)).toBeVisible();
     await expect(page.locator('button[id^="tx-row-"]').filter({ hasText: marker })).toBeVisible();
   });

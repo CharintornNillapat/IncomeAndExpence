@@ -16,19 +16,19 @@ test.describe('The Categories page', () => {
   test("L9: a new category's colour is not offered to the next one, after a reload too", async ({ page }) => {
     const name = `E2E Colour ${Date.now().toString().slice(-6)}`;
     // A new form starts on the first free colour, tan.
-    const tan = page.locator('#new-category-color-d9a066');
+    const tan = page.locator('#category-new-color-d9a066');
     await expect(tan).toHaveAttribute('aria-pressed', 'true');
-    await page.locator('#new-category-name').fill(name);
-    await page.locator('#save-category-btn').click();
+    await page.locator('#category-new-name').fill(name);
+    await page.locator('#category-new-save-btn').click();
     await expect(page.locator('#category-group-expense [id^="category-row-"]').filter({ hasText: name })).toBeVisible();
 
     await expect(tan).toBeDisabled();
     await expect(tan).toHaveAttribute('aria-label', `Tan, used by ${name}`);
-    await expect(page.locator('#new-category-color-6c8eef')).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.locator('#category-new-color-6c8eef')).toHaveAttribute('aria-pressed', 'true');
 
     await page.reload();
     await gotoTab(page, 'categories');
-    await expect(page.locator('#new-category-color-d9a066')).toBeDisabled();
+    await expect(page.locator('#category-new-color-d9a066')).toBeDisabled();
   });
 
   test('the System categories are locked, under readable names', async ({ page }) => {
@@ -40,15 +40,15 @@ test.describe('The Categories page', () => {
   });
 
   test('a row opens "Edit category", and Cancel returns to "New category" with focus on the row', async ({ page }) => {
-    const row = page.locator('#edit-category-cat-groceries');
+    const row = page.locator('#category-edit-cat-groceries');
     await row.click();
     await expect(page.locator('#category-form-heading')).toHaveText('Edit category');
-    await expect(page.locator('#edit-category-name')).toHaveValue('Groceries');
+    await expect(page.locator('#category-edit-name')).toHaveValue('Groceries');
     await expect(row).toHaveAttribute('aria-pressed', 'true');
 
-    await page.locator('#edit-category-cancel-btn').click();
+    await page.locator('#category-edit-cancel-btn').click();
     await expect(page.locator('#category-form-heading')).toHaveText('New category');
-    await expect(page.locator('#edit-category-name')).toHaveCount(0);
+    await expect(page.locator('#category-edit-name')).toHaveCount(0);
     await expect(row).toBeFocused();
   });
 });

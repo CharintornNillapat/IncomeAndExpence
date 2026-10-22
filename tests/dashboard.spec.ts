@@ -325,7 +325,7 @@ test.describe('Dashboard row 3: recent activity, net worth and wallets, mood and
     await expect(page.locator('#nav-tab-transactions')).toHaveAttribute('aria-current', 'page');
 
     await gotoTab(page, 'dashboard');
-    await page.locator('#hero-manage-all-wallets-btn').click();
+    await page.locator('#dashboard-wallets-manage-btn').click();
     await expect(page.locator('#nav-tab-wallets')).toHaveAttribute('aria-current', 'page');
 
     await gotoTab(page, 'dashboard');

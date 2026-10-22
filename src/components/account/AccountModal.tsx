@@ -285,7 +285,7 @@ const SessionsSection: React.FC = () => {
             return (
               <li
                 key={s.id}
-                id={`session-item-${s.id}`}
+                id={`account-session-item-${s.id}`}
                 className={`p-3 rounded-lg border flex items-start gap-3 ${
                   s.isCurrent
                     ? 'border-brand-line bg-brand-tint'
@@ -608,9 +608,9 @@ const ProfileSection: React.FC = () => {
       </div>
       <form onSubmit={handleUpdateProfile} className="space-y-3">
         <div>
-          <label htmlFor="profile-name-input" className={LABEL_CLASS}>Display Name</label>
+          <label htmlFor="account-profile-name-input" className={LABEL_CLASS}>Display Name</label>
           <input
-            id="profile-name-input"
+            id="account-profile-name-input"
             type="text"
             value={nameInput}
             onChange={(e) => setNameInput(e.target.value)}
@@ -668,9 +668,9 @@ const PasswordSection: React.FC = () => {
       </div>
       <form onSubmit={handleUpdatePassword} className="space-y-3">
         <div>
-          <label htmlFor="security-new-password" className={LABEL_CLASS}>New Password</label>
+          <label htmlFor="account-security-new-password" className={LABEL_CLASS}>New Password</label>
           <input
-            id="security-new-password"
+            id="account-security-new-password"
             type="password"
             value={newPassword}
             onChange={(e) => setNewPassword(e.target.value)}
@@ -679,9 +679,9 @@ const PasswordSection: React.FC = () => {
           />
         </div>
         <div>
-          <label htmlFor="security-confirm-password" className={LABEL_CLASS}>Confirm Password</label>
+          <label htmlFor="account-security-confirm-password" className={LABEL_CLASS}>Confirm Password</label>
           <input
-            id="security-confirm-password"
+            id="account-security-confirm-password"
             type="password"
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}

@@ -179,7 +179,7 @@ One period for the whole page, chosen in the `PageHeader`. Every figure comes fr
 - Colour is never the only signal: income keeps its `+`, spending its minus, and a transfer says it is not counted, as `txTypeMetaFor` does.
 - No sync state on the page; `NavbarSyncBadge` in the header shows it.
 - One h1, in `PageHeader` (the greeting and the long date). Card titles are h2.
-- Ids: keep every Dashboard id and test id in `docs/audit/test-selector-contract.md`. New ids start `dashboard-`, never another page's prefix (`tx-row-`, `debt-card-`, `open-repay-modal-`, `settle-debt-`, `wallet-entity-`).
+- Ids: keep every Dashboard id and test id in `docs/audit/test-selector-contract.md`. New ids start `dashboard-`, never another page's prefix (`tx-row-`, `debt-card-`, `debt-open-repay-`, `debt-settle-`, `wallet-entity-`).
 - Charts: the sparkline and the donut are inline SVG with `role="img"` and an `aria-label` that states the figures. The category list beside the donut is the text equivalent. No chart library, no animation; nothing moves under reduced motion.
 - Loading: each card shows one static outline, with no pulse. Empty: a new account shows `฿0.00` figures and short empty lines, never `NaN` or `Infinity`.
 - Layout: fluid inside the `max-w-7xl` main. Rows wrap to one column at phone width, with one render path per breakpoint and no hidden duplicates.

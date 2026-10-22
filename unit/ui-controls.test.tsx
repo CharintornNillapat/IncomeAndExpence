@@ -152,8 +152,8 @@ describe('OverflowMenu', () => {
         <OverflowMenu
           label="More actions for Cash"
           items={[
-            { id: 'archive-wallet-cash', label: 'Archive wallet', onSelect: onArchive },
-            { id: 'delete-wallet-cash', label: 'Delete wallet…', onSelect: onDelete, tone: 'danger' },
+            { id: 'wallet-archive-cash', label: 'Archive wallet', onSelect: onArchive },
+            { id: 'wallet-delete-cash', label: 'Delete wallet…', onSelect: onDelete, tone: 'danger' },
           ]}
         />
         <p>Outside</p>
@@ -197,7 +197,7 @@ describe('OverflowMenu', () => {
     fireEvent.click(trigger);
     expect(trigger.getAttribute('aria-expanded')).toBe('true');
     const items = screen.getAllByRole('menuitem');
-    expect(items.map((i) => i.id)).toEqual(['archive-wallet-cash', 'delete-wallet-cash']);
+    expect(items.map((i) => i.id)).toEqual(['wallet-archive-cash', 'wallet-delete-cash']);
     expect(items.every((i) => i.tagName === 'BUTTON')).toBe(true);
     expect(document.activeElement).toBe(items[0]);
     expect(items[1].className).toContain('text-expense');

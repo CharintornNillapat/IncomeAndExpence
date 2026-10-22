@@ -82,7 +82,7 @@ A screen showing spending, income, net, net worth or a debt figure computes it h
 - **No heading of its own;** callers render it inside a titled `Modal`.
 - **Category select offers the entry type's categories only** and derives `shownCategoryId` during render [0084].
 - **Express note** [0013]: the note is the first field and seeds the amount via `parseExpressInput`. A manual amount edit (`userTouchedRef.current.amount`) disables extraction for that entry; three specs depend on it. The ledger stores the note as typed; only the classifier sees the stripped text. Re-seed through `InlineMathInput`'s `seed: {key, value}` (applied during render, never a remounting `key`), and record the seeded amount in the same handler (`seedAmount`). A trailing number needs a whitespace boundary.
-- **Payoff chips** seed through `#repay-amount-math` and latch the amount field. The payoff block stays mounted with no amount typed.
+- **Payoff chips** seed through `#debt-repay-amount-math` and latch the amount field. The payoff block stays mounted with no amount typed.
 - **A refused save's message clears when the amount changes** [0086].
 
 ## Categorization: rules first, Jev second [0011, 0012]

@@ -15,7 +15,7 @@ test.describe('Holistic Mini Diary E2E Tests', () => {
     await expect(page.getByRole('heading', { name: /Daily Diary/i })).toBeVisible();
 
     // 3. Select 5-star Peak Flow mood
-    const mood5Btn = page.locator('#mood-btn-5');
+    const mood5Btn = page.locator('#diary-mood-btn-5');
     await expect(mood5Btn).toBeVisible();
     await mood5Btn.click();
 
@@ -24,7 +24,7 @@ test.describe('Holistic Mini Diary E2E Tests', () => {
     await notesInput.fill('Playwright automated wellbeing log: High energy & productive day.');
 
     // 5. Save Diary entry
-    const saveBtn = page.locator('#save-diary-entry-btn');
+    const saveBtn = page.locator('#diary-save-entry-btn');
     await expect(saveBtn).toBeVisible();
     await saveBtn.click();
 
@@ -42,7 +42,7 @@ test.describe('Holistic Mini Diary E2E Tests', () => {
     // its own module) - the one action in this view with no other coverage;
     // a broken export would otherwise only surface as "nothing happens".
     const downloadPromise = page.waitForEvent('download');
-    await page.locator('#export-diary-btn').click();
+    await page.locator('#diary-export-btn').click();
     const download = await downloadPromise;
 
     expect(download.suggestedFilename()).toMatch(/^holistic_diary_export_\d{4}-\d{2}-\d{2}\.json$/);

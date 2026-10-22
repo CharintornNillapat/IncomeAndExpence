@@ -111,7 +111,7 @@ export const SpendingInsightsCard: React.FC<SpendingInsightsCardProps> = ({
         <div className="flex items-center gap-1.5 shrink-0">
           {lines && !isCollapsed && (
             <IconButton
-              id="insights-refresh-btn"
+              id="dashboard-insights-refresh-btn"
               label="Refresh insights"
               onClick={generate}
               disabled={isGenerating}
@@ -121,7 +121,7 @@ export const SpendingInsightsCard: React.FC<SpendingInsightsCardProps> = ({
             </IconButton>
           )}
           <IconButton
-            id="insights-collapse-btn"
+            id="dashboard-insights-collapse-btn"
             label={isCollapsed ? 'Expand insights' : 'Collapse insights'}
             onClick={toggleCollapsed}
             aria-expanded={!isCollapsed}
@@ -181,7 +181,7 @@ export const SpendingInsightsCard: React.FC<SpendingInsightsCardProps> = ({
               <p className="text-sm text-fg-secondary text-center">
                 Summarize how this month compares with last.
               </p>
-              <Button id="insights-generate-btn" onClick={generate} icon={<ChartLine aria-hidden="true" className="w-3.5 h-3.5" />}>
+              <Button id="dashboard-insights-generate-btn" onClick={generate} icon={<ChartLine aria-hidden="true" className="w-3.5 h-3.5" />}>
                 Generate insights
               </Button>
             </div>

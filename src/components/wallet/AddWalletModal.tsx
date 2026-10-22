@@ -23,11 +23,11 @@ export const AddWalletModal: React.FC<AddWalletModalProps> = ({ isOpen, onClose 
       <AddWalletForm
         tone="subtle"
         ids={{
-          name: 'new-wallet-name',
-          type: 'new-wallet-type',
-          currency: 'new-wallet-currency',
-          balance: 'new-wallet-init-balance',
-          submit: 'save-new-wallet-btn',
+          name: 'wallet-new-name',
+          type: 'wallet-new-type',
+          currency: 'wallet-new-currency',
+          balance: 'wallet-new-init-balance',
+          submit: 'wallet-new-save-btn',
         }}
         onCreated={onClose}
       />

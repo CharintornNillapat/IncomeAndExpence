@@ -7,7 +7,7 @@ import { gotoTab } from './helpers';
  *
  * `tests/debts.spec.ts` stays the regression guard for the repayment lifecycle
  * itself and is deliberately untouched by this phase - the chips seed *through*
- * `#repay-amount-math` rather than replacing it, so the ids that spec fills are
+ * `#debt-repay-amount-math` rather than replacing it, so the ids that spec fills are
  * unchanged. This file only asserts on what is new.
  *
  * Two behaviours here are pinned so a later phase cannot quietly reverse them:
@@ -26,19 +26,19 @@ async function createDebt(
   page: Page,
   { total = '5000', minimum = '200' }: { total?: string; minimum?: string } = {}
 ) {
-  await page.locator('#open-add-debt-btn').click();
+  await page.locator('#debt-open-add-btn').click();
 
   const name = `E2E Payoff ${Date.now().toString().slice(-6)}-${Math.floor(Math.random() * 1000)}`;
-  const nameInput = page.locator('#new-debt-name');
+  const nameInput = page.locator('#debt-new-name');
   await expect(nameInput).toBeVisible();
   await nameInput.fill(name);
 
   // Total writes Remaining too (they are bound in DebtsView), so it must be
   // filled before any explicit Remaining value would be.
-  await page.locator('#new-debt-total').fill(total);
-  await page.locator('#new-debt-min-payment').fill(minimum);
+  await page.locator('#debt-new-total').fill(total);
+  await page.locator('#debt-new-min-payment').fill(minimum);
 
-  await page.locator('#save-new-debt-btn').click();
+  await page.locator('#debt-new-save-btn').click();
 
   const card = page.locator('div[id^="debt-card-"]').filter({ hasText: name });
   await expect(card).toBeVisible();
@@ -47,12 +47,12 @@ async function createDebt(
 
 /** Opens the repay modal for a debt card and waits for the payoff block. */
 async function openRepay(page: Page, card: ReturnType<Page['locator']>) {
-  await card.locator('button[id^="open-repay-modal-"]').click();
-  await expect(page.locator('#repay-amount-math')).toBeVisible();
+  await card.locator('button[id^="debt-open-repay-"]').click();
+  await expect(page.locator('#debt-repay-amount-math')).toBeVisible();
   await expect(page.getByTestId('repay-payoff-preview')).toBeVisible();
 }
 
-const amountField = (page: Page) => page.locator('#repay-amount-math');
+const amountField = (page: Page) => page.locator('#debt-repay-amount-math');
 const remainingAfter = (page: Page) => page.getByTestId('repay-remaining-after');
 const preview = (page: Page) => page.getByTestId('repay-payoff-preview');
 
@@ -66,7 +66,7 @@ test.describe('Debt payoff chips and live preview', () => {
     const card = await createDebt(page);
     await openRepay(page, card);
 
-    await page.locator('#repay-payoff-full').click();
+    await page.locator('#debt-repay-payoff-full').click();
 
     // The chip seeds through `seed`, so the amount field itself is filled -
     // it is not a parallel value held somewhere else.
@@ -80,7 +80,7 @@ test.describe('Debt payoff chips and live preview', () => {
     const card = await createDebt(page);
     await openRepay(page, card);
 
-    await page.locator('#repay-payoff-half').click();
+    await page.locator('#debt-repay-payoff-half').click();
 
     await expect(amountField(page)).toHaveValue('2500');
     await expect(remainingAfter(page)).toHaveText('฿2,500.00');
@@ -95,7 +95,7 @@ test.describe('Debt payoff chips and live preview', () => {
     await openRepay(page, card);
 
     // 200 is `createDebt`'s default minimum payment.
-    await page.locator('#repay-payoff-minimum').click();
+    await page.locator('#debt-repay-payoff-minimum').click();
 
     await expect(amountField(page)).toHaveValue('200');
     await expect(remainingAfter(page)).toHaveText('฿4,800.00');
@@ -133,7 +133,7 @@ test.describe('Debt payoff chips and live preview', () => {
   /*
    * ADR 0016 deliberately inverted this test.
    *
-   * It previously asserted `#confirm-repay-btn` stayed **enabled** while
+   * It previously asserted `#debt-repay-confirm-btn` stayed **enabled** while
    * overpaying, pinning ADR 0015's warn-never-block decision. That decision
    * was reversed once the ledger stopped permitting an overpayment at all, and
    * ADR 0015 anticipated the reversal in writing. This is not the spec-edit
@@ -151,7 +151,7 @@ test.describe('Debt payoff chips and live preview', () => {
     await expect(note).toContainText('Maximum payable is ฿5,000.00');
     await expect(note).toContainText('Pay in full');
 
-    await expect(page.locator('#confirm-repay-btn')).toBeDisabled();
+    await expect(page.locator('#debt-repay-confirm-btn')).toBeDisabled();
 
     // The settle note is suppressed - the two are mutually exclusive.
     await expect(page.getByTestId('repay-settle-note')).toHaveCount(0);
@@ -162,12 +162,12 @@ test.describe('Debt payoff chips and live preview', () => {
     await openRepay(page, card);
 
     await amountField(page).fill('6000');
-    await expect(page.locator('#confirm-repay-btn')).toBeDisabled();
+    await expect(page.locator('#debt-repay-confirm-btn')).toBeDisabled();
 
     // The gate must not be sticky: it is derived on render, not latched.
     await amountField(page).fill('1500');
     await expect(page.getByTestId('repay-overpayment-note')).toHaveCount(0);
-    await expect(page.locator('#confirm-repay-btn')).toBeEnabled();
+    await expect(page.locator('#debt-repay-confirm-btn')).toBeEnabled();
     await expect(remainingAfter(page)).toHaveText('฿3,500.00');
   });
 
@@ -177,11 +177,11 @@ test.describe('Debt payoff chips and live preview', () => {
 
     // The chip the constraint note points at must produce a submittable
     // amount - otherwise the advice it gives is wrong.
-    await page.locator('#repay-payoff-full').click();
+    await page.locator('#debt-repay-payoff-full').click();
 
     await expect(page.getByTestId('repay-overpayment-note')).toHaveCount(0);
     await expect(page.getByTestId('repay-settle-note')).toBeVisible();
-    await expect(page.locator('#confirm-repay-btn')).toBeEnabled();
+    await expect(page.locator('#debt-repay-confirm-btn')).toBeEnabled();
   });
 
   test('a plain expense form is unaffected by the debt overpayment gate', async ({ page }) => {
@@ -208,16 +208,16 @@ test.describe('Debt payoff chips and live preview', () => {
     const card = await createDebt(page, { total: '100' });
     await openRepay(page, card);
 
-    await expect(page.locator('#repay-payoff-full')).toBeVisible();
-    await expect(page.locator('#repay-payoff-half')).toBeVisible();
-    await expect(page.locator('#repay-payoff-minimum')).toHaveCount(0);
+    await expect(page.locator('#debt-repay-payoff-full')).toBeVisible();
+    await expect(page.locator('#debt-repay-payoff-half')).toBeVisible();
+    await expect(page.locator('#debt-repay-payoff-minimum')).toHaveCount(0);
   });
 
   test('a chip latches the amount against the express note parser', async ({ page }) => {
     const card = await createDebt(page);
     await openRepay(page, card);
 
-    await page.locator('#repay-payoff-half').click();
+    await page.locator('#debt-repay-payoff-half').click();
     await expect(amountField(page)).toHaveValue('2500');
 
     // A note ending in digits would normally seed the amount field (ADR 0013,

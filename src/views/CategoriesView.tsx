@@ -129,7 +129,7 @@ export const CategoriesView: React.FC = () => {
   // way to it (audit 011 finding 2): focus its Name field and bring it into
   // view, smoothly unless the viewer asked for reduced motion.
   const goToNewForm = useCallback(() => {
-    const field = document.getElementById('new-category-name');
+    const field = document.getElementById('category-new-name');
     if (!field) return;
     field.focus({ preventScroll: true });
     const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
@@ -151,8 +151,8 @@ export const CategoriesView: React.FC = () => {
         setNewFormKey((k) => k + 1);
       }}
       onSave={handleSave}
-      onSaved={(id) => closeEdit(`edit-category-${id}`)}
-      onCancel={() => closeEdit(category ? `edit-category-${category.id}` : undefined)}
+      onSaved={(id) => closeEdit(`category-edit-${id}`)}
+      onCancel={() => closeEdit(category ? `category-edit-${category.id}` : undefined)}
       onRequestDelete={(c) => {
         setDeleteError(null);
         setToDelete(c);
@@ -168,7 +168,7 @@ export const CategoriesView: React.FC = () => {
         actions={
           <>
             {!isWide && subTab === 'MANAGE' && (
-              <Button id="open-new-category-btn" variant="soft" icon={<Plus aria-hidden="true" className="w-4 h-4" />} onClick={goToNewForm}>
+              <Button id="category-open-new-btn" variant="soft" icon={<Plus aria-hidden="true" className="w-4 h-4" />} onClick={goToNewForm}>
                 Add category
               </Button>
             )}

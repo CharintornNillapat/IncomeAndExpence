@@ -28,16 +28,16 @@ test.describe('Categories hub', () => {
     // user break the fixed taxonomy other mutators resolve by type. Delete lives
     // in the row's edit form (Phase 62), so the form is opened first and the
     // count-0 check is not vacuous.
-    await expect(page.locator('#edit-category-cat-food')).toBeVisible();
-    await page.locator('#edit-category-cat-food').click();
-    await expect(page.locator('#edit-category-name')).toHaveValue('Food & Dining');
-    await expect(page.locator('#delete-category-cat-food')).toHaveCount(0);
+    await expect(page.locator('#category-edit-cat-food')).toBeVisible();
+    await page.locator('#category-edit-cat-food').click();
+    await expect(page.locator('#category-edit-name')).toHaveValue('Food & Dining');
+    await expect(page.locator('#category-delete-cat-food')).toHaveCount(0);
   });
 
   test('the keyword-rule category picker has strictly unique options, zero duplicates', async ({ page }) => {
     await page.locator('#category-subtab-rules').click();
 
-    const optionLabels = await page.locator('#keyword-category-select option').allTextContents();
+    const optionLabels = await page.locator('#category-rules-keyword-select option').allTextContents();
     expect(optionLabels.length).toBeGreaterThan(0);
     expect(new Set(optionLabels).size).toBe(optionLabels.length);
   });
@@ -45,9 +45,9 @@ test.describe('Categories hub', () => {
   test('creating a new category appears in the management list and in the rule-assignment dropdown immediately', async ({ page }) => {
     const uniqueName = `ZZZ Test Category ${Date.now().toString().slice(-6)}`;
 
-    await page.locator('#new-category-name').fill(uniqueName);
-    await page.locator('#new-category-type-income').click();
-    await page.locator('#save-category-btn').click();
+    await page.locator('#category-new-name').fill(uniqueName);
+    await page.locator('#category-new-type-income').click();
+    await page.locator('#category-new-save-btn').click();
 
     // The type is the group the row sits in (Phase 62: no raw enum on the row).
     const newRow = page.locator('#category-group-income [id^="category-row-"]').filter({ hasText: uniqueName });
@@ -56,7 +56,7 @@ test.describe('Categories hub', () => {
     // Local Storage Mode has no network round-trip - the new category is live
     // in state immediately, so the Smart Rules picker should offer it right away.
     await page.locator('#category-subtab-rules').click();
-    const option = page.locator('#keyword-category-select option', { hasText: uniqueName });
+    const option = page.locator('#category-rules-keyword-select option', { hasText: uniqueName });
     await expect(option).toHaveCount(1);
   });
 
@@ -64,22 +64,22 @@ test.describe('Categories hub', () => {
     const originalName = `ZZZ Edit Source ${Date.now().toString().slice(-6)}`;
     const renamedName = `ZZZ Edit Target ${Date.now().toString().slice(-6)}`;
 
-    await page.locator('#new-category-name').fill(originalName);
-    await page.locator('#new-category-type-expense').click();
-    await page.locator('#save-category-btn').click();
+    await page.locator('#category-new-name').fill(originalName);
+    await page.locator('#category-new-type-expense').click();
+    await page.locator('#category-new-save-btn').click();
 
     const newRow = page.locator('[id^="category-row-"]').filter({ hasText: originalName });
     await expect(newRow).toBeVisible();
     const categoryId = await newRow.getAttribute('id');
     const catId = categoryId!.replace('category-row-', '');
 
-    await page.locator(`#edit-category-${catId}`).click();
-    const editNameInput = page.locator('#edit-category-name');
+    await page.locator(`#category-edit-${catId}`).click();
+    const editNameInput = page.locator('#category-edit-name');
     await expect(editNameInput).toBeVisible();
     await editNameInput.fill(renamedName);
-    await page.locator('#edit-category-save-btn').click();
+    await page.locator('#category-edit-save-btn').click();
 
-    await expect(page.locator(`#edit-category-name`)).toHaveCount(0);
+    await expect(page.locator(`#category-edit-name`)).toHaveCount(0);
     await expect(page.locator(`#category-row-${catId}`)).toContainText(renamedName);
   });
 
@@ -96,43 +96,43 @@ test.describe('Categories hub', () => {
     const uniqueName = `ZZZ Described ${Date.now().toString().slice(-6)}`;
     const description = 'Streaming, music and app subscriptions';
 
-    await page.locator('#new-category-name').fill(uniqueName);
-    await page.locator('#new-category-description').fill(description);
-    await page.locator('#new-category-type-expense').click();
-    await page.locator('#save-category-btn').click();
+    await page.locator('#category-new-name').fill(uniqueName);
+    await page.locator('#category-new-description').fill(description);
+    await page.locator('#category-new-type-expense').click();
+    await page.locator('#category-new-save-btn').click();
 
     const newRow = page.locator('[id^="category-row-"]').filter({ hasText: uniqueName });
     await expect(newRow).toBeVisible();
     const catId = (await newRow.getAttribute('id'))!.replace('category-row-', '');
 
     // Submitting cleared the field, so a stale value cannot fake the round-trip.
-    await expect(page.locator('#new-category-description')).toHaveValue('');
+    await expect(page.locator('#category-new-description')).toHaveValue('');
 
-    await page.locator(`#edit-category-${catId}`).click();
-    await expect(page.locator('#edit-category-description')).toHaveValue(description);
-    await page.locator('#edit-category-cancel-btn').click();
-    await expect(page.locator('#edit-category-description')).toHaveCount(0);
+    await page.locator(`#category-edit-${catId}`).click();
+    await expect(page.locator('#category-edit-description')).toHaveValue(description);
+    await page.locator('#category-edit-cancel-btn').click();
+    await expect(page.locator('#category-edit-description')).toHaveCount(0);
 
     // A system default carries the description shipped in
     // DEFAULT_SYSTEM_CATEGORIES - the wording that makes "Netflix" classifiable.
-    await page.locator('#edit-category-cat-housing').click();
-    await expect(page.locator('#edit-category-description')).toHaveValue(/Netflix/i);
+    await page.locator('#category-edit-cat-housing').click();
+    await expect(page.locator('#category-edit-description')).toHaveValue(/Netflix/i);
   });
 
   test('deleting an unused user-created category removes it from the management list', async ({ page }) => {
     const uniqueName = `ZZZ Delete Me ${Date.now().toString().slice(-6)}`;
 
-    await page.locator('#new-category-name').fill(uniqueName);
-    await page.locator('#new-category-type-expense').click();
-    await page.locator('#save-category-btn').click();
+    await page.locator('#category-new-name').fill(uniqueName);
+    await page.locator('#category-new-type-expense').click();
+    await page.locator('#category-new-save-btn').click();
 
     const newRow = page.locator('[id^="category-row-"]').filter({ hasText: uniqueName });
     await expect(newRow).toBeVisible();
     const categoryId = await newRow.getAttribute('id');
     const catId = categoryId!.replace('category-row-', '');
 
-    await page.locator(`#edit-category-${catId}`).click();
-    await page.locator(`#delete-category-${catId}`).click();
+    await page.locator(`#category-edit-${catId}`).click();
+    await page.locator(`#category-delete-${catId}`).click();
     await expect(page.getByRole('dialog', { name: 'Delete category' })).toBeVisible();
     await page.locator('#confirm-destructive-btn').click();
 
@@ -153,17 +153,17 @@ test.describe('Categories hub', () => {
     // button's React handler regardless of what's visually on top.
     const uniqueName = `ZZZ In Use ${Date.now().toString().slice(-6)}`;
 
-    await page.locator('#new-category-name').fill(uniqueName);
-    await page.locator('#new-category-type-expense').click();
-    await page.locator('#save-category-btn').click();
+    await page.locator('#category-new-name').fill(uniqueName);
+    await page.locator('#category-new-type-expense').click();
+    await page.locator('#category-new-save-btn').click();
 
     const newRow = page.locator('[id^="category-row-"]').filter({ hasText: uniqueName });
     await expect(newRow).toBeVisible();
     const categoryId = await newRow.getAttribute('id');
     const catId = categoryId!.replace('category-row-', '');
 
-    await page.locator(`#edit-category-${catId}`).click();
-    await page.locator(`#delete-category-${catId}`).click();
+    await page.locator(`#category-edit-${catId}`).click();
+    await page.locator(`#category-delete-${catId}`).click();
     const confirmDialog = page.getByRole('dialog', { name: 'Delete category' });
     await expect(confirmDialog).toBeVisible();
 

@@ -20,7 +20,7 @@ import { IDENTITY_COLORS } from '../../utils/identityPalette';
 /**
  * Element ids are supplied by the caller rather than derived from a prefix:
  * `WalletsView` and the since-retired `WalletPopupModal` shipped different,
- * non-parallel ids (`new-wallet-init-balance` vs `modal-new-wallet-balance`),
+ * non-parallel ids (`wallet-new-init-balance` vs `modal-new-wallet-balance`),
  * and the Playwright specs target the view's ids directly.
  */
 export interface AddWalletFormIds {

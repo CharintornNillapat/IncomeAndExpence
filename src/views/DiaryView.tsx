@@ -137,7 +137,7 @@ export const DiaryView: React.FC<DiaryViewProps> = ({ onOpenDayTransactions }) =
         description="Your mood, activity and meals, beside what each day cost"
         actions={
           <Button
-            id="export-diary-btn"
+            id="diary-export-btn"
             variant="secondary"
             onClick={() => exportDiaryToJson(diaryEntries)}
             icon={<Download aria-hidden="true" className="w-4 h-4" />}

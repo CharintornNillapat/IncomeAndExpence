@@ -36,7 +36,7 @@ test.describe('The Wallets page', () => {
 
     await page.locator('#wallet-entity-wal-cash').click();
     await page.locator('#wallet-detail-menu-btn').click();
-    await page.locator('#archive-wallet-wal-cash').click();
+    await page.locator('#wallet-archive-wal-cash').click();
     await page.locator('#confirm-destructive-btn').click();
 
     await expect(page.locator('#wallet-entity-wal-cash')).toHaveCount(0);

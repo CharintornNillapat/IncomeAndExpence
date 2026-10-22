@@ -22,7 +22,7 @@ test.describe('Keyword auto-categorization rules', () => {
   });
 
   test('sandbox evaluates amount, category, type, and cleaned description from a default rule', async ({ page }) => {
-    await page.locator('#test-parser-input').fill('250 coffee with friends');
+    await page.locator('#category-rules-test-parser-input').fill('250 coffee with friends');
 
     // `data-testid` (T32) replaces a `div.flex.justify-between` + label-text
     // filter, which was both class-structural and copy-dependent.
@@ -42,17 +42,17 @@ test.describe('Keyword auto-categorization rules', () => {
   test('adding a new rule makes it available to the sandbox immediately', async ({ page }) => {
     const uniqueKeyword = `zzzteste2e${Date.now().toString().slice(-6)}`;
 
-    await page.locator('#new-keyword-input').fill(uniqueKeyword);
-    await page.locator('#keyword-category-select').selectOption({ label: 'Groceries (Expense)' });
-    await page.locator('#save-keyword-rule-btn').click();
+    await page.locator('#category-rules-new-keyword-input').fill(uniqueKeyword);
+    await page.locator('#category-rules-keyword-select').selectOption({ label: 'Groceries (Expense)' });
+    await page.locator('#category-rules-save-btn').click();
 
-    const ruleRow = page.locator('tr[id^="rule-row-"]').filter({ hasText: uniqueKeyword });
+    const ruleRow = page.locator('tr[id^="category-rule-row-"]').filter({ hasText: uniqueKeyword });
     await expect(ruleRow).toBeVisible();
     await expect(ruleRow).toContainText('Groceries');
 
     // Local Storage Mode has no network round-trip - the new rule is live in
     // state immediately, so the sandbox above should pick it up right away.
-    await page.locator('#test-parser-input').fill(`80 ${uniqueKeyword}`);
+    await page.locator('#category-rules-test-parser-input').fill(`80 ${uniqueKeyword}`);
     const categoryRow = page.locator('[data-testid="metric-matched-category"]');
     await expect(categoryRow).toContainText('Groceries');
     const amountRow = page.locator('[data-testid="metric-extracted-amount"]');

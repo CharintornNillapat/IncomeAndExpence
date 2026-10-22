@@ -120,7 +120,7 @@ test.describe('iOS field size (ADR 0068)', () => {
 
     // Debt payoff: the add form.
     await gotoTab(page, 'debts');
-    await checkDialog(page, '#open-add-debt-btn', 'Add debt');
+    await checkDialog(page, '#debt-open-add-btn', 'Add debt');
 
     // Daily diary.
     await gotoTab(page, 'diary');
@@ -130,7 +130,7 @@ test.describe('iOS field size (ADR 0068)', () => {
     await gotoTab(page, 'categories');
     await expectNoSmallFields(page, 'main', 'Category form');
     await page.locator('#category-subtab-rules').click();
-    await expect(page.locator('#new-keyword-input')).toBeVisible();
+    await expect(page.locator('#category-rules-new-keyword-input')).toBeVisible();
     await expectNoSmallFields(page, 'main', 'Smart rules');
 
     // Sign in, last, so it is left open.

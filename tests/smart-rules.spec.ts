@@ -70,7 +70,7 @@ test.describe('Smart rule capture from the transaction form', () => {
     // Reload rather than reopen: it proves the rule reached the persisted
     // slice, and it hands the next assertion a form whose category has been
     // reset to the default instead of one still holding the override.
-    await page.locator('#close-quick-record-modal-btn').click();
+    await page.locator('#quickadd-close-btn').click();
     await page.reload();
 
     const reopened = await openQuickAdd(page);
@@ -90,14 +90,14 @@ test.describe('Smart rule capture from the transaction form', () => {
     const modal = await noteAndOverride(page);
     await modal.locator('[id$="-save-rule-btn"]').click();
     await expect(modal.getByTestId('tx-save-rule')).toContainText('Rule saved');
-    await page.locator('#close-quick-record-modal-btn').click();
+    await page.locator('#quickadd-close-btn').click();
 
     // The same write path the Categories view's own form uses, reached from
     // the other end - this is the cross-surface check.
     await gotoTab(page, 'categories');
     await page.locator('#category-subtab-rules').click();
 
-    const ruleRow = page.locator('tr[id^="rule-row-"]').filter({ hasText: MERCHANT_KEYWORD });
+    const ruleRow = page.locator('tr[id^="category-rule-row-"]').filter({ hasText: MERCHANT_KEYWORD });
     await expect(ruleRow).toBeVisible();
     await expect(ruleRow).toContainText('Groceries');
   });
@@ -130,7 +130,7 @@ test.describe('Smart rule capture from the transaction form', () => {
 
   test('the locked repay modal never offers a rule', async ({ page }) => {
     await gotoTab(page, 'debts');
-    await page.locator('button[id^="open-repay-modal-"]').first().click();
+    await page.locator('button[id^="debt-open-repay-"]').first().click();
 
     const repayNote = page.locator('input[id$="-desc"]');
     await expect(repayNote).toBeVisible();

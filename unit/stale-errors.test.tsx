@@ -35,7 +35,7 @@ describe('the entry form', () => {
     const amount = document.getElementById('t-amount-math')!;
     fireEvent.change(amount, { target: { value: '60' } });
     await act(async () => {
-      fireEvent.click(document.getElementById('confirm-t-btn')!);
+      fireEvent.click(document.getElementById('t-confirm-btn')!);
     });
     expect(screen.getByText(REFUSED)).toBeTruthy();
 

@@ -578,10 +578,10 @@ describe('Wallets section', () => {
         onOpenWallet={onOpen}
       />
     );
-    for (const id of ['hero-transfer-funds-btn', 'hero-add-wallet-btn', 'hero-manage-all-wallets-btn']) {
+    for (const id of ['dashboard-wallets-transfer-btn', 'dashboard-wallets-add-btn', 'dashboard-wallets-manage-btn']) {
       expect(container.querySelector(`button#${id}`)).not.toBeNull();
     }
-    fireEvent.click(container.querySelector('#hero-transfer-funds-btn')!);
+    fireEvent.click(container.querySelector('#dashboard-wallets-transfer-btn')!);
     expect(onTransfer).toHaveBeenCalledWith();
 
     const row = container.querySelector('button#dashboard-wallet-card-main')!;

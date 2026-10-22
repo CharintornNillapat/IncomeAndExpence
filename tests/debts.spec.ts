@@ -22,15 +22,15 @@ test.describe('Debt payoff lifecycle', () => {
 
     // 1. Create a debt goal: 5,000 total and remaining, 4.5% APR, 200 minimum
     // payment. The form starts empty since ADR 0086, so each is filled.
-    await page.locator('#open-add-debt-btn').click();
+    await page.locator('#debt-open-add-btn').click();
     const debtName = `E2E Payoff Goal ${Date.now().toString().slice(-6)}`;
-    const nameInput = page.locator('#new-debt-name');
+    const nameInput = page.locator('#debt-new-name');
     await expect(nameInput).toBeVisible();
     await nameInput.fill(debtName);
-    await page.locator('#new-debt-total').fill('5000');
-    await page.locator('#new-debt-interest').fill('4.5');
-    await page.locator('#new-debt-min-payment').fill('200');
-    await page.locator('#save-new-debt-btn').click();
+    await page.locator('#debt-new-total').fill('5000');
+    await page.locator('#debt-new-interest').fill('4.5');
+    await page.locator('#debt-new-min-payment').fill('200');
+    await page.locator('#debt-new-save-btn').click();
 
     const card = page.locator('div[id^="debt-card-"]').filter({ hasText: debtName });
     await expect(card).toBeVisible();
@@ -38,31 +38,31 @@ test.describe('Debt payoff lifecycle', () => {
     await expect(card).toContainText('4.5% APR');
 
     // 2. Partial repayment: pay 1,000 of the 5,000 total.
-    await card.locator('button[id^="open-repay-modal-"]').click();
-    const amountInput = page.locator('#repay-amount-math');
+    await card.locator('button[id^="debt-open-repay-"]').click();
+    const amountInput = page.locator('#debt-repay-amount-math');
     await expect(amountInput).toBeVisible();
     await amountInput.fill('1000');
-    await page.locator('#confirm-repay-btn').click();
+    await page.locator('#debt-repay-confirm-btn').click();
 
     // The modal closes on success - its own inputs stop being reachable.
-    await expect(page.locator('#repay-wallet-select')).toHaveCount(0);
+    await expect(page.locator('#debt-repay-wallet-select')).toHaveCount(0);
 
     // Progress bar and remaining balance both reflect the partial payment.
     await expect(card).toContainText('20.0%');
     await expect(card).toContainText('฿4,000.00');
     // Still open - the goal isn't settled yet.
-    await expect(card.locator('button[id^="open-repay-modal-"]')).toBeVisible();
+    await expect(card.locator('button[id^="debt-open-repay-"]')).toBeVisible();
 
     // 3. Second repayment covers the remaining 4,000 exactly - the debt
     // auto-settles the moment remainingAmount hits zero.
-    await card.locator('button[id^="open-repay-modal-"]').click();
-    await page.locator('#repay-amount-math').fill('4000');
-    await page.locator('#confirm-repay-btn').click();
-    await expect(page.locator('#repay-wallet-select')).toHaveCount(0);
+    await card.locator('button[id^="debt-open-repay-"]').click();
+    await page.locator('#debt-repay-amount-math').fill('4000');
+    await page.locator('#debt-repay-confirm-btn').click();
+    await expect(page.locator('#debt-repay-wallet-select')).toHaveCount(0);
 
     await expect(card).toContainText('100% Fully Settled!');
     await expect(card).toContainText('✓ Debt Fully Settled');
-    await expect(card.locator('button[id^="open-repay-modal-"]')).toHaveCount(0);
-    await expect(card.locator('button[id^="settle-debt-"]')).toHaveCount(0);
+    await expect(card.locator('button[id^="debt-open-repay-"]')).toHaveCount(0);
+    await expect(card.locator('button[id^="debt-settle-"]')).toHaveCount(0);
   });
 });

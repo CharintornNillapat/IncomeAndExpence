@@ -67,11 +67,11 @@ test.describe('Editing a transaction', () => {
     await expect(card).toContainText('฿4,500.00');
 
     const marker = `E2E Edit Repay ${Date.now().toString().slice(-6)}`;
-    await card.locator('button[id^="open-repay-modal-"]').click();
-    await page.locator('#repay-amount-math').fill('500');
+    await card.locator('button[id^="debt-open-repay-"]').click();
+    await page.locator('#debt-repay-amount-math').fill('500');
     await page.locator('input[id$="-desc"]').fill(marker);
-    await page.locator('#confirm-repay-btn').click();
-    await expect(page.locator('#repay-wallet-select')).toHaveCount(0);
+    await page.locator('#debt-repay-confirm-btn').click();
+    await expect(page.locator('#debt-repay-wallet-select')).toHaveCount(0);
     await expect(card).toContainText('฿4,000.00');
 
     await gotoTab(page, 'transactions');
