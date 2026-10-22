@@ -65,9 +65,9 @@ Every text token passes 4.5:1 on every surface it can sit on, in both themes. Ev
 Wallets and categories take their own colour from the muted identity palette in spec section 1. It avoids red, green, blue, cyan and amber, which carry money meaning. Since Phase 59 (audit 008) the wallet colour picker, in Add wallet and in Edit, offers exactly those twelve colours, and since Phase 62 the category picker offers the same twelve (`utils/identityPalette.ts`). Two categories never share one (L9) while any is free: a used colour is disabled, its fill at 0.25 under a diagonal strike, and named "Rose, used by Pets". Once all twelve are in use, colours repeat: every swatch is enabled and named "Rose, also used by Pets" (audit 012). Since Phase 63 (spec 5.1, ADR 0038) the shipped categories and the starter wallets sit on them too: Food & Dining Rose, Groceries Peach, Housing & Utilities Periwinkle, Shopping & Apparel Lavender, Transport & Fuel Aqua, Primary Salary Steel, Freelance & Side Gig Orchid, the System pair `#6B7385`, and the wallets Blue, Tan and Teal. A swatch is named by its colour ("Tan"), never by a hex code. In light mode they are painted through the Paper Ledger values below (ADR 0103).
 
 ### Light palette: Paper Ledger (ADR 0103)
-**Status:** in force from T793 (Phase 143) for the Light column and palette values; identity colours (D7) follow in T795.
+**Status:** in force since Phase 143: the Light column and palette values from T793, the component tokens from T794 and the identity colours from T795.
 
-The authority is `docs/design/finlife-light-theme.md` and ADR 0103; light only; dark unchanged.
+The authority is `docs/design/finlife-light-theme.md` and ADR 0103; light only; dark unchanged. D3a, D3b and D7 below are ADR 0103's decision numbers.
 
 | Design token | Hex | App tokens |
 |---|---|---|

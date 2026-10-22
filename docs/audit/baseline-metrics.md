@@ -23,6 +23,14 @@ npx tsc --noEmit --extendedDiagnostics
 
 ## Figures
 
+### Phase 143 - delta against Phase 142
+
+- **Entry chunk** `index-TU2ZOqF8.js`: 193,293 B (+124 B), 56,428 B gzip (+54 B against Phase 142 `index-CQ64gmHG.js`, 193,169 / 56,374).
+- **All app JS**: 884,987 B (+278 B), 268,756 B gzip (+164 B against Phase 142 884,709 / 268,592, 39 files, 0 file delta).
+- **CSS**: `index-BNXJTUPd.css`: 53,895 B (+1,018 B), 10,526 B gzip (+310 B against Phase 142 `index-BJZ9fITB.css`, 52,877 / 10,216): the theme variables T793 to T795 added to `:root`, `.dark` and `@theme inline`.
+- **Vitest**: 66 files, 1475 tests (+10 tests, +2 files against Phase 142: `unit/theme-tokens.test.ts`, 7 tests from T793 and T794, and `unit/identity-display.test.ts`, 3 tests from T795), 1475 passed in 76.39 s (`workflow/stages/02_build/output/logs/T796-unit.log`). Per-task runs: T793 1469 passed in 71.38 s, T794 1472 in 61.33 s, T795 1475 in 43.47 s (`workflow/stages/02_build/output/logs/T79N-unit.log`).
+- **Playwright**: `npx playwright test --list` reports 181 tests in 35 files, 543 runs across 3 projects (+2 tests, +6 runs: T795's two identity colour tests in `tests/dashboard.spec.ts`). Full run by T796, at the owner's request: 537 passed, 6 skipped, 0 failed across 3 projects (8.9 min, `workflow/stages/02_build/output/logs/T796-playwright.log`). Earlier full runs at 179 tests: T793 and T794, 531 passed, 6 skipped (8.8 and 9.4 min).
+
 ### Phase 142 - delta against Phase 141
 
 Measured at `c8d16cf`; T791 changed docs only and the merge commit `9e7bb45` has the same tree as `77cb979`, so the figures hold for it.

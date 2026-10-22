@@ -265,5 +265,8 @@ Section 3 of `docs/design/finlife-light-theme.md` evaluated against the componen
 2. **Decisions recorded:**
    - **D-a. Picker swatches show the display colour:** `ColorGrid.tsx:62,66`, `WalletDetail.tsx:227`, and `AddWalletForm.tsx:167` paint `identityDisplayColor(hex)`. Swatches preview the colour the user will actually see; the stored hex values saved into state and database are completely untouched.
    - **D-b. Donut ring uses inline style:** `stroke={s.color}` is replaced with `style={{ stroke: identityDisplayColor(s.color) }}` in `CategorySpendingCard.tsx:61` to guarantee CSS variable resolution across all SVG engines.
-   - **D-c. Primitive wrapping:** Primitives `Chip`, `AllocationBar`, and `ProgressBar` wrap `color` internally so callers require no redundant transformation.
-   - **D-d. Static guard test:** `unit/identity-display.test.ts` scans all `.tsx` files in `src/components/` and `src/views/` for colour styling patterns, enforcing that every colour paint site uses `identityDisplayColor` or `SYSTEM_CATEGORY_COLOR`.
+   - **D-c. Primitive wrapping:** Primitives `Chip`, `AllocationBar`, and `ProgressBar` wrap `color` internally so callers require no redundant transformation. `identityDisplayColor` is idempotent (`var(--identity-N)` is not a palette hex, so it comes back unchanged), so a caller that already converted is harmless.
+   - **D-d. Sign, not colour:** income and expense do not change; they stay told apart by `+` and the `−` (U+2212) and by their tokens. Identity colours only name a category or wallet next to its text.
+   - **Guard:** `unit/identity-display.test.ts` scans all `.tsx` files in `src/components/` and `src/views/` for colour styling patterns, enforcing that every colour paint site uses `identityDisplayColor` or `SYSTEM_CATEGORY_COLOR`.
+
+3. **The `identityDisplayColor` rule** entered `docs/contexts/ui-and-e2e.md:8` with T795, once the code complied, not with T796 as Consequences says; T796 confirmed it and added no second copy.
