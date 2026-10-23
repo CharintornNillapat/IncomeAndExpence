@@ -25,6 +25,8 @@ npx tsc --noEmit --extendedDiagnostics
 
 ### Phase 144 - delta against Phase 143
 
+Measured at `5a16b79`; T800 changed docs only and the merge commit `5ecdb1d` has the same tree as `237684e`, so the figures hold for it.
+
 - **Entry chunk** `index-BI7UeuqQ.js`: 194,575 B (+1,282 B), 56,930 B gzip (+502 B against Phase 143 `index-TU2ZOqF8.js`, 193,293 / 56,428): T797's `lazyView` and idle preload gave +749 B at its own build (`index-CKmfyoLI.js`, 194,042 B), T798 and T799 the other +533 B.
 - **All app JS**: 886,280 B (+1,293 B), 269,243 B gzip (+487 B against Phase 143 884,987 / 268,756, 39 files, 0 file delta; the six view chunks stay separate files).
 - **CSS**: `index-BNXJTUPd.css`: 53,895 B (0 delta), 10,526 B gzip (0 delta; the same file as Phase 143).
