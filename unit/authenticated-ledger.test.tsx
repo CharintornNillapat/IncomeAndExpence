@@ -3,6 +3,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { useState } from 'react';
 import { render, cleanup, waitFor, screen, fireEvent } from '@testing-library/react';
 import { AccountModal } from '../src/components/account/AccountModal';
+import { NavbarSyncBadge } from '../src/components/navbar/NavbarLedgerStatus';
 import { useDiaryActions, useDiaryState } from '../src/context/DiaryContext';
 import { useKeywordRulesActions, useKeywordRulesState } from '../src/context/KeywordRulesContext';
 import { useTemplateActions, useTemplateState } from '../src/context/TemplateContext';
@@ -92,6 +93,8 @@ const fake = vi.hoisted(() => {
      * in `src/lib/supabase.ts` does for a real 401 from PostgREST.
      */
     unauthorized: new Set<() => void>(),
+    realtime: new Map<string, (payload: { new?: Record<string, unknown> | null; old?: Record<string, unknown> | null }) => void>(),
+    echo: false,
     seq: 0,
   };
 
@@ -106,6 +109,14 @@ const fake = vi.hoisted(() => {
   };
 
   const macrotask = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
+
+  function emit(table: string, row: Record<string, unknown>) {
+    if (!state.echo) return;
+    const handler = state.realtime.get(table);
+    if (handler) {
+      handler({ new: { ...row } });
+    }
+  }
 
   function matches(row: Record<string, unknown>, filters: ['eq' | 'in', string, unknown][]) {
     return filters.every(([kind, col, value]) =>
@@ -146,14 +157,21 @@ const fake = vi.hoisted(() => {
           return { id: `${table}-srv-${state.seq}`, created_at: now, updated_at: now, ...p };
         });
         rows.push(...inserted);
+        for (const row of inserted) emit(table, row);
         const data = single ? inserted[0] : returning ? inserted : null;
         return { data, error: null };
       }
       if (call.op === 'update') {
+        const matched: Record<string, unknown>[] = [];
         for (const row of rows) {
-          if (matches(row, call.filters)) Object.assign(row, call.payload as object);
+          if (matches(row, call.filters)) {
+            Object.assign(row, call.payload as object);
+            matched.push(row);
+          }
         }
-        return { data: null, error: null };
+        for (const row of matched) emit(table, row);
+        const data = returning ? (single ? matched[0] ?? null : matched) : null;
+        return { data, error: null };
       }
       state.tables[table] = rows.filter((r) => !matches(r, call.filters));
       return { data: null, error: null };
@@ -232,7 +250,8 @@ const fake = vi.hoisted(() => {
   }
 
   const channel = {
-    on() {
+    on(_event: string, opts?: { table?: string }, cb?: (payload: { new?: Record<string, unknown> | null; old?: Record<string, unknown> | null }) => void) {
+      if (opts?.table && cb) state.realtime.set(opts.table, cb);
       return channel;
     },
     subscribe(cb?: (status: string) => void) {
@@ -270,7 +289,7 @@ const fake = vi.hoisted(() => {
     removeChannel: () => {},
   };
 
-  return { USER_ID, session, state, client };
+  return { USER_ID, session, state, client, emit };
 });
 
 // The real module's auth error checks; the client is the fake, already
@@ -479,12 +498,14 @@ function applyEffect(tx: Row, sign: 1 | -1) {
     source.balance = round2(Number(source.balance) + sign * SOURCE_SIGN[tx.type as string] * amount);
     source.updated_at = now;
     source_balance = source.balance as number;
+    fake.emit('wallets', source);
   }
   const dest = tx.type === 'TRANSFER' ? rows('wallets').find((w) => w.id === tx.destination_wallet_id) : undefined;
   if (dest) {
     dest.balance = round2(Number(dest.balance) + sign * amount);
     dest.updated_at = now;
     dest_balance = dest.balance as number;
+    fake.emit('wallets', dest);
   }
   const debtRow =
     tx.type === 'DEBT_REPAYMENT' && tx.debt_id
@@ -496,6 +517,7 @@ function applyEffect(tx: Row, sign: 1 | -1) {
     debtRow.updated_at = now;
     debt_remaining = debtRow.remaining_amount as number;
     debt_settled = debtRow.is_settled as boolean;
+    fake.emit('debts', debtRow);
   }
   return { source_balance, dest_balance, debt_remaining, debt_settled };
 }
@@ -528,6 +550,7 @@ function insertTransaction(fields: Row): Row {
     ...fields,
   };
   rows('transactions').push(row);
+  fake.emit('transactions', row);
   return row;
 }
 
@@ -579,6 +602,7 @@ function installLedgerRpcs() {
     const effect = applyEffect(tx, a.p_deleted ? -1 : 1);
     tx.is_deleted = a.p_deleted;
     tx.updated_at = new Date().toISOString();
+    fake.emit('transactions', tx);
     return { data: { changed: true, transaction: { ...tx }, ...effect }, error: null };
   });
 
@@ -647,6 +671,7 @@ function installLedgerRpcs() {
       raw_input: rawInput,
       updated_at: new Date(Date.parse(String(tx.updated_at)) + 1000).toISOString(),
     });
+    fake.emit('transactions', tx);
     return { data: { changed: true, transaction: { ...tx }, balances: balances() }, error: null };
   });
 
@@ -734,6 +759,7 @@ function installLedgerRpcs() {
       updated_at: now,
     };
     rows('wallets').push(walletRow);
+    fake.emit('wallets', walletRow);
     let tx: Row | null = null;
     if (opening !== 0) {
       tx = insertTransaction({
@@ -756,6 +782,8 @@ beforeEach(async () => {
   latest = null;
   localStorage.clear();
   seed();
+  fake.state.echo = false;
+  fake.state.realtime.clear();
   fake.state.calls = [];
   fake.state.failures.clear();
   fake.state.gates.clear();
@@ -2131,7 +2159,7 @@ describe('the diary, signed in (Phase 116, ADR 0092)', () => {
     }]));
   });
 
-  it('a new day is one insert under the account, then a reload shows it', async () => {
+  it('a new day is one insert under the account, and the saved row shows without a reload', async () => {
     const result = await diaryWrite().upsertDiaryEntry({ date: TODAY, mood: 4, workout: false, foodQuality: 'HEALTHY', notes: 'Fine' });
     expect(result).toEqual({ success: true });
     expect(writes('diary_entries', 'insert')).toHaveLength(1);
@@ -2448,6 +2476,59 @@ describe('the Account & Security modal (ADR 0024)', () => {
     expect(await screen.findByLabelText('Display Name')).toBe(document.getElementById('account-profile-name-input'));
     expect(screen.getByLabelText('New Password')).toBe(document.getElementById('account-security-new-password'));
     expect(screen.getByLabelText('Confirm Password')).toBe(document.getElementById('account-security-confirm-password'));
+  });
+});
+
+describe('which loads show Syncing (T798, ADR 0026 amendment)', () => {
+  beforeEach(() => installLedgerRpcs());
+
+  const holdLoad = () => {
+    let release!: () => void;
+    fake.state.gates.set('wallets:select', new Promise<void>((resolve) => (release = resolve)));
+    return () => release();
+  };
+  const badgeText = () => document.getElementById('navbar-sync-status')!.textContent;
+
+  it('marks a load the user starts, for as long as it runs', async () => {
+    const release = holdLoad();
+    const pending = actions().refreshFromCloud({ manual: true });
+    await waitFor(() => expect(state().isSyncing).toBe(true));
+    expect(state().isManualSync).toBe(true);
+    release();
+    await pending;
+    await waitFor(() => expect(state().isSyncing).toBe(false));
+    expect(state().isManualSync).toBe(false);
+  });
+
+  it('leaves a background load unmarked, and the badge keeps Synced while it runs', async () => {
+    showUi!(<NavbarSyncBadge onOpenAuth={() => {}} />);
+    const release = holdLoad();
+    const pending = actions().refreshFromCloud();
+    await waitFor(() => expect(state().isSyncing).toBe(true));
+    expect(state().isManualSync).toBe(false);
+    expect(badgeText()).toBe('Synced');
+    release();
+    await pending;
+    await waitFor(() => expect(state().isSyncing).toBe(false));
+  });
+
+  it('Sync now shows Syncing at once, and keeps its own spinner', async () => {
+    showUi!(
+      <>
+        <NavbarSyncBadge onOpenAuth={() => {}} />
+        <AccountModal isOpen onClose={() => showUi!(null)} onRequestSignIn={() => {}} />
+      </>
+    );
+    const release = holdLoad();
+    fireEvent.click(await screen.findByText('Sync now'));
+    await waitFor(() => expect(state().isSyncing).toBe(true));
+    expect(state().isManualSync).toBe(true);
+    expect(badgeText()).toContain('Syncing');
+    const syncBtn = document.getElementById('account-sync-btn') as HTMLButtonElement;
+    expect(syncBtn.disabled).toBe(true);
+    expect(syncBtn.textContent).toContain('Syncing…');
+    release();
+    await waitFor(() => expect(state().isSyncing).toBe(false));
   });
 });
 
@@ -2909,5 +2990,192 @@ describe("a new account's seed, through seed_starter_account (Phase 64, ADR 0039
     expect(state().wallets).toHaveLength(0);
     expect(mine('wallets')).toHaveLength(0);
     noClientInserts();
+  });
+});
+
+describe('an own save does not reload (T799, ADR 0003 amendment)', () => {
+  const quietPeriod = () => new Promise<void>((resolve) => setTimeout(resolve, 600));
+
+  function editOf(txId: string, changes: Partial<TransactionEdit>): TransactionEdit {
+    const tx = state().transactions.find((t) => t.id === txId)!;
+    return {
+      type: tx.type,
+      amount: tx.amount,
+      rawInput: tx.rawInput,
+      walletId: tx.walletId,
+      destinationWalletId: tx.destinationWalletId,
+      categoryId: tx.categoryId,
+      description: tx.description,
+      transactionDate: tx.transactionDate,
+      ...changes,
+    };
+  }
+
+  beforeEach(() => {
+    installLedgerRpcs();
+    fake.state.echo = true;
+  });
+
+  it('an expense whose echoes arrive before its response', async () => {
+    const result = await expense(200);
+    expect(result.success).toBe(true);
+    await landed(result.txId);
+    await quietPeriod();
+    expect(writes('wallets', 'select')).toHaveLength(0);
+    expect(wallet()?.balance).toBe(WALLET_OPENING - 200);
+  });
+
+  it('a transfer whose echoes arrive before its response', async () => {
+    fake.state.rpcs.set('transfer_funds', (a) => {
+      const amount = Number(a.p_amount);
+      const now = new Date().toISOString();
+      const source = rows('wallets').find((w) => w.id === a.p_source_wallet_id)!;
+      const dest = rows('wallets').find((w) => w.id === a.p_dest_wallet_id)!;
+      source.balance = round2(Number(source.balance) - amount);
+      source.updated_at = now;
+      fake.emit('wallets', source);
+      dest.balance = round2(Number(dest.balance) + amount);
+      dest.updated_at = now;
+      fake.emit('wallets', dest);
+      const tx = insertTransaction({
+        wallet_id: source.id,
+        destination_wallet_id: dest.id,
+        amount,
+        type: 'TRANSFER',
+        description: a.p_notes,
+        transaction_date: a.p_date,
+        idempotency_key: a.p_idempotency_key,
+        raw_input: a.p_raw_input ?? null,
+      });
+      return {
+        data: {
+          reused: false,
+          transaction: { ...tx },
+          source_balance: source.balance,
+          dest_balance: dest.balance,
+        },
+        error: null,
+      };
+    });
+
+    const result = await actions().addTransaction({
+      amount: 250,
+      type: 'TRANSFER',
+      walletId: WALLET,
+      destinationWalletId: CASH,
+      description: 'Transfer',
+      transactionDate: TODAY,
+    });
+    expect(result.success).toBe(true);
+    await quietPeriod();
+    expect(writes('wallets', 'select')).toHaveLength(0);
+    expect(wallet(WALLET)?.balance).toBe(4750);
+    expect(wallet(CASH)?.balance).toBe(1250);
+  });
+
+  it('a money edit that keeps its wallet', async () => {
+    fake.state.echo = false;
+    const spent = await expense(200);
+    await landed(spent.txId);
+    fake.state.echo = true;
+    fake.state.calls = [];
+
+    const result = await actions().updateTransaction(spent.txId!, editOf(spent.txId!, { amount: 250 }));
+    expect(result.success).toBe(true);
+    await quietPeriod();
+    expect(writes('wallets', 'select')).toHaveLength(0);
+    expect(wallet()?.balance).toBe(WALLET_OPENING - 250);
+  });
+
+  it('a new wallet with an opening balance', async () => {
+    const result = await actions().addWallet(
+      { name: 'Visa', type: 'CREDIT_CARD', currency: 'THB', color: '#e11d48', icon: 'credit_card' },
+      -5000
+    );
+    expect(result.success).toBe(true);
+    await quietPeriod();
+    expect(writes('wallets', 'select')).toHaveLength(0);
+    const visa = state().wallets.find((w) => w.name === 'Visa');
+    expect(visa?.balance).toBe(-5000);
+  });
+
+  it('a diary save for a new day', async () => {
+    const result = await diaryWrite().upsertDiaryEntry({
+      date: TODAY,
+      mood: 4,
+      workout: false,
+      foodQuality: 'HEALTHY',
+      notes: 'Fine',
+    });
+    expect(result.success).toBe(true);
+    await quietPeriod();
+    expect(writes('wallets', 'select')).toHaveLength(0);
+    expect(writes('diary_entries', 'select')).toHaveLength(0);
+    expect(entries().map((e) => [e.date, e.mood, e.notes])).toEqual([[TODAY, 4, 'Fine']]);
+  });
+
+  it('a diary save for a day already logged', async () => {
+    fake.state.tables.diary_entries.push({
+      id: 'diary-srv-1',
+      user_id: fake.USER_ID,
+      date: TODAY,
+      mood: 3,
+      workout: true,
+      workout_note: 'Run',
+      food_quality: 'AVERAGE',
+      notes: null,
+      is_deleted: false,
+      created_at: '2026-09-26T00:00:00.000Z',
+      updated_at: '2026-09-26T00:00:00.000Z',
+    });
+    await actions().refreshFromCloud();
+    await waitFor(() => expect(entries()).toHaveLength(1));
+    fake.state.calls = [];
+
+    const result = await diaryWrite().upsertDiaryEntry({ date: TODAY, mood: 5, workout: true, foodQuality: 'HEALTHY' });
+    expect(result.success).toBe(true);
+    await quietPeriod();
+    expect(writes('wallets', 'select')).toHaveLength(0);
+    expect(writes('diary_entries', 'select')).toHaveLength(0);
+    expect(entries()[0].mood).toBe(5);
+  });
+
+  it('a CSV import reads once', async () => {
+    const result = await actions().commitBulkImport([importRow({ amount: 300 })], 'import-key-t799');
+    expect(result.success).toBe(true);
+    await quietPeriod();
+    expect(writes('wallets', 'select')).toHaveLength(1);
+  });
+
+  it('guard: a change from another device still reloads', async () => {
+    serverWallet(WALLET).balance = 7777;
+    fake.emit('wallets', serverWallet(WALLET));
+    await waitFor(() => expect(wallet()?.balance).toBe(7777));
+  });
+
+  it('guard: another device\'s row in the same window as an own save still reloads', async () => {
+    const now = new Date().toISOString();
+    const pending = expense(200);
+    const remoteRow = {
+      id: 'transactions-remote-1',
+      user_id: fake.USER_ID,
+      wallet_id: WALLET,
+      destination_wallet_id: null,
+      category_id: null,
+      debt_id: null,
+      amount: 50,
+      type: 'EXPENSE',
+      description: 'Remote expense',
+      transaction_date: TODAY,
+      raw_input: null,
+      is_deleted: false,
+      created_by: fake.USER_ID,
+      created_at: now,
+      updated_at: now,
+    };
+    rows('transactions').push(remoteRow);
+    fake.emit('transactions', remoteRow);
+    await pending;
+    await waitFor(() => expect(state().transactions.some((t) => t.id === 'transactions-remote-1')).toBe(true));
   });
 });

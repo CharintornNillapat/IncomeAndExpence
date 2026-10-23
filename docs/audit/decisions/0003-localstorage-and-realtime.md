@@ -34,3 +34,32 @@ Rejected polling (T17 option c): loses the responsiveness benefit realtime sync 
 ## Revisit if
 
 The manual two-device checklist for T17 finds the `user_id` filter does not apply cleanly to one of the 5 tables (e.g. a join table without a direct `user_id` column) — in that case the filter must be scoped per-table rather than applied uniformly to the channel.
+
+## Amendment (T799, Phase 144): an own save does not reload
+
+**Date:** 2026-10-23
+
+### Context
+
+Three gaps caused signed-in writes on this client to trigger full cloud reloads:
+1. **Ids marked only after the remote call:** TRANSFER, diary writes, and server-generated insert ids left a window where an incoming echo arrived before the id was added to `recentLocalWriteIds`, scheduling an unnecessary reload.
+2. **An echo consumed its mark:** `update_transaction` (reverse then apply) and `create_wallet` with an opening balance update a wallet row twice in one transaction; the first echo deleted the id from `recentLocalWriteIds`, leaving the second echo to schedule a reload.
+3. **Full reload on successful save:** `upsertDiaryEntry` called `refreshFromCloud()` after every successful save despite already receiving the saved row, and CSV import echoes triggered an extra reload after its initial fetch.
+
+### Decisions
+
+1. **Mark known ids before the call:** every write marks the row ids it knows before dispatching the request. A server-generated id is marked as soon as the response returns it.
+2. **Judge echoes when the debounce timer fires:** an event is evaluated when the 400 ms debounce fires rather than on arrival. Unmarked event ids are collected in a pending set. When the timer fires, a reload runs only if at least one remembered id remains unmarked in `recentLocalWriteIds`, or if a trigger with no row id requested a reload (`online`, `visibilitychange`, re-`SUBSCRIBED`, or an event without an id).
+3. **Echoes do not consume marks:** an incoming echo matching a marked id no longer deletes that id from the set. The id remains suppressed for its full 5 s window (`LOCAL_ECHO_SUPPRESS_MS`), so multiple echoes from a single atomic operation stay quiet.
+4. **Apply returned rows instead of reloading:** a write that receives its saved row back applies it directly to local state and does not call `refreshFromCloud()` (the diary save). A write whose response lacks row data keeps its single reload (the CSV import), but its echoes are marked so they add no second reload.
+
+### Unchanged
+
+- The 400 ms debounce interval (`REALTIME_RELOAD_DEBOUNCE_MS`), the 5 s suppression window (`LOCAL_ECHO_SUPPRESS_MS`), the `user_id` subscription filter, and the 30 s staleness window (`CLOUD_STALE_AFTER_MS`).
+- All recovery re-reads on failure or unknown outcomes (T69 mid-flight reloads, `DEBT_OVERPAYMENT`, unexpected responses, transport failures).
+- Reconnection triggers and all ledger arithmetic.
+
+### Limits
+
+1. If an echo arrives more than 400 ms before its own HTTP response, it will still trigger a single reload. This is a redundant read, not an incorrect state.
+2. If another device modifies a row that this client wrote within the preceding 5 s and no other row is touched, that change is not picked up until the next sync trigger (remote write to another row, reconnect, tab return after 30 s, or manual Sync now).

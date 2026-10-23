@@ -23,6 +23,7 @@ Read this before touching `src/components/`, `src/views/`, `src/index.css`, `App
 - **One glow:** `shadow-quick-add` on the mobile centre Quick Add.
 - **Motion is 150 to 200 ms on hover, focus or a state change** [0082, 0083]. No `scale-*` for selection, no springs, no entrance animations, **no animation library**. A tween is a `motion-*` keyframe class; an element that must stay for its exit goes in `ui/motion.tsx`'s `Presence` (unmounts on a timer, never `animationend`); a pill slides with `slidePill`. Under `prefers-reduced-motion: reduce` nothing moves, including `animate-spin`/`animate-pulse`. Continuous motion only while real work runs, beside text saying so.
 - **Loading is a static outline** (`ViewLoadingFallback`), never a pulse or spinner.
+- **Tab views are `lazyView`** (preloaded at idle, [0104]); a preloaded view never shows `ViewLoadingFallback`; new tab views must be added to the preload list in `App.tsx`.
 - **Nothing moves while the app loads** [0060]: `<main>` keeps its `min-h-[calc(100dvh-...)]` so the footer starts below the fold.
 - **Uppercase with `tracking-wider`** only for compact metric labels, column headers and tickers.
 - **Focus is one global `:focus-visible` rule** [0029]; never a control's own focus style. Fields keep `focus:ring-2 ring-focus`. A removed outline needs `focus-visible:ring-2 focus-visible:ring-focus`.
@@ -62,7 +63,7 @@ Read this before touching `src/components/`, `src/views/`, `src/index.css`, `App
 
 ## Playwright suite (`tests/*.spec.ts`)
 
-- **181 tests in 35 specs on Chromium, Firefox and WebKit: 543 runs, 537 pass, 6 skip by design** (Chromium-only layout shift and safe-area emulation).
+- **183 tests in 36 specs on Chromium, Firefox and WebKit: 549 runs, 543 pass, 6 skip by design** (Chromium-only layout shift and safe-area emulation).
 - **Hermetic by principle:** every spec that intercepts a request fulfils every response locally, so no run spends TypeSafe credits. Three specs intercept (`jev-classify`, `csv-classify`, `insights`); a fourth is allowed only if no unit test can reach the code. `voice-input.spec.ts` uses an init-script stub, not interception. **No spec signs in**, but the dev server reads `.env`, so never add a spec that submits real credentials.
 - **Never edit `src/` while a run is in flight;** the web server is a live Vite dev server and HMR corrupts the run.
 - **Two web servers:** port 3000 (`npm run dev`) for every spec, port 3100 (`vite --mode pwa-dev`) for `toast-layering.spec.ts` only. Check both ports for stale servers before a local run (`reuseExistingServer` tests whatever answers). `tests/global-setup.ts` warms 3100.

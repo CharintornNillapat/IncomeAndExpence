@@ -9,14 +9,18 @@ import { ReloadPrompt } from './components/ReloadPrompt';
 import { useTabSwipe } from './hooks/useTabSwipe';
 import { TAB_ORDER, tabFromHash, titleForTab, urlForTab } from './utils/tabRoute';
 import { dialogEntryOf } from './utils/modalHistory';
+import { lazyView, runWhenIdle } from './utils/lazyView';
 
-// Lazy-loaded route views for optimized bundle size & code splitting
-const DashboardView = lazy(() => import('./views/DashboardView').then(m => ({ default: m.DashboardView })));
-const TransactionsView = lazy(() => import('./views/TransactionsView').then(m => ({ default: m.TransactionsView })));
-const WalletsView = lazy(() => import('./views/WalletsView').then(m => ({ default: m.WalletsView })));
-const DebtsView = lazy(() => import('./views/DebtsView').then(m => ({ default: m.DebtsView })));
-const DiaryView = lazy(() => import('./views/DiaryView').then(m => ({ default: m.DiaryView })));
-const CategoriesView = lazy(() => import('./views/CategoriesView').then(m => ({ default: m.CategoriesView })));
+// ADR 0104: Tab views are preloaded at idle via lazyView and use(), so tab
+// switches render immediately without committing ViewLoadingFallback.
+const { View: DashboardView, preload: preloadDashboard } = lazyView(() => import('./views/DashboardView').then(m => m.DashboardView));
+const { View: TransactionsView, preload: preloadTransactions } = lazyView(() => import('./views/TransactionsView').then(m => m.TransactionsView));
+const { View: WalletsView, preload: preloadWallets } = lazyView(() => import('./views/WalletsView').then(m => m.WalletsView));
+const { View: DebtsView, preload: preloadDebts } = lazyView(() => import('./views/DebtsView').then(m => m.DebtsView));
+const { View: DiaryView, preload: preloadDiary } = lazyView(() => import('./views/DiaryView').then(m => m.DiaryView));
+const { View: CategoriesView, preload: preloadCategories } = lazyView(() => import('./views/CategoriesView').then(m => m.CategoriesView));
+
+const preloadViews = () => [preloadDashboard, preloadTransactions, preloadWallets, preloadDebts, preloadDiary, preloadCategories].forEach(p => p());
 
 // ADR 0010: deferred shell modals. Each is unreachable until its trigger is
 // clicked, and (Quick Add, Transfer) reaches the entry forms' chunks - lazy
@@ -83,6 +87,9 @@ const MainApp: React.FC = () => {
       setIsQuickAddOpen(true);
     }
   }, []);
+
+  // ADR 0104: Fetch view chunks in idle time after first paint.
+  useEffect(() => runWhenIdle(preloadViews), []);
 
   // T1 (Phase 2): MainApp no longer subscribes to the finance context. It did so
   // only to feed the quick-add modal, which meant every financial write

@@ -73,7 +73,7 @@ export function useDiaryEntriesState(load: () => DiaryEntry[]) {
   return { diaryEntries, setDiaryEntries, diaryEntriesRef };
 }
 
-/** The slice's two writes. A signed-in save reloads from the cloud, as before. */
+/** The slice's two writes. A signed-in save applies the row the server returns. */
 export function useDiaryMutations({
   isAuthenticated,
   currentUserId,
@@ -97,6 +97,7 @@ export function useDiaryMutations({
 
     if (isAuthenticated) {
       const existing = diaryEntriesRef.current.find((e) => e.date === entryData.date && !e.isDeleted);
+      if (existing) markLocalWrite(existing.id);
       const { data: upserted, error } = existing
         ? await supabase
             .from('diary_entries')
@@ -129,8 +130,16 @@ export function useDiaryMutations({
         return { success: false, error: error.message || 'Failed to save diary entry' };
       }
 
-      markLocalWrite(existing?.id ?? upserted?.id);
-      await refreshFromCloud();
+      if (!upserted) {
+        await refreshFromCloud();
+        return { success: true };
+      }
+
+      const saved = mapDiaryRow(upserted);
+      markLocalWrite(saved.id);
+      setDiaryEntries((prev) =>
+        prev.some((e) => e.id === saved.id) ? prev.map((e) => (e.id === saved.id ? saved : e)) : [saved, ...prev]
+      );
     } else {
       setDiaryEntries((prev) => {
         const existingIdx = prev.findIndex((e) => e.date === entryData.date && !e.isDeleted);

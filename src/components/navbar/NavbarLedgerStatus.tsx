@@ -1,4 +1,4 @@
-import React, { useSyncExternalStore } from 'react';
+import React, { useEffect, useState, useSyncExternalStore } from 'react';
 import { AlertTriangle, Circle, RefreshCw, UserCheck, LogIn, UserCog } from 'lucide-react';
 import { useFinanceActions, useFinanceState } from '../../context/FinanceContext';
 import { Button } from '../ui/Button';
@@ -44,11 +44,15 @@ const BADGE_BUTTON =
 const PILL_FOCUS = 'group-focus-visible:outline-2 group-focus-visible:outline-focus group-focus-visible:outline-offset-2';
 const MUTED_PILL = `${PILL} bg-surface-2 text-fg-secondary border-line`;
 
+/** A background load shows Syncing only once it has run this long (ADR 0026 amendment). */
+const SLOW_LOAD_MS = 1000;
+
 /**
  * DESIGN.md §4's one sync indicator, in five states (Phase 53b, T194). A guest
  * sees Local; a signed-in user sees, in this order of precedence, Offline,
- * Syncing (the only state that moves, and only while a load runs), Sync failed
- * (a button that retries) or Synced.
+ * Syncing (the only state that moves: at once for a load the user started,
+ * after 1 s for any other load; a quicker background load leaves the badge as
+ * it was (ADR 0026 amendment)), Sync failed (a button that retries) or Synced.
  *
  * Each button keeps its pill small but its hit box at 44px: the negative
  * vertical margin stops the taller box from pushing the navbar row apart.
@@ -56,9 +60,20 @@ const MUTED_PILL = `${PILL} bg-surface-2 text-fg-secondary border-line`;
  * contract); every signed-in state sits inside `#navbar-sync-status`.
  */
 export const NavbarSyncBadge: React.FC<NavbarSyncBadgeProps> = ({ onOpenAuth }) => {
-  const { isAuthenticated, isSyncing, syncError } = useFinanceState();
+  const { isAuthenticated, isSyncing, isManualSync, syncError } = useFinanceState();
   const { refreshFromCloud } = useFinanceActions();
   const isOnline = useIsOnline();
+
+  const [loadIsSlow, setLoadIsSlow] = useState(false);
+  useEffect(() => {
+    if (!isSyncing) return;
+    const timer = setTimeout(() => setLoadIsSlow(true), SLOW_LOAD_MS);
+    return () => {
+      clearTimeout(timer);
+      setLoadIsSlow(false);
+    };
+  }, [isSyncing]);
+  const showSyncing = isSyncing && (isManualSync || loadIsSlow);
 
   if (!isAuthenticated) {
     return (
@@ -85,7 +100,7 @@ export const NavbarSyncBadge: React.FC<NavbarSyncBadgeProps> = ({ onOpenAuth }) 
         <span>Offline</span>
       </span>
     );
-  } else if (isSyncing) {
+  } else if (showSyncing) {
     badge = (
       <span className={`${PILL} bg-pending-tint text-pending border-pending-line`}>
         <RefreshCw className="w-3 h-3 shrink-0 motion-safe:animate-spin" />
@@ -96,7 +111,7 @@ export const NavbarSyncBadge: React.FC<NavbarSyncBadgeProps> = ({ onOpenAuth }) 
     badge = (
       <button
         type="button"
-        onClick={() => void refreshFromCloud()}
+        onClick={() => void refreshFromCloud({ manual: true })}
         title={`${syncError}. Tap to try again.`}
         aria-label="Sync failed. Try again"
         className={BADGE_BUTTON}
