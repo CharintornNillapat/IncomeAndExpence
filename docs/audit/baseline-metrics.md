@@ -23,6 +23,14 @@ npx tsc --noEmit --extendedDiagnostics
 
 ## Figures
 
+### Phase 144 - delta against Phase 143
+
+- **Entry chunk** `index-BI7UeuqQ.js`: 194,575 B (+1,282 B), 56,930 B gzip (+502 B against Phase 143 `index-TU2ZOqF8.js`, 193,293 / 56,428): T797's `lazyView` and idle preload gave +749 B at its own build (`index-CKmfyoLI.js`, 194,042 B), T798 and T799 the other +533 B.
+- **All app JS**: 886,280 B (+1,293 B), 269,243 B gzip (+487 B against Phase 143 884,987 / 268,756, 39 files, 0 file delta; the six view chunks stay separate files).
+- **CSS**: `index-BNXJTUPd.css`: 53,895 B (0 delta), 10,526 B gzip (0 delta; the same file as Phase 143).
+- **Vitest**: 68 files, 1500 tests (+25 tests, +2 files against Phase 143: `unit/lazy-view.test.tsx`, 5 tests from T797; `unit/navbar-sync-badge.test.tsx`, 8 tests from T798; `unit/authenticated-ledger.test.tsx`, +3 from T798 and +9 from T799), 1500 passed in 100.75 s (`workflow/stages/02_build/output/logs/T800-unit.log`). Per-task runs: T797 1480 passed in 54.02 s, T798 1491 in 74.62 s, T799 1500 in 71.35 s (`workflow/stages/02_build/output/logs/T79N-unit.log`).
+- **Playwright**: `npx playwright test --list` reports 183 tests in 36 files, 549 runs across 3 projects (+2 tests, +1 file, +6 runs: T797's `tests/tab-preload.spec.ts`). Full run by T800, at the owner's request: 543 passed, 6 skipped, 0 failed across 3 projects (12.8 min, `workflow/stages/02_build/output/logs/T800-playwright.log`). Earlier full run at 183 tests: T797, 543 passed, 6 skipped (10.8 min).
+
 ### Phase 143 - delta against Phase 142
 
 Measured at `45b9e87`; T796 changed docs only and the merge commit `7aa9ecb` has the same tree as `a0f31b9`, so the figures hold for it.
