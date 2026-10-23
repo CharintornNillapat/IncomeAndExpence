@@ -1,3 +1,4 @@
+import { identityDisplayColor } from '../../utils/identityPalette';
 import React from 'react';
 
 export type ProgressBarSize = 'sm' | 'md' | 'lg';
@@ -60,7 +61,7 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({
     >
       <div
         className={`h-full rounded-full transition-[width] duration-200 ease-out ${color ? '' : TONE_CLASS[tone]}`.trim()}
-        style={color ? { width: `${clamped}%`, backgroundColor: color } : { width: `${clamped}%` }}
+        style={color ? { width: `${clamped}%`, backgroundColor: identityDisplayColor(color) } : { width: `${clamped}%` }}
       />
     </div>
   );

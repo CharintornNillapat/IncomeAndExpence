@@ -1,3 +1,4 @@
+import { identityDisplayColor } from '../../utils/identityPalette';
 import React, { useState } from 'react';
 import { ArrowLeftRight, ArrowRight, AlertCircle, AlertTriangle, CheckCircle2, Wallet as WalletIcon } from 'lucide-react';
 import { useFinanceActions } from '../../context/FinanceContext';
@@ -104,8 +105,8 @@ const TransferWalletPanel: React.FC<TransferWalletPanelProps> = ({
 
       <div className="flex items-center gap-2">
         <div
-          className="w-8 h-8 rounded-lg flex items-center justify-center text-white shrink-0"
-          style={{ backgroundColor: wallet?.color || '#a8a29e' }}
+          className="w-8 h-8 rounded-lg flex items-center justify-center text-white shrink-0 bg-wallet-fallback"
+          style={wallet?.color ? { backgroundColor: identityDisplayColor(wallet.color) } : undefined}
         >
           <Icon className="w-4 h-4" />
         </div>

@@ -1,3 +1,4 @@
+import { identityDisplayColor } from '../../utils/identityPalette';
 import React, { useState } from 'react';
 import { ArrowLeftRight, History, Pencil, SlidersHorizontal } from 'lucide-react';
 import type { Category, Wallet, WalletEdit, WalletType } from '../../types';
@@ -143,7 +144,7 @@ const WalletDetailBody: React.FC<WalletDetailProps> = ({
         <span
           aria-hidden="true"
           className="w-[52px] h-[52px] shrink-0 rounded-inner flex items-center justify-center"
-          style={{ backgroundColor: `color-mix(in srgb, ${wallet.color} 18%, transparent)`, color: wallet.color }}
+          style={{ backgroundColor: `color-mix(in srgb, ${identityDisplayColor(wallet.color)} 18%, transparent)`, color: identityDisplayColor(wallet.color) }}
         >
           <Icon className="w-6 h-6" />
         </span>
@@ -224,7 +225,7 @@ const WalletDetailBody: React.FC<WalletDetailProps> = ({
                 >
                   <span
                     className={`w-7 h-7 rounded-full ${draft.color === color ? 'ring-2 ring-focus ring-offset-2 ring-offset-surface-1' : ''}`}
-                    style={{ backgroundColor: color }}
+                    style={{ backgroundColor: identityDisplayColor(color) }}
                   />
                 </button>
               ))}

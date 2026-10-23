@@ -23,7 +23,7 @@ describe('Chip', () => {
     expect(chip.className).toContain('bg-adjust-tint');
     expect(chip.className).toContain('text-chip-text');
     const dot = chip.querySelector('[aria-hidden="true"]') as HTMLElement;
-    expect(dot.style.backgroundColor).toBe('rgb(232, 121, 166)');
+    expect(dot.style.backgroundColor).toBe('var(--identity-5)');
     expect(chip.textContent).toBe('Food & Dining');
   });
 
@@ -60,7 +60,10 @@ describe('ProgressBar', () => {
     expect(fill().className).toContain('bg-expense-fill');
     cleanup();
     render(<ProgressBar percent={50} color="#4FB7A8" />);
-    expect(fill().style.backgroundColor).toBe('rgb(79, 183, 168)');
+    expect(fill().style.backgroundColor).toBe('var(--identity-3)');
+    cleanup();
+    render(<ProgressBar percent={50} color="#0ea5e9" />);
+    expect(fill().style.backgroundColor).toBe('rgb(14, 165, 233)');
     expect(fill().className).not.toContain('bg-income-fill');
   });
 });
@@ -77,7 +80,7 @@ describe('AllocationBar', () => {
     const parts = Array.from(container.querySelectorAll('[data-segment]')) as HTMLElement[];
     expect(parts.map((p) => p.dataset.segment)).toEqual(['cash', 'main']);
     expect(parts.map((p) => p.style.flexGrow)).toEqual(['500', '1500']);
-    expect(parts[0].style.backgroundColor).toBe('rgb(217, 160, 102)');
+    expect(parts[0].style.backgroundColor).toBe('var(--identity-1)');
   });
 
   it('names every share for a screen reader, leaving out a wallet in debt', () => {

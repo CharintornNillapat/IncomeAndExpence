@@ -8,6 +8,7 @@ import { formatCurrencyAmount, MINUS } from '../src/utils/currency';
 import { todayIsoDate } from '../src/utils/date';
 import type { Transaction, Wallet } from '../src/types';
 import { SAMPLE_WALLETS } from './fixtures/guestLedger';
+import { identityDisplayColor } from '../src/utils/identityPalette';
 
 /**
  * Phase 59 (ADR 0034, spec 6.3): the Wallets page, mounted inside the real
@@ -286,10 +287,7 @@ describe('edit', () => {
 
 describe('the colour choice (audit 008 finding 2)', () => {
   const IDENTITY_NAMES = ['Tan', 'Blue', 'Teal', 'Peach', 'Rose', 'Periwinkle', 'Lavender', 'Aqua', 'Khaki', 'Steel', 'Orchid', 'Iris'];
-  const rgb = (hex: string) => {
-    const n = parseInt(hex.slice(1), 16);
-    return `rgb(${n >> 16}, ${(n >> 8) & 255}, ${n & 255})`;
-  };
+
   const IDENTITY = ['#D9A066', '#6C8EEF', '#4FB7A8', '#F59E6B', '#E879A6', '#7DA2F0', '#B69CF5', '#5CC8B8', '#C7B38A', '#8FA8C8', '#D98FD0', '#9C8CD9'];
 
   it("offers exactly spec section 1's twelve identity colours, and saves the one picked", async () => {
@@ -300,7 +298,7 @@ describe('the colour choice (audit 008 finding 2)', () => {
     // Each swatch is named by its colour (Phase 63), not by a hex code.
     const swatches = [...byId('wallet-edit-form')!.querySelectorAll('fieldset button')];
     expect(swatches.map((s) => s.getAttribute('aria-label'))).toEqual(IDENTITY_NAMES);
-    expect(swatches.map((s) => (s.querySelector('span') as HTMLElement).style.backgroundColor)).toEqual(IDENTITY.map(rgb));
+    expect(swatches.map((s) => (s.querySelector('span') as HTMLElement).style.backgroundColor)).toEqual(IDENTITY.map(identityDisplayColor));
 
     fireEvent.click(swatches[4]);
     expect(swatches[4].getAttribute('aria-pressed')).toBe('true');
@@ -308,7 +306,7 @@ describe('the colour choice (audit 008 finding 2)', () => {
     await waitFor(() => expect(byId('wallet-edit-form')).toBeNull());
     // The selected row's tile now carries the new colour.
     const tile = byId('wallet-entity-wal-cash')!.querySelector('span[aria-hidden="true"]') as HTMLElement;
-    expect(tile.style.color).toBe('rgb(232, 121, 166)');
+    expect(tile.style.color).toBe('var(--identity-5)');
   });
 });
 
@@ -365,9 +363,9 @@ describe("spec 5.1's colour migration on this device (Phase 63, ADR 0038)", () =
   it('starts a fresh guest on blue, tan and teal', () => {
     wide();
     mount();
-    expect(tile('wal-main-checking')).toBe(rgb('#6C8EEF'));
-    expect(tile('wal-cash')).toBe(rgb('#D9A066'));
-    expect(tile('wal-savings')).toBe(rgb('#4FB7A8'));
+    expect(tile('wal-main-checking')).toBe('var(--identity-2)');
+    expect(tile('wal-cash')).toBe('var(--identity-1)');
+    expect(tile('wal-savings')).toBe('var(--identity-3)');
   });
 
   it('moves starter wallets still on their old colours, and leaves any other colour alone', () => {
@@ -382,10 +380,10 @@ describe("spec 5.1's colour migration on this device (Phase 63, ADR 0038)", () =
         walletRow({ id: 'o', name: 'Pocket', color: '#16a34a' }),
       ],
     });
-    expect(tile('m')).toBe(rgb('#6C8EEF'));
-    expect(tile('c')).toBe(rgb('#D9A066'));
-    expect(tile('s')).toBe(rgb('#4FB7A8'));
-    expect(tile('p')).toBe(rgb('#E879A6'));
+    expect(tile('m')).toBe('var(--identity-2)');
+    expect(tile('c')).toBe('var(--identity-1)');
+    expect(tile('s')).toBe('var(--identity-3)');
+    expect(tile('p')).toBe('var(--identity-5)');
     expect(tile('o')).toBe(rgb('#16a34a'));
   });
 });

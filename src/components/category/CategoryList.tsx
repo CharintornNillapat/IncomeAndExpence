@@ -1,3 +1,4 @@
+import { identityDisplayColor } from '../../utils/identityPalette';
 import React from 'react';
 import { ChevronRight, Lock } from 'lucide-react';
 import { Category } from '../../types';
@@ -61,7 +62,7 @@ export const CategoryList: React.FC<CategoryListProps> = ({ groups, inUseIds, se
                         isSelected ? 'bg-brand-soft border-brand-soft-line' : 'bg-surface-2 border-line hover:border-line-strong'
                       }`}
                     >
-                      <span aria-hidden="true" className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: category.color }} />
+                      <span aria-hidden="true" className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: identityDisplayColor(category.color) }} />
                       <span className="flex-1 min-w-0 text-sm font-medium text-fg break-words">{category.name}</span>
                       <Badge className="shrink-0 font-semibold">{tagFor(category, inUseIds.has(category.id))}</Badge>
                       <ChevronRight aria-hidden="true" className="w-4 h-4 shrink-0 text-fg-muted" />

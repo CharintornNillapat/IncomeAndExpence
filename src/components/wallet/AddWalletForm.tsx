@@ -1,3 +1,4 @@
+import { identityDisplayColor } from '../../utils/identityPalette';
 import React, { useState } from 'react';
 import { useFinanceActions } from '../../context/FinanceContext';
 import { useSubmitHandler } from '../../hooks/useSubmitHandler';
@@ -164,7 +165,7 @@ export const AddWalletForm: React.FC<AddWalletFormProps> = ({
                 className={`w-7 h-7 rounded-full ${
                   walletColor === c ? 'ring-2 ring-focus ring-offset-2 ring-offset-surface-1' : ''
                 }`}
-                style={{ backgroundColor: c }}
+                style={{ backgroundColor: identityDisplayColor(c) }}
               />
             </button>
           ))}

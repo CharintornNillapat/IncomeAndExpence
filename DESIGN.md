@@ -1,7 +1,7 @@
 # FinLife Tracker Design System
 
 ## Overview
-FinLife Tracker is a personal money tracker for Thai Baht wallets, with a daily diary beside it. It is built for reading balances and transactions at a glance, on a phone or a desktop. Dark is the look it was designed in, and a matching light theme ships alongside it. The app follows the system setting by default.
+FinLife Tracker is a personal money tracker for Thai Baht wallets, with a daily diary beside it. It is built for reading balances and transactions at a glance, on a phone or a desktop. Dark is the look it was designed in, and a matching light theme ships alongside it. The light theme is the Paper Ledger palette (ADR 0103). The app follows the system setting by default.
 
 **Source of truth.** Since Phase 55 the direction is `docs/design/finlife-redesign-spec.md` (the redesign spec and its mockup). This file keeps the rules the app enforces and the reason for each. Where the two differ, the difference is listed under "Deviations from the spec" with its reason.
 
@@ -27,37 +27,85 @@ FinLife Tracker is a personal money tracker for Thai Baht wallets, with a daily 
 | Violet | `brand` | One primary button per area, the active nav tab, a selected option, focus | Decoration |
 | Amber | `pending` | Something that really needs fixing: a warning, a sync in progress | Ordinary values ("Avg food") |
 
-- **Cards keep a neutral border** (`line`). A card is never outlined green or red; the colour sits on the number.
+- **Cards keep a neutral border** (`line`); the Left over card is the one exception (`hero-line`). A card is never outlined green or red; the colour sits on the number.
 - **A net or left-over figure** is `fg` when positive and `expense` when negative. It never takes the income green.
-- **A selected option looks the same everywhere**: `selected` background, `focus` ring, `on-selected` text. A segmented control uses `control-active`.
+- **A selected option looks the same everywhere**: `selected` background, `focus` ring, `on-selected` text. A segmented control uses `segment-active`.
 
 ### Tokens
 Values live in `src/index.css`, on `:root` (light) and `.dark`. `@theme inline` maps them to Tailwind utilities, so one class covers both themes.
 
 | Role | Token | Dark (spec) | Light |
 |---|---|---|---|
-| Page | `canvas` | `#0B0E14` | `#FFFFFF` |
-| Header | `header` | `#0F131B` | `#F8FAFC` |
-| Card | `surface-1` | `#131722` | `#F8FAFC` |
-| Box inside a card, input | `surface-2` | `#0F131B` | `#F1F5F9` |
-| Menu, hover on a card | `surface-3` | `#1A1F2B` | `#E2E8F0` |
-| Selected segment | `control-active` | `#262B3A` | `#E2E8F0` |
-| Divider, card edge, progress track | `line` | `#1F2532` | `#E2E8F0` |
-| Secondary-button edge | `line-control` | `#252B38` | `#CBD5E1` |
-| Dashed edge, menu edge | `line-strong` | `#2A3140` | `#CBD5E1` |
-| Input edge | `line-input` | `#5E7092` | `#7C8BA1` |
-| Text 1 / 2 / 3 | `fg` / `fg-secondary` / `fg-muted` | `#E8EAF0` / `#A3AABB` / `#8A93A6` | `#0F172A` / `#475569` / `#586880` |
-| Disabled text | `fg-disabled` | `#4A5163` | `#94A3B8` |
-| Chip text (on `adjust` tint) | `chip-text` | `#C9CFDC` | `#334155` |
-| Danger-button edge | `danger-line` | `#4A2227` | `#FECDD3` |
+| Page | `canvas` | `#0B0E14` | `#F5F2EC` |
+| Header | `header` | `#0F131B` | `#FFFFFF` |
+| Card | `surface-1` | `#131722` | `#FFFFFF` |
+| Box inside a card, input | `surface-2` | `#0F131B` | `#EEE9E0` |
+| Menu, hover on a card | `surface-3` | `#1A1F2B` | `#E6E0D5` |
+| Hover shade, menu item hover | `control-active` | `#262B3A` | `#E6E0D5` |
+| Hero card edge | `hero-line` | `#1F2532` | `#D9D2F5` |
+| Selected segment | `segment-active` | `#262B3A` | `#EEE9E0` |
+| Mood day tile | `mood-tile` | `#0F131B` | `#F5F2EC` |
+| Empty mood dot | `mood-empty` | `#2A3140` | `#E0D8CB` |
+| Wallet fallback icon tile | `wallet-fallback` | `#A8A29E` | `#8A8172` |
+| Divider, card edge, progress track | `line` | `#1F2532` | `#E0D8CB` |
+| Secondary-button edge | `line-control` | `#252B38` | `#CFC5B4` |
+| Dashed edge, menu edge | `line-strong` | `#2A3140` | `#CFC5B4` |
+| Input edge | `line-input` | `#5E7092` | `#8A8172` |
+| Text 1 / 2 / 3 | `fg` / `fg-secondary` / `fg-muted` | `#E8EAF0` / `#A3AABB` / `#8A93A6` | `#1E1A15` / `#4A4338` / `#675F53` |
+| Disabled text | `fg-disabled` | `#4A5163` | `#A39B8E` |
+| Chip text (on `adjust` tint) | `chip-text` | `#C9CFDC` | `#4A4338` |
+| Danger-button edge | `danger-line` | `#4A2227` | `#ECC3C0` |
 
-Each hue has a text token and a solid `-tint` background: `income`, `expense`, `transfer`, `adjust`, `pending` (plus `pending-line` and `pending-body` for the warning banner), and `brand-soft` for the active nav tab. The primary button fill is `#7C3AED` with white text, at 5.70:1 in both themes.
+Each hue has a text token and a solid `-tint` background: `income`, `expense`, `transfer`, `adjust`, `pending` (plus `pending-line` and `pending-body` for the warning banner), and `brand-soft` for the active nav tab. The primary button fill is `brand-fill`, `#7C3AED` in dark (5.70:1) and `#4338CA` in light (7.90:1), with white text. The eleven fills are theme variables.
 
 ### Contrast (WCAG AA)
 Every text token passes 4.5:1 on every surface it can sit on, in both themes. Every hue passes on its own tint. `fg-muted` is the faintest text allowed: 5.80:1 on a dark card. Input edges and the focus outline reach 3:1 (WCAG 1.4.11); the outline is checked against every surface it can sit on, header and menu included. Run `node scripts/wcag-tokens.mjs` after changing any value; it reads `src/index.css` and exits 1 on a failure. `fg-disabled` is exempt, as WCAG exempts disabled controls.
 
 ### Identity colours (wallets and categories)
-Wallets and categories take their own colour from the muted identity palette in spec section 1. It avoids red, green, blue, cyan and amber, which carry money meaning. Since Phase 59 (audit 008) the wallet colour picker, in Add wallet and in Edit, offers exactly those twelve colours, and since Phase 62 the category picker offers the same twelve (`utils/identityPalette.ts`). Two categories never share one (L9) while any is free: a used colour is disabled, its fill at 0.25 under a diagonal strike, and named "Rose, used by Pets". Once all twelve are in use, colours repeat: every swatch is enabled and named "Rose, also used by Pets" (audit 012). Since Phase 63 (spec 5.1, ADR 0038) the shipped categories and the starter wallets sit on them too: Food & Dining Rose, Groceries Peach, Housing & Utilities Periwinkle, Shopping & Apparel Lavender, Transport & Fuel Aqua, Primary Salary Steel, Freelance & Side Gig Orchid, the System pair `#6B7385`, and the wallets Blue, Tan and Teal. A swatch is named by its colour ("Tan"), never by a hex code.
+Wallets and categories take their own colour from the muted identity palette in spec section 1. It avoids red, green, blue, cyan and amber, which carry money meaning. Since Phase 59 (audit 008) the wallet colour picker, in Add wallet and in Edit, offers exactly those twelve colours, and since Phase 62 the category picker offers the same twelve (`utils/identityPalette.ts`). Two categories never share one (L9) while any is free: a used colour is disabled, its fill at 0.25 under a diagonal strike, and named "Rose, used by Pets". Once all twelve are in use, colours repeat: every swatch is enabled and named "Rose, also used by Pets" (audit 012). Since Phase 63 (spec 5.1, ADR 0038) the shipped categories and the starter wallets sit on them too: Food & Dining Rose, Groceries Peach, Housing & Utilities Periwinkle, Shopping & Apparel Lavender, Transport & Fuel Aqua, Primary Salary Steel, Freelance & Side Gig Orchid, the System pair `#6B7385`, and the wallets Blue, Tan and Teal. A swatch is named by its colour ("Tan"), never by a hex code. In light mode they are painted through the Paper Ledger values below (ADR 0103).
+
+### Light palette: Paper Ledger (ADR 0103)
+**Status:** in force since Phase 143: the Light column and palette values from T793, the component tokens from T794 and the identity colours from T795.
+
+The authority is `docs/design/finlife-light-theme.md` and ADR 0103; light only; dark unchanged. D3a, D3b and D7 below are ADR 0103's decision numbers.
+
+| Design token | Hex | App tokens |
+|---|---|---|
+| `--bg` | `#F5F2EC` | `canvas` |
+| `--surface` | `#FFFFFF` | `surface-1`, `header` |
+| `--surface-2` | `#EEE9E0` | `surface-2`, `segment-active` (`surface-3` and `control-active` are one step darker, `#E6E0D5`) |
+| `--border` | `#E0D8CB` | `line` |
+| `--text` | `#1E1A15` | `fg` |
+| `--text-muted` | `#675F53` | `fg-muted`, `adjust-text` |
+| `--accent` | `#4338CA` | `brand-text`, `brand-soft-text`, `focus`, `brand-fill` |
+| `--accent-hover` | `#3730A3` | `brand-fill-hover`, `selected-text` |
+| `--on-accent` | `#FFFFFF` | no token: `ui/Button.tsx:30` sets `text-white` on the primary fill |
+| `--accent-tint` | `#ECE8FB` | `brand-soft-bg`, `selected-bg`, `brand-tint` |
+| `--accent-tint-border` | `#D9D2F5` | `brand-soft-line`, `logged-bg`, `brand-line` |
+| `--income` | `#0E7A52` | `income-fill` exactly; `income-text` is `#0E7650` |
+| `--expense` | `#C0362C` | `expense-fill` exactly; `expense-text` is `#B6332A` |
+| `--warning` | `#B45309` | `pending-fill` exactly; `pending-text` is `#A94E08` |
+
+Tokens with no direct counterpart in the design file (`surface-3`, `control-active`, `line-control`, `line-strong`, `line-input`, `fg-secondary`, `fg-disabled`, `chip-text`, `adjust-bg`, `selected-text`, `focus`, the `-bg` and `-line` tints, and `transfer-text`) are derived per role to preserve contrast and state hierarchy; see [ADR 0103](docs/audit/decisions/0103-paper-ledger-light-theme.md) for the full values and rationales.
+
+The `brand` hue is violet in dark and indigo in light; text tokens `income-text`, `expense-text`, `pending-text`, `transfer-text` are darker than their fills (D3a); `surface-3` and `control-active` are `#E6E0D5` in light, one visible step darker than `surface-2`, so a hover on a `surface-2` base shows (D3b); fills and text of one hue are different tokens.
+
+Stored identity colours do not change; in light mode only, they are painted through `--identity-N` (D7). Amending the rule above for light mode only: identity colours may be blue (Blue, Periwinkle, Steel), amber or orange (Tan, Peach), or cyan (Teal, Aqua); no identity value is red or green. The dark rule (avoid red, green, blue, cyan, amber) stays in force for dark.
+
+| # | Name | Stored (dark) | Light |
+|---|---|---|---|
+| 1 | Tan | `#D9A066` | `#A16207` |
+| 2 | Blue | `#6C8EEF` | `#1E40AF` |
+| 3 | Teal | `#4FB7A8` | `#0E7490` |
+| 4 | Peach | `#F59E6B` | `#D97706` |
+| 5 | Rose | `#E879A6` | `#DB2777` |
+| 6 | Periwinkle | `#7DA2F0` | `#2563EB` |
+| 7 | Lavender | `#B69CF5` | `#7C3AED` |
+| 8 | Aqua | `#5CC8B8` | `#0891B2` |
+| 9 | Khaki | `#C7B38A` | `#8A6D46` |
+| 10 | Steel | `#8FA8C8` | `#5B7A9D` |
+| 11 | Orchid | `#D98FD0` | `#A21CAF` |
+| 12 | Iris | `#9C8CD9` | `#6B5FBF` |
 
 ---
 
@@ -137,7 +185,7 @@ Build a screen from these, not from a re-typed class string.
 |---|---|---|
 | `Button` | `ui/Button` | Four variants: primary (the one main action in an area), secondary, soft (`brand-soft`), danger (red text, `danger-line` edge). `type="button"` unless it submits. |
 | `IconButton` | `ui/IconButton` | 44 x 44. A required `label` becomes `aria-label` and `title`. Tones: neutral, danger, income. |
-| `SegmentedControl` | `ui/SegmentedControl` | A `surface-1` tray with the selected option on `control-active` in bold, exposed as `aria-pressed`, or as `role="tab"` + `aria-selected` when it switches content. |
+| `SegmentedControl` | `ui/SegmentedControl` | A `surface-1` tray with the selected option on `segment-active` in bold, exposed as `aria-pressed`, or as `role="tab"` + `aria-selected` when it switches content. |
 | `Chip` | `ui/Chip` | A neutral pill (`adjust` tint, `chip-text`). The item's colour is a 7px dot and nowhere else. System categories use the grey `#6B7385` dot. |
 | `Card`, `Inset` | `ui/Card` | Card: `surface-1`, `rounded-card`, 24 to 28px padding, neutral edge. Inset: a box inside a card, `surface-2`, `rounded-inner`. |
 | `PageHeader` | `ui/PageHeader` | h1 and one line on the left, actions on the right, no card. |
@@ -166,7 +214,7 @@ One period for the whole page, chosen in the `PageHeader`. Every figure comes fr
 **Colour (no new palette, both themes, no raw hex):**
 - Page `canvas`. Cards `surface-1`, `rounded-card`, with the neutral `line` edge. Tracks and chips `surface-2` or `surface-3`. Dividers `line`.
 - Text `fg`, `fg-secondary`, `fg-muted`.
-- The Left over card is the page's one brand emphasis: a `brand-tint` ground, with `brand`, `brand-soft` and `brand-line` for its accents. Its figure follows section 1: `fg`, and `expense` when negative.
+- The Left over card is the page's one brand emphasis: a `brand-tint` ground, with `hero-line` for its edge, and `brand`, `brand-soft` and `brand-line` for its accents. Its figure follows section 1: `fg`, and `expense` when negative.
 - Income `income`. Spending and debt still owed `expense`. A transfer row `transfer`, shown as not counted.
 - The net worth figure is `fg`; it takes no colour of its own.
 - Category and wallet hues are the record's own colour, tinted as the existing chips tint them. Debt progress is a `ProgressBar` (payoff is `income`).
@@ -328,6 +376,7 @@ Five states. The first is for guests; the other four are for a signed-in user, c
 | Editing row background `#1C1930`; selected wallet `#1C1930` with edge `#4B3F86` | `brand-soft` (`#1E1A33`) with the 3px `focus` edge, for both | Two near-identical violets would be two tokens for one meaning, and a selected row looks the same on every page. |
 | Header title "FinLife" | "FinLife Tracker" | `theme.spec.ts` finds the heading by that name. |
 | Dark only | Dark and light | The owner kept the light theme (2026-09-28). Light values are derived per role and pass the same checks. |
+| Light values "derived per role" | The Paper Ledger palette, mapped onto the same tokens | The owner's light-theme spec, 2026-10-22 (ADR 0103). |
 | "Display settings" icon button | The theme button keeps its own label ("Theme: Dark. Click to switch.") | Spec section 11: name a button for what it does. |
 | Pages full width | `main` keeps `max-w-7xl` (1280px) | Temporary, until every page is redesigned: the old Transactions table and forms would stretch across a wide screen (owner, 2026-09-28, ADR 0030). |
 | "~฿4,391/mo needed" | "฿4,391.23 / month needed" | Every displayed amount goes through `formatCurrencyAmount`. |

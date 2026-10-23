@@ -47,7 +47,7 @@ export const MoodSpendingCard: React.FC<MoodSpendingCardProps> = ({ mood, today,
             {[...mood.days].reverse().map((day) => (
               <li
                 key={day.date}
-                className="flex-1 basis-24 min-w-0 flex flex-col items-center gap-1.5 rounded-inner bg-surface-2 px-2 py-2.5 text-center"
+                className="flex-1 basis-24 min-w-0 flex flex-col items-center gap-1.5 rounded-inner bg-mood-tile px-2 py-2.5 text-center"
               >
                 <span className="text-xs text-fg-muted">{formatWeekdayDate(day.date)}</span>
                 <MoodMeter mood={day.mood} />

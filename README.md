@@ -7,7 +7,7 @@
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-v4-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)
 ![Supabase](https://img.shields.io/badge/Supabase-Database%20%26%20Auth-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white)
 ![Vite](https://img.shields.io/badge/Vite-6-646CFF?style=for-the-badge&logo=vite&logoColor=white)
-![Playwright](https://img.shields.io/badge/Playwright-179%20E2E%20tests-2EAD33?style=for-the-badge&logo=playwright&logoColor=white)
+![Playwright](https://img.shields.io/badge/Playwright-181%20E2E%20tests-2EAD33?style=for-the-badge&logo=playwright&logoColor=white)
 ![License](https://img.shields.io/badge/License-MIT-blue?style=for-the-badge)
 
 **A personal finance tracker with a daily diary beside it.**
@@ -154,8 +154,8 @@ Then open `http://localhost:3000`. The `api/` functions do not run under the Vit
 
 ```bash
 npm run lint         # TypeScript for the app, the tests and the functions, plus checks for Node globals and time-only ids in src/
-npm run test:unit    # Vitest: 1465 tests in 64 files, including every migration replayed in PGlite
-npm test             # Playwright: 179 tests in 35 spec files on Chromium, Firefox and WebKit (537 runs)
+npm run test:unit    # Vitest: 1475 tests in 66 files, including every migration replayed in PGlite
+npm test             # Playwright: 181 tests in 35 spec files on Chromium, Firefox and WebKit (543 runs)
 npx playwright test tests/wallets.spec.ts --project=chromium   # one spec, one browser
 npx playwright install                                          # first run only: the browser engines
 ```

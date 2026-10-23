@@ -67,7 +67,7 @@ const Sparkline: React.FC<SparklineProps> = ({ points, periodName }) => {
 /**
  * Owner spec 4.2 (ADR 0102): Left over card for the chosen period.
  * Figures come from `leftOverFor` and `dailySpendingSeries`, computed in `DashboardView`.
- * The brand tint is the page's one brand emphasis; the edge stays the neutral `line`.
+ * The brand tint is the page's one brand emphasis; the edge is `hero-line`, the page's one card-edge exception, and the Spent/Kept track stays `line`.
  * Text on the tint passes 4.5:1 in both themes (measured in spec section 4).
  */
 export const LeftOverCard: React.FC<LeftOverCardProps> = ({ data, series, periodName, periodDates }) => {
@@ -90,7 +90,7 @@ export const LeftOverCard: React.FC<LeftOverCardProps> = ({ data, series, period
     <section
       aria-labelledby="dashboard-left-over-title"
       data-testid="metric-card-net"
-      className="h-full bg-brand-tint border border-line rounded-card p-6 flex flex-col gap-4"
+      className="h-full bg-brand-tint border border-hero-line rounded-card p-6 flex flex-col gap-4"
     >
       <div className="flex items-center justify-between gap-3">
         <h2 id="dashboard-left-over-title" className="flex items-center gap-2.5 text-base font-semibold text-fg">

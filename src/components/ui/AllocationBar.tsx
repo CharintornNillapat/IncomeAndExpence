@@ -1,3 +1,4 @@
+import { identityDisplayColor } from '../../utils/identityPalette';
 import React from 'react';
 
 export interface AllocationSegment {
@@ -45,7 +46,7 @@ export const AllocationBar: React.FC<AllocationBarProps> = ({ segments, label, e
           key={s.id}
           data-segment={s.id}
           className="h-full min-w-[3px]"
-          style={{ flexGrow: s.value, flexBasis: 0, backgroundColor: s.color }}
+          style={{ flexGrow: s.value, flexBasis: 0, backgroundColor: identityDisplayColor(s.color) }}
         />
       ))}
     </div>

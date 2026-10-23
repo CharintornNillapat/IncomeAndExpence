@@ -157,7 +157,7 @@
  * is `--surface-2`, `--bg-raised` is `--surface-3`, `--border` is `--line`,
  * `--text-1/2/3` are `--fg` / `--fg-secondary` / `--fg-muted`, `--warning` is
  * `--pending-*`, and `--primary-soft-*` is `--brand-soft-*`. The light values
- * are derived to the same roles.
+ * are the Paper Ledger palette of ADR 0103.
  *
  * One spec value is not used: `--border-control` (#252B38) measures 1.2:1 on a
  * card, under WCAG 1.4.11's 3:1 for an input's boundary. It is `--line-control`,
@@ -168,44 +168,73 @@
  * re-measured by running it.
  */
 :root {
-  --canvas: #FFFFFF;
-  --header: #F8FAFC;
-  --surface-1: #F8FAFC;
-  --surface-2: #F1F5F9;
-  --surface-3: #E2E8F0;
-  --control-active: #E2E8F0;
-  --line: #E2E8F0;
-  --line-control: #CBD5E1;
-  --line-strong: #CBD5E1;
-  --line-input: #7C8BA1;
-  --fg: #0F172A;
-  --fg-secondary: #475569;
-  --fg-muted: #586880;
-  --fg-disabled: #94A3B8;
-  --focus: #7C3AED;
+  --canvas: #F5F2EC;
+  --header: #FFFFFF;
+  --surface-1: #FFFFFF;
+  --surface-2: #EEE9E0;
+  --surface-3: #E6E0D5;
+  --control-active: #E6E0D5;
+  --line: #E0D8CB;
+  --line-control: #CFC5B4;
+  --line-strong: #CFC5B4;
+  --line-input: #8A8172;
+  --fg: #1E1A15;
+  --fg-secondary: #4A4338;
+  --fg-muted: #675F53;
+  --fg-disabled: #A39B8E;
+  --focus: #4338CA;
   --scrim: rgba(15, 23, 42, 0.55);
-  --brand-text: #6D28D9;
-  --brand-soft-bg: #F5F3FF;
-  --brand-soft-line: #DDD6FE;
-  --brand-soft-text: #5B21B6;
-  --selected-bg: #EDE9FE;
-  --selected-text: #4C1D95;
+  --brand-text: #4338CA;
+  --brand-soft-bg: #ECE8FB;
+  --brand-soft-line: #D9D2F5;
+  --brand-soft-text: #4338CA;
+  --selected-bg: #ECE8FB;
+  --selected-text: #3730A3;
   /* Spec 6.5: a logged day in the diary calendar (#3B2F73 in dark). */
-  --logged-bg: #DDD6FE;
-  --income-text: #047857;
-  --income-bg: #ECFDF5;
-  --expense-text: #BE123C;
-  --expense-bg: #FFF1F2;
-  --transfer-text: #075985;
-  --transfer-bg: #F0F9FF;
-  --adjust-text: #475569;
-  --adjust-bg: #F1F5F9;
-  --chip-text: #334155;
-  --danger-line: #FECDD3;
-  --pending-text: #92400E;
-  --pending-bg: #FFFBEB;
-  --pending-line: #FCD34D;
+  --logged-bg: #D9D2F5;
+  --income-text: #0E7650;
+  --income-bg: #ECF4F1;
+  --expense-text: #B6332A;
+  --expense-bg: #FAEFEE;
+  --transfer-text: #245FE2;
+  --transfer-bg: #EEF3FD;
+  --adjust-text: #675F53;
+  --adjust-bg: #EEE9E0;
+  --chip-text: #4A4338;
+  --danger-line: #ECC3C0;
+  --pending-text: #A94E08;
+  --pending-bg: #F9F1EB;
+  --pending-line: #E9CBB5;
   --pending-body: #78350F;
+  --brand-fill: #4338CA;
+  --brand-fill-hover: #3730A3;
+  --brand-tint: #ECE8FB;
+  --brand-line: #D9D2F5;
+  --income-fill: #0E7A52;
+  --income-line: rgba(14, 122, 82, 0.3);
+  --expense-fill: #C0362C;
+  --expense-line: rgba(192, 54, 44, 0.3);
+  --pending-fill: #B45309;
+  --transfer-fill: #2563EB;
+  --transfer-line: rgba(37, 99, 235, 0.3);
+  --hero-line: #D9D2F5;
+  --segment-active: #EEE9E0;
+  --mood-tile: #F5F2EC;
+  --mood-empty: #E0D8CB;
+  --wallet-fallback: #8A8172;
+  /* Identity display colours in light mode (ADR 0103 D7) */
+  --identity-1: #A16207;
+  --identity-2: #1E40AF;
+  --identity-3: #0E7490;
+  --identity-4: #D97706;
+  --identity-5: #DB2777;
+  --identity-6: #2563EB;
+  --identity-7: #7C3AED;
+  --identity-8: #0891B2;
+  --identity-9: #8A6D46;
+  --identity-10: #5B7A9D;
+  --identity-11: #A21CAF;
+  --identity-12: #6B5FBF;
 }
 
 .dark {
@@ -246,6 +275,35 @@
   --pending-bg: #231C0B;
   --pending-line: #4A3A12;
   --pending-body: #F3E3B5;
+  --brand-fill: #7C3AED;
+  --brand-fill-hover: #6D28D9;
+  --brand-tint: rgba(139, 92, 246, 0.12);
+  --brand-line: rgba(139, 92, 246, 0.3);
+  --income-fill: #10B981;
+  --income-line: rgba(16, 185, 129, 0.3);
+  --expense-fill: #F43F5E;
+  --expense-line: rgba(244, 63, 94, 0.3);
+  --pending-fill: #F59E0B;
+  --transfer-fill: #38BDF8;
+  --transfer-line: rgba(56, 189, 248, 0.3);
+  --hero-line: #1F2532;
+  --segment-active: #262B3A;
+  --mood-tile: #0F131B;
+  --mood-empty: #2A3140;
+  --wallet-fallback: #A8A29E;
+  /* Identity display colours in dark mode (ADR 0103 D7 stored hexes) */
+  --identity-1: #D9A066;
+  --identity-2: #6C8EEF;
+  --identity-3: #4FB7A8;
+  --identity-4: #F59E6B;
+  --identity-5: #E879A6;
+  --identity-6: #7DA2F0;
+  --identity-7: #B69CF5;
+  --identity-8: #5CC8B8;
+  --identity-9: #C7B38A;
+  --identity-10: #8FA8C8;
+  --identity-11: #D98FD0;
+  --identity-12: #9C8CD9;
 }
 
 @theme inline {
@@ -286,26 +344,30 @@
   --color-pending-tint: var(--pending-bg);
   --color-pending-line: var(--pending-line);
   --color-pending-body: var(--pending-body);
+  --color-brand-fill: var(--brand-fill);
+  --color-brand-fill-hover: var(--brand-fill-hover);
+  --color-brand-tint: var(--brand-tint);
+  --color-brand-line: var(--brand-line);
+  --color-income-fill: var(--income-fill);
+  --color-income-line: var(--income-line);
+  --color-expense-fill: var(--expense-fill);
+  --color-expense-line: var(--expense-line);
+  --color-pending-fill: var(--pending-fill);
+  --color-transfer-fill: var(--transfer-fill);
+  --color-transfer-line: var(--transfer-line);
+  --color-hero-line: var(--hero-line);
+  --color-segment-active: var(--segment-active);
+  --color-mood-tile: var(--mood-tile);
+  --color-mood-empty: var(--mood-empty);
+  --color-wallet-fallback: var(--wallet-fallback);
 }
 
 /*
- * Theme-independent values. Fills never sit behind text, except the brand
- * fill, which carries white text at 5.70:1. `-line` borders are 30% of the
- * fill; the tints above are solid per theme (the spec's `-bg` colours).
+ * Fills and lines are now theme variables set on :root and .dark (ADR 0103 D5),
+ * with `-line` borders 30% of the fill, and the brand fill carrying white
+ * text at 5.70:1 in dark and 7.90:1 in light.
  */
 @theme {
-  --color-brand-fill: #7C3AED;
-  --color-brand-fill-hover: #6D28D9;
-  --color-brand-tint: rgba(139, 92, 246, 0.12);
-  --color-brand-line: rgba(139, 92, 246, 0.3);
-  --color-income-fill: #10B981;
-  --color-income-line: rgba(16, 185, 129, 0.3);
-  --color-expense-fill: #F43F5E;
-  --color-expense-line: rgba(244, 63, 94, 0.3);
-  --color-pending-fill: #F59E0B;
-  --color-transfer-fill: #38BDF8;
-  --color-transfer-line: rgba(56, 189, 248, 0.3);
-
   /* Spec section 1 radii: card, a box inside a card, a control, a button. */
   --radius-card: 16px;
   --radius-inner: 12px;

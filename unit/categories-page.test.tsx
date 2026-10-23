@@ -4,7 +4,7 @@ import { render, cleanup, fireEvent, screen, waitFor, within, act } from '@testi
 import { FinanceProvider, useFinanceActions, FinanceActionsContextType } from '../src/context/FinanceContext';
 import { CategoriesView } from '../src/views/CategoriesView';
 import { Navbar } from '../src/components/Navbar';
-import { IDENTITY_PALETTE } from '../src/utils/identityPalette';
+import { IDENTITY_PALETTE, identityDisplayColor } from '../src/utils/identityPalette';
 import type { Category, Transaction } from '../src/types';
 
 /**
@@ -256,7 +256,7 @@ describe('the form, from lg', () => {
     expect(tan.getAttribute('aria-label')).toBe('Tan, also used by Custom 0');
     fireEvent.click(tan);
     fireEvent.click(byId('category-edit-save-btn')!);
-    await waitFor(() => expect((byId('category-edit-c4')!.querySelector('span') as HTMLElement).style.backgroundColor).toBe(rgb('#D9A066')));
+    await waitFor(() => expect((byId('category-edit-c4')!.querySelector('span') as HTMLElement).style.backgroundColor).toBe('var(--identity-1)'));
   });
 });
 
@@ -381,11 +381,11 @@ describe("spec 5.1's colour migration on this device (Phase 63, ADR 0038)", () =
   it('loads the shipped categories a device stored on their old colours on the identity colours', () => {
     localStorage.setItem('pf_categories', JSON.stringify(oldShippedCategories()));
     mount();
-    expect(dot('cat-food')).toBe(rgb('#E879A6'));
-    expect(dot('cat-groceries')).toBe(rgb('#F59E6B'));
-    expect(dot('cat-transport')).toBe(rgb('#5CC8B8'));
-    expect(dot('cat-salary')).toBe(rgb('#8FA8C8'));
-    expect(dot('cat-freelance')).toBe(rgb('#D98FD0'));
+    expect(dot('cat-food')).toBe('var(--identity-5)');
+    expect(dot('cat-groceries')).toBe('var(--identity-4)');
+    expect(dot('cat-transport')).toBe('var(--identity-8)');
+    expect(dot('cat-salary')).toBe('var(--identity-10)');
+    expect(dot('cat-freelance')).toBe('var(--identity-11)');
     expect(systemDot('cat-debt')).toBe(rgb('#6B7385'));
   });
 
@@ -397,8 +397,8 @@ describe("spec 5.1's colour migration on this device (Phase 63, ADR 0038)", () =
       custom({ id: 'gym', name: 'Gym', color: '#0ea5e9' }),
     ]));
     mount();
-    expect(dot('cat-food')).toBe(rgb('#D9A066')); // Tan: Pets already holds Rose
-    expect(dot('pets')).toBe(rgb('#E879A6'));
+    expect(dot('cat-food')).toBe('var(--identity-1)'); // Tan: Pets already holds Rose
+    expect(dot('pets')).toBe('var(--identity-5)');
     expect(dot('gym')).toBe(rgb('#0ea5e9'));
     expect(swatch('category-new', '#D9A066').getAttribute('aria-label')).toBe('Tan, used by Food & Dining');
   });
@@ -406,7 +406,7 @@ describe("spec 5.1's colour migration on this device (Phase 63, ADR 0038)", () =
   it('starts a fresh guest on identity colours only, one each', () => {
     mount();
     const colors = shippedCategories().filter((c) => c.type === 'EXPENSE' || c.type === 'INCOME').map((c) => dot(c.id));
-    const identity = IDENTITY_PALETTE.map(({ hex }) => rgb(hex));
+    const identity = IDENTITY_PALETTE.map(({ hex }) => identityDisplayColor(hex));
     expect(colors.every((c) => identity.includes(c))).toBe(true);
     expect(new Set(colors).size).toBe(colors.length);
   });

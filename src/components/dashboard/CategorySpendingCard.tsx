@@ -1,3 +1,4 @@
+import { identityDisplayColor } from '../../utils/identityPalette';
 import React from 'react';
 import { Card, Inset } from '../ui/Card';
 import { Money } from '../ui/Money';
@@ -58,7 +59,7 @@ const Donut: React.FC<DonutProps> = ({ segments, total }) => {
             r="15.9155"
             fill="none"
             strokeWidth={5}
-            stroke={s.color}
+            style={{ stroke: identityDisplayColor(s.color) }}
             strokeDasharray={s.strokeDasharray}
             strokeDashoffset={s.strokeDashoffset}
           />
@@ -138,7 +139,7 @@ export const CategorySpendingCard: React.FC<CategorySpendingCardProps> = ({
                       aria-hidden="true"
                       className="w-8 h-8 shrink-0 rounded-control bg-surface-2 flex items-center justify-center"
                     >
-                      <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: row.color }} />
+                      <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: identityDisplayColor(row.color) }} />
                     </span>
                     <span className="flex-1 min-w-0 truncate text-fg">{row.name}</span>
                     <span className="w-14 shrink-0 text-right text-xs text-fg-muted">{p.toFixed(1)}%</span>
