@@ -23,6 +23,7 @@ Read this before touching `src/components/`, `src/views/`, `src/index.css`, `App
 - **One glow:** `shadow-quick-add` on the mobile centre Quick Add.
 - **Motion is 150 to 200 ms on hover, focus or a state change** [0082, 0083]. No `scale-*` for selection, no springs, no entrance animations, **no animation library**. A tween is a `motion-*` keyframe class; an element that must stay for its exit goes in `ui/motion.tsx`'s `Presence` (unmounts on a timer, never `animationend`); a pill slides with `slidePill`. Under `prefers-reduced-motion: reduce` nothing moves, including `animate-spin`/`animate-pulse`. Continuous motion only while real work runs, beside text saying so.
 - **Loading is a static outline** (`ViewLoadingFallback`), never a pulse or spinner.
+- **Tab views are `lazyView`** (preloaded at idle, [0104]); a preloaded view never shows `ViewLoadingFallback`; new tab views must be added to the preload list in `App.tsx`.
 - **Nothing moves while the app loads** [0060]: `<main>` keeps its `min-h-[calc(100dvh-...)]` so the footer starts below the fold.
 - **Uppercase with `tracking-wider`** only for compact metric labels, column headers and tickers.
 - **Focus is one global `:focus-visible` rule** [0029]; never a control's own focus style. Fields keep `focus:ring-2 ring-focus`. A removed outline needs `focus-visible:ring-2 focus-visible:ring-focus`.

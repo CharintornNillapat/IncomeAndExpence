@@ -26,10 +26,10 @@ export async function settle(page: Page): Promise<void> {
 /**
  * Navigates to a top-level tab and waits for its view to finish mounting.
  *
- * Every view in `App.tsx` is a `React.lazy` import, so clicking a tab kicks off
- * a dynamic chunk fetch before the view renders. Under the Vite dev server with
- * parallel workers that fetch can take noticeably longer in Firefox, which is
- * what made the navigation specs flaky.
+ * Every view in `App.tsx` is a `lazyView` import preloaded at idle, though a
+ * first click before the preload ends can still show the fallback. Under the
+ * Vite dev server with parallel workers that fetch can take noticeably longer
+ * in Firefox, which is what made the navigation specs flaky.
  *
  * Each step here is an auto-retrying assertion:
  *   1. the tab exists and is clickable,
