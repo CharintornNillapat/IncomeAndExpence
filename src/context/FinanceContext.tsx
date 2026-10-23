@@ -82,6 +82,12 @@ export interface FinanceStateContextType {
   isAuthenticated: boolean;
   isSyncing: boolean;
   /**
+   * True while a load the user started runs: `refreshFromCloud({ manual: true })`,
+   * from Sync now and the badge's Sync failed button. The badge shows Syncing at
+   * once for it and only after 1 s for any other load (ADR 0026 amendment, T798).
+   */
+  isManualSync: boolean;
+  /**
    * Why the last cloud load failed, or `null` after a clean one (Phase 53b).
    * The navbar badge shows "Sync failed" from it and retries through
    * `refreshFromCloud`. A load that read some tables still applied them.
@@ -224,7 +230,8 @@ export interface FinanceActionsContextType {
 
   // Filters & State helpers
   setShowSoftDeleted: (show: boolean) => void;
-  refreshFromCloud: () => Promise<void>;
+  /** `manual: true` marks a load the user started (`isManualSync`). */
+  refreshFromCloud: (options?: { manual?: boolean }) => Promise<void>;
 }
 
 const FinanceStateContext = createContext<FinanceStateContextType | undefined>(undefined);
@@ -536,6 +543,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
   const [currentUser, setCurrentUser] = useState<User>(() => safeGetLocalStorage('pf_user', DEFAULT_USER));
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
+  const [isManualSync, setIsManualSync] = useState<boolean>(false);
   const [syncError, setSyncError] = useState<string | null>(null);
 
   // Spec 5.1's colour migration (ADR 0038) runs on what this device stores;
@@ -886,8 +894,9 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
   }, []);
 
   // Fetch all user data from Supabase
-  const loadSupabaseData = useCallback(async (userId: string) => {
+  const loadSupabaseData = useCallback(async (userId: string, options?: { manual?: boolean }) => {
     setIsSyncing(true);
+    if (options?.manual) setIsManualSync(true);
     // F5: a sign-out during this load makes every later slice stale.
     const epoch = authEpochRef.current;
     const signedOutMeanwhile = () => authEpochRef.current !== epoch;
@@ -930,6 +939,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       if (!signedOutMeanwhile()) setSyncError('Could not reach the server');
     } finally {
       setIsSyncing(false);
+      if (options?.manual) setIsManualSync(false);
     }
   }, [seedInitialUserAccount]);
 
@@ -1181,9 +1191,9 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     };
   }, [isAuthenticated, currentUser.id, verifySession]);
 
-  const refreshFromCloud = useCallback(async () => {
+  const refreshFromCloud = useCallback(async (options?: { manual?: boolean }) => {
     if (currentUser.id) {
-      await loadSupabaseData(currentUser.id);
+      await loadSupabaseData(currentUser.id, options);
     }
   }, [currentUser.id, loadSupabaseData]);
 
@@ -2813,6 +2823,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       currentUser,
       isAuthenticated,
       isSyncing,
+      isManualSync,
       syncError,
       wallets,
       totalNetWorth,
@@ -2825,6 +2836,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       currentUser,
       isAuthenticated,
       isSyncing,
+      isManualSync,
       syncError,
       wallets,
       totalNetWorth,

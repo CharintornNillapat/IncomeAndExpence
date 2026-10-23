@@ -74,7 +74,7 @@ const AccountModalBody: React.FC<Omit<AccountModalProps, 'isOpen'>> = ({ onClose
   const { value: syncFeedback, flash: flashSyncFeedback } = useTransientFlash<string | null>(null, 3500);
 
   const handleManualSync = async () => {
-    await refreshFromCloud();
+    await refreshFromCloud({ manual: true });
     flashSyncFeedback('Synchronized with the cloud.');
   };
 

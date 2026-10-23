@@ -3,6 +3,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { useState } from 'react';
 import { render, cleanup, waitFor, screen, fireEvent } from '@testing-library/react';
 import { AccountModal } from '../src/components/account/AccountModal';
+import { NavbarSyncBadge } from '../src/components/navbar/NavbarLedgerStatus';
 import { useDiaryActions, useDiaryState } from '../src/context/DiaryContext';
 import { useKeywordRulesActions, useKeywordRulesState } from '../src/context/KeywordRulesContext';
 import { useTemplateActions, useTemplateState } from '../src/context/TemplateContext';
@@ -2448,6 +2449,59 @@ describe('the Account & Security modal (ADR 0024)', () => {
     expect(await screen.findByLabelText('Display Name')).toBe(document.getElementById('account-profile-name-input'));
     expect(screen.getByLabelText('New Password')).toBe(document.getElementById('account-security-new-password'));
     expect(screen.getByLabelText('Confirm Password')).toBe(document.getElementById('account-security-confirm-password'));
+  });
+});
+
+describe('which loads show Syncing (T798, ADR 0026 amendment)', () => {
+  beforeEach(() => installLedgerRpcs());
+
+  const holdLoad = () => {
+    let release!: () => void;
+    fake.state.gates.set('wallets:select', new Promise<void>((resolve) => (release = resolve)));
+    return () => release();
+  };
+  const badgeText = () => document.getElementById('navbar-sync-status')!.textContent;
+
+  it('marks a load the user starts, for as long as it runs', async () => {
+    const release = holdLoad();
+    const pending = actions().refreshFromCloud({ manual: true });
+    await waitFor(() => expect(state().isSyncing).toBe(true));
+    expect(state().isManualSync).toBe(true);
+    release();
+    await pending;
+    await waitFor(() => expect(state().isSyncing).toBe(false));
+    expect(state().isManualSync).toBe(false);
+  });
+
+  it('leaves a background load unmarked, and the badge keeps Synced while it runs', async () => {
+    showUi!(<NavbarSyncBadge onOpenAuth={() => {}} />);
+    const release = holdLoad();
+    const pending = actions().refreshFromCloud();
+    await waitFor(() => expect(state().isSyncing).toBe(true));
+    expect(state().isManualSync).toBe(false);
+    expect(badgeText()).toBe('Synced');
+    release();
+    await pending;
+    await waitFor(() => expect(state().isSyncing).toBe(false));
+  });
+
+  it('Sync now shows Syncing at once, and keeps its own spinner', async () => {
+    showUi!(
+      <>
+        <NavbarSyncBadge onOpenAuth={() => {}} />
+        <AccountModal isOpen onClose={() => showUi!(null)} onRequestSignIn={() => {}} />
+      </>
+    );
+    const release = holdLoad();
+    fireEvent.click(await screen.findByText('Sync now'));
+    await waitFor(() => expect(state().isSyncing).toBe(true));
+    expect(state().isManualSync).toBe(true);
+    expect(badgeText()).toContain('Syncing');
+    const syncBtn = document.getElementById('account-sync-btn') as HTMLButtonElement;
+    expect(syncBtn.disabled).toBe(true);
+    expect(syncBtn.textContent).toContain('Syncing…');
+    release();
+    await waitFor(() => expect(state().isSyncing).toBe(false));
   });
 });
 

@@ -185,3 +185,29 @@ All five failed against the code before the change. One of them originally asser
   - The note field's microphone button is 32 px inside the input; the audit did not list it, and a 44 px button would crowd the field.
   - The transfer panel's projected balance still renders a negative as `฿-1,000.00` through `formatCurrencyAmount`; `transfer-preview.spec.ts` asserts only non-negative projections, and moving it onto `Money` is a small follow-up.
   - The CSV preview's per-row controls (the classify button, suggestion chips, the row category select) and the search field's clear button were not measured: they render only with a file loaded or text typed.
+
+## Amendment (T798, Phase 144): background loads stay quiet for 1 s
+
+**Date:** 2026-10-23
+
+### Context
+
+The owner saw the Syncing pill spin on every app open and after saves. Every load sets `isSyncing` (`FinanceContext.tsx:890`), including the startup load, the debounced realtime/online/visibility reloads and the `refreshFromCloud()` re-reads after writes, while the cached copy is already on screen.
+
+### Decision
+
+`FinanceStateContext` gains `isManualSync`, true for the duration of a load started with `refreshFromCloud({ manual: true })`. Only two callers pass it: AccountModal's Sync now and the badge's Sync failed button. `isSyncing` keeps its meaning (a load is running): Sync now's disabled state and spinner, the export guard and the signed-in test harness still read it. `NavbarSyncBadge` shows Syncing when `isSyncing && (isManualSync || the load has run 1 s)`; otherwise it shows what it would show with no load running, in the same order (Offline, Sync failed, Synced). The 1 s timer lives in the badge.
+
+This amendment supersedes the original "Syncing: amber, with the spinner" line for quiet background loads.
+
+### Options rejected
+
+1. **The delay in context state** (a `showSyncing` flag set by a timer inside `loadSupabaseData`): a display timer inside the money provider, and every state subscriber re-renders when it fires.
+2. **The badge alone with no context change**: it cannot see a click in AccountModal.
+3. **A module-level store shared by the two buttons**: a second state mechanism beside the context.
+
+### Consequences
+
+- A startup or sign-in load under 1 s shows Synced (or the current Sync failed) instead of Syncing.
+- A load over 1 s still shows Syncing from 1 s on.
+- Overlapping loads behave as before (the first to finish clears `isSyncing`, unchanged and out of scope).

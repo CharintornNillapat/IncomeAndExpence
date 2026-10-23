@@ -342,7 +342,7 @@ Five states. The first is for guests; the other four are for a signed-in user, c
 |---|---|---|---|
 | Local | Guest | Muted pill, `○` "Local" | Tapping it opens sign-in |
 | Offline | Signed in, browser offline | Muted pill, `○` "Offline" | Shows the app is using local data |
-| Syncing | A cloud load is running | Amber pill, `⟳` spinning | Spins only while a sync runs |
+| Syncing | A load the user started (Sync now, or tapping Sync failed) is running, or any cloud load has run longer than 1 s | Amber pill, `⟳` spinning | Spins only while a sync runs. A background load under 1 s leaves the badge as it was |
 | Sync failed | The last cloud load failed | Red pill, `⚠` | Tapping it retries; a failed load is never silent |
 | Synced | Otherwise | Green dot and "Synced" | None |
 
