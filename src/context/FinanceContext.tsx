@@ -572,16 +572,16 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
   // Client-side Idempotency Guard (P0-5)
   const inFlightIdempotencyKeys = useRef<Set<string>>(new Set());
 
-  // T17 (ADR 0003): ids of rows this client just wrote to Supabase. The
-  // realtime subscription below checks incoming `postgres_changes` events
-  // against this set and drops any event whose row id is present - that event
-  // is this client's own write echoing back over the wire, not new
-  // information from another device. Every mutator that writes to one of the
-  // 5 `SYNCED_TABLES` and learns the affected row's id calls `markLocalWrite`
-  // with it. Each id expires on its own timer (`LOCAL_ECHO_SUPPRESS_MS`)
-  // rather than only being removed when consumed, so an id that never
-  // produces an echo (e.g. the realtime channel was disconnected, or RLS
-  // suppressed the broadcast) cannot linger for the rest of the session.
+  // T17 (ADR 0003; amended T799): ids of rows this client just wrote to
+  // Supabase. The realtime subscription below checks incoming
+  // `postgres_changes` events against this set to recognize this client's
+  // own writes echoing back over the wire, not new information from another
+  // device. Every mutator that writes to one of the 5 `SYNCED_TABLES` calls
+  // `markLocalWrite`: before the remote call when the affected row ids are
+  // known in advance, or immediately once the server returns them. Echoes
+  // do not consume (delete) an id from the set; marks are judged at the end
+  // of the debounce timer and expire only when `LOCAL_ECHO_SUPPRESS_MS`
+  // (5 s) elapses.
   const recentLocalWriteIds = useRef<Set<string>>(new Set());
   const LOCAL_ECHO_SUPPRESS_MS = 5000;
   const markLocalWrite = useCallback((id?: string | null) => {
@@ -1088,10 +1088,12 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
   //     own schema comment for `wallets`/`transactions`. This repo has no
   //     tracked schema migration to check directly (see that file's header),
   //     so the client's own read/write columns are the available evidence.
-  //   - Self-echo suppression: a change whose row id is in
-  //     `recentLocalWriteIds` is this client's own write echoing back, not
-  //     new information, so it is consumed (removed from the set) and dropped
-  //     instead of triggering a reload.
+  //   - Self-echo suppression (ADR 0003 amendment, T799): a change whose row
+  //     id is in `recentLocalWriteIds` is this client's own write echoing back,
+  //     not new information. Row ids are marked before the remote call when
+  //     known, or immediately on response. Echoes do not consume their id from
+  //     the set; marks are judged at the end of the 400 ms debounce, and ids
+  //     expire after 5 s.
   //   - One debounced reload shared across every event on the channel, so a
   //     burst (a multi-row CSV import, a transfer's two wallet updates plus
   //     its transaction insert) collapses into a single `loadSupabaseData`
@@ -1123,11 +1125,20 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     const REALTIME_RELOAD_DEBOUNCE_MS = 400;
     const CLOUD_STALE_AFTER_MS = 30_000;
     let reloadTimer: ReturnType<typeof setTimeout> | null = null;
-    const scheduleReload = () => {
+    const pendingEchoIds = new Set<string>();
+    let reloadRequested = false;
+    const scheduleReload = (rowId?: string) => {
+      if (rowId) pendingEchoIds.add(rowId);
+      else reloadRequested = true;
       if (reloadTimer) clearTimeout(reloadTimer);
       reloadTimer = setTimeout(() => {
         reloadTimer = null;
-        loadSupabaseDataRef.current?.(currentUser.id);
+        // An id marked since its event arrived was this client's own write whose
+        // response came after the echo (ADR 0003 amendment, T799).
+        const remote = reloadRequested || [...pendingEchoIds].some((id) => !recentLocalWriteIds.current.has(id));
+        pendingEchoIds.clear();
+        reloadRequested = false;
+        if (remote) loadSupabaseDataRef.current?.(currentUser.id);
       }, REALTIME_RELOAD_DEBOUNCE_MS);
     };
 
@@ -1139,11 +1150,8 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
           { event: '*', schema: 'public', table, filter: `user_id=eq.${currentUser.id}` },
           (payload: { new?: { id?: string } | null; old?: { id?: string } | null }) => {
             const rowId = payload.new?.id ?? payload.old?.id;
-            if (rowId && recentLocalWriteIds.current.has(rowId)) {
-              recentLocalWriteIds.current.delete(rowId);
-              return;
-            }
-            scheduleReload();
+            if (rowId && recentLocalWriteIds.current.has(rowId)) return;
+            scheduleReload(rowId);
           }
         ),
       supabase.channel('schema-db-changes')
@@ -1846,6 +1854,8 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
         // crediting the other. ADR 0069: no p_user_id, so PostgREST reaches
         // the Phase 93 overload, which takes the user from the session alone.
         if (data.type === 'TRANSFER' && destWallet) {
+          markLocalWrite(sourceWallet.id);
+          markLocalWrite(destWallet.id);
           const { data: rpcData, error: rpcError } = await supabase.rpc('transfer_funds', {
             p_source_wallet_id: sourceWallet.id,
             p_dest_wallet_id: destWallet.id,
@@ -1892,8 +1902,6 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
             })
           );
           markLocalWrite(mapped.id);
-          markLocalWrite(sourceWallet.id);
-          markLocalWrite(destWallet.id);
 
           return { success: true, txId: mapped.id };
         }
@@ -2536,6 +2544,8 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       // replays on `importKey`, so retrying the same preview after a lost
       // response cannot import twice. A failure therefore has nothing to
       // compensate.
+      for (const walletId of Object.keys(walletDeltas)) markLocalWrite(walletId);
+      for (const debtId of Object.keys(debtTotals)) markLocalWrite(debtId);
       const { data: rpcData, error: rpcError } = await supabase.rpc('import_transactions', {
         p_import_key: importKey || generateIdempotencyKey(),
         p_rows: rpcRows,
@@ -2569,8 +2579,9 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
         };
       }
 
-      // The inserted rows arrive by reload, as they did before; their
-      // realtime echoes coalesce into at most one more.
+      // The inserted rows arrive by this one read and their realtime
+      // echoes add none (ADR 0003 amendment, T799).
+      for (const id of payload!.inserted_ids) markLocalWrite(id);
       await refreshFromCloud();
       return {
         success: true,
