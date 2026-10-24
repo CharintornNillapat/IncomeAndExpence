@@ -13,7 +13,7 @@ import {
   TransactionType,
 } from '../types';
 import type { AccountData } from '../utils/accountExport';
-import type { SupabaseClient } from '@supabase/supabase-js';
+import type { SupabaseClient, User as AuthUser } from '@supabase/supabase-js';
 import {
   supabase,
   isSupabaseConfigured,
@@ -762,13 +762,11 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
   // with empty/stable deps instead of being rebuilt on every render.
   const loadSupabaseDataRef = useRef<((userId: string) => Promise<void>) | null>(null);
 
-  // Phase 30: guards against concurrent seed attempts. The auth-state effect
-  // below both awaits `getSession()` directly and subscribes to
-  // `onAuthStateChange`, which fires its own initial event for the same
-  // session - and in dev, StrictMode double-invokes the whole effect on
-  // mount. Any combination of those can call `loadSupabaseData` more than
-  // once for the same brand-new (wallets-empty) account before the first
-  // seed's insert lands, and each concurrent call would independently see
+  // Phase 30: guards against concurrent seed attempts. Two loads can overlap
+  // for one brand-new (wallets-empty) account: before ADR 0105 the auth-state
+  // effect below loaded from `getSession()` and again on `onAuthStateChange`'s
+  // initial event, and a startup load can still overlap a reload from another
+  // trigger (`online`, Sync now). Each concurrent call would independently see
   // "empty" and insert its own full set of starter wallets/categories - the
   // root cause of "each default category appearing 2-3 times" in every
   // category picker. This ref stops one tab calling `seed_starter_account()`
@@ -800,6 +798,11 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
   // in flight when the user signed out checks it after each read and stops,
   // instead of landing the account's rows in the guest's state afterwards.
   const authEpochRef = useRef(0);
+
+  // ADR 0105: the user whose cloud data this provider holds or is loading.
+  // The auth listener loads only for a different user; `resetToGuestState`
+  // clears it, so signing back in loads again.
+  const loadedUserIdRef = useRef<string | null>(null);
 
   // F5 (ADR 0024): what signing out leaves on this device - nothing of the
   // account. Runs on an explicit sign-out AND on a `SIGNED_OUT` auth event (a
@@ -855,6 +858,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     recentLocalWriteIds.current.clear();
     inFlightIdempotencyKeys.current.clear();
     lastCloudLoadAtRef.current = 0;
+    loadedUserIdRef.current = null;
   }, []);
 
   // ADR 0039: the server decides whether an account is new. An empty wallet
@@ -960,17 +964,32 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     let authSubscription: { unsubscribe: () => void } | null = null;
     let cancelled = false;
 
+    // ADR 0105: one cloud load per signed-in user. supabase-js announces the
+    // same session again as INITIAL_SESSION on subscribe, TOKEN_REFRESHED on
+    // each refresh, SIGNED_IN on every return to the tab and USER_UPDATED on
+    // a rename. Those only refresh the profile fields, and keep the same
+    // object when none changed, so they redraw nothing. A return to the tab
+    // reloads through the realtime effect's stale check (ADR 0023) instead.
+    const adoptSession = async (user: AuthUser) => {
+      const next: User = {
+        id: user.id,
+        email: user.email || 'user@supabase.io',
+        name: user.user_metadata?.name || user.email?.split('@')[0] || 'User',
+      };
+      setIsAuthenticated(true);
+      setCurrentUser((prev) =>
+        prev.id === next.id && prev.email === next.email && prev.name === next.name ? prev : next
+      );
+      if (loadedUserIdRef.current === user.id) return;
+      loadedUserIdRef.current = user.id;
+      await loadSupabaseData(user.id);
+    };
+
     const setupAuth = async (client: SupabaseClient) => {
       const { data: { session } } = await client.auth.getSession();
       if (cancelled) return;
       if (session?.user) {
-        setIsAuthenticated(true);
-        setCurrentUser({
-          id: session.user.id,
-          email: session.user.email || 'user@supabase.io',
-          name: session.user.user_metadata?.name || session.user.email?.split('@')[0] || 'User',
-        });
-        await loadSupabaseData(session.user.id);
+        await adoptSession(session.user);
       } else {
         setIsAuthenticated(false);
       }
@@ -984,13 +1003,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
           return;
         }
         if (newSession?.user) {
-          setIsAuthenticated(true);
-          setCurrentUser({
-            id: newSession.user.id,
-            email: newSession.user.email || 'user@supabase.io',
-            name: newSession.user.user_metadata?.name || newSession.user.email?.split('@')[0] || 'User',
-          });
-          await loadSupabaseData(newSession.user.id);
+          await adoptSession(newSession.user);
         } else {
           setIsAuthenticated(false);
         }

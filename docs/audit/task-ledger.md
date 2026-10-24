@@ -102,6 +102,15 @@ Branch `phase-144-smooth-sync-and-tabs`, cut from `main` at `da2f475`. Four comm
 | T799 | Stop a full cloud reload after this client's own save: mark known ids before the call, judge echoes when the debounce fires, keep marks for their 5 s window, apply the diary save's returned row (ADR 0003 amendment) | `docs/audit/decisions/0003-localstorage-and-realtime.md`, `src/context/FinanceContext.tsx`, `src/context/DiaryContext.tsx`, `unit/authenticated-ledger.test.tsx`, `docs/contexts/client-state.md`, `docs/audit/task-ledger.md` | done | 5a16b79 | Red gate verified (7 unit failed, 2 passed); npm run lint clean; related unit 7 files 218 passed; shuffle 3x 139 passed; full unit 68/68 files 1500 passed (71.35s); e2e 7 specs on chr 27 passed (33.3s), 81 passed on 3 browsers (2.3m); CRLF kept (ADR 0003 w/lf); 0 em dashes in diff; scope clean |
 | T800 | Phase 144 closing docs: refactor-log entry, baseline-metrics section, T797 to T799 Commit cells, unit 1500 / 68 files and Playwright 183 / 36 / 549 in AGENTS.md, README.md and ui-and-e2e.md; full Playwright run | `AGENTS.md`, `README.md`, `docs/contexts/ui-and-e2e.md`, `docs/audit/refactor-log.md`, `docs/audit/baseline-metrics.md`, `docs/audit/task-ledger.md` | done | 237684e | unit 68 files 1500 passed (100.75s); playwright list 183/36/549; full e2e 36 specs 543 passed 6 skipped on 3 browsers (12.8m); clean prod build (index-BI7UeuqQ.js 194,575 B, all app JS 886,280 B 39 files, CSS 53,895 B); CRLF kept; 0 em dashes |
 
+## Phase 145 - One cloud load per session (ADR 0105)
+
+Branch `phase-145-one-load-per-session`, cut from `main` at `c9269ba`.
+
+| # | Task | Files | Status | Commit | Gate result |
+|---|---|---|---|---|---|
+| T801 | One cloud load per signed-in user: bound loads to user-id change, ignore redundant auth events, update profile without reload (ADR 0105) | `docs/audit/decisions/0105-one-cloud-load-per-session.md`, `src/context/FinanceContext.tsx`, `unit/authenticated-ledger.test.tsx`, `docs/contexts/supabase-ledger.md`, `docs/audit/task-ledger.md` | done | 8fe3e93 | Red gate verified (4 unit failed, 2 passed); npm run lint clean; related unit 2 files 148 passed (50.09s); full unit 68 files 1506 passed (71.65s); targeted e2e 3 specs on chr 27 passed (51.0s), 81 passed on 3 browsers (2.0m); negative control verified; CRLF kept; 0 em dashes; scope clean |
+| T802 | Phase 145 closing docs: refactor-log entry, baseline-metrics section, T801 Commit cell, unit 1506 / 68 files in AGENTS.md and README.md; full Playwright run | `AGENTS.md`, `README.md`, `docs/audit/refactor-log.md`, `docs/audit/baseline-metrics.md`, `docs/audit/task-ledger.md` | done | | unit 68 files 1506 passed (54.34s); playwright list 183/36/549; full e2e 36 specs 543 passed 6 skipped on 3 browsers (11.4m); clean prod build (index-CDIxbGVL.js 194,525 B, all app JS 886,230 B 39 files, CSS 53,895 B); CRLF kept; 0 em dashes |
+
 ## Backlog
 
 Not scheduled. Each row says where it came from.

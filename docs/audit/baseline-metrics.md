@@ -23,6 +23,14 @@ npx tsc --noEmit --extendedDiagnostics
 
 ## Figures
 
+### Phase 145 - delta against Phase 144
+
+- **Entry chunk** `index-CDIxbGVL.js`: 194,525 B (-50 B), 56,955 B gzip (+25 B against Phase 144 `index-BI7UeuqQ.js`, 194,575 / 56,930): T801's `adoptSession` replaces the two copies of the profile block in the auth effect.
+- **All app JS**: 886,230 B (-50 B), 269,261 B gzip (+18 B against Phase 144 886,280 / 269,243, 39 files, 0 file delta).
+- **CSS**: `index-BNXJTUPd.css`: 53,895 B (0 delta), 10,526 B gzip (0 delta; the same file as Phase 144).
+- **Vitest**: 68 files, 1506 tests (+6 tests, 0 files against Phase 144: `unit/authenticated-ledger.test.tsx`, +6 from T801), 1506 passed in 54.34 s (`workflow/stages/02_build/output/logs/T802-unit.log`). Per-task run: T801 1506 passed in 71.65 s (`workflow/stages/02_build/output/logs/T801-unit.log`).
+- **Playwright**: `npx playwright test --list` reports 183 tests in 36 files, 549 runs across 3 projects (0 delta). Full run by T802, at the owner's request: 543 passed, 6 skipped, 0 failed across 3 projects (11.4 min, `workflow/stages/02_build/output/logs/T802-playwright.log`). Earlier full run at 183 tests: T800, 543 passed, 6 skipped (12.8 min).
+
 ### Phase 144 - delta against Phase 143
 
 Measured at `5a16b79`; T800 changed docs only and the merge commit `5ecdb1d` has the same tree as `237684e`, so the figures hold for it.

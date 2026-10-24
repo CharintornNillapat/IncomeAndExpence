@@ -8,7 +8,7 @@ FinLife Tracker is a single-user personal finance and daily-diary PWA in Thai Ba
 
 - **Stack:** React 19, TypeScript ~5.8 (strict), Vite 6, Tailwind CSS v4 (semantic tokens), `vite-plugin-pwa`, `@supabase/supabase-js` (lazy-loaded), zod 4, papaparse, lucide-react. Node 24.x, npm.
 - **Server side:** Supabase (Postgres 17, RLS, `SECURITY DEFINER` RPCs, Auth, Realtime); Vercel hosting with three Node functions in `api/` (region `icn1`); TypeSafe's Jev model behind the proxies.
-- **Tests:** Vitest in `unit/` (1500 tests, 68 files, PGlite replays every migration); Playwright in `tests/` (183 tests, 36 specs, 549 runs on three browsers).
+- **Tests:** Vitest in `unit/` (1506 tests, 68 files, PGlite replays every migration); Playwright in `tests/` (183 tests, 36 specs, 549 runs on three browsers).
 
 | Path | What it is |
 |---|---|
