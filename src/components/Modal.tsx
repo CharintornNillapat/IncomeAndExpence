@@ -144,7 +144,7 @@ export interface ModalProps {
  * flexbox rather than the calc(vh - fixed px) each hand-rolled copy used.
  *
  * Phase 53b (DESIGN.md §5): the scrim is a solid dim with no blur, the panel
- * is opaque, and it moves on a 200 ms tween with no scale or spring overshoot.
+ * is opaque, and it moves on a 200 ms exit tween with no scale or spring overshoot.
  */
 export const Modal: React.FC<ModalProps> = ({
   isOpen,
@@ -232,7 +232,7 @@ export const Modal: React.FC<ModalProps> = ({
 
   // Phase 67 (ADR 0043): focus goes into the dialog when it opens. Declared
   // after the return-focus effect, so that one has already recorded the opener.
-  // The panel is in the DOM from the first frame of its entrance tween. A
+  // The panel is in the DOM from the first frame it opens (it opens instantly). A
   // field that focused itself (autoFocus, or a child's own layout effect,
   // which runs first) keeps focus; a child that focuses in a passive effect
   // runs after this and takes it, as before.
