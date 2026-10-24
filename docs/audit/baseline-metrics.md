@@ -25,6 +25,8 @@ npx tsc --noEmit --extendedDiagnostics
 
 ### Phase 145 - delta against Phase 144
 
+Measured at `8fe3e93`; T802 changed docs only and the merge commit `ed71c59` has the same tree as `fb0b81d`, so the figures hold for it.
+
 - **Entry chunk** `index-CDIxbGVL.js`: 194,525 B (-50 B), 56,955 B gzip (+25 B against Phase 144 `index-BI7UeuqQ.js`, 194,575 / 56,930): T801's `adoptSession` replaces the two copies of the profile block in the auth effect.
 - **All app JS**: 886,230 B (-50 B), 269,261 B gzip (+18 B against Phase 144 886,280 / 269,243, 39 files, 0 file delta).
 - **CSS**: `index-BNXJTUPd.css`: 53,895 B (0 delta), 10,526 B gzip (0 delta; the same file as Phase 144).

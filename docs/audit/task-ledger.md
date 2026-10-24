@@ -104,12 +104,12 @@ Branch `phase-144-smooth-sync-and-tabs`, cut from `main` at `da2f475`. Four comm
 
 ## Phase 145 - One cloud load per session (ADR 0105)
 
-Branch `phase-145-one-load-per-session`, cut from `main` at `c9269ba`.
+Branch `phase-145-one-load-per-session`, cut from `main` at `c9269ba`. Two commits, T801's `8fe3e93` and T802's `fb0b81d`, merged into `main` as `ed71c59` (PR #97). No migration.
 
 | # | Task | Files | Status | Commit | Gate result |
 |---|---|---|---|---|---|
 | T801 | One cloud load per signed-in user: bound loads to user-id change, ignore redundant auth events, update profile without reload (ADR 0105) | `docs/audit/decisions/0105-one-cloud-load-per-session.md`, `src/context/FinanceContext.tsx`, `unit/authenticated-ledger.test.tsx`, `docs/contexts/supabase-ledger.md`, `docs/audit/task-ledger.md` | done | 8fe3e93 | Red gate verified (4 unit failed, 2 passed); npm run lint clean; related unit 2 files 148 passed (50.09s); full unit 68 files 1506 passed (71.65s); targeted e2e 3 specs on chr 27 passed (51.0s), 81 passed on 3 browsers (2.0m); negative control verified; CRLF kept; 0 em dashes; scope clean |
-| T802 | Phase 145 closing docs: refactor-log entry, baseline-metrics section, T801 Commit cell, unit 1506 / 68 files in AGENTS.md and README.md; full Playwright run | `AGENTS.md`, `README.md`, `docs/audit/refactor-log.md`, `docs/audit/baseline-metrics.md`, `docs/audit/task-ledger.md` | done | | unit 68 files 1506 passed (54.34s); playwright list 183/36/549; full e2e 36 specs 543 passed 6 skipped on 3 browsers (11.4m); clean prod build (index-CDIxbGVL.js 194,525 B, all app JS 886,230 B 39 files, CSS 53,895 B); CRLF kept; 0 em dashes |
+| T802 | Phase 145 closing docs: refactor-log entry, baseline-metrics section, T801 Commit cell, unit 1506 / 68 files in AGENTS.md and README.md; full Playwright run | `AGENTS.md`, `README.md`, `docs/audit/refactor-log.md`, `docs/audit/baseline-metrics.md`, `docs/audit/task-ledger.md` | done | fb0b81d | unit 68 files 1506 passed (54.34s); playwright list 183/36/549; full e2e 36 specs 543 passed 6 skipped on 3 browsers (11.4m); clean prod build (index-CDIxbGVL.js 194,525 B, all app JS 886,230 B 39 files, CSS 53,895 B); CRLF kept; 0 em dashes |
 
 ## Backlog
 
