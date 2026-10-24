@@ -873,7 +873,7 @@ describe('a cloud reload that fails (F6)', () => {
 
     // A reload lands mid-flight and cannot read wallets (offline, say).
     fake.state.failures.set('wallets:select', { message: 'network down' });
-    await fake.state.authCallback!('SIGNED_IN', fake.session);
+    await actions().refreshFromCloud();
 
     // Then the write itself is refused.
     fake.state.failures.set('rpc:record_transaction', { message: 'permission denied for function', code: '42501' });
@@ -904,7 +904,7 @@ describe('a cloud reload that fails (F6)', () => {
 
     // Another device moved this wallet; the reload picks that up.
     fake.state.tables.wallets[0].balance = 7777;
-    await fake.state.authCallback!('SIGNED_IN', fake.session);
+    await actions().refreshFromCloud();
 
     fake.state.failures.set('rpc:record_transaction', { message: 'permission denied for function', code: '42501' });
     releaseInsert();
@@ -1265,7 +1265,7 @@ describe('a signed-in delete and restore through set_transaction_deleted (ADR 00
     await waitFor(() => expect(wallet()?.balance).toBe(WALLET_OPENING));
 
     serverWallet(WALLET).balance = 7777;
-    await fake.state.authCallback!('SIGNED_IN', fake.session);
+    await actions().refreshFromCloud();
     await waitFor(() => {
       expect(wallet()?.balance).toBe(7777);
       expect(state().isSyncing).toBe(false);
@@ -1303,7 +1303,7 @@ describe('a signed-in delete and restore through set_transaction_deleted (ADR 00
     await waitFor(() => expect(wallet()?.balance).toBe(WALLET_OPENING - 200));
 
     serverWallet(WALLET).balance = 7777;
-    await fake.state.authCallback!('SIGNED_IN', fake.session);
+    await actions().refreshFromCloud();
     await waitFor(() => {
       expect(wallet()?.balance).toBe(7777);
       expect(state().isSyncing).toBe(false);
@@ -2389,7 +2389,7 @@ describe('a cloud load still in flight at sign-out (F5, ADR 0024)', () => {
       id: 'tx-server-1', user_id: fake.USER_ID, wallet_id: WALLET, amount: 99, type: 'EXPENSE',
       description: 'Server row', transaction_date: TODAY, is_deleted: false,
     });
-    const reload = fake.state.authCallback!('TOKEN_REFRESHED', fake.session);
+    const reload = actions().refreshFromCloud();
 
     // ...the user signs out while it waits...
     await actions().signOut();
@@ -3177,5 +3177,54 @@ describe('an own save does not reload (T799, ADR 0003 amendment)', () => {
     fake.emit('transactions', remoteRow);
     await pending;
     await waitFor(() => expect(state().transactions.some((t) => t.id === 'transactions-remote-1')).toBe(true));
+  });
+});
+
+describe('one cloud load per signed-in user (T801, ADR 0105)', () => {
+  // Longer than the realtime debounce (400 ms), so a reload would have started.
+  const settle = () => new Promise<void>((resolve) => setTimeout(resolve, 450));
+  const reads = () => fake.state.calls.filter((c) => c.op === 'select');
+
+  it.each(['INITIAL_SESSION', 'TOKEN_REFRESHED', 'SIGNED_IN'])(
+    'reads nothing and redraws nothing on %s for the user already loaded',
+    async (event) => {
+      const before = latest!.state;
+      await fake.state.authCallback!(event, fake.session);
+      await settle();
+      expect(reads()).toEqual([]);
+      expect(latest!.state).toBe(before);
+    }
+  );
+
+  it('takes a rename from USER_UPDATED without a reload', async () => {
+    await fake.state.authCallback!('USER_UPDATED', {
+      user: { ...fake.session.user, user_metadata: { name: 'Renamed' } },
+    });
+    await waitFor(() => expect(state().currentUser.name).toBe('Renamed'));
+    await settle();
+    expect(reads()).toEqual([]);
+  });
+
+  it('loads when a different user signs in', async () => {
+    await fake.state.authCallback!('SIGNED_IN', {
+      user: { ...fake.session.user, id: 'user-test-2', email: 'second@example.com', user_metadata: { name: 'Second' } },
+    });
+    await waitFor(() => {
+      expect(state().currentUser.id).toBe('user-test-2');
+      expect(state().isSyncing).toBe(false);
+    });
+    expect(reads().some((c) => c.table === 'wallets')).toBe(true);
+  });
+
+  it('loads again when the same user signs back in after signing out', async () => {
+    await actions().signOut();
+    await settle();
+    fake.state.calls = [];
+    await fake.state.authCallback!('SIGNED_IN', fake.session);
+    await waitFor(() => {
+      expect(state().isAuthenticated).toBe(true);
+      expect(state().isSyncing).toBe(false);
+    });
+    expect(reads().some((c) => c.table === 'wallets')).toBe(true);
   });
 });

@@ -52,13 +52,14 @@ Read this before touching `supabase/`, `src/lib/supabase.ts`, a signed-in write 
 - **`seed_starter_account()`** [0039, 0040] decides on the server whether an account is new (never a wallet or category row, deleted ones included), serialises with an advisory lock, and seeds three ฿0.00 wallets and no debt. The client's guest defaults are the second copy ("Main Checking" client, "Checking Account" server, on purpose). Change both together. A failed seed stops the load and sets `syncError`; a missing function is "Setting up this account needs the latest database update".
 - **Identity colours** [0038]: `utils/identityColorMigration.ts` (device storage only, never the Supabase load) and `20261002_phase63_identity_colors.sql` move together.
 
-## Accounts and sessions [0024, 0072, 0087, 0099]
+## Accounts and sessions [0024, 0072, 0087, 0099, 0105]
 
 - **Passwords:** a chosen password needs 8 (`NewPasswordSchema`, `PASSWORD_MIN_LENGTH`); signing in needs only one typed. The auth server's minimum (dashboard) is 8.
 - **Sessions are real or absent.** `listMySessions` returns `sessions: null` when unavailable, never `[]`. Revocation is only `signOutOtherDevices` (`scope: 'others'`) and `signOut({ everywhere: true })`. No per-device revoke.
 - **`verifySession`** calls `auth.getUser()` on reconnection triggers, `focus`, mount, every 60 s while visible and after a Data API 401. A rejection signs this device out locally; no answer (offline, 5xx, 429) keeps the session.
 - **`signOut()` passes `scope: 'local'`** (supabase-js defaults to global).
 - **Sign-out clears the device:** `resetToGuestState` runs on an explicit sign-out and on a `SIGNED_OUT` event only, never `INITIAL_SESSION`. It drops the write queue, removes `LEDGER_STORAGE_KEYS` and `pf_insights::*`, and resets every slice. `authEpochRef` stops an in-flight load; keep that check after every `await` in `loadSupabaseData`.
+- **One cloud load per signed-in user** [0105]: the auth listener loads only when the session's user differs from `loadedUserIdRef`, which the startup `getSession()` load sets and `resetToGuestState` clears. `INITIAL_SESSION`, `TOKEN_REFRESHED`, `USER_UPDATED` and a repeated `SIGNED_IN` for that user update only a changed profile field, keeping the same `currentUser` object otherwise. A return to the tab reloads through the realtime effect's 30 s rule [0023], never through an auth event.
 - **Sign-in replaces, never merges;** `GuestDataNotice` offers a CSV export first.
 - **Delete account** calls `delete_user_account('DELETE')` (the only function writing `auth`, the one hard delete), then `signOut()`. An error with no SQLSTATE runs `verifySession()`.
 - **Since Phase 123 the ledger tables refuse a request with no session (42501)** instead of returning zero rows; an empty read was never evidence of a new account.
