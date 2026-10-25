@@ -25,6 +25,8 @@ npx tsc --noEmit --extendedDiagnostics
 
 ### Phase 147 - delta against Phase 146
 
+Measured at `d6261d4`; T806 changed docs only and the merge commit `2c00a6d` has the same tree as `53e1062`, so the figures hold for it.
+
 - **Entry chunk** `index-B-nRqlko.js`: 194,593 B (+207 B), 56,963 B gzip (+70 B against Phase 146 `index-C3uifmw_.js`, 194,386 / 56,893): T805's `registerType: 'prompt'` makes `vite-plugin-pwa` generate its prompt-mode register code.
 - **All app JS**: 886,298 B (+207 B), 269,230 B gzip (+63 B against Phase 146 886,091 / 269,167, 39 files, 0 file delta).
 - **CSS**: `index-CNaxMlAk.css`: 53,359 B (0 delta), 10,451 B gzip (0 delta; the same file as Phase 146).
