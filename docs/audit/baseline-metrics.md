@@ -25,6 +25,8 @@ npx tsc --noEmit --extendedDiagnostics
 
 ### Phase 146 - delta against Phase 145
 
+Measured at `476b92c`; T804 changed docs only and the merge commit `f6d05ce` has the same tree as `c250226`, so the figures hold for it.
+
 - **Entry chunk** `index-C3uifmw_.js`: 194,386 B (-139 B), 56,893 B gzip (-62 B against Phase 145 `index-CDIxbGVL.js`, 194,525 / 56,955): T803 removes the tab direction state and the `Presence` wrapper from `App.tsx`.
 - **All app JS**: 886,091 B (-139 B), 269,167 B gzip (-94 B against Phase 145 886,230 / 269,261, 39 files, 0 file delta).
 - **CSS**: `index-CNaxMlAk.css`: 53,359 B (-536 B), 10,451 B gzip (-75 B against Phase 145 `index-BNXJTUPd.css`, 53,895 / 10,526): T803 deletes the page and popup entrance keyframes and rules.
