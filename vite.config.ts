@@ -9,7 +9,8 @@ export default defineConfig(({ mode }) => {
       react(),
       tailwindcss(),
       VitePWA({
-        registerType: 'autoUpdate',
+        // ADR 0107: `prompt` keeps a new worker waiting until user confirms reload
+        registerType: 'prompt',
         // ADR 0042: `vite --mode pwa-dev` registers the plugin's development
         // service worker, so the real offline-ready toast (ReloadPrompt) shows
         // under a dev server. Playwright's second webServer runs it for

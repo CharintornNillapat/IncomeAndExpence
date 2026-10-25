@@ -23,6 +23,14 @@ npx tsc --noEmit --extendedDiagnostics
 
 ## Figures
 
+### Phase 147 - delta against Phase 146
+
+- **Entry chunk** `index-B-nRqlko.js`: 194,593 B (+207 B), 56,963 B gzip (+70 B against Phase 146 `index-C3uifmw_.js`, 194,386 / 56,893): T805's `registerType: 'prompt'` makes `vite-plugin-pwa` generate its prompt-mode register code.
+- **All app JS**: 886,298 B (+207 B), 269,230 B gzip (+63 B against Phase 146 886,091 / 269,167, 39 files, 0 file delta).
+- **CSS**: `index-CNaxMlAk.css`: 53,359 B (0 delta), 10,451 B gzip (0 delta; the same file as Phase 146).
+- **Vitest**: 69 files, 1510 tests (+4 tests, +1 file against Phase 146: `unit/reload-prompt.test.tsx`, new in T805), 1510 passed in 61.55 s (`workflow/stages/02_build/output/logs/T806-unit.log`). Per-task run: T805 1510 passed in 59.69 s (`workflow/stages/02_build/output/logs/T805-unit.log`).
+- **Playwright**: `npx playwright test --list` reports 183 tests in 36 files, 549 runs across 3 projects (0 delta). No full run in Phase 147: T805 ran `tests/toast-layering.spec.ts`, the one spec on the `pwa-dev` server, on 3 projects (6 passed), and T806 changed docs only. Last full run: T803, 543 passed, 6 skipped, 0 failed (9.7 min).
+
 ### Phase 146 - delta against Phase 145
 
 Measured at `476b92c`; T804 changed docs only and the merge commit `f6d05ce` has the same tree as `c250226`, so the figures hold for it.

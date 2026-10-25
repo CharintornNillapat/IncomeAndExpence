@@ -30,6 +30,7 @@ Read this before touching `src/components/`, `src/views/`, `src/index.css`, `App
 - **`transition-control`, never `transition-colors` or `transition-all`,** on a focusable control [0030].
 - **The page zooms** [0068]: never add `maximum-scale` or `user-scalable=no`; size fields from the type scale, never `text-[Npx]` (the iOS 16 px rule works through `--text-xs`/`--text-sm`).
 - **Every edge clears its safe-area inset** [0070]: the header pads the top inset, `body` the sides, the mobile nav and footer margin the bottom, `Modal` the bottom below `sm`, `ReloadPrompt` bottom and right from `md`. A new fixed element takes its inset the same way.
+- **An app update waits for the user** [0107]: `registerType: 'prompt'`, so a new service worker stays waiting until `ReloadPrompt`'s Reload is pressed; never switch back to `autoUpdate`, which reloads the page by itself.
 
 ## Modals and dialogs [0043, 0047, 0058, 0059, 0086, 0089]
 
