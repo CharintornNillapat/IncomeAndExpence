@@ -30,7 +30,7 @@ Furthermore, `src/components/ReloadPrompt.tsx` already contains an update notifi
 ## Verification
 
 - **Unit:** `unit/reload-prompt.test.tsx` verifies that `vite.config.ts` declares `registerType: 'prompt'` and no longer contains `registerType: 'autoUpdate'`. It also verifies `<ReloadPrompt />` rendering in prompt mode, that Reload calls `updateServiceWorker(true)`, and that Dismiss clears notification flags.
-- **Production build inspection (Gate 5):** Inspection of `dist/sw.js` confirms that `SKIP_WAITING` message listener is present, while `clientsClaim` and immediate `self.skipWaiting()` invocations are absent (`SKIP_WAITING true`, `clientsClaim false`, `skipWaiting call false`).
+- **Production build inspection (Gate 5):** Inspection of `dist/sw.js` confirms that `SKIP_WAITING` message listener is present, while `clientsClaim` and immediate `self.skipWaiting()` invocations are absent (`SKIP_WAITING true`, `clientsClaim false`, `skipWaiting call true`: the one `self.skipWaiting()` call is inside the `SKIP_WAITING` message listener).
 - **E2E:** Playwright suite runs `tests/toast-layering.spec.ts` against the development service worker server on port 3100.
 
 ## Consequences
