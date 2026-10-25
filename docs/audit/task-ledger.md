@@ -129,6 +129,15 @@ Branch `phase-147-update-prompt`, cut from `main` at `e0de2f4`. Two commits, T80
 | T805 | Ask before updating the offline app: registerType 'prompt', notice asks before reload (ADR 0107) | `docs/audit/decisions/0107-ask-before-updating-the-offline-app.md`, `vite.config.ts`, `src/components/ReloadPrompt.tsx`, `unit/reload-prompt.test.tsx`, `docs/contexts/ui-and-e2e.md`, `vitest.config.ts`, `unit/fixtures/virtualPwaRegisterReact.ts`, `docs/audit/task-ledger.md` | done | d6261d4 | Red gate verified (1 failed, 3 passed); npm run lint clean; unit/reload-prompt.test.tsx 4 passed (1.35s); full unit 69 files 1510 passed (59.69s); toast-layering 2 passed on chr (41.8s), 6 passed on 3 browsers (24.7s); clean prod build (15.23s); Gate 5 sw.js verified (SKIP_WAITING true, clientsClaim false, skipWaiting in message listener); CRLF kept; 0 em dashes; scope clean |
 | T806 | Phase 147 closing docs: refactor-log entry, baseline-metrics section, T805 Commit cell, unit 1510 / 69 files in AGENTS.md and README.md, ADR 0107 Verification line | `AGENTS.md`, `README.md`, `docs/audit/decisions/0107-ask-before-updating-the-offline-app.md`, `docs/audit/refactor-log.md`, `docs/audit/baseline-metrics.md`, `docs/audit/task-ledger.md` | done | 53e1062 | unit 69 files 1510 passed (61.55s); playwright list 183/36/549; clean prod build (index-B-nRqlko.js 194,593 B, all app JS 886,298 B 39 files, CSS 53,359 B); sw.js one skipWaiting call, in the message listener; CRLF kept; 0 em dashes |
 
+## Phase 148 - Add entry stays open on first open (ADR 0108)
+
+Branch `phase-148-add-entry-close`, cut from `main` at `45b6c24`.
+
+| # | Task | Files | Status | Commit | Gate result |
+|---|---|---|---|---|---|
+| T807 | Shell dialogs mount at idle, so a first open is instant (ADR 0108) | `docs/audit/decisions/0108-shell-dialogs-mount-at-idle.md`, `src/App.tsx`, `tests/tab-preload.spec.ts`, `docs/contexts/ui-and-e2e.md`, `docs/audit/test-selector-contract.md`, `docs/audit/task-ledger.md` | done | | Red gate verified (4 failed, 2 passed); npm run lint clean; unit 69 files 1510 passed (84.61s); tab-preload 6 passed on chr (22.7s), 18 passed on 3 browsers (1.1m); full e2e 36 specs 555 passed 6 skipped on 3 browsers (10.2m); CRLF kept, ADR 0108 CRLF; 0 em dashes; scope clean |
+| T808 | Phase 148 closing docs: refactor-log entry, baseline-metrics section, T807 Commit cell, Playwright counts in `AGENTS.md`, `README.md` and `docs/contexts/ui-and-e2e.md` | `AGENTS.md`, `README.md`, `docs/contexts/ui-and-e2e.md`, `docs/audit/refactor-log.md`, `docs/audit/baseline-metrics.md`, `docs/audit/task-ledger.md` | todo | | |
+
 ## Backlog
 
 Not scheduled. Each row says where it came from.
