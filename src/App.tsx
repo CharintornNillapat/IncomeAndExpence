@@ -48,11 +48,11 @@ const MainApp: React.FC = () => {
   const [transferSourceWalletId, setTransferSourceWalletId] = useState<string | undefined>(undefined);
   const [isAddWalletModalOpen, setIsAddWalletModalOpen] = useState<boolean>(false);
   // ADR 0010: latches, not mirrors of the `isOpen*` state above. Each flips to
-  // `true` on first open and never flips back, so the lazy-loaded modal below
-  // mounts once and stays mounted - only `isOpen` toggles thereafter, exactly
-  // as it did before these were deferred. Gating on the bare `isOpen` state
-  // instead would unmount the modal (and its exit animation) the instant it
-  // closes.
+  // `true` at idle (ADR 0108, the effect below) or on first open, whichever
+  // comes first, and never flips back, so the lazy-loaded modal below mounts
+  // once and stays mounted - only `isOpen` toggles thereafter, exactly as it
+  // did before these were deferred. Gating on the bare `isOpen` state instead
+  // would unmount the modal (and its exit animation) the instant it closes.
   const [hasOpenedQuickAdd, setHasOpenedQuickAdd] = useState<boolean>(false);
   const [hasOpenedTransfer, setHasOpenedTransfer] = useState<boolean>(false);
   const [hasOpenedAddWallet, setHasOpenedAddWallet] = useState<boolean>(false);
@@ -86,8 +86,22 @@ const MainApp: React.FC = () => {
     }
   }, []);
 
-  // ADR 0104: Fetch view chunks in idle time after first paint.
-  useEffect(() => runWhenIdle(preloadViews), []);
+  // ADR 0104: Fetch view chunks in idle time after first paint. ADR 0108: the
+  // four shell dialogs mount there too, closed, so their first open only flips
+  // `isOpen`. Mounted by the click instead, a dialog waited for React's 300 ms
+  // Suspense reveal throttle, and a second click in that gap landed on the
+  // scrim and closed it.
+  useEffect(
+    () =>
+      runWhenIdle(() => {
+        preloadViews();
+        setHasOpenedQuickAdd(true);
+        setHasOpenedTransfer(true);
+        setHasOpenedAddWallet(true);
+        setHasOpenedAccount(true);
+      }),
+    []
+  );
 
   // T1 (Phase 2): MainApp no longer subscribes to the finance context. It did so
   // only to feed the quick-add modal, which meant every financial write
@@ -333,8 +347,9 @@ const MainApp: React.FC = () => {
       </footer>
 
       {/* Quick Add Modal / Responsive Mobile Bottom Sheet with Glassmorphism.
-          ADR 0010: lazy-loaded, mounted on first open via the `hasOpened*`
-          latch, and never unmounted after - only `isOpen` toggles thereafter. */}
+          ADR 0010: lazy-loaded, mounted at idle (ADR 0108) or on first open
+          via the `hasOpened*` latch, and never unmounted after - only
+          `isOpen` toggles thereafter. */}
       {hasOpenedQuickAdd && (
         <Suspense fallback={null}>
           <QuickAddModal

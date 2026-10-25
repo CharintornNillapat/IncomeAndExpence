@@ -40,7 +40,7 @@ Read this before touching `src/components/`, `src/views/`, `src/index.css`, `App
 - **The page behind the top dialog is `inert`,** marked on every element beside the path from the overlay to `<body>`, never on `#root` or an ancestor (Modal is not portalled). This happens in the commit that shows the dialog; the return-focus cleanup releases the background before focusing the opener.
 - **Back closes the top dialog** (`src/utils/modalHistory.ts`): each open Modal has its own history entry; a dialog closed another way removes it.
 - **`OverflowMenu`'s items exist only while open,** and it stops its own Escape. A spec asserting an action is absent opens the menu first.
-- **Shell modals** (`QuickAddModal`, `TransferFundsModal`, `AddWalletModal`, `AccountModal`) mount on first open behind `React.lazy` and a `hasOpened` latch that never resets [0010]. A bare `{isOpen && <Modal/>}` kills the exit tween.
+- **Shell modals** (`QuickAddModal`, `TransferFundsModal`, `AddWalletModal`, `AccountModal`) sit behind `React.lazy` and a `hasOpened` latch that never resets [0010]. The latch flips at idle, in the callback that preloads the tab views, so each mounts closed and a first open only flips `isOpen` [0108]: a click that mounts a `Suspense` boundary waits out React's 300 ms reveal throttle. A bare `{isOpen && <Modal/>}` kills the exit tween.
 
 ## Page contracts
 
@@ -64,7 +64,7 @@ Read this before touching `src/components/`, `src/views/`, `src/index.css`, `App
 
 ## Playwright suite (`tests/*.spec.ts`)
 
-- **183 tests in 36 specs on Chromium, Firefox and WebKit: 549 runs, 543 pass, 6 skip by design** (Chromium-only layout shift and safe-area emulation).
+- **187 tests in 36 specs on Chromium, Firefox and WebKit: 561 runs, 555 pass, 6 skip by design** (Chromium-only layout shift and safe-area emulation).
 - **Hermetic by principle:** every spec that intercepts a request fulfils every response locally, so no run spends TypeSafe credits. Three specs intercept (`jev-classify`, `csv-classify`, `insights`); a fourth is allowed only if no unit test can reach the code. `voice-input.spec.ts` uses an init-script stub, not interception. **No spec signs in**, but the dev server reads `.env`, so never add a spec that submits real credentials.
 - **Never edit `src/` while a run is in flight;** the web server is a live Vite dev server and HMR corrupts the run.
 - **Two web servers:** port 3000 (`npm run dev`) for every spec, port 3100 (`vite --mode pwa-dev`) for `toast-layering.spec.ts` only. Check both ports for stale servers before a local run (`reuseExistingServer` tests whatever answers). `tests/global-setup.ts` warms 3100.
