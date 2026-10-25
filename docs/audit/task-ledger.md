@@ -120,6 +120,15 @@ Branch `phase-146-no-blink`, cut from `main` at `d0e8c69`. Two commits, T803's `
 | T803 | Instant tabs and popups: remove page slide and popup entrances, keep popup exits, test pinned (ADR 0106) | `docs/audit/decisions/0106-instant-tabs-and-popups-open-without-motion.md`, `src/App.tsx`, `src/index.css`, `src/components/Modal.tsx`, `tests/reduced-motion.spec.ts`, `docs/contexts/ui-and-e2e.md`, `docs/audit/task-ledger.md` | done | 476b92c | Red gate verified (1 failed, 1 passed); npm run lint clean; related unit 2 files 37 passed (2.75s); full unit 68 files 1506 passed (54.14s); targeted e2e 8 specs on chr 46 passed (27.8s), 136 passed 2 skipped on 3 browsers (2.5m); full e2e 36 specs 543 passed 6 skipped on 3 browsers (9.7m); CRLF kept; 0 em dashes; scope clean |
 | T804 | Phase 146 closing docs: refactor-log entry, baseline-metrics section, T803 Commit cell, ADR 0106 line endings, unit and Playwright counts checked | `docs/audit/refactor-log.md`, `docs/audit/baseline-metrics.md`, `docs/audit/task-ledger.md` | done | c250226 | unit 68 files 1506 passed (80.63s); playwright list 183/36/549; AGENTS.md and README.md counts verified, no edit; clean prod build (index-C3uifmw_.js 194,386 B, all app JS 886,091 B 39 files, CSS 53,359 B); CRLF kept, ADR 0106 CRLF; 0 em dashes |
 
+## Phase 147 - Ask before updating the offline app (ADR 0107)
+
+Branch `phase-147-update-prompt`, cut from `main` at `e0de2f4`.
+
+| # | Task | Files | Status | Commit | Gate result |
+|---|---|---|---|---|---|
+| T805 | Ask before updating the offline app: registerType 'prompt', notice asks before reload (ADR 0107) | `docs/audit/decisions/0107-ask-before-updating-the-offline-app.md`, `vite.config.ts`, `src/components/ReloadPrompt.tsx`, `unit/reload-prompt.test.tsx`, `docs/contexts/ui-and-e2e.md`, `vitest.config.ts`, `unit/fixtures/virtualPwaRegisterReact.ts`, `docs/audit/task-ledger.md` | done | | Red gate verified (1 failed, 3 passed); npm run lint clean; unit/reload-prompt.test.tsx 4 passed (1.35s); full unit 69 files 1510 passed (59.69s); toast-layering 2 passed on chr (41.8s), 6 passed on 3 browsers (24.7s); clean prod build (15.23s); Gate 5 sw.js verified (SKIP_WAITING true, clientsClaim false, skipWaiting in message listener); CRLF kept; 0 em dashes; scope clean |
+| T806 | Phase 147 closing docs: refactor-log entry, baseline-metrics section, T805 Commit cell, unit and Playwright counts checked | `AGENTS.md`, `README.md`, `docs/contexts/ui-and-e2e.md`, `docs/audit/refactor-log.md`, `docs/audit/baseline-metrics.md`, `docs/audit/task-ledger.md` | todo | | |
+
 ## Backlog
 
 Not scheduled. Each row says where it came from.

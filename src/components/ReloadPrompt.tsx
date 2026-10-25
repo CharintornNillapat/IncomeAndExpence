@@ -10,6 +10,7 @@ import { IconButton } from './ui/IconButton';
 // it still re-renders on its own `useRegisterSW` state changes exactly as
 // before.
 export const ReloadPrompt: React.FC = React.memo(() => {
+  // ADR 0107: `registerType: 'prompt'` keeps a new worker waiting, so `needRefresh` goes true and the notice asks before reloading.
   const {
     offlineReady: [offlineReady, setOfflineReady],
     needRefresh: [needRefresh, setNeedRefresh],

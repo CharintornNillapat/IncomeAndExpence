@@ -1,3 +1,4 @@
+import path from 'node:path';
 import { defineConfig } from 'vitest/config';
 
 /**
@@ -16,6 +17,11 @@ import { defineConfig } from 'vitest/config';
  * which is meaningless in a non-interactive run.
  */
 export default defineConfig({
+  resolve: {
+    alias: {
+      'virtual:pwa-register/react': path.resolve(__dirname, 'unit/fixtures/virtualPwaRegisterReact.ts'),
+    },
+  },
   test: {
     /*
      * MANDATORY, not a preference.
