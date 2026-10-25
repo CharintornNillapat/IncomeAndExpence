@@ -131,12 +131,12 @@ Branch `phase-147-update-prompt`, cut from `main` at `e0de2f4`. Two commits, T80
 
 ## Phase 148 - Add entry stays open on first open (ADR 0108)
 
-Branch `phase-148-add-entry-close`, cut from `main` at `45b6c24`.
+Branch `phase-148-add-entry-close`, cut from `main` at `45b6c24`. Two commits, T807's `29ce4ba` and T808's `ef434cd`, merged into `main` as `2cc177c` (PR #100). No migration.
 
 | # | Task | Files | Status | Commit | Gate result |
 |---|---|---|---|---|---|
 | T807 | Shell dialogs mount at idle, so a first open is instant (ADR 0108) | `docs/audit/decisions/0108-shell-dialogs-mount-at-idle.md`, `src/App.tsx`, `tests/tab-preload.spec.ts`, `docs/contexts/ui-and-e2e.md`, `docs/audit/test-selector-contract.md`, `docs/audit/task-ledger.md` | done | 29ce4ba | Red gate verified (4 failed, 2 passed); npm run lint clean; unit 69 files 1510 passed (84.61s); tab-preload 6 passed on chr (22.7s), 18 passed on 3 browsers (1.1m); full e2e 36 specs 555 passed 6 skipped on 3 browsers (10.2m); CRLF kept, ADR 0108 CRLF; 0 em dashes; scope clean |
-| T808 | Phase 148 closing docs: refactor-log entry, baseline-metrics section, T807 Commit cell, Playwright 187 / 36 / 561 in AGENTS.md, README.md and ui-and-e2e.md, ADR 0108 wording and Verification line | `AGENTS.md`, `README.md`, `docs/contexts/ui-and-e2e.md`, `docs/audit/decisions/0108-shell-dialogs-mount-at-idle.md`, `docs/audit/refactor-log.md`, `docs/audit/baseline-metrics.md`, `docs/audit/task-ledger.md` | done | | unit 69 files 1510 passed (76.30s); playwright list 187/36/561; clean prod build (index-D4N64t3V.js 194,626 B, all app JS 886,331 B 39 files, CSS 53,359 B); CRLF kept; 0 em dashes |
+| T808 | Phase 148 closing docs: refactor-log entry, baseline-metrics section, T807 Commit cell, Playwright 187 / 36 / 561 in AGENTS.md, README.md and ui-and-e2e.md, ADR 0108 wording and Verification line | `AGENTS.md`, `README.md`, `docs/contexts/ui-and-e2e.md`, `docs/audit/decisions/0108-shell-dialogs-mount-at-idle.md`, `docs/audit/refactor-log.md`, `docs/audit/baseline-metrics.md`, `docs/audit/task-ledger.md` | done | ef434cd | unit 69 files 1510 passed (76.30s); playwright list 187/36/561; clean prod build (index-D4N64t3V.js 194,626 B, all app JS 886,331 B 39 files, CSS 53,359 B); CRLF kept; 0 em dashes |
 
 ## Backlog
 
