@@ -23,6 +23,14 @@ npx tsc --noEmit --extendedDiagnostics
 
 ## Figures
 
+### Phase 148 - delta against Phase 147
+
+- **Entry chunk** `index-D4N64t3V.js`: 194,626 B (+33 B), 56,981 B gzip (+18 B against Phase 147 `index-B-nRqlko.js`, 194,593 / 56,963): T807's idle callback in `App.tsx` also flips the four shell-dialog latches.
+- **All app JS**: 886,331 B (+33 B), 269,276 B gzip (+46 B against Phase 147 886,298 / 269,230, 39 files, 0 file delta).
+- **CSS**: `index-CNaxMlAk.css`: 53,359 B (0 delta), 10,451 B gzip (0 delta; the same file as Phase 147).
+- **Vitest**: 69 files, 1510 tests (0 delta against Phase 147), 1510 passed in 76.30 s (`workflow/stages/02_build/output/logs/T808-unit.log`). Per-task run: T807 1510 passed in 84.61 s (`workflow/stages/02_build/output/logs/T807-unit.log`).
+- **Playwright**: `npx playwright test --list` reports 187 tests in 36 files, 561 runs across 3 projects (+4 tests, +12 runs against Phase 147, all in `tests/tab-preload.spec.ts`, new in T807). Full run by T807: 555 passed, 6 skipped, 0 failed across 3 projects (10.2 min, `workflow/stages/02_build/output/logs/T807-e2e.log`); the T807 review's run gave the same (10.4 min). No full run by T808 (docs-only; the code is unchanged since T807).
+
 ### Phase 147 - delta against Phase 146
 
 Measured at `d6261d4`; T806 changed docs only and the merge commit `2c00a6d` has the same tree as `53e1062`, so the figures hold for it.
