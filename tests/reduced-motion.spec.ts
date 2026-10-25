@@ -8,6 +8,9 @@ import { gotoTab } from './helpers';
  * setting. The unit suite covers `Presence` and `slidePill`; only a browser
  * can show the `@media (prefers-reduced-motion)` rule and the keyframes are
  * wired, so this records every animation that starts while the same steps run.
+ *
+ * Phase 146 (ADR 0106): the page and dialog entrances no longer animate,
+ * keeping tab switches and popup opens instant; this spec pins that.
  */
 
 declare global {
@@ -64,19 +67,20 @@ function busyAnimations(page: Page) {
 }
 
 const ALL = [
-  'motion-page-in',
   'slide',
-  'motion-fade-in',
-  'motion-rise-in',
   'motion-fade-out',
   'motion-rise-out',
-  'motion-page-out',
 ];
 
-test('the page, the period pill and a dialog animate on their changes', async ({ page }) => {
+test('the period pill animates and a dialog fades out on close', async ({ page }) => {
   await recordMotion(page);
   await runSteps(page);
   await expect.poll(() => page.evaluate(() => window.__motion)).toEqual(expect.arrayContaining(ALL));
+  const names = await page.evaluate(() => window.__motion);
+  expect(names).not.toContain('motion-page-in');
+  expect(names).not.toContain('motion-page-out');
+  expect(names).not.toContain('motion-fade-in');
+  expect(names).not.toContain('motion-rise-in');
   expect(await busyAnimations(page)).toEqual(['spin', 'pulse']);
 });
 

@@ -3,7 +3,6 @@ import { FinanceProvider } from './context/FinanceContext';
 import { Navbar, ActiveTab } from './components/Navbar';
 import { MobileBottomNav } from './components/MobileBottomNav';
 import { ViewLoadingFallback } from './components/ViewLoadingFallback';
-import { Presence } from './components/ui/motion';
 import { AuthModal } from './components/AuthModal';
 import { ReloadPrompt } from './components/ReloadPrompt';
 import { useTabSwipe } from './hooks/useTabSwipe';
@@ -37,7 +36,6 @@ const AccountModal = lazy(() => import('./components/account/AccountModal').then
 const MainApp: React.FC = () => {
   // ADR 0088: the tab is in the URL's hash, so a refresh or a bookmark opens it.
   const [activeTab, setActiveTab] = useState<ActiveTab>(() => tabFromHash(window.location.hash));
-  const [direction, setDirection] = useState<number>(0);
   const [isQuickAddOpen, setIsQuickAddOpen] = useState<boolean>(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
   // T41 (Phase 23): Transfer Funds and Add Wallet are each mounted once here,
@@ -99,19 +97,10 @@ const MainApp: React.FC = () => {
   // subscribes for itself.
 
   // T3 (Phase 2): stabilized with useCallback so Navbar / MobileBottomNav /
-  // the active view don't receive a new function identity on every render -
-  // each still depends on `activeTab` (it reads the current tab to compute
-  // `direction`), so identity only changes when the tab actually changes,
-  // not on every unrelated re-render of MainApp.
-  const showTab = useCallback(
-    (newTab: ActiveTab) => {
-      const currentIndex = TAB_ORDER.indexOf(activeTab);
-      const newIndex = TAB_ORDER.indexOf(newTab);
-      if (currentIndex !== newIndex) setDirection(newIndex > currentIndex ? 1 : -1);
-      setActiveTab(newTab);
-    },
-    [activeTab]
-  );
+  // the active view don't receive a new function identity on every render.
+  const showTab = useCallback((newTab: ActiveTab) => {
+    setActiveTab(newTab);
+  }, []);
 
   // ADR 0088 (audit finding 14): every move to another tab is a history entry,
   // so Back and Forward walk between tabs instead of leaving the app. Opening
@@ -301,26 +290,19 @@ const MainApp: React.FC = () => {
         onOpenAccount={handleOpenAccount}
       />
 
-      {/* Main Content Area with Touch Swipe Gestures, Framer Slide Animations & Suspense.
+      {/* Main Content Area with Touch Swipe Gestures & Suspense (ADR 0106: instant tab switch).
           At least the viewport under the header (56px, 64px from `md`), so the
-          footer starts below the fold while a view's chunk loads or a tab's
-          exit tween empties it. As `flex-1` alone it sat at the bottom of the
-          screen until the Dashboard arrived and pushed it off, most of the
-          desktop load's layout shift (Phase 84, ADR 0060). */}
-      {/* `--page-dir` steers the tab slide (`motion-page`, ADR 0082): the new
-          page comes in from 48px on the side it lies, the old one leaves
-          toward the other, both over 200 ms. */}
+          footer starts below the fold while a view's chunk loads. As `flex-1` alone
+          it sat at the bottom of the screen until the Dashboard arrived and pushed it off,
+          most of the desktop load's layout shift (Phase 84, ADR 0060). */}
       <main
         {...swipeHandlers}
-        style={{ '--page-dir': direction } as React.CSSProperties}
         className="flex-1 min-h-[calc(100dvh-3.5rem-env(safe-area-inset-top))] md:min-h-[calc(100dvh-4rem-env(safe-area-inset-top))] max-w-7xl w-full mx-auto px-4 pt-4 pb-24 md:px-10 md:pt-8 md:pb-12 overflow-x-hidden touch-pan-y"
       >
         <Suspense fallback={<ViewLoadingFallback view={activeTab} />}>
-          <Presence>
-            <div key={activeTab} className="motion-page w-full">
-              {renderActiveView()}
-            </div>
-          </Presence>
+          <div key={activeTab} className="w-full">
+            {renderActiveView()}
+          </div>
         </Suspense>
       </main>
 
