@@ -138,6 +138,14 @@ Branch `phase-148-add-entry-close`, cut from `main` at `45b6c24`. Two commits, T
 | T807 | Shell dialogs mount at idle, so a first open is instant (ADR 0108) | `docs/audit/decisions/0108-shell-dialogs-mount-at-idle.md`, `src/App.tsx`, `tests/tab-preload.spec.ts`, `docs/contexts/ui-and-e2e.md`, `docs/audit/test-selector-contract.md`, `docs/audit/task-ledger.md` | done | 29ce4ba | Red gate verified (4 failed, 2 passed); npm run lint clean; unit 69 files 1510 passed (84.61s); tab-preload 6 passed on chr (22.7s), 18 passed on 3 browsers (1.1m); full e2e 36 specs 555 passed 6 skipped on 3 browsers (10.2m); CRLF kept, ADR 0108 CRLF; 0 em dashes; scope clean |
 | T808 | Phase 148 closing docs: refactor-log entry, baseline-metrics section, T807 Commit cell, Playwright 187 / 36 / 561 in AGENTS.md, README.md and ui-and-e2e.md, ADR 0108 wording and Verification line | `AGENTS.md`, `README.md`, `docs/contexts/ui-and-e2e.md`, `docs/audit/decisions/0108-shell-dialogs-mount-at-idle.md`, `docs/audit/refactor-log.md`, `docs/audit/baseline-metrics.md`, `docs/audit/task-ledger.md` | done | ef434cd | unit 69 files 1510 passed (76.30s); playwright list 187/36/561; clean prod build (index-D4N64t3V.js 194,626 B, all app JS 886,331 B 39 files, CSS 53,359 B); CRLF kept; 0 em dashes |
 
+## Phase 149 - Transactions redesign: Table and Calendar views (ADR 0109)
+
+Branch `phase-149-transactions-views`, cut from `main` at `27a6e5f`.
+
+| # | Task | Files | Status | Commit | Gate result |
+|---|---|---|---|---|---|
+| T809 | Pure helpers for the Transactions views: monthBounds, dailyTotals, heatLevel with HEAT_LEVELS, selectionSummary, and their unit tests (ADR 0109) | `src/selectors/timeRange.ts`, `src/selectors/ledger.ts`, `unit/selectors-ledger.test.ts`, `docs/contexts/client-state.md`, `docs/audit/decisions/0109-transactions-table-and-calendar-views.md`, `docs/design/transactions-2026-10/spec.md`, `docs/audit/task-ledger.md` | done | | Red gate verified (5 failed, 22 passed); npm run lint clean; related unit 2/2 files 68 passed; full unit 69/69 files 1515 passed (87.38s); docs and text-landed checks passed; owner hashes unchanged; CRLF kept; 0 em dashes |
+
 ## Backlog
 
 Not scheduled. Each row says where it came from.

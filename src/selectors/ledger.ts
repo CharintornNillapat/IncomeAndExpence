@@ -225,3 +225,73 @@ export function groupByDay(txs: Transaction[], categories?: CategoryLookup): Day
       net: roundToCents(sumIncome(transactions, categories) - sumSpending(transactions, categories)),
     }));
 }
+
+export interface DayTotals {
+  income: number;
+  spending: number;
+  /** Spec L11, the same figure as `groupByDay`'s `net`. */
+  net: number;
+  /** Every row given for the day: a transfer, a repayment, an adjustment and a deleted row count here. */
+  count: number;
+}
+
+/**
+ * The Transactions Calendar's figures per local day (spec 6, ADR 0109): L1
+ * income and spending, the L11 net and the row count. Built on `groupByDay`,
+ * so a calendar cell's net is the Table's day row net to the cent.
+ */
+export function dailyTotals(txs: Transaction[], categories?: CategoryLookup): Map<string, DayTotals> {
+  const totals = new Map<string, DayTotals>();
+  for (const day of groupByDay(txs, categories)) {
+    totals.set(day.date, {
+      income: sumIncome(day.transactions, categories),
+      spending: sumSpending(day.transactions, categories),
+      net: day.net,
+      count: day.transactions.length,
+    });
+  }
+  return totals;
+}
+
+/**
+ * The Calendar's heat shades (spec O3, ADR 0109 D5): a spending day takes
+ * 1 to `HEAT_LEVELS`, relative to the month's highest spending day, so no baht
+ * threshold is fixed in code. One `heat-N` colour token per level.
+ */
+export const HEAT_LEVELS = 3;
+
+/**
+ * A day's heat, 0 to `HEAT_LEVELS`: `ceil(HEAT_LEVELS * spending / monthMax)`,
+ * and 0 when the day or the month spent nothing. Worked in whole cents: in
+ * floating point 3 * 0.1 / 0.3 is 1.0000000000000002, which would lift a day
+ * at exactly a third to level 2. Comparison only, not ledger rounding.
+ */
+export function heatLevel(spending: number, monthMax: number): number {
+  const day = Math.round(spending * 100);
+  const max = Math.round(monthMax * 100);
+  if (!(day > 0) || !(max > 0)) return 0;
+  return Math.min(HEAT_LEVELS, Math.ceil((HEAT_LEVELS * day) / max));
+}
+
+export interface SelectionSummary {
+  /** Selected rows found in `rows`; an id with no row there is not counted. */
+  count: number;
+  /** L1 income minus spending of the selected rows, to the cent. */
+  net: number;
+  /** A selected row is neither income nor spending (a transfer, a repayment, an adjustment, a movement-category row or a deleted row), so `net` leaves it out. */
+  hasUncounted: boolean;
+}
+
+/** The Table's bulk bar (spec 4.1 and 6, ADR 0109 D7): what the selection holds and its L1 net. */
+export function selectionSummary(
+  rows: Transaction[],
+  ids: ReadonlySet<string>,
+  categories?: CategoryLookup
+): SelectionSummary {
+  const selected = rows.filter((tx) => ids.has(tx.id));
+  return {
+    count: selected.length,
+    net: roundToCents(sumIncome(selected, categories) - sumSpending(selected, categories)),
+    hasUncounted: selected.some((tx) => !isIncome(tx, categories) && !isSpending(tx, categories)),
+  };
+}
