@@ -13,13 +13,13 @@ Read this before touching `supabase/`, `src/lib/supabase.ts`, a signed-in write 
 
 ## A signed-in ledger write is one database function or nothing [0023, 0091]
 
-- **The functions:** `record_transaction` (every type except TRANSFER), `transfer_funds`, `set_transaction_deleted` (idempotent by state), `update_transaction` [0033], `import_transactions` (all rows or none, row keys `importKey:rowIndex`), `create_wallet`. Plus `seed_starter_account`, `delete_user_account`, `list_my_sessions`, `consume_ai_quota`.
+- **The functions:** `record_transaction` (every type except TRANSFER), `transfer_funds`, `set_transaction_deleted` (idempotent by state), `set_transactions_deleted` (every listed row or none, each changed row through `_ledger_apply_effect` [0109]), `update_transaction` [0033], `import_transactions` (all rows or none, row keys `importKey:rowIndex`), `create_wallet`. Plus `seed_starter_account`, `delete_user_account`, `list_my_sessions`, `consume_ai_quota`.
 - **No client-side fallback.** A missing function (`isMissingRpcError()`: `42883` or `PGRST202` only) rolls back, writes no table and returns `databaseUpdateNeeded()` (`code: 'DATABASE_UPDATE_NEEDED'`, "This needs the latest database update. Nothing was changed."). Inside a write's `try` it throws `MissingLedgerFunction`. Do not add a fallback back.
 - **On success the client adopts the returned balances and debt remainder** (`adoptLedgerState`). **An error with no SQLSTATE is an unknown outcome:** roll back, then `refreshFromCloud()`. So is a success payload with no row.
 - **The user comes from `auth.uid()` only.** No user-id parameter; every `security definer` lookup filters by owner explicitly.
 - **Replay runs before the overpayment guard,** and matches any row with the key, live or soft-deleted. `update_transaction`'s replay check runs before its stale guard (`TRANSACTION_CHANGED`); send the `updated_at` the client edited, read before the optimistic write.
 - **No overdraft check in SQL** [0014]. The overpayment error is `DEBT_OVERPAYMENT` with the remainder in `detail`; the client formats the text. Money is never formatted in SQL.
-- **`_ledger_apply_effect` is the one SQL implementation of the ledger arithmetic** and mirrors `addTransaction`/`setTransactionDeleted` term for term. `_ledger_source_sign`, `_ledger_row_state`, `_ledger_import_state` are private, revoked from every client role.
+- **`_ledger_apply_effect` is the one SQL implementation of the ledger arithmetic** and mirrors `addTransaction`/`setTransactionDeleted`/`setTransactionsDeleted` term for term. `_ledger_source_sign`, `_ledger_row_state`, `_ledger_import_state` are private, revoked from every client role.
 - **`transfer_funds` has one signature** since Phase 114 [0069, 0078, 0090]: `(p_source_wallet_id, p_dest_wallet_id, p_amount, p_idempotency_key, p_notes, p_date, p_raw_input, p_allow_negative)`, no `p_user_id`. `unit/authenticated-ledger.test.tsx` pins the client's seven arguments.
 - **Known drift kept on purpose:** live also has the non-partial `transactions_user_idempotency_uidx`, so a key on a soft-deleted row blocks reuse, matching the replay rule.
 
@@ -66,4 +66,4 @@ Read this before touching `supabase/`, `src/lib/supabase.ts`, a signed-in write 
 
 ## Advisors (accepted, do not "fix")
 
-The ten `SECURITY DEFINER` functions `authenticated` may execute (each takes the user from `auth.uid()`); `ai_request_counts` with RLS and no policy; five unindexed foreign keys (add indexes past 100,000 transactions, after `scripts/bench-cascade-delete.mjs`); three unused indexes; leaked password protection (a Pro-plan feature, [0099]). Read ADRs 0067, 0074, 0098, 0099 before re-triaging.
+The eleven `SECURITY DEFINER` functions `authenticated` may execute (each takes the user from `auth.uid()`); `ai_request_counts` with RLS and no policy; five unindexed foreign keys (add indexes past 100,000 transactions, after `scripts/bench-cascade-delete.mjs`); three unused indexes; leaked password protection (a Pro-plan feature, [0099]). Read ADRs 0067, 0074, 0098, 0099 before re-triaging.

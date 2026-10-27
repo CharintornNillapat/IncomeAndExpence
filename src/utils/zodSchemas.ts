@@ -174,6 +174,12 @@ export const PresetSchema = z.object({
   walletId: z.string().optional(),
 });
 
+// ADR 0109: a bulk delete or restore names at least one row and a target state.
+export const TransactionIdsSchema = z.object({
+  ids: z.array(z.string().min(1, 'A transaction id is required')).min(1, 'Select at least one transaction'),
+  deleted: z.boolean(),
+});
+
 /**
  * Phase 111 (ADR 0087, audit finding 5): a password someone chooses needs 8
  * characters, at sign-up and in Change Password. Signing in checks only that

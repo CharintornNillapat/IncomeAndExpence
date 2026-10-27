@@ -61,6 +61,7 @@ These pairs must change together; nothing in `tsc` links them.
 | This | Must match | Guarded by |
 |---|---|---|
 | `addTransaction` / `setTransactionDeleted` arithmetic (`FinanceContext.tsx`) | `_ledger_apply_effect` and the ledger RPCs (`supabase/migrations/20260927_ledger_rpcs.sql` and later re-creations) | `unit/authenticated-ledger.test.tsx`, `ledger-guards.test.tsx`, `supabase/tests/*.probe.sql` |
+| `setTransactionsDeleted` arithmetic (`FinanceContext.tsx`) | `set_transactions_deleted` (`supabase/migrations/20261027_phase149_set_transactions_deleted.sql`), which runs `_ledger_apply_effect` once per changed row as `set_transaction_deleted` does | `unit/ledger-guards.test.tsx`, `unit/authenticated-ledger.test.tsx`, `supabase/tests/20261027_phase149.probe.sql` (run by `unit/migration-replay.test.ts`) |
 | Transfer preview and debt payoff block | `addTransaction`'s TRANSFER and DEBT_REPAYMENT arithmetic, through `roundToCents` | Nothing checks the formula; review it by hand |
 | `api/classify.ts` shared declarations | `api/insights.ts` (`checkCaller`, JWKS, `checkQuota`, `readBody`, timings) | `unit/proxy-parity.test.ts`, `proxy-contract.test.ts` |
 | Client guest starter set (`FinanceContext.tsx`) | `seed_starter_account()` in SQL | Review by hand |

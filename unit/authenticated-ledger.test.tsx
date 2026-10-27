@@ -606,6 +606,36 @@ function installLedgerRpcs() {
     return { data: { changed: true, transaction: { ...tx }, ...effect }, error: null };
   });
 
+  // ADR 0109: every listed row or none; a row already in the asked-for state
+  // is left alone and a repeated id counts once; each changed row moves its
+  // wallets and debt as one set_transaction_deleted call would.
+  fake.state.rpcs.set('set_transactions_deleted', (a) => {
+    const ids = [...new Set(a.p_transaction_ids as string[])];
+    const listed = ids.map((id) => rows('transactions').find((t) => t.id === id));
+    if (listed.some((t) => !t)) return rpcError('P0002', 'Transaction not found');
+    const found = listed as Row[];
+    const changed = found.filter((t) => t.is_deleted !== a.p_deleted);
+    for (const tx of changed) {
+      applyEffect(tx, a.p_deleted ? -1 : 1);
+      tx.is_deleted = a.p_deleted;
+      tx.updated_at = new Date().toISOString();
+      fake.emit('transactions', tx);
+    }
+    const walletIds = new Set(found.flatMap((t) => [t.wallet_id, t.destination_wallet_id]).filter(Boolean));
+    const debtIds = new Set(found.filter((t) => t.type === 'DEBT_REPAYMENT').map((t) => t.debt_id).filter(Boolean));
+    return {
+      data: {
+        changed_ids: changed.map((t) => t.id),
+        transactions: found.map((t) => ({ ...t })),
+        balances: rows('wallets').filter((w) => walletIds.has(w.id)).map((w) => ({ id: w.id, balance: w.balance })),
+        debts: rows('debts')
+          .filter((d) => debtIds.has(d.id) && !d.is_deleted)
+          .map((d) => ({ id: d.id, remaining_amount: d.remaining_amount, is_settled: d.is_settled })),
+      },
+      error: null,
+    };
+  });
+
   // ADR 0033. Replay before the stale guard, the money of a repayment or an
   // adjustment fixed, the old effect reversed and the new one applied, and the
   // balance of every wallet on either side returned.
@@ -1155,6 +1185,21 @@ describe('a project missing a ledger function (Phase 115, ADR 0091)', () => {
     expect(wallet()?.balance).toBe(WALLET_OPENING - 200);
   });
 
+  it('a bulk delete, with no fallback to the one-row function', async () => {
+    installLedgerRpcs();
+    const added = await expense(200);
+    await landed(added.txId);
+    fake.state.rpcs.delete('set_transactions_deleted');
+    fake.state.calls.length = 0;
+
+    expect(await actions().setTransactionsDeleted([added.txId!], true)).toEqual(UPDATE_NEEDED);
+    expect(writes('rpc:set_transactions_deleted', 'rpc')).toHaveLength(1);
+    expect(writes('rpc:set_transaction_deleted', 'rpc')).toHaveLength(0);
+    nothingWritten();
+    await waitFor(() => expect(state().transactions.find((t) => t.id === added.txId)?.isDeleted).toBe(false));
+    expect(wallet()?.balance).toBe(WALLET_OPENING - 200);
+  });
+
   it('a CSV import', async () => {
     const result = await actions().commitBulkImport([importRow({ amount: 300 })]);
     expect(result).toEqual({ ...UPDATE_NEEDED, insertedCount: 0, totalAmount: 0, skippedCount: 0 });
@@ -1389,6 +1434,163 @@ describe('a signed-in delete and restore through set_transaction_deleted (ADR 00
     expect(removed.success).toBe(false);
 
     // It committed; the client shows that rather than its rollback.
+    expect(serverWallet(WALLET).balance).toBe(WALLET_OPENING);
+    await waitFor(() => {
+      expect(wallet()?.balance).toBe(WALLET_OPENING);
+      expect(state().transactions.find((t) => t.id === spent.txId)?.isDeleted).toBe(true);
+    });
+  });
+});
+
+describe('a signed-in bulk delete and restore through set_transactions_deleted (ADR 0109)', () => {
+  beforeEach(() => installLedgerRpcs());
+
+  it('deletes an expense and a repayment in one RPC, and restores both in another', async () => {
+    const spent = await expense(200);
+    await landed(spent.txId);
+    const paid = await repay(1000);
+    await landed(paid.txId);
+    fake.state.calls = [];
+
+    const removed = await actions().setTransactionsDeleted([spent.txId!, paid.txId!], true);
+    expect(removed).toEqual({ success: true });
+    const calls = writes('rpc:set_transactions_deleted', 'rpc');
+    expect(calls).toHaveLength(1);
+    expect(calls[0].payload).toEqual({
+      p_transaction_ids: [spent.txId, paid.txId],
+      p_deleted: true,
+    });
+    expect(writes('rpc:set_transaction_deleted', 'rpc')).toHaveLength(0);
+    expect(writes('wallets', 'update')).toHaveLength(0);
+    expect(writes('debts', 'update')).toHaveLength(0);
+    expect(writes('transactions', 'update')).toHaveLength(0);
+
+    expect(serverWallet(WALLET).balance).toBe(WALLET_OPENING);
+    expect(fake.state.tables.debts[0].remaining_amount).toBe(DEBT_REMAINING);
+    await waitFor(() => {
+      expect(wallet()?.balance).toBe(WALLET_OPENING);
+      expect(debt()?.remainingAmount).toBe(DEBT_REMAINING);
+      expect(state().transactions.find((t) => t.id === spent.txId)?.isDeleted).toBe(true);
+      expect(state().transactions.find((t) => t.id === paid.txId)?.isDeleted).toBe(true);
+    });
+
+    await new Promise<void>((resolve) => setTimeout(resolve, 0));
+    const restored = await actions().setTransactionsDeleted([spent.txId!, paid.txId!], false);
+    expect(restored).toEqual({ success: true });
+    expect(writes('rpc:set_transactions_deleted', 'rpc')).toHaveLength(2);
+    expect(serverWallet(WALLET).balance).toBe(WALLET_OPENING - 1200);
+    await waitFor(() => {
+      expect(wallet()?.balance).toBe(WALLET_OPENING - 1200);
+      expect(debt()?.remainingAmount).toBe(DEBT_REMAINING - 1000);
+      expect(state().transactions.find((t) => t.id === spent.txId)?.isDeleted).toBe(false);
+      expect(state().transactions.find((t) => t.id === paid.txId)?.isDeleted).toBe(false);
+    });
+  });
+
+  it('F3: reverses relative to the balance the server holds', async () => {
+    const spent = await expense(200);
+    await landed(spent.txId);
+    fake.state.tables.wallets[0].balance = 9000;
+
+    const removed = await actions().setTransactionsDeleted([spent.txId!], true);
+    expect(removed).toEqual({ success: true });
+    expect(serverWallet(WALLET).balance).toBe(9200);
+    await waitFor(() => expect(wallet()?.balance).toBe(9200));
+  });
+
+  it('rolls back every row, and asks no one-row function, when the RPC rejects', async () => {
+    const spent = await expense(200);
+    await landed(spent.txId);
+    const paid = await repay(1000);
+    await landed(paid.txId);
+    fake.state.failures.set('rpc:set_transactions_deleted', { message: 'permission denied for function', code: '42501' });
+    fake.state.calls = [];
+
+    const removed = await actions().setTransactionsDeleted([spent.txId!, paid.txId!], true);
+    expect(removed.success).toBe(false);
+    expect(writes('rpc:set_transactions_deleted', 'rpc')).toHaveLength(1);
+    expect(writes('rpc:set_transaction_deleted', 'rpc')).toHaveLength(0);
+    expect(writes('wallets', 'update')).toHaveLength(0);
+    expect(writes('transactions', 'update')).toHaveLength(0);
+    await waitFor(() => {
+      expect(wallet()?.balance).toBe(WALLET_OPENING - 1200);
+      expect(debt()?.remainingAmount).toBe(DEBT_REMAINING - 1000);
+      expect(state().transactions.find((t) => t.id === spent.txId)?.isDeleted).toBe(false);
+      expect(state().transactions.find((t) => t.id === paid.txId)?.isDeleted).toBe(false);
+    });
+  });
+
+  it('sends each id once and leaves a row already deleted alone', async () => {
+    const spent = await expense(200);
+    await landed(spent.txId);
+    const paid = await repay(1000);
+    await landed(paid.txId);
+
+    const first = await actions().softDeleteTransaction(spent.txId!);
+    expect(first.success).toBe(true);
+    await waitFor(() => expect(state().transactions.find((t) => t.id === spent.txId)?.isDeleted).toBe(true));
+    await new Promise<void>((resolve) => setTimeout(resolve, 0));
+    fake.state.calls = [];
+
+    const removed = await actions().setTransactionsDeleted([spent.txId!, spent.txId!, paid.txId!], true);
+    expect(removed).toEqual({ success: true });
+    const calls = writes('rpc:set_transactions_deleted', 'rpc');
+    expect(calls).toHaveLength(1);
+    expect(calls[0].payload).toEqual({
+      p_transaction_ids: [spent.txId, paid.txId],
+      p_deleted: true,
+    });
+    expect(serverWallet(WALLET).balance).toBe(WALLET_OPENING);
+  });
+
+  it('refuses an id it does not hold, before any request', async () => {
+    const spent = await expense(200);
+    await landed(spent.txId);
+    fake.state.calls = [];
+
+    const removed = await actions().setTransactionsDeleted([spent.txId!, 'tx-never-existed'], true);
+    expect(removed).toEqual({ success: false, error: 'Transaction not found' });
+    expect(writes('rpc:set_transactions_deleted', 'rpc')).toHaveLength(0);
+    expect(wallet()?.balance).toBe(WALLET_OPENING - 200);
+  });
+
+  it('re-fetches instead of restoring a stale snapshot when a reload landed mid-flight (T69)', async () => {
+    const spent = await expense(200);
+    await landed(spent.txId);
+
+    let release!: () => void;
+    fake.state.gates.set('rpc:set_transactions_deleted', new Promise<void>((resolve) => (release = resolve)));
+
+    const pending = actions().setTransactionsDeleted([spent.txId!], true);
+    await waitFor(() => expect(wallet()?.balance).toBe(WALLET_OPENING));
+
+    serverWallet(WALLET).balance = 7777;
+    await actions().refreshFromCloud();
+    await waitFor(() => {
+      expect(wallet()?.balance).toBe(7777);
+      expect(state().isSyncing).toBe(false);
+    });
+
+    fake.state.calls = [];
+    fake.state.failures.set('rpc:set_transactions_deleted', { message: 'permission denied for function', code: '42501' });
+    release();
+
+    expect((await pending).success).toBe(false);
+    expect(writes('wallets', 'select').length).toBeGreaterThan(0);
+    await waitFor(() => {
+      expect(wallet()?.balance).toBe(7777);
+      expect(state().transactions.find((t) => t.id === spent.txId)?.isDeleted).toBe(false);
+    });
+  });
+
+  it('re-reads after an unknown outcome', async () => {
+    const spent = await expense(200);
+    await landed(spent.txId);
+    fake.state.lostResponses.add('set_transactions_deleted');
+
+    const removed = await actions().setTransactionsDeleted([spent.txId!], true);
+    expect(removed.success).toBe(false);
+
     expect(serverWallet(WALLET).balance).toBe(WALLET_OPENING);
     await waitFor(() => {
       expect(wallet()?.balance).toBe(WALLET_OPENING);

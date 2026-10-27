@@ -47,7 +47,7 @@ afterAll(async () => {
 describe('every migration, from empty', () => {
   it('applies in file order, starting from the baseline', () => {
     expect(migrationFiles()[0]).toBe(BASELINE);
-    expect(migrationFiles()).toHaveLength(21);
+    expect(migrationFiles()).toHaveLength(22);
   });
 
   it('builds the eight tables and what the live project holds', () => {
@@ -58,12 +58,13 @@ describe('every migration, from empty', () => {
     // The counts read from the live project on 2026-10-05, less Phase 93's
     // two SELECT policies, plus its transfer_funds overload (ADR 0069) and
     // Phase 96's delete_user_account (ADR 0072), less the 20260909
-    // transfer_funds signature Phase 114 drops (ADR 0090).
+    // transfer_funds signature Phase 114 drops (ADR 0090), plus Phase 149's
+    // set_transactions_deleted (ADR 0109).
     expect(count(catalog, 'column')).toBe(75);
     expect(count(catalog, 'constraint')).toBe(28);
     expect(count(catalog, 'index')).toBe(17);
     expect(count(catalog, 'policy')).toBe(7);
-    expect(count(catalog, 'function')).toBe(16);
+    expect(count(catalog, 'function')).toBe(17);
     expect(count(catalog, 'trigger')).toBe(2);
     expect(count(catalog, 'publication')).toBe(5);
   });
@@ -94,6 +95,15 @@ describe('every migration, from empty', () => {
     }
     expect(catalog.filter(r => r.kind === 'table grant' && r.name.endsWith(' to anon')).map(r => r.detail))
       .toEqual(Array(8).fill('none'));
+  });
+
+  it('ends with set_transactions_deleted callable by signed-in callers only (Phase 149)', () => {
+    const fn = 'set_transactions_deleted(p_transaction_ids uuid[], p_deleted boolean)';
+    const grant = (role: string) => catalog.find(r => r.kind === 'function grant' && r.name === `${fn} to ${role}`)?.detail;
+    expect(catalog.find(r => r.kind === 'function' && r.name === fn)?.detail).toContain('security definer set search_path=public, pg_temp');
+    expect(grant('anon')).toBe('none');
+    expect(grant('authenticated')).toBe('execute');
+    expect(grant('service_role')).toBe('execute');
   });
 });
 
@@ -276,8 +286,11 @@ describe('the probes against the schema the migrations build', () => {
 
   // Its section 4 checks that the 20260909 signature still moves money, which
   // Phase 102 ends on purpose; the Phase 102 probe checks the refusal instead.
-  // Phase 114 drops that signature, so both stop before it.
-  const upTo113 = () => migrationFiles().filter(file => !file.includes('_phase114_'));
+  // Phase 114 drops that signature, so both stop before it. Phase 149 adds an
+  // eleventh SECURITY DEFINER function the advisor lists, so the probes that
+  // count ten (Phases 102, 114 and 123) stop before it.
+  const upTo148 = () => migrationFiles().filter(file => !file.includes('_phase149_'));
+  const upTo113 = () => upTo148().filter(file => !file.includes('_phase114_'));
   const upTo101 = () => upTo113().filter(file => !file.includes('_phase102_'));
 
   it('Phase 93, after its migrations: passes against every file up to Phase 102', async () => {
@@ -316,8 +329,8 @@ describe('the probes against the schema the migrations build', () => {
     expect(after).toEqual(before);
   }, 60_000);
 
-  it('Phase 114, after its migration: passes against every file', async () => {
-    const { rows, before, after } = await runProbe('20261008_phase114.probe.sql', migrationFiles(), true);
+  it('Phase 114, after its migration: passes against every file up to Phase 149', async () => {
+    const { rows, before, after } = await runProbe('20261008_phase114.probe.sql', upTo148(), true);
     expect(rows).toContainEqual({ result: 'PHASE 114 PROBE OK' });
     expect(after).toEqual(before);
   }, 60_000);
@@ -334,7 +347,7 @@ describe('the probes against the schema the migrations build', () => {
     }
   }, 60_000);
 
-  const upTo122 = () => migrationFiles().filter(file => !file.includes('_phase123_'));
+  const upTo122 = () => upTo148().filter(file => !file.includes('_phase123_'));
 
   it('Phase 123, before its migration: applies it, passes and rolls back', async () => {
     const { rows, before, after } = await runProbe('20261010_phase123.probe.sql', upTo122(), false);
@@ -342,8 +355,8 @@ describe('the probes against the schema the migrations build', () => {
     expect(after).toEqual(before);
   }, 60_000);
 
-  it('Phase 123, after its migration: passes against every file', async () => {
-    const { rows, before, after } = await runProbe('20261010_phase123.probe.sql', migrationFiles(), true);
+  it('Phase 123, after its migration: passes against every file up to Phase 149', async () => {
+    const { rows, before, after } = await runProbe('20261010_phase123.probe.sql', upTo148(), true);
     expect(rows).toContainEqual({ result: 'PHASE 123 PROBE OK' });
     expect(after).toEqual(before);
   }, 60_000);
@@ -372,6 +385,30 @@ describe('the probes against the schema the migrations build', () => {
     const { rows, before, after } = await runProbe('20261006_phase96.probe.sql', migrationFiles(), true);
     expect(rows).toContainEqual({ result: 'PHASE 96 PROBE OK' });
     expect(after).toEqual(before);
+  }, 60_000);
+
+  it('Phase 149, before its migration: applies it, passes and rolls back', async () => {
+    const { rows, before, after } = await runProbe('20261027_phase149.probe.sql', upTo148(), false);
+    expect(rows).toContainEqual({ result: 'PHASE 149 PROBE OK' });
+    expect(after).toEqual(before);
+  }, 60_000);
+
+  it('Phase 149, after its migration: passes against every file', async () => {
+    const { rows, before, after } = await runProbe('20261027_phase149.probe.sql', migrationFiles(), true);
+    expect(rows).toContainEqual({ result: 'PHASE 149 PROBE OK' });
+    expect(after).toEqual(before);
+  }, 60_000);
+
+  it('Phase 149: the probe fails on the schema before it, with the migration left out', async () => {
+    const probeDb = await createDatabase();
+    try {
+      await applyMigrations(probeDb, upTo148());
+      await expect(probeDb.exec(inlineProbe('20261027_phase149.probe.sql', { applied: true }))).rejects.toThrow(
+        /set_transactions_deleted is missing/
+      );
+    } finally {
+      await probeDb.close();
+    }
   }, 60_000);
 
   it('Phase 73, re-run against the Phase 88 function: still passes', async () => {
