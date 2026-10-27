@@ -24,7 +24,7 @@ The working memory of the audit and refactor work: what is planned, what shipped
 **Never read a file inside `archive/` unless the user explicitly asks for historical research.** Archived files are never edited. It holds:
 
 - `task-ledger-phases-001-124.md` and `refactor-log-phases-001-124.md`: the ledger and log before Phase 125. `task-ledger-phases-125-135.md` and `refactor-log-phases-125-135.md`: the ledger rows and the log entries for Phases 125 to 135. `task-ledger-phases-136-147.md` and `refactor-log-phases-136-147.md`: the ledger rows and the log entries for Phases 136 to 147.
-- `baseline-metrics-phases-000-124.md`: every measured column before Phase 125.
+- `baseline-metrics-phases-000-124.md` and `baseline-metrics-phases-125-147.md`: every measured column before Phase 125, and the per-phase figures for Phases 125 to 147.
 - `test-selector-log-phases-019-124.md`: how each selector was added, moved or retired.
 - `claude-monolith-v124.md` and `claude-md-history.md`: the pre-split `CLAUDE.md` and its release history.
 - `audit-report.md`, `perf-audit-report.md`, `ui-ux-audit-report.md`, `implementation-roadmap.md`, `spec-acceptance-2026-10-02.md`: the early audits and plans and the 2026-10-02 acceptance check, holding the findings older ADRs cite by letter or number.
