@@ -36,7 +36,7 @@ Branch `phase-150-audit-archive`, cut from `main` at `51e63f1`. No migration.
 | # | Task | Files | Status | Commit | Gate result |
 |---|---|---|---|---|---|
 | T816 | Archive the Phase 136 to 147 ledger rows | `docs/audit/archive/task-ledger-phases-136-147.md`, `docs/audit/task-ledger.md`, `docs/audit/README.md` | done | | Docs checks passed (ledger lines 93, archive byte match, 0 Phase 136-147, Backlog unchanged, pointers resolve, ids T768-T806/T807); CRLF kept; 0 em dashes; scope clean |
-| T817 | Archive the Phase 136 to 147 refactor-log entries; Phase 150 refactor-log entry | `docs/audit/archive/refactor-log-phases-136-147.md`, `docs/audit/refactor-log.md`, `docs/audit/README.md`, `docs/audit/task-ledger.md` | todo | | |
+| T817 | Archive the Phase 136 to 147 refactor-log entries; Phase 150 refactor-log entry | `docs/audit/archive/refactor-log-phases-136-147.md`, `docs/audit/refactor-log.md`, `docs/audit/README.md`, `docs/audit/task-ledger.md` | done | | Docs checks passed (log lines 51, archive byte match, 0 Phase 136-147, Phase 148-149 untouched, 6 pointers resolve, stated facts verified); CRLF kept; 0 em dashes; scope clean |
 
 ## Backlog
 
