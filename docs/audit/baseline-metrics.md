@@ -25,6 +25,8 @@ npx tsc --noEmit --extendedDiagnostics
 
 ### Phase 149 - delta against Phase 148
 
+Measured at `9caee5e`; T815 changed docs only and the merge commit `12a12eb` has the same tree as `6343851`, so the figures hold for it.
+
 - **Entry chunk** `index-achQGTXo.js`: 198,233 B (+3,607 B), 57,974 B gzip (+993 B against Phase 148 `index-D4N64t3V.js`, 194,626 / 56,981): the phase changed files that load with the entry, among them `FinanceContext.tsx` (T812's `setTransactionsDeleted`) and `App.tsx` (T811's diary hand-off).
 - **All app JS**: 910,934 B (+24,603 B), 275,852 B gzip (+6,576 B against Phase 148 886,331 / 269,276, 39 files, 0 file delta): the new Table, Calendar, day panel and bulk bar add no chunk; `TransactionsView-FspLBvoz.js` is 55,405 B.
 - **CSS**: `index-BNwLrid8.css`: 54,969 B (+1,610 B), 10,720 B gzip (+269 B against Phase 148 `index-CNaxMlAk.css`, 53,359 / 10,451): T811's three heat tokens in both themes and the new views' utility classes.
