@@ -19,6 +19,7 @@ import { IconButton } from '../components/ui/IconButton';
 import { Money } from '../components/ui/Money';
 import { OverflowMenu } from '../components/ui/OverflowMenu';
 import { SegmentedControl } from '../components/ui/SegmentedControl';
+import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { TransactionRow } from '../components/transaction/TransactionRow';
 import { DayGroupHeader } from '../components/transaction/DayGroupHeader';
 import { TransactionDetails } from '../components/transaction/TransactionDrawer';
@@ -26,9 +27,11 @@ import { ImportCsvModal } from '../components/transaction/ImportCsvModal';
 import { TransactionsTable } from '../components/transaction/TransactionsTable';
 import { TxCalendar, TxCalendarDay } from '../components/transaction/TxCalendar';
 import { TxDayPanel } from '../components/transaction/TxDayPanel';
+import { SelectCheckbox } from '../components/transaction/SelectCheckbox';
+import { TxBulkBar } from '../components/transaction/TxBulkBar';
 import { readTxView, writeTxView, TxViewMode } from '../utils/txViewPreference';
 import { formatRangeLabel, monthBounds, rangeBounds, TimeRange } from '../selectors/timeRange';
-import { cashFlow, dailyTotals, groupByDay, heatLevel, sumIncome, sumSpending } from '../selectors/ledger';
+import { cashFlow, dailyTotals, groupByDay, heatLevel, selectionSummary, sumIncome, sumSpending } from '../selectors/ledger';
 import { PAGE_STEP, hasMoreRows, visibleRows } from '../selectors/pagination';
 import { displayTitle, systemCategoryLabel } from '../selectors/display';
 import { activeWallets, byNewest } from '../selectors/wallets';
@@ -177,6 +180,7 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
     deleteTransaction,
     restoreTransaction,
     updateTransaction,
+    setTransactionsDeleted,
     showSoftDeleted,
     setShowSoftDeleted,
   } = useTransactions({
@@ -230,6 +234,10 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
   const totalIn = useMemo(() => sumIncome(sortedRows, categoryMap), [sortedRows, categoryMap]);
   const totalOut = useMemo(() => sumSpending(sortedRows, categoryMap), [sortedRows, categoryMap]);
 
+  // One render path by width, never two copies hidden by CSS (ADR 0031). Inline
+  // from `lg` since Phase 58b (audit 006 finding 2), where the list keeps about 620px.
+  const isWide = useMediaQuery('(min-width: 1024px)');
+
   // The selected row. It closes when the row leaves the list, such as a
   // delete while "Show deleted" is off.
   const [selectedTxId, setSelectedTxId] = useState<string | null>(initialSelectedTxId ?? null);
@@ -242,10 +250,162 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
   // `null` replaced a row the user had picked in between.
   if (selectedTxId && !selectedTx) setSelectedTxId(null);
 
+  // Bulk selection states (ADR 0109)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
+  const [selectMode, setSelectMode] = useState<boolean>(false);
+  const [bulkError, setBulkError] = useState<string | null>(null);
+  const [isBulkWorking, setIsBulkWorking] = useState<boolean>(false);
+  const [confirmBulkDelete, setConfirmBulkDelete] = useState<boolean>(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [bulkDeleteCount, setBulkDeleteCount] = useState<number>(0);
+  const pendingFocusRef = useRef<'wide-action' | 'phone-action' | 'phone-select-mode' | null>(null);
+
+  // Render-time pruning of selected ids that left shownRows (ADR 0056)
+  const shownIdsSet = useMemo(() => new Set(shownRows.map((r) => r.id)), [shownRows]);
+  const activeIds = useMemo(() => {
+    if (!isWide && !selectMode) return new Set<string>();
+    return selectedIds;
+  }, [isWide, selectMode, selectedIds]);
+
+  const prunedIds = useMemo(() => {
+    let changed = false;
+    const next = new Set<string>();
+    for (const id of selectedIds) {
+      if (shownIdsSet.has(id)) {
+        next.add(id);
+      } else {
+        changed = true;
+      }
+    }
+    return changed ? next : selectedIds;
+  }, [selectedIds, shownIdsSet]);
+
+  if (prunedIds !== selectedIds) {
+    setSelectedIds(prunedIds);
+  }
+
+  if (!isWide && selectMode && sortedRows.length === 0) {
+    setSelectMode(false);
+  }
+
+  const summary = useMemo(
+    () => selectionSummary(shownRows, activeIds, categoryMap),
+    [shownRows, activeIds, categoryMap]
+  );
+
+  const liveIds = useMemo(
+    () => shownRows.filter((r) => activeIds.has(r.id) && !r.isDeleted).map((r) => r.id),
+    [shownRows, activeIds]
+  );
+
+  const allDeleted = useMemo(
+    () => summary.count > 0 && liveIds.length === 0,
+    [summary.count, liveIds]
+  );
+
+  const handleToggleRow = useCallback((id: string) => {
+    setBulkError(null);
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const allSelected = shownRows.length > 0 && shownRows.every((r) => activeIds.has(r.id));
+  const someSelected = activeIds.size > 0;
+
+  const handleToggleAll = useCallback(() => {
+    setBulkError(null);
+    setSelectedIds((prev) => {
+      if (shownRows.every((r) => prev.has(r.id))) {
+        return new Set();
+      }
+      return new Set(shownRows.map((r) => r.id));
+    });
+  }, [shownRows]);
+
+  const handleOpenBulkDelete = () => {
+    setBulkDeleteCount(liveIds.length);
+    setDeleteError(null);
+    setConfirmBulkDelete(true);
+  };
+
+  const handleBulkDeleteConfirm = async () => {
+    setIsBulkWorking(true);
+    setDeleteError(null);
+    const res = await setTransactionsDeleted(liveIds, true);
+    setIsBulkWorking(false);
+    if (res.success) {
+      pendingFocusRef.current = isWide ? 'wide-action' : 'phone-action';
+      setSelectedIds(new Set());
+      setSelectMode(false);
+      setConfirmBulkDelete(false);
+    } else {
+      setDeleteError(res.error ?? 'Could not delete transactions');
+    }
+  };
+
+  const handleBulkRestore = async () => {
+    setIsBulkWorking(true);
+    setBulkError(null);
+    const res = await setTransactionsDeleted([...activeIds], false);
+    setIsBulkWorking(false);
+    if (res.success) {
+      pendingFocusRef.current = isWide ? 'wide-action' : 'phone-action';
+      setSelectedIds(new Set());
+      setSelectMode(false);
+    } else {
+      setBulkError(res.error ?? 'Could not restore transactions');
+    }
+  };
+
+  const handleClearSelection = () => {
+    pendingFocusRef.current = isWide ? 'wide-action' : 'phone-action';
+    setSelectedIds(new Set());
+    if (!isWide) {
+      setSelectMode(false);
+    }
+    setBulkError(null);
+  };
+
+  // Focus effect: intentionally runs on every render without a dependency array
+  // so that queued target focuses schedule in requestAnimationFrame after commit.
+  // Exits immediately when no focus target is pending.
+  useEffect(() => {
+    if (!pendingFocusRef.current) return;
+    const target = pendingFocusRef.current;
+    pendingFocusRef.current = null;
+    requestAnimationFrame(() => {
+      if (target === 'wide-action') {
+        const selectAll = document.getElementById('tx-select-all');
+        if (selectAll && document.body.contains(selectAll)) {
+          selectAll.focus();
+        } else {
+          document.getElementById('tx-search-input')?.focus();
+        }
+      } else if (target === 'phone-action') {
+        const modeBtn = document.getElementById('tx-select-mode-btn');
+        if (modeBtn && document.body.contains(modeBtn)) {
+          modeBtn.focus();
+        } else {
+          document.getElementById('tx-search-input')?.focus();
+        }
+      } else if (target === 'phone-select-mode') {
+        const firstRowCheckbox = document.querySelector<HTMLInputElement>('[id^="tx-select-row-"]');
+        firstRowCheckbox?.focus();
+      }
+    });
+  });
+
   const chooseView = (mode: TxViewMode) => {
     setViewMode(mode);
     writeTxView(mode);
     setSelectedTxId(null);
+    setSelectedIds(new Set());
+    setSelectMode(false);
+    setBulkError(null);
     if (mode === 'calendar' && dayFilter) {
       setCalendarMonth(monthKeyOf(dayFilter));
     }
@@ -311,9 +471,6 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
     );
   }, [viewMode, calendarMonth, today, rawTransactions, showSoftDeleted]);
 
-  // One render path by width, never two copies hidden by CSS (ADR 0031). Inline
-  // from `lg` since Phase 58b (audit 006 finding 2), where the list keeps about 620px.
-  const isWide = useMediaQuery('(min-width: 1024px)');
   const sheetMode = !isWide || viewMode === 'calendar';
   const drawerTitleRef = useRef<HTMLHeadingElement>(null);
   const lastSelectedRef = useRef<string | null>(initialSelectedTxId ?? null);
@@ -364,7 +521,34 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
           </span>
         </p>
         <span className="text-xs text-fg-muted">Transfers and balance adjustments are not counted</span>
+        {!isWide && !selectMode && sortedRows.length > 0 && (
+          <Button
+            id="tx-select-mode-btn"
+            variant="secondary"
+            onClick={() => {
+              setSelectMode(true);
+              pendingFocusRef.current = 'phone-select-mode';
+            }}
+          >
+            Select
+          </Button>
+        )}
       </div>
+
+      {isWide && viewMode === 'table' && sortedRows.length > 0 && summary.count > 0 && (
+        <TxBulkBar
+          placement="inline"
+          count={summary.count}
+          net={summary.net}
+          hasUncounted={summary.hasUncounted}
+          allDeleted={allDeleted}
+          busy={isBulkWorking}
+          error={bulkError}
+          onDelete={handleOpenBulkDelete}
+          onRestore={handleBulkRestore}
+          onClear={handleClearSelection}
+        />
+      )}
 
       {sortedRows.length === 0 ? (
         hasLiveTransactions ? (
@@ -389,6 +573,11 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
           onSelect={selectRow}
           onDelete={deleteTransaction}
           onRestore={restoreTransaction}
+          selectedIds={activeIds}
+          onToggleRow={handleToggleRow}
+          onToggleAll={handleToggleAll}
+          allSelected={allSelected}
+          someSelected={someSelected}
         />
       ) : (
         // Inset by 8px, like the Dashboard's Recent activity: each row's 2px
@@ -397,19 +586,44 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
           {shownDays.map((day) => (
             <div key={day.date} className="flex flex-col">
               <DayGroupHeader date={day.date} today={today} net={dayNets.get(day.date) ?? day.net} className="rounded-control" />
-              {day.transactions.map((tx) => (
-                <TransactionRow
-                  key={tx.id}
-                  id={`tx-row-${tx.id}`}
-                  tx={tx}
-                  category={tx.categoryId ? categoryMap.get(tx.categoryId) : undefined}
-                  wallets={walletMap}
-                  onSelect={selectRow}
-                  selected={tx.id === selectedTxId}
-                  dateText={tx.transactionDate.slice(0, 10)}
-                  className="rounded-control"
-                />
-              ))}
+              {day.transactions.map((tx) =>
+                selectMode ? (
+                  <label
+                    key={tx.id}
+                    className={`flex items-center gap-2 p-2 rounded-control hover:bg-surface-2 transition-colors cursor-pointer min-h-[44px] ${
+                      activeIds.has(tx.id) ? 'bg-brand-soft' : ''
+                    }`}
+                  >
+                    <SelectCheckbox
+                      id={`tx-select-row-${tx.id}`}
+                      checked={activeIds.has(tx.id)}
+                      onChange={() => handleToggleRow(tx.id)}
+                    />
+                    <div className="flex-1 min-w-0 pointer-events-none">
+                      <TransactionRow
+                        id={`tx-row-${tx.id}`}
+                        tx={tx}
+                        category={tx.categoryId ? categoryMap.get(tx.categoryId) : undefined}
+                        wallets={walletMap}
+                        dateText={tx.transactionDate.slice(0, 10)}
+                        className="rounded-control"
+                      />
+                    </div>
+                  </label>
+                ) : (
+                  <TransactionRow
+                    key={tx.id}
+                    id={`tx-row-${tx.id}`}
+                    tx={tx}
+                    category={tx.categoryId ? categoryMap.get(tx.categoryId) : undefined}
+                    wallets={walletMap}
+                    onSelect={selectRow}
+                    selected={tx.id === selectedTxId}
+                    dateText={tx.transactionDate.slice(0, 10)}
+                    className="rounded-control"
+                  />
+                )
+              )}
             </div>
           ))}
         </div>
@@ -431,7 +645,7 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
   );
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className={`flex flex-col gap-6 ${!isWide && selectMode ? 'pb-28' : ''}`}>
       <PageHeader
         title="Transactions"
         description="Click any row to edit it"
@@ -720,6 +934,39 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
       </Modal>
 
       <ImportCsvModal isOpen={isImportModalOpen} onClose={() => setIsImportModalOpen(false)} />
+
+      {!isWide && selectMode && (
+        <TxBulkBar
+          placement="pinned"
+          count={summary.count}
+          net={summary.net}
+          hasUncounted={summary.hasUncounted}
+          allDeleted={allDeleted}
+          busy={isBulkWorking}
+          error={bulkError}
+          onDelete={handleOpenBulkDelete}
+          onRestore={handleBulkRestore}
+          onClear={handleClearSelection}
+        />
+      )}
+
+      <ConfirmDialog
+        isOpen={confirmBulkDelete}
+        onClose={() => {
+          setConfirmBulkDelete(false);
+          setDeleteError(null);
+        }}
+        title={`Delete ${bulkDeleteCount} ${bulkDeleteCount === 1 ? 'transaction' : 'transactions'}?`}
+        description={
+          bulkDeleteCount === 1
+            ? 'It leaves your lists and totals and reverses its effect on the wallet. You can restore it from Show deleted.'
+            : 'They leave your lists and totals and reverse their effect on your wallets and debts. You can restore them from Show deleted.'
+        }
+        confirmText="Delete"
+        isLoading={isBulkWorking}
+        error={deleteError}
+        onConfirm={handleBulkDeleteConfirm}
+      />
     </div>
   );
 };

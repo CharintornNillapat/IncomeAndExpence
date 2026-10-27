@@ -91,11 +91,12 @@ The specs also match these by text, so the text is part of the contract:
 
 ### Transactions views (Phase 149, no spec uses these yet; `tests/transactions-views.spec.ts` comes with design task 6)
 
-- `#tx-view-table`, `#tx-view-calendar`, `#tx-view-panel`, `#tx-menu-btn-*`, `#tx-menu-edit-btn-*`, `#tx-menu-delete-btn-*`, `#tx-menu-restore-btn-*`, `#tx-cal-heading`, `#tx-cal-prev-month-btn`, `#tx-cal-next-month-btn`, `#tx-cal-month-in`, `#tx-cal-month-out`, `#tx-cal-month-net`, `#tx-cal-day-*` (cells, `tx-cal-day-YYYY-MM-DD`), `#tx-cal-legend`, `#tx-cal-panel`, `#tx-cal-panel-title`, `#tx-cal-panel-in`, `#tx-cal-panel-out`, `#tx-cal-panel-net`, `#tx-cal-panel-empty`, `#tx-cal-add-btn`, `#tx-cal-diary-link`. The `tx-select-*` and `tx-bulk-*` ids come with design task 5.
+- `#tx-view-table`, `#tx-view-calendar`, `#tx-view-panel`, `#tx-menu-btn-*`, `#tx-menu-edit-btn-*`, `#tx-menu-delete-btn-*`, `#tx-menu-restore-btn-*`, `#tx-cal-heading`, `#tx-cal-prev-month-btn`, `#tx-cal-next-month-btn`, `#tx-cal-month-in`, `#tx-cal-month-out`, `#tx-cal-month-net`, `#tx-cal-day-*` (cells, `tx-cal-day-YYYY-MM-DD`), `#tx-cal-legend`, `#tx-cal-panel`, `#tx-cal-panel-title`, `#tx-cal-panel-in`, `#tx-cal-panel-out`, `#tx-cal-panel-net`, `#tx-cal-panel-empty`, `#tx-cal-add-btn`, `#tx-cal-diary-link`, `#tx-select-all`, `#tx-select-row-*`, `#tx-select-mode-btn`, `#tx-bulk-bar`, `#tx-bulk-count`, `#tx-bulk-net`, `#tx-bulk-error`, `#tx-bulk-delete-btn`, `#tx-bulk-restore-btn`, `#tx-bulk-clear-btn`.
 - In the Calendar view the day panel's rows reuse `#tx-row-*` (`TransactionRow`): the Table is not mounted in this view, so row ids stay unique.
 - `[id^="tx-cal-day-"]` matches the day cells only; the day panel uses `tx-cal-panel` and `tx-cal-panel-*`.
 - A day cell after today is `disabled` only when it has no rows (D12), and each cell's `aria-label` states its weekday-date, spending, signed net and count (`, today` on today): a spec reads `aria-label`, not the net text inside the cell, which is `hidden sm:block` below `sm`.
 - Clicking `#tx-cal-add-btn` opens the Add modal with its date field (`Transaction Date`) starting on the selected day; opening `#tx-open-add-modal-btn` starts it on today.
+- `[id^="tx-select-row-"]` matches the row checkboxes only; from `lg` the Table has a checkbox column (so a row has seven cells and the header seven column headers, the first holding `#tx-select-all`); under `lg` in selection mode a row is a `div#tx-row-*` inside a `<label>` (`button[id^="tx-row-"]` finds none until the mode ends); the bar's Delete confirms through `#confirm-destructive-btn`; focus lands as decision 9's table says.
 
 ### Wallets page
 

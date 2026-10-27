@@ -539,7 +539,7 @@ describe('the view switch (ADR 0109 D6)', () => {
 });
 
 describe('the Table view, from lg (ADR 0109 D3)', () => {
-  it('renders a table with caption, six columnheaders, no sort buttons, and day rowgroups with L11 nets', () => {
+  it('renders a table with caption, seven columnheaders, no sort buttons, and day rowgroups with L11 nets', () => {
     wide();
     const yesterday = shiftIsoDate(todayIsoDate(), -1);
     mount([
@@ -552,12 +552,12 @@ describe('the Table view, from lg (ADR 0109 D3)', () => {
     expect(table).not.toBeNull();
     expect(table.querySelector('caption')?.textContent).toBe('Transactions, newest first');
     const colHeaders = within(table).getAllByRole('columnheader').map((th) => th.textContent);
-    expect(colHeaders).toEqual(['Date', 'Note', 'Category', 'Wallet', 'Amount', 'Actions']);
+    expect(colHeaders).toEqual(['', 'Date', 'Note', 'Category', 'Wallet', 'Amount', 'Actions']);
     expect(table.querySelector('thead button')).toBeNull();
 
     const rowgroups = [...table.querySelectorAll('th[scope="rowgroup"]')];
     expect(rowgroups).toHaveLength(2);
-    expect(rowgroups.map((th) => th.getAttribute('colspan'))).toEqual(['6', '6']);
+    expect(rowgroups.map((th) => th.getAttribute('colspan'))).toEqual(['7', '7']);
     expect(rowgroups[0].textContent).toMatch(/^Today · /);
     expect(rowgroups[0].textContent).toContain(`${MINUS}${formatCurrencyAmount(100)}`);
     expect(rowgroups[1].textContent).toMatch(/^Yesterday · /);
@@ -598,9 +598,9 @@ describe('the Table view, from lg (ADR 0109 D3)', () => {
 
     const btn = document.getElementById(`tx-row-${transfer.id}`)!;
     const cells = [...btn.closest('tr')!.querySelectorAll('td')];
-    expect(cells[1].textContent).toContain('Funds transfer');
-    expect(cells[2].textContent).toBe('');
-    expect(cells[3].textContent).toBe('Cash Wallet → Main Checking');
+    expect(cells[2].textContent).toContain('Funds transfer');
+    expect(cells[3].textContent).toBe('');
+    expect(cells[4].textContent).toBe('Cash Wallet → Main Checking');
   });
 
   it('shows No note for an empty description and keeps the category title in the button text', () => {
@@ -621,7 +621,7 @@ describe('the Table view, from lg (ADR 0109 D3)', () => {
     mount([income]);
 
     const btn = document.getElementById(`tx-row-${income.id}`)!;
-    const amountTd = btn.closest('tr')!.querySelectorAll('td')[4];
+    const amountTd = btn.closest('tr')!.querySelectorAll('td')[5];
     expect(amountTd.textContent).toBe(`+${formatCurrencyAmount(700)}`);
     expect(amountTd.querySelector('[aria-hidden="true"]')?.textContent).toBe(`+${formatCurrencyAmount(700)}`);
   });
@@ -1006,5 +1006,332 @@ describe('the Calendar view (ADR 0109)', () => {
     mount([tx({ type: 'EXPENSE', amount: 50, categoryId: 'cat-food', transactionDate: today })]);
     fireEvent.click(document.getElementById('tx-view-calendar')!);
     expect(document.getElementById('tx-cal-diary-link')).toBeNull();
+  });
+});
+
+describe('selection and the bulk bar (ADR 0109 O1)', () => {
+  it('wide: a checkbox column with a select-all header', () => {
+    wide();
+    const today = todayIsoDate();
+    const lunch = tx({ type: 'EXPENSE', amount: 100, categoryId: 'cat-food', description: 'Lunch', transactionDate: today });
+    mount([lunch]);
+
+    const selectAll = document.getElementById('tx-select-all') as HTMLInputElement;
+    expect(selectAll).not.toBeNull();
+    expect(selectAll.getAttribute('type')).toBe('checkbox');
+    expect(selectAll.getAttribute('aria-label')).toBe('Select all loaded rows');
+
+    const rowCheckbox = document.getElementById(`tx-select-row-${lunch.id}`) as HTMLInputElement;
+    expect(rowCheckbox).not.toBeNull();
+    expect(rowCheckbox.getAttribute('type')).toBe('checkbox');
+    expect(rowCheckbox.getAttribute('aria-label')).toBe('Select Lunch');
+
+    expect(document.getElementById('tx-bulk-bar')).toBeNull();
+  });
+
+  it('wide: selecting shows the bar with the count, the net and the uncounted note', () => {
+    wide();
+    const today = todayIsoDate();
+    const lunch = tx({ type: 'EXPENSE', amount: 100, categoryId: 'cat-food', description: 'Lunch', transactionDate: today });
+    const salary = tx({ type: 'INCOME', amount: 700, categoryId: 'cat-salary', description: 'Salary', transactionDate: today });
+    const transfer = tx({ type: 'TRANSFER', amount: 500, destinationWalletId: 'wal-main-checking', description: 'Transfer', transactionDate: today });
+    mount([lunch, salary, transfer]);
+
+    const lunchBox = document.getElementById(`tx-select-row-${lunch.id}`) as HTMLInputElement;
+    const salaryBox = document.getElementById(`tx-select-row-${salary.id}`) as HTMLInputElement;
+    const transferBox = document.getElementById(`tx-select-row-${transfer.id}`) as HTMLInputElement;
+
+    fireEvent.click(lunchBox);
+    fireEvent.click(salaryBox);
+
+    const bar = document.getElementById('tx-bulk-bar')!;
+    expect(bar).not.toBeNull();
+    expect(bar.getAttribute('role')).toBe('region');
+    expect(bar.getAttribute('aria-label')).toBe('Bulk actions');
+
+    const count = document.getElementById('tx-bulk-count')!;
+    expect(count.textContent).toBe('2 selected');
+    expect(count.getAttribute('role')).toBe('status');
+
+    const net = document.getElementById('tx-bulk-net')!;
+    expect(net.textContent).toContain(`+${formatCurrencyAmount(600)}`);
+    expect(net.textContent).not.toContain('not counted');
+
+    fireEvent.click(transferBox);
+    expect(count.textContent).toBe('3 selected');
+    expect(net.textContent).toContain(`+${formatCurrencyAmount(600)}`);
+    expect(net.textContent).toContain('Transfers, repayments, adjustments and deleted rows are not counted');
+
+    const clearBtn = document.getElementById('tx-bulk-clear-btn')!;
+    fireEvent.click(clearBtn);
+
+    expect(document.getElementById('tx-bulk-bar')).toBeNull();
+    expect(lunchBox.checked).toBe(false);
+    expect(salaryBox.checked).toBe(false);
+    expect(transferBox.checked).toBe(false);
+  });
+
+  it('wide: select-all covers the loaded rows only', () => {
+    wide();
+    const rows = Array.from({ length: 30 }, (_, i) =>
+      tx({ type: 'EXPENSE', amount: 10 + i, description: `Item ${i + 1}` })
+    );
+    mount(rows);
+
+    const selectAll = document.getElementById('tx-select-all') as HTMLInputElement;
+    expect(selectAll.checked).toBe(false);
+
+    fireEvent.click(selectAll);
+    expect(selectAll.checked).toBe(true);
+    expect(document.getElementById('tx-bulk-count')?.textContent).toBe('25 selected');
+
+    const loadMoreBtn = document.getElementById('tx-load-more-btn')!;
+    fireEvent.click(loadMoreBtn);
+
+    expect(selectAll.checked).toBe(false);
+    expect(selectAll.indeterminate).toBe(true);
+    expect(document.getElementById('tx-bulk-count')?.textContent).toBe('25 selected');
+
+    fireEvent.click(selectAll);
+    expect(selectAll.checked).toBe(true);
+    expect(selectAll.indeterminate).toBe(false);
+    expect(document.getElementById('tx-bulk-count')?.textContent).toBe('30 selected');
+
+    fireEvent.click(selectAll);
+    expect(selectAll.checked).toBe(false);
+    expect(selectAll.indeterminate).toBe(false);
+    expect(document.getElementById('tx-bulk-bar')).toBeNull();
+  });
+
+  it('wide: a selection drops a row a filter hides, and a view switch clears it', () => {
+    wide();
+    const salary = tx({ type: 'INCOME', amount: 1000, categoryId: 'cat-salary', description: 'Salary' });
+    const lunch = tx({ type: 'EXPENSE', amount: 100, categoryId: 'cat-food', description: 'Lunch' });
+    mount([salary, lunch]);
+
+    fireEvent.click(document.getElementById(`tx-select-row-${salary.id}`)!);
+    fireEvent.click(document.getElementById(`tx-select-row-${lunch.id}`)!);
+    expect(document.getElementById('tx-bulk-count')?.textContent).toBe('2 selected');
+
+    fireEvent.click(document.getElementById('tx-filter-type-income')!);
+    expect(document.getElementById('tx-bulk-count')?.textContent).toBe('1 selected');
+
+    fireEvent.click(document.getElementById('tx-filter-type-all')!);
+    fireEvent.click(document.getElementById(`tx-select-row-${lunch.id}`)!);
+    expect(document.getElementById('tx-bulk-count')?.textContent).toBe('2 selected');
+
+    fireEvent.click(document.getElementById('tx-view-calendar')!);
+    fireEvent.click(document.getElementById('tx-view-table')!);
+    expect(document.getElementById('tx-bulk-bar')).toBeNull();
+  });
+
+  it('wide: a row button still opens the edit panel and does not toggle the checkbox', () => {
+    wide();
+    const lunch = tx({ type: 'EXPENSE', amount: 100, categoryId: 'cat-food', description: 'Lunch' });
+    mount([lunch]);
+
+    const rowBtn = document.getElementById(`tx-row-${lunch.id}`)!;
+    const checkbox = document.getElementById(`tx-select-row-${lunch.id}`) as HTMLInputElement;
+
+    fireEvent.click(rowBtn);
+    expect(document.getElementById('tx-drawer-title')?.textContent).toContain('Lunch');
+    expect(checkbox.checked).toBe(false);
+    expect(document.getElementById('tx-bulk-bar')).toBeNull();
+  });
+
+  it('wide: bulk Delete confirms, cancels cleanly, deletes together and lands focus on select-all', async () => {
+    wide();
+    const tx1 = tx({ type: 'EXPENSE', amount: 100, description: 'Lunch' });
+    const tx2 = tx({ type: 'EXPENSE', amount: 200, description: 'Dinner' });
+    const tx3 = tx({ type: 'INCOME', amount: 1000, description: 'Salary' });
+    mount([tx1, tx2, tx3]);
+
+    fireEvent.click(document.getElementById(`tx-select-row-${tx1.id}`)!);
+    fireEvent.click(document.getElementById(`tx-select-row-${tx2.id}`)!);
+
+    const deleteBtn = document.getElementById('tx-bulk-delete-btn')!;
+    fireEvent.click(deleteBtn);
+
+    const dialog = await screen.findByRole('dialog', { name: 'Delete 2 transactions?' });
+    expect(dialog).not.toBeNull();
+    expect(dialog.textContent).toContain('They leave your lists and totals and reverse their effect on your wallets and debts. You can restore them from Show deleted.');
+
+    fireEvent.click(document.getElementById('confirm-cancel-btn')!);
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Delete 2 transactions?' })).toBeNull());
+    expect(document.getElementById(`tx-select-row-${tx1.id}`)).not.toBeNull();
+    expect((document.getElementById(`tx-select-row-${tx1.id}`) as HTMLInputElement).checked).toBe(true);
+    expect((document.getElementById(`tx-select-row-${tx2.id}`) as HTMLInputElement).checked).toBe(true);
+    expect(document.getElementById('tx-bulk-bar')).not.toBeNull();
+
+    fireEvent.click(document.getElementById('tx-bulk-delete-btn')!);
+    await screen.findByRole('dialog', { name: 'Delete 2 transactions?' });
+    fireEvent.click(document.getElementById('confirm-destructive-btn')!);
+
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Delete 2 transactions?' })).toBeNull());
+    expect(document.getElementById(`tx-row-${tx1.id}`)).toBeNull();
+    expect(document.getElementById(`tx-row-${tx2.id}`)).toBeNull();
+    expect(document.getElementById('tx-bulk-bar')).toBeNull();
+    await waitFor(() => expect(document.activeElement?.id).toBe('tx-select-all'));
+
+    fireEvent.click(document.getElementById('tx-show-deleted')!);
+    expect(document.getElementById(`tx-row-${tx1.id}`)?.textContent).toContain('[Soft Deleted]');
+    expect(document.getElementById(`tx-row-${tx2.id}`)?.textContent).toContain('[Soft Deleted]');
+  });
+
+  it('wide: bulk Delete dialog freezes count so it never reads "Delete 0 transactions?"', async () => {
+    wide();
+    const tx1 = tx({ type: 'EXPENSE', amount: 100, description: 'Lunch' });
+    const tx2 = tx({ type: 'EXPENSE', amount: 200, description: 'Dinner' });
+    mount([tx1, tx2]);
+
+    fireEvent.click(document.getElementById(`tx-select-row-${tx1.id}`)!);
+    fireEvent.click(document.getElementById(`tx-select-row-${tx2.id}`)!);
+
+    fireEvent.click(document.getElementById('tx-bulk-delete-btn')!);
+    const dialog = await screen.findByRole('dialog', { name: 'Delete 2 transactions?' });
+    expect(dialog).not.toBeNull();
+
+    fireEvent.click(document.getElementById('confirm-destructive-btn')!);
+
+    expect(screen.queryByRole('dialog', { name: 'Delete 0 transactions?' })).toBeNull();
+    expect(document.querySelector('[id^="modal-title-"]')?.textContent).not.toContain('Delete 0 transactions?');
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+  });
+
+  it('wide: an all-deleted selection offers Restore, shows no net, restores without a dialog', async () => {
+    wide();
+    const tx1 = tx({ type: 'EXPENSE', amount: 100, description: 'Lunch', isDeleted: true });
+    const tx2 = tx({ type: 'EXPENSE', amount: 200, description: 'Dinner', isDeleted: true });
+    const tx3 = tx({ type: 'INCOME', amount: 1000, description: 'Salary' });
+    mount([tx1, tx2, tx3]);
+
+    fireEvent.click(document.getElementById('tx-show-deleted')!);
+    fireEvent.click(document.getElementById(`tx-select-row-${tx1.id}`)!);
+    fireEvent.click(document.getElementById(`tx-select-row-${tx2.id}`)!);
+
+    expect(document.getElementById('tx-bulk-restore-btn')).not.toBeNull();
+    expect(document.getElementById('tx-bulk-delete-btn')).toBeNull();
+    expect(document.getElementById('tx-bulk-net')?.textContent).toContain('Deleted rows are not in your totals');
+
+    fireEvent.click(document.getElementById('tx-bulk-restore-btn')!);
+    expect(screen.queryByRole('dialog')).toBeNull();
+
+    await waitFor(() => expect(document.activeElement?.id).toBe('tx-select-all'));
+    expect(document.getElementById('tx-bulk-bar')).toBeNull();
+    expect(document.getElementById(`tx-row-${tx1.id}`)?.textContent).not.toContain('[Soft Deleted]');
+    expect(document.getElementById(`tx-row-${tx2.id}`)?.textContent).not.toContain('[Soft Deleted]');
+  });
+
+  it('wide: row-menu Delete lands focus on a neighbour', async () => {
+    wide();
+    const today = todayIsoDate();
+    const row1 = tx({ type: 'EXPENSE', amount: 10, description: 'Item 1', createdAt: '2026-09-01T00:00:03.000Z', transactionDate: today });
+    const row2 = tx({ type: 'EXPENSE', amount: 20, description: 'Item 2', createdAt: '2026-09-01T00:00:02.000Z', transactionDate: today });
+    const row3 = tx({ type: 'EXPENSE', amount: 30, description: 'Item 3', createdAt: '2026-09-01T00:00:01.000Z', transactionDate: today });
+    const { unmount } = mount([row1, row2, row3]);
+
+    fireEvent.click(document.getElementById(`tx-menu-btn-${row2.id}`)!);
+    fireEvent.click(document.getElementById(`tx-menu-delete-btn-${row2.id}`)!);
+    fireEvent.click(document.getElementById('confirm-destructive-btn')!);
+    await waitFor(() => expect(document.activeElement?.id).toBe(`tx-row-${row3.id}`));
+
+    fireEvent.click(document.getElementById(`tx-menu-btn-${row3.id}`)!);
+    fireEvent.click(document.getElementById(`tx-menu-delete-btn-${row3.id}`)!);
+    fireEvent.click(document.getElementById('confirm-destructive-btn')!);
+    await waitFor(() => expect(document.activeElement?.id).toBe(`tx-row-${row1.id}`));
+
+    fireEvent.click(document.getElementById(`tx-menu-btn-${row1.id}`)!);
+    fireEvent.click(document.getElementById(`tx-menu-delete-btn-${row1.id}`)!);
+    fireEvent.click(document.getElementById('confirm-destructive-btn')!);
+    await waitFor(() => expect(document.activeElement?.id).toBe('tx-search-input'));
+    unmount();
+
+    const solitary = tx({ type: 'EXPENSE', amount: 10, description: 'Solitary', transactionDate: today });
+    mount([solitary]);
+    fireEvent.click(document.getElementById('tx-show-deleted')!);
+    fireEvent.click(document.getElementById(`tx-menu-btn-${solitary.id}`)!);
+    fireEvent.click(document.getElementById(`tx-menu-delete-btn-${solitary.id}`)!);
+    fireEvent.click(document.getElementById('confirm-destructive-btn')!);
+    await waitFor(() => expect(document.activeElement?.id).toBe(`tx-menu-btn-${solitary.id}`));
+  });
+
+  it('narrow: Select mode', async () => {
+    const today = todayIsoDate();
+    const tx1 = tx({ type: 'EXPENSE', amount: 100, description: 'Lunch', createdAt: '2026-09-01T00:00:02.000Z', transactionDate: today });
+    const tx2 = tx({ type: 'EXPENSE', amount: 200, description: 'Dinner', createdAt: '2026-09-01T00:00:01.000Z', transactionDate: today });
+    mount([tx1, tx2]);
+
+    expect(document.getElementById('tx-select-all')).toBeNull();
+    expect(document.getElementById(`tx-select-row-${tx1.id}`)).toBeNull();
+
+    const selectModeBtn = document.getElementById('tx-select-mode-btn')!;
+    expect(selectModeBtn).not.toBeNull();
+    expect(selectModeBtn.textContent).toContain('Select');
+
+    fireEvent.click(selectModeBtn);
+
+    const bar = document.getElementById('tx-bulk-bar')!;
+    expect(bar).not.toBeNull();
+    expect(bar.className).toContain('fixed');
+    expect(bar.className).toContain('z-40');
+    expect(document.getElementById('tx-bulk-count')?.textContent).toBe('0 selected');
+    expect((document.getElementById('tx-bulk-delete-btn') as HTMLButtonElement).disabled).toBe(true);
+
+    await waitFor(() => expect(document.activeElement?.id).toBe(`tx-select-row-${tx1.id}`));
+
+    expect(document.querySelectorAll('button[id^="tx-row-"]')).toHaveLength(0);
+    expect(document.querySelectorAll('[id^="tx-row-"]')).toHaveLength(2);
+
+    const label1 = document.getElementById(`tx-select-row-${tx1.id}`)!.closest('label')!;
+    fireEvent.click(label1);
+    expect(document.getElementById('tx-bulk-count')?.textContent).toBe('1 selected');
+
+    const label2 = document.getElementById(`tx-select-row-${tx2.id}`)!.closest('label')!;
+    fireEvent.click(label2);
+    expect(document.getElementById('tx-bulk-count')?.textContent).toBe('2 selected');
+
+    const cancelBtn = document.getElementById('tx-bulk-clear-btn')!;
+    expect(cancelBtn.textContent).toBe('Cancel');
+    fireEvent.click(cancelBtn);
+
+    expect(document.getElementById('tx-bulk-bar')).toBeNull();
+    expect(document.getElementById(`tx-select-row-${tx1.id}`)).toBeNull();
+    await waitFor(() => expect(document.activeElement?.id).toBe('tx-select-mode-btn'));
+
+    fireEvent.click(document.getElementById('tx-select-mode-btn')!);
+    expect(document.getElementById('tx-bulk-count')?.textContent).toBe('0 selected');
+  });
+
+  it('narrow: Delete completes and exits the mode', async () => {
+    const today = todayIsoDate();
+    const tx1 = tx({ type: 'EXPENSE', amount: 100, description: 'Lunch', createdAt: '2026-09-01T00:00:03.000Z', transactionDate: today });
+    const tx2 = tx({ type: 'EXPENSE', amount: 200, description: 'Dinner', createdAt: '2026-09-01T00:00:02.000Z', transactionDate: today });
+    const tx3 = tx({ type: 'EXPENSE', amount: 300, description: 'Snack', createdAt: '2026-09-01T00:00:01.000Z', transactionDate: today });
+    mount([tx1, tx2, tx3]);
+
+    fireEvent.click(document.getElementById('tx-select-mode-btn')!);
+    fireEvent.click(document.getElementById(`tx-select-row-${tx1.id}`)!.closest('label')!);
+    fireEvent.click(document.getElementById(`tx-select-row-${tx2.id}`)!.closest('label')!);
+
+    fireEvent.click(document.getElementById('tx-bulk-delete-btn')!);
+    await screen.findByRole('dialog', { name: 'Delete 2 transactions?' });
+    fireEvent.click(document.getElementById('confirm-destructive-btn')!);
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(document.getElementById(`tx-row-${tx1.id}`)).toBeNull();
+    expect(document.getElementById(`tx-row-${tx2.id}`)).toBeNull();
+    expect(document.getElementById('tx-bulk-bar')).toBeNull();
+    await waitFor(() => expect(document.activeElement?.id).toBe('tx-select-mode-btn'));
+  });
+
+  it('narrow: outside the mode the list is today\'s', () => {
+    const tx1 = tx({ type: 'EXPENSE', amount: 100, description: 'Lunch' });
+    mount([tx1]);
+
+    const rowBtn = document.getElementById(`tx-row-${tx1.id}`)!;
+    expect(rowBtn.tagName.toLowerCase()).toBe('button');
+    fireEvent.click(rowBtn);
+    expect(screen.getByRole('dialog', { name: 'Lunch' })).not.toBeNull();
+    expect(document.getElementById('tx-select-mode-btn')).not.toBeNull();
   });
 });

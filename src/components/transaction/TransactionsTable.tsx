@@ -15,6 +15,7 @@ import { Chip } from '../ui/Chip';
 import { ConfirmDialog } from '../ui/ConfirmDialog';
 import { Money } from '../ui/Money';
 import { OverflowMenu } from '../ui/OverflowMenu';
+import { SelectCheckbox } from './SelectCheckbox';
 import { TxAmount, TxSoftDeletedTag } from './TxCells';
 import { txTypeMetaFor } from './txTypeMeta';
 
@@ -33,6 +34,11 @@ interface TransactionsTableProps {
   onSelect: (tx: Transaction) => void;
   onDelete: (id: string) => Promise<WriteResult>;
   onRestore: (id: string) => Promise<WriteResult>;
+  selectedIds: ReadonlySet<string>;
+  onToggleRow: (id: string) => void;
+  onToggleAll: () => void;
+  allSelected: boolean;
+  someSelected: boolean;
 }
 
 // DESIGN.md section 3 and ImportCsvModal.tsx:502: sticky table headers are one of the two allowed backdrop blurs.
@@ -56,6 +62,11 @@ export const TransactionsTable: React.FC<TransactionsTableProps> = ({
   onSelect,
   onDelete,
   onRestore,
+  selectedIds,
+  onToggleRow,
+  onToggleAll,
+  allSelected,
+  someSelected,
 }) => {
   const [pendingDelete, setPendingDelete] = useState<Transaction | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -72,12 +83,40 @@ export const TransactionsTable: React.FC<TransactionsTableProps> = ({
 
   const confirmDelete = async () => {
     if (!pendingDelete) return;
+    const allTxs = days.flatMap((d) => d.transactions);
+    const idx = allTxs.findIndex((t) => t.id === pendingDelete.id);
+    const nextId = idx !== -1 && idx + 1 < allTxs.length ? allTxs[idx + 1].id : null;
+    const prevId = idx > 0 ? allTxs[idx - 1].id : null;
+    const deletedId = pendingDelete.id;
+
     setIsDeleting(true);
     setDeleteError(null);
-    const result = await onDelete(pendingDelete.id);
+    const result = await onDelete(deletedId);
     setIsDeleting(false);
     if (result.success) {
       setPendingDelete(null);
+      requestAnimationFrame(() => {
+        const trigger = document.getElementById(`tx-menu-btn-${deletedId}`);
+        if (trigger && document.body.contains(trigger)) {
+          return;
+        }
+        const nextBtn = nextId ? document.getElementById(`tx-row-${nextId}`) : null;
+        if (nextBtn && document.body.contains(nextBtn)) {
+          nextBtn.focus();
+          return;
+        }
+        const prevBtn = prevId ? document.getElementById(`tx-row-${prevId}`) : null;
+        if (prevBtn && document.body.contains(prevBtn)) {
+          prevBtn.focus();
+          return;
+        }
+        const selectAll = document.getElementById('tx-select-all');
+        if (selectAll && document.body.contains(selectAll)) {
+          selectAll.focus();
+          return;
+        }
+        document.getElementById('tx-search-input')?.focus();
+      });
     } else {
       setDeleteError(result.error ?? 'Could not delete this transaction.');
     }
@@ -97,10 +136,19 @@ export const TransactionsTable: React.FC<TransactionsTableProps> = ({
       )}
 
       <div className="max-h-[70vh] overflow-auto">
-        <table className="w-full min-w-[36rem] border-separate border-spacing-0 text-left">
+        <table className="w-full min-w-[40rem] border-separate border-spacing-0 text-left">
           <caption className="sr-only">Transactions, newest first</caption>
           <thead>
             <tr>
+              <th scope="col" className={`${HEADER_CELL_CLASS} w-11 p-0 text-center`}>
+                <SelectCheckbox
+                  id="tx-select-all"
+                  checked={allSelected}
+                  indeterminate={someSelected && !allSelected}
+                  onChange={onToggleAll}
+                  ariaLabel="Select all loaded rows"
+                />
+              </th>
               <th scope="col" className={HEADER_CELL_CLASS}>
                 Date
               </th>
@@ -129,7 +177,7 @@ export const TransactionsTable: React.FC<TransactionsTableProps> = ({
                 <tr>
                   <th
                     scope="rowgroup"
-                    colSpan={6}
+                    colSpan={7}
                     className="bg-surface-2 px-4 py-2 text-xs text-left border-t border-line"
                   >
                     <div className="flex items-center justify-between gap-3">
@@ -146,6 +194,7 @@ export const TransactionsTable: React.FC<TransactionsTableProps> = ({
                 {day.transactions.map((tx) => {
                   const category = tx.categoryId ? categories.get(tx.categoryId) : undefined;
                   const selected = tx.id === selectedTxId;
+                  const isChecked = selectedIds.has(tx.id);
                   const ownNote = hasOwnDescription(tx);
                   const noteText = ownNote ? tx.description : 'No note';
                   const title = displayTitle(tx, category);
@@ -163,12 +212,21 @@ export const TransactionsTable: React.FC<TransactionsTableProps> = ({
                   const chipColor = isSystemRow ? SYSTEM_CATEGORY_COLOR : (category?.color ?? SYSTEM_CATEGORY_COLOR);
 
                   return (
-                    <tr key={tx.id} className={selected ? 'bg-brand-soft' : 'hover:bg-surface-3'}>
+                    <tr key={tx.id} className={selected || isChecked ? 'bg-brand-soft' : 'hover:bg-surface-3'}>
                       <td
-                        className={`${CELL_CLASS} whitespace-nowrap text-xs text-fg-secondary ${
+                        className={`${CELL_CLASS} whitespace-nowrap ${
                           selected ? 'shadow-[inset_3px_0_0_var(--focus)]' : ''
                         }`.trim()}
                       >
+                        <SelectCheckbox
+                          id={`tx-select-row-${tx.id}`}
+                          checked={isChecked}
+                          onChange={() => onToggleRow(tx.id)}
+                          ariaLabel={`Select ${title}`}
+                        />
+                      </td>
+
+                      <td className={`${CELL_CLASS} whitespace-nowrap text-xs text-fg-secondary`}>
                         {formatShortDate(isoDate)}
                       </td>
 
