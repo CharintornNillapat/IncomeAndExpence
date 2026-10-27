@@ -92,6 +92,12 @@ for (const [theme, v] of Object.entries(themes)) {
   check(theme, 'selected-text on selected-bg', c('selected-text'), c('selected-bg'), 4.5);
   // Phase 61: a logged day's number in the diary calendar.
   check(theme, 'fg on logged-bg', c('fg'), c('logged-bg'), 4.5);
+  // Phase 149 (ADR 0109 D5, design spec O3): calendar heat cells draw the day number and net in fg / expense-text, and today's inset ring in focus.
+  for (const h of ['heat-1', 'heat-2', 'heat-3']) {
+    check(theme, `fg on ${h}`, c('fg'), c(h), 4.5);
+    check(theme, `expense-text on ${h}`, c('expense-text'), c(h), 4.5);
+    check(theme, `focus on ${h}`, c('focus'), c(h), 3);
+  }
   check(theme, 'fg on segment-active', c('fg'), c('segment-active'), 4.5);
   check(theme, 'fg-muted on mood-tile', c('fg-muted'), c('mood-tile'), 4.5);
   check(theme, 'expense-text on mood-tile', c('expense-text'), c('mood-tile'), 4.5);

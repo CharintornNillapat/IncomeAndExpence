@@ -1,4 +1,4 @@
-import { shiftIsoDate } from '../utils/date';
+import { shiftIsoDate, shiftMonth } from '../utils/date';
 
 /**
  * Spec L2 (ADR 0028): one time range for a whole screen. The ids behind
@@ -44,6 +44,15 @@ export function filterByRange<T extends { transactionDate: string }>(rows: T[], 
   if (range === 'ALL') return rows;
   const bounds = rangeBounds(range, today);
   return rows.filter((row) => inRange(row.transactionDate, bounds));
+}
+
+/**
+ * A calendar month (`YYYY-MM`) as inclusive bounds, its 1st to its last day:
+ * the Transactions Calendar's month (spec 6, ADR 0109). Built from the month
+ * key's own parts, so no ISO string is parsed as a UTC `Date`.
+ */
+export function monthBounds(monthKey: string): RangeBounds {
+  return { start: `${monthKey}-01`, end: shiftIsoDate(`${shiftMonth(monthKey, 1)}-01`, -1) };
 }
 
 function parts(iso: string): { year: number; label: string } {

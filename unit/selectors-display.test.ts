@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { categoryLabel, systemCategoryLabel, isSystemMovementCategory, displayTitle, secondaryLine } from '../src/selectors/display';
+import { categoryLabel, systemCategoryLabel, isSystemMovementCategory, displayTitle, secondaryLine, walletLabel } from '../src/selectors/display';
 import { foldAdjustmentPairs, describeAdjustmentPair } from '../src/selectors/adjustments';
 import { categoryGroups, categoryUsage, nextColor, paletteExhausted, usedColors } from '../src/selectors/categories';
 import { IDENTITY_COLORS, isIdentityColor } from '../src/utils/identityPalette';
@@ -96,6 +96,22 @@ describe('L7: a transfer names its wallets and has no category', () => {
       const plain = tx({ type: 'TRANSFER', walletId: 'main', destinationWalletId: 'cash', description });
       expect(secondaryLine(plain, WALLETS)).toBe('Main → Cash');
     }
+  });
+});
+
+describe("walletLabel: the Transactions table's wallet cell", () => {
+  it('names a transfer route without the note, an expense wallet, and Unknown wallet for a missing id', () => {
+    const plain = tx({ type: 'TRANSFER', walletId: 'cash', destinationWalletId: 'main', description: 'Transfer between wallets' });
+    const noted = tx({ type: 'TRANSFER', walletId: 'cash', destinationWalletId: 'main', description: 'Funds transfer' });
+    expect(walletLabel(plain, WALLETS)).toBe('Cash → Main');
+    expect(walletLabel(noted, WALLETS)).toBe('Cash → Main');
+    expect(secondaryLine(noted, WALLETS)).toBe('Cash → Main · Funds transfer');
+
+    expect(walletLabel(tx({ type: 'EXPENSE', walletId: 'cash', description: 'Lunch' }), WALLETS)).toBe('Cash');
+    expect(walletLabel(tx({ type: 'EXPENSE', walletId: 'cash', description: '' }), WALLETS)).toBe('Cash');
+
+    expect(walletLabel(tx({ type: 'EXPENSE', walletId: 'missing' }), WALLETS)).toBe('Unknown wallet');
+    expect(walletLabel(tx({ type: 'TRANSFER', walletId: 'cash', destinationWalletId: 'missing' }), WALLETS)).toBe('Cash → Unknown wallet');
   });
 });
 

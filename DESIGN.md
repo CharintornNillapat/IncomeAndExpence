@@ -55,11 +55,12 @@ Values live in `src/index.css`, on `:root` (light) and `.dark`. `@theme inline` 
 | Disabled text | `fg-disabled` | `#4A5163` | `#A39B8E` |
 | Chip text (on `adjust` tint) | `chip-text` | `#C9CFDC` | `#4A4338` |
 | Danger-button edge | `danger-line` | `#4A2227` | `#ECC3C0` |
+| Calendar spending heat | `heat-1`, `heat-2`, `heat-3` | `#291A1E`, `#3A1E23`, `#4C2229` | `#FEF4F2`, `#FBE7E4`, `#F8DBD7` |
 
 Each hue has a text token and a solid `-tint` background: `income`, `expense`, `transfer`, `adjust`, `pending` (plus `pending-line` and `pending-body` for the warning banner), and `brand-soft` for the active nav tab. The primary button fill is `brand-fill`, `#7C3AED` in dark (5.70:1) and `#4338CA` in light (7.90:1), with white text. The eleven fills are theme variables.
 
 ### Contrast (WCAG AA)
-Every text token passes 4.5:1 on every surface it can sit on, in both themes. Every hue passes on its own tint. `fg-muted` is the faintest text allowed: 5.80:1 on a dark card. Input edges and the focus outline reach 3:1 (WCAG 1.4.11); the outline is checked against every surface it can sit on, header and menu included. Run `node scripts/wcag-tokens.mjs` after changing any value; it reads `src/index.css` and exits 1 on a failure. `fg-disabled` is exempt, as WCAG exempts disabled controls.
+Every text token passes 4.5:1 on every surface it can sit on, in both themes. Every hue passes on its own tint. `fg` and `expense` text reach 4.5:1 and the `focus` ring 3:1 on each heat step, in both themes, checked by `scripts/wcag-tokens.mjs`. `fg-muted` is the faintest text allowed: 5.80:1 on a dark card. Input edges and the focus outline reach 3:1 (WCAG 1.4.11); the outline is checked against every surface it can sit on, header and menu included. Run `node scripts/wcag-tokens.mjs` after changing any value; it reads `src/index.css` and exits 1 on a failure. `fg-disabled` is exempt, as WCAG exempts disabled controls.
 
 ### Identity colours (wallets and categories)
 Wallets and categories take their own colour from the muted identity palette in spec section 1. It avoids red, green, blue, cyan and amber, which carry money meaning. Since Phase 59 (audit 008) the wallet colour picker, in Add wallet and in Edit, offers exactly those twelve colours, and since Phase 62 the category picker offers the same twelve (`utils/identityPalette.ts`). Two categories never share one (L9) while any is free: a used colour is disabled, its fill at 0.25 under a diagonal strike, and named "Rose, used by Pets". Once all twelve are in use, colours repeat: every swatch is enabled and named "Rose, also used by Pets" (audit 012). Since Phase 63 (spec 5.1, ADR 0038) the shipped categories and the starter wallets sit on them too: Food & Dining Rose, Groceries Peach, Housing & Utilities Periwinkle, Shopping & Apparel Lavender, Transport & Fuel Aqua, Primary Salary Steel, Freelance & Side Gig Orchid, the System pair `#6B7385`, and the wallets Blue, Tan and Teal. A swatch is named by its colour ("Tan"), never by a hex code. In light mode they are painted through the Paper Ledger values below (ADR 0103).
@@ -253,16 +254,19 @@ One period for the whole page, chosen in the `PageHeader`. Every figure comes fr
 
 The left over, sparkline and month-to-date figures come from selectors Phase 134 added (the redesign spec's section 5).
 
-### Transactions (spec 6.2, ADRs 0031 and 0033)
+### Transactions (spec 6.2, ADRs 0031, 0033 and 0109)
 - **Header:** `PageHeader` "Transactions" with "Click any row to edit it", an "Import / export" menu, and the one primary button, "Add transaction".
-- **Filter row:** search (grows to fill), date range, wallet, category, a type control (All / Income / Expense / Transfer), and Show deleted. On a phone the selects share their rows evenly.
-- **List:** one card, with a summary line at the top (the range, In, Out, and what is not counted). Below it, `DayGroupHeader`s and `TransactionRow` buttons, inset 8px so a row's focus ring has room, and "Load 25 more" at the foot.
+- **View switch:** a tab-mode `SegmentedControl` ("Table", "Calendar") under the header that controls the page's tabpanel; the last view is remembered per device and the Table is the default; a hand-off from the Dashboard, a wallet or the Daily diary always opens the Table.
+- **Filter row:** search (grows to fill), date range, wallet, category, a type control (All / Income / Expense / Transfer), and Show deleted. In the Calendar view the range select and the day chip are hidden (the month is the range) while search, wallet, category, type and Show deleted stay and apply to both views. On a phone the selects share their rows evenly.
+- **Table (from `lg`):** one card holding the summary line (the range, In, Out, and what is not counted), a real table (checkbox, Date, Note, Category, Wallet, Amount, and an unlabelled row menu column), a sticky header with the allowed blur, a day row per day with its L11 net coloured as `DayGroupHeader`, and "Load 25 more" at the foot. The row's Note cell is the button that opens the panel. Under `lg` the card is the list of `DayGroupHeader`s and `TransactionRow` buttons as before.
+- **Row menu:** each Table row has a "⋯" `OverflowMenu` with Edit and Delete (red), or Restore for a deleted row. Delete asks "Delete this transaction?" first, then soft-deletes. After a delete that removes the row, focus goes to the next row, else the previous, else the select-all box, else the search box. The Table has the row menu; the list under `lg` has no row menu, so deleting there happens in the panel, which does not confirm.
+- **Selection and the bulk bar:** from `lg`, a checkbox column (16px box in a 44px hit area) and a "Select all loaded rows" header box; a bar on `brand-soft` above the table while rows are selected: "N selected" (a polite live region), the selection's net (transfers, repayments, adjustments and deleted rows are not counted, and it says so), Clear, and Delete (confirmed, "Delete N transactions?") or Restore when every selected row is deleted. Under `lg`, a "Select" button starts a mode with a checkbox per row, a tap toggles, and the bar is pinned above the bottom nav with Cancel. A failure keeps the selection and shows the message. Focus after a bulk action or Clear is the select-all box (the Select button on a phone).
+- **Calendar view:** the 7/12 and 5/12 layout from `lg`, stacked below; Monday first; a header with ‹ › (› disabled on the current month unless a later month has rows) and the month's In, Out and Net; each day a 44px button named in full ("Sat, Oct 10, spent ฿3,000.00, net −฿3,000.00, 2 transactions"), the day number and its signed net from `sm`, the day number alone on a phone; a future day is disabled only when it has no rows; today has the inset `focus` ring, the selected day the brand fill; **heat:** the background is one of three steps of the `expense` hue, by spending against the month's highest day (thirds), none when the day spent nothing, and a legend names every shade. The **day panel:** the day's heading, In, Out and Net insets, its rows, "No transactions on this day" when empty, "Add transaction on <date>" (opens the Add form on that day) and, when the Daily diary has an entry for it, "Open this day in Daily diary". A row opens the edit panel in the sheet at every width in this view. Picking a day is the same day filter the diary hand-off uses, so going back to the Table keeps it.
 - **Panel:** the selected row's edit panel. It sits inline at 4/12 beside the list from `lg` and opens as a sheet or dialog below that. The choice is made in JavaScript, so it is never rendered twice. The selected row takes the soft violet with a 3px violet edge.
   - **For income, expense and transfer:** a type control, the amount at 24px in the type's colour (it takes a sum, like `100+50`), the note, Category and Wallet side by side when there is room (From and To for a transfer), the date, then "Save changes" (primary) beside "Delete" (danger).
   - **For a repayment or an adjustment:** the money as text, its wallet (and a repayment's debt) as read-only lines, one line saying only the note and date can change, then the note and date fields.
   - **Save changes is disabled until something changes.** The line above it says why when the edit is incomplete, and "Changes saved" after a save. A failure shows in the red banner.
   - **For a deleted row:** its details, read-only, with Restore.
-- **No trash button on a row.** Deleting happens in the panel.
 - **Dashboard hand-off:** a Recent activity row opens its row here with the panel open.
 
 ### Wallets (spec 6.3, ADR 0034)
@@ -320,7 +324,7 @@ The left over, sparkline and month-to-date figures come from selectors Phase 134
   - "2 transactions" is a link that opens the Transactions page on that day;
   - the workout note, then the note in an inset;
   - Edit entry and Delete entry… (red) in the "⋯" menu. Delete confirms first.
-- **Transactions, filtered to a day:** a soft "Only Wed, Sep 30 ×" button in the filter row; it, or a range change, clears the day.
+- **Transactions, filtered to a day:** a soft "Only Wed, Sep 30 ×" button in the filter row in the Table view only; it, or a range change, clears the day.
 
 ### Categories (spec 6.6, ADR 0037)
 - **Header:** `PageHeader` "Categories" with a Categories / Smart rules tablist on the right.

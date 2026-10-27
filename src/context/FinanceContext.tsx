@@ -31,6 +31,7 @@ import {
   DebtSchema,
   DebtEditSchema,
   CategorySchema,
+  TransactionIdsSchema,
   formatZodIssues,
 } from '../utils/zodSchemas';
 import { APP_CURRENCY, formatCurrencyAmount } from '../utils/currency';
@@ -200,6 +201,14 @@ export interface FinanceActionsContextType {
   softDeleteTransaction: (id: string) => Promise<MutationResult>;
   restoreTransaction: (id: string) => Promise<MutationResult>;
   /**
+   * Soft-deletes (`deleted: true`) or restores every listed transaction in one
+   * write (ADR 0109). All rows or none: an id that does not resolve fails the
+   * whole call and moves nothing. A row already in the asked-for state is left
+   * as it is, and a repeated id counts once. Signed in, it is one
+   * `set_transactions_deleted` RPC, with no fallback when it is missing.
+   */
+  setTransactionsDeleted: (ids: string[], deleted: boolean) => Promise<MutationResult>;
+  /**
    * Edits a live transaction (ADR 0033): reverses its old effect on the wallets
    * and applies the new one. Signed in, it is one `update_transaction` RPC, with
    * no fallback when the function is missing. A repayment or an adjustment
@@ -274,6 +283,16 @@ interface LedgerWriteResult {
   dest_balance: number | string | null;
   debt_remaining: number | string | null;
   debt_settled: boolean | null;
+}
+
+// Shape returned by `set_transactions_deleted` (ADR 0109): every listed row as
+// it stands after the call, the committed balance of every wallet those rows
+// name, and the remainder of every live debt their repayments name.
+interface SetTransactionsDeletedResult {
+  changed_ids: string[];
+  transactions: any[];
+  balances: { id: string; balance: number | string }[];
+  debts: { id: string; remaining_amount: number | string; is_settled: boolean }[];
 }
 
 // Supabase-js reports a request that never got an answer (offline, a dropped
@@ -2272,6 +2291,167 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     [setTransactionDeleted]
   );
 
+  // ADR 0109 (O1): soft-deletes or restores every listed row in one write. Row
+  // by row it is `setTransactionDeleted`'s arithmetic, run over one running
+  // copy of the balances and remainders computed from the refs before any
+  // setState (ADR 0022), then committed in one update. All rows or none: an id
+  // that does not resolve moves nothing. Signed in, it is one
+  // `set_transactions_deleted` call and nothing else (ADR 0091); that function
+  // runs `_ledger_apply_effect` per row, the same arithmetic.
+  const setTransactionsDeleted = useCallback(async (ids: string[], deleted: boolean): Promise<MutationResult> => {
+    const validation = TransactionIdsSchema.safeParse({ ids, deleted });
+    if (!validation.success) return { success: false, error: formatZodIssues(validation.error) };
+
+    const listedIds = [...new Set(validation.data.ids)];
+    const listed = listedIds
+      .map((id) => transactionsRef.current.find((t) => t.id === id))
+      .filter((t): t is Transaction => t !== undefined);
+    if (listed.length !== listedIds.length) return { success: false, error: 'Transaction not found' };
+    const changing = listed.filter((t) => t.isDeleted !== deleted);
+    if (changing.length === 0) return { success: true };
+
+    // +1 takes a row out of the ledger and -1 puts it back, as in `setTransactionDeleted`.
+    const sign = deleted ? 1 : -1;
+
+    const previousTransactions = transactionsRef.current;
+    const previousWallets = walletsRef.current;
+    const previousDebts = debtsRef.current;
+    // T69: see `cloudRevisionRef`.
+    const cloudRevisionAtStart = cloudRevisionRef.current;
+
+    const newBalances = new Map<string, number>();
+    const newRemainders = new Map<string, number>();
+    for (const tx of changing) {
+      const source = walletsRef.current.find((w) => w.id === tx.walletId);
+      if (source) {
+        const balance = newBalances.get(source.id) ?? source.balance;
+        if (tx.type === 'EXPENSE' || tx.type === 'DEBT_REPAYMENT' || tx.type === 'TRANSFER') {
+          newBalances.set(source.id, roundToCents(balance + sign * tx.amount));
+        } else if (tx.type === 'INCOME' || tx.type === 'ADJUSTMENT') {
+          newBalances.set(source.id, roundToCents(balance - sign * tx.amount));
+        }
+      }
+      const dest =
+        tx.type === 'TRANSFER' && tx.destinationWalletId
+          ? walletsRef.current.find((w) => w.id === tx.destinationWalletId)
+          : undefined;
+      if (dest) {
+        newBalances.set(dest.id, roundToCents((newBalances.get(dest.id) ?? dest.balance) - sign * tx.amount));
+      }
+      const debt =
+        tx.type === 'DEBT_REPAYMENT' && tx.debtId
+          ? debtsRef.current.find((d) => d.id === tx.debtId && !d.isDeleted)
+          : undefined;
+      if (debt) {
+        const remaining = newRemainders.get(debt.id) ?? debt.remainingAmount;
+        newRemainders.set(debt.id, Math.max(0, roundToCents(remaining + sign * tx.amount)));
+      }
+    }
+
+    const changingIds = new Set(changing.map((t) => t.id));
+    const now = new Date().toISOString();
+    setTransactions((prev) =>
+      prev.map((t) => (changingIds.has(t.id) ? { ...t, isDeleted: deleted, updatedAt: now } : t))
+    );
+    setWallets((prev) => prev.map((w) => (newBalances.has(w.id) ? { ...w, balance: newBalances.get(w.id)! } : w)));
+    if (newRemainders.size > 0) {
+      setDebts((prev) =>
+        prev.map((d) => {
+          const remaining = newRemainders.get(d.id);
+          return remaining === undefined
+            ? d
+            : { ...d, remainingAmount: remaining, isSettled: remaining === 0, updatedAt: now };
+        })
+      );
+    }
+
+    if (!isAuthenticated) return { success: true };
+
+    // ADR 0023: set when the RPC may have committed without telling us.
+    let rpcOutcomeUnknown = false;
+
+    try {
+      for (const id of changingIds) markLocalWrite(id);
+      for (const id of newBalances.keys()) markLocalWrite(id);
+      for (const id of newRemainders.keys()) markLocalWrite(id);
+      const { data: rpcData, error: rpcError } = await supabase.rpc('set_transactions_deleted', {
+        p_transaction_ids: listedIds,
+        p_deleted: deleted,
+      });
+
+      if (rpcError) {
+        if (isMissingRpcError(rpcError)) throw new MissingLedgerFunction();
+        if (isUnknownOutcomeError(rpcError)) rpcOutcomeUnknown = true;
+        throw rpcError;
+      }
+      const payload = rpcData as SetTransactionsDeletedResult | null;
+      if (!payload || !Array.isArray(payload.transactions)) {
+        rpcOutcomeUnknown = true;
+        throw new Error('set_transactions_deleted returned an unexpected response');
+      }
+
+      // What the database committed replaces the optimistic values.
+      const committedRows = new Map(payload.transactions.map((row) => {
+        const mapped = mapTransactionRow(row);
+        return [mapped.id, mapped] as const;
+      }));
+      setTransactions((prev) => prev.map((t) => committedRows.get(t.id) ?? t));
+
+      const committedBalances = new Map<string, number>();
+      for (const row of payload.balances ?? []) {
+        const balance = Number(row.balance);
+        if (Number.isFinite(balance)) committedBalances.set(row.id, balance);
+      }
+      if (committedBalances.size > 0) {
+        setWallets((prev) =>
+          prev.map((w) => (committedBalances.has(w.id) ? { ...w, balance: committedBalances.get(w.id)! } : w))
+        );
+      }
+
+      const committedDebts = new Map<string, { remaining: number; settled: boolean }>();
+      for (const row of payload.debts ?? []) {
+        const remaining = Number(row.remaining_amount);
+        if (Number.isFinite(remaining)) committedDebts.set(row.id, { remaining, settled: row.is_settled === true });
+      }
+      if (committedDebts.size > 0) {
+        const updatedAt = new Date().toISOString();
+        setDebts((prev) =>
+          prev.map((d) => {
+            const committed = committedDebts.get(d.id);
+            return committed
+              ? { ...d, remainingAmount: committed.remaining, isSettled: committed.settled, updatedAt }
+              : d;
+          })
+        );
+      }
+      return { success: true };
+
+    } catch (err: unknown) {
+      console.error('[Set Transactions Deleted Failed]', err);
+
+      if (cloudRevisionRef.current !== cloudRevisionAtStart) {
+        // T69: a reload landed mid-flight, so the snapshot is stale. Re-fetch.
+        await refreshFromCloud();
+      } else {
+        setTransactions(previousTransactions);
+        setWallets(previousWallets);
+        setDebts(previousDebts);
+        // ADR 0023: the rollback is a guess when the RPC may have committed.
+        if (rpcOutcomeUnknown) await refreshFromCloud();
+      }
+
+      if (err instanceof MissingLedgerFunction) return databaseUpdateNeeded();
+
+      const postgrestErr = err as { message?: string; details?: string; hint?: string };
+      const detailedError =
+        postgrestErr?.message ||
+        postgrestErr?.details ||
+        postgrestErr?.hint ||
+        (err instanceof Error ? err.message : 'Database error');
+      return { success: false, error: detailedError };
+    }
+  }, [isAuthenticated, markLocalWrite, refreshFromCloud]);
+
   // ADR 0033: edits a live transaction. The net wallet movement is the new row's
   // effects minus the old row's (`walletEffects`), computed here from the refs
   // BEFORE any setState (ADR 0022). Signed in, `update_transaction` does the same
@@ -2901,6 +3081,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       addTransaction,
       softDeleteTransaction,
       restoreTransaction,
+      setTransactionsDeleted,
       updateTransaction,
       commitBulkImport,
       addDebt,
@@ -2927,6 +3108,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       addTransaction,
       softDeleteTransaction,
       restoreTransaction,
+      setTransactionsDeleted,
       updateTransaction,
       commitBulkImport,
       addDebt,

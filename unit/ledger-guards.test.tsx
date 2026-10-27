@@ -386,6 +386,195 @@ describe('ledger arithmetic stays cent-precise', () => {
   });
 });
 
+describe('bulk soft-delete and restore (ADR 0109)', () => {
+  async function addFive() {
+    const spent = await call(() =>
+      actions().addTransaction({
+        amount: 300,
+        type: 'EXPENSE',
+        walletId: WALLET_MAIN,
+        description: 'Groceries',
+        transactionDate: TODAY,
+      })
+    );
+    await tick();
+    const earned = await call(() =>
+      actions().addTransaction({
+        amount: 120.4,
+        type: 'INCOME',
+        walletId: WALLET_SAVINGS,
+        description: 'Interest',
+        transactionDate: TODAY,
+      })
+    );
+    await tick();
+    const moved = await call(() =>
+      actions().addTransaction({
+        amount: 250,
+        type: 'TRANSFER',
+        walletId: WALLET_MAIN,
+        destinationWalletId: WALLET_SAVINGS,
+        description: 'Move to savings',
+        transactionDate: TODAY,
+      })
+    );
+    await tick();
+    const paid = await call(() => repay({ amount: 1000 }));
+    await tick();
+    const adjusted = await call(() =>
+      actions().addTransaction({
+        amount: -45.55,
+        type: 'ADJUSTMENT',
+        walletId: WALLET_MAIN,
+        description: 'Reconcile',
+        transactionDate: TODAY,
+      })
+    );
+    return [spent.txId!, earned.txId!, moved.txId!, paid.txId!, adjusted.txId!];
+  }
+
+  it('deletes an expense, an income, a transfer, a repayment and a downward adjustment in one call, and restores them in another', async () => {
+    const five = await addFive();
+    expect(wallet(WALLET_MAIN).balance).toBe(1904.45);
+    expect(wallet(WALLET_SAVINGS).balance).toBe(4370.4);
+    expect(debt().remainingAmount).toBe(3500);
+
+    const deleted = await call(() => actions().setTransactionsDeleted(five, true));
+    expect(deleted).toEqual({ success: true });
+    expect(wallet(WALLET_MAIN).balance).toBe(2500);
+    expect(wallet(WALLET_SAVINGS).balance).toBe(SAVINGS_OPENING);
+    expect(debt().remainingAmount).toBe(DEBT_REMAINING);
+    expect(debt().isSettled).toBe(false);
+    expect(state().transactions.every((t) => t.isDeleted)).toBe(true);
+
+    const restored = await call(() => actions().setTransactionsDeleted(five, false));
+    expect(restored).toEqual({ success: true });
+    expect(wallet(WALLET_MAIN).balance).toBe(1904.45);
+    expect(wallet(WALLET_SAVINGS).balance).toBe(4370.4);
+    expect(debt().remainingAmount).toBe(3500);
+    expect(state().transactions.every((t) => !t.isDeleted)).toBe(true);
+  });
+
+  it('matches the same rows deleted one at a time', async () => {
+    const five = await addFive();
+    await call(() => actions().setTransactionsDeleted(five, true));
+    const bulkState = {
+      main: wallet(WALLET_MAIN).balance,
+      savings: wallet(WALLET_SAVINGS).balance,
+      loan: debt().remainingAmount,
+    };
+
+    await call(() => actions().setTransactionsDeleted(five, false));
+    for (const id of five) {
+      await call(() => actions().softDeleteTransaction(id));
+    }
+
+    expect({
+      main: wallet(WALLET_MAIN).balance,
+      savings: wallet(WALLET_SAVINGS).balance,
+      loan: debt().remainingAmount,
+    }).toEqual(bulkState);
+  });
+
+  it('un-settles and re-settles a debt with the payment that settled it', async () => {
+    const paid = await call(() => repay({ amount: DEBT_REMAINING }));
+    await tick();
+    const spent = await call(() =>
+      actions().addTransaction({
+        amount: 300,
+        type: 'EXPENSE',
+        walletId: WALLET_MAIN,
+        description: 'Groceries',
+        transactionDate: TODAY,
+      })
+    );
+    expect(debt().isSettled).toBe(true);
+
+    await call(() => actions().setTransactionsDeleted([paid.txId!, spent.txId!], true));
+    expect(debt().remainingAmount).toBe(DEBT_REMAINING);
+    expect(debt().isSettled).toBe(false);
+    expect(wallet(WALLET_MAIN).balance).toBe(2500);
+
+    await call(() => actions().setTransactionsDeleted([paid.txId!, spent.txId!], false));
+    expect(debt().remainingAmount).toBe(0);
+    expect(debt().isSettled).toBe(true);
+    expect(wallet(WALLET_MAIN).balance).toBe(2200);
+  });
+
+  it('stays cent-precise across several repayments', async () => {
+    const first = await call(() => repay({ amount: 0.1 }));
+    await tick();
+    const second = await call(() => repay({ amount: 0.2 }));
+
+    await call(() => actions().setTransactionsDeleted([first.txId!, second.txId!], true));
+    expect(debt().remainingAmount).toBe(DEBT_REMAINING);
+    expect(wallet(WALLET_SAVINGS).balance).toBe(SAVINGS_OPENING);
+  });
+
+  it('moves nothing when one id does not resolve', async () => {
+    const spent = await call(() =>
+      actions().addTransaction({
+        amount: 300,
+        type: 'EXPENSE',
+        walletId: WALLET_MAIN,
+        description: 'Groceries',
+        transactionDate: TODAY,
+      })
+    );
+
+    const result = await call(() => actions().setTransactionsDeleted([spent.txId!, 'tx-never-existed'], true));
+    expect(result).toEqual({ success: false, error: 'Transaction not found' });
+    expect(wallet(WALLET_MAIN).balance).toBe(2200);
+    expect(state().transactions.find((t) => t.id === spent.txId)?.isDeleted).toBe(false);
+  });
+
+  it('leaves a row already deleted alone and counts a repeated id once', async () => {
+    const spent = await call(() =>
+      actions().addTransaction({
+        amount: 300,
+        type: 'EXPENSE',
+        walletId: WALLET_MAIN,
+        description: 'Groceries',
+        transactionDate: TODAY,
+      })
+    );
+    await tick();
+    const paid = await call(() => repay({ amount: 1000 }));
+
+    await call(() => actions().softDeleteTransaction(spent.txId!));
+    expect(wallet(WALLET_MAIN).balance).toBe(2500);
+
+    const result = await call(() =>
+      actions().setTransactionsDeleted([spent.txId!, spent.txId!, paid.txId!], true)
+    );
+    expect(result).toEqual({ success: true });
+    expect(wallet(WALLET_MAIN).balance).toBe(2500);
+    expect(wallet(WALLET_SAVINGS).balance).toBe(SAVINGS_OPENING);
+    expect(debt().remainingAmount).toBe(DEBT_REMAINING);
+  });
+
+  it('is a no-op when every row is already in the asked-for state', async () => {
+    const spent = await call(() =>
+      actions().addTransaction({
+        amount: 300,
+        type: 'EXPENSE',
+        walletId: WALLET_MAIN,
+        description: 'Groceries',
+        transactionDate: TODAY,
+      })
+    );
+
+    const result = await call(() => actions().setTransactionsDeleted([spent.txId!], false));
+    expect(result).toEqual({ success: true });
+    expect(wallet(WALLET_MAIN).balance).toBe(2200);
+  });
+
+  it('refuses an empty list at the schema layer', async () => {
+    const result = await call(() => actions().setTransactionsDeleted([], true));
+    expect(result).toEqual({ success: false, error: 'Select at least one transaction' });
+  });
+});
+
 describe('a signed ADJUSTMENT (ADR 0024)', () => {
   /*
    * WalletPopupModal's balance editor used to write `Math.abs(diff)` as an

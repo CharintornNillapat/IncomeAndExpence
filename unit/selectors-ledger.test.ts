@@ -1,10 +1,11 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { isSpending, isIncome, sumSpending, sumIncome, spendingByCategory, groupByDay } from '../src/selectors/ledger';
-import { rangeBounds, inRange, filterByRange, formatRangeLabel } from '../src/selectors/timeRange';
+import { isSpending, isIncome, sumSpending, sumIncome, spendingByCategory, groupByDay, cashFlow, dailyTotals, heatLevel, HEAT_LEVELS, selectionSummary } from '../src/selectors/ledger';
+import { rangeBounds, inRange, filterByRange, formatRangeLabel, monthBounds } from '../src/selectors/timeRange';
 import { activeWallets, archivedWallets, walletActivity, walletTotal, debtRemaining, netWorth } from '../src/selectors/wallets';
 import { PAGE_STEP, visibleRows, hasMoreRows } from '../src/selectors/pagination';
-import { shiftIsoDate } from '../src/utils/date';
+import { shiftIsoDate, shiftMonth } from '../src/utils/date';
 import { buildLookupMap } from '../src/utils/mapUtils';
+import { roundToCents } from '../src/utils/money';
 import type { Category, Debt, Transaction, Wallet } from '../src/types';
 
 /**
@@ -278,5 +279,77 @@ describe('L12: the list loads 25 at a time', () => {
     expect(hasMoreRows(rows, PAGE_STEP)).toBe(true);
     expect(visibleRows(rows, PAGE_STEP * 3)).toHaveLength(60);
     expect(hasMoreRows(rows, PAGE_STEP * 3)).toBe(false);
+  });
+});
+
+describe('Transactions redesign (ADR 0109): the Calendar and selection figures', () => {
+  it('monthBounds spans the 1st to the last day of 28, 29, 30 and 31 day months', () => {
+    expect(monthBounds('2026-02')).toEqual({ start: '2026-02-01', end: '2026-02-28' });
+    expect(monthBounds('2028-02')).toEqual({ start: '2028-02-01', end: '2028-02-29' });
+    expect(monthBounds('2026-09')).toEqual({ start: '2026-09-01', end: '2026-09-30' });
+    expect(monthBounds('2026-10')).toEqual({ start: '2026-10-01', end: '2026-10-31' });
+  });
+
+  it('monthBounds steps from December into January', () => {
+    expect(monthBounds('2026-12')).toEqual({ start: '2026-12-01', end: '2026-12-31' });
+    expect(monthBounds(shiftMonth('2026-12', 1))).toEqual({ start: '2027-01-01', end: '2027-01-31' });
+    expect(inRange('2026-12-31', monthBounds('2026-12'))).toBe(true);
+    expect(inRange('2027-01-01', monthBounds('2026-12'))).toBe(false);
+  });
+
+  it('dailyTotals adds up to cashFlow to the cent, and a transfer moves count only', () => {
+    const rows = [
+      ...MIXED,
+      tx({ type: 'EXPENSE', amount: 0.1, transactionDate: '2026-09-27' }),
+      tx({ type: 'EXPENSE', amount: 0.2, transactionDate: '2026-09-27' }),
+      tx({ type: 'INCOME', amount: 12.34, transactionDate: '2026-09-27' }),
+      tx({ type: 'TRANSFER', amount: 500, destinationWalletId: 'wal-main', transactionDate: '2026-09-26' }),
+    ];
+    const totals = dailyTotals(rows, BY_ID);
+    const flow = cashFlow(rows, BY_ID);
+    const days = Array.from(totals.values());
+    expect(roundToCents(days.reduce((sum, day) => sum + day.income, 0))).toBe(flow.income);
+    expect(roundToCents(days.reduce((sum, day) => sum + day.spending, 0))).toBe(flow.spending);
+    expect(totals.get(TODAY)).toEqual({ income: 1000, spending: 150.5, net: 849.5, count: MIXED.length });
+    expect(totals.get('2026-09-27')).toEqual({ income: 12.34, spending: 0.3, net: 12.04, count: 3 });
+    expect(totals.get('2026-09-26')).toEqual({ income: 0, spending: 0, net: 0, count: 1 });
+    expect(totals.has('2026-09-25')).toBe(false);
+  });
+
+  it('heatLevel is 0 to HEAT_LEVELS in thirds of the month top day, and never NaN', () => {
+    expect(HEAT_LEVELS).toBe(3);
+    expect(heatLevel(0, 300)).toBe(0);
+    expect(heatLevel(0, 0)).toBe(0);
+    expect(heatLevel(5, 0)).toBe(0);
+    expect(heatLevel(Number.NaN, 300)).toBe(0);
+    expect(heatLevel(300, 300)).toBe(HEAT_LEVELS);
+    expect(heatLevel(0.01, 300)).toBe(1);
+    expect(heatLevel(100, 300)).toBe(1);
+    expect(heatLevel(100.01, 300)).toBe(2);
+    expect(heatLevel(200, 300)).toBe(2);
+    // In floating point 3 * 0.1 / 0.3 is 1.0000000000000002: still exactly a third.
+    expect(heatLevel(0.1, 0.3)).toBe(1);
+    expect(heatLevel(0.2, 0.3)).toBe(2);
+  });
+
+  it('selectionSummary nets the selected rows by L1 and flags a row it leaves out', () => {
+    const rows = [
+      tx({ type: 'INCOME', amount: 1000, categoryId: 'cat-salary' }),
+      tx({ type: 'EXPENSE', amount: 100.25, categoryId: 'cat-food' }),
+      tx({ type: 'EXPENSE', amount: 50.25, categoryId: 'cat-groceries' }),
+      tx({ type: 'TRANSFER', amount: 500, destinationWalletId: 'wal-main' }),
+    ];
+    const [income, food, groceries, transfer] = rows;
+    const counted = selectionSummary(rows, new Set([income.id, food.id, 'tx-not-loaded']), BY_ID);
+    expect(counted).toEqual({
+      count: 2,
+      net: roundToCents(sumIncome([income, food], BY_ID) - sumSpending([income, food], BY_ID)),
+      hasUncounted: false,
+    });
+    expect(counted.net).toBe(899.75);
+    expect(selectionSummary(rows, new Set([groceries.id, transfer.id]), BY_ID)).toEqual({ count: 2, net: -50.25, hasUncounted: true });
+    const deleted = MIXED.find((t) => t.isDeleted)!;
+    expect(selectionSummary(MIXED, new Set([deleted.id]), BY_ID)).toEqual({ count: 1, net: 0, hasUncounted: true });
+    expect(selectionSummary(rows, new Set(), BY_ID)).toEqual({ count: 0, net: 0, hasUncounted: false });
   });
 });

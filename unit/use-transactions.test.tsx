@@ -71,4 +71,24 @@ describe('useTransactions includeDeleted option (CS-01)', () => {
     expect(idsAfter).toContain('tx-live');
     expect(idsAfter).toContain('tx-gone');
   });
+
+  it('exposes setTransactionsDeleted and deletes several rows in one call', async () => {
+    const secondLive: Transaction = {
+      ...ROWS[0],
+      id: 'tx-live-2',
+      description: 'Second live',
+    };
+    localStorage.setItem('pf_transactions', JSON.stringify([ROWS[0], secondLive]));
+
+    const { result } = renderHook(() => useTransactions(), { wrapper });
+    expect(result.current.transactions.map((t) => t.id)).toEqual(['tx-live', 'tx-live-2']);
+
+    let callResult: any;
+    await act(async () => {
+      callResult = await result.current.setTransactionsDeleted(['tx-live', 'tx-live-2'], true);
+    });
+
+    expect(callResult).toEqual({ success: true });
+    expect(result.current.transactions).toHaveLength(0);
+  });
 });

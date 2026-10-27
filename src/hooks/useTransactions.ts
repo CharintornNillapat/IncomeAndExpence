@@ -23,6 +23,7 @@ export const useTransactions = (options: UseTransactionsFilterOptions = {}) => {
     addTransaction,
     softDeleteTransaction,
     restoreTransaction,
+    setTransactionsDeleted,
     updateTransaction,
     commitBulkImport,
     setShowSoftDeleted,
@@ -155,6 +156,13 @@ export const useTransactions = (options: UseTransactionsFilterOptions = {}) => {
     [restoreTransaction]
   );
 
+  const handleSetTransactionsDeleted = useCallback(
+    async (ids: string[], deleted: boolean) => {
+      return await setTransactionsDeleted(ids, deleted);
+    },
+    [setTransactionsDeleted]
+  );
+
   return {
     transactions: filteredTransactions,
     rawTransactions: transactions,
@@ -163,6 +171,7 @@ export const useTransactions = (options: UseTransactionsFilterOptions = {}) => {
     addTransaction: handleAdd,
     deleteTransaction: handleDelete,
     restoreTransaction: handleRestore,
+    setTransactionsDeleted: handleSetTransactionsDeleted,
     updateTransaction,
     commitBulkImport,
   };

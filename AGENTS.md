@@ -8,7 +8,7 @@ FinLife Tracker is a single-user personal finance and daily-diary PWA in Thai Ba
 
 - **Stack:** React 19, TypeScript ~5.8 (strict), Vite 6, Tailwind CSS v4 (semantic tokens), `vite-plugin-pwa`, `@supabase/supabase-js` (lazy-loaded), zod 4, papaparse, lucide-react. Node 24.x, npm.
 - **Server side:** Supabase (Postgres 17, RLS, `SECURITY DEFINER` RPCs, Auth, Realtime); Vercel hosting with three Node functions in `api/` (region `icn1`); TypeSafe's Jev model behind the proxies.
-- **Tests:** Vitest in `unit/` (1510 tests, 69 files, PGlite replays every migration); Playwright in `tests/` (187 tests, 36 specs, 561 runs on three browsers).
+- **Tests:** Vitest in `unit/` (1598 tests, 72 files, PGlite replays every migration); Playwright in `tests/` (213 tests, 37 specs, 639 runs on three browsers).
 
 | Path | What it is |
 |---|---|
@@ -61,6 +61,7 @@ These pairs must change together; nothing in `tsc` links them.
 | This | Must match | Guarded by |
 |---|---|---|
 | `addTransaction` / `setTransactionDeleted` arithmetic (`FinanceContext.tsx`) | `_ledger_apply_effect` and the ledger RPCs (`supabase/migrations/20260927_ledger_rpcs.sql` and later re-creations) | `unit/authenticated-ledger.test.tsx`, `ledger-guards.test.tsx`, `supabase/tests/*.probe.sql` |
+| `setTransactionsDeleted` arithmetic (`FinanceContext.tsx`) | `set_transactions_deleted` (`supabase/migrations/20261027_phase149_set_transactions_deleted.sql`), which runs `_ledger_apply_effect` once per changed row as `set_transaction_deleted` does | `unit/ledger-guards.test.tsx`, `unit/authenticated-ledger.test.tsx`, `supabase/tests/20261027_phase149.probe.sql` (run by `unit/migration-replay.test.ts`) |
 | Transfer preview and debt payoff block | `addTransaction`'s TRANSFER and DEBT_REPAYMENT arithmetic, through `roundToCents` | Nothing checks the formula; review it by hand |
 | `api/classify.ts` shared declarations | `api/insights.ts` (`checkCaller`, JWKS, `checkQuota`, `readBody`, timings) | `unit/proxy-parity.test.ts`, `proxy-contract.test.ts` |
 | Client guest starter set (`FinanceContext.tsx`) | `seed_starter_account()` in SQL | Review by hand |

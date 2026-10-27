@@ -26,9 +26,9 @@ interface ConfirmDialogProps {
 }
 
 /**
- * T42: shared confirmation dialog over `Modal.tsx`, for irreversible actions
- * only (wallet delete, debt delete) - never for transaction soft-delete,
- * which is reversible via restore and where a confirm would be pure friction.
+ * T42: shared confirmation dialog over `Modal.tsx`, for deletes the person
+ * should confirm (wallet delete, debt delete, and, since ADR 0109, a transaction
+ * soft-delete from the Table's row menu or a bulk selection; the panel's own Delete does not confirm).
  * Its two buttons are the shared `Button` (Phase 56): secondary to cancel,
  * danger (or primary, for a non-destructive confirm) to proceed.
  */

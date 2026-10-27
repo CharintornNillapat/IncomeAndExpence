@@ -311,3 +311,37 @@ describe('the date and diary helpers', () => {
     expect([...month]).toEqual(['2026-09-01']);
   });
 });
+
+
+describe('the Transactions calendar day hand-off (ADR 0109)', () => {
+  it('opens the form on initialDate when <= today, calls onConsumeInitialDate once, and falls back to today for a future initialDate', () => {
+    const consume = vi.fn();
+    localStorage.setItem(
+      'pf_diary',
+      JSON.stringify([entryRow({ id: 'y', date: YESTERDAY, mood: 5, notes: 'Yesterday entry' })]),
+    );
+    const { unmount } = render(
+      <FinanceProvider>
+        <DiaryView initialDate={YESTERDAY} onConsumeInitialDate={consume} />
+      </FinanceProvider>,
+    );
+
+    expect(consume).toHaveBeenCalledTimes(1);
+    expect((byId('diary-date-picker') as HTMLInputElement).value).toBe(YESTERDAY);
+    if (monthKeyOf(YESTERDAY) === monthKeyOf(TODAY)) {
+      expect(byId(`diary-cal-day-${YESTERDAY}`)!.getAttribute('aria-pressed')).toBe('true');
+    }
+    expect(pressed('diary-mood-btn-5')).toBe('true');
+
+    unmount();
+    const consumeFuture = vi.fn();
+    render(
+      <FinanceProvider>
+        <DiaryView initialDate={shiftIsoDate(TODAY, 2)} onConsumeInitialDate={consumeFuture} />
+      </FinanceProvider>,
+    );
+    expect(consumeFuture).toHaveBeenCalledTimes(1);
+    expect((byId('diary-date-picker') as HTMLInputElement).value).toBe(TODAY);
+    expect(byId(`diary-cal-day-${TODAY}`)!.getAttribute('aria-pressed')).toBe('true');
+  });
+});

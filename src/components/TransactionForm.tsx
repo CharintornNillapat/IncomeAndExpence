@@ -52,6 +52,8 @@ interface TransactionFormProps {
   presetDebtId?: string;
   /** Pins the initially-selected source wallet instead of defaulting to `wallets[0]`. The selector itself stays editable. */
   presetWalletId?: string;
+  /** Pins the initial transaction date (ISO `YYYY-MM-DD`) on mount instead of defaulting to `todayIsoDate()`. */
+  initialDate?: string;
   /**
    * Renders the "Transfer Funds" shortcut link below the submit button.
    * Omitted means no link at all: TRANSFER left this form's type toggle in
@@ -123,6 +125,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
   lockType = false,
   presetDebtId,
   presetWalletId,
+  initialDate,
   onRequestTransfer,
   onRequestRepayDebt,
   onSubmitTransaction,
@@ -150,7 +153,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
   // and the form submits is `shownCategoryId` below.
   const [categoryId, setCategoryId] = useState<string>('');
   const [debtId, setDebtId] = useState<string>(presetDebtId || activeDebts[0]?.id || debts[0]?.id || '');
-  const [date, setDate] = useState<string>(todayIsoDate());
+  const [date, setDate] = useState<string>(initialDate || todayIsoDate());
 
   // Drives `InlineMathInput`'s `seed` prop, only ever through `seedAmount`
   // below. The note parser, an applied template, a payoff chip and a reset

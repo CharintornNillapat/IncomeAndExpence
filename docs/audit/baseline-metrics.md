@@ -23,6 +23,14 @@ npx tsc --noEmit --extendedDiagnostics
 
 ## Figures
 
+### Phase 149 - delta against Phase 148
+
+- **Entry chunk** `index-achQGTXo.js`: 198,233 B (+3,607 B), 57,974 B gzip (+993 B against Phase 148 `index-D4N64t3V.js`, 194,626 / 56,981): the phase changed files that load with the entry, among them `FinanceContext.tsx` (T812's `setTransactionsDeleted`) and `App.tsx` (T811's diary hand-off).
+- **All app JS**: 910,934 B (+24,603 B), 275,852 B gzip (+6,576 B against Phase 148 886,331 / 269,276, 39 files, 0 file delta): the new Table, Calendar, day panel and bulk bar add no chunk; `TransactionsView-FspLBvoz.js` is 55,405 B.
+- **CSS**: `index-BNwLrid8.css`: 54,969 B (+1,610 B), 10,720 B gzip (+269 B against Phase 148 `index-CNaxMlAk.css`, 53,359 / 10,451): T811's three heat tokens in both themes and the new views' utility classes.
+- **Vitest**: 72 files, 1598 tests (+3 files, +88 tests against Phase 148: `unit/tx-view-preference.test.ts`, `unit/tx-calendar.test.tsx` and `unit/transactions-bulk.test.tsx` new, ten files extended), 1598 passed in 60.32 s (`workflow/stages/02_build/output/logs/T815-unit.log`). Per-task runs: T809 1515 (87.38 s), T810 1535 (54.19 s), T811 1560 (54.39 s), T812 1580 (55.59 s), T813 1598 (55.69 s), each in `workflow/stages/02_build/output/logs/<id>-unit.log`.
+- **Playwright**: `npx playwright test --list` reports 213 tests in 37 files, 639 runs across 3 projects (+26 tests, +1 file, +78 runs against Phase 148, all in `tests/transactions-views.spec.ts`, new in T814). Full run by T815: 633 passed, 6 skipped, 0 failed across 3 projects (12.0 min, `workflow/stages/02_build/output/logs/T815-e2e.log`). Before it, the phase ran targeted specs only (T810, T811 and T813: 26 specs on three browsers; T812: 4 specs; T814: the new spec).
+
 ### Phase 148 - delta against Phase 147
 
 Measured at `29ce4ba`; T808 changed docs only and the merge commit `2cc177c` has the same tree as `ef434cd`, so the figures hold for it.
