@@ -100,10 +100,10 @@ Phase 149, branch `phase-149-transactions-views`, cut from `main` at `27a6e5f`:
 
 ## Release
 
-Merged into `main` as `12a12eb` (PR #101) on 2026-10-27, with the migration not yet applied live. Still owed by the owner, in the Supabase SQL editor (T812 spec section 8):
+Merged into `main` as `12a12eb` (PR #101) on 2026-10-27. After the merge, the same day, the owner, in the Supabase SQL editor (T812 spec section 8):
 
-1. Apply `supabase/migrations/20261027_phase149_set_transactions_deleted.sql` from `main`.
-2. In the same tab, run the history row that `npm run migration:print-history -- supabase/migrations/20261027_phase149_set_transactions_deleted.sql` prints at that moment (ADR 0065).
-3. Read-only: run the query that `npm run schema:drift` prints; expect zero rows.
+1. Applied `supabase/migrations/20261027_phase149_set_transactions_deleted.sql` from `main`.
+2. Ran the history row that `npm run migration:print-history -- supabase/migrations/20261027_phase149_set_transactions_deleted.sql` printed (ADR 0065).
+3. Ran the read-only query that `npm run schema:drift` prints: zero rows.
 
-Until step 1, a signed-in bulk Delete or Restore changes nothing and shows "This needs the latest database update. Nothing was changed." (`FinanceContext.tsx:395`). When the owner applies it, a docs-only record replaces this section with what was applied and checked.
+Between the merge and step 1, a signed-in bulk Delete or Restore changed nothing and showed "This needs the latest database update. Nothing was changed." (`FinanceContext.tsx:395`). The probe was not run on live.

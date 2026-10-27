@@ -140,7 +140,7 @@ Branch `phase-148-add-entry-close`, cut from `main` at `45b6c24`. Two commits, T
 
 ## Phase 149 - Transactions redesign: Table and Calendar views (ADR 0109)
 
-Branch `phase-149-transactions-views`, cut from `main` at `27a6e5f`. Seven commits, T809's `a2634f1` to T815's `6343851`, merged into `main` as `12a12eb` (PR #101). The T812 migration was not applied live at the merge; it is still owed (ADR 0109 Release).
+Branch `phase-149-transactions-views`, cut from `main` at `27a6e5f`. Seven commits, T809's `a2634f1` to T815's `6343851`, merged into `main` as `12a12eb` (PR #101). The owner applied the T812 migration live after the merge on 2026-10-27, with its history row and a zero-row drift check (ADR 0109 Release).
 
 | # | Task | Files | Status | Commit | Gate result |
 |---|---|---|---|---|---|
