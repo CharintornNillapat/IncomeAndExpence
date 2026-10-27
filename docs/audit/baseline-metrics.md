@@ -23,6 +23,13 @@ npx tsc --noEmit --extendedDiagnostics
 
 ## Figures
 
+### Phase 151 - delta against Phase 149
+
+Measured at the T819 working tree; no file under `src/`, `index.html`, `vite.config.ts`, `package.json` or `package-lock.json` changed (gate 11), so the entry chunk, all app JS and CSS are Phase 149's (`index-achQGTXo.js` 198,233 B, all app JS 910,934 B in 39 files, CSS 54,969 B) and were not rebuilt.
+
+- **Vitest**: 72 files, 1601 tests (+0 files, +3 tests against Phase 149: all three in `unit/migration-replay.test.ts`), 1601 passed in 55.54 s (`workflow/stages/02_build/output/logs/T819-unit.log`).
+- **Playwright**: unchanged, 213 tests in 37 files, 639 runs; not run (no spec or `src/` change).
+
 ### Phase 149 - delta against Phase 148
 
 Measured at `9caee5e`; T815 changed docs only and the merge commit `12a12eb` has the same tree as `6343851`, so the figures hold for it.

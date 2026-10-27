@@ -19,6 +19,17 @@ ADR `NNNN`. <the brief, one or two sentences>
 
 ---
 
+## Phase 151 - transfer_funds replays a soft-deleted transfer: T819 (2026-10-28, code `<sha>`, merged `<sha>`)
+
+ADR `0110`. A retry of a transfer that the user has since deleted now replays that row (`reused: true`, balances unchanged) rather than raising unique_violation (23505), bringing transfer_funds in line with record_transaction and ADR 0023's replay rule.
+
+**Changed:** T819 (`docs/audit/decisions/0110-transfer-funds-replays-any-row.md`: new, ADR 0110; `supabase/migrations/20261028_phase151_transfer_funds_replay_any_row.sql`: new, re-creates transfer_funds from the deployed Phase 93 body without is_deleted filter in replay check and unique_violation handler; `supabase/tests/20261028_phase151.probe.sql`: new, probe asserting deleted transfer replay, live transfer replay, account isolation, and body hash 9923588c3826c0b5f6f4439236c552d6; `unit/migration-replay.test.ts`: migration count 23, upTo150 helper, probe before/after tests and SL-01 pre-migration failure test; `AGENTS.md` and `README.md`: Vitest 1601 tests in 72 files; `docs/audit/baseline-metrics.md`: Phase 151 section; `docs/audit/task-ledger.md`: Phase 151 section and backlog SL-01 marked done; this file).
+**Verified:** Red run verified (3 failed: count 22 vs 23, ENOENT for migration, 23505 on deleted transfer replay); npm run lint clean; related unit 3 files 81 passed (32.32s); npm run schema:drift clean; parity guards 2 files 215 passed (75.66s); full unit 72 files 1601 passed (55.54s); Gate 7 Phase 93 md5 03b469921a7c0d01909608cb8c6a53d7, Phase 151 md5 9923588c3826c0b5f6f4439236c552d6; Gate 8 body diff lines 143/143, grants and revokes matched; stated counts verified in AGENTS.md and README.md; 0 em dashes; bundle unaffected; line endings CRLF; scope clean.
+**Surprises:** none.
+**Deliberately not done:** the unique_violation handler is not exercised by the probe (needs two concurrent sessions; covered by text and md5 checks); no client test for a deleted replay (the client path is the existing replay path, unchanged); no change to record_transaction or other ledger functions; no Playwright run: no file under `src/` or `tests/` changed; filling the `<sha>` placeholders in the heading and the Commit cell in task-ledger.md, left to the owner-approved post-merge deploy record.
+
+---
+
 ## Phase 150 - Archive the Phase 136 to 147 ledger rows and log entries and the Phase 125 to 147 figures: T816-T818 (2026-10-27, docs `c28b5ac` to `17046cc`, merged `2113560`)
 
 No ADR (housekeeping under the "keep each live file short" rule in `docs/audit/README.md`; docs only). The finished Phase 136 to 147 sections of `task-ledger.md` and entries of this log, and the Phase 125 to 147 sections of `baseline-metrics.md`, moved byte for byte into `archive/`, as Phases 125 to 135 did in Phase 137, and the three live files are short again.
