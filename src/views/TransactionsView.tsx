@@ -1,10 +1,11 @@
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { Plus, Search, X, Check, ArrowLeftRight } from 'lucide-react';
 import { useFinanceState } from '../context/FinanceContext';
+import { useDiaryState } from '../context/DiaryContext';
 import { useTransactions } from '../hooks/useTransactions';
 import { useMediaQuery } from '../hooks/useMediaQuery';
 import { Transaction, TransactionType } from '../types';
-import { formatShortDate, formatWeekdayDate, todayIsoDate } from '../utils/date';
+import { formatShortDate, formatWeekdayDate, monthKeyOf, shiftMonth, todayIsoDate } from '../utils/date';
 import { exportTransactionsToCsv } from '../utils/csvExchange';
 import { buildLookupMap } from '../utils/mapUtils';
 import { OPTION_CLASS } from '../utils/formStyles';
@@ -23,9 +24,11 @@ import { DayGroupHeader } from '../components/transaction/DayGroupHeader';
 import { TransactionDetails } from '../components/transaction/TransactionDrawer';
 import { ImportCsvModal } from '../components/transaction/ImportCsvModal';
 import { TransactionsTable } from '../components/transaction/TransactionsTable';
+import { TxCalendar, TxCalendarDay } from '../components/transaction/TxCalendar';
+import { TxDayPanel } from '../components/transaction/TxDayPanel';
 import { readTxView, writeTxView, TxViewMode } from '../utils/txViewPreference';
-import { formatRangeLabel, rangeBounds, TimeRange } from '../selectors/timeRange';
-import { groupByDay, sumIncome, sumSpending } from '../selectors/ledger';
+import { formatRangeLabel, monthBounds, rangeBounds, TimeRange } from '../selectors/timeRange';
+import { cashFlow, dailyTotals, groupByDay, heatLevel, sumIncome, sumSpending } from '../selectors/ledger';
 import { PAGE_STEP, hasMoreRows, visibleRows } from '../selectors/pagination';
 import { displayTitle, systemCategoryLabel } from '../selectors/display';
 import { activeWallets, byNewest } from '../selectors/wallets';
@@ -43,6 +46,8 @@ interface TransactionsViewProps {
   initialDayFilter?: string;
   /** Called once, right after mount, when `initialDayFilter` was set, for the same reason as the wallet filter's. */
   onConsumeInitialDayFilter?: () => void;
+  /** Opens the Daily diary on this local day (the Calendar view's day panel hands off here, ADR 0109). */
+  onOpenDiaryDay?: (date: string) => void;
   /** Opens the shell-level `TransferFundsModal` (ADR 0013: TRANSFER is no longer a type in the entry form). */
   onOpenTransfer?: () => void;
   /** Switches to the Debts tab, where repayments live. */
@@ -72,14 +77,28 @@ const TYPE_OPTIONS: { value: TypeFilter; label: string }[] = [
 const FILTER_SELECT_CLASS =
   'flex-1 min-w-[8rem] sm:flex-none min-h-[44px] py-2 px-3 text-xs rounded-lg border border-line-input bg-surface-2 text-fg focus:outline-none focus:ring-2 focus:ring-focus transition-control';
 
+/**
+ * Subscribes to `DiaryStateContext` only while the Calendar view is open, so the
+ * Table view keeps zero diary re-renders (ADR 0092, ADR 0093, ADR 0109).
+ */
+const CalendarDayPanel: React.FC<Omit<React.ComponentProps<typeof TxDayPanel>, 'hasDiaryEntry'>> = (props) => {
+  const { diaryEntries } = useDiaryState();
+  const hasDiaryEntry = useMemo(
+    () => (props.day !== null ? diaryEntries.some((e) => !e.isDeleted && e.date === props.day) : false),
+    [props.day, diaryEntries]
+  );
+  return <TxDayPanel {...props} hasDiaryEntry={hasDiaryEntry} />;
+};
+
 /** Newest day first; inside a day, the most recently recorded first. */
 /**
  * Spec 6.2 (Phase 58a, ADR 0031): a filter row, one list grouped by day with
  * "Load 25 more" (L12), and a side panel for the selected row. Since Phase 58b
  * (ADR 0033) the panel edits a live row and restores a deleted one. The CSV
  * import lives in `ImportCsvModal`. Phase 149 (ADR 0109) adds the Table/Calendar
- * view switch (`readTxView` / `writeTxView`) and renders `TransactionsTable` in
- * the Table view from `lg` up.
+ * view switch (`readTxView` / `writeTxView`), renders `TransactionsTable` in
+ * the Table view from `lg` up, and renders `TxCalendar` + `TxDayPanel` in the
+ * Calendar view.
  */
 export const TransactionsView: React.FC<TransactionsViewProps> = ({
   initialWalletFilter,
@@ -88,10 +107,12 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
   onConsumeInitialSelectedTx,
   initialDayFilter,
   onConsumeInitialDayFilter,
+  onOpenDiaryDay,
   onOpenTransfer,
   onNavigateToDebts,
 }) => {
   const { wallets, categories, debts } = useFinanceState();
+  const today = todayIsoDate();
 
   // Filter States
   const [searchTerm, setSearchTerm] = useState<string>('');
@@ -108,10 +129,7 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
   const [viewMode, setViewMode] = useState<TxViewMode>(() =>
     initialWalletFilter || initialSelectedTxId || initialDayFilter ? 'table' : readTxView()
   );
-  const chooseView = (mode: TxViewMode) => {
-    setViewMode(mode);
-    writeTxView(mode);
-  };
+  const [calendarMonth, setCalendarMonth] = useState<string>(() => monthKeyOf(initialDayFilter ?? today));
 
   // This view remounts fresh on every navigation to the tab (App.tsx keys the
   // active view by `activeTab`, so switching away and back unmounts it), so
@@ -139,10 +157,14 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
-  const today = todayIsoDate();
   const bounds = useMemo(
-    () => (dayFilter ? { start: dayFilter, end: dayFilter } : rangeBounds(range, today)),
-    [dayFilter, range, today]
+    () =>
+      viewMode === 'calendar'
+        ? monthBounds(calendarMonth)
+        : dayFilter
+          ? { start: dayFilter, end: dayFilter }
+          : rangeBounds(range, today),
+    [viewMode, calendarMonth, dayFilter, range, today]
   );
 
   // Filtering, soft-delete visibility and the write actions all come from the
@@ -181,6 +203,7 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
 
   // Modal States
   const [isAddModalOpen, setIsAddModalOpen] = useState<boolean>(false);
+  const [addModalDate, setAddModalDate] = useState<string | undefined>(undefined);
   const [isImportModalOpen, setIsImportModalOpen] = useState<boolean>(false);
 
   const walletMap = useMemo(() => buildLookupMap(wallets), [wallets]);
@@ -219,9 +242,79 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
   // `null` replaced a row the user had picked in between.
   if (selectedTxId && !selectedTx) setSelectedTxId(null);
 
+  const chooseView = (mode: TxViewMode) => {
+    setViewMode(mode);
+    writeTxView(mode);
+    setSelectedTxId(null);
+    if (mode === 'calendar' && dayFilter) {
+      setCalendarMonth(monthKeyOf(dayFilter));
+    }
+  };
+
+  const handleChangeCalendarMonth = useCallback((nextMonth: string) => {
+    setCalendarMonth(nextMonth);
+    setDayFilter(null);
+  }, []);
+
+  const dayTotals = useMemo(
+    () => (viewMode === 'calendar' ? dailyTotals(sortedRows, categoryMap) : new Map()),
+    [viewMode, sortedRows, categoryMap]
+  );
+
+  const calendarDays = useMemo(() => {
+    if (viewMode !== 'calendar') return new Map<string, TxCalendarDay>();
+    const monthMax = Math.max(0, ...[...dayTotals.values()].map((d) => d.spending));
+    const out = new Map<string, TxCalendarDay>();
+    for (const [iso, d] of dayTotals) {
+      out.set(iso, { ...d, heat: heatLevel(d.spending, monthMax) });
+    }
+    return out;
+  }, [viewMode, dayTotals]);
+
+  const monthFlow = useMemo(() => {
+    if (viewMode !== 'calendar') return { income: 0, spending: 0, net: 0 };
+    const cf = cashFlow(sortedRows, categoryMap);
+    return { income: cf.income, spending: cf.spending, net: cf.leftOver };
+  }, [viewMode, sortedRows, categoryMap]);
+
+  const calendarDay = useMemo<string | null>(() => {
+    if (viewMode !== 'calendar') return null;
+    if (dayFilter && monthKeyOf(dayFilter) === calendarMonth) return dayFilter;
+    if (calendarMonth === monthKeyOf(today)) return today;
+    let latest: string | null = null;
+    for (const iso of dayTotals.keys()) {
+      if (latest === null || iso > latest) latest = iso;
+    }
+    return latest;
+  }, [viewMode, dayFilter, calendarMonth, today, dayTotals]);
+
+  const dayRows = useMemo(
+    () =>
+      viewMode === 'calendar' && calendarDay
+        ? sortedRows.filter((tx) => tx.transactionDate.slice(0, 10) === calendarDay)
+        : [],
+    [viewMode, calendarDay, sortedRows]
+  );
+
+  const dayPanelTotals = useMemo(
+    () => (viewMode === 'calendar' && calendarDay ? dayTotals.get(calendarDay) : undefined),
+    [viewMode, calendarDay, dayTotals]
+  );
+
+  const canGoNext = useMemo(() => {
+    if (viewMode !== 'calendar') return false;
+    const nextMonth = shiftMonth(calendarMonth, 1);
+    if (nextMonth <= monthKeyOf(today)) return true;
+    const nextMonthStart = `${nextMonth}-01`;
+    return rawTransactions.some(
+      (tx) => (showSoftDeleted || !tx.isDeleted) && tx.transactionDate.slice(0, 10) >= nextMonthStart
+    );
+  }, [viewMode, calendarMonth, today, rawTransactions, showSoftDeleted]);
+
   // One render path by width, never two copies hidden by CSS (ADR 0031). Inline
   // from `lg` since Phase 58b (audit 006 finding 2), where the list keeps about 620px.
   const isWide = useMediaQuery('(min-width: 1024px)');
+  const sheetMode = !isWide || viewMode === 'calendar';
   const drawerTitleRef = useRef<HTMLHeadingElement>(null);
   const lastSelectedRef = useRef<string | null>(initialSelectedTxId ?? null);
 
@@ -239,8 +332,8 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
 
   // Keyboard users land on the panel they just opened.
   useEffect(() => {
-    if (selectedTxId && isWide) drawerTitleRef.current?.focus();
-  }, [selectedTxId, isWide]);
+    if (selectedTxId && isWide && viewMode === 'table') drawerTitleRef.current?.focus();
+  }, [selectedTxId, isWide, viewMode]);
 
   const selectedCategory = selectedTx?.categoryId ? categoryMap.get(selectedTx.categoryId) : undefined;
   const selectedDebt = selectedTx?.debtId ? debts.find((d) => d.id === selectedTx.debtId) : undefined;
@@ -357,7 +450,14 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
                 },
               ]}
             />
-            <Button id="tx-open-add-modal-btn" onClick={() => setIsAddModalOpen(true)} icon={<Plus className="w-4 h-4" />}>
+            <Button
+              id="tx-open-add-modal-btn"
+              onClick={() => {
+                setAddModalDate(undefined);
+                setIsAddModalOpen(true);
+              }}
+              icon={<Plus className="w-4 h-4" />}
+            >
               Add transaction
             </Button>
           </>
@@ -404,30 +504,32 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
           )}
         </div>
 
-        <select
-          id="tx-filter-range"
-          aria-label="Date range"
-          value={dayFilter ? DAY_FILTER_OPTION : range}
-          onChange={(e) => {
-            setRange(e.target.value as TimeRange);
-            setDayFilter(null);
-          }}
-          className={FILTER_SELECT_CLASS}
-        >
-          {/* While a day from the diary is shown, the select says so rather than "All time" (audit 010 finding 1). */}
-          {dayFilter && (
-            <option value={DAY_FILTER_OPTION} disabled className={OPTION_CLASS}>
-              One day
-            </option>
-          )}
-          {RANGE_OPTIONS.map((option) => (
-            <option key={option.value} value={option.value} className={OPTION_CLASS}>
-              {option.label}
-            </option>
-          ))}
-        </select>
+        {viewMode === 'table' && (
+          <select
+            id="tx-filter-range"
+            aria-label="Date range"
+            value={dayFilter ? DAY_FILTER_OPTION : range}
+            onChange={(e) => {
+              setRange(e.target.value as TimeRange);
+              setDayFilter(null);
+            }}
+            className={FILTER_SELECT_CLASS}
+          >
+            {/* While a day from the diary is shown, the select says so rather than "All time" (audit 010 finding 1). */}
+            {dayFilter && (
+              <option value={DAY_FILTER_OPTION} disabled className={OPTION_CLASS}>
+                One day
+              </option>
+            )}
+            {RANGE_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value} className={OPTION_CLASS}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        )}
 
-        {dayFilter && (
+        {viewMode === 'table' && dayFilter && (
           <Button
             id="tx-day-filter"
             variant="soft"
@@ -503,47 +605,79 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
 
       <div id="tx-view-panel" role="tabpanel" aria-labelledby={`tx-view-${viewMode}`}>
         {viewMode === 'calendar' ? (
-          // T811 builds the Calendar view here.
-          null
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+            <div className="lg:col-span-7">
+              <TxCalendar
+                monthKey={calendarMonth}
+                onChangeMonth={handleChangeCalendarMonth}
+                canGoNext={canGoNext}
+                today={today}
+                selectedDay={calendarDay}
+                onSelectDay={setDayFilter}
+                days={calendarDays}
+                month={monthFlow}
+              />
+            </div>
+            <div className="lg:col-span-5">
+              <CalendarDayPanel
+                day={calendarDay}
+                today={today}
+                totals={dayPanelTotals}
+                rows={dayRows}
+                categories={categoryMap}
+                wallets={walletMap}
+                selectedTxId={selectedTxId}
+                onSelect={selectRow}
+                onAdd={() => {
+                  if (!calendarDay) return;
+                  setAddModalDate(calendarDay);
+                  setIsAddModalOpen(true);
+                }}
+                onOpenDiary={onOpenDiaryDay && calendarDay ? () => onOpenDiaryDay(calendarDay) : undefined}
+              />
+            </div>
+          </div>
         ) : /* Spec 6.2: the list takes the full width until a row is selected, then 8/12 beside the panel. */
         selectedTx && isWide ? (
-        <div className="grid grid-cols-12 gap-4 items-start">
-          <div className="col-span-8">{listCard}</div>
-          <aside id="tx-drawer" aria-labelledby="tx-drawer-title" className="col-span-4 sticky top-20">
-            <Card className="flex flex-col gap-5">
-              <div className="flex items-start justify-between gap-3">
-                <h2 id="tx-drawer-title" ref={drawerTitleRef} tabIndex={-1} className="text-base font-semibold text-fg break-words min-w-0">
-                  {displayTitle(selectedTx, selectedCategory)}
-                </h2>
-                <IconButton id="tx-drawer-close-btn" label="Close details" onClick={closeDrawer} className="-mr-2 -mt-2">
-                  <X className="w-4 h-4" />
-                </IconButton>
-              </div>
-              {details}
-            </Card>
-          </aside>
-        </div>
-      ) : (
-        listCard
-      )}
-
+          <div className="grid grid-cols-12 gap-4 items-start">
+            <div className="col-span-8">{listCard}</div>
+            <aside id="tx-drawer" aria-labelledby="tx-drawer-title" className="col-span-4 sticky top-20">
+              <Card className="flex flex-col gap-5">
+                <div className="flex items-start justify-between gap-3">
+                  <h2 id="tx-drawer-title" ref={drawerTitleRef} tabIndex={-1} className="text-base font-semibold text-fg break-words min-w-0">
+                    {displayTitle(selectedTx, selectedCategory)}
+                  </h2>
+                  <IconButton id="tx-drawer-close-btn" label="Close details" onClick={closeDrawer} className="-mr-2 -mt-2">
+                    <X className="w-4 h-4" />
+                  </IconButton>
+                </div>
+                {details}
+              </Card>
+            </aside>
+          </div>
+        ) : (
+          listCard
+        )}
       </div>
 
-      {/* Below `lg` the same panel opens as a bottom sheet. Rendered only there, so it never doubles the inline one. */}
+      {/* Below `lg`, and at every width in the Calendar view (D11), the panel opens in Modal. Rendered only there, so it never doubles the inline one. */}
       <Modal
-        isOpen={!!selectedTx && !isWide}
+        isOpen={!!selectedTx && sheetMode}
         onClose={closeDrawer}
         title={selectedTx ? displayTitle(selectedTx, selectedCategory) : ''}
         closeButtonId="tx-drawer-close-btn"
         maxWidthClassName="max-w-md"
       >
-        {!isWide && details}
+        {sheetMode && details}
       </Modal>
 
       {/* Add Transaction Modal / Responsive Mobile Bottom Sheet */}
       <Modal
         isOpen={isAddModalOpen}
-        onClose={() => setIsAddModalOpen(false)}
+        onClose={() => {
+          setAddModalDate(undefined);
+          setIsAddModalOpen(false);
+        }}
         title="Record New Transaction"
         subtitle="Add an expense or income"
         titleId="add-transaction-modal-title"
@@ -554,9 +688,11 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
           wallets={activeWalletsForForm}
           categories={activeCategoriesForForm}
           formTestId="tx-form-page"
+          initialDate={addModalDate}
           onRequestTransfer={
             onOpenTransfer &&
             (() => {
+              setAddModalDate(undefined);
               setIsAddModalOpen(false);
               onOpenTransfer();
             })
@@ -564,6 +700,7 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
           onRequestRepayDebt={
             onNavigateToDebts &&
             (() => {
+              setAddModalDate(undefined);
               setIsAddModalOpen(false);
               onNavigateToDebts();
             })
@@ -574,6 +711,7 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
               transactionDate: data.date,
             });
             if (res && res.success) {
+              setAddModalDate(undefined);
               setIsAddModalOpen(false);
             }
             return res;

@@ -173,4 +173,31 @@ describe('Theme tokens and fills (ADR 0103 D5)', () => {
     expect(walletTransferSrc).toContain('bg-wallet-fallback');
     expect(walletTransferSrc).not.toMatch(/#[0-9a-fA-F]{3,8}\b/);
   });
+
+  it('defines heat-1, heat-2 and heat-3 in :root, .dark and @theme inline (ADR 0109 D5)', () => {
+    const rootBlock = extractBlock(':root');
+    const darkBlock = extractBlock('.dark');
+    const inlineBlock = extractBlock('@theme inline');
+
+    const expectedHeat: Record<string, { light: string; dark: string }> = {
+      'heat-1': { light: '#FEF4F2', dark: '#291A1E' },
+      'heat-2': { light: '#FBE7E4', dark: '#3A1E23' },
+      'heat-3': { light: '#F8DBD7', dark: '#4C2229' },
+    };
+
+    for (const [name, expected] of Object.entries(expectedHeat)) {
+      expect(rootBlock[name], `light token --${name}`).toBe(expected.light);
+      expect(darkBlock[name], `dark token --${name}`).toBe(expected.dark);
+      expect(inlineBlock[`color-${name}`], `--color-${name} mapping in @theme inline`).toBe(`var(--${name})`);
+    }
+  });
+
+  it('uses bg-heat-1..3 in TxCalendar and contains no raw hex', () => {
+    const txCalendarSrc = readFileSync(new URL('../src/components/transaction/TxCalendar.tsx', import.meta.url), 'utf8');
+
+    expect(txCalendarSrc).toContain('bg-heat-1');
+    expect(txCalendarSrc).toContain('bg-heat-2');
+    expect(txCalendarSrc).toContain('bg-heat-3');
+    expect(txCalendarSrc).not.toMatch(/#[0-9a-fA-F]{3,8}\b/);
+  });
 });

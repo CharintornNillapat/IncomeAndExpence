@@ -4,6 +4,7 @@ import { render, cleanup, fireEvent, act, screen } from '@testing-library/react'
 import { TransactionForm } from '../src/components/TransactionForm';
 import { FinanceProvider } from '../src/context/FinanceContext';
 import type { Category, TransactionType, Wallet } from '../src/types';
+import { todayIsoDate } from '../src/utils/date';
 
 /**
  * Phase 108 (ADR 0084, audit finding 1 and 3): the Category select offers only
@@ -85,5 +86,40 @@ describe('the Category select follows the entry type', () => {
     expect(select.value).toBe('freelance');
     toggle('Expense');
     expect(select.value).toBe('groceries');
+  });
+});
+
+
+describe('initialDate prop (ADR 0109)', () => {
+  it('initializes #t-date to initialDate when passed and submits that date, or defaults to todayIsoDate()', async () => {
+    const onSubmit = vi.fn(async () => ({ success: true }));
+    const { unmount } = render(
+      <FinanceProvider>
+        <TransactionForm
+          idPrefix="t"
+          wallets={[CASH]}
+          categories={BY_NAME}
+          initialDate="2026-10-21"
+          onSubmitTransaction={onSubmit}
+        />
+      </FinanceProvider>,
+    );
+
+    const dateInput = document.querySelector<HTMLInputElement>('input[id$="-date"]')!;
+    expect(dateInput.value).toBe('2026-10-21');
+
+    fireEvent.change(document.querySelector('[id$="-desc"]')!, { target: { value: 'Preset day lunch 75' } });
+    await act(async () => {
+      fireEvent.click(document.getElementById('t-confirm-btn')!);
+    });
+    expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ date: '2026-10-21' }));
+
+    unmount();
+    render(
+      <FinanceProvider>
+        <TransactionForm idPrefix="t" wallets={[CASH]} categories={BY_NAME} onSubmitTransaction={onSubmit} />
+      </FinanceProvider>,
+    );
+    expect(document.querySelector<HTMLInputElement>('input[id$="-date"]')!.value).toBe(todayIsoDate());
   });
 });

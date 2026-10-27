@@ -94,13 +94,13 @@ Top to bottom, inside the existing `max-w-7xl` main:
   - Background: `bg-heat-N` for the day's heat level (O3), none at level 0.
   - Today has the inset `focus` ring; the selected day the brand fill (white ring when both), exactly as `DiaryCalendar`'s `dayClass`.
   - A legend under the grid names every shade and mark it uses.
-- **Day panel:**
+- **Day panel** (`tx-cal-panel`):
   - Heading `formatDayLabel(selectedDay, today)`; three insets In, Out, Net for that day from `cashFlow`.
   - The day's rows through `TransactionRow` with ids `tx-row-${id}` (the Table is not rendered in this view, so the ids stay unique).
   - Empty: "No transactions on this day".
   - "Add transaction on <short date>" (secondary, full width) opens the Add modal with the day preset. `TransactionForm` has no initial-date prop today; the task adds `initialDate?: string`.
   - When the Daily diary has an entry for the day, a link "Open this day in Daily diary".
-- **Selected day on arrival:** today when the shown month is the current one, else the month's last day with rows, else none (the panel shows "Pick a day").
+- **Selected day on arrival:** today when the shown month is the current one, else the month's last day with rows, else none (the panel shows "Pick a day"). Switching views clears the selected row.
 
 ## 5. Phone and tablet (under `lg`)
 
@@ -135,7 +135,7 @@ The Calendar view filters the page's rows by `monthBounds` for the grid and by `
 ## 7. Ids and tests
 
 - **Keep** every Transactions id in `docs/audit/test-selector-contract.md`: `tx-row-*`, `tx-search-input`, `tx-filter-range`, `tx-filter-wallet`, `tx-filter-category`, `tx-filter-type-*`, `tx-show-deleted`, `tx-day-filter`, `tx-load-more-btn`, `tx-drawer`, `tx-drawer-title`, `tx-drawer-close-btn`, `tx-open-add-modal-btn`, `tx-import-export-btn`, `tx-import-csv-btn`, `tx-export-csv-btn`, and the edit panel's ids.
-- **New** ids start `tx-`: `tx-view-table`, `tx-view-calendar`, `tx-view-panel`, `tx-cal-prev-month-btn`, `tx-cal-next-month-btn`, `tx-cal-day-*`, `tx-cal-day-panel`, `tx-cal-add-btn`, `tx-select-*`, `tx-select-all`, `tx-select-mode-btn`, `tx-bulk-bar`, `tx-bulk-delete-btn`, `tx-bulk-restore-btn`, `tx-bulk-clear-btn`.
+- **New** ids start `tx-`: `tx-view-table`, `tx-view-calendar`, `tx-view-panel`, `tx-cal-heading`, `tx-cal-prev-month-btn`, `tx-cal-next-month-btn`, `tx-cal-month-in`, `tx-cal-month-out`, `tx-cal-month-net`, `tx-cal-day-*`, `tx-cal-legend`, `tx-cal-panel`, `tx-cal-panel-title`, `tx-cal-panel-in`, `tx-cal-panel-out`, `tx-cal-panel-net`, `tx-cal-panel-empty`, `tx-cal-add-btn`, `tx-cal-diary-link`, `tx-select-*`, `tx-select-all`, `tx-select-mode-btn`, `tx-bulk-bar`, `tx-bulk-delete-btn`, `tx-bulk-restore-btn`, `tx-bulk-clear-btn`.
 - Add each new id to the contract file in the same task that adds it.
 - **Playwright:** a new `tests/transactions-views.spec.ts` covers the switch, the calendar month step, a day pick showing that day's rows, and the Add-on-day preset. Run at the desktop and the phone project widths.
 

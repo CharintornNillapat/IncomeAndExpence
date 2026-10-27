@@ -72,6 +72,9 @@ const MainApp: React.FC = () => {
   // Phase 61 (ADR 0036): a diary entry's "N transactions" opens the
   // Transactions page filtered to that day. Cleared by TransactionsView.
   const [transactionsDayFilter, setTransactionsDayFilter] = useState<string | undefined>(undefined);
+  // Phase 149 (ADR 0109): the Transactions Calendar day panel's "Open this day
+  // in Daily diary" hands off to the diary for that day. Cleared by DiaryView.
+  const [diaryInitialDate, setDiaryInitialDate] = useState<string | undefined>(undefined);
 
   // PWA app shortcut "Quick Add Transaction" launches to `/?action=quick-add`.
   // Strip the query param immediately so it doesn't linger in the address bar
@@ -211,6 +214,14 @@ const MainApp: React.FC = () => {
     [handleTabChange]
   );
   const handleConsumeTransactionsDayFilter = useCallback(() => setTransactionsDayFilter(undefined), []);
+  const handleOpenDayDiary = useCallback(
+    (date: string) => {
+      setDiaryInitialDate(date);
+      handleTabChange('diary');
+    },
+    [handleTabChange]
+  );
+  const handleConsumeDiaryInitialDate = useCallback(() => setDiaryInitialDate(undefined), []);
   const handleOpenWallet = useCallback(
     (walletId?: string) => {
       setWalletsSelectedWallet(walletId);
@@ -259,6 +270,7 @@ const MainApp: React.FC = () => {
             onConsumeInitialSelectedTx={handleConsumeTransactionsSelectedTx}
             initialDayFilter={transactionsDayFilter}
             onConsumeInitialDayFilter={handleConsumeTransactionsDayFilter}
+            onOpenDiaryDay={handleOpenDayDiary}
             onOpenTransfer={handleOpenTransfer}
             onNavigateToDebts={handleNavigateToDebts}
           />
@@ -277,7 +289,13 @@ const MainApp: React.FC = () => {
       case 'debts':
         return <DebtsView />;
       case 'diary':
-        return <DiaryView onOpenDayTransactions={handleOpenDayTransactions} />;
+        return (
+          <DiaryView
+            onOpenDayTransactions={handleOpenDayTransactions}
+            initialDate={diaryInitialDate}
+            onConsumeInitialDate={handleConsumeDiaryInitialDate}
+          />
+        );
       case 'categories':
         return <CategoriesView />;
       default:

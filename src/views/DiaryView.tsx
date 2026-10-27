@@ -16,7 +16,12 @@ import { DaySpending, daySpending, diaryMonth } from '../selectors/diary';
 
 interface DiaryViewProps {
   /** Opens the Transactions page filtered to one day (a recent entry's "N transactions", ADR 0036). */
+  /** Opens the Transactions page filtered to one day (a recent entry's "N transactions", ADR 0036). */
   onOpenDayTransactions?: (date: string) => void;
+  /** Opens the diary on this local day (the Transactions Calendar day panel hands off here, ADR 0109). */
+  initialDate?: string;
+  /** Called once, right after mount, when `initialDate` was set, so a later tab switch does not inherit it. */
+  onConsumeInitialDate?: () => void;
 }
 
 /**
@@ -25,15 +30,23 @@ interface DiaryViewProps {
  * stacked below `lg`. The form always starts from the selected day's saved
  * entry; spending figures are L1's (`daySpending`), computed here once.
  */
-export const DiaryView: React.FC<DiaryViewProps> = ({ onOpenDayTransactions }) => {
+export const DiaryView: React.FC<DiaryViewProps> = ({ onOpenDayTransactions, initialDate, onConsumeInitialDate }) => {
   const { transactions, categories } = useFinanceState();
   const { diaryEntries } = useDiaryState();
   const { upsertDiaryEntry, deleteDiaryEntry } = useDiaryActions();
 
   const today = todayIsoDate();
   const yesterday = daysAgoIsoDate(1);
-  const [selectedDate, setSelectedDate] = useState<string>(today);
-  const [calendarMonth, setCalendarMonth] = useState<string>(monthKeyOf(today));
+  const initialDay = initialDate && initialDate <= today ? initialDate : today;
+  const [selectedDate, setSelectedDate] = useState<string>(initialDay);
+  const [calendarMonth, setCalendarMonth] = useState<string>(monthKeyOf(initialDay));
+
+  useEffect(() => {
+    if (initialDate) {
+      onConsumeInitialDate?.();
+    }
+    // eslint-disable-next-line
+  }, []);
 
   const categoryMap = useMemo(() => buildLookupMap(categories), [categories]);
 

@@ -192,6 +192,10 @@
   --selected-text: #3730A3;
   /* Spec 6.5: a logged day in the diary calendar (#3B2F73 in dark). */
   --logged-bg: #D9D2F5;
+  /* Calendar spending heat (ADR 0109 D5, design spec section 2 O3): three expense-tinted steps. */
+  --heat-1: #FEF4F2;
+  --heat-2: #FBE7E4;
+  --heat-3: #F8DBD7;
   --income-text: #0E7650;
   --income-bg: #ECF4F1;
   --expense-text: #B6332A;
@@ -261,6 +265,10 @@
   --selected-bg: #251E45;
   --selected-text: #FFFFFF;
   --logged-bg: #3B2F73;
+  /* Calendar spending heat (ADR 0109 D5, design spec section 2 O3): three expense-tinted steps. */
+  --heat-1: #291A1E;
+  --heat-2: #3A1E23;
+  --heat-3: #4C2229;
   --income-text: #34D399;
   --income-bg: #0F2A21;
   --expense-text: #F87171;
@@ -330,6 +338,9 @@
   --color-selected: var(--selected-bg);
   --color-on-selected: var(--selected-text);
   --color-logged: var(--logged-bg);
+  --color-heat-1: var(--heat-1);
+  --color-heat-2: var(--heat-2);
+  --color-heat-3: var(--heat-3);
   --color-income: var(--income-text);
   --color-income-tint: var(--income-bg);
   --color-expense: var(--expense-text);

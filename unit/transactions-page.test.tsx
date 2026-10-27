@@ -7,7 +7,9 @@ import { TransactionDetails } from '../src/components/transaction/TransactionDra
 import { RecentActivityCard } from '../src/components/dashboard/RecentActivityCard';
 import { buildLookupMap } from '../src/utils/mapUtils';
 import { formatCurrencyAmount, MINUS } from '../src/utils/currency';
-import { shiftIsoDate, todayIsoDate } from '../src/utils/date';
+import { formatDayLabel, formatMonthYear, monthKeyOf, shiftIsoDate, shiftMonth, todayIsoDate } from '../src/utils/date';
+import { cashFlow, dailyTotals, heatLevel } from '../src/selectors/ledger';
+import { monthBounds } from '../src/selectors/timeRange';
 import type { Transaction, Wallet } from '../src/types';
 import { seedGuestLedger, SAMPLE_STUDENT_LOAN } from './fixtures/guestLedger';
 
@@ -476,7 +478,7 @@ describe('the view switch (ADR 0109 D6)', () => {
   });
 
   it('switches to Calendar, stores the preference, hides rows while keeping filters, and switches back', () => {
-    mount([tx({ type: 'EXPENSE', amount: 50, categoryId: 'cat-food', description: 'Switch row' })]);
+    mount([tx({ type: 'EXPENSE', amount: 50, categoryId: 'cat-food', description: 'Switch row', transactionDate: shiftIsoDate(todayIsoDate(), -1) })]);
     expect(rowButtons()).toHaveLength(1);
 
     fireEvent.click(document.getElementById('tx-view-calendar')!);
@@ -486,7 +488,7 @@ describe('the view switch (ADR 0109 D6)', () => {
     expect(localStorage.getItem(TX_VIEW_KEY)).toBe('calendar');
     expect(rowButtons()).toHaveLength(0);
     expect(document.getElementById('tx-search-input')).not.toBeNull();
-    expect(document.getElementById('tx-filter-range')).not.toBeNull();
+    expect(document.getElementById('tx-filter-range')).toBeNull();
     expect(document.getElementById('tx-filter-wallet')).not.toBeNull();
     expect(document.getElementById('tx-filter-category')).not.toBeNull();
 
@@ -499,6 +501,9 @@ describe('the view switch (ADR 0109 D6)', () => {
     localStorage.setItem(TX_VIEW_KEY, 'calendar');
     mount([tx({ type: 'EXPENSE', amount: 50, categoryId: 'cat-food' })]);
     expect(document.getElementById('tx-view-calendar')?.getAttribute('aria-selected')).toBe('true');
+    expect(document.getElementById('tx-cal-heading')).not.toBeNull();
+    expect(rowButtons()).toHaveLength(1);
+    fireEvent.click(document.getElementById('tx-filter-type-income')!);
     expect(rowButtons()).toHaveLength(0);
   });
 
@@ -699,5 +704,307 @@ describe('the Table view, from lg (ADR 0109 D3)', () => {
     expect(document.querySelector('table')).toBeNull();
     expect(document.querySelector('[id^="tx-menu-btn-"]')).toBeNull();
     expect(rowButtons()).toHaveLength(1);
+  });
+});
+
+
+describe('the Calendar view (ADR 0109)', () => {
+  it('1. hides #tx-filter-range, #tx-day-filter and <table> in Calendar view while keeping the other filters, and keeps #tx-filter-range in Table view', () => {
+    wide();
+    const today = todayIsoDate();
+    const yesterday = shiftIsoDate(today, -1);
+    mount(
+      [
+        tx({ type: 'EXPENSE', amount: 80, categoryId: 'cat-food', description: 'Yesterday lunch', transactionDate: yesterday }),
+        tx({ type: 'EXPENSE', amount: 120, categoryId: 'cat-food', description: 'Today coffee', transactionDate: today }),
+      ],
+      { initialDayFilter: yesterday },
+    );
+
+    expect(document.getElementById('tx-filter-range')).not.toBeNull();
+    expect(document.getElementById('tx-day-filter')).not.toBeNull();
+    expect(document.querySelector('table')).not.toBeNull();
+
+    fireEvent.click(document.getElementById('tx-view-calendar')!);
+    expect(document.getElementById('tx-cal-heading')?.textContent).toBe(formatMonthYear(monthKeyOf(today)));
+    expect(document.querySelector('table')).toBeNull();
+    expect(document.getElementById('tx-filter-range')).toBeNull();
+    expect(document.getElementById('tx-day-filter')).toBeNull();
+    expect(document.getElementById('tx-search-input')).not.toBeNull();
+    expect(document.getElementById('tx-filter-wallet')).not.toBeNull();
+    expect(document.getElementById('tx-filter-category')).not.toBeNull();
+    expect(document.getElementById('tx-filter-type-all')).not.toBeNull();
+    expect(document.getElementById('tx-show-deleted')).not.toBeNull();
+
+    fireEvent.click(document.getElementById('tx-view-table')!);
+    expect(document.getElementById('tx-filter-range')).not.toBeNull();
+  });
+
+  it('2. matches cashFlow on #tx-cal-month-in/out/net and dailyTotals on each day cell aria-label (transfers move count only)', () => {
+    const today = todayIsoDate();
+    const day1 = `${monthKeyOf(today)}-01`;
+    const day2 = `${monthKeyOf(today)}-02`;
+    const rows = [
+      tx({ type: 'INCOME', amount: 1000, categoryId: 'cat-salary', transactionDate: day1 }),
+      tx({ type: 'EXPENSE', amount: 250, categoryId: 'cat-food', transactionDate: day1 }),
+      tx({ type: 'TRANSFER', amount: 400, destinationWalletId: 'wal-main-checking', transactionDate: day1 }),
+      tx({ type: 'EXPENSE', amount: 180, categoryId: 'cat-shopping', transactionDate: day2 }),
+    ];
+    mount(rows);
+    fireEvent.click(document.getElementById('tx-view-calendar')!);
+
+    const catMap = new Map(
+      JSON.parse(localStorage.getItem('pf_categories') ?? '[]').map((c: { id: string }) => [c.id, c]),
+    );
+    const cf = cashFlow(rows, catMap as never);
+    expect(document.getElementById('tx-cal-month-in')?.textContent).toContain(`+${formatCurrencyAmount(cf.income)}`);
+    expect(document.getElementById('tx-cal-month-out')?.textContent).toContain(formatCurrencyAmount(-cf.spending));
+    expect(document.getElementById('tx-cal-month-net')?.textContent).toContain(
+      `${cf.leftOver > 0 ? '+' : ''}${formatCurrencyAmount(cf.leftOver)}`,
+    );
+
+    const dt = dailyTotals(rows, catMap as never);
+    const d1 = dt.get(day1)!;
+    expect(d1.count).toBe(3);
+    expect(document.getElementById(`tx-cal-day-${day1}`)?.getAttribute('aria-label')).toContain(
+      `spent ${formatCurrencyAmount(d1.spending)}, net +${formatCurrencyAmount(d1.net)}, 3 transactions`,
+    );
+    const d2 = dt.get(day2)!;
+    expect(document.getElementById(`tx-cal-day-${day2}`)?.getAttribute('aria-label')).toContain(
+      `spent ${formatCurrencyAmount(d2.spending)}, net ${formatCurrencyAmount(d2.net)}, 1 transaction`,
+    );
+  });
+
+  it('3. defaults selected day to today, lists only today\'s rows, updates dayFilter on day click, and carries it back to Table (D10)', () => {
+    const today = todayIsoDate();
+    const otherDay = today.endsWith('-01') ? shiftIsoDate(today, 1) : `${monthKeyOf(today)}-01`;
+    mount([
+      tx({ type: 'EXPENSE', amount: 60, categoryId: 'cat-food', description: 'Other day item', transactionDate: otherDay }),
+      tx({ type: 'EXPENSE', amount: 90, categoryId: 'cat-food', description: 'Today item', transactionDate: today }),
+    ]);
+
+    fireEvent.click(document.getElementById('tx-view-calendar')!);
+    expect(document.getElementById(`tx-cal-day-${today}`)?.getAttribute('aria-pressed')).toBe('true');
+    const initialPanelRows = Array.from(document.querySelectorAll('#tx-cal-panel button[id^="tx-row-"]'));
+    expect(initialPanelRows).toHaveLength(1);
+    expect(initialPanelRows[0].textContent).toContain('Today item');
+
+    fireEvent.click(document.getElementById(`tx-cal-day-${otherDay}`)!);
+    expect(document.getElementById(`tx-cal-day-${otherDay}`)?.getAttribute('aria-pressed')).toBe('true');
+    expect(document.getElementById(`tx-cal-day-${today}`)?.getAttribute('aria-pressed')).toBe('false');
+    expect(document.getElementById('tx-cal-panel-title')?.textContent).toBe(formatDayLabel(otherDay, today));
+    const panelRows = Array.from(document.querySelectorAll('#tx-cal-panel button[id^="tx-row-"]'));
+    expect(panelRows).toHaveLength(1);
+    expect(panelRows[0].textContent).toContain('Other day item');
+
+    fireEvent.click(document.getElementById('tx-view-table')!);
+    expect(document.getElementById('tx-day-filter')).not.toBeNull();
+    expect(rowButtons()).toHaveLength(1);
+    expect(rowButtons()[0].textContent).toContain('Other day item');
+  });
+
+  it('4. steps to the previous month (selecting its latest day with rows or Pick a day when empty), steps back to today, and includes monthBounds.end', () => {
+    const today = todayIsoDate();
+    const prevMonth = shiftMonth(monthKeyOf(today), -1);
+    const prevMid = `${prevMonth}-15`;
+    const prevEnd = monthBounds(prevMonth).end!;
+
+    mount([
+      tx({ type: 'EXPENSE', amount: 100, categoryId: 'cat-food', description: 'Mid prev', transactionDate: prevMid }),
+      tx({ type: 'EXPENSE', amount: 200, categoryId: 'cat-food', description: 'End prev', transactionDate: prevEnd }),
+    ]);
+
+    fireEvent.click(document.getElementById('tx-view-calendar')!);
+    fireEvent.click(document.getElementById('tx-cal-prev-month-btn')!);
+
+    expect(document.getElementById('tx-cal-heading')?.textContent).toBe(formatMonthYear(prevMonth));
+    expect(document.getElementById(`tx-cal-day-${prevEnd}`)?.getAttribute('aria-pressed')).toBe('true');
+    expect(document.getElementById('tx-cal-panel-title')?.textContent).toBe(formatDayLabel(prevEnd, today));
+    expect(document.querySelector('#tx-cal-panel button[id^="tx-row-"]')?.textContent).toContain('End prev');
+
+    // Step one more month back (empty month)
+    fireEvent.click(document.getElementById('tx-cal-prev-month-btn')!);
+    expect(document.getElementById('tx-cal-panel-title')?.textContent).toBe('Pick a day');
+    expect(document.getElementById('tx-cal-add-btn')).toBeNull();
+
+    // Step forward twice back to current month -> selects today again
+    fireEvent.click(document.getElementById('tx-cal-next-month-btn')!);
+    fireEvent.click(document.getElementById('tx-cal-next-month-btn')!);
+    expect(document.getElementById(`tx-cal-day-${today}`)?.getAttribute('aria-pressed')).toBe('true');
+  });
+
+  it('5. disables #tx-cal-next-month-btn when no row is ahead, enables it when a later-month row exists, and disables only empty future days (D12)', () => {
+    const today = todayIsoDate();
+    const nextMonth = shiftMonth(monthKeyOf(today), 1);
+    const futureDay = `${nextMonth}-05`;
+    const emptyFutureDay = `${nextMonth}-06`;
+
+    const { unmount } = mount([]);
+    fireEvent.click(document.getElementById('tx-view-calendar')!);
+    expect((document.getElementById('tx-cal-next-month-btn') as HTMLButtonElement).disabled).toBe(true);
+    unmount();
+
+    mount([tx({ type: 'EXPENSE', amount: 220, categoryId: 'cat-food', description: 'Scheduled bill', transactionDate: futureDay })]);
+    fireEvent.click(document.getElementById('tx-view-calendar')!);
+    const nextBtn = document.getElementById('tx-cal-next-month-btn') as HTMLButtonElement;
+    expect(nextBtn.disabled).toBe(false);
+
+    fireEvent.click(nextBtn);
+    expect(document.getElementById('tx-cal-heading')?.textContent).toBe(formatMonthYear(nextMonth));
+    expect((document.getElementById(`tx-cal-day-${futureDay}`) as HTMLButtonElement).disabled).toBe(false);
+    expect((document.getElementById(`tx-cal-day-${emptyFutureDay}`) as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it('6. shades the larger spending day with bg-heat-3, the smaller with bg-heat-N (heatLevel), and gives an income-only day no bg-heat-*', () => {
+    const today = todayIsoDate();
+    const m = monthKeyOf(today);
+    const d1 = `${m}-01`;
+    const d2 = `${m}-02`;
+    const d3 = `${m}-03`;
+    const dSelected = `${m}-04`;
+    const smaller = 100;
+    const larger = 300;
+
+    mount(
+      [
+        tx({ type: 'EXPENSE', amount: smaller, categoryId: 'cat-food', transactionDate: d1 }),
+        tx({ type: 'EXPENSE', amount: larger, categoryId: 'cat-food', transactionDate: d2 }),
+        tx({ type: 'INCOME', amount: 500, categoryId: 'cat-salary', transactionDate: d3 }),
+      ],
+      { initialDayFilter: dSelected },
+    );
+
+    fireEvent.click(document.getElementById('tx-view-calendar')!);
+    const expectedSmallHeat = heatLevel(smaller, larger);
+    expect(document.getElementById(`tx-cal-day-${d2}`)?.className).toContain('bg-heat-3');
+    expect(document.getElementById(`tx-cal-day-${d1}`)?.className).toContain(`bg-heat-${expectedSmallHeat}`);
+    expect(document.getElementById(`tx-cal-day-${d3}`)?.className).not.toMatch(/bg-heat-/);
+  });
+
+  it('7. applies the type filter and Show deleted in the Calendar view', () => {
+    const today = todayIsoDate();
+    mount([
+      tx({ type: 'INCOME', amount: 500, categoryId: 'cat-salary', description: 'Pay', transactionDate: today }),
+      tx({ type: 'EXPENSE', amount: 100, categoryId: 'cat-food', description: 'Coffee', transactionDate: today }),
+      tx({ type: 'EXPENSE', amount: 50, categoryId: 'cat-food', description: 'Deleted snack', transactionDate: today, isDeleted: true }),
+    ]);
+
+    fireEvent.click(document.getElementById('tx-view-calendar')!);
+    expect(document.getElementById('tx-cal-month-in')?.textContent).toContain(`+${formatCurrencyAmount(500)}`);
+    expect(document.querySelectorAll('#tx-cal-panel button[id^="tx-row-"]')).toHaveLength(2);
+
+    fireEvent.click(document.getElementById('tx-filter-type-expense')!);
+    expect(document.getElementById('tx-cal-month-in')?.textContent).toContain(formatCurrencyAmount(0));
+    expect(document.querySelectorAll('#tx-cal-panel button[id^="tx-row-"]')).toHaveLength(1);
+
+    fireEvent.click(document.getElementById('tx-show-deleted')!);
+    expect(document.getElementById(`tx-cal-day-${today}`)?.getAttribute('aria-label')).toContain('2 transactions');
+    expect(document.querySelectorAll('#tx-cal-panel button[id^="tx-row-"]')).toHaveLength(2);
+  });
+
+  it('8. opens TransactionDetails inside Modal at wide in the Calendar view with no inline #tx-drawer (D11)', async () => {
+    wide();
+    const today = todayIsoDate();
+    const row = tx({ type: 'EXPENSE', amount: 150, categoryId: 'cat-food', description: 'Wide calendar row', transactionDate: today });
+    mount([row]);
+
+    fireEvent.click(document.getElementById('tx-view-calendar')!);
+    fireEvent.click(document.getElementById(`tx-row-${row.id}`)!);
+
+    const dialog = await screen.findByRole('dialog');
+    expect((within(dialog).getByRole('textbox', { name: 'Note' }) as HTMLInputElement).value).toBe('Wide calendar row');
+    expect(document.getElementById('tx-drawer')).toBeNull();
+  });
+
+  it('9. clears selection on switching views in both directions (wide aside and narrow sheet)', async () => {
+    wide();
+    const today = todayIsoDate();
+    const row = tx({ type: 'EXPENSE', amount: 150, categoryId: 'cat-food', description: 'Selected row', transactionDate: today });
+    const { unmount } = mount([row]);
+
+    fireEvent.click(document.getElementById(`tx-row-${row.id}`)!);
+    expect(document.getElementById('tx-drawer')).not.toBeNull();
+
+    fireEvent.click(document.getElementById('tx-view-calendar')!);
+    expect(document.getElementById('tx-drawer')).toBeNull();
+    expect(screen.queryByRole('dialog')).toBeNull();
+
+    fireEvent.click(document.getElementById('tx-view-table')!);
+    expect(document.getElementById('tx-drawer')).toBeNull();
+    unmount();
+
+    // Narrow: open sheet from the list, switch to Calendar -> no dialog
+    delete (window as { matchMedia?: unknown }).matchMedia;
+    mount([row]);
+    fireEvent.click(document.getElementById(`tx-row-${row.id}`)!);
+    expect(await screen.findByRole('dialog')).toBeTruthy();
+
+    fireEvent.click(document.getElementById('tx-view-calendar')!);
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+  });
+
+  it('10. opens the Add modal pre-filled with the selected day from #tx-cal-add-btn and resets to today when reopened from the header', async () => {
+    const today = todayIsoDate();
+    const pickedDay = today.endsWith('-01') ? shiftIsoDate(today, -1) : `${monthKeyOf(today)}-01`;
+    mount([]);
+
+    fireEvent.click(document.getElementById('tx-view-calendar')!);
+    if (monthKeyOf(pickedDay) !== monthKeyOf(today)) {
+      fireEvent.click(document.getElementById('tx-cal-prev-month-btn')!);
+    }
+    fireEvent.click(document.getElementById(`tx-cal-day-${pickedDay}`)!);
+    fireEvent.click(document.getElementById('tx-cal-add-btn')!);
+
+    const dialog = await screen.findByRole('dialog', { name: 'Record New Transaction' });
+    const dateInput = within(dialog).getByLabelText('Transaction Date') as HTMLInputElement;
+    expect(dateInput.value).toBe(pickedDay);
+
+    fireEvent.keyDown(document, { key: 'Escape' });
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Record New Transaction' })).toBeNull());
+
+    fireEvent.click(document.getElementById('tx-open-add-modal-btn')!);
+    const dialogAgain = await screen.findByRole('dialog', { name: 'Record New Transaction' });
+    expect((within(dialogAgain).getByLabelText('Transaction Date') as HTMLInputElement).value).toBe(today);
+  });
+
+  it('11. renders #tx-cal-diary-link only when the selected day has a diary entry and onOpenDiaryDay is passed', () => {
+    const today = todayIsoDate();
+    const otherDay = today.endsWith('-01') ? shiftIsoDate(today, 1) : `${monthKeyOf(today)}-01`;
+    localStorage.setItem(
+      'pf_diary',
+      JSON.stringify([
+        {
+          id: 'diary-1',
+          userId: 'guest',
+          date: today,
+          mood: 4,
+          workout: false,
+          foodQuality: 'HEALTHY',
+          isDeleted: false,
+          createdAt: '2026-09-01T00:00:00.000Z',
+          updatedAt: '2026-09-01T00:00:00.000Z',
+        },
+      ]),
+    );
+    const onOpenDiaryDay = vi.fn();
+    const { unmount } = mount([tx({ type: 'EXPENSE', amount: 50, categoryId: 'cat-food', transactionDate: today })], {
+      onOpenDiaryDay,
+    });
+
+    fireEvent.click(document.getElementById('tx-view-calendar')!);
+    const link = document.getElementById('tx-cal-diary-link')!;
+    expect(link).not.toBeNull();
+    fireEvent.click(link);
+    expect(onOpenDiaryDay).toHaveBeenCalledWith(today);
+
+    // Day with no diary entry -> link absent
+    fireEvent.click(document.getElementById(`tx-cal-day-${otherDay}`)!);
+    expect(document.getElementById('tx-cal-diary-link')).toBeNull();
+    unmount();
+
+    // No onOpenDiaryDay prop -> link absent even when entry exists
+    mount([tx({ type: 'EXPENSE', amount: 50, categoryId: 'cat-food', transactionDate: today })]);
+    fireEvent.click(document.getElementById('tx-view-calendar')!);
+    expect(document.getElementById('tx-cal-diary-link')).toBeNull();
   });
 });
