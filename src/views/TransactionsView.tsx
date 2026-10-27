@@ -22,6 +22,8 @@ import { TransactionRow } from '../components/transaction/TransactionRow';
 import { DayGroupHeader } from '../components/transaction/DayGroupHeader';
 import { TransactionDetails } from '../components/transaction/TransactionDrawer';
 import { ImportCsvModal } from '../components/transaction/ImportCsvModal';
+import { TransactionsTable } from '../components/transaction/TransactionsTable';
+import { readTxView, writeTxView, TxViewMode } from '../utils/txViewPreference';
 import { formatRangeLabel, rangeBounds, TimeRange } from '../selectors/timeRange';
 import { groupByDay, sumIncome, sumSpending } from '../selectors/ledger';
 import { PAGE_STEP, hasMoreRows, visibleRows } from '../selectors/pagination';
@@ -75,7 +77,9 @@ const FILTER_SELECT_CLASS =
  * Spec 6.2 (Phase 58a, ADR 0031): a filter row, one list grouped by day with
  * "Load 25 more" (L12), and a side panel for the selected row. Since Phase 58b
  * (ADR 0033) the panel edits a live row and restores a deleted one. The CSV
- * import lives in `ImportCsvModal`.
+ * import lives in `ImportCsvModal`. Phase 149 (ADR 0109) adds the Table/Calendar
+ * view switch (`readTxView` / `writeTxView`) and renders `TransactionsTable` in
+ * the Table view from `lg` up.
  */
 export const TransactionsView: React.FC<TransactionsViewProps> = ({
   initialWalletFilter,
@@ -99,6 +103,15 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
   // Phase 61 (ADR 0036): one day, handed off from the Daily diary. It
   // overrides the range until it is cleared or the range is changed.
   const [dayFilter, setDayFilter] = useState<string | null>(initialDayFilter ?? null);
+  // ADR 0109 D6: the last view is remembered per device. A hand-off (the
+  // wallet's View all, a Dashboard row, a diary day) always opens the Table.
+  const [viewMode, setViewMode] = useState<TxViewMode>(() =>
+    initialWalletFilter || initialSelectedTxId || initialDayFilter ? 'table' : readTxView()
+  );
+  const chooseView = (mode: TxViewMode) => {
+    setViewMode(mode);
+    writeTxView(mode);
+  };
 
   // This view remounts fresh on every navigation to the tab (App.tsx keys the
   // active view by `activeTab`, so switching away and back unmounts it), so
@@ -272,6 +285,18 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
             subtitle="Add your first one with Add transaction above, or import a CSV from Import / export."
           />
         )
+      ) : isWide ? (
+        <TransactionsTable
+          days={shownDays}
+          dayNets={dayNets}
+          today={today}
+          categories={categoryMap}
+          wallets={walletMap}
+          selectedTxId={selectedTxId}
+          onSelect={selectRow}
+          onDelete={deleteTransaction}
+          onRestore={restoreTransaction}
+        />
       ) : (
         // Inset by 8px, like the Dashboard's Recent activity: each row's 2px
         // focus outline, 2px out, then has room inside the card.
@@ -337,6 +362,19 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
             </Button>
           </>
         }
+      />
+
+      <SegmentedControl<TxViewMode>
+        mode="tabs"
+        ariaLabel="Transactions view"
+        fill
+        className="flex w-full lg:w-fit"
+        value={viewMode}
+        onChange={chooseView}
+        options={[
+          { value: 'table', label: 'Table', id: 'tx-view-table' },
+          { value: 'calendar', label: 'Calendar', id: 'tx-view-calendar' },
+        ]}
       />
 
       {/* Filter row, in the spec's order: search, range, wallet, category, type, show deleted. */}
@@ -463,8 +501,12 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
         </div>
       </div>
 
-      {/* Spec 6.2: the list takes the full width until a row is selected, then 8/12 beside the panel. */}
-      {selectedTx && isWide ? (
+      <div id="tx-view-panel" role="tabpanel" aria-labelledby={`tx-view-${viewMode}`}>
+        {viewMode === 'calendar' ? (
+          // T811 builds the Calendar view here.
+          null
+        ) : /* Spec 6.2: the list takes the full width until a row is selected, then 8/12 beside the panel. */
+        selectedTx && isWide ? (
         <div className="grid grid-cols-12 gap-4 items-start">
           <div className="col-span-8">{listCard}</div>
           <aside id="tx-drawer" aria-labelledby="tx-drawer-title" className="col-span-4 sticky top-20">
@@ -484,6 +526,8 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
       ) : (
         listCard
       )}
+
+      </div>
 
       {/* Below `lg` the same panel opens as a bottom sheet. Rendered only there, so it never doubles the inline one. */}
       <Modal

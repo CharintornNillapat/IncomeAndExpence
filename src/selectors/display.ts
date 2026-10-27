@@ -52,6 +52,21 @@ export function displayTitle(tx: Transaction, category: Category | undefined): s
 
 const UNKNOWN_WALLET = 'Unknown wallet';
 
+function walletName(wallets: ReadonlyMap<string, Wallet>, id: string | undefined): string {
+  return (id && wallets.get(id)?.name) || UNKNOWN_WALLET;
+}
+
+/**
+ * A row's wallet cell in the Transactions table (ADR 0109): "Main → Cash" for
+ * a transfer, else the wallet's name. `secondaryLine` adds the transfer's note
+ * after the route; this cell never does.
+ */
+export function walletLabel(tx: Transaction, wallets: ReadonlyMap<string, Wallet>): string {
+  return tx.type === 'TRANSFER'
+    ? `${walletName(wallets, tx.walletId)} → ${walletName(wallets, tx.destinationWalletId)}`
+    : walletName(wallets, tx.walletId);
+}
+
 /** What `transfer_funds` writes when a transfer is sent with no note. */
 const DEFAULT_TRANSFER_DESCRIPTION = 'Transfer between wallets';
 
@@ -62,12 +77,11 @@ const DEFAULT_TRANSFER_DESCRIPTION = 'Transfer between wallets';
  * Funds transfer") rather than vanishing from the row (Phase 58a, ADR 0031).
  */
 export function secondaryLine(tx: Transaction, wallets: ReadonlyMap<string, Wallet>): string {
-  const name = (id: string | undefined) => (id && wallets.get(id)?.name) || UNKNOWN_WALLET;
   if (tx.type === 'TRANSFER') {
-    const route = `${name(tx.walletId)} → ${name(tx.destinationWalletId)}`;
+    const route = `${walletName(wallets, tx.walletId)} → ${walletName(wallets, tx.destinationWalletId)}`;
     return hasOwnDescription(tx) && tx.description.trim() !== DEFAULT_TRANSFER_DESCRIPTION
       ? `${route} · ${tx.description.trim()}`
       : route;
   }
-  return hasOwnDescription(tx) ? name(tx.walletId) : `No description · ${name(tx.walletId)}`;
+  return hasOwnDescription(tx) ? walletName(wallets, tx.walletId) : `No description · ${walletName(wallets, tx.walletId)}`;
 }

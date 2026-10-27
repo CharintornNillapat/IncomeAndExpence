@@ -87,6 +87,11 @@ The specs also match these by text, so the text is part of the contract:
 - The selected row's panel is inline from `lg` (1024px, `useMediaQuery`) and a `Modal` below; every spec runs at 1280px, so it sees the inline panel.
 - The panel shows the row's note, so a text count taken while it is open includes it. No spec counts text with the panel open.
 - The panel's `<select>`s list every wallet and category as `<option>`s, so a strict `getByText('Cash Wallet')` or a category name taken while a row is open can meet one. The note is an input's value, which `getByText` does not match.
+- From `lg` in the Table view (the default, and what every spec at 1280px sees) a row is a `<tr>` and `button#tx-row-*` sits in its Note cell. The button holds the note, the `[Soft Deleted]` tag, and `sr-only` text with the title (when it differs from the note), the category label, the signed amount and the ISO date, as the list row's button does, so `filter({ hasText })` on the button, `toContainText(<category name>)` in `csv-classify.spec.ts`, `toContainText('+฿150.00')` and the date check in `presets.spec.ts:214` hold. The visible Amount cell is `aria-hidden` and the Category cell shows the same label as the button's hidden text; a page-wide `getByText` on an amount or a category name can meet the button's hidden text as well, so scope it to a row or a cell.
+
+### Transactions views (Phase 149, no spec uses these yet; `tests/transactions-views.spec.ts` comes with design task 6)
+
+- `#tx-view-table`, `#tx-view-calendar`, `#tx-view-panel`, `#tx-menu-btn-*`, `#tx-menu-edit-btn-*`, `#tx-menu-delete-btn-*`, `#tx-menu-restore-btn-*`. The `tx-cal-*`, `tx-select-*` and `tx-bulk-*` ids come with design tasks 3 and 5.
 
 ### Wallets page
 

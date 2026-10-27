@@ -32,6 +32,8 @@ afterAll(() => {
 afterEach(() => {
   cleanup();
   localStorage.clear();
+  delete (window as { matchMedia?: unknown }).matchMedia;
+  vi.restoreAllMocks();
 });
 
 let seq = 0;
@@ -51,11 +53,24 @@ function tx(overrides: Partial<Transaction> & Pick<Transaction, 'type' | 'amount
   };
 }
 
-function mount(rows: Transaction[]) {
+function wide() {
+  window.matchMedia = ((query: string) => ({
+    matches: true,
+    media: query,
+    onchange: null,
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    addListener: () => {},
+    removeListener: () => {},
+    dispatchEvent: () => false,
+  })) as unknown as typeof window.matchMedia;
+}
+
+function mount(rows: Transaction[], props: Parameters<typeof TransactionsView>[0] = {}) {
   localStorage.setItem('pf_transactions', JSON.stringify(rows));
   return render(
     <FinanceProvider>
-      <TransactionsView />
+      <TransactionsView {...props} />
     </FinanceProvider>
   );
 }
@@ -438,5 +453,251 @@ describe("the Daily diary's day hand-off (Phase 61, ADR 0036)", () => {
     );
     fireEvent.change(document.getElementById('tx-filter-range')!, { target: { value: 'ALL' } });
     expect(document.getElementById('tx-day-filter')).toBeNull();
+  });
+});
+
+describe('the view switch (ADR 0109 D6)', () => {
+  const TX_VIEW_KEY = 'pf_tx_view';
+
+  it('renders the Transactions view tablist with Table selected and a labelled tabpanel', () => {
+    mount([tx({ type: 'EXPENSE', amount: 50, categoryId: 'cat-food' })]);
+    const tablist = screen.getByRole('tablist', { name: 'Transactions view' });
+    const tableTab = within(tablist).getByRole('tab', { name: 'Table' });
+    const calTab = within(tablist).getByRole('tab', { name: 'Calendar' });
+    expect(tableTab.id).toBe('tx-view-table');
+    expect(tableTab.getAttribute('aria-selected')).toBe('true');
+    expect(calTab.id).toBe('tx-view-calendar');
+    expect(calTab.getAttribute('aria-selected')).toBe('false');
+
+    const panel = document.getElementById('tx-view-panel')!;
+    expect(panel).not.toBeNull();
+    expect(panel.getAttribute('role')).toBe('tabpanel');
+    expect(panel.getAttribute('aria-labelledby')).toBe('tx-view-table');
+  });
+
+  it('switches to Calendar, stores the preference, hides rows while keeping filters, and switches back', () => {
+    mount([tx({ type: 'EXPENSE', amount: 50, categoryId: 'cat-food', description: 'Switch row' })]);
+    expect(rowButtons()).toHaveLength(1);
+
+    fireEvent.click(document.getElementById('tx-view-calendar')!);
+    expect(document.getElementById('tx-view-calendar')!.getAttribute('aria-selected')).toBe('true');
+    expect(document.getElementById('tx-view-table')!.getAttribute('aria-selected')).toBe('false');
+    expect(document.getElementById('tx-view-panel')!.getAttribute('aria-labelledby')).toBe('tx-view-calendar');
+    expect(localStorage.getItem(TX_VIEW_KEY)).toBe('calendar');
+    expect(rowButtons()).toHaveLength(0);
+    expect(document.getElementById('tx-search-input')).not.toBeNull();
+    expect(document.getElementById('tx-filter-range')).not.toBeNull();
+    expect(document.getElementById('tx-filter-wallet')).not.toBeNull();
+    expect(document.getElementById('tx-filter-category')).not.toBeNull();
+
+    fireEvent.click(document.getElementById('tx-view-table')!);
+    expect(document.getElementById('tx-view-table')!.getAttribute('aria-selected')).toBe('true');
+    expect(rowButtons()).toHaveLength(1);
+  });
+
+  it('opens Calendar on arrival when stored in localStorage', () => {
+    localStorage.setItem(TX_VIEW_KEY, 'calendar');
+    mount([tx({ type: 'EXPENSE', amount: 50, categoryId: 'cat-food' })]);
+    expect(document.getElementById('tx-view-calendar')?.getAttribute('aria-selected')).toBe('true');
+    expect(rowButtons()).toHaveLength(0);
+  });
+
+  it('always opens Table on a hand-off without overwriting the stored calendar preference', () => {
+    const seeded = tx({ type: 'EXPENSE', amount: 50, categoryId: 'cat-food' });
+    for (const props of [
+      { initialDayFilter: todayIsoDate() },
+      { initialWalletFilter: 'wal-cash' },
+      { initialSelectedTxId: seeded.id },
+    ]) {
+      cleanup();
+      localStorage.clear();
+      localStorage.setItem(TX_VIEW_KEY, 'calendar');
+      mount([seeded], props);
+      expect(document.getElementById('tx-view-table')?.getAttribute('aria-selected')).toBe('true');
+      expect(localStorage.getItem(TX_VIEW_KEY)).toBe('calendar');
+    }
+  });
+
+  it('mounts on Table when localStorage.getItem throws', () => {
+    const rows = [tx({ type: 'EXPENSE', amount: 50, categoryId: 'cat-food' })];
+    localStorage.setItem('pf_transactions', JSON.stringify(rows));
+    vi.spyOn(Storage.prototype, 'getItem').mockImplementation((key: string) => { if (key !== TX_VIEW_KEY) return null;
+      throw new Error('blocked');
+    });
+    render(
+      <FinanceProvider>
+        <TransactionsView />
+      </FinanceProvider>
+    );
+    expect(document.getElementById('tx-view-table')?.getAttribute('aria-selected')).toBe('true');
+  });
+});
+
+describe('the Table view, from lg (ADR 0109 D3)', () => {
+  it('renders a table with caption, six columnheaders, no sort buttons, and day rowgroups with L11 nets', () => {
+    wide();
+    const yesterday = shiftIsoDate(todayIsoDate(), -1);
+    mount([
+      tx({ type: 'EXPENSE', amount: 100, categoryId: 'cat-food', description: 'Lunch' }),
+      tx({ type: 'TRANSFER', amount: 500, destinationWalletId: 'wal-main-checking', description: 'Funds transfer' }),
+      tx({ type: 'INCOME', amount: 700, categoryId: 'cat-salary', description: 'Pay', transactionDate: yesterday }),
+    ]);
+
+    const table = document.querySelector('table')!;
+    expect(table).not.toBeNull();
+    expect(table.querySelector('caption')?.textContent).toBe('Transactions, newest first');
+    const colHeaders = within(table).getAllByRole('columnheader').map((th) => th.textContent);
+    expect(colHeaders).toEqual(['Date', 'Note', 'Category', 'Wallet', 'Amount', 'Actions']);
+    expect(table.querySelector('thead button')).toBeNull();
+
+    const rowgroups = [...table.querySelectorAll('th[scope="rowgroup"]')];
+    expect(rowgroups).toHaveLength(2);
+    expect(rowgroups.map((th) => th.getAttribute('colspan'))).toEqual(['6', '6']);
+    expect(rowgroups[0].textContent).toMatch(/^Today · /);
+    expect(rowgroups[0].textContent).toContain(`${MINUS}${formatCurrencyAmount(100)}`);
+    expect(rowgroups[1].textContent).toMatch(/^Yesterday · /);
+    expect(rowgroups[1].textContent).toContain(`+${formatCurrencyAmount(700)}`);
+  });
+
+  it('populates a row button with the note, signed amount and ISO date, and shows the wallet and category cells', () => {
+    wide();
+    const today = todayIsoDate();
+    const lunch = tx({ type: 'EXPENSE', amount: 100, categoryId: 'cat-food', walletId: 'wal-cash', description: 'Lunch', transactionDate: today });
+    mount([lunch]);
+
+    const walletName = document.querySelector('#tx-filter-wallet option[value="wal-cash"]')!.textContent!;
+    const categoryName = document.querySelector('#tx-filter-category option[value="cat-food"]')!.textContent!;
+
+    const btn = document.getElementById(`tx-row-${lunch.id}`)!;
+    expect(btn).not.toBeNull();
+    expect(btn.textContent).toContain('Lunch');
+    expect(btn.textContent).toContain(`${MINUS}${formatCurrencyAmount(100)}`);
+    expect(btn.textContent).toContain(today);
+    expect(btn.textContent).toContain(categoryName);
+
+    const tr = btn.closest('tr')!;
+    expect(tr.textContent).toContain(walletName);
+    expect(tr.textContent).toContain(categoryName);
+  });
+
+  it('renders a transfer row with the wallet route only, an empty Category cell, and the note in Note', () => {
+    wide();
+    const transfer = tx({
+      type: 'TRANSFER',
+      amount: 500,
+      walletId: 'wal-cash',
+      destinationWalletId: 'wal-main-checking',
+      description: 'Funds transfer',
+    });
+    mount([transfer]);
+
+    const btn = document.getElementById(`tx-row-${transfer.id}`)!;
+    const cells = [...btn.closest('tr')!.querySelectorAll('td')];
+    expect(cells[1].textContent).toContain('Funds transfer');
+    expect(cells[2].textContent).toBe('');
+    expect(cells[3].textContent).toBe('Cash Wallet → Main Checking');
+  });
+
+  it('shows No note for an empty description and keeps the category title in the button text', () => {
+    wide();
+    const noNote = tx({ type: 'EXPENSE', amount: 80, categoryId: 'cat-food', description: '' });
+    mount([noNote]);
+
+    const categoryName = document.querySelector('#tx-filter-category option[value="cat-food"]')!.textContent!;
+    const btn = document.getElementById(`tx-row-${noNote.id}`)!;
+    expect(btn.textContent).toContain('No note');
+    expect(btn.textContent).toContain(categoryName);
+    expect(btn.textContent!.split(categoryName).length - 1).toBe(1);
+  });
+
+  it('renders the income Amount cell with + and formatCurrencyAmount inside an aria-hidden element', () => {
+    wide();
+    const income = tx({ type: 'INCOME', amount: 700, categoryId: 'cat-salary', description: 'Pay' });
+    mount([income]);
+
+    const btn = document.getElementById(`tx-row-${income.id}`)!;
+    const amountTd = btn.closest('tr')!.querySelectorAll('td')[4];
+    expect(amountTd.textContent).toBe(`+${formatCurrencyAmount(700)}`);
+    expect(amountTd.querySelector('[aria-hidden="true"]')?.textContent).toBe(`+${formatCurrencyAmount(700)}`);
+  });
+
+  it('loads 25 rows at a time in the Table view (L12)', () => {
+    const rowButtons = () => [...document.querySelectorAll('table button[id^="tx-row-"]')];
+    wide();
+    mount(Array.from({ length: 30 }, (_, i) => tx({ type: 'EXPENSE', amount: 10 + i, categoryId: 'cat-food' })));
+    expect(rowButtons()).toHaveLength(25);
+    const more = document.getElementById('tx-load-more-btn')!;
+    expect(more.textContent).toBe('Load 5 more');
+    fireEvent.click(more);
+    expect(rowButtons()).toHaveLength(30);
+    expect(document.getElementById('tx-load-more-btn')).toBeNull();
+    expect(screen.getByText('Showing 30 of 30')).toBeTruthy();
+  });
+
+  it('opens the inline #tx-drawer and marks aria-current on the selected row button', () => {
+    wide();
+    const row = tx({ type: 'EXPENSE', amount: 100, categoryId: 'cat-food', description: 'Pick me' });
+    mount([row]);
+
+    const btn = document.getElementById(`tx-row-${row.id}`)!;
+    fireEvent.click(btn);
+    expect(document.getElementById('tx-drawer')).not.toBeNull();
+    expect(document.querySelector(`table #tx-row-${row.id}`)?.getAttribute('aria-current')).toBe('true');
+  });
+
+  it('confirms before deleting from the row menu, cancels cleanly, and soft-deletes on confirm', async () => {
+    wide();
+    const row = tx({ type: 'EXPENSE', amount: 120, categoryId: 'cat-food', description: 'Menu delete target' });
+    mount([row]);
+
+    fireEvent.click(document.getElementById(`tx-menu-btn-${row.id}`)!);
+    fireEvent.click(document.getElementById(`tx-menu-delete-btn-${row.id}`)!);
+
+    const dialog = await screen.findByRole('dialog', { name: 'Delete this transaction?' });
+    expect(dialog).toBeTruthy();
+    expect(document.getElementById(`tx-row-${row.id}`)).not.toBeNull();
+
+    fireEvent.click(document.getElementById('confirm-cancel-btn')!);
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(document.getElementById(`tx-row-${row.id}`)).not.toBeNull();
+
+    fireEvent.click(document.getElementById(`tx-menu-btn-${row.id}`)!);
+    fireEvent.click(document.getElementById(`tx-menu-delete-btn-${row.id}`)!);
+    await screen.findByRole('dialog', { name: 'Delete this transaction?' });
+    fireEvent.click(document.getElementById('confirm-destructive-btn')!);
+
+    await waitFor(() => expect(document.getElementById(`tx-row-${row.id}`)).toBeNull());
+    fireEvent.click(document.getElementById('tx-show-deleted')!);
+    await waitFor(() => expect(document.getElementById(`tx-row-${row.id}`)?.textContent).toContain('[Soft Deleted]'));
+  });
+
+  it('offers only Restore in a deleted row menu and restores the row on click', async () => {
+    wide();
+    const row = tx({ type: 'EXPENSE', amount: 120, categoryId: 'cat-food', description: 'Restore target', isDeleted: true });
+    mount([row]);
+
+    fireEvent.click(document.getElementById('tx-show-deleted')!);
+    const rowBtn = await waitFor(() => {
+      const el = document.getElementById(`tx-row-${row.id}`);
+      expect(el?.textContent).toContain('[Soft Deleted]');
+      return el!;
+    });
+    expect(rowBtn).toBeTruthy();
+
+    fireEvent.click(document.getElementById(`tx-menu-btn-${row.id}`)!);
+    expect(document.getElementById(`tx-menu-edit-btn-${row.id}`)).toBeNull();
+    expect(document.getElementById(`tx-menu-delete-btn-${row.id}`)).toBeNull();
+    const restoreBtn = document.getElementById(`tx-menu-restore-btn-${row.id}`)!;
+    expect(restoreBtn).not.toBeNull();
+
+    fireEvent.click(restoreBtn);
+    await waitFor(() => expect(document.getElementById(`tx-row-${row.id}`)?.textContent).not.toContain('[Soft Deleted]'));
+  });
+
+  it('narrow guard: renders the list without a table or row menus below lg', () => {
+    mount([tx({ type: 'EXPENSE', amount: 100, categoryId: 'cat-food', description: 'Narrow row' })]);
+    expect(document.querySelector('table')).toBeNull();
+    expect(document.querySelector('[id^="tx-menu-btn-"]')).toBeNull();
+    expect(rowButtons()).toHaveLength(1);
   });
 });
