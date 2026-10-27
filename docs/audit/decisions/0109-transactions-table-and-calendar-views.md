@@ -1,6 +1,6 @@
 # 0109: Transactions redesign 2026-10: a Table and a Calendar view over one filter state, bulk delete through one RPC
 
-**Status:** Accepted. Not implemented yet; the phase that ships it records its commits here.
+**Status:** Accepted. Implemented in Phase 149 (T809 to T815): code `a2634f1` to `9caee5e`, docs `<sha>`, merged `<sha>`. The migration `20261027_phase149_set_transactions_deleted.sql` is not applied to live yet; the owner applies it before the merge (see Release).
 - **Amends** ADR 0031: the page keeps its header, filter row, day groups, L12 loading and edit panel, and gains a view switch, a Table view and a Calendar view.
 - **Adds** `docs/design/transactions-2026-10/spec.md` as the redesign's authority for the Transactions page, in place of `docs/design/finlife-redesign-spec.md` section 6.2. For every page not yet redesigned that spec stays the source.
 - **Extends** ADR 0023 and ADR 0091 with one new ledger function, `set_transactions_deleted`.
@@ -65,16 +65,45 @@ Saved views, column sorting and keyboard shortcuts.
 
 Why: the saved-view tabs in the mock were sample data and would need their own storage and sync; sorting conflicts with D3; a global keydown handler collides with the inputs and the PWA shell.
 
+## Implementation
+
+Phase 149, branch `phase-149-transactions-views`, cut from `main` at `27a6e5f`:
+
+- **T809** (`a2634f1`): `monthBounds` in `src/selectors/timeRange.ts`; `dailyTotals`, `HEAT_LEVELS`, `heatLevel` and `selectionSummary` in `src/selectors/ledger.ts` (D2, D5). This ADR and `docs/design/transactions-2026-10/spec.md` were committed with it.
+- **T810** (`ec9fa58`): the Table and Calendar switch, with the view stored per device under `pf_tx_view` (`src/utils/txViewPreference.ts`; D1, D6); `TransactionsTable` from `lg`, with day rows, five columns and a row menu, and the list under `lg` (D3); `walletLabel` in `src/selectors/display.ts`.
+- **T811** (`4e88626`): the `heat-1` to `heat-3` tokens in both themes, checked by `scripts/wcag-tokens.mjs` (D5); `TxCalendar` and `TxDayPanel` (D4); `TransactionForm`'s `initialDate`; the day panel's hand-off to the diary through `App.tsx` and `DiaryView`.
+- **T812** (`48e6750`): `set_transactions_deleted(uuid[], boolean)` in `supabase/migrations/20261027_phase149_set_transactions_deleted.sql`, with its probe `supabase/tests/20261027_phase149.probe.sql`; the guest twin `setTransactionsDeleted` in `FinanceContext.tsx`; the `AGENTS.md` parity-map row (D7).
+- **T813** (`83d5c54`): row checkboxes and select-all (`SelectCheckbox`); the bulk bar (`TxBulkBar`), inline from `lg` and pinned in Select mode under `lg`; bulk Delete (confirmed, with the count frozen when the dialog opens) and Restore, one `setTransactionsDeleted` call each (D7).
+- **T814** (`9caee5e`): `tests/transactions-views.spec.ts`, 26 tests; `DESIGN.md`'s Transactions section.
+- **T815** (docs `<sha>`): the phase's closing docs.
+
+## Verification
+
+- **Unit:** `npm run test:unit` 72 files, 1598 passed (T815, 60.32 s). The phase added 88 tests: three new files (`unit/tx-view-preference.test.ts`, `unit/tx-calendar.test.tsx`, `unit/transactions-bulk.test.tsx`) and ten extended ones. Among them, `unit/ledger-guards.test.tsx` and `unit/authenticated-ledger.test.tsx` cover the guest twin and the one-call signed-in path, and `unit/migration-replay.test.ts` replays the migration in PGlite and runs the probe before and after it.
+- **Migration:** `npm run schema:drift` replays 22 migrations offline, clean (T812). The probe ran only in PGlite; nothing ran on live.
+- **Contrast:** `node scripts/wcag-tokens.mjs` passes, 18 heat pairs (T811, T814).
+- **E2E:** `tests/transactions-views.spec.ts`: 26 tests, 78 runs on three browsers; three inverse edits each turned it red first (T814). `npm test`: 213 tests in 37 specs, 639 runs, 633 passed, 6 skipped, 0 failed (T815, 12.0 min).
+
 ## Consequences
 
 - One migration and one probe for `set_transactions_deleted`. Writing it is a `supabase/` task that pauses after its spec; applying it to the live project needs the owner's go-ahead in that session.
 - New `tx-` ids join `docs/audit/test-selector-contract.md` (`spec.md` section 7); no existing id changes.
 - `TransactionForm` gains an optional `initialDate` prop for "Add transaction on <day>".
 - Three new colour tokens in `src/index.css`, both themes.
-- `DESIGN.md`'s Transactions section is rewritten by the phase's last task, to the code as shipped.
+- `DESIGN.md`'s Transactions section was rewritten by T814, the phase's last code task, to the code as shipped.
 
 ## Not done
 
 - A shared month-calendar component for the diary and the Transactions page: `TxCalendar` reuses the date helpers and the diary's day styles, and the diary is left alone. Revisit if a third calendar appears.
 - Swipe between months, long-press to select, and a bottom-sheet filter panel on phones.
 - Any change to the header, the nav, or board A of the canvas.
+
+## Release
+
+Pending. Before the merge, the owner, in the Supabase SQL editor (T812 spec section 8):
+
+1. Apply `supabase/migrations/20261027_phase149_set_transactions_deleted.sql` from the phase branch.
+2. In the same tab, run the history row that `npm run migration:print-history -- supabase/migrations/20261027_phase149_set_transactions_deleted.sql` prints at that moment (ADR 0065).
+3. Read-only: run the query that `npm run schema:drift` prints; expect zero rows.
+
+Until step 1, a signed-in bulk Delete or Restore changes nothing and shows "This needs the latest database update. Nothing was changed." (`FinanceContext.tsx:395`). The post-merge deploy record replaces this section with what was applied and checked.
