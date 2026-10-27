@@ -12,8 +12,8 @@ The working memory of the audit and refactor work: what is planned, what shipped
 
 | File | What it holds | Read it when |
 |---|---|---|
-| `task-ledger.md` | Tasks from Phase 136 on, their status, and the Backlog | Always, after the routing table |
-| `refactor-log.md` | One entry per shipped phase from Phase 136 on | Asked what has shipped recently |
+| `task-ledger.md` | Tasks from Phase 148 on, their status, and the Backlog | Always, after the routing table |
+| `refactor-log.md` | One entry per shipped phase from Phase 148 on | Asked what has shipped recently |
 | `baseline-metrics.md` | How to measure, and the latest bundle and test figures | Shipping a phase, or proving a change |
 | `test-selector-contract.md` | Every id and `data-testid` the specs use today, and their hazards | Renaming, moving or removing an id |
 | `audit-2026-10-16.md` | The whole-app audit of 2026-10-16 (T759): findings by domain and severity | Picking up a Backlog row it raised |
@@ -23,8 +23,8 @@ The working memory of the audit and refactor work: what is planned, what shipped
 
 **Never read a file inside `archive/` unless the user explicitly asks for historical research.** Archived files are never edited. It holds:
 
-- `task-ledger-phases-001-124.md` and `refactor-log-phases-001-124.md`: the ledger and log before Phase 125. `task-ledger-phases-125-135.md` and `refactor-log-phases-125-135.md`: the ledger rows and the log entries for Phases 125 to 135.
-- `baseline-metrics-phases-000-124.md`: every measured column before Phase 125.
+- `task-ledger-phases-001-124.md` and `refactor-log-phases-001-124.md`: the ledger and log before Phase 125. `task-ledger-phases-125-135.md` and `refactor-log-phases-125-135.md`: the ledger rows and the log entries for Phases 125 to 135. `task-ledger-phases-136-147.md` and `refactor-log-phases-136-147.md`: the ledger rows and the log entries for Phases 136 to 147.
+- `baseline-metrics-phases-000-124.md` and `baseline-metrics-phases-125-147.md`: every measured column before Phase 125, and the per-phase figures for Phases 125 to 147.
 - `test-selector-log-phases-019-124.md`: how each selector was added, moved or retired.
 - `claude-monolith-v124.md` and `claude-md-history.md`: the pre-split `CLAUDE.md` and its release history.
 - `audit-report.md`, `perf-audit-report.md`, `ui-ux-audit-report.md`, `implementation-roadmap.md`, `spec-acceptance-2026-10-02.md`: the early audits and plans and the 2026-10-02 acceptance check, holding the findings older ADRs cite by letter or number.
