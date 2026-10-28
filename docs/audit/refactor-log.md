@@ -19,7 +19,7 @@ ADR `NNNN`. <the brief, one or two sentences>
 
 ---
 
-## Phase 155 - Rule candidates from Phase 137: T823-T824 (2026-10-28, docs `<sha>`, merged `<sha>`)
+## Phase 155 - Rule candidates from Phase 137: T823-T824 (2026-10-28, docs `7133cc3` and `e440e84`, merged `fdcf38e`)
 
 No ADR (two rule candidates from Phase 137 enter the rule files; docs only). A text-landed gate now reads its expected text from the spec's fenced code blocks with a script, never retyped (T823). A type size, line height, font or spacing token change in `src/index.css` now runs `tests/safe-area.spec.ts` and `tests/layout-stability.spec.ts` too (T824). The PR is docs-only on purpose: its required checks are the first live run of ADR 0111's docs-only path.
 
