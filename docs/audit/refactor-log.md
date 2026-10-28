@@ -19,6 +19,17 @@ ADR `NNNN`. <the brief, one or two sentences>
 
 ---
 
+## Phase 154 - Docs-only pull requests report the required checks: T822 (2026-10-28, code `<sha>`, merged `<sha>`)
+
+ADR `0111`. Docs-only pull requests report all seven checks `main` requires as passing within a couple of minutes without running real tests, eliminating the need for owner admin bypass while keeping real test execution on code changes.
+
+**Changed:** T822 (`.github/workflows/playwright.yml`: dropped paths-ignore on pull_request, added changes classifier job, step-level if conditions on checks and e2e steps, merge-reports gated on code; `.gitignore`: pre-applied by MASTER to ignore workflow/**/.claude/; `AGENTS.md`: updated unit test count to 1606 across 72 files and updated docs-only auto-merge reason; `README.md`: updated unit test count to 1606 across 72 files; `docs/audit/decisions/0111-docs-only-prs-report-required-checks.md`: ADR 0111; `docs/contexts/ui-and-e2e.md`: updated CI description with changes job and step-skipping behavior; `unit/workflow-hardening.test.ts`: added test suite asserting PR triggers without paths filter, matrix job names match required checks, step-level skipping, classifier behavior, and docs-only set alignment; `docs/audit/baseline-metrics.md`: Phase 154 delta against Phase 152; `docs/audit/task-ledger.md`: Phase 154 section and T822 row; this file).
+**Verified:** Red run verified (4 failed, 13 passed in unit/workflow-hardening.test.ts); npm run lint clean; related unit 1 file 17 passed (308ms); full unit 72 files 1606 passed (83.99s); shuffled unit 72 files 1606 passed with seed 1793187995002 (69.76s); classifier harness verified (docs pull_request -> code=false, code pull_request -> code=true, move pull_request -> code=true, mdx pull_request -> code=true, push push -> code=true, empty pull_request -> code=true, no-parent pull_request -> exit 128); workflow diff shape clean (70 insertions, 8 deletions); stated counts in AGENTS.md (1606 tests, 72 files) and README.md verified; gitignore checks verified; 0 em dashes; line endings CRLF; scope clean.
+**Surprises:** none.
+**Deliberately not done:** merge_group trigger support (no merge queue is configured; branch rulesets are empty); making container conditional on docs-only status; classifying files via GitHub's pull request REST API (would require pull-requests: read permission, violating workflow hardening contents: read restriction); any modification to branch protection settings or rulesets; .gitignore change was pre-applied by MASTER; filling the `<sha>` placeholders in the heading and the Commit cell in task-ledger.md, left to the owner-approved post-merge deploy record.
+
+---
+
 ## Phase 153 - Faster phase flow: T821 (2026-10-28, code `4b45a1b`, merged `f50d742`)
 
 No ADR (a workflow rule change in `AGENTS.md`, docs only). The last four phases took 4 to 5 hours of wall clock for about 25 to 40 minutes of agent work; the rest was waiting for the owner to push, open and merge the PR, and send `merged`. The orchestrator now opens the PR, auto-merges non-money-path phases, and writes the deploy record itself.

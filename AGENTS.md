@@ -8,7 +8,7 @@ FinLife Tracker is a single-user personal finance and daily-diary PWA in Thai Ba
 
 - **Stack:** React 19, TypeScript ~5.8 (strict), Vite 6, Tailwind CSS v4 (semantic tokens), `vite-plugin-pwa`, `@supabase/supabase-js` (lazy-loaded), zod 4, papaparse, lucide-react. Node 24.x, npm.
 - **Server side:** Supabase (Postgres 17, RLS, `SECURITY DEFINER` RPCs, Auth, Realtime); Vercel hosting with three Node functions in `api/` (region `icn1`); TypeSafe's Jev model behind the proxies.
-- **Tests:** Vitest in `unit/` (1601 tests, 72 files, PGlite replays every migration); Playwright in `tests/` (213 tests, 37 specs, 639 runs on three browsers).
+- **Tests:** Vitest in `unit/` (1606 tests, 72 files, PGlite replays every migration); Playwright in `tests/` (213 tests, 37 specs, 639 runs on three browsers).
 
 | Path | What it is |
 |---|---|
@@ -131,7 +131,7 @@ Before calling a task done, a task whose gates include a code tier (any row abov
 - **Commits:** after an `APPROVED` review, the orchestrator commits that task on the phase branch by itself, with no `commit <id>` order. It stages only that task's files, by path, never with `git add -A` or `git add .`: the spec's Target files the build changed, `docs/audit/task-ledger.md`, and the task's `task-<id>-spec.md`, `task-<id>-build.md` and `task-<id>-review.md`. It leaves any other changed file unstaged and names it to the owner. It never commits on `main` and never skips hooks; if the commit fails, it stops for the owner. It pushes only the phase branch, and only through the Release bullet below.
 - **Release:** once the phase's last task is APPROVED and all its gates have passed, the orchestrator pushes the phase branch and runs `gh pr create` (title `phase NNN: <slug>`, body: the task ids and their ledger rows). Then:
   - **Auto-merge:** when no task's Target files and no Production touch point hit the pause list above, and at least one changed file is outside `docs/`, `anti-slop/` and `*.md`, it runs `gh pr merge <n> --auto --merge`, after confirming `gh api repos/{owner}/{repo} --jq .allow_auto_merge` is `true`. GitHub merges when the required checks on `main` pass. It is a merge commit, never `--squash`: the ledger and the deploy record cite the task commits.
-  - **Otherwise** (a money path, `supabase/`, `api/`, `.claude/agents/`, `AGENTS.md`, a stage `CONTEXT.md`, a docs-only PR, or auto-merge not enabled) it reports the PR link and the owner merges. A docs-only PR is never auto-merged: the CI paths filter means a required check never reports on it.
+  - **Otherwise** (a money path, `supabase/`, `api/`, `.claude/agents/`, `AGENTS.md`, a stage `CONTEXT.md`, a docs-only PR, or auto-merge not enabled) it reports the PR link and the owner merges. A docs-only PR is never auto-merged: its required checks pass with every step skipped (ADR 0111), so they prove nothing about it.
 - **Deploy record:** the orchestrator watches the PR with `gh pr view <n> --json state --jq .state` and needs no `merged` order. When it reads `MERGED` it writes the post-merge record in one docs-only `[skip ci]` commit on `main`. A phase with a migration waits for the owner's `applied` (checked with the read-only `list_migrations`) and puts the apply note, history version and drift result in that same commit, never a second one.
 - **The one exception on `main`:** that deploy record, a docs-only `[skip ci]` commit on `main`, made by the orchestrator or by the owner. Nothing else is committed or pushed to `main`.
 

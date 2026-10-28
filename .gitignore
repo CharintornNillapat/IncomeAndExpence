@@ -92,3 +92,6 @@ graphify-out/
 
 # herdr stage logs (full-suite runs by the builder and the reviewer)
 workflow/stages/*/output/logs/
+
+# Hook telemetry written under workflow/ by sub-agent sessions (the repo-root .claude/ stays tracked)
+workflow/**/.claude/
