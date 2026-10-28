@@ -1,6 +1,6 @@
 # 0110: transfer_funds replays on any row with its key, live or soft-deleted
 
-**Status:** Accepted. Implemented in Phase 151 (T819): code `<sha>`, merged `<sha>`. The migration `20261028_phase151_transfer_funds_replay_any_row.sql` is not applied to live yet; the owner applies it (see Release).
+**Status:** Accepted. Implemented in Phase 151 (T819): code `62f3aac`, merged `47c7fe2`. The migration `20261028_phase151_transfer_funds_replay_any_row.sql` is not applied to live yet; the owner applies it (see Release).
 - **Amends** ADR 0069 (the Phase 93 `transfer_funds` body, whose two lookups matched live rows only).
 - **Completes** ADR 0023's replay rule ("Replay matches any row, live or deleted, deliberately") for the one ledger function that did not follow it.
 
