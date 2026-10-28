@@ -19,6 +19,17 @@ ADR `NNNN`. <the brief, one or two sentences>
 
 ---
 
+## Phase 152 - Add Wallet form labels name real controls: T820 (2026-10-28, code `<sha>`, merged `<sha>`)
+
+No ADR (accessibility fix, as Phase 136). AddWalletForm's Currency and Color labels now name real controls: Currency is a span instead of a label without a form control, and Color is a span with an id providing the accessible name for a role="group" swatch container via aria-labelledby.
+
+**Changed:** T820 (`src/components/wallet/AddWalletForm.tsx`: Currency label converted to span, Color label converted to span with useId labelling the swatch container div with role="group" and aria-labelledby; `unit/wallets-page.test.tsx`: extended existing field-naming test to assert 3 labels with controls, the Color group role and accessible name, and Currency span with id; `docs/audit/baseline-metrics.md`: Phase 152 section; `docs/audit/task-ledger.md`: Phase 152 section and backlog AddWalletForm labels marked done; this file).
+**Verified:** Red gate verified (expected 3 labels got 5); npm run lint clean; related unit 3 files 25 passed (2.93s); full unit 72 files 1601 passed (62.98s); e2e 5 specs 32 passed on chr (56.7s), 96 passed on 3 browsers (2.4m); clean prod build (index-CsN9mAj5.js 198,233 B, all app JS 910,982 B 39 files, CSS 54,969 B); 0 em dashes; line endings CRLF; scope clean.
+**Surprises:** none.
+**Deliberately not done:** a fieldset or legend element (Color is an inline swatch picker, not a formal fieldset, matching the existing div structure and avoiding extra margins or nesting complexity); a Playwright spec edit (covered by unit test and existing 5 e2e specs passing); changes to WalletDetail.tsx (its Color already uses fieldset and legend); filling the `<sha>` placeholders in the heading and the Commit cell in task-ledger.md, left to the owner-approved post-merge deploy record.
+
+---
+
 ## Phase 151 - transfer_funds replays a soft-deleted transfer: T819 (2026-10-28, code `62f3aac`, merged `47c7fe2`)
 
 ADR `0110`. A retry of a transfer that the user has since deleted now replays that row (`reused: true`, balances unchanged) rather than raising unique_violation (23505), bringing transfer_funds in line with record_transaction and ADR 0023's replay rule.

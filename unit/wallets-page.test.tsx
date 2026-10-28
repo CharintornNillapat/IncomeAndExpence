@@ -8,7 +8,7 @@ import { formatCurrencyAmount, MINUS } from '../src/utils/currency';
 import { todayIsoDate } from '../src/utils/date';
 import type { Transaction, Wallet } from '../src/types';
 import { SAMPLE_WALLETS } from './fixtures/guestLedger';
-import { identityDisplayColor } from '../src/utils/identityPalette';
+import { identityDisplayColor, IDENTITY_COLORS } from '../src/utils/identityPalette';
 
 /**
  * Phase 59 (ADR 0034, spec 6.3): the Wallets page, mounted inside the real
@@ -389,7 +389,7 @@ describe("spec 5.1's colour migration on this device (Phase 63, ADR 0038)", () =
 });
 
 describe('the Add Wallet form (audit 2026-10-16 UI-03)', () => {
-  it('names each field from its label', () => {
+  it('names each field and the colour group, and has no label without a control', () => {
     render(
       <FinanceProvider>
         <AddWalletModal isOpen onClose={() => {}} />
@@ -398,5 +398,15 @@ describe('the Add Wallet form (audit 2026-10-16 UI-03)', () => {
     expect(screen.getByLabelText(/^Wallet Name/)).toBe(document.getElementById('wallet-new-name'));
     expect(screen.getByLabelText('Type')).toBe(document.getElementById('wallet-new-type'));
     expect(screen.getByLabelText(/^Starting Balance/)).toBe(document.getElementById('wallet-new-init-balance'));
+
+    const labels = Array.from(document.querySelectorAll('form label'));
+    expect(labels).toHaveLength(3);
+    for (const label of labels) expect((label as HTMLLabelElement).control).not.toBeNull();
+
+    const group = screen.getByRole('group', { name: 'Color' });
+    expect(within(group).getAllByRole('button')).toHaveLength(IDENTITY_COLORS.length);
+    expect(within(group).getAllByRole('button', { pressed: true })).toHaveLength(1);
+
+    expect(document.getElementById('wallet-new-currency')?.textContent).toBe('THB (฿)');
   });
 });

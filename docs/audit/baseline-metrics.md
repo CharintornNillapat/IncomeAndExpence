@@ -23,6 +23,16 @@ npx tsc --noEmit --extendedDiagnostics
 
 ## Figures
 
+### Phase 152 - delta against Phase 151
+
+Measured at the T820 working tree.
+
+- **Entry chunk** `index-CsN9mAj5.js`: 198,233 B (0 B delta), 57,965 B gzip (-9 B against Phase 151/149 `index-achQGTXo.js`, 198,233 / 57,974).
+- **All app JS**: 910,982 B (+48 B), 275,886 B gzip (+34 B against Phase 151/149 910,934 / 275,852, 39 files, 0 file delta): `AddWalletModal-HUvfbRXN.js` is 3,006 B / 1,376 B gzip (was `AddWalletModal-CjIeYJ-s.js` 2,958 B / 1,343 B gzip in Phase 149).
+- **CSS**: `index-BNwLrid8.css`: 54,969 B (0 delta), 10,720 B gzip (0 delta; the same file as Phase 149 and Phase 151).
+- **Vitest**: 72 files, 1601 tests (+0 files, +0 tests against Phase 151; extended test in `unit/wallets-page.test.tsx`), 1601 passed in 62.98 s (`workflow/stages/02_build/output/logs/T820-unit.log`).
+- **Playwright**: unchanged, 213 tests in 37 files, 639 runs across 3 projects; targeted run on three browsers for the 5 affected specs (`wallets.spec.ts`, `wallet-forms.spec.ts`, `soft-delete.spec.ts`, `account-and-mobile-nav.spec.ts`, `ios-field-zoom.spec.ts`), 96 passed in 2.4 min (`workflow/stages/02_build/output/logs/T820-e2e.log`).
+
 ### Phase 151 - delta against Phase 149
 
 Measured at the T819 working tree; no file under `src/`, `index.html`, `vite.config.ts`, `package.json` or `package-lock.json` changed (gate 11), so the entry chunk, all app JS and CSS are Phase 149's (`index-achQGTXo.js` 198,233 B, all app JS 910,934 B in 39 files, CSS 54,969 B) and were not rebuilt.
