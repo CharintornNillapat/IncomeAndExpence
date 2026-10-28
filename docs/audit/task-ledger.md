@@ -57,7 +57,7 @@ Branch `phase-152-wallet-form-labels`, cut from `main` at `2e18134`. One commit,
 
 ## Phase 153 - Faster phase flow: PRs opened by the orchestrator, auto-merge, batching (rule change, docs only, no ADR)
 
-Branch `phase-153-faster-phase-flow`, cut from `main` at `c24dcdd`. One commit, T821's `4b45a1b`. Docs only, no migration. Manual merge: the diff touches `AGENTS.md`, which is on the pause list.
+Branch `phase-153-faster-phase-flow`, cut from `main` at `c24dcdd`. Two commits, T821's `4b45a1b` and the closing docs `ec86729`, merged into `main` as `f50d742` (PR #105). Docs only, no migration. Merged by the owner with the admin bypass: the diff touches `AGENTS.md`, which is on the pause list.
 
 | # | Task | Files | Status | Commit | Gate result |
 |---|---|---|---|---|---|

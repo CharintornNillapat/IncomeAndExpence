@@ -19,7 +19,7 @@ ADR `NNNN`. <the brief, one or two sentences>
 
 ---
 
-## Phase 153 - Faster phase flow: T821 (2026-10-28, code `4b45a1b`, merged `<sha>`)
+## Phase 153 - Faster phase flow: T821 (2026-10-28, code `4b45a1b`, merged `f50d742`)
 
 No ADR (a workflow rule change in `AGENTS.md`, docs only). The last four phases took 4 to 5 hours of wall clock for about 25 to 40 minutes of agent work; the rest was waiting for the owner to push, open and merge the PR, and send `merged`. The orchestrator now opens the PR, auto-merges non-money-path phases, and writes the deploy record itself.
 
@@ -27,6 +27,8 @@ No ADR (a workflow rule change in `AGENTS.md`, docs only). The last four phases 
 **Verified:** AGENTS.md diff 9 insertions and 4 deletions, CRLF kept, 0 em dashes; `allow_auto_merge` is `true` and `main` requires the 7 contexts (`Type-check and unit tests` and the six `E2E` jobs) with no required PR and admin bypass allowed, read with `gh api`; the `--jq` expression that finds failed checks ran on PR #104 and printed `MERGED []`; live `finlife.md` is byte-identical to the reviewed draft. No unit or e2e run: no code, test or config file changed.
 **Surprises:** the auto mode classifier blocked most edits to `finlife.md` as self-modification, and three that landed left the file contradicting itself, so it was restored byte for byte and the owner copied the reviewed draft in. A required check never reports on a docs-only PR (the Playwright workflow's `paths-ignore`), so a docs-only PR would hang under auto-merge; the rule excludes it. Merge commits, not `--squash`, because the ledger and the deploy record cite the per-task commits.
 **Deliberately not done:** an ADR; any change to `.github/workflows/`, `vercel.json` or the GitHub settings by an agent (the owner enabled auto-merge and the branch rule); an admin-bypass note in `AGENTS.md`; the failed-check branch of the wait loop and the auto-merge path itself were not exercised, since no PR with a failed check exists and this phase touches `AGENTS.md` and merges by hand, so the first non-money-path phase is the first real run.
+
+**Release:** PR #105 merged into `main` as `f50d742` (merge commit, not squashed; code commits `4b45a1b` and `ec86729`) by the owner with the admin bypass, since the required checks never report on a docs-only PR. No `main` CI run exists for `f50d742`: the Playwright workflow ignores docs-only pushes. The Vercel production deployment of `f50d742` is READY. No migration, nothing to apply to live.
 
 ---
 
