@@ -88,3 +88,113 @@ describe('.github/workflows', () => {
     expect(used.sort()).toEqual(['schema-drift.yml: SUPABASE_DRIFT_DB_CA', 'schema-drift.yml: SUPABASE_DRIFT_DB_URL']);
   });
 });
+
+/**
+ * Phase 154 (ADR 0111): the seven checks `main` requires, read from its branch
+ * protection on 2026-10-28 (`gh api repos/{owner}/{repo}/branches/main/protection`).
+ * A pull request that starts no run never reports them, so a docs-only one
+ * waited for the owner's bypass. Renaming a job or changing the matrix changes
+ * these names, and the branch protection must change with them.
+ */
+const REQUIRED = [
+  'E2E (chromium 1/2)',
+  'E2E (chromium 2/2)',
+  'E2E (firefox 1/2)',
+  'E2E (firefox 2/2)',
+  'E2E (webkit 1/2)',
+  'E2E (webkit 2/2)',
+  'Type-check and unit tests',
+];
+
+/** The condition on every step of `checks` and `e2e`: `changes` found code. */
+const WHEN_CODE = "needs.changes.outputs.code == 'true'";
+
+/** A job's steps, each its lines from one `      - ` to the next. */
+function steps(lines: string[]): string[][] {
+  const result: string[][] = [];
+  for (const line of lines) {
+    if (/^ {6}- /.test(line)) result.push([line]);
+    else result.at(-1)?.push(line);
+  }
+  return result;
+}
+
+describe('playwright.yml reports the required checks on every pull request (ADR 0111)', () => {
+  const text = read('playwright.yml');
+  const all = jobs(text);
+  const job = (id: string) => all.get(id) ?? [];
+  /** A job's own key at four spaces, e.g. `    needs: changes`. */
+  const key = (id: string, name: string) => job(id).find((line) => line.startsWith(`    ${name}: `));
+
+  it('has no paths filter on pull_request, so every pull request starts a run', () => {
+    const lines = text.split('\n');
+    const at = lines.indexOf('  pull_request:');
+    expect(at).toBeGreaterThan(0);
+    const block: string[] = [];
+    for (const line of lines.slice(at + 1)) {
+      if (!/^ {4}/.test(line)) break;
+      block.push(line);
+    }
+    expect(block.filter((line) => /^\s+paths(-ignore)?:/.test(line))).toEqual([]);
+  });
+
+  it('names its jobs so the matrix expands to exactly the required checks', () => {
+    const matrix = (name: string) =>
+      /\[ (.+) \]/.exec(job('e2e').find((line) => line.startsWith(`        ${name}: [`)) ?? '')?.[1].split(', ') ?? [];
+    const e2e = key('e2e', 'name')?.slice('    name: '.length) ?? '';
+    const names = matrix('project').flatMap((project) =>
+      matrix('shard').map((shard) => e2e.replace('${{ matrix.project }}', project).replace('${{ matrix.shard }}', shard)));
+    expect([key('checks', 'name')?.slice('    name: '.length), ...names].sort()).toEqual(REQUIRED);
+  });
+
+  it('skips the steps of checks and e2e, never the jobs, on a docs-only pull request', () => {
+    for (const id of ['checks', 'e2e']) {
+      expect(job(id).filter((line) => line.startsWith('    if:')), `${id} has no job-level if`).toEqual([]);
+      expect(key(id, 'needs'), `${id} needs changes`).toMatch(/\bchanges\b/);
+      const each = steps(job(id));
+      expect(each.length, `${id} has steps`).toBeGreaterThan(0);
+      for (const step of each) {
+        expect(step.find((line) => line.startsWith('        if: ')) ?? '', `${id}: ${step[0].trim()}`).toContain(WHEN_CODE);
+      }
+    }
+    expect(key('merge-reports', 'if')).toContain(WHEN_CODE);
+  });
+
+  it('counts a pull request as docs-only only when every changed file is under docs/ or anti-slop/ or ends in .md', () => {
+    const changes = job('changes').join('\n');
+    expect(changes).toMatch(/^ {10}fetch-depth: 2$/m);
+    expect(changes).toContain('git diff --name-only --no-renames HEAD^1 HEAD');
+    const pattern = /grep -Ev '([^']+)'/.exec(changes)?.[1];
+    expect(pattern).toBeDefined();
+    const docsOnly = new RegExp(pattern ?? '');
+    const docs = [
+      'docs/audit/task-ledger.md',
+      'docs/design/tokens.json',
+      'anti-slop/rules.txt',
+      'README.md',
+      'AGENTS.md',
+      '.claude/agents/fin-reviewer.md',
+      'workflow/stages/01_spec/CONTEXT.md',
+    ];
+    const code = [
+      'src/App.tsx',
+      'unit/workflow-hardening.test.ts',
+      '.github/workflows/playwright.yml',
+      'package-lock.json',
+      '.gitignore',
+      'docs.ts',
+      'src/docs/notes.ts',
+      'notes.mdx',
+      'README.md.bak',
+      'workflow/stages/02_build/output/logs/T822-unit.log',
+    ];
+    expect(docs.filter((file) => !docsOnly.test(file))).toEqual([]);
+    expect(code.filter((file) => docsOnly.test(file))).toEqual([]);
+  });
+
+  it('uses the docs-only set of the push filter and of the Release rule in AGENTS.md', () => {
+    expect(text.match(/^ {4}paths-ignore: .*$/gm)).toEqual(["    paths-ignore: [ 'docs/**', 'anti-slop/**', '**/*.md' ]"]);
+    const agents = readFileSync(new URL('../AGENTS.md', import.meta.url), 'utf8');
+    expect(agents).toContain('outside `docs/`, `anti-slop/` and `*.md`');
+  });
+});

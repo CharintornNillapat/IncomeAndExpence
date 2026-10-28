@@ -63,6 +63,14 @@ Branch `phase-153-faster-phase-flow`, cut from `main` at `c24dcdd`. Two commits,
 |---|---|---|---|---|---|
 | T821 | Rule change: after a phase's last task the orchestrator pushes and opens the PR; non-money-path PRs get `gh pr merge --auto --merge`; the deploy record needs no `merged` order and a migration phase writes its apply note in the same commit; small Backlog items batch into one phase (at most 4; 3 code or test files, about 60 lines, no migration, no money path); Phase 153 closing docs | `AGENTS.md`, `docs/audit/refactor-log.md`, `docs/audit/task-ledger.md` | done | 4b45a1b | Docs checks passed (AGENTS.md diff 9 insertions 4 deletions, CRLF kept, 0 em dashes; `allow_auto_merge` true and the 7 required contexts on `main` read back with `gh api`; the `gh pr view --json state,statusCheckRollup --jq` expression run on PR #104; paths named in the rule exist in `playwright.yml`'s `paths-ignore`); no unit or e2e run: no code, test or config file changed. Outside the repo: `~/.claude/commands/finlife.md` replaced by the owner and read back byte-identical to the reviewed draft (17,231 bytes), backup `finlife.md.bak` kept. No herdr spec, build or review: drafted and approved in one session. |
 
+## Phase 154 - Docs-only pull requests report the required checks (ADR 0111)
+
+Branch `phase-154-docs-ci-checks`, cut from `main` at `da96700`. No migration.
+
+| # | Task | Files | Status | Commit | Gate result |
+|---|---|---|---|---|---|
+| T822 | Docs-only PRs report the 7 required checks on main: changes job in playwright.yml, step-level skipping, hardening test, AGENTS.md reason, Phase 154 closing docs (ADR 0111) | `docs/audit/decisions/0111-docs-only-prs-report-required-checks.md`, `unit/workflow-hardening.test.ts`, `.github/workflows/playwright.yml`, `AGENTS.md`, `README.md`, `docs/contexts/ui-and-e2e.md`, `docs/audit/refactor-log.md`, `docs/audit/baseline-metrics.md`, `.gitignore`, `docs/audit/task-ledger.md` | done | | Red run verified (4 failed, 13 passed in unit/workflow-hardening.test.ts); npm run lint clean; related unit 1 file 17 passed (308ms); full unit 72 files 1606 passed (83.99s); shuffled unit 72 files 1606 passed with seed 1793187995002 (69.76s); classifier harness verified (docs pull_request -> code=false, code pull_request -> code=true, move pull_request -> code=true, mdx pull_request -> code=true, push push -> code=true, empty pull_request -> code=true, no-parent pull_request -> exit 128); workflow diff shape clean (70 insertions, 8 deletions); stated counts in AGENTS.md (1606 tests, 72 files) and README.md verified; gitignore checks verified; 0 em dashes; line endings CRLF; scope clean |
+
 ## Backlog
 
 Not scheduled. Each row says where it came from.

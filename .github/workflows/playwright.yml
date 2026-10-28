@@ -4,12 +4,14 @@ on:
   push:
     branches: [ main, master ]
     # A docs-only push (an ADR, the audit logs, a sha backfill) cannot change
-    # what the suites test. If branch protection ever makes this check
-    # required, a docs-only PR would wait on it forever: drop the filter then.
+    # what the suites test, and branch protection requires no check on a
+    # push, so it starts no run.
     paths-ignore: [ 'docs/**', 'anti-slop/**', '**/*.md' ]
+  # No paths filter here (Phase 154, ADR 0111): `main` requires the seven
+  # checks below, and a pull request that starts no run never reports them.
+  # A docs-only one runs them with every step skipped; see `changes`.
   pull_request:
     branches: [ main, master ]
-    paths-ignore: [ 'docs/**', 'anti-slop/**', '**/*.md' ]
 
 # A newer push to the same ref tests a superset of the same code, so the older
 # run is cancelled rather than left to finish (Phase 55, T201).
@@ -24,12 +26,22 @@ concurrency:
 permissions: {}
 
 jobs:
-  checks:
-    name: Type-check and unit tests
-    timeout-minutes: 15
+  # Phase 154 (ADR 0111): is this pull request docs-only? It is when every
+  # file the merge would change is under docs/ or anti-slop/ or ends in .md,
+  # the push filter's set above and the Release rule's in AGENTS.md. Then
+  # `checks` and `e2e` still run, so the seven required checks report, but
+  # every step in them is skipped. Skip steps, never a job: a matrix job
+  # skipped by a job-level `if:` reports one unexpanded name, not six. Any
+  # other file, .github/ included, is code, and so is every push, which the
+  # filter above already chose.
+  changes:
+    name: Classify the changed files
+    timeout-minutes: 5
     runs-on: ubuntu-24.04
     permissions:
       contents: read
+    outputs:
+      code: ${{ steps.classify.outputs.code }}
 
     steps:
       - name: Checkout repository
@@ -37,17 +49,58 @@ jobs:
         with:
           # Nothing here pushes, so the job's token is not left in .git/config.
           persist-credentials: false
+          # The merge commit and both its parents: HEAD^1 is the base branch,
+          # so HEAD^1..HEAD is exactly what the merge would land.
+          fetch-depth: 2
+
+      # --no-renames lists a moved file under its old path too, so moving
+      # code into docs/ is still code. An empty list is code. A failed diff
+      # fails this job, and the required checks then never pass.
+      - name: Classify the changed files
+        id: classify
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          code=true
+          if [ "$EVENT_NAME" = pull_request ]; then
+            files=$(git diff --name-only --no-renames HEAD^1 HEAD)
+            printf '%s\n' "$files"
+            if [ -n "$files" ] && ! printf '%s\n' "$files" | grep -Ev '^(docs/|anti-slop/)|\.md$' > /dev/null; then
+              code=false
+            fi
+          fi
+          echo "code=$code"
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+
+  checks:
+    name: Type-check and unit tests
+    needs: changes
+    timeout-minutes: 15
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        if: needs.changes.outputs.code == 'true'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Nothing here pushes, so the job's token is not left in .git/config.
+          persist-credentials: false
 
       - name: Set up Node.js
+        if: needs.changes.outputs.code == 'true'
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 24
           cache: 'npm'
 
       - name: Install project dependencies
+        if: needs.changes.outputs.code == 'true'
         run: npm ci
 
       - name: Type-check (tsc --noEmit)
+        if: needs.changes.outputs.code == 'true'
         run: npm run lint
 
       # Its own job, and every browser job `needs` it (ADR 0021): the unit
@@ -56,6 +109,7 @@ jobs:
       # cannot - the isSecureContext branch, the retry clock, the threshold
       # boundaries and the ledger guards' ordering.
       - name: Unit tests (Vitest)
+        if: needs.changes.outputs.code == 'true'
         run: npm run test:unit
 
       # Phase 120 (ADR 0096): the same suite again, its files and the tests in
@@ -64,11 +118,12 @@ jobs:
       # likelier to fail here, before the merge. The log prints the seed:
       # `npx vitest run --sequence.shuffle --sequence.seed=<seed>` replays it.
       - name: Unit tests, shuffled (Vitest)
+        if: needs.changes.outputs.code == 'true'
         run: npm run test:unit:shuffle
 
   e2e:
     name: E2E (${{ matrix.project }} ${{ matrix.shard }}/2)
-    needs: checks
+    needs: [ changes, checks ]
     timeout-minutes: 30
     runs-on: ubuntu-24.04
     permissions:
@@ -104,23 +159,27 @@ jobs:
 
     steps:
       - name: Checkout repository
+        if: needs.changes.outputs.code == 'true'
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           # Nothing here pushes, so the job's token is not left in .git/config.
           persist-credentials: false
 
       - name: Set up Node.js
+        if: needs.changes.outputs.code == 'true'
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 24
           cache: 'npm'
 
       - name: Install project dependencies
+        if: needs.changes.outputs.code == 'true'
         run: npm ci
 
       # A lockfile bump without a new image would fail every test with a
       # missing browser executable; this names the cause instead.
       - name: Check the image matches the installed Playwright
+        if: needs.changes.outputs.code == 'true'
         run: |
           installed=$(node -p "require('@playwright/test/package.json').version")
           if [ "$installed" != "${{ matrix.playwright }}" ]; then
@@ -133,6 +192,7 @@ jobs:
       # evenly across every test, so a slow job is read against this line
       # before anything is blamed on the suite.
       - name: Describe the runner
+        if: needs.changes.outputs.code == 'true'
         run: |
           cpu=$(grep -m1 'model name' /proc/cpuinfo | cut -d: -f2 | sed 's/^ *//')
           mem=$(awk '/MemTotal/ { printf "%.1f GiB", $2 / 1048576 }' /proc/meminfo)
@@ -140,6 +200,7 @@ jobs:
           echo "Runner: $(nproc) CPUs, $cpu, $mem" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Run Playwright E2E tests
+        if: needs.changes.outputs.code == 'true'
         run: npx playwright test --project=${{ matrix.project }} --shard=${{ matrix.shard }}/2
         env:
           CI: true
@@ -153,7 +214,7 @@ jobs:
       # `npx playwright merge-reports --reporter html <folder of the zips>`.
       - name: Upload the blob report
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && needs.changes.outputs.code == 'true' }}
         with:
           name: blob-report-${{ matrix.project }}-${{ matrix.shard }}
           path: blob-report/
@@ -162,12 +223,13 @@ jobs:
   # Phase 86 (ADR 0062): one HTML report for all six shards, with every kept
   # trace in it, instead of six reports to search. It runs whether the tests
   # passed or failed (a failure is when the report is needed), but not on a
-  # run a newer push cancelled, and not when `checks` failed and no shard ran.
+  # run a newer push cancelled, not when `checks` failed and no shard ran, and
+  # not on a docs-only pull request, whose shards wrote no blob.
   # It only reports: a failed test already fails its own E2E job.
   merge-reports:
     name: Merge the E2E reports
-    needs: e2e
-    if: ${{ !cancelled() && needs.e2e.result != 'skipped' }}
+    needs: [ changes, e2e ]
+    if: ${{ !cancelled() && needs.e2e.result != 'skipped' && needs.changes.outputs.code == 'true' }}
     timeout-minutes: 10
     runs-on: ubuntu-24.04
     permissions:
