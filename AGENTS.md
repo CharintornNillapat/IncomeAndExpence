@@ -83,7 +83,7 @@ Run every tier that matches a changed path, then report the commands and results
 | `unit/` | `npm run lint`; `npx vitest run unit/<changed files>`; then `npm run test:unit` |
 | `src/utils/`, `src/selectors/`, `src/services/` | `npm run lint`; `npx vitest run unit/<related>`; then `npm run test:unit` |
 | `src/context/`, `src/hooks/`, `src/lib/` | The row above, plus the affected spec(s) on chromium, then on all three browsers |
-| `src/components/`, `src/views/`, `src/index.css`, `App.tsx` | `npm run lint`; `npm run test:unit`; the affected spec(s) with `--project=chromium`, then without a project filter |
+| `src/components/`, `src/views/`, `src/index.css`, `App.tsx` | `npm run lint`; `npm run test:unit`; the affected spec(s) with `--project=chromium`, then without a project filter. A type size, line height, font or spacing token in `src/index.css` makes `tests/safe-area.spec.ts` and `tests/layout-stability.spec.ts` affected specs |
 | `api/` | `npm run lint`; `npx vitest run unit/proxy-contract.test.ts unit/proxy-parity.test.ts unit/proxy-prefetch.test.ts unit/proxy-auth-client.test.ts unit/csp-report.test.ts`; then `npm run test:unit` |
 | `supabase/` | `npx vitest run unit/migration-replay.test.ts unit/drift-runner.test.ts unit/migration-history.test.ts`; `npm run schema:drift`; then `npm run test:unit`. Live probes are stop-and-ask |
 | `vercel.json`, `index.html` | `npx vitest run unit/security-headers.test.ts` |
