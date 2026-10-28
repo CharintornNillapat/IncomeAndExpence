@@ -19,6 +19,17 @@ ADR `NNNN`. <the brief, one or two sentences>
 
 ---
 
+## Phase 153 - Faster phase flow: T821 (2026-10-28, code `4b45a1b`, merged `<sha>`)
+
+No ADR (a workflow rule change in `AGENTS.md`, docs only). The last four phases took 4 to 5 hours of wall clock for about 25 to 40 minutes of agent work; the rest was waiting for the owner to push, open and merge the PR, and send `merged`. The orchestrator now opens the PR, auto-merges non-money-path phases, and writes the deploy record itself.
+
+**Changed:** T821 (`AGENTS.md`: the GitHub write-tool bullet and the `git push`/merge bullet get the Release exception; the Commits bullet no longer waits for a push order; new Release, Deploy record and Batching bullets; the one-exception-on-`main` bullet now names the orchestrator's deploy record). Outside the repo: the owner replaced `~/.claude/commands/finlife.md` (the orchestrator's own rules: a `release` procedure, an automatic `merged` with a 4-wait check-aware loop, one deploy-record commit per migration phase, batching on `phase`), keeping `finlife.md.bak`.
+**Verified:** AGENTS.md diff 9 insertions and 4 deletions, CRLF kept, 0 em dashes; `allow_auto_merge` is `true` and `main` requires the 7 contexts (`Type-check and unit tests` and the six `E2E` jobs) with no required PR and admin bypass allowed, read with `gh api`; the `--jq` expression that finds failed checks ran on PR #104 and printed `MERGED []`; live `finlife.md` is byte-identical to the reviewed draft. No unit or e2e run: no code, test or config file changed.
+**Surprises:** the auto mode classifier blocked most edits to `finlife.md` as self-modification, and three that landed left the file contradicting itself, so it was restored byte for byte and the owner copied the reviewed draft in. A required check never reports on a docs-only PR (the Playwright workflow's `paths-ignore`), so a docs-only PR would hang under auto-merge; the rule excludes it. Merge commits, not `--squash`, because the ledger and the deploy record cite the per-task commits.
+**Deliberately not done:** an ADR; any change to `.github/workflows/`, `vercel.json` or the GitHub settings by an agent (the owner enabled auto-merge and the branch rule); an admin-bypass note in `AGENTS.md`; the failed-check branch of the wait loop and the auto-merge path itself were not exercised, since no PR with a failed check exists and this phase touches `AGENTS.md` and merges by hand, so the first non-money-path phase is the first real run.
+
+---
+
 ## Phase 152 - Add Wallet form labels name real controls: T820 (2026-10-28, code `9d42e9a`, merged `2aa99fc`)
 
 No ADR (accessibility fix, as Phase 136). AddWalletForm's Currency and Color labels now name real controls: Currency is a span instead of a label without a form control, and Color is a span with an id providing the accessible name for a role="group" swatch container via aria-labelledby.

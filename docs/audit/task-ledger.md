@@ -55,6 +55,14 @@ Branch `phase-152-wallet-form-labels`, cut from `main` at `2e18134`. One commit,
 |---|---|---|---|---|---|
 | T820 | Currency and Color labels in AddWalletForm become spans, Color labels a role="group" swatch container; unit test in unit/wallets-page.test.tsx; Phase 152 closing docs | `src/components/wallet/AddWalletForm.tsx`, `unit/wallets-page.test.tsx`, `docs/audit/refactor-log.md`, `docs/audit/baseline-metrics.md`, `docs/audit/task-ledger.md` | done | 9d42e9a | Red gate verified (expected 3 labels got 5); npm run lint clean; related unit 3 files 25 passed (2.93s); full unit 72 files 1601 passed (62.98s); e2e 5 specs 32 passed on chr (56.7s), 96 passed on 3 browsers (2.4m); clean prod build (index-CsN9mAj5.js 198,233 B, all app JS 910,982 B 39 files, CSS 54,969 B); 0 em dashes; line endings CRLF; scope clean |
 
+## Phase 153 - Faster phase flow: PRs opened by the orchestrator, auto-merge, batching (rule change, docs only, no ADR)
+
+Branch `phase-153-faster-phase-flow`, cut from `main` at `c24dcdd`. One commit, T821's `4b45a1b`. Docs only, no migration. Manual merge: the diff touches `AGENTS.md`, which is on the pause list.
+
+| # | Task | Files | Status | Commit | Gate result |
+|---|---|---|---|---|---|
+| T821 | Rule change: after a phase's last task the orchestrator pushes and opens the PR; non-money-path PRs get `gh pr merge --auto --merge`; the deploy record needs no `merged` order and a migration phase writes its apply note in the same commit; small Backlog items batch into one phase (at most 4; 3 code or test files, about 60 lines, no migration, no money path); Phase 153 closing docs | `AGENTS.md`, `docs/audit/refactor-log.md`, `docs/audit/task-ledger.md` | done | 4b45a1b | Docs checks passed (AGENTS.md diff 9 insertions 4 deletions, CRLF kept, 0 em dashes; `allow_auto_merge` true and the 7 required contexts on `main` read back with `gh api`; the `gh pr view --json state,statusCheckRollup --jq` expression run on PR #104; paths named in the rule exist in `playwright.yml`'s `paths-ignore`); no unit or e2e run: no code, test or config file changed. Outside the repo: `~/.claude/commands/finlife.md` replaced by the owner and read back byte-identical to the reviewed draft (17,231 bytes), backup `finlife.md.bak` kept. No herdr spec, build or review: drafted and approved in one session. |
+
 ## Backlog
 
 Not scheduled. Each row says where it came from.
