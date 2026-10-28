@@ -28,7 +28,7 @@ ADR `0110`. A retry of a transfer that the user has since deleted now replays th
 **Surprises:** none.
 **Deliberately not done:** the unique_violation handler is not exercised by the probe (needs two concurrent sessions; covered by text and md5 checks); no client test for a deleted replay (the client path is the existing replay path, unchanged); no change to record_transaction or other ledger functions; no Playwright run: no file under `src/` or `tests/` changed; filling the `<sha>` placeholders in the heading and the Commit cell in task-ledger.md, left to the owner-approved post-merge deploy record.
 
-**Release:** PR #103 merged into `main` as `47c7fe2` (merge commit, not squashed; code commit `62f3aac`). The `main` Playwright run for `47c7fe2` concluded success, and the Vercel production deployment of `47c7fe2` is READY. The migration is not applied to live yet; the owner applies it (ADR 0110 Release).
+**Release:** PR #103 merged into `main` as `47c7fe2` (merge commit, not squashed; code commit `62f3aac`). The `main` Playwright run for `47c7fe2` concluded success, and the Vercel production deployment of `47c7fe2` is READY. The owner applied the migration live on 2026-10-28, after the merge, with its history row (version `20261028034244`) and a zero-row drift check (ADR 0110 Release).
 
 ---
 

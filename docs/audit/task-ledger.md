@@ -41,7 +41,7 @@ Branch `phase-150-audit-archive`, cut from `main` at `51e63f1`. No migration.
 
 ## Phase 151 - transfer_funds replays a soft-deleted transfer (ADR 0110)
 
-Branch `phase-151-transfer-replay-soft-deleted`, cut from `main` at `a6147d7`. One migration, `20261028_phase151_transfer_funds_replay_any_row.sql`, applied to live by the owner (ADR 0110 Release).
+Branch `phase-151-transfer-replay-soft-deleted`, cut from `main` at `a6147d7`. One migration, `20261028_phase151_transfer_funds_replay_any_row.sql`, merged into `main` as `47c7fe2` (PR #103). The owner applied it live after the merge on 2026-10-28, with its history row and a zero-row drift check (ADR 0110 Release).
 
 | # | Task | Files | Status | Commit | Gate result |
 |---|---|---|---|---|---|

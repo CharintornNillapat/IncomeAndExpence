@@ -1,6 +1,6 @@
 # 0110: transfer_funds replays on any row with its key, live or soft-deleted
 
-**Status:** Accepted. Implemented in Phase 151 (T819): code `62f3aac`, merged `47c7fe2`. The migration `20261028_phase151_transfer_funds_replay_any_row.sql` is not applied to live yet; the owner applies it (see Release).
+**Status:** Accepted. Implemented in Phase 151 (T819): code `62f3aac`, merged `47c7fe2`. The migration `20261028_phase151_transfer_funds_replay_any_row.sql` was applied to live by the owner on 2026-10-28 (see Release).
 - **Amends** ADR 0069 (the Phase 93 `transfer_funds` body, whose two lookups matched live rows only).
 - **Completes** ADR 0023's replay rule ("Replay matches any row, live or deleted, deliberately") for the one ledger function that did not follow it.
 
@@ -27,7 +27,7 @@ The `unique_violation` handler is not exercised by the probe (it needs two concu
 
 ## Release
 
-Not applied yet. After T819 is approved, the owner, in the Supabase SQL editor:
+Applied by the owner on 2026-10-28, after the merge, in the Supabase SQL editor. History version `20261028034244` (seen with the read-only `list_migrations`); steps 1 to 4 succeeded with no error, as the owner reported. The steps were:
 1. Read-only check that live's body is the one the migration starts from: `select md5(replace(prosrc, chr(13), '')) from pg_proc where oid = 'public.transfer_funds(uuid, uuid, numeric, text, text, date, text, boolean)'::regprocedure;` must return `03b469921a7c0d01909608cb8c6a53d7`. If it does not, stop: the migration must be re-specified from the live body.
 2. Apply `supabase/migrations/20261028_phase151_transfer_funds_replay_any_row.sql`.
 3. Run the history row that `npm run migration:print-history -- supabase/migrations/20261028_phase151_transfer_funds_replay_any_row.sql` prints (ADR 0065).
