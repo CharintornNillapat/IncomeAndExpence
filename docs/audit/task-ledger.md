@@ -49,11 +49,11 @@ Branch `phase-151-transfer-replay-soft-deleted`, cut from `main` at `a6147d7`. O
 
 ## Phase 152 - Add Wallet form labels name real controls (accessibility, no ADR)
 
-Branch `phase-152-wallet-form-labels`, cut from `main` at `2e18134`. No migration.
+Branch `phase-152-wallet-form-labels`, cut from `main` at `2e18134`. One commit, T820's `9d42e9a`, merged into `main` as `2aa99fc` (PR #104). No migration.
 
 | # | Task | Files | Status | Commit | Gate result |
 |---|---|---|---|---|---|
-| T820 | Currency and Color labels in AddWalletForm become spans, Color labels a role="group" swatch container; unit test in unit/wallets-page.test.tsx; Phase 152 closing docs | `src/components/wallet/AddWalletForm.tsx`, `unit/wallets-page.test.tsx`, `docs/audit/refactor-log.md`, `docs/audit/baseline-metrics.md`, `docs/audit/task-ledger.md` | done | | Red gate verified (expected 3 labels got 5); npm run lint clean; related unit 3 files 25 passed (2.93s); full unit 72 files 1601 passed (62.98s); e2e 5 specs 32 passed on chr (56.7s), 96 passed on 3 browsers (2.4m); clean prod build (index-CsN9mAj5.js 198,233 B, all app JS 910,982 B 39 files, CSS 54,969 B); 0 em dashes; line endings CRLF; scope clean |
+| T820 | Currency and Color labels in AddWalletForm become spans, Color labels a role="group" swatch container; unit test in unit/wallets-page.test.tsx; Phase 152 closing docs | `src/components/wallet/AddWalletForm.tsx`, `unit/wallets-page.test.tsx`, `docs/audit/refactor-log.md`, `docs/audit/baseline-metrics.md`, `docs/audit/task-ledger.md` | done | 9d42e9a | Red gate verified (expected 3 labels got 5); npm run lint clean; related unit 3 files 25 passed (2.93s); full unit 72 files 1601 passed (62.98s); e2e 5 specs 32 passed on chr (56.7s), 96 passed on 3 browsers (2.4m); clean prod build (index-CsN9mAj5.js 198,233 B, all app JS 910,982 B 39 files, CSS 54,969 B); 0 em dashes; line endings CRLF; scope clean |
 
 ## Backlog
 
