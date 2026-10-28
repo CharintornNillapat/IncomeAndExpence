@@ -39,6 +39,14 @@ Branch `phase-150-audit-archive`, cut from `main` at `51e63f1`. No migration.
 | T817 | Archive the Phase 136 to 147 refactor-log entries; Phase 150 refactor-log entry | `docs/audit/archive/refactor-log-phases-136-147.md`, `docs/audit/refactor-log.md`, `docs/audit/README.md`, `docs/audit/task-ledger.md` | done | dae45c8 | Docs checks passed (log lines 51, archive byte match, 0 Phase 136-147, Phase 148-149 untouched, 6 pointers resolve, stated facts verified); CRLF kept; 0 em dashes; scope clean |
 | T818 | Archive the Phase 125 to 147 baseline-metrics sections; amend the Phase 150 refactor-log entry | `docs/audit/archive/baseline-metrics-phases-125-147.md`, `docs/audit/baseline-metrics.md`, `docs/audit/refactor-log.md`, `docs/audit/README.md`, `docs/audit/task-ledger.md` | done | 17046cc | Docs checks passed (metrics lines 52, archive byte match, 0 Phase 125-147, 8 pointers resolve, stated facts verified); CRLF kept; 0 em dashes; scope clean |
 
+## Phase 151 - transfer_funds replays a soft-deleted transfer (ADR 0110)
+
+Branch `phase-151-transfer-replay-soft-deleted`, cut from `main` at `a6147d7`. One migration, `20261028_phase151_transfer_funds_replay_any_row.sql`, applied to live by the owner (ADR 0110 Release).
+
+| # | Task | Files | Status | Commit | Gate result |
+|---|---|---|---|---|---|
+| T819 | transfer_funds replays on any row with its key, live or soft-deleted: migration, probe, PGlite replay; Phase 151 closing docs (ADR 0110) | `docs/audit/decisions/0110-transfer-funds-replays-any-row.md`, `supabase/migrations/20261028_phase151_transfer_funds_replay_any_row.sql`, `supabase/tests/20261028_phase151.probe.sql`, `unit/migration-replay.test.ts`, `AGENTS.md`, `README.md`, `docs/audit/refactor-log.md`, `docs/audit/baseline-metrics.md`, `docs/audit/task-ledger.md` | done | | Red run verified (3 failed: count 22 vs 23, ENOENT for migration, 23505 on deleted transfer replay); npm run lint clean; related unit 3 files 81 passed (32.32s); npm run schema:drift clean; parity guards 2 files 215 passed (75.66s); full unit 72 files 1601 passed (55.54s); Gate 7 Phase 93 md5 03b469921a7c0d01909608cb8c6a53d7, Phase 151 md5 9923588c3826c0b5f6f4439236c552d6; Gate 8 body diff lines 143/143, grants and revokes matched; stated counts verified in AGENTS.md and README.md; 0 em dashes; bundle unaffected; line endings CRLF; scope clean |
+
 ## Backlog
 
 Not scheduled. Each row says where it came from.
@@ -62,7 +70,7 @@ Not scheduled. Each row says where it came from.
 | `rollup-plugin-visualizer` for bundle-size visibility | same | todo |
 | Specs check line endings with `git ls-files --eol <file>` (the `w/crlf` column) or a Node count of `\r\n`, never `grep -c $'\r' <file>`: in the agents' Git Bash it printed 0 on CRLF files (`AGENTS.md`, `docs/audit/task-ledger.md`), while the same command inside `$(...)` counted correctly | Phase 128, T754's review (rule candidate); reproduced in T755's spec | done in Phase 130 (T757) |
 | addTransaction omits unknown-outcome cloud refresh on transfer_funds failures | Audit 2026-10-16 (T759), finding SL-02, high; `src/context/FinanceContext.tsx:1848-1853` | done in Phase 132 (T760) |
-| transfer_funds breaks replay on soft-deleted transactions and throws unique_violation | Audit 2026-10-16 (T759), finding SL-01, medium; `supabase/migrations/20261006_phase93_transfer_funds_from_session.sql:80-86` | todo |
+| transfer_funds breaks replay on soft-deleted transactions and throws unique_violation | Audit 2026-10-16 (T759), finding SL-01, medium; `supabase/migrations/20261006_phase93_transfer_funds_from_session.sql:80-86` | done in Phase 151 (T819) |
 | Form inputs in AuthModal lack programmatic label association via htmlFor | Audit 2026-10-16 (T759), finding UI-02, medium; `src/components/AuthModal.tsx:182` | done in Phase 136 (T768) |
 | Form inputs in AddWalletForm lack programmatic label association via htmlFor | Audit 2026-10-16 (T759), finding UI-03, medium; `src/components/wallet/AddWalletForm.tsx:95` | done in Phase 136 (T768) |
 | Profile and password fields in AccountModal lack programmatic label association via htmlFor | Audit 2026-10-16 (T759), finding UI-04, medium; `src/components/account/AccountModal.tsx:611` | done in Phase 136 (T768) |

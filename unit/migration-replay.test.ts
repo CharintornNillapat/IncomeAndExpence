@@ -47,7 +47,7 @@ afterAll(async () => {
 describe('every migration, from empty', () => {
   it('applies in file order, starting from the baseline', () => {
     expect(migrationFiles()[0]).toBe(BASELINE);
-    expect(migrationFiles()).toHaveLength(22);
+    expect(migrationFiles()).toHaveLength(23);
   });
 
   it('builds the eight tables and what the live project holds', () => {
@@ -288,8 +288,11 @@ describe('the probes against the schema the migrations build', () => {
   // Phase 102 ends on purpose; the Phase 102 probe checks the refusal instead.
   // Phase 114 drops that signature, so both stop before it. Phase 149 adds an
   // eleventh SECURITY DEFINER function the advisor lists, so the probes that
-  // count ten (Phases 102, 114 and 123) stop before it.
-  const upTo148 = () => migrationFiles().filter(file => !file.includes('_phase149_'));
+  // count ten (Phases 102, 114 and 123) stop before it. Phase 151 re-creates
+  // transfer_funds, whose body the Phase 102 and 114 probes pin by md5, so
+  // every run that stops before Phase 149 stops before Phase 151 too.
+  const upTo150 = () => migrationFiles().filter(file => !file.includes('_phase151_'));
+  const upTo148 = () => upTo150().filter(file => !file.includes('_phase149_'));
   const upTo113 = () => upTo148().filter(file => !file.includes('_phase114_'));
   const upTo101 = () => upTo113().filter(file => !file.includes('_phase102_'));
 
@@ -405,6 +408,31 @@ describe('the probes against the schema the migrations build', () => {
       await applyMigrations(probeDb, upTo148());
       await expect(probeDb.exec(inlineProbe('20261027_phase149.probe.sql', { applied: true }))).rejects.toThrow(
         /set_transactions_deleted is missing/
+      );
+    } finally {
+      await probeDb.close();
+    }
+  }, 60_000);
+
+  it('Phase 151, before its migration: applies it, passes and rolls back', async () => {
+    const { rows, before, after } = await runProbe('20261028_phase151.probe.sql', upTo150(), false);
+    expect(rows).toContainEqual({ result: 'PHASE 151 PROBE OK' });
+    expect(after).toEqual(before);
+  }, 60_000);
+
+  it('Phase 151, after its migration: passes against every file', async () => {
+    const { rows, before, after } = await runProbe('20261028_phase151.probe.sql', migrationFiles(), true);
+    expect(rows).toContainEqual({ result: 'PHASE 151 PROBE OK' });
+    expect(after).toEqual(before);
+  }, 60_000);
+
+  // SL-01: before Phase 151 a retry of a deleted transfer raised 23505.
+  it('Phase 151: the probe fails on the schema before it, with the migration left out', async () => {
+    const probeDb = await createDatabase();
+    try {
+      await applyMigrations(probeDb, upTo150());
+      await expect(probeDb.exec(inlineProbe('20261028_phase151.probe.sql', { applied: true }))).rejects.toThrow(
+        /a retry of a deleted transfer did not replay it: 23505/
       );
     } finally {
       await probeDb.close();
