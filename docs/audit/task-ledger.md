@@ -47,6 +47,14 @@ Branch `phase-151-transfer-replay-soft-deleted`, cut from `main` at `a6147d7`. O
 |---|---|---|---|---|---|
 | T819 | transfer_funds replays on any row with its key, live or soft-deleted: migration, probe, PGlite replay; Phase 151 closing docs (ADR 0110) | `docs/audit/decisions/0110-transfer-funds-replays-any-row.md`, `supabase/migrations/20261028_phase151_transfer_funds_replay_any_row.sql`, `supabase/tests/20261028_phase151.probe.sql`, `unit/migration-replay.test.ts`, `AGENTS.md`, `README.md`, `docs/audit/refactor-log.md`, `docs/audit/baseline-metrics.md`, `docs/audit/task-ledger.md` | done | 62f3aac | Red run verified (3 failed: count 22 vs 23, ENOENT for migration, 23505 on deleted transfer replay); npm run lint clean; related unit 3 files 81 passed (32.32s); npm run schema:drift clean; parity guards 2 files 215 passed (75.66s); full unit 72 files 1601 passed (55.54s); Gate 7 Phase 93 md5 03b469921a7c0d01909608cb8c6a53d7, Phase 151 md5 9923588c3826c0b5f6f4439236c552d6; Gate 8 body diff lines 143/143, grants and revokes matched; stated counts verified in AGENTS.md and README.md; 0 em dashes; bundle unaffected; line endings CRLF; scope clean |
 
+## Phase 152 - Add Wallet form labels name real controls (accessibility, no ADR)
+
+Branch `phase-152-wallet-form-labels`, cut from `main` at `2e18134`. No migration.
+
+| # | Task | Files | Status | Commit | Gate result |
+|---|---|---|---|---|---|
+| T820 | Currency and Color labels in AddWalletForm become spans, Color labels a role="group" swatch container; unit test in unit/wallets-page.test.tsx; Phase 152 closing docs | `src/components/wallet/AddWalletForm.tsx`, `unit/wallets-page.test.tsx`, `docs/audit/refactor-log.md`, `docs/audit/baseline-metrics.md`, `docs/audit/task-ledger.md` | done | | Red gate verified (expected 3 labels got 5); npm run lint clean; related unit 3 files 25 passed (2.93s); full unit 72 files 1601 passed (62.98s); e2e 5 specs 32 passed on chr (56.7s), 96 passed on 3 browsers (2.4m); clean prod build (index-CsN9mAj5.js 198,233 B, all app JS 910,982 B 39 files, CSS 54,969 B); 0 em dashes; line endings CRLF; scope clean |
+
 ## Backlog
 
 Not scheduled. Each row says where it came from.
@@ -75,7 +83,7 @@ Not scheduled. Each row says where it came from.
 | Form inputs in AddWalletForm lack programmatic label association via htmlFor | Audit 2026-10-16 (T759), finding UI-03, medium; `src/components/wallet/AddWalletForm.tsx:95` | done in Phase 136 (T768) |
 | Profile and password fields in AccountModal lack programmatic label association via htmlFor | Audit 2026-10-16 (T759), finding UI-04, medium; `src/components/account/AccountModal.tsx:611` | done in Phase 136 (T768) |
 | Category selector in CSV import preview table lacks accessible name | Audit 2026-10-16 (T759), finding UI-05, medium; `src/components/transaction/ImportCsvModal.tsx:547-552` | done in Phase 136 (T768) |
-| AddWalletForm's `Currency` and `Color` `<label>`s name no labelable control (a read-only `div` and a swatch button group); make them a `span` or a `role="group"` with `aria-labelledby` | Phase 136, T768's spec | todo |
+| AddWalletForm's `Currency` and `Color` `<label>`s name no labelable control (a read-only `div` and a swatch button group); make them a `span` or a `role="group"` with `aria-labelledby` | Phase 136, T768's spec | done in Phase 152 (T820) |
 | setTransactionDeleted has no cloudRevisionAtStart check, so a failed delete or restore restores its pre-call snapshot even when a cloud reload landed mid-flight, unlike addTransaction and updateTransaction | Phase 132, T760's spec (owner decision); `src/context/FinanceContext.tsx:2190-2197`, compare `:1959` and `:2302` | done in Phase 139 (T777) |
 | A gate that checks text landed reads the expected text from the spec's code blocks with a script, never retyped; rule candidate for `workflow/stages/02_build/CONTEXT.md` | Phase 137, T772's review (section 8): gate 3 passed on the builder's side while edit 2 differed by one character, so the expected string was not the spec's | todo |
 | Any change to a typography or spacing token (`src/index.css` `@theme` sizes, line heights, spacing) runs the layout specs (`tests/safe-area.spec.ts`, `tests/layout-stability.spec.ts`), not only the specs that name the component; rule candidate for `AGENTS.md`'s tier row for `src/index.css`, and for `docs/contexts/ui-and-e2e.md` | Phase 137, T774: T769's `--text-hero` line height of 1.1 (48.4px) passed its gates and failed `safe-area.spec.ts` in CI | todo |

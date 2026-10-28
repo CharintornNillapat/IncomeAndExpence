@@ -1,5 +1,5 @@
 import { identityDisplayColor } from '../../utils/identityPalette';
-import React, { useState } from 'react';
+import React, { useState, useId } from 'react';
 import { useFinanceActions } from '../../context/FinanceContext';
 import { useSubmitHandler } from '../../hooks/useSubmitHandler';
 import { useIdempotencyKey } from '../../hooks/useIdempotencyKey';
@@ -57,6 +57,7 @@ export const AddWalletForm: React.FC<AddWalletFormProps> = ({
   // One key per form (ADR 0024): signed in, a retry after a lost response
   // returns the same wallet instead of creating a second one.
   const { idempotencyKey: createKey, rotateIdempotencyKey } = useIdempotencyKey();
+  const colorLabelId = useId();
 
   const [walletName, setWalletName] = useState<string>('');
   const [walletType, setWalletType] = useState<WalletType>('BANK_ACCOUNT');
@@ -123,7 +124,7 @@ export const AddWalletForm: React.FC<AddWalletFormProps> = ({
         </div>
 
         <div>
-          <label className={LABEL_CLASS}>Currency</label>
+          <span className={LABEL_CLASS}>Currency</span>
           <div
             id={ids.currency}
             className="w-full text-xs rounded-lg border border-line px-3 py-2.5 bg-surface-2 text-fg-secondary"
@@ -149,9 +150,9 @@ export const AddWalletForm: React.FC<AddWalletFormProps> = ({
       </div>
 
       <div>
-        <label className={`${LABEL_CLASS} mb-1.5`}>Color</label>
+        <span id={colorLabelId} className={`${LABEL_CLASS} mb-1.5`}>Color</span>
         {/* A 28px swatch inside a 44px hit box; the selected one takes the focus ring, not a scale. */}
-        <div className="flex flex-wrap items-center gap-1">
+        <div role="group" aria-labelledby={colorLabelId} className="flex flex-wrap items-center gap-1">
           {IDENTITY_COLORS.map((c) => (
             <button
               key={c}
