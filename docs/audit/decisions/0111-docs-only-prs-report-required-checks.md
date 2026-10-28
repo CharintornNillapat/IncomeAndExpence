@@ -1,6 +1,6 @@
 # 0111: docs-only pull requests report required checks
 
-**Status:** Accepted. To be implemented in Phase 154 (T822): code `<sha>`, merged `<sha>`.
+**Status:** Accepted. To be implemented in Phase 154 (T822): code `deb6942`, merged `3e31866`.
 The owner approved editing `.github/workflows/` for this task on 2026-10-28.
 
 **Date:** 2026-10-28
@@ -37,4 +37,4 @@ In GitHub Actions, if a matrix job is skipped using a job-level `if:` condition,
 
 ## Release
 
-To be merged into `main` via pull request without auto-merge, observed by the owner. Post-merge deploy record will fill `<sha>` placeholders on `main`.
+To be merged into `main` via pull request without auto-merge, observed by the owner. Merged by the owner as PR #106 on 2026-10-28 (merge commit `3e31866`, code commit `deb6942`). The PR changed a workflow, so it ran as code: all seven required checks and `Merge the E2E reports` passed for real (E2E jobs 2m39s to 3m33s, `Type-check and unit tests` 2m59s, `Classify the changed files` 7s). The `main` push run for `3e31866` (run 40693050629) passed every job, and the Vercel deployment completed. The proof of the fix is still the first docs-only PR after the merge.

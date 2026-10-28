@@ -19,7 +19,7 @@ ADR `NNNN`. <the brief, one or two sentences>
 
 ---
 
-## Phase 154 - Docs-only pull requests report the required checks: T822 (2026-10-28, code `<sha>`, merged `<sha>`)
+## Phase 154 - Docs-only pull requests report the required checks: T822 (2026-10-28, code `deb6942`, merged `3e31866`)
 
 ADR `0111`. Docs-only pull requests report all seven checks `main` requires as passing within a couple of minutes without running real tests, eliminating the need for owner admin bypass while keeping real test execution on code changes.
 

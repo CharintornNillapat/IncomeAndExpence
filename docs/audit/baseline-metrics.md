@@ -28,7 +28,7 @@ npx tsc --noEmit --extendedDiagnostics
 Measured at the T822 working tree; no file under `src/`, `index.html`, `vite.config.ts`, `package.json` or `package-lock.json` changed (changed files: `.github/workflows/playwright.yml`, `unit/workflow-hardening.test.ts`, `AGENTS.md`, `README.md`, `docs/contexts/ui-and-e2e.md`, `docs/audit/decisions/0111-docs-only-prs-report-required-checks.md`, `docs/audit/refactor-log.md`, `docs/audit/baseline-metrics.md`, `docs/audit/task-ledger.md`, `.gitignore`), so the entry chunk, all app JS and CSS are Phase 152's (`index-CsN9mAj5.js` 198,233 B / 57,965 B gzip, all app JS 910,982 B / 275,886 B gzip in 39 files, CSS `index-BNwLrid8.css` 54,969 B / 10,720 B gzip) and were not rebuilt.
 
 - **Vitest**: 72 files, 1606 tests (+0 files, +5 tests against Phase 152/151: added suite in `unit/workflow-hardening.test.ts`), 1606 passed in 83.99 s (`workflow/stages/02_build/output/logs/T822-unit.log`); shuffled run 72 files, 1606 tests passed in 69.76 s with seed 1793187995002 (`workflow/stages/02_build/output/logs/T822-unit-shuffle.log`).
-- **Playwright**: unchanged, 213 tests in 37 files, 639 runs; not run (no spec or app file changed; the docs-only path is proven by the PR's own CI and the first docs-only PR after the merge, ADR 0111).
+- **Playwright**: unchanged, 213 tests in 37 files, 639 runs; not run locally (no spec or app file changed; the docs-only path is proven by the first docs-only PR after the merge, ADR 0111). CI on PR #106 and on the `main` push for `3e31866` ran the full suite as code: all seven required checks passed (E2E 2m39s to 3m33s, `Type-check and unit tests` 2m59s).
 
 ### Phase 152 - delta against Phase 151
 
