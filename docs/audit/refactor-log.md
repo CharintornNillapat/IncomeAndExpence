@@ -17,7 +17,7 @@ ADR `NNNN`. <the brief, one or two sentences>
 **Deliberately not done:** <or none>
 ```
 
-## Phase 158 - Opt-in ESLint for the React hooks rules: T827 (2026-10-29, code <sha or "pending the deploy record">, merged <same>)
+## Phase 158 - Opt-in ESLint for the React hooks rules: T827 (2026-10-29, code `a8c6a0b`, merged `160c4b7`)
 
 ADR `0113`. `npm run lint:hooks` runs ESLint with only the two React hooks rules (`react-hooks/exhaustive-deps` at `warn` and `react-hooks/rules-of-hooks` at `error`) over `src/` and `api/` as an opt-in script; the two non-money warnings (`Modal.tsx` reading panelRef once at setup, and `OverflowMenu.tsx` focusing the first item without focusItem) are fixed with no behaviour change, leaving the five `FinanceContext.tsx` warnings for a later owner-merged phase.
 
