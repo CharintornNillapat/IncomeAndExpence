@@ -21,7 +21,10 @@ beforeAll(async () => {
       version text primary key, statements text[], name text,
       created_by text, idempotency_key text, rollback text[]);
   `);
-});
+  // Phase 160 (T830): PGlite.create() compiles a 9.5 MB WebAssembly module and is CPU bound, 1.6 s on an idle
+  // machine and about 12 s when 12 start at once, so the 10 s default timed out once in a loaded full run (T828
+  // review). The same 60 s as migration-replay.test.ts and drift-runner.test.ts, the other two files that create one.
+}, 60_000);
 
 afterAll(async () => {
   await db?.close();
