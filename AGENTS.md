@@ -82,7 +82,7 @@ Run every tier that matches a changed path, then report the commands and results
 | `tests/*.spec.ts` | `npm run lint`; the changed spec(s) with `--project=chromium`, then without a project filter |
 | `unit/` | `npm run lint`; `npx vitest run unit/<changed files>`; then `npm run test:unit` |
 | `src/utils/`, `src/selectors/`, `src/services/` | `npm run lint`; `npx vitest run unit/<related>`; then `npm run test:unit` |
-| `src/context/`, `src/hooks/`, `src/lib/` | The row above, plus the affected spec(s) on chromium, then on all three browsers |
+| `src/context/`, `src/hooks/`, `src/lib/` | The row above, plus the affected spec(s) with `--project=chromium`, then without a project filter |
 | `src/components/`, `src/views/`, `src/index.css`, `App.tsx` | `npm run lint`; `npm run test:unit`; the affected spec(s) with `--project=chromium`, then without a project filter. A type size, line height, font or spacing token in `src/index.css` makes `tests/safe-area.spec.ts` and `tests/layout-stability.spec.ts` affected specs |
 | `api/` | `npm run lint`; `npx vitest run unit/proxy-contract.test.ts unit/proxy-parity.test.ts unit/proxy-prefetch.test.ts unit/proxy-auth-client.test.ts unit/csp-report.test.ts`; then `npm run test:unit` |
 | `supabase/` | `npx vitest run unit/migration-replay.test.ts unit/drift-runner.test.ts unit/migration-history.test.ts`; `npm run schema:drift`; then `npm run test:unit`. Live probes are stop-and-ask |
@@ -91,6 +91,8 @@ Run every tier that matches a changed path, then report the commands and results
 | Any money path (ledger, context, selectors, `api/`) | Write the failing test first and run it against the unfixed code |
 
 Before calling a task done, a task whose gates include a code tier (any row above other than docs-only and comments-only) also runs `npm run lint`, `npm run test:unit` and the affected spec(s). A docs-only or comments-only task runs only its own tier rows. Save full-suite output to a log file; under herdr, the builder saves to `workflow/stages/02_build/output/logs/` and the reviewer to `workflow/stages/03_review/output/logs/` (both gitignored). Check ports 3000 and 3100 for stale dev servers before Playwright.
+
+**Under herdr, the Playwright pair splits by stage** (ADR 0101, Phase 160 amendment). The builder runs each Playwright gate with `--project=chromium` and leaves each one without a project filter to the reviewer, who runs it once, on all three browsers. The reviewer still runs every other gate itself, `npm run lint` and `npm run test:unit` included. The split removes no tier: every tier command still runs in the task. Outside herdr, one session runs both Playwright steps, chromium first.
 
 ## Domain context routing
 
