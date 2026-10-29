@@ -17,7 +17,7 @@ ADR `NNNN`. <the brief, one or two sentences>
 **Deliberately not done:** <or none>
 ```
 
-## Phase 157 - Auto-merge permission: T826 (2026-10-29, code `<sha>`, merged `<sha>`)
+## Phase 157 - Auto-merge permission: T826 (2026-10-29, code `d8a9fcf`, merged `5042335`)
 
 ADR `0101` (amended, no new ADR). In `.claude/settings.json`, the blanket `gh pr merge` deny becomes denies for the squash, rebase and admin forms plus an allow rule for `gh pr merge * --auto --merge*`, because the Phase 156 auto-merge call was refused; and `AGENTS.md` adds `.claude/settings.json` and `.github/workflows/` to the pause list and to the Release bullet's Otherwise list.
 
