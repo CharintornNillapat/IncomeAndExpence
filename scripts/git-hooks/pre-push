@@ -1,0 +1,63 @@
+#!/bin/sh
+# Pre-push guard (ADR 0114). The source of truth is scripts/git-hooks/pre-push;
+# the live copy is .git/hooks/pre-push, which git never versions.
+# Install or reinstall: cp scripts/git-hooks/pre-push .git/hooks/pre-push
+# Test: npx vitest run unit/pre-push-guard.test.ts
+#
+# 1. Inside a herdr pane (HERDR_ENV=1), refuse every push unless ALLOW_GIT_WRITE=1.
+# 2. Inside a herdr pane, refuse deleting or rewinding any remote branch.
+# 3. Everywhere, refs/heads/main takes only fast-forward, single-parent commits
+#    whose subject is "docs(deploy): ... [skip ci]" and which only modify
+#    docs/audit/refactor-log.md, docs/audit/task-ledger.md,
+#    docs/audit/baseline-metrics.md or an existing docs/audit/decisions/NNNN-*.md.
+if [ "${HERDR_ENV:-}" = "1" ] && [ "${ALLOW_GIT_WRITE:-}" != "1" ]; then
+  echo "Commits and pushes inside herdr go only through the orchestrator." >&2
+  exit 1
+fi
+
+ALLOWED='^M[[:space:]]docs/audit/(refactor-log|task-ledger|baseline-metrics)\.md$|^M[[:space:]]docs/audit/decisions/[0-9]{4}-[^/]+\.md$'
+
+fail() {
+  echo "pre-push guard: $1" >&2
+  exit 1
+}
+
+is_zero() {
+  case $1 in
+    *[!0]*) return 1 ;;
+    *) return 0 ;;
+  esac
+}
+
+while read -r local_ref local_sha remote_ref remote_sha; do
+  if [ "$remote_ref" = refs/heads/main ]; then
+    main=1
+  else
+    main=
+    [ "${HERDR_ENV:-}" = "1" ] || continue
+  fi
+  if is_zero "$local_sha"; then
+    fail "refusing to delete $remote_ref"
+  fi
+  if is_zero "$remote_sha"; then
+    [ -n "$main" ] || continue
+    fail "refusing to create refs/heads/main"
+  fi
+  git merge-base --is-ancestor "$remote_sha" "$local_sha" 2>/dev/null ||
+    fail "refusing a non-fast-forward push to $remote_ref (fetch first; never force)"
+  [ -n "$main" ] || continue
+  if [ -n "$(git rev-list --min-parents=2 "$remote_sha..$local_sha")" ]; then
+    fail "refusing a merge commit on refs/heads/main"
+  fi
+  for commit in $(git rev-list "$remote_sha..$local_sha"); do
+    case $(git log -1 --format=%s "$commit") in
+      'docs(deploy): '*' [skip ci]') ;;
+      *) fail "$commit is not a 'docs(deploy): ... [skip ci]' deploy record; refs/heads/main takes nothing else" ;;
+    esac
+    bad=$(git diff-tree --no-commit-id -r --no-renames --name-status "$commit" | grep -Ev "$ALLOWED")
+    if [ -n "$bad" ]; then
+      fail "$commit changes a file a deploy record may not touch: $bad"
+    fi
+  done
+done
+exit 0

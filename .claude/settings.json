@@ -3,7 +3,13 @@
   "permissions": {
     "allow": [
       "Bash(gh pr merge * --auto --merge*)",
-      "PowerShell(gh pr merge * --auto --merge*)"
+      "PowerShell(gh pr merge * --auto --merge*)",
+      "Bash(ALLOW_GIT_WRITE=1 git push -u origin phase-*)",
+      "Bash(ALLOW_GIT_WRITE=1 git push origin main)",
+      "Bash(ALLOW_GIT_WRITE=1 git push origin main 2>&1)",
+      "Bash(gh pr create --base main --head phase-* --title * --body-file *)",
+      "PowerShell(gh pr create --base main --head phase-* --title * --body-file *)",
+      "Bash(herdr notification show *)"
     ],
     "deny": [
       "mcp__supabase__apply_migration",
@@ -98,24 +104,34 @@
       "Bash(gh pr merge* -r*)",
       "Bash(vercel:*)",
       "Bash(npx vercel:*)",
+      "Bash(git push* --no-v*)",
+      "Bash(gh pr create*--base*--base*)",
+      "Bash(gh pr create* -B*)",
+      "Bash(gh pr create*--head*--head*)",
+      "Bash(gh pr create* -H*)",
+      "Bash(gh pr create*--repo*)",
+      "Bash(gh pr create* -R*)",
       "PowerShell(gh pr merge* --squash*)",
       "PowerShell(gh pr merge* --rebase*)",
       "PowerShell(gh pr merge* --admin*)",
       "PowerShell(gh pr merge* -s*)",
       "PowerShell(gh pr merge* -r*)",
       "PowerShell(vercel:*)",
-      "PowerShell(npx vercel:*)"
+      "PowerShell(npx vercel:*)",
+      "PowerShell(git push* --no-v*)",
+      "PowerShell(gh pr create*--base*--base*)",
+      "PowerShell(gh pr create* -B*)",
+      "PowerShell(gh pr create*--head*--head*)",
+      "PowerShell(gh pr create* -H*)",
+      "PowerShell(gh pr create*--repo*)",
+      "PowerShell(gh pr create* -R*)"
     ],
     "ask": [
-      "Bash(ALLOW_GIT_WRITE=1 git push:*)",
-      "Bash(git push:*)",
       "Bash(git merge:*)",
       "Bash(git rebase:*)",
-      "Bash(gh pr create:*)",
       "PowerShell(git push:*)",
       "PowerShell(git merge:*)",
       "PowerShell(git rebase:*)",
-      "PowerShell(gh pr create:*)",
       "mcp__github__create_pull_request",
       "mcp__github__create_branch"
     ]
