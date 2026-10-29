@@ -88,6 +88,14 @@ Branch `phase-156-bundle-visualizer`, cut from `main` at `3315720`. One task, T8
 |---|---|---|---|---|---|
 | T825 | rollup-plugin-visualizer as an opt-in devDependency: ADR 0112, analyze mode and script, README line, Phase 156 closing docs | `docs/audit/decisions/0112-opt-in-bundle-visualizer.md`, `vite.config.ts`, `package.json`, `package-lock.json`, `README.md`, `docs/audit/refactor-log.md`, `docs/audit/baseline-metrics.md`, `docs/audit/task-ledger.md` | done | 173c836 | Baseline build verified (198,233 B entry, 910,982 B JS in 39 files, 54,969 B CSS); Gate 2 text-landed passed (7 blocks n 1 bad 0; pre-edit bad 7 control verified); Gate 3 diff shape clean (2 hunks 0 deletions in vite.config.ts and package.json; 415 added lines in package-lock.json); Gate 4 install consistency clean (npm ci --dry-run clean, npm ls shows 7.1.1, omit-dev empty, 18 devDependencies); Gate 5 default build byte-identical to baseline (empty diff on dist snapshot, stats files absent); Gate 6 mode resolution verified (false on development, production, pwa-dev; true on analyze); Gate 7 analyze build clean (git status before and after match, .cache/ ignored, report 1,175,700 B, dist byte-identical, sw.js does not precache report); Gate 8 repo root clean (no stats.html); Gate 9 npm run lint clean; Gate 10 unit 72 files 1606 passed in 60.54s; Gate 11 Playwright smoke tests/toast-layering.spec.ts 2 passed in 53.4s on Chromium; Gate 12 line endings CRLF, 0 em dashes |
 
+## Phase 157 - Auto-merge permission (amends ADR 0101)
+
+Branch `phase-157-auto-merge-permission`, cut from `main` at `7383179`. One task, T826. No migration. The PR is merged by the owner by hand, never auto-merged.
+
+| # | Task | Files | Status | Commit | Gate result |
+|---|---|---|---|---|---|
+| T826 | Narrow the gh pr merge deny to the squash, rebase and admin forms and allow gh pr merge * --auto --merge*; .claude/settings.json and .github/workflows/ join the pause list in AGENTS.md; ADR 0101 amendment; Phase 157 closing docs | `.claude/settings.json`, `AGENTS.md`, `docs/audit/decisions/0101-hierarchical-icm-context-and-herdr-stages.md`, `docs/audit/refactor-log.md`, `docs/audit/task-ledger.md` | done | | Gate 1 paths exist; Gate 2 diff shape clean (14 added, 2 removed in .claude/settings.json); Gate 3 rule lists verified against HEAD (allow 2 deny 99 ask 11 OK); Gate 4 text landed verified (blocks 10 bad 0; pre-edit bad 10 control verified); Gate 5 schema validation valid (claude-code-settings.schema.json); Gate 6 command model verified (14 commands mismatches 0; pre-edit mismatches 8 control verified); Gate 7 line endings CRLF (w/crlf, 0 bare LF, settings 123, AGENTS.md 140, ADR 156, ledger 150, AGENTS.md diff 2 2); Gate 8 0 em dashes in added lines and touched files; Gate 9 scope clean; Gate 10 unit/workflow-hardening.test.ts 17 passed |
+
 ## Backlog
 
 Not scheduled. Each row says where it came from.

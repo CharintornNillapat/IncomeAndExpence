@@ -17,6 +17,17 @@ ADR `NNNN`. <the brief, one or two sentences>
 **Deliberately not done:** <or none>
 ```
 
+## Phase 157 - Auto-merge permission: T826 (2026-10-29, code `<sha>`, merged `<sha>`)
+
+ADR `0101` (amended, no new ADR). In `.claude/settings.json`, the blanket `gh pr merge` deny becomes denies for the squash, rebase and admin forms plus an allow rule for `gh pr merge * --auto --merge*`, because the Phase 156 auto-merge call was refused; and `AGENTS.md` adds `.claude/settings.json` and `.github/workflows/` to the pause list and to the Release bullet's Otherwise list.
+
+**Changed:** T826 (`.claude/settings.json`: allow rule for auto-merge and narrow deny rules for squash, rebase, and admin; `AGENTS.md`: pause list and Otherwise list add .claude/settings.json and .github/workflows/; `docs/audit/decisions/0101-hierarchical-icm-context-and-herdr-stages.md`: Phase 157 amendment; `docs/audit/task-ledger.md`: Phase 157 section and T826 row; this file).
+**Verified:** Gate 1 paths exist; Gate 2 diff shape clean (14 added, 2 removed in .claude/settings.json); Gate 3 rule lists verified against HEAD (allow 2 deny 99 ask 11 OK); Gate 4 text landed verified (blocks 10 bad 0; pre-edit bad 10 control verified); Gate 5 schema validation valid (claude-code-settings.schema.json); Gate 6 command model verified (14 commands mismatches 0; pre-edit mismatches 8 control verified); Gate 7 line endings CRLF (w/crlf, 0 bare LF, settings 123, AGENTS.md 140, ADR 156, ledger 150, AGENTS.md diff 2 2); Gate 8 0 em dashes in added lines and touched files; Gate 9 scope clean; Gate 10 unit/workflow-hardening.test.ts 17 passed
+**Surprises:** none.
+**Deliberately not done:** no unit test, by the owner's decision (testing a matcher copy rather than Claude Code itself, and avoiding altering stated test counts); no deny for `-R`/`--repo` in Bash or for combined short flags such as `-ds`; `-d`/`--delete-branch` after `--auto --merge` stays allowed; other spellings (`sh -c`, `gh api`) are not matched, as the Claude Code docs warn; no other `AGENTS.md` change (the Auto-merge line, Stop and ask first and the test counts stay as written); this PR is merged by the owner, not auto-merged; no `baseline-metrics.md` section (no bundle or test count changed); filling the `<sha>` placeholders in this heading and the Commit cell in task-ledger.md, left to the owner-approved post-merge deploy record.
+
+---
+
 ## Phase 156 - Opt-in bundle visualizer: T825 (2026-10-29, code `173c836`, merged `a1864ff`)
 
 ADR `0112`. `npm run analyze` builds the app in `analyze` mode with `rollup-plugin-visualizer` and writes a gzip-aware treemap of the bundle to `.cache/bundle-stats.html` (git-ignored), giving bundle-size visibility without affecting default production builds or runtime performance.
