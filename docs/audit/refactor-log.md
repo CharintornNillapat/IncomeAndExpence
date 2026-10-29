@@ -17,7 +17,7 @@ ADR `NNNN`. <the brief, one or two sentences>
 **Deliberately not done:** <or none>
 ```
 
-## Phase 159 - Unattended pushes behind a pre-push guard: T828 (2026-10-29, code `<sha>`, merged `<sha>`)
+## Phase 159 - Unattended pushes behind a pre-push guard: T828 (2026-10-29, code `e20810d`, merged `375979d`)
 
 ADR `0114`. The Release push of the phase branch, the release's `gh pr create` and the deploy-record push to `main` run without a permission prompt; a versioned, tested pre-push hook installed in `.git/hooks/` refuses any push to `main` but a deploy record and, inside herdr, any branch deletion or rewind; MASTER announces each step that will wait on a prompt.
 
