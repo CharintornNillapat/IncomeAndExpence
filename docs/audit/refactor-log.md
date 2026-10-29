@@ -17,6 +17,15 @@ ADR `NNNN`. <the brief, one or two sentences>
 **Deliberately not done:** <or none>
 ```
 
+## Phase 156 - Opt-in bundle visualizer: T825 (2026-10-29, code `pending the deploy record`, merged `pending the deploy record`)
+
+ADR `0112`. `npm run analyze` builds the app in `analyze` mode with `rollup-plugin-visualizer` and writes a gzip-aware treemap of the bundle to `.cache/bundle-stats.html` (git-ignored), giving bundle-size visibility without affecting default production builds or runtime performance.
+
+**Changed:** T825 (`docs/audit/decisions/0112-opt-in-bundle-visualizer.md`: ADR 0112; `vite.config.ts`: visualizer import and mode-gated plugin writing to `.cache/bundle-stats.html` with gzipSize enabled; `package.json`: added analyze script and rollup-plugin-visualizer@7.1.1 devDependency; `package-lock.json`: 27 packages added for rollup-plugin-visualizer; `README.md`: added analyze command description in Run section; `docs/audit/baseline-metrics.md`: Phase 156 section; `docs/audit/task-ledger.md`: Phase 156 section, T825 row, Backlog row 103 marked done; this file).
+**Verified:** Baseline build verified (198,233 B entry, 910,982 B JS in 39 files, 54,969 B CSS); Gate 2 text-landed passed (7 blocks n 1 bad 0; pre-edit bad 7 control verified); Gate 3 diff shape clean (2 hunks 0 deletions in vite.config.ts and package.json; 415 added lines in package-lock.json); Gate 4 install consistency clean (npm ci --dry-run clean, npm ls shows 7.1.1, omit-dev empty, 18 devDependencies); Gate 5 default build byte-identical to baseline (empty diff on dist snapshot, stats files absent); Gate 6 mode resolution verified (false on development, production, pwa-dev; true on analyze); Gate 7 analyze build clean (git status before and after match, .cache/ ignored, report 1,175,700 B, dist byte-identical, sw.js does not precache report); Gate 8 repo root clean (no stats.html); Gate 9 npm run lint clean; Gate 10 unit 72 files 1606 passed in 60.54s; Gate 11 Playwright smoke tests/toast-layering.spec.ts 2 passed in 53.4s on Chromium; Gate 12 line endings CRLF, 0 em dashes.
+**Surprises:** the plugin's default filename writes `stats.html` to the repository root rather than `dist/`, so specifying `filename: '.cache/bundle-stats.html'` was necessary to keep the repository root clean and avoid precaching by the PWA workbox glob pattern.
+**Deliberately not done:** a size budget or CI gate on the report; uploading the report as a CI artifact; brotli size calculation; `cross-env` CLI dependency; React Compiler (separate Backlog row); `.gitignore` edit (already ignores `.cache/`); filling the `<sha>` placeholders in this heading and the Commit cell in task-ledger.md, left to the owner-approved post-merge deploy record.
+
 ---
 
 ## Phase 155 - Rule candidates from Phase 137: T823-T824 (2026-10-28, docs `7133cc3` and `e440e84`, merged `fdcf38e`)

@@ -148,6 +148,8 @@ npm run dev
 ```
 Then open `http://localhost:3000`. The `api/` functions do not run under the Vite dev server, so AI classification is off locally.
 
+To see what is in the bundle, run `npm run analyze`: it builds with the visualizer and writes a treemap to `.cache/bundle-stats.html` (git-ignored). It is for looking only, never for deploy.
+
 ---
 
 ## Testing
