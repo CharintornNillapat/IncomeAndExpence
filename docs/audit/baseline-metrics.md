@@ -23,6 +23,15 @@ npx tsc --noEmit --extendedDiagnostics
 
 ## Figures
 
+### Phase 156 - delta against Phase 154
+
+Measured at the T825 working tree. The default build is byte-identical to the baseline pre-change build and reproduces Phase 152/154 hashes (`index-CsN9mAj5.js` 198,233 B / 57,965 B gzip, all app JS 910,982 B / 275,886 B gzip in 39 files, CSS `index-BNwLrid8.css` 54,969 B / 10,720 B gzip; gate 5 diff against gate 1 baseline is empty).
+
+- **Bundle analysis**: `npm run analyze` writes a gzip treemap to `.cache/bundle-stats.html` (1,175,700 B, git-ignored), while `dist/` remains byte-identical to the default build and `dist/sw.js` does not precache it.
+- **Dependencies**: Dev dependencies 17 to 18 (+1, `rollup-plugin-visualizer` 7.1.1); runtime dependencies unchanged at 7; lockfile `package-lock.json` adds 415 lines (27 packages added).
+- **Vitest**: 72 files, 1606 tests (+0 files, +0 tests against Phase 154; no tests added), 1606 passed in 60.54 s (`workflow/stages/02_build/output/logs/T825-unit.log`).
+- **Playwright**: unchanged, 213 tests in 37 files, 639 runs; smoke test `tests/toast-layering.spec.ts` on Chromium passed 2 tests in 53.4 s, proving dev (port 3000) and pwa-dev (port 3100) servers start and serve with the edited `vite.config.ts`.
+
 ### Phase 154 - delta against Phase 152
 
 Measured at the T822 working tree; no file under `src/`, `index.html`, `vite.config.ts`, `package.json` or `package-lock.json` changed (changed files: `.github/workflows/playwright.yml`, `unit/workflow-hardening.test.ts`, `AGENTS.md`, `README.md`, `docs/contexts/ui-and-e2e.md`, `docs/audit/decisions/0111-docs-only-prs-report-required-checks.md`, `docs/audit/refactor-log.md`, `docs/audit/baseline-metrics.md`, `docs/audit/task-ledger.md`, `.gitignore`), so the entry chunk, all app JS and CSS are Phase 152's (`index-CsN9mAj5.js` 198,233 B / 57,965 B gzip, all app JS 910,982 B / 275,886 B gzip in 39 files, CSS `index-BNwLrid8.css` 54,969 B / 10,720 B gzip) and were not rebuilt.

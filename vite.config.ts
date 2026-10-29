@@ -1,5 +1,6 @@
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
+import { visualizer } from 'rollup-plugin-visualizer';
 import { defineConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
@@ -67,6 +68,13 @@ export default defineConfig(({ mode }) => {
           globPatterns: ['**/*.{js,css,html,ico,png,svg,json,woff2}'],
         },
       }),
+      // ADR 0112: `npm run analyze` (`vite build --mode analyze`) writes a gzip
+      // treemap to `.cache/bundle-stats.html`. Outside `dist/` on purpose: the
+      // PWA glob above matches `**/*.html` and would precache it. No other mode
+      // adds the plugin, so `npm run dev` and `npm run build` are unchanged.
+      ...(mode === 'analyze'
+        ? [visualizer({ filename: '.cache/bundle-stats.html', gzipSize: true })]
+        : []),
     ],
     build: {
       rollupOptions: {
