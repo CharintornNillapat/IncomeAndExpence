@@ -17,7 +17,7 @@ ADR `NNNN`. <the brief, one or two sentences>
 **Deliberately not done:** <or none>
 ```
 
-## Phase 160 - Faster gates: T829-T830 (2026-10-29, code `<sha>` and `<sha>`, merged `<sha>`)
+## Phase 160 - Faster gates: T829-T830 (2026-10-29, code `479f051` and `c1a1372`, merged `75d46d6`)
 
 ADR `0101` (Phase 160 amendment, T829); T830 needs none. The builder runs the affected Playwright specs on chromium only and the reviewer runs them once on all three browsers, still running lint, unit and every other gate itself; the change is in the `AGENTS.md` tier rows, the stage `CONTEXT.md` files 01, 02 and 03 and an ADR 0101 amendment, with no agent prompt edits (T829). `unit/migration-history.test.ts` gets the 60 s setup budget of the other two PGlite files after one 10 s setup timeout in the T828 review (T830).
 
