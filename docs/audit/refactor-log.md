@@ -17,7 +17,7 @@ ADR `NNNN`. <the brief, one or two sentences>
 **Deliberately not done:** <or none>
 ```
 
-## Phase 156 - Opt-in bundle visualizer: T825 (2026-10-29, code `pending the deploy record`, merged `pending the deploy record`)
+## Phase 156 - Opt-in bundle visualizer: T825 (2026-10-29, code `173c836`, merged `a1864ff`)
 
 ADR `0112`. `npm run analyze` builds the app in `analyze` mode with `rollup-plugin-visualizer` and writes a gzip-aware treemap of the bundle to `.cache/bundle-stats.html` (git-ignored), giving bundle-size visibility without affecting default production builds or runtime performance.
 

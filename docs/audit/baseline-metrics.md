@@ -30,7 +30,7 @@ Measured at the T825 working tree. The default build is byte-identical to the ba
 - **Bundle analysis**: `npm run analyze` writes a gzip treemap to `.cache/bundle-stats.html` (1,175,700 B, git-ignored), while `dist/` remains byte-identical to the default build and `dist/sw.js` does not precache it.
 - **Dependencies**: Dev dependencies 17 to 18 (+1, `rollup-plugin-visualizer` 7.1.1); runtime dependencies unchanged at 7; lockfile `package-lock.json` adds 415 lines (27 packages added).
 - **Vitest**: 72 files, 1606 tests (+0 files, +0 tests against Phase 154; no tests added), 1606 passed in 60.54 s (`workflow/stages/02_build/output/logs/T825-unit.log`).
-- **Playwright**: unchanged, 213 tests in 37 files, 639 runs; smoke test `tests/toast-layering.spec.ts` on Chromium passed 2 tests in 53.4 s, proving dev (port 3000) and pwa-dev (port 3100) servers start and serve with the edited `vite.config.ts`.
+- **Playwright**: unchanged, 213 tests in 37 files, 639 runs; smoke test `tests/toast-layering.spec.ts` on Chromium passed 2 tests in 53.4 s, proving dev (port 3000) and pwa-dev (port 3100) servers start and serve with the edited `vite.config.ts`. The merge commit `a1864ff` has the T825 tree plus docs, so the figures hold for it; the `main` push run for it passed all seven required checks (run 40822012459).
 
 ### Phase 154 - delta against Phase 152
 

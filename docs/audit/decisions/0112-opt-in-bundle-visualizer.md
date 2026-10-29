@@ -1,6 +1,6 @@
 # 0112: opt-in bundle visualizer
 
-**Status:** Accepted. To be implemented in Phase 156 (T825).
+**Status:** Accepted. Implemented in Phase 156 (T825): code `173c836`, merged `a1864ff`.
 The owner approved adding the dev dependency rollup-plugin-visualizer on 2026-10-29.
 
 **Date:** 2026-10-29
@@ -36,4 +36,4 @@ Adding a dependency is on AGENTS.md's Stop and ask first list. The owner explici
 
 ## Release
 
-One pull request for Phase 156. No database migration, no production touch points, and no files on the pause list. The pull request is eligible for automated merge (`gh pr merge --auto --merge`).
+One pull request for Phase 156. No database migration, no production touch points, and no files on the pause list. The pull request is eligible for automated merge (`gh pr merge --auto --merge`). It was merged by the owner by hand as PR #108 on 2026-10-29 (merge commit `a1864ff`, code commit `173c836`): the orchestrator's `gh pr merge 108 --auto --merge` was denied by the `Bash(gh pr merge:*)` deny rule in `.claude/settings.json`, and the checks had already passed when the owner reached the PR. The `main` push run for `a1864ff` (run 40822012459) passed every job, and the Vercel deployment succeeded.
