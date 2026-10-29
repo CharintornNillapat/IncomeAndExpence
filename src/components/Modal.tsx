@@ -203,13 +203,16 @@ export const Modal: React.FC<ModalProps> = ({
   useLayoutEffect(() => {
     if (!isOpen) return;
     const token = stackToken.current;
+    // ADR 0113: the panel this open session mounted. Presence keeps one panel
+    // for the whole session, so it is the element the cleanup would read.
+    const panel = panelRef.current;
     const opener = document.activeElement instanceof HTMLElement && document.activeElement !== document.body
       ? document.activeElement
       : null;
     returnFocusTo.current = opener;
     return () => {
       const active = document.activeElement;
-      focusInside.current = active instanceof HTMLElement && panelRef.current?.contains(active) ? active : null;
+      focusInside.current = active instanceof HTMLElement && panel?.contains(active) ? active : null;
       releaseDialog(token);
       // Enough when the dialog unmounts. When it only closes, its controls stay
       // on the page for the exit tween, and React puts focus back on the one

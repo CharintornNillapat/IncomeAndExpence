@@ -23,6 +23,15 @@ npx tsc --noEmit --extendedDiagnostics
 
 ## Figures
 
+### Phase 158 - delta against Phase 156
+
+Measured at the T827 working tree. Before the two fixes (with the devDependencies and config added), the default build is byte-identical to Phase 156 baseline (gate 3 diff against gate 2 baseline is empty). After the two fixes in `Modal.tsx` and `OverflowMenu.tsx`: 57 files (0 delta); CSS `index-BNwLrid8.css` is identical at 54,969 B / 10,720 B gzip (0 B delta); entry chunk is `index-CAxfG7Qp.js` 198,228 B (-5 B raw) / 57,957 B gzip (-8 B gzip against Phase 156 `index-CsN9mAj5.js` 198,233 / 57,965); all app JS is 911,014 B (+32 B raw) / 275,891 B gzip (+5 B gzip against Phase 156 910,982 / 275,886 in 39 files, 0 file delta); `dist/` contains 0 occurrences of "eslint".
+
+- **Dependencies**: Dev dependencies 18 to 21 (+3, `eslint` 9.39.5, `eslint-plugin-react-hooks` 7.1.1, `typescript-eslint` 8.72.1); runtime dependencies unchanged at 7; lockfile `package-lock.json` adds 1368 lines and removes 2 lines (99 packages added from `npm install`).
+- **Hooks linter**: `npm run lint:hooks` is an opt-in script; warnings reduced from 7 to 5 (0 errors), with the two non-money warnings in `Modal.tsx` and `OverflowMenu.tsx` fixed and the five in `FinanceContext.tsx` retained.
+- **Vitest**: 72 files, 1606 tests (+0 files, +0 tests against Phase 156; no tests added), 1606 passed in 61.01 s (`workflow/stages/02_build/output/logs/T827-unit.log`); targeted unit suite (4 files, 61 tests) passed in 4.87 s.
+- **Playwright**: unchanged, 213 tests in 37 files, 639 runs; targeted run on the 11 affected specs for Modal and OverflowMenu passed 83 tests in 1.3 min on Chromium (`workflow/stages/02_build/output/logs/T827-pw-chromium.log`) and 249 tests in 7.9 min across Chromium, Firefox and WebKit (`workflow/stages/02_build/output/logs/T827-pw-all.log`).
+
 ### Phase 156 - delta against Phase 154
 
 Measured at the T825 working tree. The default build is byte-identical to the baseline pre-change build and reproduces Phase 152/154 hashes (`index-CsN9mAj5.js` 198,233 B / 57,965 B gzip, all app JS 910,982 B / 275,886 B gzip in 39 files, CSS `index-BNwLrid8.css` 54,969 B / 10,720 B gzip; gate 5 diff against gate 1 baseline is empty).

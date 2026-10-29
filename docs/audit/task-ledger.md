@@ -96,6 +96,14 @@ Branch `phase-157-auto-merge-permission`, cut from `main` at `7383179`. One task
 |---|---|---|---|---|---|
 | T826 | Narrow the gh pr merge deny to the squash, rebase and admin forms and allow gh pr merge * --auto --merge*; .claude/settings.json and .github/workflows/ join the pause list in AGENTS.md; ADR 0101 amendment; Phase 157 closing docs | `.claude/settings.json`, `AGENTS.md`, `docs/audit/decisions/0101-hierarchical-icm-context-and-herdr-stages.md`, `docs/audit/refactor-log.md`, `docs/audit/task-ledger.md` | done | d8a9fcf | Gate 1 paths exist; Gate 2 diff shape clean (14 added, 2 removed in .claude/settings.json); Gate 3 rule lists verified against HEAD (allow 2 deny 99 ask 11 OK); Gate 4 text landed verified (blocks 10 bad 0; pre-edit bad 10 control verified); Gate 5 schema validation valid (claude-code-settings.schema.json); Gate 6 command model verified (14 commands mismatches 0; pre-edit mismatches 8 control verified); Gate 7 line endings CRLF (w/crlf, 0 bare LF, settings 123, AGENTS.md 140, ADR 156, ledger 150, AGENTS.md diff 2 2); Gate 8 0 em dashes in added lines and touched files; Gate 9 scope clean; Gate 10 unit/workflow-hardening.test.ts 17 passed |
 
+## Phase 158 - Opt-in ESLint for the React hooks rules (ADR 0113)
+
+Branch `phase-158-eslint-hooks`, cut from `main` at `5d993de`. One task, T827. Dev dependencies `eslint` 9.39.5, `eslint-plugin-react-hooks` 7.1.1 and `typescript-eslint` 8.72.1 added with the owner's approval of 2026-10-29. No migration.
+
+| # | Task | Files | Status | Commit | Gate result |
+|---|---|---|---|---|---|
+| T827 | ESLint as an opt-in devDependency: ADR 0113, eslint.config.js and lint:hooks, Modal and OverflowMenu warnings fixed, README line, Phase 158 closing docs | `docs/audit/decisions/0113-opt-in-eslint-hooks-rules.md`, `package.json`, `package-lock.json`, `eslint.config.js`, `src/components/Modal.tsx`, `src/components/ui/OverflowMenu.tsx`, `README.md`, `docs/audit/refactor-log.md`, `docs/audit/baseline-metrics.md`, `docs/audit/task-ledger.md` | done | | Gate 1 text landed verified (blocks 11 bad 0; numstat 4 1 Modal, 3 2 OverflowMenu); Gate 2 baseline build clean (198,233 B entry, 910,982 B JS 39 files, 54,969 B CSS); Gate 3 dist snapshot identical; Gate 4 lint:hooks before 7 warnings 0 errors, after 5 warnings 0 errors (FinanceContext only), match true; Gate 5 money path untouched (FinanceContext quiet 0, 0 pause-list paths); Gate 6 default build clean (57 files, entry 198,228 B, all JS 911,014 B 39 files, CSS unchanged, 0 eslint in dist); Gate 7 install consistency clean (npm ci dry-run clean, npm ls shows 3 pinned versions, dev 21 runtime 7, package-lock +1368 -2 lines, 99 packages added); Gate 8 lint:hooks read-only clean; Gate 9 npm run lint clean; Gate 10 unit 4 targeted passed (61 tests), full unit 72 files 1606 passed (61.01s); Gate 11 Playwright affected specs 83 passed on chr (1.3m), 249 passed on 3 browsers (7.9m); Gate 12 CRLF kept, 0 em dashes; Gate 13 scope clean |
+
 ## Backlog
 
 Not scheduled. Each row says where it came from.
@@ -112,7 +120,8 @@ Not scheduled. Each row says where it came from.
 | `WalletTransferForm.tsx:101`'s uppercase label is `text-[10px]`, below `DESIGN.md`'s 12 to 13px (its tracking is already `tracking-wider`) | Phase 127, T753's spec | done in Phase 129 (T756) |
 | Four code comments point into `docs/audit/archive/`: `src/components/transaction/txTypeMeta.ts:21` (`ui-ux-audit-report.md`), `src/components/ui/OverflowMenu.tsx:44` (a reason now in the archived selector log), `src/components/ui/Card.tsx:28` and `tests/categories.spec.ts:9` (refactor-log Phases 25 and 30) | Phase 125 (ADR `0101`); code was out of scope | done in Phase 126 (T752) |
 | `src/components/ui/Card.tsx:23`'s doc comment says the shell is `rounded-xl`, while the code uses `rounded-card` | Phase 126, T752's review; outside T752's scope | done in Phase 127 (T753) |
-| ESLint with `react-hooks/exhaustive-deps` | `archive/constraints-to-promote.md` follow-on proposals | todo |
+| ESLint with `react-hooks/exhaustive-deps` | `archive/constraints-to-promote.md` follow-on proposals | partly done in Phase 158 (T827): `npm run lint:hooks` is opt-in and the `Modal.tsx` and `OverflowMenu.tsx` warnings are fixed; the rest is the next row |
+| Fix the five `react-hooks/exhaustive-deps` warnings in `src/context/FinanceContext.tsx` (lines 881, 967, 1320, 1710, 2094) and wire ESLint into `npm run lint` and CI, including AGENTS.md's Commands line and the tier rows; a money-path phase, merged by the owner | Phase 158, T827's spec | todo |
 | Vitest for `smartMatcher.ts`, `mathEvaluator.ts`, `csvExchange.ts` | same | done since Phase 49 (ADR `0021`) |
 | `tsconfig.json` `strict` | same | done since Phase 101 (ADR `0077`) |
 | React Compiler (auto-memoization; needs a Babel plugin and its own evaluation) | same | todo |

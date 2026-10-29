@@ -61,9 +61,10 @@ export const OverflowMenu: React.FC<OverflowMenuProps> = ({ label, items, trigge
     if (returnFocus) triggerRef.current?.focus();
   };
 
-  // Focus the first item once the menu is in the DOM.
+  // Focus the first item once the menu is in the DOM. Reads the ref directly,
+  // not focusItem, so the effect depends on isOpen alone and runs once per open.
   useEffect(() => {
-    if (isOpen) focusItem(0);
+    if (isOpen) itemRefs.current[0]?.focus();
   }, [isOpen]);
 
   // A press anywhere outside the menu and its trigger closes it.
