@@ -23,6 +23,13 @@ npx tsc --noEmit --extendedDiagnostics
 
 ## Figures
 
+### Phase 159 - delta against Phase 158
+
+Measured at the T828 working tree; no build input changed (`src/`, `index.html`, `public/`, `vite.config.ts`, `package.json` untouched), so the bundle was not rebuilt and Phase 158 figures stand (`index-CAxfG7Qp.js` 198,228 B / 57,957 B gzip, all app JS 911,014 B / 275,891 B gzip in 39 files, CSS `index-BNwLrid8.css` 54,969 B / 10,720 B gzip in 57 files). Dependencies unchanged (dev 21, runtime 7).
+
+- **Vitest**: 73 files, 1624 tests (+1 file, +18 tests against Phase 158: added `unit/pre-push-guard.test.ts`), 1624 passed in 91.44 s (`workflow/stages/02_build/output/logs/T828-unit.log`); the new test file passed 18 tests in 31.45 s (`workflow/stages/02_build/output/logs/T828-green.log`).
+- **Playwright**: unchanged, 213 tests in 37 files, 639 runs; not run locally (no affected spec; agent tooling and docs only).
+
 ### Phase 158 - delta against Phase 156
 
 Measured at the T827 working tree. Before the two fixes (with the devDependencies and config added), the default build is byte-identical to Phase 156 baseline (gate 3 diff against gate 2 baseline is empty). After the two fixes in `Modal.tsx` and `OverflowMenu.tsx`: 57 files (0 delta); CSS `index-BNwLrid8.css` is identical at 54,969 B / 10,720 B gzip (0 B delta); entry chunk is `index-CAxfG7Qp.js` 198,228 B (-5 B raw) / 57,957 B gzip (-8 B gzip against Phase 156 `index-CsN9mAj5.js` 198,233 / 57,965); all app JS is 911,014 B (+32 B raw) / 275,891 B gzip (+5 B gzip against Phase 156 910,982 / 275,886 in 39 files, 0 file delta); `dist/` contains 0 occurrences of "eslint".

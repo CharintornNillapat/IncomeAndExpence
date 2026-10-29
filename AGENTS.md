@@ -8,7 +8,7 @@ FinLife Tracker is a single-user personal finance and daily-diary PWA in Thai Ba
 
 - **Stack:** React 19, TypeScript ~5.8 (strict), Vite 6, Tailwind CSS v4 (semantic tokens), `vite-plugin-pwa`, `@supabase/supabase-js` (lazy-loaded), zod 4, papaparse, lucide-react. Node 24.x, npm.
 - **Server side:** Supabase (Postgres 17, RLS, `SECURITY DEFINER` RPCs, Auth, Realtime); Vercel hosting with three Node functions in `api/` (region `icn1`); TypeSafe's Jev model behind the proxies.
-- **Tests:** Vitest in `unit/` (1606 tests, 72 files, PGlite replays every migration); Playwright in `tests/` (213 tests, 37 specs, 639 runs on three browsers).
+- **Tests:** Vitest in `unit/` (1624 tests, 73 files, PGlite replays every migration); Playwright in `tests/` (213 tests, 37 specs, 639 runs on three browsers).
 
 | Path | What it is |
 |---|---|
@@ -134,6 +134,7 @@ Before calling a task done, a task whose gates include a code tier (any row abov
   - **Otherwise** (a money path, `supabase/`, `api/`, `.claude/agents/`, `.github/workflows/`, `.claude/settings.json`, `AGENTS.md`, a stage `CONTEXT.md`, a docs-only PR, or auto-merge not enabled) it reports the PR link and the owner merges. A docs-only PR is never auto-merged: its required checks pass with every step skipped (ADR 0111), so they prove nothing about it.
 - **Deploy record:** the orchestrator watches the PR with `gh pr view <n> --json state --jq .state` and needs no `merged` order. When it reads `MERGED` it writes the post-merge record in one docs-only `[skip ci]` commit on `main`. A phase with a migration waits for the owner's `applied` (checked with the read-only `list_migrations`) and puts the apply note, history version and drift result in that same commit, never a second one.
 - **The one exception on `main`:** that deploy record, a docs-only `[skip ci]` commit on `main`, made by the orchestrator or by the owner. Nothing else is committed or pushed to `main`.
+- **Unattended pushes [ADR 0114]:** three commands run without a permission prompt: `ALLOW_GIT_WRITE=1 git push -u origin phase-NNN-<slug>` and `gh pr create --base main --head phase-NNN-<slug> --title "phase NNN: <slug>" --body-file <file>` (Release, in exactly that form and order), and `ALLOW_GIT_WRITE=1 git push origin main` (the deploy record). `.claude/settings.json` denies a `gh pr create` that names a second base or head, or another repository. The guard is the pre-push hook, versioned as `scripts/git-hooks/pre-push`, installed with `cp scripts/git-hooks/pre-push .git/hooks/pre-push` and tested by `unit/pre-push-guard.test.ts`. It refuses any push to `main` but a fast-forward of single-parent `docs(deploy): ... [skip ci]` commits that only modify `docs/audit/refactor-log.md`, `docs/audit/task-ledger.md`, `docs/audit/baseline-metrics.md` or an existing ADR, and inside herdr it refuses deleting or rewinding any remote branch. Any other push or `gh pr create` matches no allow rule, so it waits on a prompt (in auto mode, on the classifier), and the orchestrator notifies the owner before a step that will wait on one. No agent pushes with `--no-verify`.
 
 ## Environment (`.env.example`)
 

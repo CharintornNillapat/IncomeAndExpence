@@ -17,6 +17,17 @@ ADR `NNNN`. <the brief, one or two sentences>
 **Deliberately not done:** <or none>
 ```
 
+## Phase 159 - Unattended pushes behind a pre-push guard: T828 (2026-10-29, code `<sha>`, merged `<sha>`)
+
+ADR `0114`. The Release push of the phase branch, the release's `gh pr create` and the deploy-record push to `main` run without a permission prompt; a versioned, tested pre-push hook installed in `.git/hooks/` refuses any push to `main` but a deploy record and, inside herdr, any branch deletion or rewind; MASTER announces each step that will wait on a prompt.
+
+**Changed:** T828 (`docs/audit/decisions/0114-unattended-pushes-pre-push-guard.md`: ADR 0114; `unit/pre-push-guard.test.ts`: 18 unit tests for the pre-push guard; `scripts/git-hooks/pre-push`: versioned pre-push hook script; `.gitattributes`: eol=lf for scripts/git-hooks/*; `.git/hooks/pre-push`: untracked, installed copy; `.claude/settings.json`: allow, deny and ask permission rules; `AGENTS.md`: Vitest test counts and Unattended pushes rule; `README.md`: Vitest test counts; `docs/audit/decisions/0101-hierarchical-icm-context-and-herdr-stages.md`: Phase 159 note; `~/.claude/commands/finlife.md`: outside the repo, not committed, preflight hook check, notification on block/prompt, exact push/pr commands; `docs/audit/baseline-metrics.md`: Phase 159 section; `docs/audit/task-ledger.md`: Phase 159 section, T828 row, Backlog row A marked done; this file).
+**Verified:** Gate 1 red (13 failed, 5 passed); Gate 2 green (18 passed in 31.45s); Gate 3 installed hook identical; Gate 4 replay 36 passed, merge 160c4b7 refused; Gate 5 push allow 3, installed/red/green/replay/ordered true; Gate 6 allow 8 deny 113 ask 7 OK; Gate 7 text landed (27 blocks, 0 bad); Gate 8 npm run lint clean; Gate 9 targeted unit 2 passed (28 tests); Gate 10 full unit 73 files, 1624 passed in 91.44s; Gate 11 line endings clean; Gate 12 0 em dashes; Gate 13 scope clean.
+**Surprises:** Claude Code checks ask before allow and an ask rule matches past `ALLOW_GIT_WRITE=1`, so the two blanket Bash push ask rules and both `gh pr create` ask rules had to go rather than stay beside narrow allows; a `*` matches spaces, so the release's `gh pr create` rule needed six deny rules per shell to keep its wildcards from admitting another base, head or repository; the owner's auto-mode `soft_deny` on `git push` is a classifier rule and never sees a command an allow rule matches; the deploy records of Phases 121 to 124 also edited `docs/audit/claude-md-history.md` and would be refused today, while all 36 since pass.
+**Deliberately not done:** the ADR's Not done list, in one sentence; Backlog row B (builder chromium-only runs) is a separate task; filling the `<sha>` placeholders and the Commit cell, left to the post-merge deploy record.
+
+---
+
 ## Phase 158 - Opt-in ESLint for the React hooks rules: T827 (2026-10-29, code `a8c6a0b`, merged `160c4b7`)
 
 ADR `0113`. `npm run lint:hooks` runs ESLint with only the two React hooks rules (`react-hooks/exhaustive-deps` at `warn` and `react-hooks/rules-of-hooks` at `error`) over `src/` and `api/` as an opt-in script; the two non-money warnings (`Modal.tsx` reading panelRef once at setup, and `OverflowMenu.tsx` focusing the first item without focusItem) are fixed with no behaviour change, leaving the five `FinanceContext.tsx` warnings for a later owner-merged phase.
