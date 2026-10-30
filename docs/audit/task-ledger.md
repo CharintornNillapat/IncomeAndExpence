@@ -121,6 +121,14 @@ Branch `phase-160-faster-gates`, cut from `main` at `dc9a065`. Two tasks, T829 a
 | T829 | Builder runs the affected Playwright specs on chromium only; the reviewer runs them once on all three browsers and still runs lint, unit and every other gate itself (the Backlog row's log reuse dropped by the owner, 2026-10-29); amends ADR 0101 | `AGENTS.md`, `workflow/stages/01_spec/CONTEXT.md`, `workflow/stages/02_build/CONTEXT.md`, `workflow/stages/03_review/CONTEXT.md`, `docs/audit/decisions/0101-hierarchical-icm-context-and-herdr-stages.md`, `docs/audit/task-ledger.md` | done | 479f051 | Gate 1 text landed (blocks 7 checks 9 bad 0); Gate 2 0 em dashes (diff 0, files 0); Gate 3 line endings kept (5 target w/crlf bareLF 0, ledger w/lf crlf 0); Gate 4 scope clean |
 | T830 | unit/migration-history.test.ts setup gets the 60 s PGlite budget its sibling files have (one 10 s timeout in the T828 review, cause: PGlite.create() under full-suite CPU load); Phase 160 closing docs | `unit/migration-history.test.ts`, `docs/audit/refactor-log.md`, `docs/audit/task-ledger.md` | done | c1a1372 | Gate 1 text landed (all lines OK, bad 0); Gate 2 lint clean, targeted 18 passed (1.99s); Gate 3 3 PGlite files 2 runs 81 passed (44.98s, 50.20s), 0 Hook timed out; Gate 4 full unit 73 files 1624 passed (99.98s); Gate 5 0 em dashes, line endings kept; Gate 6 counts/paths match; Gate 7 hook edit only; Gate 8 scope clean |
 
+## Phase 161 - FinanceContext hooks lint (ADR 0115)
+
+Branch `phase-161-finance-hooks-lint`, cut from `main` at `883a6a6`. No migration. A money path: the PR is merged by the owner.
+
+| # | Task | Files | Status | Commit | Gate result |
+|---|---|---|---|---|---|
+| T831 | Fix the five react-hooks/exhaustive-deps warnings in FinanceContext.tsx by listing the slice setters and refs the rule asks for, no behaviour change; identity characterization test; ADR 0115 | `docs/audit/decisions/0115-hooks-lint-joins-npm-run-lint.md`, `docs/audit/decisions/0113-opt-in-eslint-hooks-rules.md`, `unit/rerender-matrix.test.tsx`, `src/context/FinanceContext.tsx`, `docs/audit/task-ledger.md` | done | | Gate 1 text landed (bad 0); Gate 2 hooks lint red (5 warnings) then green (--max-warnings 0 exit 0); Gate 3 lint clean; Gate 4 targeted 2 passed, related 8 files 262 passed; Gate 5 full unit 73 files 1625 passed (71.3s); Gate 6 characterization proof (pre 2 passed, red 1 failed on Object.is, restored); Gate 7 chromium Playwright 4 specs 39 passed (55.7s); Gate 8 6 hunks, numstat 8 7; Gate 9 counts/paths match; Gate 10 0 em dashes, line endings kept; Gate 11 scope clean |
+
 ## Backlog
 
 Not scheduled. Each row says where it came from.
@@ -138,7 +146,7 @@ Not scheduled. Each row says where it came from.
 | Four code comments point into `docs/audit/archive/`: `src/components/transaction/txTypeMeta.ts:21` (`ui-ux-audit-report.md`), `src/components/ui/OverflowMenu.tsx:44` (a reason now in the archived selector log), `src/components/ui/Card.tsx:28` and `tests/categories.spec.ts:9` (refactor-log Phases 25 and 30) | Phase 125 (ADR `0101`); code was out of scope | done in Phase 126 (T752) |
 | `src/components/ui/Card.tsx:23`'s doc comment says the shell is `rounded-xl`, while the code uses `rounded-card` | Phase 126, T752's review; outside T752's scope | done in Phase 127 (T753) |
 | ESLint with `react-hooks/exhaustive-deps` | `archive/constraints-to-promote.md` follow-on proposals | partly done in Phase 158 (T827): `npm run lint:hooks` is opt-in and the `Modal.tsx` and `OverflowMenu.tsx` warnings are fixed; the rest is the next row |
-| Fix the five `react-hooks/exhaustive-deps` warnings in `src/context/FinanceContext.tsx` (lines 881, 967, 1320, 1710, 2094) and wire ESLint into `npm run lint` and CI, including AGENTS.md's Commands line and the tier rows; a money-path phase, merged by the owner | Phase 158, T827's spec | todo |
+| Fix the five `react-hooks/exhaustive-deps` warnings in `src/context/FinanceContext.tsx` (lines 881, 967, 1320, 1710, 2094) and wire ESLint into `npm run lint` and CI, including AGENTS.md's Commands line and the tier rows; a money-path phase, merged by the owner | Phase 158, T827's spec | partly done in Phase 161 (T831): the five warnings are fixed; T832 wires ESLint into `npm run lint` and CI |
 | Vitest for `smartMatcher.ts`, `mathEvaluator.ts`, `csvExchange.ts` | same | done since Phase 49 (ADR `0021`) |
 | `tsconfig.json` `strict` | same | done since Phase 101 (ADR `0077`) |
 | React Compiler (auto-memoization; needs a Babel plugin and its own evaluation) | same | todo |

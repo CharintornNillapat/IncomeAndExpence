@@ -1,6 +1,6 @@
 # 0113: opt-in ESLint for the React hooks rules
 
-**Status:** Accepted. To be implemented in Phase 158 (T827).
+**Status:** Accepted. To be implemented in Phase 158 (T827). D6's follow-on is ADR 0115 (Phase 161), which supersedes D2 once T832 wires ESLint into `npm run lint`.
 The owner approved adding the dev dependencies eslint, eslint-plugin-react-hooks and typescript-eslint on 2026-10-29.
 
 **Date:** 2026-10-29

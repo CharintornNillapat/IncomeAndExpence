@@ -137,3 +137,45 @@ describe('the re-render matrix', () => {
     expect(rows['diary save']).toEqual({ dashboard: 1, transactions: 0, wallets: 0, debts: 0, categories: 0, diary: 1 });
   });
 });
+
+describe('the stable actions (T831)', () => {
+  it('keep their identity through a write to every slice and a sign-out', async () => {
+    render(
+      <FinanceProvider>
+        <Probe />
+      </FinanceProvider>,
+    );
+    await settle();
+    const before = latest!.actions;
+    const run = async (name: string, write: () => Promise<{ success: boolean; error?: string }>) => {
+      let result: { success: boolean; error?: string } = { success: false };
+      await act(async () => { result = await write(); });
+      expect(result, name).toMatchObject({ success: true });
+      await settle();
+    };
+
+    await run('transaction save', () => latest!.actions.addTransaction({
+      amount: 50, type: 'EXPENSE', walletId: 'wal-main-checking', categoryId: 'cat-food', description: 'Lunch', transactionDate: todayIsoDate(),
+    }));
+    await run('category add', () => latest!.actions.addCategory({
+      name: 'Pets', type: 'EXPENSE', color: nextColor(IDENTITY_COLORS, latest!.state.categories),
+    }));
+    const pets = latest!.state.categories.find((c) => c.name === 'Pets')!;
+    await run('rule add', () => latest!.ruleActions.addKeywordRule('kibble', pets.id));
+    await run('template add', () => latest!.templateActions.addPreset({ name: 'Coffee', type: 'EXPENSE', amount: 60, description: 'Coffee' }));
+    const preset = latest!.templates.presets.find((p) => p.name === 'Coffee')!;
+    await run('template apply', () => latest!.actions.applyPreset(preset.id));
+    await run('diary save', () => latest!.diaryActions.upsertDiaryEntry({ date: todayIsoDate(), mood: 4, workout: false, foodQuality: 'HEALTHY' }));
+    const rule = latest!.rules.keywordRules.find((r) => r.keyword === 'kibble')!;
+    await run('rule delete', () => latest!.ruleActions.deleteKeywordRule(rule.id));
+    await run('category delete', () => latest!.actions.deleteCategory(pets.id));
+    await run('sign-out', async () => { await latest!.actions.signOut(); return { success: true }; });
+
+    // useCallback compares deps with Object.is; a slice setter or ref is the
+    // same object on every render, so none of these may change (ADR 0115).
+    expect(latest!.actions).toBe(before);
+    for (const name of ['signOut', 'refreshFromCloud', 'restoreBackup', 'deleteCategory', 'applyPreset'] as const) {
+      expect(latest!.actions[name], name).toBe(before[name]);
+    }
+  });
+});
