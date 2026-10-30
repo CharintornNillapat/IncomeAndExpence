@@ -1,6 +1,6 @@
 # AGENTS.md
 
-The one rule file for every agent in this repo (Claude Code reads it through `CLAUDE.md`). It wins over any skill's or tool's defaults. Domain detail lives in `docs/contexts/`; read only the file your task needs.
+The one rule file for every agent in this repo (`CLAUDE.md` imports it, so a runtime that reads `CLAUDE.md` reads this file too). It wins over any skill's or tool's defaults. Domain detail lives in `docs/contexts/`; read only the file your task needs.
 
 ## Project
 
@@ -125,9 +125,9 @@ Before calling a task done, a task whose gates include a code tier (any row abov
 
 - **Phase work happens on a branch** `phase-NNN-<slug>`, never on `main`: pushing or merging `main` deploys to production. On the owner's phase order, before the first spec of the phase, the orchestrator cuts the branch from an up-to-date `main`. `NNN` is one above the last phase in `docs/audit/task-ledger.md`, and it is the phase number. Work stays on that branch until the owner merges it.
 - An orchestrator routes four orders. Each arrives as written below; read the stage file it names:
-  - `spec <id>: <description> (stage file: workflow/stages/01_spec/CONTEXT.md)`: reviewer (Claude Code). The spec's Goal comes from the description.
-  - `build <id> (stage file: workflow/stages/02_build/CONTEXT.md)` and `fix <id> (stage file: workflow/stages/02_build/CONTEXT.md)`: builder (agy)
-  - `review <id> (stage file: workflow/stages/03_review/CONTEXT.md)`: reviewer (Claude Code)
+  - `spec <id>: <description> (stage file: workflow/stages/01_spec/CONTEXT.md)`: reviewer. The spec's Goal comes from the description.
+  - `build <id> (stage file: workflow/stages/02_build/CONTEXT.md)` and `fix <id> (stage file: workflow/stages/02_build/CONTEXT.md)`: builder
+  - `review <id> (stage file: workflow/stages/03_review/CONTEXT.md)`: reviewer
 - Task ids continue the ledger's T-numbers. Each stage writes to its own `output/`: `task-<id>-spec.md`, `task-<id>-build.md` (fix rounds append to it) and `task-<id>-review.md`. Every reply ends with the one STATUS line its stage file defines, starting with the task id: `STATUS: <id> | <state> | <detail>`.
 - **Orchestrator prompt [ADR 0116]:** the orchestrator's instructions are versioned in `workflow/orchestrator/`: `MASTER.md` is the body, read from the checked-out branch; `loaders/` holds one loader per runtime (its preflight, the builder spawn and runtime notes), which the owner copies to the runtime's global path by hand; `runtimes.md` names the agent, model, tools, shell and guards behind each role under Option A and Option B.
 - **Pause after the spec:** after `SPEC DONE`, the orchestrator pauses for the owner's go-ahead before sending `build <id>` when the spec's Target files include a money path (`src/context/FinanceContext.tsx`, `src/selectors/`, or the ledger), anything under `supabase/`, `api/`, `.claude/agents/`, `.github/workflows/` or `workflow/orchestrator/` (its `loaders/` folder included), `.claude/settings.json`, `AGENTS.md`, or a `workflow/stages/*/CONTEXT.md` file, or when its Production touch points section lists anything but `none`. Otherwise it sends `build <id>` without asking. Bookkeeping files (`docs/audit/task-ledger.md`, `workflow/stages/*/output/*`) never cause a pause. This bullet is the pause list's one home: the Release bullet and `workflow/orchestrator/MASTER.md` point here and never copy it.

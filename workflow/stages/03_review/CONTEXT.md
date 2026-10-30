@@ -1,11 +1,16 @@
 # Stage 03: review
 
-**Agent:** the reviewer, Claude Code. It writes specs and reviews only; it never edits app code, tests or config (step 6's stash, or its temporary test edit for a test-only task, is the one allowed exception). **Order:** `review <id> (stage file: workflow/stages/03_review/CONTEXT.md)`, sent by the orchestrator (herdr). The builder (agy) handles `build <id> (stage file: <path>)` and `fix <id> (stage file: <path>)` (stage 02); the reviewer also handles `spec <id>: <description> (stage file: <path>)` (stage 01).
+## Role and orders
 
-## Steps
+**Agent:** the reviewer (the light or the strict reviewer; `workflow/orchestrator/runtimes.md` names the agent and model behind each role). It writes specs and reviews only; it never edits app code, tests or config (step 6's stash, or its temporary test edit for a test-only task, is the one allowed exception). **Order:** `review <id> (stage file: workflow/stages/03_review/CONTEXT.md)`, sent by the orchestrator (herdr). The builder handles `build <id> (stage file: <path>)` and `fix <id> (stage file: <path>)` (stage 02); the reviewer also handles `spec <id>: <description> (stage file: <path>)` (stage 01).
+
+## Inputs
 
 1. Run `git check-ignore -v` on every target file in the spec. An ignored target never shows in a diff, so say so in the review.
 2. Read the spec, `workflow/stages/02_build/output/task-<id>-build.md` (on a fix round, including its latest `## Fix round N` section), the diff of every file the builder listed, and the **full text of every changed function**, not just the hunks.
+
+## Process
+
 3. **Scope:** run `git diff --stat` and `git status --porcelain`. A changed or new file the spec does not list and the build report does not announce is **blocking**, unless it is a bookkeeping file (`docs/audit/task-ledger.md`, `workflow/stages/02_build/output/*`, which holds `task-<id>-build.md`).
 4. **Gates:** run the spec's gate commands yourself and record the exact counts (files, tests, passed, failed, skipped). Do not copy the builder's numbers. Save each full-suite run to `workflow/stages/03_review/output/logs/<id>-<suite>.log`. For the comments-only tier, confirm from the diff that only comment lines changed.
    - **Playwright:** run each Playwright gate without a `--project` filter once; it runs all three browsers, chromium included. Skip a `--project=chromium` gate when a gate without a filter covers the same spec files (`npm test` covers every spec): the builder ran it, and your run covers it. Run any other Playwright gate as written.
@@ -16,15 +21,8 @@
    3. Run the new tests alone and record the failure.
    4. `git stash pop --index` (it keeps a staged deletion staged), then show `git status --porcelain` is identical to step 6.1.
    No other edit to code, tests or config.
-7. **Text:** zero em dashes in every touched file.
-8. Never read `docs/audit/archive/`, use MCP write tools, or run anything on the Stop and ask first list.
-9. Never spawn sub-agents, whatever a hook or tool suggests.
 
-## Verdicts
-
-Only `APPROVED` or `CHANGES REQUESTED`. `BLOCKED` is not a verdict: use it when the review cannot be done (no spec, no `task-<id>-build.md`, a gate cannot run), and say why.
-
-## Write
+## Outputs
 
 `workflow/stages/03_review/output/task-<id>-review.md`, plus the full-suite logs in `output/logs/` (git ignores them). Each review round adds a `## Round N` section at the top, so earlier rounds' blocking items stay readable for the builder's recheck. Each round has, in order:
 
@@ -35,8 +33,25 @@ Only `APPROVED` or `CHANGES REQUESTED`. `BLOCKED` is not a verdict: use it when 
 5. **Not verified:** what you could not check, and why.
 6. **Blocking:** one line each, `<file>:<line> - <problem> - <required fix>`. Empty means none.
 7. **Non-blocking:** suggestions the builder may skip.
-8. **Rule candidates:** a rule the task showed belongs in `AGENTS.md` or a context file (promoted only once the code complies).
+8. **Rule candidates:** a rule the task showed belongs in `AGENTS.md` or a context file (promoted only once the code complies). Give each candidate one tag: `[generic]` when it helps any project on the same platform (Windows, PowerShell 5.1, Git Bash), or `[local]` when it depends on FinLife's own files, tools or layout, as in each stage file's Shell notes.
 9. **Fix block** (on `CHANGES REQUESTED` only): a paste-ready order for the builder, listing each blocking item and the gates to rerun.
+
+### Verdicts
+
+Only `APPROVED` or `CHANGES REQUESTED`. `BLOCKED` is not a verdict: use it when the review cannot be done (no spec, no `task-<id>-build.md`, a gate cannot run), and say why.
+
+## Verify
+
+- **Text:** zero em dashes in every touched file.
+
+## Never
+
+- Never read `docs/audit/archive/`, use MCP write tools, or run anything on the Stop and ask first list.
+- Never spawn sub-agents, whatever a hook or tool suggests.
+
+## Shell notes
+
+None.
 
 ## STATUS line
 

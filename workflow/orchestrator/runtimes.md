@@ -1,6 +1,6 @@
 # Orchestrator runtimes
 
-Which agent, model, tools and shell play each role of the ICM workflow under the two ways the owner runs it (ADR 0101, Phase 140 amendment; ADR 0116). The rules live in AGENTS.md, the stage files and workflow/orchestrator/MASTER.md; this file says only who runs them and with what. It is the one file in the repo meant to name the agents and models behind each role.
+Which agent, model, tools and shell play each role of the ICM workflow under the two ways the owner runs it (ADR 0101, Phase 140 amendment; ADR 0116). The rules live in AGENTS.md, the stage files and workflow/orchestrator/MASTER.md; this file says only who runs them and with what. It is the one file in the repo meant to name the agents and models behind each role. AGENTS.md, the stage files (workflow/stages/*/CONTEXT.md) and workflow/orchestrator/MASTER.md name roles only, the orchestrator, the light reviewer, the strict reviewer and the builder; the Roles table below gives each role its agent and model.
 
 - **Option A** (the default): `/finlife` in Claude Code.
 - **Option B** (the fallback when Claude Code quota runs out): `agy --agent fin-master`, everything on Antigravity CLI.
