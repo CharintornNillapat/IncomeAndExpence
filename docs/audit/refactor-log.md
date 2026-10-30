@@ -17,7 +17,7 @@ ADR `NNNN`. <the brief, one or two sentences>
 **Deliberately not done:** <or none>
 ```
 
-## Phase 161 - FinanceContext hooks lint: T831-T832 (2026-10-30, code `<sha>` and `<sha>`, merged `<sha>`)
+## Phase 161 - FinanceContext hooks lint: T831-T832 (2026-10-30, code `e25ee1f` and `8e75ac3`, merged `221ffa6`)
 
 ADR `0115` (T831 writes it, T832 amends it). T831 lists the slice setters and refs the hooks rule asked for in five `FinanceContext.tsx` dependency arrays, with no behaviour change and an identity characterization test; T832 makes `npm run lint` run `lint:hooks` with `--max-warnings 0`, so a hooks warning fails lint and CI.
 
