@@ -1,5 +1,6 @@
-// ADR 0113: `npm run lint:hooks` runs only the two React hooks rules over src/
-// and api/. Opt-in: not part of `npm run lint` or CI. Warnings do not fail it.
+// ADR 0113 and ADR 0115: `npm run lint:hooks` runs only the two React hooks
+// rules over src/ and api/ with `--max-warnings 0`, so a warning fails it, and
+// `npm run lint` runs it last, so CI fails on one too.
 import tseslint from 'typescript-eslint';
 import reactHooks from 'eslint-plugin-react-hooks';
 

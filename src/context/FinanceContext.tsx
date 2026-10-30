@@ -121,8 +121,9 @@ export interface FinanceStateContextType {
 
 /**
  * The stable half: callbacks whose deps are only `[]`, `[isAuthenticated]`,
- * `[currentUser.id]`, or another already-stable callback, so their identities
- * hold for an entire session, plus the `useState` setter `setShowSoftDeleted`.
+ * `[currentUser.id]`, another already-stable callback, or a slice's `useState`
+ * setter or ref (ADR 0115), so their identities hold for an entire session,
+ * plus the `useState` setter `setShowSoftDeleted`.
  * A component reading only from here does not re-render because of a ledger
  * write.
  *
@@ -878,7 +879,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     inFlightIdempotencyKeys.current.clear();
     lastCloudLoadAtRef.current = 0;
     loadedUserIdRef.current = null;
-  }, []);
+  }, [setKeywordRules, setPresets, setDiaryEntries]);
 
   // ADR 0039: the server decides whether an account is new. An empty wallet
   // read is not evidence: row-level security answers a read made without a
@@ -964,7 +965,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       setIsSyncing(false);
       if (options?.manual) setIsManualSync(false);
     }
-  }, [seedInitialUserAccount]);
+  }, [seedInitialUserAccount, setKeywordRules, setDiaryEntries]);
 
   // Keep the ref pointing at the current loader for `seedInitialUserAccount`.
   useEffect(() => {
@@ -1317,7 +1318,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     setPresets((prev) => prev.filter(restored.keepPreset));
     inFlightIdempotencyKeys.current.clear();
     return { success: true };
-  }, [isAuthenticated]);
+  }, [isAuthenticated, setKeywordRules, setDiaryEntries, setPresets]);
 
   // Wallets CRUD
   const addWallet = useCallback(async (
@@ -1707,7 +1708,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
           (err instanceof Error ? err.message : 'Failed to delete category'),
       };
     }
-  }, [isAuthenticated, markLocalWrite]);
+  }, [isAuthenticated, markLocalWrite, keywordRulesRef]);
 
   // Transactions CRUD
   const addTransaction = useCallback(async (data: {
@@ -2091,7 +2092,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       type: preset.type,
       transactionDate: transactionDate || todayIsoDate(),
     });
-  }, [addTransaction]);
+  }, [addTransaction, presetsRef]);
 
   // Soft-delete and restore are exact inverses: both flip `isDeleted` and undo or
   // re-apply the transaction's effect on wallet balances. `sign` is +1 when removing

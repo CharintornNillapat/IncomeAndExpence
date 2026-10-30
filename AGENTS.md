@@ -8,7 +8,7 @@ FinLife Tracker is a single-user personal finance and daily-diary PWA in Thai Ba
 
 - **Stack:** React 19, TypeScript ~5.8 (strict), Vite 6, Tailwind CSS v4 (semantic tokens), `vite-plugin-pwa`, `@supabase/supabase-js` (lazy-loaded), zod 4, papaparse, lucide-react. Node 24.x, npm.
 - **Server side:** Supabase (Postgres 17, RLS, `SECURITY DEFINER` RPCs, Auth, Realtime); Vercel hosting with three Node functions in `api/` (region `icn1`); TypeSafe's Jev model behind the proxies.
-- **Tests:** Vitest in `unit/` (1624 tests, 73 files, PGlite replays every migration); Playwright in `tests/` (213 tests, 37 specs, 639 runs on three browsers).
+- **Tests:** Vitest in `unit/` (1625 tests, 73 files, PGlite replays every migration); Playwright in `tests/` (213 tests, 37 specs, 639 runs on three browsers).
 
 | Path | What it is |
 |---|---|
@@ -23,7 +23,7 @@ FinLife Tracker is a single-user personal finance and daily-diary PWA in Thai Ba
 ## Commands
 
 - `npm run dev` (port 3000) / `npm run build`
-- `npm run lint`: Node-globals guard, safe-id guard, `tsc --noEmit`, `tsc -p api/tsconfig.json`
+- `npm run lint`: Node-globals guard, safe-id guard, `tsc --noEmit`, `tsc -p api/tsconfig.json`, then `npm run lint:hooks` (ESLint's two React hooks rules on `src` and `api` with `--max-warnings 0`, so a hooks warning fails lint and CI; ADR 0115)
 - `npm run test:unit` / `npm run test:unit:shuffle` / `npx vitest run unit/<file>`
 - `npx playwright test tests/<file>.spec.ts --project=chromium` / `npm test` (all)
 - `npm run schema:drift` (offline replay; prints a read-only query)

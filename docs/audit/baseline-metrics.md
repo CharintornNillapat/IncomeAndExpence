@@ -23,6 +23,14 @@ npx tsc --noEmit --extendedDiagnostics
 
 ## Figures
 
+### Phase 161 - delta against Phase 159
+
+Measured at the T832 working tree. Entry chunk is `index-B7YcHRcz.js` 198,250 B (+22 B raw) / 57,976 B gzip (+19 B gzip against Phase 158 `index-CAxfG7Qp.js` 198,228 B / 57,957 B gzip); all app JS is 911,036 B (+22 B raw) / 275,908 B gzip (+17 B gzip against Phase 158 911,014 B / 275,891 B gzip in 39 files, 0 file delta); CSS `index-BNwLrid8.css` is identical at 54,969 B / 10,720 B gzip (0 B delta); `dist/` holds 57 files (0 file delta). T831's five dependency arrays in `FinanceContext.tsx` are the only build input changed since Phase 158. Dependencies unchanged (dev 21, runtime 7), `package-lock.json` unchanged.
+
+- **Lint**: `npm run lint` local median of 3 before (10,064 ms) and after (11,745 ms), delta +1,681 ms (+1.68 s), with `npm run lint:hooks` now its last step; hooks lint warnings reduced from 5 to 0 (T831), 0 errors. CI's lint step was 8 s on run 40906673300; the Phase 161 PR run's figure is the deploy record's.
+- **Vitest**: 73 files, 1625 tests (+1 against Phase 159: T831's identity test in `unit/rerender-matrix.test.tsx`), 1625 passed in 60.49 s (`workflow/stages/02_build/output/logs/T832-unit.log`).
+- **Playwright**: unchanged, 213 tests in 37 files, 639 runs; not run locally (no affected spec; scripts, tooling and docs only; T831's affected-spec runs are in its ledger row).
+
 ### Phase 159 - delta against Phase 158
 
 Measured at the T828 working tree; no build input changed (`src/`, `index.html`, `public/`, `vite.config.ts`, `package.json` untouched), so the bundle was not rebuilt and Phase 158 figures stand (`index-CAxfG7Qp.js` 198,228 B / 57,957 B gzip, all app JS 911,014 B / 275,891 B gzip in 39 files, CSS `index-BNwLrid8.css` 54,969 B / 10,720 B gzip in 57 files). Dependencies unchanged (dev 21, runtime 7).
