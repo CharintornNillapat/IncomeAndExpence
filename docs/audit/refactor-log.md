@@ -17,7 +17,7 @@ ADR `NNNN`. <the brief, one or two sentences>
 **Deliberately not done:** <or none>
 ```
 
-## Phase 164 - Runtime-neutral ICM stage files: T836-T838 (2026-10-30, code `<sha>` to `<sha>`, merged `<sha>`)
+## Phase 164 - Runtime-neutral ICM stage files: T836-T838 (2026-10-30, code `111b079` to `bb97bd5`, merged `e7d20da`)
 
 No ADR (three docs-only edits, which AGENTS.md's Workflow section exempts). T836 makes the stage files, AGENTS.md and `workflow/orchestrator/MASTER.md` (its lines 36, 44 and 69: the builder wait, the BUILDER role prompt and `usage on`) name roles only, leaving the Roles table in `workflow/orchestrator/runtimes.md` as the one place that names a runtime or model; T837 gives the three stage files one skeleton and tags each shell note by the owner's rule, `[generic]` when it helps any project on the same platform (Windows, PowerShell 5.1, Git Bash) and `[local]` when it depends on FinLife's own files, tools or layout (four `[generic]`, one `[local]`), and has the review stage tag each rule candidate the same way; T838 makes an owner-merged `release` stop at the PR link instead of holding the pane in the merge wait, gives a runtime without a Supabase tool a manual migration check in `merged`, and adds `NO_COLOR` to the build stage's log rule, as the end of its last `[generic]` shell note.
 
