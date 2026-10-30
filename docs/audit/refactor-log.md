@@ -17,7 +17,7 @@ ADR `NNNN`. <the brief, one or two sentences>
 **Deliberately not done:** <or none>
 ```
 
-## Phase 163 - Loader check and UTF-8 build logs: T834-T835 (2026-10-30, code `<sha>` and `<sha>`, merged `<sha>`)
+## Phase 163 - Loader check and UTF-8 build logs: T834-T835 (2026-10-30, code `5d76841` and `e52e080`, merged `93583f9`)
 
 No ADR (two docs-only edits, which AGENTS.md's Workflow section exempts). T834 makes the builder's gate logs UTF-8, so `grep` can read them; T835 settles which `npm run lint` slowdown figure the Phase 161 metrics record.
 
@@ -27,6 +27,8 @@ No ADR (two docs-only edits, which AGENTS.md's Workflow section exempts). T834 m
 **Deliberately not done:** the gate-log sentence in AGENTS.md (only the builder runs in PowerShell, and it reads the stage file); a lint guard or unit test for log encodings (the logs are gitignored and only agents read them); converting the existing UTF-16 `T833-gates.log`; re-measuring `npm run lint`; editing the Phase 161 refactor-log entry, the T832 ledger cell or the T832 review report (history, already consistent); a Phase 163 section in `baseline-metrics.md` (no bundle or test count changes); filling the `<sha>` placeholders in this heading and the Commit cells in `task-ledger.md`, left to the owner-approved post-merge deploy record.
 
 ---
+
+**Post-merge:** PR #115 merged by the owner as merge commit `93583f9` (two parents, task commits `5d76841` and `e52e080` kept). All of the PR's required checks passed. Vercel reports production deployment `dpl_B1KUkN5itfHzAEwAptvUVWMDkh32` READY for `93583f9`; no `/api/*` request was made.
 
 ## Phase 162 - Orchestrator prompts in the repo: T833 (2026-10-30, code `7da5b6b`, merged `0703f08`)
 
