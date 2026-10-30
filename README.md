@@ -155,9 +155,9 @@ To see what is in the bundle, run `npm run analyze`: it builds with the visualiz
 ## Testing
 
 ```bash
-npm run lint         # TypeScript for the app, the tests and the functions, plus checks for Node globals and time-only ids in src/
-npm run lint:hooks   # opt-in ESLint: react-hooks rules on src/ and api/; warnings do not fail it; not part of lint or CI
-npm run test:unit    # Vitest: 1624 tests in 73 files, including every migration replayed in PGlite
+npm run lint         # TypeScript for the app, the tests and the functions, checks for Node globals and time-only ids in src/, then lint:hooks
+npm run lint:hooks   # ESLint: react-hooks rules on src/ and api/; any warning fails it; the last step of lint, so CI runs it too
+npm run test:unit    # Vitest: 1625 tests in 73 files, including every migration replayed in PGlite
 npm test             # Playwright: 213 tests in 37 spec files on Chromium, Firefox and WebKit (639 runs)
 npx playwright test tests/wallets.spec.ts --project=chromium   # one spec, one browser
 npx playwright install                                          # first run only: the browser engines
