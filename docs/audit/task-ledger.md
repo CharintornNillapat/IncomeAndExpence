@@ -138,6 +138,14 @@ Branch `phase-162-orchestrator-in-repo`, cut from `main` at `0b4fff6`. One task,
 |---|---|---|---|---|---|
 | T833 | Orchestrator prompts versioned in the repo: workflow/orchestrator/MASTER.md (the runtime-neutral body of finlife.md), runtimes.md (Option A and B), two loaders; the pause list gets one home in AGENTS.md and gains workflow/orchestrator/; ADR 0116; Phase 162 closing docs | `docs/audit/decisions/0116-orchestrator-prompts-in-the-repo.md`, `workflow/orchestrator/MASTER.md`, `workflow/orchestrator/runtimes.md`, `workflow/orchestrator/loaders/finlife.md`, `workflow/orchestrator/loaders/fin-master.agent.md`, `AGENTS.md`, `docs/audit/refactor-log.md`, `docs/audit/task-ledger.md` | done | 7da5b6b | Gate 0 script extracted; Gates 1-10 bad 0 (G1 blocks match, G2 AGENTS.md edits match, G3 one pause home, G4 finlife.md lines/spans match, G5 fin-master spans/frontmatter match, G6 0 em dashes / 0 mojibake / 0 keys, G7 paths exist and BUILDER.md absent, G8 line endings clean, G9 outside files unchanged, G10 scope clean); Gate 11 all w/crlf; Gate 12 diff numstat 3 2 on AGENTS.md, 0 on baseline-metrics.md |
 
+## Phase 163 - Loader check and UTF-8 build logs
+
+Branch `phase-163-loader-check`, cut from `main` at `4e3fc4c`. Tasks T834 and T835. No migration.
+
+| # | Task | Files | Status | Commit | Gate result |
+|---|---|---|---|---|---|
+| T834 | Builder gate logs are UTF-8: the build stage file gives the cmd /c form for PowerShell 5.1 and the tee form for Git Bash, and bans >, >> and Tee-Object for logs | `workflow/stages/02_build/CONTEXT.md`, `docs/audit/task-ledger.md` | done | | Gate 1 script extracted; Gate 2a ps-form exit 0; Gate 2b bash-form exit 0; Gate 3 bad 0 (G1 blocks match, G2 numstat 1 0, G3 logs valid UTF-8, G4 0 em dashes, G5 all w/crlf bareLF 0, G6 scope clean) |
+
 ## Backlog
 
 Not scheduled. Each row says where it came from.
