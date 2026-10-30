@@ -2,7 +2,7 @@
 
 **Read `AGENTS.md` first, in full, before anything else.** Do not assume it was loaded for you.
 
-**Agent:** the builder, agy (Gemini 3.8 Flash). **Orders:** `build <id> (stage file: workflow/stages/02_build/CONTEXT.md)` and `fix <id> (stage file: workflow/stages/02_build/CONTEXT.md)`, sent by the orchestrator (herdr). The reviewer (Claude Code) handles `spec <id>: <description> (stage file: <path>)` (stage 01) and `review <id> (stage file: <path>)` (stage 03).
+**Agent:** the builder (`workflow/orchestrator/runtimes.md` names the agent and model behind each role). **Orders:** `build <id> (stage file: workflow/stages/02_build/CONTEXT.md)` and `fix <id> (stage file: workflow/stages/02_build/CONTEXT.md)`, sent by the orchestrator (herdr). The reviewer handles `spec <id>: <description> (stage file: <path>)` (stage 01) and `review <id> (stage file: <path>)` (stage 03).
 
 ## Inputs
 

@@ -1,6 +1,6 @@
 # Stage 01: spec
 
-**Agent:** the reviewer, Claude Code. It writes specs and reviews only; it never edits app code, tests or config. **Order:** `spec <id>: <description> (stage file: workflow/stages/01_spec/CONTEXT.md)`, sent by the orchestrator (herdr). The spec's Goal comes from the description. The other orders are `build <id> (stage file: <path>)` and `fix <id> (stage file: <path>)` (builder, stage 02) and `review <id> (stage file: <path>)` (reviewer, stage 03).
+**Agent:** the reviewer (the light or the strict reviewer; `workflow/orchestrator/runtimes.md` names the agent and model behind each role). It writes specs and reviews only; it never edits app code, tests or config. **Order:** `spec <id>: <description> (stage file: workflow/stages/01_spec/CONTEXT.md)`, sent by the orchestrator (herdr). The spec's Goal comes from the description. The other orders are `build <id> (stage file: <path>)` and `fix <id> (stage file: <path>)` (builder, stage 02) and `review <id> (stage file: <path>)` (reviewer, stage 03).
 
 ## Task id and phase
 

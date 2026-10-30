@@ -147,6 +147,14 @@ Branch `phase-163-loader-check`, cut from `main` at `4e3fc4c`. Tasks T834 and T8
 | T834 | Builder gate logs are UTF-8: the build stage file gives the cmd /c form for PowerShell 5.1 and the tee form for Git Bash, and bans >, >> and Tee-Object for logs | `workflow/stages/02_build/CONTEXT.md`, `docs/audit/task-ledger.md` | done | 5d76841 | Gate 1 script extracted; Gate 2a ps-form exit 0; Gate 2b bash-form exit 0; Gate 3 bad 0 (G1 blocks match, G2 numstat 1 0, G3 logs valid UTF-8, G4 0 em dashes, G5 all w/crlf bareLF 0, G6 scope clean) |
 | T835 | Reconcile the Phase 161 `npm run lint` slowdown: record the builder's +1,681 ms in baseline-metrics.md, cite the T832 reviewer's +758 ms once as a noisy cross-check; Phase 163 closing refactor-log entry | `docs/audit/baseline-metrics.md`, `docs/audit/refactor-log.md`, `docs/audit/task-ledger.md` | done | e52e080 | G1 text landed (new 1 old 0); G2 every figure matches the T832 time files (ms= 2 2 2 2, 7891 758 1681); G3 T832 text unchanged (758 count 2, delta count 1 1); G4 0 em dashes, line endings kept (all w/crlf, 0 bare LF); G5 Phase 163 entry landed once above Phase 162 (true true true true); G6 scope clean |
 
+## Phase 164 - Runtime-neutral ICM stage files
+
+Branch `phase-164-icm-neutral-stages`, cut from `main` at `3ae3327`. Tasks T836, T837 and T838. No migration.
+
+| # | Task | Files | Status | Commit | Gate result |
+|---|---|---|---|---|---|
+| T836 | Stage files, AGENTS.md and MASTER.md name roles only (orchestrator, reviewer, strict reviewer, builder); runtimes.md's Roles table is the one place that names a runtime or model | `workflow/stages/01_spec/CONTEXT.md`, `workflow/stages/02_build/CONTEXT.md`, `workflow/stages/03_review/CONTEXT.md`, `AGENTS.md`, `workflow/orchestrator/runtimes.md`, `workflow/orchestrator/MASTER.md`, `docs/audit/task-ledger.md` | done | | Gate 0 script extracted; Gate 1 grep exit=1 (0 matching lines); Gate 2 unit/workflow-hardening.test.ts 1 file 17 passed (294ms); Gate 3 bad 0 (G1 lines none, G2 AGENTS.md none, G3 blocks 22 old 0 new 1, G4 numstats match, G5 runtimes.md rows present and prompt shell-safe, G6 0 em dashes, G7 all w/crlf bareLF 0, G8 scope clean) |
+
 ## Backlog
 
 Not scheduled. Each row says where it came from.

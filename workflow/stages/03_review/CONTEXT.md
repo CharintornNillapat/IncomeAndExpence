@@ -1,6 +1,6 @@
 # Stage 03: review
 
-**Agent:** the reviewer, Claude Code. It writes specs and reviews only; it never edits app code, tests or config (step 6's stash, or its temporary test edit for a test-only task, is the one allowed exception). **Order:** `review <id> (stage file: workflow/stages/03_review/CONTEXT.md)`, sent by the orchestrator (herdr). The builder (agy) handles `build <id> (stage file: <path>)` and `fix <id> (stage file: <path>)` (stage 02); the reviewer also handles `spec <id>: <description> (stage file: <path>)` (stage 01).
+**Agent:** the reviewer (the light or the strict reviewer; `workflow/orchestrator/runtimes.md` names the agent and model behind each role). It writes specs and reviews only; it never edits app code, tests or config (step 6's stash, or its temporary test edit for a test-only task, is the one allowed exception). **Order:** `review <id> (stage file: workflow/stages/03_review/CONTEXT.md)`, sent by the orchestrator (herdr). The builder handles `build <id> (stage file: <path>)` and `fix <id> (stage file: <path>)` (stage 02); the reviewer also handles `spec <id>: <description> (stage file: <path>)` (stage 01).
 
 ## Steps
 
