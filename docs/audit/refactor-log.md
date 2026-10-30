@@ -17,6 +17,17 @@ ADR `NNNN`. <the brief, one or two sentences>
 **Deliberately not done:** <or none>
 ```
 
+## Phase 163 - Loader check and UTF-8 build logs: T834-T835 (2026-10-30, code `<sha>` and `<sha>`, merged `<sha>`)
+
+No ADR (two docs-only edits, which AGENTS.md's Workflow section exempts). T834 makes the builder's gate logs UTF-8, so `grep` can read them; T835 settles which `npm run lint` slowdown figure the Phase 161 metrics record.
+
+**Changed:** T834 (`workflow/stages/02_build/CONTEXT.md`: one new step 5 sub-bullet, "Logs are UTF-8", giving the `cmd /c` form for PowerShell 5.1 and the `tee` form for Git Bash; `docs/audit/task-ledger.md`: Phase 163 section and T834 row); T835 (`docs/audit/baseline-metrics.md`: the Phase 161 Lint bullet names +1,681 ms as the recorded figure and +758 ms as a cross-check; `docs/audit/task-ledger.md`: T835 row; this file).
+**Verified:** T834 (Gate 2a `cmd /c` form and Gate 2b Git Bash `tee` form both exit 0, their logs start without `ff fe`, hold 0 NUL bytes and contain a vitest `passed` line; Gate 3 checks bad 0); T835 (G1 text landed, new 1 old 0; G2 every figure matches the T832 time files; G3 the T832 text in the refactor log and the ledger is unchanged; G4 0 em dashes, line endings kept; G5 this entry landed once, above Phase 162; G6 scope clean). No lint, unit or Playwright run: docs-only tier.
+**Surprises:** 1. The T833 builder gate log `T833-gates.log` was UTF-16LE (it starts with the bytes `ff fe`), so `grep` found no word in it. In PowerShell 5.1, `>` and `Tee-Object` write UTF-16, and `Out-File -Encoding utf8` adds a BOM and garbles Thai text; `cmd /c` redirection and Git Bash `tee` write the program's own UTF-8 bytes, and the stage 02 `CONTEXT.md` now requires those two forms. The reviewer's logs were never affected: it runs in Git Bash. 2. The Phase 161 slowdown has two measurements: the builder's median of 3 gave +1,681 ms (10,064 to 11,745 ms) and the T832 reviewer's gave +758 ms on a noisier machine, inside its own 7,891 ms spread. `baseline-metrics.md` now records +1,681 ms, with +758 ms as a cross-check; both pass the 10,000 ms limit. The refactor log and the ledger already cited only +1,681 ms, so only the metrics doc changed.
+**Deliberately not done:** the gate-log sentence in AGENTS.md (only the builder runs in PowerShell, and it reads the stage file); a lint guard or unit test for log encodings (the logs are gitignored and only agents read them); converting the existing UTF-16 `T833-gates.log`; re-measuring `npm run lint`; editing the Phase 161 refactor-log entry, the T832 ledger cell or the T832 review report (history, already consistent); a Phase 163 section in `baseline-metrics.md` (no bundle or test count changes); filling the `<sha>` placeholders in this heading and the Commit cells in `task-ledger.md`, left to the owner-approved post-merge deploy record.
+
+---
+
 ## Phase 162 - Orchestrator prompts in the repo: T833 (2026-10-30, code `7da5b6b`, merged `0703f08`)
 
 ADR `0116`. MASTER's instructions move into the repo: `workflow/orchestrator/MASTER.md` holds the runtime-neutral body of `~/.claude/commands/finlife.md`, `runtimes.md` names who plays each role under Option A and Option B, and two versioned loaders hold the preflight and runtime notes; the pause list gets one home in `AGENTS.md` and gains `workflow/orchestrator/`.
