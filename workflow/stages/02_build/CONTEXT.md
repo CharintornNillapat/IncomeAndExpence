@@ -61,7 +61,7 @@ When the spec lists `docs/audit/refactor-log.md`, build the phase's entry, or th
 
 - [generic] In Windows PowerShell 5.1, `>`, `>>` and `Tee-Object` write UTF-16 (the T833 gate log was UTF-16), so never use them for a log.
 - [local] Run the command through `cmd /c` instead, which saves the program's own UTF-8 bytes and leaves its exit code in `$LASTEXITCODE`: `cmd /c 'npm run test:unit > workflow\stages\02_build\output\logs\<id>-unit.log 2>&1'`. In Git Bash use `tee` and print the command's own exit code: `npm run test:unit 2>&1 | tee workflow/stages/02_build/output/logs/<id>-unit.log; echo exit=${PIPESTATUS[0]}`.
-- [generic] Use `| Out-File -Encoding utf8 <log>` only for a PowerShell cmdlet's own output (for example `Get-FileHash`): PowerShell decodes piped npm, npx, node or git output in the console code page, which garbles Thai text and symbols, and with `2>&1` it wraps each stderr line in an error record.
+- [generic] Use `| Out-File -Encoding utf8 <log>` only for a PowerShell cmdlet's own output (for example `Get-FileHash`): PowerShell decodes piped npm, npx, node or git output in the console code page, which garbles Thai text and symbols, and with `2>&1` it wraps each stderr line in an error record. Set `NO_COLOR` for every logged run, `$env:NO_COLOR='1'` before `cmd /c` in the same PowerShell call or `NO_COLOR=1` before the command in Git Bash: in the builder's runtime vitest and vite wrote ANSI color codes into the T830 to T832 logs, which split vitest's `Tests  N passed` line so `grep` missed it.
 
 ## STATUS line
 
